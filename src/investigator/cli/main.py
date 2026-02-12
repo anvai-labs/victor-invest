@@ -16,15 +16,20 @@ Examples:
     investigator system status
 """
 
+import logging
+import os
 import sys
 from pathlib import Path
 
 import click
 
-# Ensure src/ is in path for package imports
+# Ensure src/ and project root are in path for package imports
 src_dir = Path(__file__).parent.parent.parent
+project_root = Path(__file__).parent.parent.parent.parent
 if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
 from .groups import analyze, backtest, cache, data, macro, system  # noqa: E402
 from .utils import load_config, setup_logging  # noqa: E402
@@ -33,6 +38,39 @@ CONTEXT_SETTINGS = dict(
     help_option_names=["-h", "--help"],
     max_content_width=120,
 )
+
+
+class _VictorExternalVerticalNoiseFilter(logging.Filter):
+    """Suppress known benign external-vertical discovery warnings."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        message = record.getMessage()
+        if (
+            "External vertical '" in message
+            and "conflicts with existing vertical" in message
+        ):
+            return False
+        if (
+            "Failed to load external vertical 'security_analysis'" in message
+            and "No module named 'victor.security_analysis'" in message
+        ):
+            return False
+        return True
+
+
+def _configure_victor_external_vertical_warning_filter() -> None:
+    """Configure targeted noise filtering for Victor external vertical warnings."""
+    if os.getenv("INVESTIGATOR_SUPPRESS_EXTERNAL_VERTICAL_WARNINGS", "1") != "1":
+        return
+
+    logger = logging.getLogger("victor.core.verticals.base")
+    if any(
+        isinstance(existing, _VictorExternalVerticalNoiseFilter)
+        for existing in logger.filters
+    ):
+        return
+
+    logger.addFilter(_VictorExternalVerticalNoiseFilter())
 
 
 @click.group(context_settings=CONTEXT_SETTINGS)
@@ -64,7 +102,7 @@ CONTEXT_SETTINGS = dict(
     help="Enable verbose output (same as --log-level DEBUG)",
 )
 @click.option("--quiet", "-q", is_flag=True, help="Suppress non-essential output")
-@click.version_option(version="0.1.0", prog_name="investigator")
+@click.version_option(version="0.5.0", prog_name="investigator")
 @click.pass_context
 def cli(ctx, config, log_level, log_file, verbose, quiet):
     """InvestiGator - AI-Powered Investment Analysis
@@ -96,6 +134,7 @@ def cli(ctx, config, log_level, log_file, verbose, quiet):
         effective_level = "WARNING"
 
     setup_logging(effective_level, log_file)
+    _configure_victor_external_vertical_warning_filter()
 
     # Initialize context
     ctx.ensure_object(dict)

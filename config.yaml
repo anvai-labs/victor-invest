@@ -61,33 +61,32 @@ ollama:
   pool_strategy: prefer_remote  # most_capacity | prefer_remote | round_robin
 
   servers:
-    # Windows RTX 4000 Ada (192.168.1.20) - Primary server
+    # Windows RTX 4000 Ada (192.168.1.20) - Primary server with high priority
     - url: http://192.168.1.20:11434
       total_ram_gb: 84
       usable_ram_gb: 20        # 20GB VRAM
       metal: false             # CUDA, not Metal
       max_concurrent: 3
-      priority: 0              # Primary server
+      priority: 100            # HIGHEST priority - preferred when available
       description: "Windows RTX 4000 Ada - gpt-oss:20b, qwen3:30b, deepseek-r1:70b, llama3.1:70b, llama3.3:70b"
 
-    # NOTE: Remote servers commented out - set OLLAMA_HOST_M4/WIN env vars to enable
+    # Localhost fallback - used when remote server is unavailable
+    - url: http://localhost:11434
+      total_ram_gb: 64
+      usable_ram_gb: 48
+      metal: true
+      max_concurrent: 1
+      priority: 0              # LOWEST priority - fallback only
+
+    # NOTE: Additional remote servers commented out - set OLLAMA_HOST_M4/WIN env vars to enable
     # # M4 Max #1 (${OLLAMA_HOST_M4:-localhost}) - Remote Apple Silicon
     # - url: http://${OLLAMA_HOST_M4}:11434
     #   total_ram_gb: 32
     #   usable_ram_gb: 32        # Unified memory: full 32GB VRAM
     #   metal: true
     #   max_concurrent: 2
-    #   priority: 100            # Remote = lower priority
+    #   priority: 50            # Medium priority
     #   description: "M4 Max Mac - qwen3:30b, qwen2.5-coder:32b, gpt-oss:20b"
-
-    # # Windows RTX 4000 Ada (${OLLAMA_HOST_WIN:-localhost}) - Dedicated GPU + shared
-    # - url: http://${OLLAMA_HOST_WIN}:11434
-    #   total_ram_gb: 84         # 20GB VRAM + 64GB system RAM
-    #   usable_ram_gb: 20        # Only 20GB dedicated VRAM is fast
-    #   metal: false             # CUDA, not Metal
-    #   max_concurrent: 2
-    #   priority: 50             # Medium priority - GPU is fast but smaller
-    #   description: "Windows RTX 4000 Ada - gpt-oss:120b, deepseek-r1:70b, llama3.3:70b"
 
   # Model assignments for different analysis types
   # NOTE: All models below are available on ALL 3 servers for optimal load balancing
