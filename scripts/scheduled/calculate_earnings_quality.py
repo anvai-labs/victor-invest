@@ -38,17 +38,15 @@ Usage:
 
 import argparse
 import sys
-from datetime import datetime
-from decimal import Decimal
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from scripts.scheduled.base import (
+from scripts.scheduled.base import (  # noqa: E402
     BaseCollector,
     CollectionMetrics,
     compute_record_hash,
@@ -100,10 +98,13 @@ class EarningsQualityCalculator(BaseCollector):
                             record_hash = compute_record_hash(metrics)
 
                             # Check existing
-                            cursor.execute("""
+                            cursor.execute(
+                                """
                                 SELECT input_data_hash FROM earnings_quality
                                 WHERE symbol = %s AND fiscal_year = %s AND fiscal_period = %s
-                            """, (symbol, fiscal_year, fiscal_period))
+                            """,
+                                (symbol, fiscal_year, fiscal_period),
+                            )
                             existing = cursor.fetchone()
 
                             if existing:
@@ -111,15 +112,31 @@ class EarningsQualityCalculator(BaseCollector):
                                     self.metrics.records_skipped += 1
                                     continue
                                 # Update
-                                self._update_quality_record(cursor, symbol, fiscal_year, fiscal_period, metrics, record_hash)
+                                self._update_quality_record(
+                                    cursor,
+                                    symbol,
+                                    fiscal_year,
+                                    fiscal_period,
+                                    metrics,
+                                    record_hash,
+                                )
                                 self.metrics.records_updated += 1
                             else:
                                 # Insert
-                                self._insert_quality_record(cursor, symbol, fiscal_year, fiscal_period, metrics, record_hash)
+                                self._insert_quality_record(
+                                    cursor,
+                                    symbol,
+                                    fiscal_year,
+                                    fiscal_period,
+                                    metrics,
+                                    record_hash,
+                                )
                                 self.metrics.records_inserted += 1
 
                         except Exception as e:
-                            self.logger.debug(f"Failed to calculate for {symbol} {period_data.get('fiscal_period')}: {e}")
+                            self.logger.debug(
+                                f"Failed to calculate for {symbol} {period_data.get('fiscal_period')}: {e}"
+                            )
 
                     # Commit periodically
                     if self.metrics.records_processed % 20 == 0:
@@ -148,7 +165,8 @@ class EarningsQualityCalculator(BaseCollector):
     def _get_financial_data(self, cursor, symbol: str) -> List[Dict[str, Any]]:
         """Get financial data from SEC responses for a symbol."""
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT fiscal_year, fiscal_period, response_data
                 FROM sec_responses
                 WHERE symbol = %s
@@ -156,7 +174,9 @@ class EarningsQualityCalculator(BaseCollector):
                   AND category = 'financials'
                 ORDER BY fiscal_year DESC, fiscal_period DESC
                 LIMIT 8
-            """, (symbol,))
+            """,
+                (symbol,),
+            )
 
             results = []
             for row in cursor.fetchall():
@@ -170,24 +190,85 @@ class EarningsQualityCalculator(BaseCollector):
             self.logger.debug(f"Could not get financial data for {symbol}: {e}")
             return []
 
-    def _calculate_quality_metrics(self, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def _calculate_quality_metrics(
+        self, data: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
         """Calculate earnings quality metrics from financial data."""
         try:
             # Extract key financial values
-            net_income = self._get_value(data, ["netIncome", "net_income", "NetIncomeLoss"])
-            ocf = self._get_value(data, ["operatingCashFlow", "operating_cash_flow", "NetCashProvidedByUsedInOperatingActivities"])
-            total_assets = self._get_value(data, ["totalAssets", "total_assets", "Assets"])
-            current_assets = self._get_value(data, ["currentAssets", "current_assets", "AssetsCurrent"])
-            current_liabilities = self._get_value(data, ["currentLiabilities", "current_liabilities", "LiabilitiesCurrent"])
-            depreciation = self._get_value(data, ["depreciation", "depreciation_amortization", "DepreciationAndAmortization"]) or 0
-            revenue = self._get_value(data, ["revenue", "revenues", "Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax"])
-            receivables = self._get_value(data, ["accountsReceivable", "accounts_receivable", "AccountsReceivableNetCurrent"])
-            total_debt = self._get_value(data, ["totalDebt", "total_debt", "LongTermDebt"]) or 0
-            retained_earnings = self._get_value(data, ["retainedEarnings", "retained_earnings", "RetainedEarningsAccumulatedDeficit"]) or 0
-            working_capital = self._get_value(data, ["workingCapital", "working_capital"]) or (
-                (current_assets - current_liabilities) if current_assets and current_liabilities else None
+            net_income = self._get_value(
+                data, ["netIncome", "net_income", "NetIncomeLoss"]
             )
-            ebit = self._get_value(data, ["ebit", "operatingIncome", "OperatingIncomeLoss"])
+            ocf = self._get_value(
+                data,
+                [
+                    "operatingCashFlow",
+                    "operating_cash_flow",
+                    "NetCashProvidedByUsedInOperatingActivities",
+                ],
+            )
+            total_assets = self._get_value(
+                data, ["totalAssets", "total_assets", "Assets"]
+            )
+            current_assets = self._get_value(
+                data, ["currentAssets", "current_assets", "AssetsCurrent"]
+            )
+            current_liabilities = self._get_value(
+                data,
+                ["currentLiabilities", "current_liabilities", "LiabilitiesCurrent"],
+            )
+            depreciation = (
+                self._get_value(
+                    data,
+                    [
+                        "depreciation",
+                        "depreciation_amortization",
+                        "DepreciationAndAmortization",
+                    ],
+                )
+                or 0
+            )
+            revenue = self._get_value(
+                data,
+                [
+                    "revenue",
+                    "revenues",
+                    "Revenues",
+                    "RevenueFromContractWithCustomerExcludingAssessedTax",
+                ],
+            )
+            self._get_value(
+                data,
+                [
+                    "accountsReceivable",
+                    "accounts_receivable",
+                    "AccountsReceivableNetCurrent",
+                ],
+            )
+            total_debt = (
+                self._get_value(data, ["totalDebt", "total_debt", "LongTermDebt"]) or 0
+            )
+            retained_earnings = (
+                self._get_value(
+                    data,
+                    [
+                        "retainedEarnings",
+                        "retained_earnings",
+                        "RetainedEarningsAccumulatedDeficit",
+                    ],
+                )
+                or 0
+            )
+            working_capital = self._get_value(
+                data, ["workingCapital", "working_capital"]
+            ) or (
+                (current_assets - current_liabilities)
+                if current_assets and current_liabilities
+                else None
+            )
+            ebit = self._get_value(
+                data, ["ebit", "operatingIncome", "OperatingIncomeLoss"]
+            )
             market_cap = self._get_value(data, ["marketCap", "market_cap"])
 
             # 1. Total Accruals
@@ -210,7 +291,17 @@ class EarningsQualityCalculator(BaseCollector):
 
             # 4. Altman Z-Score (simplified for public companies)
             z_score = None
-            if all([working_capital, total_assets, retained_earnings, ebit, market_cap, total_debt, revenue]):
+            if all(
+                [
+                    working_capital,
+                    total_assets,
+                    retained_earnings,
+                    ebit,
+                    market_cap,
+                    total_debt,
+                    revenue,
+                ]
+            ):
                 if total_assets != 0 and (total_assets + total_debt) != 0:
                     a = (working_capital or 0) / total_assets
                     b = (retained_earnings or 0) / total_assets
@@ -275,62 +366,78 @@ class EarningsQualityCalculator(BaseCollector):
                         pass
         return None
 
-    def _insert_quality_record(self, cursor, symbol: str, fiscal_year: int,
-                               fiscal_period: str, metrics: Dict, record_hash: str) -> None:
+    def _insert_quality_record(
+        self,
+        cursor,
+        symbol: str,
+        fiscal_year: int,
+        fiscal_period: str,
+        metrics: Dict,
+        record_hash: str,
+    ) -> None:
         """Insert a new earnings quality record."""
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO earnings_quality
                 (symbol, fiscal_year, fiscal_period, total_accruals, accrual_ratio,
                  sloan_accruals, cash_conversion_ratio, altman_z_score,
                  earnings_quality_score, quality_flags, input_data_hash, source_fetch_timestamp)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
-        """, (
-            symbol,
-            fiscal_year,
-            fiscal_period,
-            metrics.get("total_accruals"),
-            metrics.get("accrual_ratio"),
-            metrics.get("sloan_accruals"),
-            metrics.get("cash_conversion_ratio"),
-            metrics.get("altman_z_score"),
-            metrics.get("earnings_quality_score"),
-            metrics.get("quality_flags"),
-            record_hash,
-        ))
+        """,
+            (
+                symbol,
+                fiscal_year,
+                fiscal_period,
+                metrics.get("total_accruals"),
+                metrics.get("accrual_ratio"),
+                metrics.get("sloan_accruals"),
+                metrics.get("cash_conversion_ratio"),
+                metrics.get("altman_z_score"),
+                metrics.get("earnings_quality_score"),
+                metrics.get("quality_flags"),
+                record_hash,
+            ),
+        )
 
-    def _update_quality_record(self, cursor, symbol: str, fiscal_year: int,
-                               fiscal_period: str, metrics: Dict, record_hash: str) -> None:
+    def _update_quality_record(
+        self,
+        cursor,
+        symbol: str,
+        fiscal_year: int,
+        fiscal_period: str,
+        metrics: Dict,
+        record_hash: str,
+    ) -> None:
         """Update an existing earnings quality record."""
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE earnings_quality SET
                 total_accruals = %s, accrual_ratio = %s, sloan_accruals = %s,
                 cash_conversion_ratio = %s, altman_z_score = %s,
                 earnings_quality_score = %s, quality_flags = %s,
                 input_data_hash = %s, source_fetch_timestamp = NOW(), updated_at = NOW()
             WHERE symbol = %s AND fiscal_year = %s AND fiscal_period = %s
-        """, (
-            metrics.get("total_accruals"),
-            metrics.get("accrual_ratio"),
-            metrics.get("sloan_accruals"),
-            metrics.get("cash_conversion_ratio"),
-            metrics.get("altman_z_score"),
-            metrics.get("earnings_quality_score"),
-            metrics.get("quality_flags"),
-            record_hash,
-            symbol,
-            fiscal_year,
-            fiscal_period,
-        ))
+        """,
+            (
+                metrics.get("total_accruals"),
+                metrics.get("accrual_ratio"),
+                metrics.get("sloan_accruals"),
+                metrics.get("cash_conversion_ratio"),
+                metrics.get("altman_z_score"),
+                metrics.get("earnings_quality_score"),
+                metrics.get("quality_flags"),
+                record_hash,
+                symbol,
+                fiscal_year,
+                fiscal_period,
+            ),
+        )
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Calculate earnings quality metrics"
-    )
+    parser = argparse.ArgumentParser(description="Calculate earnings quality metrics")
     parser.add_argument(
-        "--symbols",
-        type=str,
-        help="Comma-separated list of symbols (default: S&P 500)"
+        "--symbols", type=str, help="Comma-separated list of symbols (default: S&P 500)"
     )
     args = parser.parse_args()
 

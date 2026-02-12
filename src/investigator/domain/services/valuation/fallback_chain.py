@@ -136,7 +136,11 @@ class FallbackChain:
     # Default penalties by fallback level
     DEFAULT_PENALTIES = [0.90, 0.80, 0.70, 0.60]
 
-    def __init__(self, chains: Optional[Dict[str, List[str]]] = None, penalties: Optional[List[float]] = None):
+    def __init__(
+        self,
+        chains: Optional[Dict[str, List[str]]] = None,
+        penalties: Optional[List[float]] = None,
+    ):
         """
         Initialize fallback chain.
 
@@ -154,10 +158,14 @@ class FallbackChain:
         self._configs: Dict[str, FallbackChainConfig] = {}
         for model, fallbacks in self.chains.items():
             self._configs[model] = FallbackChainConfig(
-                model=model, fallbacks=fallbacks, penalties=self.penalties[: len(fallbacks)]
+                model=model,
+                fallbacks=fallbacks,
+                penalties=self.penalties[: len(fallbacks)],
             )
 
-    def get_fallback(self, model: str, failed_models: Optional[List[str]] = None) -> Optional[Tuple[str, float]]:
+    def get_fallback(
+        self, model: str, failed_models: Optional[List[str]] = None
+    ) -> Optional[Tuple[str, float]]:
         """
         Get the next fallback model for a failed model.
 
@@ -178,8 +186,12 @@ class FallbackChain:
         # Find first non-failed fallback
         for level, fallback in enumerate(config.fallbacks):
             if fallback not in failed_models:
-                penalty = config.penalties[level] if level < len(config.penalties) else 0.50
-                logger.info(f"Fallback: {model} → {fallback} (level {level + 1}, {penalty:.0%})")
+                penalty = (
+                    config.penalties[level] if level < len(config.penalties) else 0.50
+                )
+                logger.info(
+                    f"Fallback: {model} → {fallback} (level {level + 1}, {penalty:.0%})"
+                )
                 return (fallback, penalty)
 
         logger.warning(f"All fallbacks exhausted for {model}")
@@ -227,7 +239,11 @@ class FallbackChain:
             return 0.70  # Conservative penalty
 
     def execute_with_fallbacks(
-        self, model_type: str, executor_func: Callable[..., Any], max_fallbacks: int = 3, **kwargs
+        self,
+        model_type: str,
+        executor_func: Callable[..., Any],
+        max_fallbacks: int = 3,
+        **kwargs,
     ) -> Tuple[Optional[Any], FallbackResult]:
         """
         Execute a valuation with automatic fallbacks.
@@ -273,7 +289,9 @@ class FallbackChain:
                             reason=FallbackReason.CALCULATION_ERROR,
                             confidence_penalty=penalty,
                             fallback_level=fallback_level,
-                            notes=[f"Used fallback after {', '.join(failed_models)} failed"],
+                            notes=[
+                                f"Used fallback after {', '.join(failed_models)} failed"
+                            ],
                         ),
                     )
 
@@ -305,7 +323,9 @@ class FallbackChain:
         )
 
     def get_applicable_models(
-        self, available_data: Dict[str, bool], preferred_order: Optional[List[str]] = None
+        self,
+        available_data: Dict[str, bool],
+        preferred_order: Optional[List[str]] = None,
     ) -> List[Tuple[str, float]]:
         """
         Get list of applicable models based on available data.
@@ -349,7 +369,9 @@ class FallbackChain:
                     # Check if fallback has data
                     if fallback_model in requirements:
                         fb_required = requirements[fallback_model]
-                        fb_available = all(available_data.get(f, False) for f in fb_required)
+                        fb_available = all(
+                            available_data.get(f, False) for f in fb_required
+                        )
                         if fb_available:
                             applicable.append((fallback_model, penalty))
 

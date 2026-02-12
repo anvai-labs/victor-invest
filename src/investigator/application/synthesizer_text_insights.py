@@ -56,11 +56,32 @@ def extract_insights_from_text(text_details: str) -> Tuple[List[str], List[str]]
             sentence = sentence.strip()
             if len(sentence) < 20:
                 continue
-            insight_indicators = ["strength", "opportunity", "advantage", "positive", "growth", "improve"]
-            if any(indicator in sentence.lower() for indicator in insight_indicators) and len(insights) < 3:
+            insight_indicators = [
+                "strength",
+                "opportunity",
+                "advantage",
+                "positive",
+                "growth",
+                "improve",
+            ]
+            if (
+                any(indicator in sentence.lower() for indicator in insight_indicators)
+                and len(insights) < 3
+            ):
                 insights.append(sentence[:200])
-            risk_indicators = ["risk", "concern", "challenge", "threat", "weakness", "decline", "pressure"]
-            if any(indicator in sentence.lower() for indicator in risk_indicators) and len(risks) < 3:
+            risk_indicators = [
+                "risk",
+                "concern",
+                "challenge",
+                "threat",
+                "weakness",
+                "decline",
+                "pressure",
+            ]
+            if (
+                any(indicator in sentence.lower() for indicator in risk_indicators)
+                and len(risks) < 3
+            ):
                 risks.append(sentence[:200])
 
     return insights[:5], risks[:5]
@@ -75,7 +96,9 @@ def _to_text(content: Any) -> str:
 
 
 def extract_comprehensive_risks(
-    llm_responses: Dict[str, Any], ai_recommendation: Dict[str, Any], additional_risks: List[str] | None = None
+    llm_responses: Dict[str, Any],
+    ai_recommendation: Dict[str, Any],
+    additional_risks: List[str] | None = None,
 ) -> List[str]:
     """Extract and prioritize risk factors from synthesis + source responses."""
     risks: List[str] = []
@@ -90,7 +113,9 @@ def extract_comprehensive_risks(
 
     for resp in llm_responses.get("fundamental", {}).values():
         content = _to_text(resp.get("content", ""))
-        risk_section = re.search(r"risk[s]?[:\s]*(.*?)(?=\n\n|\d+\.)", content, re.IGNORECASE | re.DOTALL)
+        risk_section = re.search(
+            r"risk[s]?[:\s]*(.*?)(?=\n\n|\d+\.)", content, re.IGNORECASE | re.DOTALL
+        )
         if risk_section:
             risk_items = re.findall(r"[•\-]\s*(.+)", risk_section.group(1))
             risks.extend(risk_items[:2])
@@ -107,7 +132,9 @@ def extract_comprehensive_risks(
 
 
 def extract_comprehensive_insights(
-    llm_responses: Dict[str, Any], ai_recommendation: Dict[str, Any], additional_insights: List[str] | None = None
+    llm_responses: Dict[str, Any],
+    ai_recommendation: Dict[str, Any],
+    additional_insights: List[str] | None = None,
 ) -> List[str]:
     """Extract and prioritize insights from synthesis + source responses."""
     insights: List[str] = []
@@ -123,7 +150,9 @@ def extract_comprehensive_insights(
     for resp in llm_responses.get("fundamental", {}).values():
         content = _to_text(resp.get("content", ""))
         insights_section = re.search(
-            r"key\s+(?:insight|finding)[s]?[:\s]*(.*?)(?=\n\n|\d+\.)", content, re.IGNORECASE | re.DOTALL
+            r"key\s+(?:insight|finding)[s]?[:\s]*(.*?)(?=\n\n|\d+\.)",
+            content,
+            re.IGNORECASE | re.DOTALL,
         )
         if insights_section:
             insight_items = re.findall(r"[•\-]\s*(.+)", insights_section.group(1))
@@ -133,7 +162,9 @@ def extract_comprehensive_insights(
     if tech_resp:
         content = _to_text(tech_resp.get("content", ""))
         tech_insights = re.findall(
-            r"KEY INSIGHTS[:\s]*\*?\*?(.*?)(?=\*\*[A-Z]|\n\n)", content, re.IGNORECASE | re.DOTALL
+            r"KEY INSIGHTS[:\s]*\*?\*?(.*?)(?=\*\*[A-Z]|\n\n)",
+            content,
+            re.IGNORECASE | re.DOTALL,
         )
         if tech_insights:
             tech_items = re.findall(r"[•\-]\s*(.+)", tech_insights[0])

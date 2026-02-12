@@ -1,24 +1,26 @@
 #!/usr/bin/env python3
 
-import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sqlalchemy import create_engine, text
 import logging
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
-import sys, time
-from typing import Dict, List, Optional, Tuple, Union
+import sys
+from typing import List, Optional
 from dataclasses import dataclass
+
 
 @dataclass
 class BetaResult:
     """Data class to store beta calculation results"""
+
     beta: float
     r_squared: float
     observations: int
     start_date: datetime
     end_date: datetime
+
 
 class DatabaseConnection:
     """Handles database connection and queries"""
@@ -53,6 +55,7 @@ class DatabaseConnection:
             logging.error(f"Database update error: {str(e)}")
             raise
 
+
 class StockDataFetcher:
     """Handles retrieval and preprocessing of stock data"""
 
@@ -74,9 +77,7 @@ class StockDataFetcher:
         ) X
         ORDER BY X.mktcap DESC
         """
-        return self.db.execute_query(query, {
-            'dtstr': start_date.strftime("%Y-%m-%d")
-        })
+        return self.db.execute_query(query, {"dtstr": start_date.strftime("%Y-%m-%d")})
 
     def get_weekly_prices(self, ticker: str, start_date: datetime) -> pd.DataFrame:
         """
@@ -144,25 +145,25 @@ class StockDataFetcher:
         ORDER BY actual_date;
         """
 
-        df = self.db.execute_query(query, {
-            'fromdt': start_date.strftime("%Y-%m-%d"),
-            'ticker': str(ticker)
-        })
+        df = self.db.execute_query(
+            query, {"fromdt": start_date.strftime("%Y-%m-%d"), "ticker": str(ticker)}
+        )
         # Convert to datetime with UTC timezone, then convert to timezone-naive
-        df['wkdt'] = pd.to_datetime(df['wkdt'], utc=True).dt.tz_convert(None)
-        return df.set_index('wkdt')
+        df["wkdt"] = pd.to_datetime(df["wkdt"], utc=True).dt.tz_convert(None)
+        return df.set_index("wkdt")
+
 
 class BetaCalculator:
     """Handles beta calculations and data validation"""
 
     MINIMUM_OBSERVATIONS = {
-        1: 4,    # 1 month: minimum 4 weekly observations
-        3: 13,   # 3 months
-        6: 26,   # 6 months
+        1: 4,  # 1 month: minimum 4 weekly observations
+        3: 13,  # 3 months
+        6: 26,  # 6 months
         12: 52,  # 1 year
-        24: 104, # 2 years
-        36: 156, # 3 years
-        60: 260  # 5 years
+        24: 104,  # 2 years
+        36: 156,  # 3 years
+        60: 260,  # 5 years
     }
 
     def __init__(self, data_fetcher: StockDataFetcher):
@@ -170,10 +171,12 @@ class BetaCalculator:
 
     def calculate_returns(self, prices: pd.DataFrame) -> pd.DataFrame:
         """Calculate weekly returns from price data"""
-        returns = prices[['close']].pct_change()
+        returns = prices[["close"]].pct_change()
         return returns.dropna()
 
-    def validate_beta(self, beta: float, r_squared: float, ticker: str, period: int) -> bool:
+    def validate_beta(
+        self, beta: float, r_squared: float, ticker: str, period: int
+    ) -> bool:
         """
         Validate beta calculation results.
 
@@ -183,28 +186,36 @@ class BetaCalculator:
         - Very low betas (< 0.10) with low R² are likely noise
         """
         if abs(beta) > 40:
-            logging.warning(f"Unusual beta value ({beta:.2f}) for {ticker} {period}-month calculation")
+            logging.warning(
+                f"Unusual beta value ({beta:.2f}) for {ticker} {period}-month calculation"
+            )
             return False
 
         # CRITICAL FIX: Increased R² threshold from 2.5% to 5%
         # 2.5% R² means only 2.5% of variance explained - statistically weak
         R2_THRESHOLD = 0.05  # 5% minimum
         if r_squared < R2_THRESHOLD:
-            logging.warning(f"Low R-squared ({r_squared:.4f} < {R2_THRESHOLD}) for {ticker} {period}-month beta")
+            logging.warning(
+                f"Low R-squared ({r_squared:.4f} < {R2_THRESHOLD}) for {ticker} {period}-month beta"
+            )
             return False
 
         # Additional check: very low beta with marginal R² is likely noise
         if abs(beta) < 0.10 and r_squared < 0.10:
-            logging.warning(f"Statistically weak beta ({beta:.4f}) with low R² ({r_squared:.4f}) for {ticker}")
+            logging.warning(
+                f"Statistically weak beta ({beta:.4f}) with low R² ({r_squared:.4f}) for {ticker}"
+            )
             return False
 
         return True
 
-    def calculate_single_beta(self,
-                            stock_returns: pd.DataFrame,
-                            market_returns: pd.DataFrame,
-                            ticker: str,
-                            period: int) -> Optional[BetaResult]:
+    def calculate_single_beta(
+        self,
+        stock_returns: pd.DataFrame,
+        market_returns: pd.DataFrame,
+        ticker: str,
+        period: int,
+    ) -> Optional[BetaResult]:
         """Calculate beta for a single period"""
         min_obs = self.MINIMUM_OBSERVATIONS[period]
 
@@ -216,8 +227,8 @@ class BetaCalculator:
             return None
 
         try:
-            X = market_returns['spyclose'].values.reshape(-1, 1)  # Specify column name
-            y = stock_returns['close'].values.reshape(-1, 1)   # Specify column name
+            X = market_returns["spyclose"].values.reshape(-1, 1)  # Specify column name
+            y = stock_returns["close"].values.reshape(-1, 1)  # Specify column name
 
             model = LinearRegression()
             model.fit(X, y)
@@ -233,12 +244,15 @@ class BetaCalculator:
                 r_squared=r_squared,
                 observations=len(stock_returns),
                 start_date=stock_returns.index[0],
-                end_date=stock_returns.index[-1]
+                end_date=stock_returns.index[-1],
             )
 
         except Exception as e:
-            logging.error(f"Error calculating {period}-month beta for {ticker}: {str(e)}")
+            logging.error(
+                f"Error calculating {period}-month beta for {ticker}: {str(e)}"
+            )
             return None
+
 
 class BetaProcessor:
     """Main class for processing beta calculations"""
@@ -255,10 +269,9 @@ class BetaProcessor:
         self.db = db_connection
         self.beta_updates = []
 
-
     def save_beta(self, ticker: str, period: int, beta_result: BetaResult) -> None:
         """Save beta calculation results to database"""
-        column = f'b_{period}_month'
+        column = f"b_{period}_month"
         update_sql = """
         UPDATE symbol
         SET {column} = CAST({beta} AS DECIMAL(7,4)),
@@ -279,17 +292,17 @@ class BetaProcessor:
             # Handle both beta and R² columns
             for update in self.beta_updates:
                 ticker, period, beta, r_squared = update
-                
+
                 # Beta column cases
-                beta_column = f'b_{period}_month'
+                beta_column = f"b_{period}_month"
                 if beta_column not in column_cases:
                     column_cases[beta_column] = []
                 column_cases[beta_column].append(
                     f"WHEN ticker = '{ticker}' THEN CAST({beta} AS DECIMAL(7,4))"
                 )
-                
+
                 # R² column cases
-                r2_column = f'r2_{period}_month'
+                r2_column = f"r2_{period}_month"
                 if r2_column not in column_cases:
                     column_cases[r2_column] = []
                 column_cases[r2_column].append(
@@ -298,30 +311,37 @@ class BetaProcessor:
 
             set_clauses = []
             for column, cases in column_cases.items():
-                set_clauses.append(f"{column} = CASE {' '.join(cases)} ELSE {column} END")
+                set_clauses.append(
+                    f"{column} = CASE {' '.join(cases)} ELSE {column} END"
+                )
 
             tickers = {update[0] for update in self.beta_updates}
             ticker_list = "', '".join(tickers)
 
             update_sql = f"""
             UPDATE symbol 
-            SET {', '.join(set_clauses)},
+            SET {", ".join(set_clauses)},
                 lastupdts = CURRENT_TIMESTAMP 
             WHERE ticker IN ('{ticker_list}')
             """
 
             self.db.execute_update(update_sql)
-            logging.info(f"Successfully updated betas and R² values for {len(tickers)} tickers")
+            logging.info(
+                f"Successfully updated betas and R² values for {len(tickers)} tickers"
+            )
             self.beta_updates = []
 
         except Exception as e:
             logging.error(f"Error in batch beta update: {str(e)}")
             raise
 
-    def add_beta_update(self, ticker: str, period: int, beta_result: BetaResult) -> None:
+    def add_beta_update(
+        self, ticker: str, period: int, beta_result: BetaResult
+    ) -> None:
         """Add a beta and R² update to the batch"""
-        self.beta_updates.append((ticker, period, beta_result.beta, beta_result.r_squared))
-
+        self.beta_updates.append(
+            (ticker, period, beta_result.beta, beta_result.r_squared)
+        )
 
     def process_all_periods(self, periods: List[int], end_date: datetime) -> None:
         """
@@ -330,56 +350,64 @@ class BetaProcessor:
         # Convert end_date to timezone-naive
         if end_date.tzinfo is not None:
             end_date = end_date.replace(tzinfo=None)
-            
+
         max_period = max(periods)
         start_date = end_date - relativedelta(months=max_period)
         update_count = 0
         batch_size = len(periods)
-        
+
         try:
-            spy_data = self.data_fetcher.get_weekly_prices('SPY', start_date)
+            spy_data = self.data_fetcher.get_weekly_prices("SPY", start_date)
             if spy_data.empty:
                 logging.error("No SPY data available")
                 return
-                
+
             spy_returns = self.calculator.calculate_returns(spy_data)
-            spy_returns.rename(columns={'close': 'spyclose'}, inplace=True)
-            
+            spy_returns.rename(columns={"close": "spyclose"}, inplace=True)
+
             tickers_df = self.data_fetcher.get_ticker_list(start_date)
             total_tickers = len(tickers_df)
-            
+
             for idx, row in tickers_df.iterrows():
-                ticker = str(row['ticker'])
-                logging.info(f"Processing [{idx+1}/{total_tickers}] {ticker}")
-                
-                #time.sleep(5)
+                ticker = str(row["ticker"])
+                logging.info(f"Processing [{idx + 1}/{total_tickers}] {ticker}")
+
+                # time.sleep(5)
                 try:
                     stock_data = self.data_fetcher.get_weekly_prices(ticker, start_date)
                     if stock_data.empty:
                         logging.warning(f"No data available for ticker {ticker}")
                         continue
-                        
+
                     stock_returns = self.calculator.calculate_returns(stock_data)
-                    
+
                     for period in periods:
                         period_start = end_date - relativedelta(months=period)
                         # Ensure period_start is timezone-naive
                         if period_start.tzinfo is not None:
                             period_start = period_start.replace(tzinfo=None)
-                            
-                        period_returns = stock_returns[stock_returns.index >= period_start]
-                        period_spy_returns = spy_returns[spy_returns.index >= period_start]
-                        
-                        aligned_returns = pd.concat([period_returns, period_spy_returns], axis=1, join='inner')
+
+                        period_returns = stock_returns[
+                            stock_returns.index >= period_start
+                        ]
+                        period_spy_returns = spy_returns[
+                            spy_returns.index >= period_start
+                        ]
+
+                        aligned_returns = pd.concat(
+                            [period_returns, period_spy_returns], axis=1, join="inner"
+                        )
                         if aligned_returns.empty:
-                            logging.warning(f"No aligned data for {ticker} in {period}-month period")
+                            logging.warning(
+                                f"No aligned data for {ticker} in {period}-month period"
+                            )
                             continue
-                            
+
                         beta_result = self.calculator.calculate_single_beta(
-                            aligned_returns[['close']], 
-                            aligned_returns[['spyclose']], 
-                            ticker, 
-                            period
+                            aligned_returns[["close"]],
+                            aligned_returns[["spyclose"]],
+                            ticker,
+                            period,
                         )
 
                         if beta_result:
@@ -389,7 +417,7 @@ class BetaProcessor:
                                 f"Calculated {period}-month beta={beta_result.beta:.2f} "
                                 f"r²={beta_result.r_squared:.2f} for {ticker}"
                             )
-                
+
                 except Exception as e:
                     logging.error(f"Error processing {ticker}: {str(e)}")
                     continue
@@ -402,8 +430,8 @@ class BetaProcessor:
                     except Exception as e:
                         logging.error(f"Error saving batch updates: {str(e)}")
                         raise
-                        #continue
-        
+                        # continue
+
         except Exception as e:
             logging.error(f"Fatal error in beta processing: {str(e)}")
             raise
@@ -415,6 +443,7 @@ class BetaProcessor:
         except Exception as e:
             logging.error(f"Error in final batch save: {str(e)}")
             raise
+
 
 def main():
     """Main function to run beta calculations"""
@@ -429,12 +458,9 @@ def main():
 
     # Configure logging
     logging.basicConfig(
-        format='%(asctime)s %(levelname)s:%(message)s',
+        format="%(asctime)s %(levelname)s:%(message)s",
         level=logging.INFO,
-        handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler(sys.stdout)
-        ]
+        handlers=[logging.FileHandler(log_file), logging.StreamHandler(sys.stdout)],
     )
 
     try:
@@ -444,7 +470,7 @@ def main():
             password=os.environ.get("STOCK_DB_PASSWORD", ""),
             database="stock",
             host="${DB_HOST:-localhost}",
-            port=5432
+            port=5432,
         )
 
         # Initialize processor with the database connection
@@ -453,8 +479,8 @@ def main():
         # Set calculation periods and end date
         periods = [1, 3, 6, 12, 24, 36, 60]
 
-        #Wednesday to wednesday logic
-         # Get current time
+        # Wednesday to wednesday logic
+        # Get current time
         current_date = datetime.now()
 
         # Calculate the most recent Wednesday
@@ -462,12 +488,7 @@ def main():
         last_wednesday = current_date - timedelta(days=days_since_wednesday)
 
         # Set to end of trading day
-        end_date = last_wednesday.replace(
-            hour=16,
-            minute=0,
-            second=0,
-            microsecond=0
-        )
+        end_date = last_wednesday.replace(hour=16, minute=0, second=0, microsecond=0)
 
         # Process betas
         processor.process_all_periods(periods, end_date)
@@ -475,6 +496,7 @@ def main():
     except Exception as e:
         logging.critical(f"Application failed: {str(e)}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

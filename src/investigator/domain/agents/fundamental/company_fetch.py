@@ -44,7 +44,10 @@ def fetch_latest_company_data_from_processed_table(
         ).fetchone()
 
         if not result:
-            logger.warning("[CLEAN ARCH] No processed data found for %s in sec_companyfacts_processed", symbol)
+            logger.warning(
+                "[CLEAN ARCH] No processed data found for %s in sec_companyfacts_processed",
+                symbol,
+            )
             return None
 
         row = dict(result._mapping)
@@ -80,7 +83,11 @@ def fetch_latest_company_data_from_processed_table(
                       AND fiscal_period = :fiscal_period
                 """
                 ),
-                {"symbol": symbol, "fiscal_year": fiscal_year, "fiscal_period": fiscal_period},
+                {
+                    "symbol": symbol,
+                    "fiscal_year": fiscal_year,
+                    "fiscal_period": fiscal_period,
+                },
             )
             conn.commit()
             logger.warning(
@@ -110,7 +117,9 @@ def fetch_latest_company_data_from_processed_table(
             format(revenue, ",.0f"),
         )
 
-        filed_date = row.get("filed_date").isoformat() if row.get("filed_date") else None
+        filed_date = (
+            row.get("filed_date").isoformat() if row.get("filed_date") else None
+        )
         financial_metrics: Dict[str, Any] = {
             "revenues": safe_float("total_revenue"),
             "net_income": safe_float("net_income"),
@@ -145,17 +154,21 @@ def fetch_latest_company_data_from_processed_table(
 
         long_term_debt = financial_metrics.get("long_term_debt") or 0.0
         short_term_debt = financial_metrics.get("debt_current") or 0.0
-        if not financial_metrics.get("total_debt") and (long_term_debt or short_term_debt):
+        if not financial_metrics.get("total_debt") and (
+            long_term_debt or short_term_debt
+        ):
             financial_metrics["total_debt"] = long_term_debt + short_term_debt
 
         if not financial_metrics.get("cash"):
-            cash_guess = financial_metrics.get("cash_and_equivalents") or safe_float("cash")
+            cash_guess = financial_metrics.get("cash_and_equivalents") or safe_float(
+                "cash"
+            )
             financial_metrics["cash"] = cash_guess
 
         if not financial_metrics.get("shares_outstanding"):
-            shares_guess = financial_metrics.get("weighted_average_diluted_shares_outstanding") or safe_float(
-                "shares_outstanding"
-            )
+            shares_guess = financial_metrics.get(
+                "weighted_average_diluted_shares_outstanding"
+            ) or safe_float("shares_outstanding")
             financial_metrics["shares_outstanding"] = shares_guess
 
         financial_ratios: Dict[str, Any] = {

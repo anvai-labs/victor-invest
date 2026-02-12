@@ -12,10 +12,11 @@ Usage:
 
 import logging
 import requests
-import json
 from sqlalchemy import create_engine, text
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 SEC_TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
@@ -23,7 +24,10 @@ SEC_TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
 
 def get_stock_engine():
     """Get SQLAlchemy engine for stock database."""
-    return create_engine("postgresql://stockuser:${STOCK_DB_PASSWORD}@${STOCK_DB_HOST}:5432/stock", pool_pre_ping=True)
+    return create_engine(
+        "postgresql://stockuser:${STOCK_DB_PASSWORD}@${STOCK_DB_HOST}:5432/stock",
+        pool_pre_ping=True,
+    )
 
 
 def download_sec_cik_sic_mapping():
@@ -35,7 +39,9 @@ def download_sec_cik_sic_mapping():
     """
     logger.info(f"Downloading SEC company tickers from: {SEC_TICKERS_URL}")
 
-    headers = {"User-Agent": "InvestiGator/1.0 (user@example.com)"}  # SEC requires user agent
+    headers = {
+        "User-Agent": "InvestiGator/1.0 (user@example.com)"
+    }  # SEC requires user agent
 
     try:
         response = requests.get(SEC_TICKERS_URL, headers=headers, timeout=30)
@@ -139,7 +145,10 @@ def verify_results(engine):
     queries = [
         ("Total Symbols", "SELECT COUNT(*) FROM symbol"),
         ("Has CIK", "SELECT COUNT(*) FROM symbol WHERE cik IS NOT NULL"),
-        ("Has SIC Code", "SELECT COUNT(*) FROM symbol WHERE sic_code IS NOT NULL AND sic_code > 0"),
+        (
+            "Has SIC Code",
+            "SELECT COUNT(*) FROM symbol WHERE sic_code IS NOT NULL AND sic_code > 0",
+        ),
         (
             "SIC Coverage %",
             """

@@ -11,7 +11,6 @@ Licensed under the Apache License 2.0
 
 import json
 import logging
-import os
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -54,7 +53,7 @@ class TickerCIKMapper:
             try:
                 config_obj = get_config()
                 self.user_agent = config_obj.sec.user_agent
-            except:
+            except Exception:
                 self.user_agent = self.DEFAULT_USER_AGENT
         else:
             self.user_agent = self.DEFAULT_USER_AGENT
@@ -102,7 +101,11 @@ class TickerCIKMapper:
     def _download_mapping(self) -> bool:
         """Download ticker mapping from SEC."""
         try:
-            headers = {"User-Agent": self.user_agent, "Accept": "text/plain", "Accept-Encoding": "gzip, deflate"}
+            headers = {
+                "User-Agent": self.user_agent,
+                "Accept": "text/plain",
+                "Accept-Encoding": "gzip, deflate",
+            }
 
             response = requests.get(self.SEC_TICKER_URL, headers=headers, timeout=30)
             response.raise_for_status()

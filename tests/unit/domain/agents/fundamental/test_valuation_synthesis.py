@@ -9,12 +9,33 @@ from investigator.domain.agents.fundamental.valuation_synthesis import (
 
 def test_build_valuation_summary_rows_includes_supported_models():
     rows = build_valuation_summary_rows(
-        dcf_professional={"fair_value_per_share": 120, "confidence_score": 0.8, "weight": 0.4},
-        ggm_entry={"fair_value_per_share": 90, "confidence_score": 0.6, "weight": 0.1, "applicable": False},
-        normalized_pe={"fair_value_per_share": 110, "confidence_score": 0.7, "weight": 0.2},
-        normalized_ev_ebitda={"fair_value_per_share": 115, "confidence_score": 0.65, "weight": 0.15},
+        dcf_professional={
+            "fair_value_per_share": 120,
+            "confidence_score": 0.8,
+            "weight": 0.4,
+        },
+        ggm_entry={
+            "fair_value_per_share": 90,
+            "confidence_score": 0.6,
+            "weight": 0.1,
+            "applicable": False,
+        },
+        normalized_pe={
+            "fair_value_per_share": 110,
+            "confidence_score": 0.7,
+            "weight": 0.2,
+        },
+        normalized_ev_ebitda={
+            "fair_value_per_share": 115,
+            "confidence_score": 0.65,
+            "weight": 0.15,
+        },
         normalized_ps=None,
-        normalized_pb={"fair_value_per_share": 100, "confidence_score": 0.55, "weight": 0.15},
+        normalized_pb={
+            "fair_value_per_share": 100,
+            "confidence_score": 0.55,
+            "weight": 0.15,
+        },
     )
 
     assert [row["name"] for row in rows] == ["DCF", "GGM", "P/E", "EV/EBITDA", "P/B"]

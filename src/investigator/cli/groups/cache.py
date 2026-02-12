@@ -117,7 +117,9 @@ def clean(ctx, clean_all, clean_db, clean_disk, symbol, cache_type, force):
 
 def _clean_db_symbol(cache_manager, symbol: str):
     """Clean database cache for specific symbol"""
-    from investigator.infrastructure.cache.rdbms_cache_handler import RdbmsCacheStorageHandler
+    from investigator.infrastructure.cache.rdbms_cache_handler import (
+        RdbmsCacheStorageHandler,
+    )
 
     deleted = 0
     for handlers in cache_manager.handlers.values():
@@ -132,7 +134,9 @@ def _clean_db_symbol(cache_manager, symbol: str):
 
 def _clean_disk_symbol(cache_manager, symbol: str):
     """Clean disk cache for specific symbol"""
-    from investigator.infrastructure.cache.file_cache_handler import FileCacheStorageHandler
+    from investigator.infrastructure.cache.file_cache_handler import (
+        FileCacheStorageHandler,
+    )
 
     deleted = 0
     for handlers in cache_manager.handlers.values():
@@ -234,7 +238,13 @@ def sizes(ctx):
 
 @cache.command("warm")
 @click.option("--symbols", "-s", help="Comma-separated symbols to cache")
-@click.option("--file", "-f", "symbols_file", type=click.Path(exists=True), help="File with symbols")
+@click.option(
+    "--file",
+    "-f",
+    "symbols_file",
+    type=click.Path(exists=True),
+    help="File with symbols",
+)
 @click.option("--parallel", "-p", default=5, type=int, help="Parallel fetch workers")
 @click.pass_context
 def warm(ctx, symbols, symbols_file, parallel):
@@ -254,7 +264,11 @@ def warm(ctx, symbols, symbols_file, parallel):
         symbol_list = [s.strip().upper() for s in symbols.split(",")]
     elif symbols_file:
         with open(symbols_file) as f:
-            symbol_list = [line.strip().upper() for line in f if line.strip() and not line.startswith("#")]
+            symbol_list = [
+                line.strip().upper()
+                for line in f
+                if line.strip() and not line.startswith("#")
+            ]
     else:
         click.echo("Provide --symbols or --file", err=True)
         sys.exit(1)
@@ -282,7 +296,9 @@ def warm(ctx, symbols, symbols_file, parallel):
         async def fetch(symbol: str):
             async with sem:
                 try:
-                    await sec_agent._fetch_and_cache_companyfacts(symbol, process_raw=False)
+                    await sec_agent._fetch_and_cache_companyfacts(
+                        symbol, process_raw=False
+                    )
                     results.append((symbol, True, ""))
                     click.echo(f"  Cached: {symbol}")
                 except Exception as e:

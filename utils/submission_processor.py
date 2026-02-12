@@ -21,7 +21,7 @@ from investigator.application.processors import (
 )
 
 __all__ = [
-    'Filing',
-    'SubmissionProcessor',
-    'get_submission_processor',
+    "Filing",
+    "SubmissionProcessor",
+    "get_submission_processor",
 ]

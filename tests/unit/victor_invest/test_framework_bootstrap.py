@@ -22,7 +22,10 @@ class _FakeOrchestrator:
 
 
 def test_resolve_model_explicit():
-    assert framework_bootstrap.resolve_investment_model("ollama", "custom-model") == "custom-model"
+    assert (
+        framework_bootstrap.resolve_investment_model("ollama", "custom-model")
+        == "custom-model"
+    )
 
 
 def test_resolve_model_non_ollama_defaults_to_none():
@@ -138,7 +141,9 @@ def test_create_investment_orchestrator_bootstrap_flow(monkeypatch):
     assert calls["agent_create"] == 1
 
 
-def test_create_investment_orchestrator_skips_vertical_register_when_present(monkeypatch):
+def test_create_investment_orchestrator_skips_vertical_register_when_present(
+    monkeypatch,
+):
     class _FakeAgent:
         def __init__(self, orchestrator):
             self._orchestrator = orchestrator

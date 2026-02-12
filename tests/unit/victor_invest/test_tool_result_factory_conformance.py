@@ -16,7 +16,11 @@ def test_tool_implementations_use_victor_result_factory_names():
             continue
         content = tool_file.read_text(encoding="utf-8")
         found = [pattern for pattern in disallowed_patterns if pattern in content]
-        if re.search(r"ToolResult\.create_(success|failure)\([^)]*warnings\s*=", content, re.DOTALL):
+        if re.search(
+            r"ToolResult\.create_(success|failure)\([^)]*warnings\s*=",
+            content,
+            re.DOTALL,
+        ):
             found.append("ToolResult.create_*(..., warnings=...)")
         if found:
             violations[str(tool_file)] = found

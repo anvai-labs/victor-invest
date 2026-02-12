@@ -174,7 +174,9 @@ class KansasCityFedClient:
     async def _get_session(self) -> aiohttp.ClientSession:
         if self._session is None:
             try:
-                from investigator.infrastructure.external.http_client import create_session
+                from investigator.infrastructure.external.http_client import (
+                    create_session,
+                )
 
                 self._session = await create_session()
             except ImportError:
@@ -279,7 +281,9 @@ class KansasCityFedClient:
             return LaborMarketConditions(
                 date=obs_date,
                 lmci_level=float(latest[df.columns[1]]),
-                lmci_momentum=float(latest[df.columns[2]]) if len(df.columns) > 2 else None,
+                lmci_momentum=float(latest[df.columns[2]])
+                if len(df.columns) > 2
+                else None,
             )
         except Exception as e:
             logger.debug(f"Could not parse LMCI Excel: {e}")
@@ -296,8 +300,12 @@ class KansasCityFedClient:
         )
         return {
             "manufacturing_survey": mfg if not isinstance(mfg, Exception) else None,
-            "financial_stress_index": kcfsi if not isinstance(kcfsi, Exception) else None,
-            "labor_market_conditions": lmci if not isinstance(lmci, Exception) else None,
+            "financial_stress_index": kcfsi
+            if not isinstance(kcfsi, Exception)
+            else None,
+            "labor_market_conditions": lmci
+            if not isinstance(lmci, Exception)
+            else None,
         }
 
 

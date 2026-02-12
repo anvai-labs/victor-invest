@@ -375,7 +375,10 @@ class TestAnalyzeProfitability:
         result = await agent._analyze_profitability(company_data, ratios, "TEST")
 
         payload = result["response"]
-        assert payload["competitive_advantages_moat"]["assessment"] in ["Thin", "Negative"]
+        assert payload["competitive_advantages_moat"]["assessment"] in [
+            "Thin",
+            "Negative",
+        ]
 
     @pytest.mark.asyncio
     async def test_high_roe_classification(self, agent):

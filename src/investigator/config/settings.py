@@ -468,7 +468,9 @@ class InvestiGatorConfig(BaseSettings):
             else:
                 value = os.getenv(var_spec)
                 if value is None:
-                    raise ValueError(f"Environment variable {var_spec} not set and no default provided")
+                    raise ValueError(
+                        f"Environment variable {var_spec} not set and no default provided"
+                    )
                 return value
 
         yaml_content = re.sub(r"\$\{([^}]+)\}", env_var_replacer, yaml_content)
@@ -506,7 +508,7 @@ def get_settings() -> InvestiGatorConfig:
 # Singleton instance (backward compatibility)
 try:
     settings = get_settings()
-except (FileNotFoundError, ValueError) as e:
+except (FileNotFoundError, ValueError):
     # Fallback to defaults if config.yaml doesn't exist yet or has issues
     # This allows the module to load even if config isn't set up yet
     settings = InvestiGatorConfig()

@@ -46,14 +46,14 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from scripts.scheduled.base import (
+from scripts.scheduled.base import (  # noqa: E402
     BaseCollector,
     CollectionMetrics,
     compute_record_hash,
@@ -80,7 +80,10 @@ class EconomicIndicatorsCollector(BaseCollector):
     async def _get_fetcher(self):
         """Get the data fetcher (lazy init)."""
         if self._fetcher is None:
-            from investigator.infrastructure.external.data_fetcher import get_data_fetcher
+            from investigator.infrastructure.external.data_fetcher import (
+                get_data_fetcher,
+            )
+
             self._fetcher = get_data_fetcher()
         return self._fetcher
 
@@ -132,16 +135,22 @@ class EconomicIndicatorsCollector(BaseCollector):
                         self.logger.warning(
                             f"Failed to fetch {source_id}/{indicator_id}: {result.error}"
                         )
-                        self.metrics.warnings.append(f"{source_id}/{indicator_id}: {result.error}")
+                        self.metrics.warnings.append(
+                            f"{source_id}/{indicator_id}: {result.error}"
+                        )
 
                 except Exception as e:
-                    self.logger.warning(f"Error fetching {source_id}/{indicator_id}: {e}")
+                    self.logger.warning(
+                        f"Error fetching {source_id}/{indicator_id}: {e}"
+                    )
                     self.metrics.warnings.append(f"{source_id}/{indicator_id}: {e}")
 
             # Log summary for source
             success_count = len(results[source_id])
             total_count = len(indicator_ids)
-            self.logger.info(f"{source_id}: collected {success_count}/{total_count} indicators")
+            self.logger.info(
+                f"{source_id}: collected {success_count}/{total_count} indicators"
+            )
 
         return results
 
@@ -166,16 +175,20 @@ class EconomicIndicatorsCollector(BaseCollector):
                     obs_date = raw_data.get("date", datetime.now().date())
                     if isinstance(obs_date, str):
                         from datetime import datetime as dt
+
                         obs_date = dt.fromisoformat(obs_date).date()
 
                     # Compute hash for change detection
                     record_hash = compute_record_hash(raw_data)
 
                     # Check existing
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         SELECT source_hash FROM regional_fed_indicators
                         WHERE district = %s AND indicator_name = %s AND observation_date = %s
-                    """, (source_id, indicator_id, obs_date))
+                    """,
+                        (source_id, indicator_id, obs_date),
+                    )
                     existing = cursor.fetchone()
 
                     if existing:
@@ -183,35 +196,41 @@ class EconomicIndicatorsCollector(BaseCollector):
                             self.metrics.records_skipped += 1
                             continue
                         # Update
-                        cursor.execute("""
+                        cursor.execute(
+                            """
                             UPDATE regional_fed_indicators SET
                                 indicator_data = %s,
                                 source_hash = %s,
                                 source_fetch_timestamp = NOW(),
                                 updated_at = NOW()
                             WHERE district = %s AND indicator_name = %s AND observation_date = %s
-                        """, (
-                            json.dumps(raw_data, default=str),
-                            record_hash,
-                            source_id,
-                            indicator_id,
-                            obs_date,
-                        ))
+                        """,
+                            (
+                                json.dumps(raw_data, default=str),
+                                record_hash,
+                                source_id,
+                                indicator_id,
+                                obs_date,
+                            ),
+                        )
                         self.metrics.records_updated += 1
                     else:
                         # Insert
-                        cursor.execute("""
+                        cursor.execute(
+                            """
                             INSERT INTO regional_fed_indicators
                                 (district, indicator_name, observation_date, indicator_data,
                                  source_hash, source_fetch_timestamp)
                             VALUES (%s, %s, %s, %s, %s, NOW())
-                        """, (
-                            source_id,
-                            indicator_id,
-                            obs_date,
-                            json.dumps(raw_data, default=str),
-                            record_hash,
-                        ))
+                        """,
+                            (
+                                source_id,
+                                indicator_id,
+                                obs_date,
+                                json.dumps(raw_data, default=str),
+                                record_hash,
+                            ),
+                        )
                         self.metrics.records_inserted += 1
 
             conn.commit()
@@ -311,30 +330,20 @@ def main():
         description="Collect economic indicators from all sources"
     )
     parser.add_argument(
-        "--source",
-        type=str,
-        help="Filter by source (e.g., atlanta_fed, chicago_fed)"
+        "--source", type=str, help="Filter by source (e.g., atlanta_fed, chicago_fed)"
     )
     parser.add_argument(
-        "--indicator",
-        type=str,
-        help="Filter by indicator (e.g., gdpnow, cfnai)"
+        "--indicator", type=str, help="Filter by indicator (e.g., gdpnow, cfnai)"
     )
     parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Collect but don't store to database"
+        "--dry-run", action="store_true", help="Collect but don't store to database"
     )
     parser.add_argument(
         "--health-check",
         action="store_true",
-        help="Run health check on all data sources"
+        help="Run health check on all data sources",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output results as JSON"
-    )
+    parser.add_argument("--json", action="store_true", help="Output results as JSON")
     args = parser.parse_args()
 
     # Health check mode

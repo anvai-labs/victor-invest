@@ -110,7 +110,9 @@ class RLBacktestTool(BaseTool):
         try:
             # Shared market data services
             # Data source manager for consolidated data access
-            from investigator.domain.services.data_sources.manager import DataSourceManager
+            from investigator.domain.services.data_sources.manager import (
+                DataSourceManager,
+            )
             from investigator.domain.services.market_data import (
                 PriceService,
                 SharesService,
@@ -120,7 +122,9 @@ class RLBacktestTool(BaseTool):
 
             # RL infrastructure
             from investigator.domain.services.rl.outcome_tracker import OutcomeTracker
-            from investigator.domain.services.rl.reward_calculator import get_reward_calculator
+            from investigator.domain.services.rl.reward_calculator import (
+                get_reward_calculator,
+            )
 
             # Shared valuation config services
             from investigator.domain.services.valuation_shared import (
@@ -144,7 +148,9 @@ class RLBacktestTool(BaseTool):
             self._data_source_manager = DataSourceManager()
 
             self._initialized = True
-            logger.info("RLBacktestTool initialized with shared services and DataSourceManager")
+            logger.info(
+                "RLBacktestTool initialized with shared services and DataSourceManager"
+            )
         except ImportError as e:
             logger.error(f"Could not import required services: {e}")
             raise
@@ -273,7 +279,8 @@ class RLBacktestTool(BaseTool):
             except Exception as e:
                 results["errors"].append(f"{months_back}m: {str(e)}")
 
-        return ToolResult.create_success(output=results,
+        return ToolResult.create_success(
+            output=results,
             metadata={
                 "tool": "rl_backtest",
                 "action": "run_backtest",
@@ -291,9 +298,12 @@ class RLBacktestTool(BaseTool):
         metadata = await self._get_metadata(symbol)
         beta = metadata.get("beta", 1.0)
 
-        multi_period_data = await self._get_multi_period_data(symbol, analysis_date, current_price, beta)
+        multi_period_data = await self._get_multi_period_data(
+            symbol, analysis_date, current_price, beta
+        )
 
-        return ToolResult.create_success(output={
+        return ToolResult.create_success(
+            output={
                 "symbol": symbol,
                 "analysis_date": analysis_date.isoformat(),
                 "current_price": current_price,
@@ -329,16 +339,24 @@ class RLBacktestTool(BaseTool):
             # Calculate multi-period data
             metadata = await self._get_metadata(symbol)
             beta = metadata.get("beta", 1.0)
-            multi_period_data = await self._get_multi_period_data(symbol, analysis_date, current_price, beta)
+            multi_period_data = await self._get_multi_period_data(
+                symbol, analysis_date, current_price, beta
+            )
 
             # If context_features not provided, use DataSourceManager
             if not context_features and self._data_source_manager:
                 try:
-                    consolidated = self._data_source_manager.get_data(symbol=symbol, as_of_date=analysis_date)
+                    consolidated = self._data_source_manager.get_data(
+                        symbol=symbol, as_of_date=analysis_date
+                    )
                     context_features = consolidated.get_rl_features()
-                    logger.debug(f"Auto-fetched {len(context_features)} RL features for {symbol}")
+                    logger.debug(
+                        f"Auto-fetched {len(context_features)} RL features for {symbol}"
+                    )
                 except Exception as e:
-                    logger.warning(f"Could not fetch RL features via DataSourceManager: {e}")
+                    logger.warning(
+                        f"Could not fetch RL features via DataSourceManager: {e}"
+                    )
                     context_features = {}
 
             record_ids = []
@@ -358,7 +376,8 @@ class RLBacktestTool(BaseTool):
                 if record_id:
                     record_ids.append(record_id)
 
-            return ToolResult.create_success(output={
+            return ToolResult.create_success(
+                output={
                     "symbol": symbol,
                     "analysis_date": analysis_date.isoformat(),
                     "record_ids": record_ids,
@@ -383,7 +402,8 @@ class RLBacktestTool(BaseTool):
         shares = self._shares_service.get_sec_shares(symbol, analysis_date)
         metadata = await self._get_metadata(symbol)
 
-        return ToolResult.create_success(output={
+        return ToolResult.create_success(
+            output={
                 "symbol": symbol,
                 "analysis_date": analysis_date.isoformat(),
                 "price": price,
@@ -416,11 +436,14 @@ class RLBacktestTool(BaseTool):
             return ToolResult.create_failure("DataSourceManager not initialized")
 
         try:
-            consolidated = self._data_source_manager.get_data(symbol=symbol, as_of_date=analysis_date)
+            consolidated = self._data_source_manager.get_data(
+                symbol=symbol, as_of_date=analysis_date
+            )
 
             features = consolidated.get_rl_features()
 
-            return ToolResult.create_success(output={
+            return ToolResult.create_success(
+                output={
                     "symbol": symbol,
                     "analysis_date": analysis_date.isoformat(),
                     "features": features,

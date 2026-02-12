@@ -18,7 +18,7 @@ Date: 2025-12-30
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from investigator.domain.services.industry_datasets.base import (
     BaseIndustryDataset,
@@ -229,7 +229,9 @@ class REITDataset(BaseIndustryDataset):
             ),
         ]
 
-    def extract_metrics(self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs) -> IndustryMetrics:
+    def extract_metrics(
+        self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs
+    ) -> IndustryMetrics:
         """Extract REIT-specific metrics from XBRL data and financials."""
         metrics = IndustryMetrics(
             industry="reit",
@@ -241,7 +243,9 @@ class REITDataset(BaseIndustryDataset):
 
         # Extract FFO
         ffo = self._extract_from_xbrl(
-            xbrl_data, "ffo", ["FundsFromOperations", "FundsFromOperationsAttributableToParent"]
+            xbrl_data,
+            "ffo",
+            ["FundsFromOperations", "FundsFromOperationsAttributableToParent"],
         )
         if ffo:
             metrics.metrics["ffo"] = ffo
@@ -255,23 +259,33 @@ class REITDataset(BaseIndustryDataset):
 
         # Extract FFO per share
         ffo_ps = self._extract_from_xbrl(
-            xbrl_data, "ffo_per_share", ["FundsFromOperationsPerShare", "FundsFromOperationsPerShareDiluted"]
+            xbrl_data,
+            "ffo_per_share",
+            ["FundsFromOperationsPerShare", "FundsFromOperationsPerShareDiluted"],
         )
         if ffo_ps:
             metrics.metrics["ffo_per_share"] = ffo_ps
         elif ffo:
-            shares = financials.get("sharesOutstanding") or financials.get("dilutedShares")
+            shares = financials.get("sharesOutstanding") or financials.get(
+                "dilutedShares"
+            )
             if shares and shares > 0:
                 metrics.metrics["ffo_per_share"] = ffo / shares
 
         # Extract AFFO
-        affo = self._extract_from_xbrl(xbrl_data, "affo", ["AdjustedFundsFromOperations", "CoreFundsFromOperations"])
+        affo = self._extract_from_xbrl(
+            xbrl_data,
+            "affo",
+            ["AdjustedFundsFromOperations", "CoreFundsFromOperations"],
+        )
         if affo:
             metrics.metrics["affo"] = affo
 
         # Extract Occupancy Rate
         occupancy = self._extract_from_xbrl(
-            xbrl_data, "occupancy_rate", ["OccupancyRate", "PortfolioOccupancy", "PropertyOccupancyRate"]
+            xbrl_data,
+            "occupancy_rate",
+            ["OccupancyRate", "PortfolioOccupancy", "PropertyOccupancyRate"],
         )
         if occupancy:
             # Convert to decimal if needed
@@ -281,11 +295,15 @@ class REITDataset(BaseIndustryDataset):
         else:
             # Use industry average
             metrics.metrics["occupancy_rate"] = 0.93
-            warnings.append("Occupancy rate not available, using industry average (93%)")
+            warnings.append(
+                "Occupancy rate not available, using industry average (93%)"
+            )
 
         # Extract Same-Store NOI Growth
         ss_noi = self._extract_from_xbrl(
-            xbrl_data, "same_store_noi_growth", ["SameStoreNetOperatingIncomeGrowth", "ComparableNOIGrowth"]
+            xbrl_data,
+            "same_store_noi_growth",
+            ["SameStoreNetOperatingIncomeGrowth", "ComparableNOIGrowth"],
         )
         if ss_noi:
             metrics.metrics["same_store_noi_growth"] = ss_noi
@@ -323,7 +341,9 @@ class REITDataset(BaseIndustryDataset):
     def _calculate_ffo(self, financials: Dict) -> Optional[float]:
         """Calculate FFO from available data."""
         net_income = financials.get("netIncome")
-        depreciation = financials.get("depreciation") or financials.get("depreciationAmortization")
+        depreciation = financials.get("depreciation") or financials.get(
+            "depreciationAmortization"
+        )
 
         if net_income and depreciation:
             # FFO = Net Income + Depreciation (simplified)

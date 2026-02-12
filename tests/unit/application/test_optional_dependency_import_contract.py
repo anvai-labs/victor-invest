@@ -5,7 +5,9 @@ from types import ModuleType
 from typing import Iterable
 
 
-def _reimport_with_blocked_prefixes(module_name: str, blocked_prefixes: Iterable[str]) -> ModuleType:
+def _reimport_with_blocked_prefixes(
+    module_name: str, blocked_prefixes: Iterable[str]
+) -> ModuleType:
     blocked = tuple(blocked_prefixes)
     real_import = builtins.__import__
 

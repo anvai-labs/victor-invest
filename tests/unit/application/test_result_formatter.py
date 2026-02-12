@@ -151,13 +151,20 @@ class TestRemoveEmptyValues:
 
     def test_recursive_cleaning(self):
         """Should recursively clean nested structures."""
-        data = {"level1": {"level2": {"keep": 1, "remove": None}, "empty_list": []}, "top_level": "keep"}
+        data = {
+            "level1": {"level2": {"keep": 1, "remove": None}, "empty_list": []},
+            "top_level": "keep",
+        }
         result = _remove_empty_values(data)
         assert result == {"level1": {"level2": {"keep": 1}}, "top_level": "keep"}
 
     def test_handles_numpy_array_in_dict(self):
         """Should handle numpy arrays without raising ValueError."""
-        data = {"prices": np.array([100.0, 101.5, 99.8]), "empty_array": np.array([]), "name": "AAPL"}
+        data = {
+            "prices": np.array([100.0, 101.5, 99.8]),
+            "empty_array": np.array([]),
+            "name": "AAPL",
+        }
         # This was crashing before the fix
         result = _remove_empty_values(data)
 
@@ -171,7 +178,13 @@ class TestRemoveEmptyValues:
 
     def test_handles_nested_numpy_arrays(self):
         """Should handle numpy arrays in nested structures."""
-        data = {"analysis": {"signals": np.array([1, 0, -1]), "empty_data": np.array([]), "metadata": {"count": 3}}}
+        data = {
+            "analysis": {
+                "signals": np.array([1, 0, -1]),
+                "empty_data": np.array([]),
+                "metadata": {"count": 3},
+            }
+        }
         result = _remove_empty_values(data)
 
         assert "signals" in result["analysis"]
@@ -208,7 +221,9 @@ class TestFormatAnalysisOutput:
 
     def test_standard_handles_numpy_arrays(self):
         """Standard mode should handle numpy arrays without crashing."""
-        data = {"fundamental": {"prices": np.array([100.0, 101.5]), "recommendation": "BUY"}}
+        data = {
+            "fundamental": {"prices": np.array([100.0, 101.5]), "recommendation": "BUY"}
+        }
         # Should not raise ValueError
         result = format_analysis_output(data, OutputDetailLevel.STANDARD)
         assert "fundamental" in result

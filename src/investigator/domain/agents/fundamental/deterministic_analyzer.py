@@ -36,7 +36,9 @@ class DeterministicAnalyzer:
     - Profitability: Margin trends, returns on capital, cost structure
     """
 
-    def __init__(self, agent_id: str = "deterministic", logger: Optional[logging.Logger] = None):
+    def __init__(
+        self, agent_id: str = "deterministic", logger: Optional[logging.Logger] = None
+    ):
         """
         Initialize deterministic analyzer.
 
@@ -45,9 +47,13 @@ class DeterministicAnalyzer:
             logger: Optional logger instance
         """
         self.agent_id = agent_id
-        self.logger = logger or logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self.logger = logger or logging.getLogger(
+            f"{__name__}.{self.__class__.__name__}"
+        )
 
-    def _build_deterministic_response(self, label: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _build_deterministic_response(
+        self, label: str, payload: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Return a structure consistent with LLM response format for rule-based analyses.
 
@@ -72,7 +78,9 @@ class DeterministicAnalyzer:
         """
         return company_data.get("financials") or {}
 
-    async def analyze_financial_health(self, company_data: Dict, ratios: Dict, symbol: str) -> Dict:
+    async def analyze_financial_health(
+        self, company_data: Dict, ratios: Dict, symbol: str
+    ) -> Dict:
         """
         Evaluate liquidity, solvency, and working-capital resilience without LLM calls.
 
@@ -102,7 +110,9 @@ class DeterministicAnalyzer:
             else:
                 label, score = "Weak", 45.0
             if quick_ratio:
-                commentary = f"Current ratio {current_ratio:.2f}; quick ratio {quick_ratio:.2f}."
+                commentary = (
+                    f"Current ratio {current_ratio:.2f}; quick ratio {quick_ratio:.2f}."
+                )
             else:
                 commentary = f"Current ratio {current_ratio:.2f}."
             return label, commentary, score
@@ -114,7 +124,11 @@ class DeterministicAnalyzer:
             if total_debt == 0:
                 return "Debt Free", "Company has no financial leverage.", 95.0
             if debt_to_equity is None:
-                return "Unknown", "Debt-to-equity unavailable; solvency indeterminate.", 55.0
+                return (
+                    "Unknown",
+                    "Debt-to-equity unavailable; solvency indeterminate.",
+                    55.0,
+                )
             if debt_to_equity <= 1.0:
                 label, score = "Comfortable", 80.0
             elif debt_to_equity <= 2.0:
@@ -134,9 +148,15 @@ class DeterministicAnalyzer:
             return label, commentary, score
 
         def assess_capital_structure(sol_label: str, sol_score: float) -> tuple:
-            net_debt = (financials.get("total_debt") or 0) - (financials.get("cash") or 0)
+            net_debt = (financials.get("total_debt") or 0) - (
+                financials.get("cash") or 0
+            )
             if net_debt <= 0:
-                return "Net Cash", "Cash reserves exceed total debt.", max(sol_score, 85.0)
+                return (
+                    "Net Cash",
+                    "Cash reserves exceed total debt.",
+                    max(sol_score, 85.0),
+                )
             return sol_label, f"Net debt approximately ${net_debt:,.0f}.", sol_score
 
         def assess_working_capital() -> tuple:
@@ -155,7 +175,9 @@ class DeterministicAnalyzer:
             return label, commentary, score
 
         def assess_debt_serviceability() -> tuple:
-            interest_coverage = ratios.get("interest_coverage") or company_data.get("interest_coverage")
+            interest_coverage = ratios.get("interest_coverage") or company_data.get(
+                "interest_coverage"
+            )
             total_debt = financials.get("total_debt") or 0
             if total_debt == 0:
                 return "Not Applicable", "No debt outstanding.", 90.0
@@ -172,12 +194,26 @@ class DeterministicAnalyzer:
             total_debt = financials.get("total_debt") or 0
             if total_debt == 0:
                 return "High", "Balance sheet unlevered with cash cushion.", 90.0
-            liquidity_ratio = (cash + (financials.get("short_term_investments") or 0)) / total_debt
+            liquidity_ratio = (
+                cash + (financials.get("short_term_investments") or 0)
+            ) / total_debt
             if liquidity_ratio >= 0.75:
-                return "High", f"Liquid assets cover {liquidity_ratio:.0%} of debt.", 80.0
+                return (
+                    "High",
+                    f"Liquid assets cover {liquidity_ratio:.0%} of debt.",
+                    80.0,
+                )
             if liquidity_ratio >= 0.4:
-                return "Moderate", f"Liquid assets cover {liquidity_ratio:.0%} of debt.", 65.0
-            return "Limited", f"Liquid assets cover {liquidity_ratio:.0%} of debt.", 50.0
+                return (
+                    "Moderate",
+                    f"Liquid assets cover {liquidity_ratio:.0%} of debt.",
+                    65.0,
+                )
+            return (
+                "Limited",
+                f"Liquid assets cover {liquidity_ratio:.0%} of debt.",
+                50.0,
+            )
 
         liquidity = assess_liquidity()
         solvency = assess_solvency()
@@ -202,15 +238,32 @@ class DeterministicAnalyzer:
         if solvency[0] == "Leveraged":
             risk_factors.append({"risk": "High leverage", "commentary": solvency[1]})
         if debt_serviceability[0] == "Stressed":
-            risk_factors.append({"risk": "Debt service pressure", "commentary": debt_serviceability[1]})
+            risk_factors.append(
+                {"risk": "Debt service pressure", "commentary": debt_serviceability[1]}
+            )
 
         payload = {
-            "liquidity_position": {"assessment": liquidity[0], "commentary": liquidity[1]},
+            "liquidity_position": {
+                "assessment": liquidity[0],
+                "commentary": liquidity[1],
+            },
             "solvency": {"assessment": solvency[0], "commentary": solvency[1]},
-            "capital_structure_quality": {"assessment": capital_structure[0], "commentary": capital_structure[1]},
-            "working_capital_management": {"assessment": working_capital[0], "commentary": working_capital[1]},
-            "debt_serviceability": {"assessment": debt_serviceability[0], "commentary": debt_serviceability[1]},
-            "financial_flexibility": {"assessment": flexibility[0], "commentary": flexibility[1]},
+            "capital_structure_quality": {
+                "assessment": capital_structure[0],
+                "commentary": capital_structure[1],
+            },
+            "working_capital_management": {
+                "assessment": working_capital[0],
+                "commentary": working_capital[1],
+            },
+            "debt_serviceability": {
+                "assessment": debt_serviceability[0],
+                "commentary": debt_serviceability[1],
+            },
+            "financial_flexibility": {
+                "assessment": flexibility[0],
+                "commentary": flexibility[1],
+            },
             "risk_factors": risk_factors,
             "overall_health_score": overall_health_score,
         }
@@ -236,7 +289,10 @@ class DeterministicAnalyzer:
             if not series:
                 return {"avg": None, "latest": None, "quantiles": {}}
             window = series[-min(len(series), 6) :]
-            summary = {"avg": statistics.mean(window) if window else None, "latest": window[-1] if window else None}
+            summary = {
+                "avg": statistics.mean(window) if window else None,
+                "latest": window[-1] if window else None,
+            }
             quantiles = {}
             if len(window) >= 4:
                 try:
@@ -288,7 +344,9 @@ class DeterministicAnalyzer:
             "stable": ("Stable", 70.0),
             "contracting": ("Weak", 55.0),
         }
-        earnings_label, earnings_score = margin_map.get(margin_direction, ("Stable", 70.0))
+        earnings_label, earnings_score = margin_map.get(
+            margin_direction, ("Stable", 70.0)
+        )
 
         market_share_trend = revenue_trend.get("trend", "stable")
         market_map = {
@@ -296,7 +354,9 @@ class DeterministicAnalyzer:
             "stable": ("Holding", 70.0),
             "decelerating": ("Losing", 55.0),
         }
-        market_label, market_score = market_map.get(market_share_trend, ("Holding", 70.0))
+        market_label, market_score = market_map.get(
+            market_share_trend, ("Holding", 70.0)
+        )
 
         growth_drivers: List[str] = []
         growth_risks: List[str] = []
@@ -313,14 +373,22 @@ class DeterministicAnalyzer:
         if not growth_risks:
             growth_risks.append("Execution risk")
 
-        score_components = [yoy_score, qoq_score, consistency_pts, earnings_score, market_score]
+        score_components = [
+            yoy_score,
+            qoq_score,
+            consistency_pts,
+            earnings_score,
+            market_score,
+        ]
         growth_score = round(sum(score_components) / len(score_components), 1)
 
         payload = {
             "revenue_growth_sustainability": {
                 "assessment": yoy_label,
                 "commentary": (
-                    f"Average Y/Y growth {yoy_growth:.1f}%" if yoy_growth is not None else "Insufficient data"
+                    f"Average Y/Y growth {yoy_growth:.1f}%"
+                    if yoy_growth is not None
+                    else "Insufficient data"
                 ),
             },
             "earnings_growth_quality": {
@@ -341,7 +409,9 @@ class DeterministicAnalyzer:
             },
             "growth_drivers_and_catalysts": growth_drivers,
             "future_growth_potential": {
-                "assessment": "High" if yoy_label in {"High", "Moderate"} else "Balanced",
+                "assessment": "High"
+                if yoy_label in {"High", "Moderate"}
+                else "Balanced",
                 "commentary": (
                     "Pipeline supported by demand indicators."
                     if yoy_label in {"High", "Moderate"}
@@ -358,7 +428,9 @@ class DeterministicAnalyzer:
 
         return self._build_deterministic_response("growth_analysis", payload)
 
-    async def analyze_profitability(self, company_data: Dict, ratios: Dict, symbol: str) -> Dict:
+    async def analyze_profitability(
+        self, company_data: Dict, ratios: Dict, symbol: str
+    ) -> Dict:
         """
         Deterministic profitability assessment using core ratios.
 
@@ -376,14 +448,14 @@ class DeterministicAnalyzer:
         def pct(value: Optional[float]) -> str:
             if value is None:
                 return "n/a"
-            return f"{value*100:.1f}%" if value <= 1 else f"{value:.1f}%"
+            return f"{value * 100:.1f}%" if value <= 1 else f"{value:.1f}%"
 
         gross_margin = ratios.get("gross_margin")
         operating_margin = ratios.get("operating_margin")
         net_margin = ratios.get("net_margin")
         roe = ratios.get("roe")
         roa = ratios.get("roa")
-        asset_turnover = ratios.get("asset_turnover")
+        ratios.get("asset_turnover")
 
         def classify_margin(value: Optional[float]) -> tuple:
             if value is None:
@@ -401,7 +473,7 @@ class DeterministicAnalyzer:
         net_label, net_score = classify_margin(net_margin)
 
         gross_history = margin_trend.get("gross_margins") or []
-        op_history = margin_trend.get("operating_margins") or []
+        margin_trend.get("operating_margins") or []
         net_history = margin_trend.get("net_margins") or []
 
         def classify_returns(value: Optional[float]) -> tuple:
@@ -463,7 +535,9 @@ class DeterministicAnalyzer:
         profitability_drivers: List[str] = []
         if gross_history:
             try:
-                profitability_drivers.append(f"Median gross margin {statistics.median(gross_history):.1f}%")
+                profitability_drivers.append(
+                    f"Median gross margin {statistics.median(gross_history):.1f}%"
+                )
             except statistics.StatisticsError:
                 pass
         if net_history:

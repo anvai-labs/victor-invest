@@ -105,7 +105,9 @@ class RichmondFedClient:
     async def _get_session(self) -> aiohttp.ClientSession:
         if self._session is None:
             try:
-                from investigator.infrastructure.external.http_client import create_session
+                from investigator.infrastructure.external.http_client import (
+                    create_session,
+                )
 
                 self._session = await create_session()
             except ImportError:
@@ -143,7 +145,9 @@ class RichmondFedClient:
             logger.warning(f"Failed to fetch Richmond services survey: {e}")
             return None
 
-    def _parse_survey_excel(self, content: bytes, survey_type: str) -> Optional[FifthDistrictSurvey]:
+    def _parse_survey_excel(
+        self, content: bytes, survey_type: str
+    ) -> Optional[FifthDistrictSurvey]:
         try:
             import io
 

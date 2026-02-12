@@ -232,10 +232,42 @@ class TestAnalyzeCashFlowTrend:
     def test_improving_trend(self, analyzer):
         """Should detect improving cash flow trend."""
         quarterly_data = [
-            MockQuarterlyData(2024, "Q1", {"operating_cash_flow": 100, "capital_expenditures": 0, "net_income": 80}),
-            MockQuarterlyData(2024, "Q2", {"operating_cash_flow": 100, "capital_expenditures": 0, "net_income": 80}),
-            MockQuarterlyData(2024, "Q3", {"operating_cash_flow": 120, "capital_expenditures": 0, "net_income": 80}),
-            MockQuarterlyData(2024, "Q4", {"operating_cash_flow": 120, "capital_expenditures": 0, "net_income": 80}),
+            MockQuarterlyData(
+                2024,
+                "Q1",
+                {
+                    "operating_cash_flow": 100,
+                    "capital_expenditures": 0,
+                    "net_income": 80,
+                },
+            ),
+            MockQuarterlyData(
+                2024,
+                "Q2",
+                {
+                    "operating_cash_flow": 100,
+                    "capital_expenditures": 0,
+                    "net_income": 80,
+                },
+            ),
+            MockQuarterlyData(
+                2024,
+                "Q3",
+                {
+                    "operating_cash_flow": 120,
+                    "capital_expenditures": 0,
+                    "net_income": 80,
+                },
+            ),
+            MockQuarterlyData(
+                2024,
+                "Q4",
+                {
+                    "operating_cash_flow": 120,
+                    "capital_expenditures": 0,
+                    "net_income": 80,
+                },
+            ),
         ]
 
         result = analyzer.analyze_cash_flow_trend(quarterly_data)
@@ -245,10 +277,42 @@ class TestAnalyzeCashFlowTrend:
     def test_deteriorating_trend(self, analyzer):
         """Should detect deteriorating cash flow trend."""
         quarterly_data = [
-            MockQuarterlyData(2024, "Q1", {"operating_cash_flow": 150, "capital_expenditures": 0, "net_income": 80}),
-            MockQuarterlyData(2024, "Q2", {"operating_cash_flow": 150, "capital_expenditures": 0, "net_income": 80}),
-            MockQuarterlyData(2024, "Q3", {"operating_cash_flow": 100, "capital_expenditures": 0, "net_income": 80}),
-            MockQuarterlyData(2024, "Q4", {"operating_cash_flow": 100, "capital_expenditures": 0, "net_income": 80}),
+            MockQuarterlyData(
+                2024,
+                "Q1",
+                {
+                    "operating_cash_flow": 150,
+                    "capital_expenditures": 0,
+                    "net_income": 80,
+                },
+            ),
+            MockQuarterlyData(
+                2024,
+                "Q2",
+                {
+                    "operating_cash_flow": 150,
+                    "capital_expenditures": 0,
+                    "net_income": 80,
+                },
+            ),
+            MockQuarterlyData(
+                2024,
+                "Q3",
+                {
+                    "operating_cash_flow": 100,
+                    "capital_expenditures": 0,
+                    "net_income": 80,
+                },
+            ),
+            MockQuarterlyData(
+                2024,
+                "Q4",
+                {
+                    "operating_cash_flow": 100,
+                    "capital_expenditures": 0,
+                    "net_income": 80,
+                },
+            ),
         ]
 
         result = analyzer.analyze_cash_flow_trend(quarterly_data)

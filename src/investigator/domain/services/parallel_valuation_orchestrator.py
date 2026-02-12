@@ -17,8 +17,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from investigator.domain.services.terminal_growth_calculator import TerminalGrowthCalculator
-from investigator.domain.services.valuation_framework_planner import FrameworkConfig, ValuationFrameworkPlanner
+from investigator.domain.services.terminal_growth_calculator import (
+    TerminalGrowthCalculator,
+)
+from investigator.domain.services.valuation_framework_planner import (
+    FrameworkConfig,
+    ValuationFrameworkPlanner,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +81,13 @@ class ParallelValuationOrchestrator:
         291.36
     """
 
-    def __init__(self, symbol: str, sector: str, current_price: float, base_terminal_growth: float = 0.035):
+    def __init__(
+        self,
+        symbol: str,
+        sector: str,
+        current_price: float,
+        base_terminal_growth: float = 0.035,
+    ):
         """
         Initialize parallel valuation orchestrator
 
@@ -140,12 +151,14 @@ class ParallelValuationOrchestrator:
 
         # Step 1: Calculate unified terminal growth (SINGLE SOURCE OF TRUTH)
         terminal_growth_result = self.terminal_growth_calc.calculate_terminal_growth(
-            rule_of_40_score=rule_of_40_score, revenue_growth_pct=revenue_growth_pct, fcf_margin_pct=fcf_margin_pct
+            rule_of_40_score=rule_of_40_score,
+            revenue_growth_pct=revenue_growth_pct,
+            fcf_margin_pct=fcf_margin_pct,
         )
 
         logger.info(
             f"{self.symbol} - Terminal Growth (unified): "
-            f"{terminal_growth_result['terminal_growth_rate']*100:.2f}% "
+            f"{terminal_growth_result['terminal_growth_rate'] * 100:.2f}% "
             f"[{terminal_growth_result['tier']}]"
         )
 
@@ -163,7 +176,9 @@ class ParallelValuationOrchestrator:
             tasks.append(task)
 
         # Run all frameworks concurrently
-        logger.info(f"{self.symbol} - Executing {len(frameworks)} frameworks in parallel...")
+        logger.info(
+            f"{self.symbol} - Executing {len(frameworks)} frameworks in parallel..."
+        )
         framework_results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Step 3: Process results and handle failures
@@ -177,11 +192,15 @@ class ParallelValuationOrchestrator:
                 failed_frameworks.append(frameworks[i].type)
             elif result.error:
                 # Framework returned error
-                logger.warning(f"{self.symbol} - {result.framework_type} error: {result.error}")
+                logger.warning(
+                    f"{self.symbol} - {result.framework_type} error: {result.error}"
+                )
                 failed_frameworks.append(result.framework_type)
             elif result.fair_value is None or result.fair_value <= 0:
                 # Framework returned invalid value
-                logger.warning(f"{self.symbol} - {result.framework_type} invalid value: {result.fair_value}")
+                logger.warning(
+                    f"{self.symbol} - {result.framework_type} invalid value: {result.fair_value}"
+                )
                 failed_frameworks.append(result.framework_type)
             else:
                 # Framework succeeded
@@ -189,17 +208,22 @@ class ParallelValuationOrchestrator:
 
         # Step 4: Reweight remaining frameworks
         if not valid_results:
-            raise ValueError(f"{self.symbol} - All {len(frameworks)} frameworks failed: {failed_frameworks}")
+            raise ValueError(
+                f"{self.symbol} - All {len(frameworks)} frameworks failed: {failed_frameworks}"
+            )
 
         total_weight = sum(f.weight for f, _ in valid_results)
         normalized_weights = {f.type: f.weight / total_weight for f, _ in valid_results}
 
         # Step 5: Compute weighted blended fair value
         blended_fair_value = sum(
-            result.fair_value * normalized_weights[framework.type] for framework, result in valid_results
+            result.fair_value * normalized_weights[framework.type]
+            for framework, result in valid_results
         )
 
-        upside_pct = ((blended_fair_value - self.current_price) / self.current_price) * 100
+        upside_pct = (
+            (blended_fair_value - self.current_price) / self.current_price
+        ) * 100
 
         # Step 6: Create execution summary
         end_time = datetime.now()
@@ -280,18 +304,26 @@ class ParallelValuationOrchestrator:
 
             elif framework.type == ValuationFrameworkPlanner.FRAMEWORK_PE_RATIO:
                 fair_value, metrics = await self._execute_pe_ratio(
-                    financials=financials, params=framework.params, pe_calculator=pe_calculator
+                    financials=financials,
+                    params=framework.params,
+                    pe_calculator=pe_calculator,
                 )
 
             elif framework.type == ValuationFrameworkPlanner.FRAMEWORK_EV_EBITDA:
-                fair_value, metrics = await self._execute_ev_ebitda(financials=financials, params=framework.params)
+                fair_value, metrics = await self._execute_ev_ebitda(
+                    financials=financials, params=framework.params
+                )
 
             elif framework.type == ValuationFrameworkPlanner.FRAMEWORK_PS_RATIO:
-                fair_value, metrics = await self._execute_ps_ratio(financials=financials, params=framework.params)
+                fair_value, metrics = await self._execute_ps_ratio(
+                    financials=financials, params=framework.params
+                )
 
             elif framework.type == ValuationFrameworkPlanner.FRAMEWORK_PEG_RATIO:
                 fair_value, metrics = await self._execute_peg_ratio(
-                    financials=financials, params=framework.params, pe_calculator=pe_calculator
+                    financials=financials,
+                    params=framework.params,
+                    pe_calculator=pe_calculator,
                 )
 
             elif framework.type == ValuationFrameworkPlanner.FRAMEWORK_GORDON_GROWTH:
@@ -311,7 +343,7 @@ class ParallelValuationOrchestrator:
 
             logger.info(
                 f"{self.symbol} - {framework.type}: ${fair_value:.2f} "
-                f"(weight: {framework.weight*100:.1f}%, {execution_time_ms:.0f}ms)"
+                f"(weight: {framework.weight * 100:.1f}%, {execution_time_ms:.0f}ms)"
             )
 
             return FrameworkResult(
@@ -323,15 +355,25 @@ class ParallelValuationOrchestrator:
             )
 
         except Exception as e:
-            logger.error(f"{self.symbol} - {framework.type} execution failed: {e}", exc_info=True)
+            logger.error(
+                f"{self.symbol} - {framework.type} execution failed: {e}", exc_info=True
+            )
             return FrameworkResult(
-                framework_type=framework.type, fair_value=None, confidence=0.0, metrics={}, error=str(e)
+                framework_type=framework.type,
+                fair_value=None,
+                confidence=0.0,
+                metrics={},
+                error=str(e),
             )
 
     # Framework execution methods (placeholders - will integrate with existing calculators)
 
     async def _execute_dcf_growth(
-        self, terminal_growth_rate: float, financials: Dict[str, Any], params: Dict[str, Any], dcf_calculator: Any
+        self,
+        terminal_growth_rate: float,
+        financials: Dict[str, Any],
+        params: Dict[str, Any],
+        dcf_calculator: Any,
     ) -> tuple[float, Dict[str, Any]]:
         """Execute DCF with growth assumptions"""
         # TODO: Call existing DCFValuation with terminal_growth_rate parameter
@@ -339,7 +381,11 @@ class ParallelValuationOrchestrator:
         return 291.36, {"method": "dcf_growth", "terminal_growth": terminal_growth_rate}
 
     async def _execute_dcf_fading(
-        self, terminal_growth_rate: float, financials: Dict[str, Any], params: Dict[str, Any], dcf_calculator: Any
+        self,
+        terminal_growth_rate: float,
+        financials: Dict[str, Any],
+        params: Dict[str, Any],
+        dcf_calculator: Any,
     ) -> tuple[float, Dict[str, Any]]:
         """Execute DCF with fading growth assumptions"""
         # TODO: Call existing DCFValuation with fading growth logic
@@ -374,11 +420,18 @@ class ParallelValuationOrchestrator:
         return 300.00, {"method": "peg_ratio"}
 
     async def _execute_gordon_growth(
-        self, terminal_growth_rate: float, financials: Dict[str, Any], params: Dict[str, Any], ggm_calculator: Any
+        self,
+        terminal_growth_rate: float,
+        financials: Dict[str, Any],
+        params: Dict[str, Any],
+        ggm_calculator: Any,
     ) -> tuple[float, Dict[str, Any]]:
         """Execute Gordon Growth Model valuation"""
         # TODO: Call existing GordonGrowthModel with terminal_growth_rate
-        return 285.00, {"method": "gordon_growth", "terminal_growth": terminal_growth_rate}
+        return 285.00, {
+            "method": "gordon_growth",
+            "terminal_growth": terminal_growth_rate,
+        }
 
     def __repr__(self) -> str:
         """String representation"""

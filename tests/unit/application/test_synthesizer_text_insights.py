@@ -38,7 +38,9 @@ def test_extract_comprehensive_risks_deduplicates_and_limits():
         }
     }
     ai_recommendation = {"key_risks": ["Supply chain concentration", "Execution drift"]}
-    risks = extract_comprehensive_risks(llm_responses, ai_recommendation, ["Demand slowdown"])
+    risks = extract_comprehensive_risks(
+        llm_responses, ai_recommendation, ["Demand slowdown"]
+    )
     assert "Execution drift" in risks
     assert any("Supply chain concentration" in r for r in risks)
 
@@ -46,13 +48,17 @@ def test_extract_comprehensive_risks_deduplicates_and_limits():
 def test_extract_comprehensive_insights_includes_technical_and_catalysts():
     llm_responses = {
         "fundamental": {
-            "a": {"content": "Key Insights: - Durable pricing power - Improving retention"}
+            "a": {
+                "content": "Key Insights: - Durable pricing power - Improving retention"
+            }
         },
         "technical": {
             "content": "KEY INSIGHTS: - Breakout above resistance - Volume confirmation\n\nNEXT SECTION"
         },
     }
     ai_recommendation = {"key_catalysts": ["AI demand cycle", "Margin expansion"]}
-    insights = extract_comprehensive_insights(llm_responses, ai_recommendation, ["Free cash flow inflection"])
+    insights = extract_comprehensive_insights(
+        llm_responses, ai_recommendation, ["Free cash flow inflection"]
+    )
     assert any("Catalyst:" in item for item in insights)
     assert any("Technical:" in item for item in insights)

@@ -31,7 +31,6 @@ Usage:
 
 import argparse
 import importlib
-import logging
 import signal
 import sys
 import time
@@ -46,7 +45,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from scripts.scheduled.base import setup_logging
+from scripts.scheduled.base import setup_logging  # noqa: E402
 
 
 # Job module mapping
@@ -83,12 +82,14 @@ class SchedulerRunner:
         """List all configured jobs."""
         jobs = []
         for job_name, job_config in self.config.get("jobs", {}).items():
-            jobs.append({
-                "name": job_name,
-                "description": job_config.get("description", ""),
-                "schedule": job_config.get("schedule", {}).get("cron", ""),
-                "enabled": job_config.get("enabled", True),
-            })
+            jobs.append(
+                {
+                    "name": job_name,
+                    "description": job_config.get("description", ""),
+                    "schedule": job_config.get("schedule", {}).get("cron", ""),
+                    "enabled": job_config.get("enabled", True),
+                }
+            )
         return jobs
 
     def run_job(self, job_name: str) -> int:
@@ -236,7 +237,7 @@ class SchedulerRunner:
         signal.signal(signal.SIGTERM, handle_signal)
 
         while self.running:
-            now = datetime.now()
+            datetime.now()
 
             # Check each job
             for job_name, job_config in self.config.get("jobs", {}).items():
@@ -259,34 +260,21 @@ class SchedulerRunner:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Run scheduled data collection jobs"
+    parser = argparse.ArgumentParser(description="Run scheduled data collection jobs")
+    parser.add_argument(
+        "--config", type=str, help="Path to scheduler configuration file"
     )
     parser.add_argument(
-        "--config",
-        type=str,
-        help="Path to scheduler configuration file"
+        "--run-now", type=str, metavar="JOB_NAME", help="Run a specific job immediately"
     )
     parser.add_argument(
-        "--run-now",
-        type=str,
-        metavar="JOB_NAME",
-        help="Run a specific job immediately"
+        "--run-all", action="store_true", help="Run all enabled jobs immediately"
     )
     parser.add_argument(
-        "--run-all",
-        action="store_true",
-        help="Run all enabled jobs immediately"
+        "--list-jobs", action="store_true", help="List all configured jobs"
     )
     parser.add_argument(
-        "--list-jobs",
-        action="store_true",
-        help="List all configured jobs"
-    )
-    parser.add_argument(
-        "--daemon",
-        action="store_true",
-        help="Run as a daemon (continuous scheduler)"
+        "--daemon", action="store_true", help="Run as a daemon (continuous scheduler)"
     )
     args = parser.parse_args()
 

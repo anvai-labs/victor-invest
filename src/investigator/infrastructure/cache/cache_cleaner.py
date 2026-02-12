@@ -15,7 +15,7 @@ import json
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 from .cache_types import CacheType
 
@@ -54,7 +54,9 @@ class CacheCleanupService:
 
         self.running = True
         self._cleanup_task = asyncio.create_task(self._cleanup_loop())
-        logger.info(f"Cache cleanup service started " f"(interval: {self.cleanup_interval}s)")
+        logger.info(
+            f"Cache cleanup service started (interval: {self.cleanup_interval}s)"
+        )
 
     async def stop(self):
         """Stop background cleanup task"""
@@ -83,7 +85,7 @@ class CacheCleanupService:
                     f"Cache cleanup complete. "
                     f"Scanned: {self.stats['total_files_scanned']}, "
                     f"Removed: {self.stats['total_files_removed']}, "
-                    f"Freed: {self.stats['total_bytes_freed'] / (1024*1024):.2f} MB"
+                    f"Freed: {self.stats['total_bytes_freed'] / (1024 * 1024):.2f} MB"
                 )
 
             except Exception as e:
@@ -96,21 +98,31 @@ class CacheCleanupService:
     async def _run_cleanup(self):
         """Run cleanup for all cache types"""
         # Get TTL settings for each cache type
-        from .cache_manager import CacheManager
 
         cache_dirs = {
             CacheType.LLM_RESPONSE: ("data/llm_cache", timedelta(hours=6)),
             CacheType.TECHNICAL_DATA: ("data/technical_cache", timedelta(days=7)),
-            CacheType.COMPANY_FACTS: ("data/sec_cache/facts/processed", timedelta(days=90)),
+            CacheType.COMPANY_FACTS: (
+                "data/sec_cache/facts/processed",
+                timedelta(days=90),
+            ),
             CacheType.SEC_RESPONSE: ("data/sec_cache/responses", timedelta(hours=6)),
-            CacheType.SUBMISSION_DATA: ("data/sec_cache/submissions", timedelta(days=90)),
-            CacheType.QUARTERLY_METRICS: ("data/sec_cache/quarterlymetrics", timedelta(hours=24)),
+            CacheType.SUBMISSION_DATA: (
+                "data/sec_cache/submissions",
+                timedelta(days=90),
+            ),
+            CacheType.QUARTERLY_METRICS: (
+                "data/sec_cache/quarterlymetrics",
+                timedelta(hours=24),
+            ),
         }
 
         for cache_type, (cache_dir, ttl) in cache_dirs.items():
             await self._cleanup_directory(cache_dir, ttl, cache_type)
 
-    async def _cleanup_directory(self, cache_dir: str, ttl: timedelta, cache_type: CacheType):
+    async def _cleanup_directory(
+        self, cache_dir: str, ttl: timedelta, cache_type: CacheType
+    ):
         """
         Cleanup expired files in a cache directory
 
@@ -157,7 +169,8 @@ class CacheCleanupService:
                     self.stats["total_bytes_freed"] += file_size
 
                     logger.debug(
-                        f"Removed expired cache file: {cache_file.name} " f"(mtime: {mtime.strftime('%Y-%m-%d %H:%M')})"
+                        f"Removed expired cache file: {cache_file.name} "
+                        f"(mtime: {mtime.strftime('%Y-%m-%d %H:%M')})"
                     )
 
             except Exception as e:
@@ -167,7 +180,7 @@ class CacheCleanupService:
             logger.info(
                 f"Cleaned {cache_type.value}: "
                 f"removed {files_removed} files, "
-                f"freed {bytes_freed / (1024*1024):.2f} MB"
+                f"freed {bytes_freed / (1024 * 1024):.2f} MB"
             )
 
     def _get_expires_at_from_file(self, cache_file: Path) -> Optional[datetime]:

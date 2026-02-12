@@ -111,7 +111,9 @@ def calculate_combined_ratio(metrics: Dict) -> Optional[float]:
 
     # Premiums and claims are required
     if not premiums or premiums <= 0:
-        logger.debug("Cannot calculate combined ratio: premiums_earned not available or zero")
+        logger.debug(
+            "Cannot calculate combined ratio: premiums_earned not available or zero"
+        )
         return None
 
     if claims is None:
@@ -128,8 +130,8 @@ def calculate_combined_ratio(metrics: Dict) -> Optional[float]:
 
     logger.info(
         f"Combined ratio calculated: {combined_ratio:.2%} "
-        f"(Claims: ${claims/1e9:.2f}B + Acquisition: ${acquisition_costs/1e9:.2f}B + "
-        f"Operating: ${operating_expenses/1e9:.2f}B) / Premiums: ${premiums/1e9:.2f}B"
+        f"(Claims: ${claims / 1e9:.2f}B + Acquisition: ${acquisition_costs / 1e9:.2f}B + "
+        f"Operating: ${operating_expenses / 1e9:.2f}B) / Premiums: ${premiums / 1e9:.2f}B"
     )
 
     return combined_ratio
@@ -185,7 +187,8 @@ def calculate_expense_ratio(metrics: Dict) -> Optional[float]:
 
 
 def assess_combined_ratio_quality(
-    combined_ratio: Optional[float], insurance_type: InsuranceType = InsuranceType.UNKNOWN
+    combined_ratio: Optional[float],
+    insurance_type: InsuranceType = InsuranceType.UNKNOWN,
 ) -> Tuple[str, str]:
     """
     Assess the quality of underwriting based on combined ratio.
@@ -203,18 +206,29 @@ def assess_combined_ratio_quality(
     target = TARGET_COMBINED_RATIOS.get(insurance_type, 0.95)
 
     if combined_ratio < COMBINED_RATIO_THRESHOLDS["excellent"]:
-        return ("excellent", f"Excellent underwriting ({combined_ratio:.1%} vs {target:.0%} target)")
+        return (
+            "excellent",
+            f"Excellent underwriting ({combined_ratio:.1%} vs {target:.0%} target)",
+        )
     elif combined_ratio < COMBINED_RATIO_THRESHOLDS["good"]:
-        return ("good", f"Good underwriting ({combined_ratio:.1%} vs {target:.0%} target)")
+        return (
+            "good",
+            f"Good underwriting ({combined_ratio:.1%} vs {target:.0%} target)",
+        )
     elif combined_ratio < COMBINED_RATIO_THRESHOLDS["acceptable"]:
-        return ("acceptable", f"Acceptable underwriting ({combined_ratio:.1%} vs {target:.0%} target)")
+        return (
+            "acceptable",
+            f"Acceptable underwriting ({combined_ratio:.1%} vs {target:.0%} target)",
+        )
     elif combined_ratio < COMBINED_RATIO_THRESHOLDS["weak"]:
         return ("weak", f"Weak underwriting ({combined_ratio:.1%} - slight loss)")
     else:
         return ("poor", f"Poor underwriting ({combined_ratio:.1%} - significant loss)")
 
 
-def extract_insurance_metrics_from_xbrl(symbol: str, xbrl_data: Dict, database_url: Optional[str] = None) -> Dict:
+def extract_insurance_metrics_from_xbrl(
+    symbol: str, xbrl_data: Dict, database_url: Optional[str] = None
+) -> Dict:
     """
     Extract insurance-specific metrics from XBRL data using insurance tag aliases.
 
@@ -254,7 +268,9 @@ def extract_insurance_metrics_from_xbrl(symbol: str, xbrl_data: Dict, database_u
 
     us_gaap = xbrl_data.get("facts", {}).get("us-gaap", {})
     if not us_gaap:
-        logger.warning(f"{symbol} - No us-gaap data available for insurance metric extraction")
+        logger.warning(
+            f"{symbol} - No us-gaap data available for insurance metric extraction"
+        )
         return metrics
 
     for metric_name in insurance_metrics:
@@ -270,10 +286,16 @@ def extract_insurance_metrics_from_xbrl(symbol: str, xbrl_data: Dict, database_u
                 if usd_data:
                     # Get the latest value (sorted by fiscal year/period)
                     sorted_data = sorted(
-                        [d for d in usd_data if d.get("form") in ["10-Q", "10-K", "20-F"]],
+                        [
+                            d
+                            for d in usd_data
+                            if d.get("form") in ["10-Q", "10-K", "20-F"]
+                        ],
                         key=lambda x: (
                             x.get("fy", 0),
-                            {"FY": 5, "Q4": 4, "Q3": 3, "Q2": 2, "Q1": 1}.get(x.get("fp", ""), 0),
+                            {"FY": 5, "Q4": 4, "Q3": 3, "Q2": 2, "Q1": 1}.get(
+                                x.get("fp", ""), 0
+                            ),
                         ),
                         reverse=True,
                     )
@@ -283,7 +305,8 @@ def extract_insurance_metrics_from_xbrl(symbol: str, xbrl_data: Dict, database_u
                         if value is not None:
                             metrics[metric_name] = float(value)
                             logger.debug(
-                                f"{symbol} - Extracted {metric_name} from {alias}: " f"${float(value)/1e9:.2f}B"
+                                f"{symbol} - Extracted {metric_name} from {alias}: "
+                                f"${float(value) / 1e9:.2f}B"
                             )
                             break  # Found value, move to next metric
 
@@ -331,11 +354,15 @@ def value_insurance_company(
 
     # If stockholders_equity or shares_outstanding is missing, try to fetch from database
     if not stockholders_equity or not shares_outstanding:
-        logger.info(f"{symbol} - Missing equity/shares data in financials, querying database...")
+        logger.info(
+            f"{symbol} - Missing equity/shares data in financials, querying database..."
+        )
         db_equity, db_shares, db_revenue = _fetch_from_database(symbol, database_url)
         if not stockholders_equity and db_equity:
             stockholders_equity = db_equity
-            warnings.append("stockholders_equity from database (not in financials dict)")
+            warnings.append(
+                "stockholders_equity from database (not in financials dict)"
+            )
         if not shares_outstanding and db_shares:
             shares_outstanding = db_shares
             warnings.append("shares_outstanding from database (not in financials dict)")
@@ -360,7 +387,9 @@ def value_insurance_company(
     if ttm_net_income and avg_equity:
         net_income = ttm_net_income
         roe = (net_income / avg_equity) * 100
-        logger.info(f"{symbol} - Using TTM metrics: NI=${net_income/1e9:.2f}B, Avg Equity=${avg_equity/1e9:.2f}B")
+        logger.info(
+            f"{symbol} - Using TTM metrics: NI=${net_income / 1e9:.2f}B, Avg Equity=${avg_equity / 1e9:.2f}B"
+        )
     else:
         net_income = financials.get("net_income", 0)
         if not net_income:
@@ -383,7 +412,9 @@ def value_insurance_company(
 
     if xbrl_data:
         # Extract insurance-specific metrics from XBRL
-        insurance_metrics = extract_insurance_metrics_from_xbrl(symbol, xbrl_data, database_url)
+        insurance_metrics = extract_insurance_metrics_from_xbrl(
+            symbol, xbrl_data, database_url
+        )
 
         # Calculate actual combined ratio from extracted metrics
         combined_ratio = calculate_combined_ratio(insurance_metrics)
@@ -392,19 +423,27 @@ def value_insurance_company(
 
         if combined_ratio is not None:
             # Assess underwriting quality based on combined ratio
-            underwriting_quality, underwriting_description = assess_combined_ratio_quality(
-                combined_ratio, insurance_type
+            underwriting_quality, underwriting_description = (
+                assess_combined_ratio_quality(combined_ratio, insurance_type)
             )
             logger.info(
                 f"{symbol} - Actual combined ratio extracted: {combined_ratio:.2%} "
                 f"(Loss: {loss_ratio:.2%}, Expense: {expense_ratio:.2%}) - {underwriting_description}"
             )
         else:
-            warnings.append("Could not extract combined ratio from XBRL - using net margin proxy")
-            logger.info(f"{symbol} - Combined ratio not available, falling back to net margin proxy")
+            warnings.append(
+                "Could not extract combined ratio from XBRL - using net margin proxy"
+            )
+            logger.info(
+                f"{symbol} - Combined ratio not available, falling back to net margin proxy"
+            )
     else:
-        warnings.append("No XBRL data provided - using net margin as combined ratio proxy")
-        logger.debug(f"{symbol} - No XBRL data provided for insurance metric extraction")
+        warnings.append(
+            "No XBRL data provided - using net margin as combined ratio proxy"
+        )
+        logger.debug(
+            f"{symbol} - No XBRL data provided for insurance metric extraction"
+        )
 
     # Calculate net margin (used as fallback or supplementary metric)
     net_margin = (net_income / total_revenue * 100) if total_revenue > 0 else 0
@@ -467,7 +506,11 @@ def value_insurance_company(
 
 
 def _determine_target_pb_from_combined_ratio(
-    symbol: str, roe: float, combined_ratio: float, insurance_type: InsuranceType, warnings: List[str]
+    symbol: str,
+    roe: float,
+    combined_ratio: float,
+    insurance_type: InsuranceType,
+    warnings: List[str],
 ) -> Tuple[float, str]:
     """
     Determine target P/BV ratio based on ROE and actual combined ratio.
@@ -516,19 +559,25 @@ def _determine_target_pb_from_combined_ratio(
     elif roe >= 10 and combined_ratio <= 1.00:
         target_pb = 1.15
         confidence = "high"
-        logger.info(f"{symbol} - Good insurer (ROE={roe:.1f}%, CR={combined_ratio:.1%}) -> P/BV={target_pb:.2f}x")
+        logger.info(
+            f"{symbol} - Good insurer (ROE={roe:.1f}%, CR={combined_ratio:.1%}) -> P/BV={target_pb:.2f}x"
+        )
 
     # Average: ROE > 8% AND combined ratio acceptable (< 100%)
     elif roe >= 8 and combined_ratio < 1.00:
         target_pb = 1.00
         confidence = "medium"
-        logger.info(f"{symbol} - Average insurer (ROE={roe:.1f}%, CR={combined_ratio:.1%}) -> P/BV={target_pb:.2f}x")
+        logger.info(
+            f"{symbol} - Average insurer (ROE={roe:.1f}%, CR={combined_ratio:.1%}) -> P/BV={target_pb:.2f}x"
+        )
 
     # Below Average: Underwriting loss but manageable
     elif combined_ratio >= 1.00 and combined_ratio < 1.05:
         target_pb = 0.85
         confidence = "medium"
-        warnings.append(f"Underwriting loss (CR={combined_ratio:.1%}), relies on investment income")
+        warnings.append(
+            f"Underwriting loss (CR={combined_ratio:.1%}), relies on investment income"
+        )
         logger.info(
             f"{symbol} - Below-average insurer (ROE={roe:.1f}%, CR={combined_ratio:.1%}) -> P/BV={target_pb:.2f}x"
         )
@@ -537,8 +586,12 @@ def _determine_target_pb_from_combined_ratio(
     else:
         target_pb = 0.70
         confidence = "low"
-        warnings.append(f"Significant underwriting loss (CR={combined_ratio:.1%}) - distressed valuation")
-        logger.warning(f"{symbol} - Weak insurer (ROE={roe:.1f}%, CR={combined_ratio:.1%}) -> P/BV={target_pb:.2f}x")
+        warnings.append(
+            f"Significant underwriting loss (CR={combined_ratio:.1%}) - distressed valuation"
+        )
+        logger.warning(
+            f"{symbol} - Weak insurer (ROE={roe:.1f}%, CR={combined_ratio:.1%}) -> P/BV={target_pb:.2f}x"
+        )
 
     return target_pb, confidence
 
@@ -599,13 +652,17 @@ def _fetch_from_database(
             if result:
                 logger.info(
                     f"{symbol} - Fetched from database: "
-                    f"equity=${float(result.stockholders_equity)/1e9:.2f}B, "
-                    f"shares={float(result.shares_outstanding or 0)/1e6:.1f}M, "
+                    f"equity=${float(result.stockholders_equity) / 1e9:.2f}B, "
+                    f"shares={float(result.shares_outstanding or 0) / 1e6:.1f}M, "
                     f"period={result.fiscal_year}-{result.fiscal_period}"
                 )
                 return (
-                    float(result.stockholders_equity) if result.stockholders_equity else None,
-                    float(result.shares_outstanding) if result.shares_outstanding else None,
+                    float(result.stockholders_equity)
+                    if result.stockholders_equity
+                    else None,
+                    float(result.shares_outstanding)
+                    if result.shares_outstanding
+                    else None,
                     float(result.total_revenue) if result.total_revenue else None,
                 )
 
@@ -677,19 +734,23 @@ def _calculate_ttm_metrics(
                     f"{symbol} - Only found {len(results)} quarters for TTM calculation "
                     f"(need 4). Falling back to quarterly data."
                 )
-                warnings.append(f"Insufficient quarterly data ({len(results)}/4 quarters)")
+                warnings.append(
+                    f"Insufficient quarterly data ({len(results)}/4 quarters)"
+                )
                 return None, None
 
             # Calculate TTM net income (sum) and average equity
             # Convert Decimal to float to avoid type issues
             ttm_net_income = float(sum(row.net_income for row in results))
-            avg_equity = float(sum(row.stockholders_equity for row in results)) / len(results)
+            avg_equity = float(sum(row.stockholders_equity for row in results)) / len(
+                results
+            )
 
             logger.info(
                 f"{symbol} - TTM calculation: "
                 f"Quarters: {[f'{r.fiscal_year}-{r.fiscal_period}' for r in results]}, "
-                f"TTM NI=${ttm_net_income/1e9:.2f}B, "
-                f"Avg Equity=${avg_equity/1e9:.2f}B"
+                f"TTM NI=${ttm_net_income / 1e9:.2f}B, "
+                f"Avg Equity=${avg_equity / 1e9:.2f}B"
             )
 
             return ttm_net_income, avg_equity
@@ -700,7 +761,9 @@ def _calculate_ttm_metrics(
         return None, None
 
 
-def _determine_target_pb(symbol: str, roe: float, net_margin: float, warnings: List[str]) -> Tuple[float, str]:
+def _determine_target_pb(
+    symbol: str, roe: float, net_margin: float, warnings: List[str]
+) -> Tuple[float, str]:
     """
     Determine target P/BV ratio based on ROE and underwriting quality
 
@@ -746,20 +809,26 @@ def _determine_target_pb(symbol: str, roe: float, net_margin: float, warnings: L
     elif roe >= 8 and net_margin >= 3:
         target_pb = 0.85
         confidence = "medium"
-        warnings.append(f"Below-average profitability (ROE={roe:.1f}%, Margin={net_margin:.1f}%)")
+        warnings.append(
+            f"Below-average profitability (ROE={roe:.1f}%, Margin={net_margin:.1f}%)"
+        )
         logger.info(f"{symbol} - Below-average insurer profile → P/BV={target_pb:.2f}x")
 
     # Weak insurers: ROE < 8% or Margin < 3%
     else:
         target_pb = 0.70
         confidence = "low"
-        warnings.append(f"Weak profitability (ROE={roe:.1f}%, Margin={net_margin:.1f}%) suggests distressed insurer")
+        warnings.append(
+            f"Weak profitability (ROE={roe:.1f}%, Margin={net_margin:.1f}%) suggests distressed insurer"
+        )
         logger.warning(f"{symbol} - Weak insurer profile → P/BV={target_pb:.2f}x")
 
     return target_pb, confidence
 
 
-def calculate_insurance_specific_metrics(symbol: str, financials: Dict, xbrl_data: Optional[Dict] = None) -> Dict:
+def calculate_insurance_specific_metrics(
+    symbol: str, financials: Dict, xbrl_data: Optional[Dict] = None
+) -> Dict:
     """
     Calculate insurance-specific metrics from XBRL data or financial metrics.
 
@@ -806,21 +875,27 @@ def calculate_insurance_specific_metrics(symbol: str, financials: Dict, xbrl_dat
 
         # Assess underwriting quality
         if metrics["combined_ratio"] is not None:
-            quality, description = assess_combined_ratio_quality(metrics["combined_ratio"])
+            quality, description = assess_combined_ratio_quality(
+                metrics["combined_ratio"]
+            )
             metrics["underwriting_quality"] = quality
             metrics["underwriting_description"] = description
 
         logger.info(
             f"{symbol} - Insurance metrics calculated: "
-            f"Premiums=${metrics.get('premiums_earned', 0)/1e9:.2f}B, "
+            f"Premiums=${metrics.get('premiums_earned', 0) / 1e9:.2f}B, "
             f"Combined Ratio={metrics.get('combined_ratio', 'N/A')}"
         )
     else:
         # Fallback: Use financials dict with placeholders
-        metrics["premiums_earned"] = financials.get("total_revenue") or financials.get("premiums_earned")
+        metrics["premiums_earned"] = financials.get("total_revenue") or financials.get(
+            "premiums_earned"
+        )
         metrics["claims_incurred"] = financials.get("claims_incurred")
         metrics["policy_acquisition_costs"] = financials.get("policy_acquisition_costs")
-        metrics["insurance_operating_expenses"] = financials.get("insurance_operating_expenses")
+        metrics["insurance_operating_expenses"] = financials.get(
+            "insurance_operating_expenses"
+        )
 
         # Try to calculate combined ratio if we have the data
         metrics["combined_ratio"] = calculate_combined_ratio(metrics)
@@ -829,6 +904,8 @@ def calculate_insurance_specific_metrics(symbol: str, financials: Dict, xbrl_dat
         metrics["float"] = None  # Cannot calculate without XBRL data
 
         if metrics["combined_ratio"] is None:
-            logger.debug(f"{symbol} - Combined ratio not available from financials dict")
+            logger.debug(
+                f"{symbol} - Combined ratio not available from financials dict"
+            )
 
     return metrics

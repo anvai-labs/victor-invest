@@ -3,12 +3,9 @@ XBRL Parser Module
 Parses XBRL data from SEC filings
 """
 
-import json
 import logging
-import re
 import xml.etree.ElementTree as ET
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +33,12 @@ class XBRLParser:
             # Try to parse as XML
             root = ET.fromstring(xbrl_content)
 
-            parsed_data = {"financial_data": {}, "document_info": {}, "contexts": {}, "units": {}}
+            parsed_data = {
+                "financial_data": {},
+                "document_info": {},
+                "contexts": {},
+                "units": {},
+            }
 
             # Extract basic document information
             parsed_data["document_info"] = self._extract_document_info(root)
@@ -106,7 +108,9 @@ class XBRLParser:
                         unit_ref = node.get("unitRef", "")
                         value = node.text
 
-                        values.append({"value": value, "context": context_ref, "unit": unit_ref})
+                        values.append(
+                            {"value": value, "context": context_ref, "unit": unit_ref}
+                        )
 
                     if values:
                         financial_data[element] = values
@@ -140,9 +144,13 @@ class XBRLParser:
                 metrics["Equity"] = metrics["Assets"] - metrics["Liabilities"]
 
             if "AssetsCurrent" in metrics and "LiabilitiesCurrent" in metrics:
-                metrics["WorkingCapital"] = metrics["AssetsCurrent"] - metrics["LiabilitiesCurrent"]
+                metrics["WorkingCapital"] = (
+                    metrics["AssetsCurrent"] - metrics["LiabilitiesCurrent"]
+                )
                 if metrics["LiabilitiesCurrent"] > 0:
-                    metrics["CurrentRatio"] = metrics["AssetsCurrent"] / metrics["LiabilitiesCurrent"]
+                    metrics["CurrentRatio"] = (
+                        metrics["AssetsCurrent"] / metrics["LiabilitiesCurrent"]
+                    )
 
         except Exception as e:
             logger.error(f"Error extracting metrics: {e}")
@@ -185,9 +193,9 @@ class XBRLParser:
                     else:
                         # Format large numbers
                         if abs(value) >= 1e9:
-                            statement.append(f"{label}: ${value/1e9:.2f}B")
+                            statement.append(f"{label}: ${value / 1e9:.2f}B")
                         elif abs(value) >= 1e6:
-                            statement.append(f"{label}: ${value/1e6:.2f}M")
+                            statement.append(f"{label}: ${value / 1e6:.2f}M")
                         else:
                             statement.append(f"{label}: ${value:,.0f}")
 

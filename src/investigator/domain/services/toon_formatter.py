@@ -8,7 +8,7 @@ Licensed under the Apache License 2.0
 """
 
 import logging
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,9 @@ class TOONFormatter:
     """
 
     @staticmethod
-    def format_array(data: List[Dict[str, Any]], name: str = "data", precision: int = 2) -> str:
+    def format_array(
+        data: List[Dict[str, Any]], name: str = "data", precision: int = 2
+    ) -> str:
         """
         Convert uniform JSON array to TOON format.
 
@@ -91,7 +93,9 @@ class TOONFormatter:
             return json.dumps(val)
 
     @staticmethod
-    def format_quarterly_data(quarters: List[Dict[str, Any]], metric_keys: List[str] = None) -> str:
+    def format_quarterly_data(
+        quarters: List[Dict[str, Any]], metric_keys: List[str] = None
+    ) -> str:
         """
         Format quarterly financial data with smart metric selection.
 
@@ -129,12 +133,18 @@ class TOONFormatter:
             metric_keys += [k for k in all_keys if k not in metric_keys]
 
         # Filter quarters to only include specified keys
-        filtered_quarters = [{k: q.get(k) for k in metric_keys if k in q} for q in quarters]
+        filtered_quarters = [
+            {k: q.get(k) for k in metric_keys if k in q} for q in quarters
+        ]
 
-        return TOONFormatter.format_array(filtered_quarters, name="quarterly_data", precision=2)
+        return TOONFormatter.format_array(
+            filtered_quarters, name="quarterly_data", precision=2
+        )
 
     @staticmethod
-    def format_peer_comparison(peers: List[Dict[str, Any]], metric_keys: List[str] = None) -> str:
+    def format_peer_comparison(
+        peers: List[Dict[str, Any]], metric_keys: List[str] = None
+    ) -> str:
         """
         Format peer comparison data.
 
@@ -146,11 +156,15 @@ class TOONFormatter:
             TOON-formatted peer data
         """
         if metric_keys:
-            filtered_peers = [{k: p.get(k) for k in metric_keys if k in p} for p in peers]
+            filtered_peers = [
+                {k: p.get(k) for k in metric_keys if k in p} for p in peers
+            ]
         else:
             filtered_peers = peers
 
-        return TOONFormatter.format_array(filtered_peers, name="peer_companies", precision=2)
+        return TOONFormatter.format_array(
+            filtered_peers, name="peer_companies", precision=2
+        )
 
     @staticmethod
     def get_format_explanation() -> str:

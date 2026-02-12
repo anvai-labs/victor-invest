@@ -33,7 +33,6 @@ Usage:
 import argparse
 import asyncio
 import sys
-from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Optional
 
@@ -42,17 +41,16 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from psycopg2.extras import Json
+from psycopg2.extras import Json  # noqa: E402
 
-from investigator.config.lookback_periods import INSIDER_PERIODS
-from scripts.scheduled.base import (
+from investigator.config.lookback_periods import INSIDER_PERIODS  # noqa: E402
+from scripts.scheduled.base import (  # noqa: E402
     BaseCollector,
     CollectionMetrics,
     compute_record_hash,
     get_database_connection,
     get_sp500_symbols,
     get_watermark,
-    retry_with_backoff,
     update_watermark,
 )
 
@@ -101,8 +99,12 @@ class InsiderTransactionCollector(BaseCollector):
                     watermark = get_watermark(
                         cursor, "form4_fetch_watermarks", "symbol", symbol
                     )
-                    last_accession = watermark.get("last_accession_number") if watermark else None
-                    last_filing_date = watermark.get("last_filing_date") if watermark else None
+                    last_accession = (
+                        watermark.get("last_accession_number") if watermark else None
+                    )
+                    last_filing_date = (
+                        watermark.get("last_filing_date") if watermark else None
+                    )
 
                     if last_accession:
                         self.logger.debug(
@@ -150,7 +152,11 @@ class InsiderTransactionCollector(BaseCollector):
 
                             # Get transaction type and code
                             txn_code = txn.transaction_code
-                            txn_type = txn.transaction_type.value if txn.transaction_type else txn_code
+                            txn_type = (
+                                txn.transaction_type.value
+                                if txn.transaction_type
+                                else txn_code
+                            )
 
                             # Determine significance
                             is_significant = filing.is_significant
@@ -164,20 +170,25 @@ class InsiderTransactionCollector(BaseCollector):
                             filing_data = filing.to_dict()
 
                             # Compute hash for change detection
-                            record_hash = compute_record_hash({
-                                "accession": accession,
-                                "owner": owner_name,
-                                "txn_code": txn_code,
-                                "shares": str(txn.shares),
-                                "price": str(txn.price_per_share),
-                                "value": str(txn.total_value),
-                            })
+                            record_hash = compute_record_hash(
+                                {
+                                    "accession": accession,
+                                    "owner": owner_name,
+                                    "txn_code": txn_code,
+                                    "shares": str(txn.shares),
+                                    "price": str(txn.price_per_share),
+                                    "value": str(txn.total_value),
+                                }
+                            )
 
                             # Check if record already exists with hash comparison
-                            cursor.execute("""
+                            cursor.execute(
+                                """
                                 SELECT id, source_hash FROM form4_filings
                                 WHERE accession_number = %s AND owner_name = %s
-                            """, (accession, owner_name))
+                            """,
+                                (accession, owner_name),
+                            )
 
                             existing = cursor.fetchone()
                             if existing:
@@ -187,7 +198,8 @@ class InsiderTransactionCollector(BaseCollector):
                                     self.metrics.records_skipped += 1
                                     continue
                                 # Update existing record
-                                cursor.execute("""
+                                cursor.execute(
+                                    """
                                     UPDATE form4_filings SET
                                         transaction_type = %s, transaction_code = %s,
                                         shares = %s, price_per_share = %s, total_value = %s,
@@ -195,15 +207,25 @@ class InsiderTransactionCollector(BaseCollector):
                                         filing_data = %s, source_hash = %s,
                                         source_fetch_timestamp = NOW(), updated_at = NOW()
                                     WHERE id = %s
-                                """, (
-                                    txn_type, txn_code, txn.shares, txn.price_per_share,
-                                    txn.total_value, is_significant, significance_reasons,
-                                    Json(filing_data), record_hash, existing_id,
-                                ))
+                                """,
+                                    (
+                                        txn_type,
+                                        txn_code,
+                                        txn.shares,
+                                        txn.price_per_share,
+                                        txn.total_value,
+                                        is_significant,
+                                        significance_reasons,
+                                        Json(filing_data),
+                                        record_hash,
+                                        existing_id,
+                                    ),
+                                )
                                 self.metrics.records_updated += 1
                             else:
                                 # Insert new record
-                                cursor.execute("""
+                                cursor.execute(
+                                    """
                                     INSERT INTO form4_filings
                                         (symbol, cik, accession_number, filing_date,
                                          owner_name, owner_title, is_director, is_officer,
@@ -212,29 +234,33 @@ class InsiderTransactionCollector(BaseCollector):
                                          is_significant, significance_reasons, filing_data,
                                          source_hash, source_fetch_timestamp)
                                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
-                                """, (
-                                    symbol,
-                                    filing.issuer_cik,
-                                    accession,
-                                    filing.filing_date,
-                                    owner_name,
-                                    owner_title,
-                                    is_director,
-                                    is_officer,
-                                    txn_type,
-                                    txn_code,
-                                    txn.shares,
-                                    txn.price_per_share,
-                                    txn.total_value,
-                                    is_significant,
-                                    significance_reasons,
-                                    Json(filing_data),
-                                    record_hash,
-                                ))
+                                """,
+                                    (
+                                        symbol,
+                                        filing.issuer_cik,
+                                        accession,
+                                        filing.filing_date,
+                                        owner_name,
+                                        owner_title,
+                                        is_director,
+                                        is_officer,
+                                        txn_type,
+                                        txn_code,
+                                        txn.shares,
+                                        txn.price_per_share,
+                                        txn.total_value,
+                                        is_significant,
+                                        significance_reasons,
+                                        Json(filing_data),
+                                        record_hash,
+                                    ),
+                                )
                                 self.metrics.records_inserted += 1
 
                     # Update watermark for this symbol
-                    if newest_accession and (last_accession is None or newest_accession > last_accession):
+                    if newest_accession and (
+                        last_accession is None or newest_accession > last_accession
+                    ):
                         update_watermark(
                             cursor,
                             "form4_fetch_watermarks",
@@ -280,7 +306,8 @@ class InsiderTransactionCollector(BaseCollector):
             # Calculate sentiment using standard period from shared config
             sentiment_days = INSIDER_PERIODS.standard_days
             cluster_days = INSIDER_PERIODS.recent_days
-            cursor.execute(f"""
+            cursor.execute(
+                f"""
                 WITH recent_txns AS (
                     SELECT
                         transaction_type,
@@ -296,7 +323,9 @@ class InsiderTransactionCollector(BaseCollector):
                     COALESCE(SUM(total_value) FILTER (WHERE transaction_type IN ('P', 'A')), 0) as buy_value,
                     COALESCE(SUM(total_value) FILTER (WHERE transaction_type IN ('S', 'D')), 0) as sell_value
                 FROM recent_txns
-            """, (symbol,))
+            """,
+                (symbol,),
+            )
 
             row = cursor.fetchone()
             if row:
@@ -320,28 +349,35 @@ class InsiderTransactionCollector(BaseCollector):
                 sentiment_score = 0.3 * count_ratio + 0.7 * value_ratio
 
                 # Detect cluster (3+ insiders buying/selling in cluster period)
-                cursor.execute(f"""
+                cursor.execute(
+                    f"""
                     SELECT COUNT(DISTINCT owner_name)
                     FROM form4_filings
                     WHERE symbol = %s
                       AND filing_date >= CURRENT_DATE - INTERVAL '{cluster_days} days'
                       AND transaction_type IN ('P', 'A')
-                """, (symbol,))
+                """,
+                    (symbol,),
+                )
                 buy_insiders = cursor.fetchone()[0] or 0
 
-                cursor.execute(f"""
+                cursor.execute(
+                    f"""
                     SELECT COUNT(DISTINCT owner_name)
                     FROM form4_filings
                     WHERE symbol = %s
                       AND filing_date >= CURRENT_DATE - INTERVAL '{cluster_days} days'
                       AND transaction_type IN ('S', 'D')
-                """, (symbol,))
+                """,
+                    (symbol,),
+                )
                 sell_insiders = cursor.fetchone()[0] or 0
 
                 cluster_detected = buy_insiders >= 3 or sell_insiders >= 3
 
                 # Store sentiment
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO insider_sentiment
                         (symbol, calculation_date, period_days,
                          buy_count, sell_count, buy_value, sell_value,
@@ -356,10 +392,18 @@ class InsiderTransactionCollector(BaseCollector):
                         sentiment_score = EXCLUDED.sentiment_score,
                         cluster_detected = EXCLUDED.cluster_detected,
                         updated_at = NOW()
-                """, (
-                    symbol, sentiment_days, buy_count, sell_count, buy_value, sell_value,
-                    sentiment_score, cluster_detected,
-                ))
+                """,
+                    (
+                        symbol,
+                        sentiment_days,
+                        buy_count,
+                        sell_count,
+                        buy_value,
+                        sell_value,
+                        sentiment_score,
+                        cluster_detected,
+                    ),
+                )
 
         except Exception as e:
             self.logger.debug(f"Could not update sentiment for {symbol}: {e}")
@@ -370,15 +414,13 @@ def main():
         description="Collect SEC Form 4 insider transactions"
     )
     parser.add_argument(
-        "--symbols",
-        type=str,
-        help="Comma-separated list of symbols (default: S&P 500)"
+        "--symbols", type=str, help="Comma-separated list of symbols (default: S&P 500)"
     )
     parser.add_argument(
         "--hours",
         type=int,
         default=INSIDER_PERIODS.collector_hours,
-        help=f"Hours to look back (default: {INSIDER_PERIODS.collector_hours})"
+        help=f"Hours to look back (default: {INSIDER_PERIODS.collector_hours})",
     )
     args = parser.parse_args()
 

@@ -26,7 +26,9 @@ Usage:
     result = pipeline.run()
 """
 
-from investigator.domain.services.rl.training.experience_collector import ExperienceCollector
+from investigator.domain.services.rl.training.experience_collector import (
+    ExperienceCollector,
+)
 from investigator.domain.services.rl.training.pipeline import RLTrainingPipeline
 from investigator.domain.services.rl.training.trainer import RLTrainer
 

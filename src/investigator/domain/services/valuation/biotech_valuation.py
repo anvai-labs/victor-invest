@@ -162,15 +162,19 @@ def calculate_cash_runway(
         dilution_warning = False
     elif months >= 12:
         risk = CashRunwayRisk.HIGH
-        risk_description = f"Short runway ({months:.1f} months) - financing likely needed soon"
+        risk_description = (
+            f"Short runway ({months:.1f} months) - financing likely needed soon"
+        )
         dilution_warning = True
     else:
         risk = CashRunwayRisk.CRITICAL
-        risk_description = f"Critical runway ({months:.1f} months) - imminent financing required"
+        risk_description = (
+            f"Critical runway ({months:.1f} months) - imminent financing required"
+        )
         dilution_warning = True
 
     logger.info(
-        f"Cash runway: ${total_liquidity/1e6:.1f}M / ${monthly_burn/1e6:.1f}M/month = "
+        f"Cash runway: ${total_liquidity / 1e6:.1f}M / ${monthly_burn / 1e6:.1f}M/month = "
         f"{months:.1f} months ({risk.value} risk)"
     )
 
@@ -298,14 +302,66 @@ THERAPEUTIC_AREA_BENCHMARKS = {
 
 # Therapeutic area keywords for classification
 THERAPEUTIC_AREA_KEYWORDS = {
-    "oncology": ["oncol", "cancer", "tumor", "lymphoma", "leukemia", "melanoma", "carcinoma"],
-    "rare_disease": ["rare", "orphan", "genetic disorder", "lysosomal", "enzyme replacement"],
+    "oncology": [
+        "oncol",
+        "cancer",
+        "tumor",
+        "lymphoma",
+        "leukemia",
+        "melanoma",
+        "carcinoma",
+    ],
+    "rare_disease": [
+        "rare",
+        "orphan",
+        "genetic disorder",
+        "lysosomal",
+        "enzyme replacement",
+    ],
     "immunology": ["immun", "autoimmun", "inflamm", "arthritis", "lupus", "crohn"],
-    "cns": ["neuro", "alzheim", "parkinson", "epilep", "schizo", "depress", "anxiety", "brain"],
-    "cardiovascular": ["cardio", "heart", "vascular", "hypertension", "cholesterol", "lipid"],
-    "infectious_disease": ["infect", "antiviral", "antibact", "antifung", "vaccine", "hiv", "hepatitis"],
-    "gene_therapy": ["gene therapy", "aav", "lentivir", "crispr", "gene editing", "genetic medicine"],
-    "cell_therapy": ["cell therapy", "car-t", "cart", "stem cell", "cellular therapy", "adoptive"],
+    "cns": [
+        "neuro",
+        "alzheim",
+        "parkinson",
+        "epilep",
+        "schizo",
+        "depress",
+        "anxiety",
+        "brain",
+    ],
+    "cardiovascular": [
+        "cardio",
+        "heart",
+        "vascular",
+        "hypertension",
+        "cholesterol",
+        "lipid",
+    ],
+    "infectious_disease": [
+        "infect",
+        "antiviral",
+        "antibact",
+        "antifung",
+        "vaccine",
+        "hiv",
+        "hepatitis",
+    ],
+    "gene_therapy": [
+        "gene therapy",
+        "aav",
+        "lentivir",
+        "crispr",
+        "gene editing",
+        "genetic medicine",
+    ],
+    "cell_therapy": [
+        "cell therapy",
+        "car-t",
+        "cart",
+        "stem cell",
+        "cellular therapy",
+        "adoptive",
+    ],
 }
 
 
@@ -385,12 +441,21 @@ def calculate_comparables_benchmark(
     """
     # Classify therapeutic area
     therapeutic_area = classify_therapeutic_area(indication, company_name, pipeline)
-    benchmarks = THERAPEUTIC_AREA_BENCHMARKS.get(therapeutic_area, THERAPEUTIC_AREA_BENCHMARKS["default"])
+    benchmarks = THERAPEUTIC_AREA_BENCHMARKS.get(
+        therapeutic_area, THERAPEUTIC_AREA_BENCHMARKS["default"]
+    )
 
     # Determine most advanced phase in pipeline
     most_advanced_phase = "preclinical"
     if pipeline:
-        phase_order = ["preclinical", "phase_1", "phase_2", "phase_3", "filed_nda", "approved"]
+        phase_order = [
+            "preclinical",
+            "phase_1",
+            "phase_2",
+            "phase_3",
+            "filed_nda",
+            "approved",
+        ]
         for drug in pipeline:
             phase = drug.get("phase", "preclinical").lower().replace(" ", "_")
             if phase in phase_order:
@@ -419,11 +484,13 @@ def calculate_comparables_benchmark(
     total_value = ev_mid + cash
 
     # Calculate per-share
-    fair_value_per_share = total_value / shares_outstanding if shares_outstanding > 0 else 0
+    fair_value_per_share = (
+        total_value / shares_outstanding if shares_outstanding > 0 else 0
+    )
 
     logger.info(
         f"Comparable benchmark: area={therapeutic_area}, phase={most_advanced_phase}, "
-        f"EV range=${ev_low/1e9:.1f}B-${ev_high/1e9:.1f}B, "
+        f"EV range=${ev_low / 1e9:.1f}B-${ev_high / 1e9:.1f}B, "
         f"premium={deal_premium:.0%}, fair value=${fair_value_per_share:.2f}"
     )
 
@@ -506,13 +573,17 @@ def calculate_pipeline_value(
         else:
             prob = PHASE_SUCCESS_PROBABILITIES.get(phase, 0.05)
             if phase not in PHASE_SUCCESS_PROBABILITIES:
-                warnings.append(f"Unknown phase '{phase}' for {drug_name}, using 5% probability")
+                warnings.append(
+                    f"Unknown phase '{phase}' for {drug_name}, using 5% probability"
+                )
 
         # Calculate probability-weighted value
         pw_sales = peak_sales * prob * market_discount
 
         # For early-stage drugs, apply time discount
-        time_years = BIOTECH_PRE_REVENUE_TIER["parameters"]["development_time_years"].get(phase, 5)
+        time_years = BIOTECH_PRE_REVENUE_TIER["parameters"][
+            "development_time_years"
+        ].get(phase, 5)
         discount_rate = BIOTECH_PRE_REVENUE_TIER["parameters"]["discount_rate"]
         time_discount = 1 / ((1 + discount_rate) ** time_years)
 
@@ -537,14 +608,14 @@ def calculate_pipeline_value(
         total_value += drug_npv
 
         logger.debug(
-            f"Pipeline drug {drug_name}: Phase={phase}, Peak=${peak_sales/1e9:.2f}B, "
-            f"Prob={prob:.0%}, PW Sales=${pw_sales/1e9:.2f}B, NPV=${drug_npv/1e9:.2f}B"
+            f"Pipeline drug {drug_name}: Phase={phase}, Peak=${peak_sales / 1e9:.2f}B, "
+            f"Prob={prob:.0%}, PW Sales=${pw_sales / 1e9:.2f}B, NPV=${drug_npv / 1e9:.2f}B"
         )
 
     logger.info(
         f"Pipeline valuation: {len(pipeline)} drugs, "
-        f"Total PW Sales=${total_probability_weighted_sales/1e9:.2f}B, "
-        f"Total NPV=${total_value/1e9:.2f}B"
+        f"Total PW Sales=${total_probability_weighted_sales / 1e9:.2f}B, "
+        f"Total NPV=${total_value / 1e9:.2f}B"
     )
 
     return PipelineValuationResult(
@@ -659,10 +730,13 @@ def is_pre_revenue_biotech(
     if revenue < revenue_threshold:
         return (
             True,
-            f"Pre-revenue biotech ({biotech_reason}, revenue=${revenue/1e6:.1f}M < ${revenue_threshold/1e6:.0f}M threshold)",
+            f"Pre-revenue biotech ({biotech_reason}, revenue=${revenue / 1e6:.1f}M < ${revenue_threshold / 1e6:.0f}M threshold)",
         )
 
-    return False, f"Revenue-generating biotech (${revenue/1e6:.1f}M > ${revenue_threshold/1e6:.0f}M threshold)"
+    return (
+        False,
+        f"Revenue-generating biotech (${revenue / 1e6:.1f}M > ${revenue_threshold / 1e6:.0f}M threshold)",
+    )
 
 
 # ====================
@@ -724,7 +798,7 @@ def value_biotech(
     cash = financials.get("cash", 0) or financials.get("cash_and_equivalents", 0)
     quarterly_burn = financials.get("quarterly_burn", 0)
     shares_outstanding = financials.get("shares_outstanding", 0)
-    revenue = financials.get("revenue", 0) or financials.get("total_revenue", 0)
+    financials.get("revenue", 0) or financials.get("total_revenue", 0)
 
     # Validate required data
     if not shares_outstanding:
@@ -740,7 +814,9 @@ def value_biotech(
         operating_cf = financials.get("operating_cash_flow", 0)
         if operating_cf < 0:
             quarterly_burn = abs(operating_cf) / 4  # Annualize and quarterly
-            warnings.append(f"Estimated quarterly burn from OCF: ${quarterly_burn/1e6:.1f}M")
+            warnings.append(
+                f"Estimated quarterly burn from OCF: ${quarterly_burn / 1e6:.1f}M"
+            )
         else:
             # Fallback: assume typical biotech burn
             quarterly_burn = cash * 0.08  # ~32% annual burn rate
@@ -812,12 +888,18 @@ def value_biotech(
         # Full weighting when pipeline data available
         pipeline_contribution = pipeline_value * (weights["pipeline_value"] / 100)
         cash_contribution = adjusted_cash * (weights["cash_runway"] / 100)
-        comparables_contribution = comparables_value * (weights["comparable_deals"] / 100)
+        comparables_contribution = comparables_value * (
+            weights["comparable_deals"] / 100
+        )
         total_ev = pipeline_contribution + cash_contribution + comparables_contribution
 
         # Normalize to ensure we're not double-counting
         # The weights should reflect relative importance, not absolute sum
-        total_weight = weights["pipeline_value"] + weights["cash_runway"] + weights["comparable_deals"]
+        total_weight = (
+            weights["pipeline_value"]
+            + weights["cash_runway"]
+            + weights["comparable_deals"]
+        )
         total_ev = total_ev * (100 / total_weight)
     else:
         # No pipeline - use comparables and cash only (reweight to 60/40)
@@ -836,8 +918,8 @@ def value_biotech(
     # Log valuation summary
     logger.info(
         f"{symbol} - Biotech valuation: "
-        f"Pipeline=${pipeline_value/1e9:.2f}B, Cash=${cash/1e6:.1f}M (adj ${adjusted_cash/1e6:.1f}M), "
-        f"EV=${total_ev/1e9:.2f}B, Fair value=${fair_value_per_share:.2f}/share, "
+        f"Pipeline=${pipeline_value / 1e9:.2f}B, Cash=${cash / 1e6:.1f}M (adj ${adjusted_cash / 1e6:.1f}M), "
+        f"EV=${total_ev / 1e9:.2f}B, Fair value=${fair_value_per_share:.2f}/share, "
         f"Runway={cash_runway.months:.1f} months ({cash_runway.risk.value})"
     )
 

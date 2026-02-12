@@ -9,17 +9,14 @@ Strategy pattern implementations for different SEC data fetching approaches
 """
 
 import logging
-import time
 from abc import ABC, abstractmethod
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List
 
 from data.models import FinancialStatementData, QuarterlyData
 from investigator.config import get_config
 from investigator.infrastructure.cache import get_cache_manager
 from investigator.infrastructure.cache.cache_types import CacheType
-from investigator.infrastructure.database.ticker_mapper import TickerCIKMapper
 from investigator.infrastructure.http import SECAPIClient
 
 logger = logging.getLogger(__name__)
@@ -29,7 +26,9 @@ class ISECDataFetchStrategy(ABC):
     """Interface for SEC data fetching strategies"""
 
     @abstractmethod
-    def fetch_quarterly_data(self, symbol: str, cik: str, max_periods: int) -> List[QuarterlyData]:
+    def fetch_quarterly_data(
+        self, symbol: str, cik: str, max_periods: int
+    ) -> List[QuarterlyData]:
         """Fetch quarterly data using this strategy"""
         pass
 
@@ -49,16 +48,22 @@ class CompanyFactsStrategy(ISECDataFetchStrategy):
 
     def __init__(self, config=None):
         self.config = config or get_config()
-        self.api_client = SECAPIClient(user_agent=self.config.sec.user_agent, config=self.config)
+        self.api_client = SECAPIClient(
+            user_agent=self.config.sec.user_agent, config=self.config
+        )
         self.cache_manager = get_cache_manager()
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-    def fetch_quarterly_data(self, symbol: str, cik: str, max_periods: int) -> List[QuarterlyData]:
+    def fetch_quarterly_data(
+        self, symbol: str, cik: str, max_periods: int
+    ) -> List[QuarterlyData]:
         """Fetch quarterly data from company facts"""
         try:
             # Check cache first - include both symbol and cik for file cache compatibility
             cache_key = {"symbol": symbol, "cik": cik}
-            self.logger.info(f"🔍 CACHE GET: About to call cache_manager.get for {symbol}")
+            self.logger.info(
+                f"🔍 CACHE GET: About to call cache_manager.get for {symbol}"
+            )
             cached_data = self.cache_manager.get(CacheType.COMPANY_FACTS, cache_key)
             self.logger.info(
                 f"🔍 CACHE RESULT: {symbol} -> cached_data type: {type(cached_data)}, is_truthy: {bool(cached_data)}"
@@ -69,7 +74,9 @@ class CompanyFactsStrategy(ISECDataFetchStrategy):
                 facts = cached_data.get("companyfacts")
             else:
                 # Fetch from API using provided CIK
-                self.logger.info(f"Fetching company facts for {symbol} (CIK: {cik}) from SEC API")
+                self.logger.info(
+                    f"Fetching company facts for {symbol} (CIK: {cik}) from SEC API"
+                )
                 facts = self.api_client.get_company_facts(cik)
 
                 # Cache the results
@@ -91,9 +98,13 @@ class CompanyFactsStrategy(ISECDataFetchStrategy):
             self.logger.error(f"Error fetching company facts for {symbol}: {e}")
             return []
 
-    def _extract_quarterly_data(self, facts: Dict, symbol: str, cik: str, max_periods: int) -> List[QuarterlyData]:
+    def _extract_quarterly_data(
+        self, facts: Dict, symbol: str, cik: str, max_periods: int
+    ) -> List[QuarterlyData]:
         """Extract quarterly data from company facts"""
-        self.logger.info(f"🔍 EXTRACT_QUARTERLY_DATA CALLED: {symbol}, max_periods: {max_periods}")
+        self.logger.info(
+            f"🔍 EXTRACT_QUARTERLY_DATA CALLED: {symbol}, max_periods: {max_periods}"
+        )
         self.logger.info(
             f"🔍 Facts data type: {type(facts)}, facts keys: {list(facts.keys()) if isinstance(facts, dict) else 'NOT_DICT'}"
         )
@@ -166,7 +177,9 @@ class CompanyFactsStrategy(ISECDataFetchStrategy):
                                     "end_date": entry.get("end", ""),
                                     "metrics": {},
                                 }
-                            period_data[key]["metrics"][metric_name] = entry.get("val", 0)
+                            period_data[key]["metrics"][metric_name] = entry.get(
+                                "val", 0
+                            )
 
                 # Handle shares (non-monetary)
                 elif "shares" in units:
@@ -189,11 +202,15 @@ class CompanyFactsStrategy(ISECDataFetchStrategy):
                                     "end_date": entry.get("end", ""),
                                     "metrics": {},
                                 }
-                            period_data[key]["metrics"][metric_name] = entry.get("val", 0)
+                            period_data[key]["metrics"][metric_name] = entry.get(
+                                "val", 0
+                            )
 
         # Sort periods by fiscal year and period, most recent first
         sorted_periods = sorted(
-            period_data.items(), key=lambda x: (x[1]["fiscal_year"], x[1]["fiscal_period"]), reverse=True
+            period_data.items(),
+            key=lambda x: (x[1]["fiscal_year"], x[1]["fiscal_period"]),
+            reverse=True,
         )
 
         # Ensure we get a mix of quarterly (10-Q) and annual (10-K) filings
@@ -201,7 +218,9 @@ class CompanyFactsStrategy(ISECDataFetchStrategy):
         recent_periods = []
         quarterly_count = 0
         annual_count = 0
-        target_annual = max(1, max_periods // 4)  # At least 1 annual filing, more for larger requests
+        target_annual = max(
+            1, max_periods // 4
+        )  # At least 1 annual filing, more for larger requests
         target_quarterly = max_periods - target_annual
 
         # First pass: get the most recent filings, prioritizing a good mix
@@ -279,7 +298,9 @@ class CompanyFactsStrategy(ISECDataFetchStrategy):
             # Calculate data quality score based on available metrics
             total_expected = len(key_metrics)
             total_available = len([v for v in metrics.values() if v != 0])
-            financial_data.data_quality_score = total_available / total_expected if total_expected > 0 else 0
+            financial_data.data_quality_score = (
+                total_available / total_expected if total_expected > 0 else 0
+            )
 
             qd = QuarterlyData(
                 symbol=symbol,
@@ -315,11 +336,15 @@ class SubmissionsStrategy(ISECDataFetchStrategy):
 
     def __init__(self, config=None):
         self.config = config or get_config()
-        self.api_client = SECAPIClient(user_agent=self.config.sec.user_agent, config=self.config)
+        self.api_client = SECAPIClient(
+            user_agent=self.config.sec.user_agent, config=self.config
+        )
         self.cache_manager = get_cache_manager()
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-    def fetch_quarterly_data(self, symbol: str, cik: str, max_periods: int) -> List[QuarterlyData]:
+    def fetch_quarterly_data(
+        self, symbol: str, cik: str, max_periods: int
+    ) -> List[QuarterlyData]:
         """Fetch quarterly data from submissions"""
         try:
             # Try to get cached submissions using cache manager interface
@@ -339,13 +364,21 @@ class SubmissionsStrategy(ISECDataFetchStrategy):
 
                 if submissions_data:
                     # Parse the cached data
-                    self.logger.debug(f"Starting to parse cached submissions data for {symbol}")
-                    from investigator.application.processors import get_submission_processor
+                    self.logger.debug(
+                        f"Starting to parse cached submissions data for {symbol}"
+                    )
+                    from investigator.application.processors import (
+                        get_submission_processor,
+                    )
 
                     processor = get_submission_processor()
-                    self.logger.debug(f"Got submission processor, calling parse_submissions")
+                    self.logger.debug(
+                        "Got submission processor, calling parse_submissions"
+                    )
                     parsed_data = processor.parse_submissions(submissions_data)
-                    self.logger.debug(f"Successfully parsed cached submissions data for {symbol}")
+                    self.logger.debug(
+                        f"Successfully parsed cached submissions data for {symbol}"
+                    )
                 else:
                     self.logger.debug(f"No submissions data in cache for {symbol}")
                     cached_result = None
@@ -363,7 +396,9 @@ class SubmissionsStrategy(ISECDataFetchStrategy):
                     "company_name": submissions_data.get("name", ""),
                     "cached_at": datetime.utcnow().isoformat(),  # Use ISO format for proper TTL calculation
                 }
-                self.cache_manager.set(CacheType.SUBMISSION_DATA, cache_key, cache_value)
+                self.cache_manager.set(
+                    CacheType.SUBMISSION_DATA, cache_key, cache_value
+                )
 
                 # Parse the data
                 from investigator.application.processors import get_submission_processor
@@ -372,17 +407,23 @@ class SubmissionsStrategy(ISECDataFetchStrategy):
                 parsed_data = processor.parse_submissions(submissions_data)
 
             # Get recent earnings filings
-            self.logger.debug(f"Getting recent earnings filings for {symbol}, max_periods: {max_periods}")
+            self.logger.debug(
+                f"Getting recent earnings filings for {symbol}, max_periods: {max_periods}"
+            )
             from investigator.application.processors import get_submission_processor
 
             processor = get_submission_processor()
             self.logger.debug(f"Calling get_recent_earnings_filings for {symbol}")
-            recent_filings = processor.get_recent_earnings_filings(parsed_data, limit=max_periods)
+            recent_filings = processor.get_recent_earnings_filings(
+                parsed_data, limit=max_periods
+            )
             self.logger.debug(f"Got {len(recent_filings)} recent filings for {symbol}")
 
             # SubmissionsStrategy only provides filing metadata, not financial data
             # For financial metrics, we need CompanyFactsStrategy or other data sources
-            self.logger.debug(f"SubmissionsStrategy found {len(recent_filings)} filings but provides no financial data")
+            self.logger.debug(
+                f"SubmissionsStrategy found {len(recent_filings)} filings but provides no financial data"
+            )
 
             # Return empty list since we don't have actual financial data
             # This allows HybridFetchStrategy to try other strategies (like CompanyFactsStrategy)
@@ -407,13 +448,17 @@ class CachedDataStrategy(ISECDataFetchStrategy):
         self.cache_manager = get_cache_manager()
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-    def fetch_quarterly_data(self, symbol: str, cik: str, max_periods: int) -> List[QuarterlyData]:
+    def fetch_quarterly_data(
+        self, symbol: str, cik: str, max_periods: int
+    ) -> List[QuarterlyData]:
         """Fetch quarterly data from cache only"""
         try:
             # Check database for existing quarterly data
-            from investigator.infrastructure.database.db import get_quarterly_metrics_dao
+            from investigator.infrastructure.database.db import (
+                get_quarterly_metrics_dao,
+            )
 
-            dao = get_quarterly_metrics_dao()
+            get_quarterly_metrics_dao()
 
             # Get recent quarters from database
             quarterly_data = []
@@ -423,7 +468,9 @@ class CachedDataStrategy(ISECDataFetchStrategy):
             # 2. Check SEC response cache
             # 3. Check file cache
 
-            self.logger.info(f"Fetched {len(quarterly_data)} quarters from cache for {symbol}")
+            self.logger.info(
+                f"Fetched {len(quarterly_data)} quarters from cache for {symbol}"
+            )
             return quarterly_data
 
         except Exception as e:
@@ -449,7 +496,9 @@ class HybridFetchStrategy(ISECDataFetchStrategy):
         ]
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-    def fetch_quarterly_data(self, symbol: str, cik: str, max_periods: int) -> List[QuarterlyData]:
+    def fetch_quarterly_data(
+        self, symbol: str, cik: str, max_periods: int
+    ) -> List[QuarterlyData]:
         """Try multiple strategies to fetch data"""
         all_data = []
 
@@ -466,7 +515,9 @@ class HybridFetchStrategy(ISECDataFetchStrategy):
                         break
 
             except Exception as e:
-                self.logger.warning(f"Strategy {strategy.get_strategy_name()} failed: {e}")
+                self.logger.warning(
+                    f"Strategy {strategy.get_strategy_name()} failed: {e}"
+                )
                 continue
 
         # Deduplicate and sort

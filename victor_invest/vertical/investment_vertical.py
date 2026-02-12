@@ -170,7 +170,12 @@ class InvestmentVertical(VerticalBase):
                 "task_type": "synthesis",
                 "hint": "[SYNTHESIS MODE] Combine analysis streams into actionable recommendations.",
                 "tool_budget": 35,
-                "priority_tools": ["sec_filing", "valuation", "technical_indicators", "market_data"],
+                "priority_tools": [
+                    "sec_filing",
+                    "valuation",
+                    "technical_indicators",
+                    "market_data",
+                ],
             },
         }
 
@@ -314,7 +319,11 @@ class InvestmentVertical(VerticalBase):
             )
             # Convert WorkflowResult to dict
             if hasattr(result, "context") and result.context:
-                return result.context.to_dict() if hasattr(result.context, "to_dict") else dict(result.context)
+                return (
+                    result.context.to_dict()
+                    if hasattr(result.context, "to_dict")
+                    else dict(result.context)
+                )
             return {"success": result.success, "error": getattr(result, "error", None)}
 
         # Fallback to direct workflow call

@@ -107,7 +107,10 @@ class TestProfitabilityClassifier:
 
         result = classifier.classify(financials, ratios)
 
-        assert result.stage in [ProfitabilityStage.MARGINALLY_PROFITABLE, ProfitabilityStage.PROFITABLE]
+        assert result.stage in [
+            ProfitabilityStage.MARGINALLY_PROFITABLE,
+            ProfitabilityStage.PROFITABLE,
+        ]
 
     def test_transitioning_company(self, classifier):
         """Test classification of transitioning company (mixed signals)."""
@@ -127,7 +130,10 @@ class TestProfitabilityClassifier:
         result = classifier.classify(financials, ratios)
 
         # Should recognize positive signals despite net loss
-        assert result.stage in [ProfitabilityStage.TRANSITIONING, ProfitabilityStage.MARGINALLY_PROFITABLE]
+        assert result.stage in [
+            ProfitabilityStage.TRANSITIONING,
+            ProfitabilityStage.MARGINALLY_PROFITABLE,
+        ]
         assert len(result.notes) > 0  # Should have notes about mixed signals
 
     def test_missing_data(self, classifier):
@@ -155,7 +161,9 @@ class TestProfitabilityClassifier:
 
         # Should still classify based on EBITDA
         assert result.stage != ProfitabilityStage.UNKNOWN
-        assert any(i.name == "ebitda" and i.is_positive for i in result.indicators_checked)
+        assert any(
+            i.name == "ebitda" and i.is_positive for i in result.indicators_checked
+        )
 
     def test_only_fcf_available(self, classifier):
         """Test classification when only FCF is available."""

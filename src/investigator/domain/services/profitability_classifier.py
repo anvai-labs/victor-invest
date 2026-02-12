@@ -71,7 +71,10 @@ class ProfitabilityClassification:
 
     def is_profitable(self) -> bool:
         """Check if company is classified as profitable."""
-        return self.stage in [ProfitabilityStage.PROFITABLE, ProfitabilityStage.MARGINALLY_PROFITABLE]
+        return self.stage in [
+            ProfitabilityStage.PROFITABLE,
+            ProfitabilityStage.MARGINALLY_PROFITABLE,
+        ]
 
     def summary(self) -> str:
         """Get a summary of the classification."""
@@ -134,7 +137,14 @@ class ProfitabilityClassifier:
     MODEL_APPLICABILITY = {
         ProfitabilityStage.PROFITABLE: {
             "models": ["dcf", "pe", "ps", "pb", "ev_ebitda", "ggm"],
-            "adjustments": {"dcf": 1.0, "pe": 1.0, "ps": 0.8, "pb": 1.0, "ev_ebitda": 1.0, "ggm": 1.0},
+            "adjustments": {
+                "dcf": 1.0,
+                "pe": 1.0,
+                "ps": 0.8,
+                "pb": 1.0,
+                "ev_ebitda": 1.0,
+                "ggm": 1.0,
+            },
         },
         ProfitabilityStage.MARGINALLY_PROFITABLE: {
             "models": ["dcf", "pe", "ps", "ev_ebitda"],
@@ -191,7 +201,9 @@ class ProfitabilityClassifier:
 
             # Calculate margin from value and revenue if available
             if margin is None and value is not None:
-                revenue = self._get_value(financials, "revenue") or self._get_value(financials, "total_revenue")
+                revenue = self._get_value(financials, "revenue") or self._get_value(
+                    financials, "total_revenue"
+                )
                 if revenue and revenue > 0:
                     margin = (value / revenue) * 100
 
@@ -200,14 +212,18 @@ class ProfitabilityClassifier:
 
             indicators_checked.append(
                 ProfitabilityIndicator(
-                    name=value_key, value=value, is_positive=is_positive, margin=margin, confidence=indicator_confidence
+                    name=value_key,
+                    value=value,
+                    is_positive=is_positive,
+                    margin=margin,
+                    confidence=indicator_confidence,
                 )
             )
 
             if value is not None:
                 margin_str = f"{margin:.1f}%" if margin is not None else "N/A"
                 logger.debug(
-                    f"Indicator {value_key}: value={value/1e6:.1f}M, "
+                    f"Indicator {value_key}: value={value / 1e6:.1f}M, "
                     f"margin={margin_str}, "
                     f"positive={is_positive}"
                 )
@@ -222,7 +238,9 @@ class ProfitabilityClassifier:
         )
 
         # Get model applicability for this stage
-        applicability = self.MODEL_APPLICABILITY.get(stage, self.MODEL_APPLICABILITY[ProfitabilityStage.UNKNOWN])
+        applicability = self.MODEL_APPLICABILITY.get(
+            stage, self.MODEL_APPLICABILITY[ProfitabilityStage.UNKNOWN]
+        )
 
         # Add notes
         if indicators_total == 0:
@@ -230,7 +248,11 @@ class ProfitabilityClassifier:
         elif indicators_positive == 0 and indicators_total > 0:
             notes.append("All available indicators show losses")
         elif indicators_positive < indicators_total:
-            negative_indicators = [i.name for i in indicators_checked if i.value is not None and not i.is_positive]
+            negative_indicators = [
+                i.name
+                for i in indicators_checked
+                if i.value is not None and not i.is_positive
+            ]
             notes.append(f"Mixed signals: {', '.join(negative_indicators)} negative")
 
         return ProfitabilityClassification(
@@ -264,7 +286,10 @@ class ProfitabilityClassifier:
         return None
 
     def _determine_stage(
-        self, indicators: List[ProfitabilityIndicator], positive_count: int, total_count: int
+        self,
+        indicators: List[ProfitabilityIndicator],
+        positive_count: int,
+        total_count: int,
     ) -> Tuple[ProfitabilityStage, Optional[str], float]:
         """
         Determine profitability stage from indicator results.
@@ -292,23 +317,56 @@ class ProfitabilityClassifier:
         # Determine stage
         if positive_count == total_count and total_count >= 2:
             # All indicators positive
-            if primary_margin is not None and primary_margin >= self.margin_thresholds["profitable"]:
-                return (ProfitabilityStage.PROFITABLE, primary_indicator, min(0.95, base_confidence))
-            elif primary_margin is not None and primary_margin >= self.margin_thresholds["marginal"]:
-                return (ProfitabilityStage.MARGINALLY_PROFITABLE, primary_indicator, min(0.85, base_confidence))
+            if (
+                primary_margin is not None
+                and primary_margin >= self.margin_thresholds["profitable"]
+            ):
+                return (
+                    ProfitabilityStage.PROFITABLE,
+                    primary_indicator,
+                    min(0.95, base_confidence),
+                )
+            elif (
+                primary_margin is not None
+                and primary_margin >= self.margin_thresholds["marginal"]
+            ):
+                return (
+                    ProfitabilityStage.MARGINALLY_PROFITABLE,
+                    primary_indicator,
+                    min(0.85, base_confidence),
+                )
             else:
-                return (ProfitabilityStage.PROFITABLE, primary_indicator, min(0.80, base_confidence))
+                return (
+                    ProfitabilityStage.PROFITABLE,
+                    primary_indicator,
+                    min(0.80, base_confidence),
+                )
 
         elif positive_count >= total_count / 2:
             # Majority positive
-            if primary_margin is not None and primary_margin >= self.margin_thresholds["profitable"]:
-                return (ProfitabilityStage.MARGINALLY_PROFITABLE, primary_indicator, min(0.75, base_confidence))
+            if (
+                primary_margin is not None
+                and primary_margin >= self.margin_thresholds["profitable"]
+            ):
+                return (
+                    ProfitabilityStage.MARGINALLY_PROFITABLE,
+                    primary_indicator,
+                    min(0.75, base_confidence),
+                )
             else:
-                return (ProfitabilityStage.TRANSITIONING, primary_indicator, min(0.70, base_confidence))
+                return (
+                    ProfitabilityStage.TRANSITIONING,
+                    primary_indicator,
+                    min(0.70, base_confidence),
+                )
 
         elif positive_count > 0:
             # Some positive, but minority
-            return (ProfitabilityStage.TRANSITIONING, primary_indicator, min(0.60, base_confidence))
+            return (
+                ProfitabilityStage.TRANSITIONING,
+                primary_indicator,
+                min(0.60, base_confidence),
+            )
 
         else:
             # All negative

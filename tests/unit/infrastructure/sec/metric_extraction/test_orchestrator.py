@@ -7,7 +7,7 @@ Note: conftest.py handles mocking of parent package imports to avoid circular
 import issues during test collection.
 """
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock
 
 import pytest
 
@@ -18,16 +18,7 @@ from investigator.infrastructure.sec.metric_extraction.orchestrator import (
 # Import the modules directly (conftest.py handles parent package mocking)
 from investigator.infrastructure.sec.metric_extraction.result import (
     ExtractionConfidence,
-    ExtractionResult,
     MatchMethod,
-)
-from investigator.infrastructure.sec.metric_extraction.strategies import (
-    ByAdshFyFpMatcher,
-    ByAdshOnlyMatcher,
-    ByDateRangeMatcher,
-    ByFrameFieldMatcher,
-    ByPeriodEndMatcher,
-    MatchContext,
 )
 
 # Mock us-gaap data structure simulating SEC CompanyFacts
@@ -109,7 +100,10 @@ class MockCanonicalMapper:
     def __init__(self):
         self.mappings = {
             "total_revenue": {
-                "tags": ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax"],
+                "tags": [
+                    "Revenues",
+                    "RevenueFromContractWithCustomerExcludingAssessedTax",
+                ],
                 "unit": "USD",
             },
             "operating_income": {
@@ -166,7 +160,10 @@ class TestMetricExtractionOrchestrator:
         assert result.value == 50_000_000_000
         assert result.source_tag == "Revenues"
         assert result.match_method == MatchMethod.BY_PERIOD_END
-        assert result.confidence in [ExtractionConfidence.HIGH, ExtractionConfidence.MEDIUM]
+        assert result.confidence in [
+            ExtractionConfidence.HIGH,
+            ExtractionConfidence.MEDIUM,
+        ]
 
     def test_extract_with_wrong_fy_field(self):
         """
@@ -319,7 +316,9 @@ class TestMetricExtractionOrchestrator:
         assert result.success is True
         assert result.value == 48_000_000_000
         # Used fallback tag
-        assert result.source_tag == "RevenueFromContractWithCustomerExcludingAssessedTax"
+        assert (
+            result.source_tag == "RevenueFromContractWithCustomerExcludingAssessedTax"
+        )
 
     def test_confidence_levels(self):
         """Test confidence level assignment based on strategy and tag position."""
@@ -476,7 +475,9 @@ class TestDerivedValueCalculation:
             "capital_expenditures": 3_000_000_000,
         }
 
-        result = orchestrator._evaluate_formula("operating_cash_flow - capital_expenditures", components)
+        result = orchestrator._evaluate_formula(
+            "operating_cash_flow - capital_expenditures", components
+        )
 
         assert result == 5_000_000_000
 

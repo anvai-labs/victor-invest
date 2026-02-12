@@ -63,7 +63,13 @@ class SECBulkDAO:
             f"postgresql://{self.db_config['username']}:{self.db_config['password']}@"
             f"{self.db_config['host']}:{self.db_config['port']}/{self.db_config['database']}"
         )
-        return create_engine(connection_string, pool_size=5, max_overflow=10, pool_pre_ping=True, echo=False)
+        return create_engine(
+            connection_string,
+            pool_size=5,
+            max_overflow=10,
+            pool_pre_ping=True,
+            echo=False,
+        )
 
     def get_cik(self, symbol: str) -> Optional[str]:
         """
@@ -94,7 +100,11 @@ class SECBulkDAO:
             return result[0] if result else None
 
     def fetch_financial_metrics(
-        self, symbol: str, fiscal_year: int, fiscal_period: str = "FY", form_types: Optional[List[str]] = None
+        self,
+        symbol: str,
+        fiscal_year: int,
+        fiscal_period: str = "FY",
+        form_types: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """
         Fetch financial metrics from bulk tables with tag normalization.
@@ -163,7 +173,8 @@ class SECBulkDAO:
 
         if not results:
             logger.warning(
-                f"No data found for {symbol} (CIK: {cik}) " f"fiscal year {fiscal_year}, period {fiscal_period}"
+                f"No data found for {symbol} (CIK: {cik}) "
+                f"fiscal year {fiscal_year}, period {fiscal_period}"
             )
             return {
                 "symbol": symbol,
@@ -173,11 +184,23 @@ class SECBulkDAO:
             }
 
         # Convert to list of dicts
-        rows = [{"tag": r[0], "value": r[1], "uom": r[2], "ddate": r[3], "form": r[4], "adsh": r[5]} for r in results]
+        rows = [
+            {
+                "tag": r[0],
+                "value": r[1],
+                "uom": r[2],
+                "ddate": r[3],
+                "form": r[4],
+                "adsh": r[5],
+            }
+            for r in results
+        ]
 
         # Log raw tag coverage before normalization
         unique_tags = set(r["tag"] for r in rows)
-        logger.debug(f"Fetched {len(rows)} data points with {len(unique_tags)} unique XBRL tags for {symbol}")
+        logger.debug(
+            f"Fetched {len(rows)} data points with {len(unique_tags)} unique XBRL tags for {symbol}"
+        )
 
         # Normalize using tag mapper
         metrics = self.normalizer.normalize_bulk_table_results(rows, symbol)
@@ -265,7 +288,9 @@ class SECBulkDAO:
         fiscal_year = result[0]
         logger.info(f"Latest annual filing for {symbol}: {fiscal_year}-FY")
 
-        return self.fetch_financial_metrics(symbol, fiscal_year, "FY", form_types=["10-K", "10-K/A"])
+        return self.fetch_financial_metrics(
+            symbol, fiscal_year, "FY", form_types=["10-K", "10-K/A"]
+        )
 
     def fetch_latest_quarterly_metrics(self, symbol: str) -> Dict[str, Any]:
         """
@@ -307,9 +332,13 @@ class SECBulkDAO:
             return {"symbol": symbol, "error": "No quarterly filings found"}
 
         fiscal_year, fiscal_period = result[0], result[1]
-        logger.info(f"Latest quarterly filing for {symbol}: {fiscal_year}-{fiscal_period}")
+        logger.info(
+            f"Latest quarterly filing for {symbol}: {fiscal_year}-{fiscal_period}"
+        )
 
-        return self.fetch_financial_metrics(symbol, fiscal_year, fiscal_period, form_types=["10-Q", "10-Q/A"])
+        return self.fetch_financial_metrics(
+            symbol, fiscal_year, fiscal_period, form_types=["10-Q", "10-Q/A"]
+        )
 
     def _fiscal_period_to_qtrs(self, fiscal_period: str) -> int:
         """
@@ -358,14 +387,19 @@ class SECBulkDAO:
         )
 
         with self.engine.connect() as conn:
-            results = conn.execute(query, {"cik": cik, "fiscal_year": fiscal_year}).fetchall()
+            results = conn.execute(
+                query, {"cik": cik, "fiscal_year": fiscal_year}
+            ).fetchall()
 
         return [r[0] for r in results]
 
 
 # Convenience function
 def fetch_sec_bulk_metrics(
-    symbol: str, fiscal_year: int, fiscal_period: str = "FY", db_config: Optional[Dict] = None
+    symbol: str,
+    fiscal_year: int,
+    fiscal_period: str = "FY",
+    db_config: Optional[Dict] = None,
 ) -> Dict[str, Any]:
     """
     Quick fetch of SEC bulk table metrics.

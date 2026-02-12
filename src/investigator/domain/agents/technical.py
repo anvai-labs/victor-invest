@@ -3,12 +3,10 @@ Technical Analysis Agent
 Specialized agent for technical analysis and market data processing using Ollama LLMs
 """
 
-import asyncio
 import json
 import logging
-from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
 import numpy as np
 import pandas as pd
@@ -18,8 +16,12 @@ from investigator.domain.models.analysis import AgentResult, AgentTask, TaskStat
 from investigator.domain.services.toon_formatter import TOONFormatter, to_toon_array
 from investigator.infrastructure.cache import CacheManager
 from investigator.infrastructure.cache.cache_types import CacheType
-from investigator.infrastructure.database.market_data import get_market_data_fetcher  # Uses singleton pattern
-from investigator.infrastructure.indicators import TechnicalIndicatorCalculator as TechnicalIndicators
+from investigator.infrastructure.database.market_data import (
+    get_market_data_fetcher,
+)  # Uses singleton pattern
+from investigator.infrastructure.indicators import (
+    TechnicalIndicatorCalculator as TechnicalIndicators,
+)
 
 
 class TechnicalAnalysisAgent(InvestmentAgent):
@@ -34,13 +36,17 @@ class TechnicalAnalysisAgent(InvestmentAgent):
               └──── caches reuse DataFrames for future runs
     """
 
-    def __init__(self, agent_id: str, ollama_client, event_bus, cache_manager: CacheManager):
+    def __init__(
+        self, agent_id: str, ollama_client, event_bus, cache_manager: CacheManager
+    ):
         # Load config for MarketDataFetcher
         from investigator.config import get_config
 
         config = get_config()
         self.config = config  # Store config for TOON format access
-        self.technical_model = config.ollama.models.get("technical_analysis", "deepseek-r1:32b")
+        self.technical_model = config.ollama.models.get(
+            "technical_analysis", "deepseek-r1:32b"
+        )
 
         # Specialized models for different analysis types (must exist before super().__init__)
         self.models = {
@@ -55,7 +61,13 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         self.indicators = TechnicalIndicators()
 
         # Technical analysis parameters
-        self.timeframes = {"intraday": "1d", "short": "1mo", "medium": "3mo", "long": "1y", "extended": "5y"}
+        self.timeframes = {
+            "intraday": "1d",
+            "short": "1mo",
+            "medium": "3mo",
+            "long": "1y",
+            "extended": "5y",
+        }
 
         # Key technical patterns to detect
         self.patterns = [
@@ -74,7 +86,9 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
     def _debug_log_prompt(self, label: str, prompt: str) -> None:
         if self.logger.isEnabledFor(logging.DEBUG):
-            trimmed = prompt if len(prompt) <= 6000 else f"{prompt[:6000]}\n...[truncated]"
+            trimmed = (
+                prompt if len(prompt) <= 6000 else f"{prompt[:6000]}\n...[truncated]"
+            )
             self.logger.debug("📤 %s PROMPT:\n%s", label, trimmed)
 
     def _debug_log_response(self, label: str, response: Any) -> None:
@@ -160,13 +174,19 @@ class TechnicalAnalysisAgent(InvestmentAgent):
                 # Try to use pre-fetched technical/price data
                 try:
                     price_info = getattr(consolidated_data, "price", None) or (
-                        consolidated_data.get("price") if isinstance(consolidated_data, dict) else None
+                        consolidated_data.get("price")
+                        if isinstance(consolidated_data, dict)
+                        else None
                     )
                     if price_info and "dataframe" in price_info:
                         price_data = pd.DataFrame(price_info["dataframe"])
-                        self.logger.debug(f"Using pre-fetched price data for {symbol} from DataSourceManager")
+                        self.logger.debug(
+                            f"Using pre-fetched price data for {symbol} from DataSourceManager"
+                        )
                 except Exception as e:
-                    self.logger.debug(f"Could not use consolidated data for {symbol}: {e}")
+                    self.logger.debug(
+                        f"Could not use consolidated data for {symbol}: {e}"
+                    )
 
             # Fallback to legacy fetch if no pre-fetched data
             if price_data is None or price_data.empty:
@@ -188,10 +208,14 @@ class TechnicalAnalysisAgent(InvestmentAgent):
             momentum = await self._analyze_momentum(indicators)
 
             # Generate trading signals
-            signals = await self._generate_signals(price_data, indicators, patterns, momentum, symbol)
+            signals = await self._generate_signals(
+                price_data, indicators, patterns, momentum, symbol
+            )
 
             # Market sentiment analysis
-            sentiment = await self._analyze_market_sentiment(price_data, volume_analysis)
+            sentiment = await self._analyze_market_sentiment(
+                price_data, volume_analysis
+            )
 
             # Handle both uppercase and lowercase columns for current_price
             close_col = "close" if "close" in price_data.columns else "Close"
@@ -246,7 +270,9 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
         # Check cache (1 hour TTL for price data)
         cache_key = {"symbol": symbol, "timeframe": timeframe}
-        cached = self.cache.get(CacheType.TECHNICAL_DATA, cache_key) if self.cache else None
+        cached = (
+            self.cache.get(CacheType.TECHNICAL_DATA, cache_key) if self.cache else None
+        )
         if cached is not None:
             if isinstance(cached, pd.DataFrame):
                 if not cached.empty:
@@ -263,17 +289,27 @@ class TechnicalAnalysisAgent(InvestmentAgent):
                 cached_df = pd.DataFrame(cached)
                 if not cached_df.empty:
                     return cached_df
-            self.logger.warning("Cached technical data for %s/%s was empty; refreshing", symbol, timeframe)
+            self.logger.warning(
+                "Cached technical data for %s/%s was empty; refreshing",
+                symbol,
+                timeframe,
+            )
 
         # Fetch from market data provider
         period = self.timeframes.get(timeframe, "3mo")
         data = await self.market_data.get_historical_data(symbol, period)
 
         if data is None or data.empty:
-            fallback = Path("data") / "technical_cache" / symbol.upper() / f"technical_data_{symbol.upper()}.csv"
+            fallback = (
+                Path("data")
+                / "technical_cache"
+                / symbol.upper()
+                / f"technical_data_{symbol.upper()}.csv"
+            )
             if fallback.exists():
                 self.logger.warning(
-                    "Primary market data fetch returned no rows for %s; " "loading fallback dataset %s",
+                    "Primary market data fetch returned no rows for %s; "
+                    "loading fallback dataset %s",
                     symbol,
                     fallback,
                 )
@@ -297,7 +333,9 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
         return data
 
-    async def _calculate_indicators(self, price_data: pd.DataFrame, symbol: str = "unknown") -> Dict:
+    async def _calculate_indicators(
+        self, price_data: pd.DataFrame, symbol: str = "unknown"
+    ) -> Dict:
         """Calculate comprehensive technical indicators"""
         # Standardize column names to match expected format (lowercase)
         price_data_standardized = price_data.copy()
@@ -313,7 +351,9 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         price_data_standardized = price_data_standardized.rename(columns=column_mapping)
 
         # Use the centralized indicator calculator
-        enhanced_df = self.indicators.calculate_all_indicators(price_data_standardized, symbol)
+        enhanced_df = self.indicators.calculate_all_indicators(
+            price_data_standardized, symbol
+        )
 
         # Extract the latest indicator values as a dict
         latest_values = enhanced_df.iloc[-1].to_dict()
@@ -354,7 +394,9 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
         return indicators
 
-    async def _detect_patterns(self, price_data: pd.DataFrame, symbol: str) -> List[Dict]:
+    async def _detect_patterns(
+        self, price_data: pd.DataFrame, symbol: str
+    ) -> List[Dict]:
         """Detect chart patterns using pattern recognition"""
         detected_patterns = []
 
@@ -467,14 +509,17 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         # Analyze volume trends
         volume_trend = (
             "increasing"
-            if price_data[volume_col].iloc[-20:].mean() > price_data[volume_col].iloc[-40:-20].mean()
+            if price_data[volume_col].iloc[-20:].mean()
+            > price_data[volume_col].iloc[-40:-20].mean()
             else "decreasing"
         )
 
         # Price-volume correlation
         close_col = "close" if "close" in price_data.columns else "Close"
         price_volume_corr = (
-            price_data[close_col].pct_change(fill_method=None).corr(price_data[volume_col].pct_change(fill_method=None))
+            price_data[close_col]
+            .pct_change(fill_method=None)
+            .corr(price_data[volume_col].pct_change(fill_method=None))
         )
 
         volume_analysis = {
@@ -484,7 +529,9 @@ class TechnicalAnalysisAgent(InvestmentAgent):
             "recent_spikes": len(volume_spikes[-20:]),
             "price_volume_correlation": float(price_volume_corr),
             "volume_profile": self._calculate_volume_profile(price_data),
-            "accumulation_distribution": self._calculate_accumulation_distribution(price_data),
+            "accumulation_distribution": self._calculate_accumulation_distribution(
+                price_data
+            ),
         }
 
         return volume_analysis
@@ -529,7 +576,13 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
         # RSI analysis
         current_rsi = indicators.get("rsi", 50)  # These are already scalar values
-        momentum["rsi_signal"] = "overbought" if current_rsi > 70 else "oversold" if current_rsi < 30 else "neutral"
+        momentum["rsi_signal"] = (
+            "overbought"
+            if current_rsi > 70
+            else "oversold"
+            if current_rsi < 30
+            else "neutral"
+        )
 
         # MACD analysis
         if "macd" in indicators and "macd_signal" in indicators:
@@ -540,7 +593,13 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         # Stochastic analysis
         if "stoch_k" in indicators:
             stoch_k = indicators["stoch_k"]
-            momentum["stochastic_signal"] = "overbought" if stoch_k > 80 else "oversold" if stoch_k < 20 else "neutral"
+            momentum["stochastic_signal"] = (
+                "overbought"
+                if stoch_k > 80
+                else "oversold"
+                if stoch_k < 20
+                else "neutral"
+            )
 
         # Moving average analysis
         if "sma_50" in indicators and "sma_200" in indicators:
@@ -553,7 +612,12 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         return momentum
 
     async def _generate_signals(
-        self, price_data: pd.DataFrame, indicators: Dict, patterns: List[Dict], momentum: Dict, symbol: str
+        self,
+        price_data: pd.DataFrame,
+        indicators: Dict,
+        patterns: List[Dict],
+        momentum: Dict,
+        symbol: str,
     ) -> Dict:
         """Generate trading signals based on technical analysis"""
         # Handle both uppercase and lowercase columns
@@ -566,13 +630,13 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         Price Change (5 days): {((price_data[close_col].iloc[-1] / price_data[close_col].iloc[-5]) - 1) * 100:.2f}%
         
         Key Indicators:
-        - RSI: {indicators.get('rsi', 50):.2f}
-        - MACD Signal: {momentum.get('macd_signal', 'neutral')}
-        - Moving Average Signal: {momentum.get('ma_signal', 'neutral')}
-        - Momentum Score: {momentum.get('overall_score', 0)}
+        - RSI: {indicators.get("rsi", 50):.2f}
+        - MACD Signal: {momentum.get("macd_signal", "neutral")}
+        - Moving Average Signal: {momentum.get("ma_signal", "neutral")}
+        - Momentum Score: {momentum.get("overall_score", 0)}
         
         Detected Patterns:
-        {json.dumps(patterns[:3], indent=2) if patterns else 'None detected'}
+        {json.dumps(patterns[:3], indent=2) if patterns else "None detected"}
         
         Generate the following signals:
         1. entry_signal (buy/sell/hold)
@@ -641,7 +705,9 @@ class TechnicalAnalysisAgent(InvestmentAgent):
             format="json",
         )
 
-    async def _analyze_market_sentiment(self, price_data: pd.DataFrame, volume_analysis: Dict) -> Dict:
+    async def _analyze_market_sentiment(
+        self, price_data: pd.DataFrame, volume_analysis: Dict
+    ) -> Dict:
         """Analyze overall market sentiment"""
         sentiment = {}
 
@@ -649,14 +715,22 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         close_col = "close" if "close" in price_data.columns else "Close"
 
         # Price action sentiment
-        recent_trend = "bullish" if price_data[close_col].iloc[-1] > price_data[close_col].iloc[-20] else "bearish"
+        recent_trend = (
+            "bullish"
+            if price_data[close_col].iloc[-1] > price_data[close_col].iloc[-20]
+            else "bearish"
+        )
 
         # Volatility analysis
         returns = price_data[close_col].pct_change(fill_method=None)
         volatility = returns.std() * np.sqrt(252)  # Annualized volatility
 
         # Volume sentiment
-        volume_sentiment = "accumulation" if volume_analysis.get("accumulation_distribution", 0) > 0 else "distribution"
+        volume_sentiment = (
+            "accumulation"
+            if volume_analysis.get("accumulation_distribution", 0) > 0
+            else "distribution"
+        )
 
         sentiment = {
             "price_trend": recent_trend,
@@ -664,7 +738,9 @@ class TechnicalAnalysisAgent(InvestmentAgent):
             "volume_sentiment": volume_sentiment,
             "market_phase": self._identify_market_phase(price_data),
             "trend_strength": self._calculate_trend_strength(price_data),
-            "sentiment_score": self._calculate_sentiment_score(price_data, volume_analysis),
+            "sentiment_score": self._calculate_sentiment_score(
+                price_data, volume_analysis
+            ),
         }
 
         return sentiment
@@ -700,7 +776,9 @@ class TechnicalAnalysisAgent(InvestmentAgent):
                 try:
                     weekly_list = rounded_data["weekly_data"]
                     if isinstance(weekly_list, list) and len(weekly_list) > 0:
-                        toon_weekly = to_toon_array(weekly_list, name="weekly_price_data")
+                        toon_weekly = to_toon_array(
+                            weekly_list, name="weekly_price_data"
+                        )
                         data_sections.append(toon_weekly)
                 except Exception as e:
                     self.logger.warning(f"Failed to convert weekly_data to TOON: {e}")
@@ -710,9 +788,15 @@ class TechnicalAnalysisAgent(InvestmentAgent):
                 data_section = "\n\n".join(data_sections)
 
                 # Add remaining non-tabular data as JSON
-                non_tabular = {k: v for k, v in rounded_data.items() if k not in ["daily_data", "weekly_data"]}
+                non_tabular = {
+                    k: v
+                    for k, v in rounded_data.items()
+                    if k not in ["daily_data", "weekly_data"]
+                }
                 if non_tabular:
-                    data_section += f"\n\nAdditional context:\n{json.dumps(non_tabular, indent=2)}"
+                    data_section += (
+                        f"\n\nAdditional context:\n{json.dumps(non_tabular, indent=2)}"
+                    )
             else:
                 # No tabular data found, fall back to JSON
                 data_section = json.dumps(rounded_data, indent=2)[:8000]
@@ -840,7 +924,13 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
         changes = {}
         # ALIGNED with market context periods: 10d, 21d, 63d, 252d
-        periods = [1, 10, 21, 63, 252]  # 1d, 10d (leading), 21d (short), 63d (medium), 252d (long)
+        periods = [
+            1,
+            10,
+            21,
+            63,
+            252,
+        ]  # 1d, 10d (leading), 21d (short), 63d (medium), 252d (long)
 
         for period in periods:
             if len(price_data) > period:
@@ -856,7 +946,9 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         volume_col = "volume" if "volume" in price_data.columns else "Volume"
 
         price_bins = pd.qcut(price_data[close_col], q=10)
-        volume_profile = price_data.groupby(price_bins, observed=False)[volume_col].sum()
+        volume_profile = price_data.groupby(price_bins, observed=False)[
+            volume_col
+        ].sum()
 
         return {
             "high_volume_node": float(volume_profile.idxmax().mid),
@@ -872,9 +964,10 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         low_col = "low" if "low" in price_data.columns else "Low"
         volume_col = "volume" if "volume" in price_data.columns else "Volume"
 
-        mfm = ((price_data[close_col] - price_data[low_col]) - (price_data[high_col] - price_data[close_col])) / (
-            price_data[high_col] - price_data[low_col]
-        )
+        mfm = (
+            (price_data[close_col] - price_data[low_col])
+            - (price_data[high_col] - price_data[close_col])
+        ) / (price_data[high_col] - price_data[low_col])
         mfm = mfm.fillna(0)
 
         ad = (mfm * price_data[volume_col]).cumsum()
@@ -891,15 +984,21 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         local_max = price_data[high_col].rolling(window=window, center=True).max()
         local_min = price_data[low_col].rolling(window=window, center=True).min()
 
-        resistance_levels = price_data[price_data[high_col] == local_max][high_col].unique()
+        resistance_levels = price_data[price_data[high_col] == local_max][
+            high_col
+        ].unique()
         support_levels = price_data[price_data[low_col] == local_min][low_col].unique()
 
         resistance_levels = sorted(resistance_levels)
         support_levels = sorted(support_levels)
 
         return {
-            "resistance": [round(float(x), 2) for x in resistance_levels[-3:]] if resistance_levels else [],
-            "support": [round(float(x), 2) for x in support_levels[:3]] if support_levels else [],
+            "resistance": [round(float(x), 2) for x in resistance_levels[-3:]]
+            if resistance_levels
+            else [],
+            "support": [round(float(x), 2) for x in support_levels[:3]]
+            if support_levels
+            else [],
         }
 
     def _calculate_fibonacci_levels(self, price_data: pd.DataFrame) -> Dict:
@@ -944,7 +1043,9 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
         # Moving average contribution
         if "sma_50" in indicators and "sma_200" in indicators:
-            ma_ratio = indicators["sma_50"] / indicators["sma_200"]  # Already scalar values
+            ma_ratio = (
+                indicators["sma_50"] / indicators["sma_200"]
+            )  # Already scalar values
             ma_score = (ma_ratio - 1) * 100
             score += np.clip(ma_score, -100, 100) * 0.4
             weight_sum += 0.4
@@ -975,11 +1076,15 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
         # ADX-like calculation
         returns = price_data[close_col].pct_change(fill_method=None)
-        trend_strength = abs(returns.rolling(window=14).mean()) / returns.rolling(window=14).std()
+        trend_strength = (
+            abs(returns.rolling(window=14).mean()) / returns.rolling(window=14).std()
+        )
 
         return float(np.clip(trend_strength.iloc[-1] * 25, 0, 100))
 
-    def _calculate_sentiment_score(self, price_data: pd.DataFrame, volume_analysis: Dict) -> float:
+    def _calculate_sentiment_score(
+        self, price_data: pd.DataFrame, volume_analysis: Dict
+    ) -> float:
         """Calculate overall sentiment score (-100 to 100)"""
         score = 0
 
@@ -987,7 +1092,9 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         close_col = "close" if "close" in price_data.columns else "Close"
 
         # Price trend contribution
-        price_change = ((price_data[close_col].iloc[-1] / price_data[close_col].iloc[-20]) - 1) * 100
+        price_change = (
+            (price_data[close_col].iloc[-1] / price_data[close_col].iloc[-20]) - 1
+        ) * 100
         score += np.clip(price_change * 2, -50, 50)
 
         # Volume sentiment contribution

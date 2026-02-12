@@ -10,12 +10,10 @@ Provides a clean API for all LLM processing needs
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from .llm_interfaces import (
-    ILLMAnalysisTemplate,
     ILLMObserver,
-    ILLMProcessor,
     ILLMStrategy,
     LLMPriority,
     LLMRequest,
@@ -42,20 +40,42 @@ class LLMAnalysisObserver(ILLMObserver):
 
     def on_processing_started(self, request: LLMRequest) -> None:
         """Called when processing starts"""
-        symbol = request.metadata.get("symbol", "UNKNOWN") if request.metadata else "UNKNOWN"
-        task_type = request.metadata.get("task_type", "unknown") if request.metadata else "unknown"
+        symbol = (
+            request.metadata.get("symbol", "UNKNOWN") if request.metadata else "UNKNOWN"
+        )
+        task_type = (
+            request.metadata.get("task_type", "unknown")
+            if request.metadata
+            else "unknown"
+        )
         self.logger.info(f"Starting {task_type} analysis for {symbol}")
 
-    def on_processing_completed(self, request: LLMRequest, response: LLMResponse) -> None:
+    def on_processing_completed(
+        self, request: LLMRequest, response: LLMResponse
+    ) -> None:
         """Called when processing completes"""
-        symbol = request.metadata.get("symbol", "UNKNOWN") if request.metadata else "UNKNOWN"
-        task_type = request.metadata.get("task_type", "unknown") if request.metadata else "unknown"
-        self.logger.info(f"Completed {task_type} analysis for {symbol} in {response.processing_time_ms}ms")
+        symbol = (
+            request.metadata.get("symbol", "UNKNOWN") if request.metadata else "UNKNOWN"
+        )
+        task_type = (
+            request.metadata.get("task_type", "unknown")
+            if request.metadata
+            else "unknown"
+        )
+        self.logger.info(
+            f"Completed {task_type} analysis for {symbol} in {response.processing_time_ms}ms"
+        )
 
     def on_processing_error(self, request: LLMRequest, error: Exception) -> None:
         """Called when processing fails"""
-        symbol = request.metadata.get("symbol", "UNKNOWN") if request.metadata else "UNKNOWN"
-        task_type = request.metadata.get("task_type", "unknown") if request.metadata else "unknown"
+        symbol = (
+            request.metadata.get("symbol", "UNKNOWN") if request.metadata else "UNKNOWN"
+        )
+        task_type = (
+            request.metadata.get("task_type", "unknown")
+            if request.metadata
+            else "unknown"
+        )
         self.logger.error(f"Failed {task_type} analysis for {symbol}: {error}")
 
 
@@ -65,7 +85,9 @@ class LLMFacade:
     Replaces the functionality of ollama_interface.py
     """
 
-    def __init__(self, config, cache_manager=None, strategy_type: str = "comprehensive"):
+    def __init__(
+        self, config, cache_manager=None, strategy_type: str = "comprehensive"
+    ):
         """
         Initialize LLM facade with configuration
 
@@ -95,7 +117,9 @@ class LLMFacade:
         self.processor.attach(self.observer)
 
         # Create analysis template
-        self.analysis_template = StandardLLMAnalysisTemplate(self.processor, self.strategy)
+        self.analysis_template = StandardLLMAnalysisTemplate(
+            self.processor, self.strategy
+        )
 
         self.logger.info(f"LLM Facade initialized with {strategy_type} strategy")
 
@@ -106,14 +130,18 @@ class LLMFacade:
         elif strategy_type == "quick":
             return QuickLLMStrategy(self.config)
         else:
-            self.logger.warning(f"Unknown strategy type '{strategy_type}', using comprehensive")
+            self.logger.warning(
+                f"Unknown strategy type '{strategy_type}', using comprehensive"
+            )
             return ComprehensiveLLMStrategy(self.config)
 
     # ============================================================================
     # High-Level Analysis Methods (Template Method Pattern)
     # ============================================================================
 
-    def analyze_fundamental(self, symbol: str, quarterly_data: List[Dict], filing_data: Dict = None) -> Dict[str, Any]:
+    def analyze_fundamental(
+        self, symbol: str, quarterly_data: List[Dict], filing_data: Dict = None
+    ) -> Dict[str, Any]:
         """
         Perform fundamental analysis using template method pattern
 
@@ -126,9 +154,15 @@ class LLMFacade:
             Structured analysis result
         """
         try:
-            data = {"symbol": symbol, "quarterly_data": quarterly_data, "filing_data": filing_data or {}}
+            data = {
+                "symbol": symbol,
+                "quarterly_data": quarterly_data,
+                "filing_data": filing_data or {},
+            }
 
-            return self.analysis_template.analyze(symbol, data, LLMTaskType.FUNDAMENTAL_ANALYSIS)
+            return self.analysis_template.analyze(
+                symbol, data, LLMTaskType.FUNDAMENTAL_ANALYSIS
+            )
 
         except Exception as e:
             self.logger.error(f"Error in fundamental analysis: {e}")
@@ -139,7 +173,9 @@ class LLMFacade:
                 "timestamp": datetime.utcnow().isoformat(),
             }
 
-    def analyze_technical(self, symbol: str, price_data: Dict, indicators: Dict = None) -> Dict[str, Any]:
+    def analyze_technical(
+        self, symbol: str, price_data: Dict, indicators: Dict = None
+    ) -> Dict[str, Any]:
         """
         Perform technical analysis using template method pattern
 
@@ -152,9 +188,15 @@ class LLMFacade:
             Structured analysis result
         """
         try:
-            data = {"symbol": symbol, "price_data": price_data, "indicators": indicators or {}}
+            data = {
+                "symbol": symbol,
+                "price_data": price_data,
+                "indicators": indicators or {},
+            }
 
-            return self.analysis_template.analyze(symbol, data, LLMTaskType.TECHNICAL_ANALYSIS)
+            return self.analysis_template.analyze(
+                symbol, data, LLMTaskType.TECHNICAL_ANALYSIS
+            )
 
         except Exception as e:
             self.logger.error(f"Error in technical analysis: {e}")
@@ -165,7 +207,9 @@ class LLMFacade:
                 "timestamp": datetime.utcnow().isoformat(),
             }
 
-    def synthesize_analysis(self, symbol: str, fundamental_result: Dict, technical_result: Dict) -> Dict[str, Any]:
+    def synthesize_analysis(
+        self, symbol: str, fundamental_result: Dict, technical_result: Dict
+    ) -> Dict[str, Any]:
         """
         Synthesize fundamental and technical analysis
 
@@ -195,7 +239,9 @@ class LLMFacade:
                 "timestamp": datetime.utcnow().isoformat(),
             }
 
-    def analyze_quarterly_summary(self, symbol: str, quarter_data: Dict) -> Dict[str, Any]:
+    def analyze_quarterly_summary(
+        self, symbol: str, quarter_data: Dict
+    ) -> Dict[str, Any]:
         """
         Create quarterly performance summary
 
@@ -209,7 +255,9 @@ class LLMFacade:
         try:
             data = {"symbol": symbol, "quarter_data": quarter_data}
 
-            return self.analysis_template.analyze(symbol, data, LLMTaskType.QUARTERLY_SUMMARY)
+            return self.analysis_template.analyze(
+                symbol, data, LLMTaskType.QUARTERLY_SUMMARY
+            )
 
         except Exception as e:
             self.logger.error(f"Error in quarterly summary: {e}")
@@ -235,7 +283,9 @@ class LLMFacade:
             data = dict(all_data)
             data["symbol"] = symbol
 
-            return self.analysis_template.analyze(symbol, data, LLMTaskType.RISK_ASSESSMENT)
+            return self.analysis_template.analyze(
+                symbol, data, LLMTaskType.RISK_ASSESSMENT
+            )
 
         except Exception as e:
             self.logger.error(f"Error in risk assessment: {e}")
@@ -250,7 +300,9 @@ class LLMFacade:
     # Direct LLM Methods (Strategy Pattern)
     # ============================================================================
 
-    def generate_response(self, task_type: LLMTaskType, data: Dict[str, Any]) -> Dict[str, Any]:
+    def generate_response(
+        self, task_type: LLMTaskType, data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Generate LLM response using strategy pattern
 
@@ -275,7 +327,9 @@ class LLMFacade:
             self.logger.error(f"Error generating response: {e}")
             return {
                 "error": str(e),
-                "task_type": task_type.value if isinstance(task_type, LLMTaskType) else str(task_type),
+                "task_type": task_type.value
+                if isinstance(task_type, LLMTaskType)
+                else str(task_type),
                 "timestamp": datetime.utcnow().isoformat(),
             }
 
@@ -299,7 +353,9 @@ class LLMFacade:
                 llm_requests.append((llm_request, task_type))
 
             # Process batch
-            llm_responses = self.processor.process_batch([req for req, _ in llm_requests])
+            llm_responses = self.processor.process_batch(
+                [req for req, _ in llm_requests]
+            )
 
             # Process responses
             results = []
@@ -312,13 +368,17 @@ class LLMFacade:
 
         except Exception as e:
             self.logger.error(f"Error in batch processing: {e}")
-            return [{"error": str(e), "timestamp": datetime.utcnow().isoformat()}] * len(requests)
+            return [
+                {"error": str(e), "timestamp": datetime.utcnow().isoformat()}
+            ] * len(requests)
 
     # ============================================================================
     # Legacy Compatibility Methods
     # ============================================================================
 
-    def query_ollama(self, model: str, prompt: str, system_prompt: str = None, **kwargs) -> Dict[str, Any]:
+    def query_ollama(
+        self, model: str, prompt: str, system_prompt: str = None, **kwargs
+    ) -> Dict[str, Any]:
         """
         Legacy compatibility method for direct Ollama queries
         Maintains backward compatibility with existing code
@@ -369,10 +429,16 @@ class LLMFacade:
                 "processing_time_ms": 0,
                 "tokens_used": 0,
                 "error": str(e),
-                "metadata": {"error": str(e), "model": model, "timestamp": datetime.now().isoformat()},
+                "metadata": {
+                    "error": str(e),
+                    "model": model,
+                    "timestamp": datetime.now().isoformat(),
+                },
             }
 
-    def generate(self, model: str, prompt: str, system_prompt: str = None, **kwargs) -> str:
+    def generate(
+        self, model: str, prompt: str, system_prompt: str = None, **kwargs
+    ) -> str:
         """
         Legacy compatibility method that returns just the response content
         Maintains backward compatibility with existing code that expects a string response
@@ -430,7 +496,9 @@ class LLMFacade:
 # ============================================================================
 
 
-def create_llm_facade(config, cache_manager=None, strategy_type: str = "comprehensive") -> LLMFacade:
+def create_llm_facade(
+    config, cache_manager=None, strategy_type: str = "comprehensive"
+) -> LLMFacade:
     """
     Factory function to create LLM facade
 

@@ -29,7 +29,7 @@ Example:
 import logging
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 import pandas as pd
 from sqlalchemy import create_engine, text
@@ -213,9 +213,13 @@ class PriceService:
             ).fetchall()
 
             if result:
-                df = pd.DataFrame(result, columns=["date", "open", "high", "low", "close", "volume"])
+                df = pd.DataFrame(
+                    result, columns=["date", "open", "high", "low", "close", "volume"]
+                )
                 return df
-            return pd.DataFrame(columns=["date", "open", "high", "low", "close", "volume"])
+            return pd.DataFrame(
+                columns=["date", "open", "high", "low", "close", "volume"]
+            )
 
     def get_price_at_lookback(
         self,

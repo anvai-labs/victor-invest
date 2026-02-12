@@ -19,9 +19,10 @@ import gzip
 import logging
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, List, Tuple
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -30,7 +31,12 @@ class CacheMigrator:
 
     def __init__(self, dry_run: bool = False):
         self.dry_run = dry_run
-        self.stats = {"files_scanned": 0, "files_migrated": 0, "files_skipped": 0, "errors": 0}
+        self.stats = {
+            "files_scanned": 0,
+            "files_migrated": 0,
+            "files_skipped": 0,
+            "errors": 0,
+        }
 
     def migrate_all_caches(self, symbol: str = None):
         """
@@ -84,12 +90,16 @@ class CacheMigrator:
                 fiscal_period = self._determine_fiscal_period(cache_file, symbol)
 
                 if fiscal_period == "unknown":
-                    logger.warning(f"    Cannot determine fiscal period for {cache_file.name}")
+                    logger.warning(
+                        f"    Cannot determine fiscal period for {cache_file.name}"
+                    )
                     self.stats["files_skipped"] += 1
                     continue
 
                 # Generate new filename
-                new_filename = self._add_fiscal_period_to_filename(cache_file.name, fiscal_period)
+                new_filename = self._add_fiscal_period_to_filename(
+                    cache_file.name, fiscal_period
+                )
 
                 new_path = symbol_dir / new_filename
 
@@ -162,7 +172,9 @@ class CacheMigrator:
             if symbol_filter and symbol != symbol_filter:
                 continue
 
-            logger.info(f"  Technical cache for {symbol}: No migration needed (not period-specific)")
+            logger.info(
+                f"  Technical cache for {symbol}: No migration needed (not period-specific)"
+            )
             # Technical data is typically for a date range, not fiscal periods
 
     def _has_fiscal_period_in_name(self, filename: str) -> bool:
@@ -228,7 +240,8 @@ class CacheMigrator:
                 quarter = "Q4"
 
             logger.debug(
-                f"Using file mtime for {cache_file.name}: {year}-{quarter} " f"(mtime: {mtime.strftime('%Y-%m-%d')})"
+                f"Using file mtime for {cache_file.name}: {year}-{quarter} "
+                f"(mtime: {mtime.strftime('%Y-%m-%d')})"
             )
 
             return f"{year}-{quarter}"
@@ -269,15 +282,25 @@ class CacheMigrator:
             logger.info("\n✓ MIGRATION COMPLETE")
 
             if self.stats["errors"] > 0:
-                logger.warning(f"⚠  {self.stats['errors']} errors occurred during migration")
+                logger.warning(
+                    f"⚠  {self.stats['errors']} errors occurred during migration"
+                )
             else:
                 logger.info("  All files migrated successfully!")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Migrate cache files to include fiscal periods in filenames")
-    parser.add_argument("--dry-run", action="store_true", help="Preview changes without actually renaming files")
-    parser.add_argument("--symbol", type=str, help="Migrate only specific symbol (e.g., AAPL)")
+    parser = argparse.ArgumentParser(
+        description="Migrate cache files to include fiscal periods in filenames"
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview changes without actually renaming files",
+    )
+    parser.add_argument(
+        "--symbol", type=str, help="Migrate only specific symbol (e.g., AAPL)"
+    )
 
     args = parser.parse_args()
 

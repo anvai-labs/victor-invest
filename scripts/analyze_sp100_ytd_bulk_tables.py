@@ -17,7 +17,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import json
-from decimal import Decimal
 from typing import Dict, List, Any
 from datetime import datetime
 
@@ -135,12 +134,19 @@ SP100_SYMBOLS = [
 
 # Key XBRL tags to analyze
 XBRL_TAGS = {
-    "Revenue": ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet"],
+    "Revenue": [
+        "Revenues",
+        "RevenueFromContractWithCustomerExcludingAssessedTax",
+        "SalesRevenueNet",
+    ],
     "OperatingCashFlow": ["NetCashProvidedByUsedInOperatingActivities"],
     "COGS": ["CostOfRevenue", "CostOfGoodsAndServicesSold"],
     "Assets": ["Assets"],
     "Liabilities": ["Liabilities"],
-    "Equity": ["StockholdersEquity", "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"],
+    "Equity": [
+        "StockholdersEquity",
+        "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest",
+    ],
     "CapEx": ["PaymentsToAcquirePropertyPlantAndEquipment"],
 }
 
@@ -171,7 +177,9 @@ def get_symbol_cik_mapping(conn, symbols: List[str]) -> Dict[str, str]:
     return mapping
 
 
-def get_quarterly_data(conn, cik: str, symbol: str, num_quarters: int = 8) -> List[Dict[str, Any]]:
+def get_quarterly_data(
+    conn, cik: str, symbol: str, num_quarters: int = 8
+) -> List[Dict[str, Any]]:
     """
     Get last N quarters of data from sec_sub_data and sec_num_data.
 
@@ -200,7 +208,9 @@ def get_quarterly_data(conn, cik: str, symbol: str, num_quarters: int = 8) -> Li
     LIMIT %s
     """
 
-    cursor.execute(sub_query, (cik, num_quarters * 2))  # Fetch more to ensure we get enough
+    cursor.execute(
+        sub_query, (cik, num_quarters * 2)
+    )  # Fetch more to ensure we get enough
     submissions = cursor.fetchall()
 
     if not submissions:
@@ -289,7 +299,12 @@ def analyze_ytd_pattern(quarters: List[Dict[str, Any]]) -> Dict[str, Any]:
     - qtrs=0: Always point-in-time snapshot
     """
 
-    analysis = {"is_consistent_ytd": True, "q2_pattern": None, "q3_pattern": None, "details": []}
+    analysis = {
+        "is_consistent_ytd": True,
+        "q2_pattern": None,
+        "q3_pattern": None,
+        "details": [],
+    }
 
     for q in quarters:
         fp = q["fiscal_period"]
@@ -298,7 +313,13 @@ def analyze_ytd_pattern(quarters: List[Dict[str, Any]]) -> Dict[str, Any]:
             # Check Revenue qtrs field
             if q.get("Revenue"):
                 qtrs = q["Revenue"]["qtrs"]
-                pattern = "YTD" if qtrs == 2 else "Point-in-time" if qtrs == 1 else f"Unknown (qtrs={qtrs})"
+                pattern = (
+                    "YTD"
+                    if qtrs == 2
+                    else "Point-in-time"
+                    if qtrs == 1
+                    else f"Unknown (qtrs={qtrs})"
+                )
                 analysis["q2_pattern"] = pattern
                 analysis["details"].append(
                     {
@@ -313,7 +334,13 @@ def analyze_ytd_pattern(quarters: List[Dict[str, Any]]) -> Dict[str, Any]:
             # Check Revenue qtrs field
             if q.get("Revenue"):
                 qtrs = q["Revenue"]["qtrs"]
-                pattern = "YTD" if qtrs == 3 else "Point-in-time" if qtrs == 1 else f"Unknown (qtrs={qtrs})"
+                pattern = (
+                    "YTD"
+                    if qtrs == 3
+                    else "Point-in-time"
+                    if qtrs == 1
+                    else f"Unknown (qtrs={qtrs})"
+                )
                 analysis["q3_pattern"] = pattern
                 analysis["details"].append(
                     {
@@ -421,7 +448,9 @@ def main():
     total_with_data = ytd_consistent_count + point_in_time_count + mixed_pattern_count
     if total_with_data > 0:
         ytd_pct = (ytd_consistent_count / total_with_data) * 100
-        print(f"📊 Pattern Consistency: {ytd_pct:.1f}% of stocks follow YTD pattern in Q2/Q3")
+        print(
+            f"📊 Pattern Consistency: {ytd_pct:.1f}% of stocks follow YTD pattern in Q2/Q3"
+        )
         print()
 
         if ytd_pct > 90:
@@ -432,7 +461,7 @@ def main():
             print("   → Current assumption is WRONG, no YTD conversion needed")
         else:
             print("🔶 CONCLUSION: Mixed pattern - company-specific handling required")
-            print(f"   → Need to check 'qtrs' field: qtrs=2 (Q2 YTD), qtrs=3 (Q3 YTD)")
+            print("   → Need to check 'qtrs' field: qtrs=2 (Q2 YTD), qtrs=3 (Q3 YTD)")
 
     # Save results
     output_file = "analysis/sp100_ytd_bulk_analysis.json"

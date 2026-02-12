@@ -33,9 +33,9 @@ Investment Signals:
 
 import logging
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import aiohttp
 
@@ -43,8 +43,12 @@ logger = logging.getLogger(__name__)
 
 # Dallas Fed data URLs
 TMOS_URL = "https://www.dallasfed.org/-/media/Documents/research/surveys/tmos/tmos.xlsx"
-TSSOS_URL = "https://www.dallasfed.org/-/media/Documents/research/surveys/tssos/tssos.xlsx"
-TRIMMED_PCE_URL = "https://www.dallasfed.org/-/media/Documents/research/pce/pce_data.xlsx"
+TSSOS_URL = (
+    "https://www.dallasfed.org/-/media/Documents/research/surveys/tssos/tssos.xlsx"
+)
+TRIMMED_PCE_URL = (
+    "https://www.dallasfed.org/-/media/Documents/research/pce/pce_data.xlsx"
+)
 
 
 class RegionalOutlook(Enum):
@@ -211,7 +215,9 @@ class DallasFedClient:
     async def _get_session(self) -> aiohttp.ClientSession:
         if self._session is None:
             try:
-                from investigator.infrastructure.external.http_client import create_session
+                from investigator.infrastructure.external.http_client import (
+                    create_session,
+                )
 
                 self._session = await create_session()
             except ImportError:

@@ -10,7 +10,6 @@ Checks for:
 """
 
 import re
-import sys
 from pathlib import Path
 
 SECTORS = {
@@ -27,41 +26,48 @@ def analyze_log(symbol, sector):
     log_file = Path(f"run_{symbol}.log")
 
     if not log_file.exists():
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         print(f"{symbol} ({sector})")
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
         print(f"❌ Log file not found: {log_file}")
         return
 
     content = log_file.read_text()
 
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"{symbol} ({sector})")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     # Check SEC data extraction
-    sec_extraction = re.search(r"Extracting SEC company facts.*?(?:✅|❌|ERROR)", content, re.DOTALL)
+    sec_extraction = re.search(
+        r"Extracting SEC company facts.*?(?:✅|❌|ERROR)", content, re.DOTALL
+    )
     if sec_extraction:
-        print(f"✅ SEC extraction found")
+        print("✅ SEC extraction found")
     else:
-        print(f"⏳ SEC extraction in progress or not started")
+        print("⏳ SEC extraction in progress or not started")
 
     # Check for revenue extraction (sector-specific)
     if sector.startswith("Utilities"):
         if "RegulatedAndUnregulatedOperatingRevenue" in content:
-            print(f"✅ Utility-specific revenue tag found: RegulatedAndUnregulatedOperatingRevenue")
+            print(
+                "✅ Utility-specific revenue tag found: RegulatedAndUnregulatedOperatingRevenue"
+            )
         elif "total_revenue" in content and "None" not in content:
-            print(f"✅ Revenue extracted")
+            print("✅ Revenue extracted")
         else:
-            print(f"⚠️  Revenue extraction unclear")
+            print("⚠️  Revenue extraction unclear")
     elif sector.startswith("Financials"):
-        if "InterestAndDividendIncomeOperating" in content or "InterestIncomeOperating" in content:
-            print(f"✅ Financial institution revenue tags found")
+        if (
+            "InterestAndDividendIncomeOperating" in content
+            or "InterestIncomeOperating" in content
+        ):
+            print("✅ Financial institution revenue tags found")
         elif "total_revenue" in content:
-            print(f"✅ Revenue extracted")
+            print("✅ Revenue extracted")
     else:
         if "total_revenue" in content:
-            print(f"✅ Revenue extraction attempted")
+            print("✅ Revenue extraction attempted")
 
     # Check for warnings/errors
     error_count = len(re.findall(r"ERROR", content))
@@ -89,11 +95,13 @@ def analyze_log(symbol, sector):
         "forecast": r"fundamental_forecast",
     }
 
-    print(f"\nLLM Analysis Components:")
+    print("\nLLM Analysis Components:")
     for name, pattern in llm_patterns.items():
         if re.search(pattern, content):
             # Check if there are JSON extraction failures for this type
-            context = re.findall(rf"{pattern}.*?(?:Failed to extract JSON|✅)", content, re.DOTALL)
+            context = re.findall(
+                rf"{pattern}.*?(?:Failed to extract JSON|✅)", content, re.DOTALL
+            )
             if context and "Failed to extract JSON" in str(context):
                 print(f"  ⚠️  {name}: JSON extraction issues")
             else:
@@ -108,33 +116,45 @@ def analyze_log(symbol, sector):
         print(f"\n📊 Data Quality: {quality_level} ({quality_pct}%)")
 
     # Check for critical metrics
-    critical_metrics = ["total_revenue", "net_income", "total_assets", "total_liabilities"]
+    critical_metrics = [
+        "total_revenue",
+        "net_income",
+        "total_assets",
+        "total_liabilities",
+    ]
     metrics_found = []
     for metric in critical_metrics:
-        if re.search(rf"'{metric}':\s*[0-9]", content) or re.search(rf'"{metric}":\s*[0-9]', content):
+        if re.search(rf"'{metric}':\s*[0-9]", content) or re.search(
+            rf'"{metric}":\s*[0-9]', content
+        ):
             metrics_found.append(metric)
 
     if metrics_found:
-        print(f"✅ Critical metrics found: {len(metrics_found)}/4 ({', '.join(metrics_found)})")
+        print(
+            f"✅ Critical metrics found: {len(metrics_found)}/4 ({', '.join(metrics_found)})"
+        )
 
     # Sector-specific checks
-    print(f"\nSector-Specific Checks:")
+    print("\nSector-Specific Checks:")
     if sector.startswith("Utilities"):
         if "RegulatoryAssets" in content or "RegulatoryLiability" in content:
-            print(f"  ✅ Utility regulatory items detected")
+            print("  ✅ Utility regulatory items detected")
         if "TemporaryEquity" in content:
-            print(f"  ✅ Complex equity structure detected (expected for utilities)")
+            print("  ✅ Complex equity structure detected (expected for utilities)")
     elif sector.startswith("Real Estate"):
         if "REIT" in content or "NoncontrollingInterest" in content:
-            print(f"  ✅ REIT-specific items detected")
-        if "TemporaryEquity" in content or "RedeemableNoncontrollingInterest" in content:
-            print(f"  ✅ Complex REIT equity structure detected")
+            print("  ✅ REIT-specific items detected")
+        if (
+            "TemporaryEquity" in content
+            or "RedeemableNoncontrollingInterest" in content
+        ):
+            print("  ✅ Complex REIT equity structure detected")
     elif sector.startswith("Financials"):
         if "InterestIncome" in content or "InterestExpense" in content:
-            print(f"  ✅ Banking-specific interest income/expense detected")
+            print("  ✅ Banking-specific interest income/expense detected")
     elif sector.startswith("Energy"):
         if "PropertyPlantAndEquipment" in content:
-            print(f"  ✅ Capital-intensive assets detected (expected for energy)")
+            print("  ✅ Capital-intensive assets detected (expected for energy)")
 
     # Check file size
     file_size_kb = log_file.stat().st_size / 1024
@@ -142,11 +162,11 @@ def analyze_log(symbol, sector):
 
     # Estimate completion
     if "✅ Analysis complete" in content or "SYNTHESIS COMPLETE" in content:
-        print(f"✅ Analysis COMPLETE")
+        print("✅ Analysis COMPLETE")
     elif file_size_kb > 100:
-        print(f"⏳ Analysis in progress (substantial data)")
+        print("⏳ Analysis in progress (substantial data)")
     elif file_size_kb < 10:
-        print(f"⚠️  Analysis may have failed early")
+        print("⚠️  Analysis may have failed early")
 
 
 def main():
@@ -158,9 +178,9 @@ def main():
     for symbol, sector in SECTORS.items():
         analyze_log(symbol, sector)
 
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("ANALYSIS COMPLETE")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
 
 if __name__ == "__main__":

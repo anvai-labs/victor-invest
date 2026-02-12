@@ -4,6 +4,7 @@ News Sentiment Analysis Module
 Analyzes news sentiment using NewsAPI and LLM-powered sentiment scoring
 to provide market sentiment insights and detect sentiment-price divergences.
 """
+
 import logging
 import requests
 import json
@@ -17,7 +18,9 @@ logger = logging.getLogger(__name__)
 class NewsSentimentAnalyzer:
     """Analyze news sentiment for stocks"""
 
-    def __init__(self, db_manager=None, ollama_client=None, newsapi_key: Optional[str] = None):
+    def __init__(
+        self, db_manager=None, ollama_client=None, newsapi_key: Optional[str] = None
+    ):
         """
         Initialize news sentiment analyzer
 
@@ -50,13 +53,17 @@ class NewsSentimentAnalyzer:
 
             if not articles or len(articles) == 0:
                 logger.warning(f"No news articles found for {symbol}")
-                return self._get_default_sentiment(symbol, days, "No news articles found")
+                return self._get_default_sentiment(
+                    symbol, days, "No news articles found"
+                )
 
             # Filter irrelevant articles
             articles = self._filter_articles(articles)
 
             if len(articles) == 0:
-                return self._get_default_sentiment(symbol, days, "No relevant articles after filtering")
+                return self._get_default_sentiment(
+                    symbol, days, "No relevant articles after filtering"
+                )
 
             # Analyze sentiment for each article
             article_sentiments = []
@@ -64,27 +71,31 @@ class NewsSentimentAnalyzer:
                 try:
                     sentiment = self._analyze_article_sentiment(article)
                     if sentiment:
-                        sentiment['article'] = article
+                        sentiment["article"] = article
                         article_sentiments.append(sentiment)
                 except Exception as e:
                     logger.warning(f"Error analyzing article sentiment: {e}")
                     continue
 
             if not article_sentiments:
-                return self._get_default_sentiment(symbol, days, "Could not analyze article sentiments")
+                return self._get_default_sentiment(
+                    symbol, days, "Could not analyze article sentiments"
+                )
 
             # Calculate aggregate sentiment
             aggregate = self._calculate_aggregate_sentiment(article_sentiments)
 
             # Calculate sentiment trend
             trend = self._calculate_sentiment_trend(article_sentiments)
-            aggregate['sentiment_trend'] = trend
+            aggregate["sentiment_trend"] = trend
 
             # Add metadata
-            aggregate['period_days'] = days
-            aggregate['data_available'] = True
+            aggregate["period_days"] = days
+            aggregate["data_available"] = True
 
-            logger.info(f"{symbol} - News sentiment: {aggregate.get('sentiment_rating')} ({aggregate.get('sentiment_score')}/10) from {len(article_sentiments)} articles")
+            logger.info(
+                f"{symbol} - News sentiment: {aggregate.get('sentiment_rating')} ({aggregate.get('sentiment_score')}/10) from {len(article_sentiments)} articles"
+            )
 
             return aggregate
 
@@ -106,20 +117,22 @@ class NewsSentimentAnalyzer:
         try:
             # Check if we have a valid API key
             if not self.newsapi_key or self.newsapi_key == "placeholder":
-                logger.info(f"NewsAPI key not configured, skipping news fetch for {symbol}")
+                logger.info(
+                    f"NewsAPI key not configured, skipping news fetch for {symbol}"
+                )
                 return []
 
             # Calculate date range
-            from_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
+            from_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
 
             # Build API request
             url = f"{self.newsapi_base_url}/everything"
             params = {
-                'q': symbol,
-                'from': from_date,
-                'sortBy': 'publishedAt',
-                'language': 'en',
-                'apiKey': self.newsapi_key
+                "q": symbol,
+                "from": from_date,
+                "sortBy": "publishedAt",
+                "language": "en",
+                "apiKey": self.newsapi_key,
             }
 
             # Make API request
@@ -128,8 +141,8 @@ class NewsSentimentAnalyzer:
 
             data = response.json()
 
-            if data.get('status') == 'ok':
-                articles = data.get('articles', [])
+            if data.get("status") == "ok":
+                articles = data.get("articles", [])
                 logger.info(f"Fetched {len(articles)} articles for {symbol}")
                 return articles
             else:
@@ -157,11 +170,11 @@ class NewsSentimentAnalyzer:
         seen_titles = set()
 
         for article in articles:
-            title = article.get('title', '')
-            description = article.get('description', '')
+            title = article.get("title", "")
+            description = article.get("description", "")
 
             # Skip removed content
-            if '[Removed]' in title or not title or not description:
+            if "[Removed]" in title or not title or not description:
                 continue
 
             # Skip duplicates
@@ -188,8 +201,8 @@ class NewsSentimentAnalyzer:
             return self._basic_sentiment_analysis(article)
 
         try:
-            title = article.get('title', '')
-            description = article.get('description', '')
+            title = article.get("title", "")
+            description = article.get("description", "")
 
             prompt = f"""Analyze the sentiment of this news article about a stock.
 
@@ -205,7 +218,7 @@ Focus on implications for stock price. Be objective and balanced.
 """
 
             response = self.ollama_client.generate(prompt)
-            response_text = response.get('response', '{}')
+            response_text = response.get("response", "{}")
 
             # Parse JSON response
             try:
@@ -229,20 +242,43 @@ Focus on implications for stock price. Be objective and balanced.
         Returns:
             Sentiment result
         """
-        title = article.get('title', '').lower()
-        description = article.get('description', '').lower()
+        title = article.get("title", "").lower()
+        description = article.get("description", "").lower()
         text = f"{title} {description}"
 
         # Positive keywords
         positive_keywords = [
-            'profit', 'growth', 'record', 'beat', 'exceed', 'strong', 'surge',
-            'innovation', 'success', 'breakthrough', 'gain', 'rise', 'jump'
+            "profit",
+            "growth",
+            "record",
+            "beat",
+            "exceed",
+            "strong",
+            "surge",
+            "innovation",
+            "success",
+            "breakthrough",
+            "gain",
+            "rise",
+            "jump",
         ]
 
         # Negative keywords
         negative_keywords = [
-            'loss', 'decline', 'fall', 'miss', 'lawsuit', 'probe', 'investigation',
-            'warning', 'cut', 'layoff', 'concern', 'risk', 'drop', 'plunge'
+            "loss",
+            "decline",
+            "fall",
+            "miss",
+            "lawsuit",
+            "probe",
+            "investigation",
+            "warning",
+            "cut",
+            "layoff",
+            "concern",
+            "risk",
+            "drop",
+            "plunge",
         ]
 
         pos_count = sum(1 for keyword in positive_keywords if keyword in text)
@@ -251,23 +287,23 @@ Focus on implications for stock price. Be objective and balanced.
         # Calculate score
         if pos_count == 0 and neg_count == 0:
             score = 5.0
-            label = 'neutral'
+            label = "neutral"
         else:
             # Score based on ratio
             total = pos_count + neg_count
             pos_ratio = pos_count / total
             score = pos_ratio * 10
             if score >= 6.5:
-                label = 'positive'
+                label = "positive"
             elif score <= 3.5:
-                label = 'negative'
+                label = "negative"
             else:
-                label = 'neutral'
+                label = "neutral"
 
         return {
-            'sentiment_score': round(score, 1),
-            'sentiment_label': label,
-            'reasoning': f'Keyword analysis: {pos_count} positive, {neg_count} negative'
+            "sentiment_score": round(score, 1),
+            "sentiment_label": label,
+            "reasoning": f"Keyword analysis: {pos_count} positive, {neg_count} negative",
         }
 
     def _calculate_aggregate_sentiment(self, article_sentiments: List[Dict]) -> Dict:
@@ -282,16 +318,16 @@ Focus on implications for stock price. Be objective and balanced.
         """
         if not article_sentiments:
             return {
-                'sentiment_score': 5.0,
-                'sentiment_rating': 'Neutral',
-                'positive_count': 0,
-                'negative_count': 0,
-                'neutral_count': 0,
-                'article_count': 0
+                "sentiment_score": 5.0,
+                "sentiment_rating": "Neutral",
+                "positive_count": 0,
+                "negative_count": 0,
+                "neutral_count": 0,
+                "article_count": 0,
             }
 
         # Count sentiment labels
-        labels = [s.get('sentiment_label', 'neutral') for s in article_sentiments]
+        labels = [s.get("sentiment_label", "neutral") for s in article_sentiments]
         label_counts = Counter(labels)
 
         # Calculate weighted average with recency bias
@@ -300,8 +336,10 @@ Focus on implications for stock price. Be objective and balanced.
 
         for i, sentiment in enumerate(article_sentiments):
             # More recent articles (earlier in list) get higher weight
-            recency_weight = 1.0 + (0.5 * (len(article_sentiments) - i) / len(article_sentiments))
-            score = sentiment.get('sentiment_score', 5.0)
+            recency_weight = 1.0 + (
+                0.5 * (len(article_sentiments) - i) / len(article_sentiments)
+            )
+            score = sentiment.get("sentiment_score", 5.0)
 
             weighted_sum += score * recency_weight
             total_weight += recency_weight
@@ -309,12 +347,12 @@ Focus on implications for stock price. Be objective and balanced.
         avg_score = weighted_sum / total_weight if total_weight > 0 else 5.0
 
         return {
-            'sentiment_score': round(avg_score, 1),
-            'sentiment_rating': self._get_sentiment_rating(avg_score),
-            'positive_count': label_counts.get('positive', 0),
-            'negative_count': label_counts.get('negative', 0),
-            'neutral_count': label_counts.get('neutral', 0),
-            'article_count': len(article_sentiments)
+            "sentiment_score": round(avg_score, 1),
+            "sentiment_rating": self._get_sentiment_rating(avg_score),
+            "positive_count": label_counts.get("positive", 0),
+            "negative_count": label_counts.get("negative", 0),
+            "neutral_count": label_counts.get("neutral", 0),
+            "article_count": len(article_sentiments),
         }
 
     def _calculate_sentiment_trend(self, article_sentiments: List[Dict]) -> Dict:
@@ -328,7 +366,7 @@ Focus on implications for stock price. Be objective and balanced.
             Trend analysis
         """
         if len(article_sentiments) < 2:
-            return {'direction': 'stable', 'strength': 0}
+            return {"direction": "stable", "strength": 0}
 
         # Split into recent and older halves
         mid_point = len(article_sentiments) // 2
@@ -336,31 +374,32 @@ Focus on implications for stock price. Be objective and balanced.
         older = article_sentiments[mid_point:]
 
         # Calculate average for each period
-        recent_avg = sum(s.get('sentiment_score', 5.0) for s in recent) / len(recent)
-        older_avg = sum(s.get('sentiment_score', 5.0) for s in older) / len(older)
+        recent_avg = sum(s.get("sentiment_score", 5.0) for s in recent) / len(recent)
+        older_avg = sum(s.get("sentiment_score", 5.0) for s in older) / len(older)
 
         # Determine trend
         diff = recent_avg - older_avg
 
         if diff > 1.0:
-            direction = 'improving'
+            direction = "improving"
             strength = min(abs(diff), 5.0)  # Cap at 5
         elif diff < -1.0:
-            direction = 'declining'
+            direction = "declining"
             strength = min(abs(diff), 5.0)
         else:
-            direction = 'stable'
+            direction = "stable"
             strength = abs(diff)
 
         return {
-            'direction': direction,
-            'strength': round(strength, 1),
-            'recent_avg': round(recent_avg, 1),
-            'older_avg': round(older_avg, 1)
+            "direction": direction,
+            "strength": round(strength, 1),
+            "recent_avg": round(recent_avg, 1),
+            "older_avg": round(older_avg, 1),
         }
 
-    def _detect_sentiment_price_divergence(self, sentiment_data: Dict,
-                                           price_data: Dict) -> Optional[Dict]:
+    def _detect_sentiment_price_divergence(
+        self, sentiment_data: Dict, price_data: Dict
+    ) -> Optional[Dict]:
         """
         Detect divergences between sentiment and price movement
 
@@ -371,23 +410,23 @@ Focus on implications for stock price. Be objective and balanced.
         Returns:
             Divergence information if detected
         """
-        sentiment_score = sentiment_data.get('sentiment_score', 5.0)
-        price_change = price_data.get('price_change_pct_7d', 0)
+        sentiment_score = sentiment_data.get("sentiment_score", 5.0)
+        price_change = price_data.get("price_change_pct_7d", 0)
 
         # Bearish divergence: negative sentiment but price rising
         if sentiment_score < 4.0 and price_change > 5.0:
             return {
-                'type': 'bearish_divergence',
-                'description': f'Negative news sentiment ({sentiment_score}/10) but price up {price_change:.1f}%',
-                'signal': 'Potential overvaluation or market ignoring risks'
+                "type": "bearish_divergence",
+                "description": f"Negative news sentiment ({sentiment_score}/10) but price up {price_change:.1f}%",
+                "signal": "Potential overvaluation or market ignoring risks",
             }
 
         # Bullish divergence: positive sentiment but price falling
         if sentiment_score > 6.5 and price_change < -5.0:
             return {
-                'type': 'bullish_divergence',
-                'description': f'Positive news sentiment ({sentiment_score}/10) but price down {price_change:.1f}%',
-                'signal': 'Potential buying opportunity if fundamentals support sentiment'
+                "type": "bullish_divergence",
+                "description": f"Positive news sentiment ({sentiment_score}/10) but price down {price_change:.1f}%",
+                "signal": "Potential buying opportunity if fundamentals support sentiment",
             }
 
         return None
@@ -403,15 +442,15 @@ Focus on implications for stock price. Be objective and balanced.
             Rating string
         """
         if score >= 8.0:
-            return 'Very Positive'
+            return "Very Positive"
         elif score >= 6.5:
-            return 'Positive'
+            return "Positive"
         elif score >= 4.5:
-            return 'Neutral'
+            return "Neutral"
         elif score >= 2.5:
-            return 'Negative'
+            return "Negative"
         else:
-            return 'Very Negative'
+            return "Very Negative"
 
     def _get_default_sentiment(self, symbol: str, days: int, reason: str) -> Dict:
         """
@@ -426,14 +465,14 @@ Focus on implications for stock price. Be objective and balanced.
             Default sentiment structure
         """
         return {
-            'sentiment_score': 5.0,
-            'sentiment_rating': 'Neutral',
-            'positive_count': 0,
-            'negative_count': 0,
-            'neutral_count': 0,
-            'article_count': 0,
-            'sentiment_trend': {'direction': 'stable', 'strength': 0},
-            'period_days': days,
-            'data_available': False,
-            'note': f'News sentiment analysis requires NewsAPI integration - {reason}'
+            "sentiment_score": 5.0,
+            "sentiment_rating": "Neutral",
+            "positive_count": 0,
+            "negative_count": 0,
+            "neutral_count": 0,
+            "article_count": 0,
+            "sentiment_trend": {"direction": "stable", "strength": 0},
+            "period_days": days,
+            "data_available": False,
+            "note": f"News sentiment analysis requires NewsAPI integration - {reason}",
         }

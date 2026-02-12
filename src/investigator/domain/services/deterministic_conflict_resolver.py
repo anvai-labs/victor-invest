@@ -23,7 +23,7 @@ Design Principles (SOLID):
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Protocol, Tuple
+from typing import Any, Dict, List, Optional, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -193,7 +193,10 @@ class RecommendationConflictDetector:
         return conflicts
 
     def _extract_signals(
-        self, fundamental: Optional[Dict[str, Any]], technical: Optional[Dict[str, Any]], sec: Optional[Dict[str, Any]]
+        self,
+        fundamental: Optional[Dict[str, Any]],
+        technical: Optional[Dict[str, Any]],
+        sec: Optional[Dict[str, Any]],
     ) -> Dict[str, str]:
         """Extract recommendation signals from each analysis."""
         signals = {}
@@ -359,7 +362,10 @@ class DataQualityConflictDetector:
                             f"{high_quality[0]} ({max_score:.0f}/100) vs "
                             f"{low_quality[0]} ({min_score:.0f}/100)"
                         ),
-                        data={"quality_scores": quality_scores, "gap": max_score - min_score},
+                        data={
+                            "quality_scores": quality_scores,
+                            "gap": max_score - min_score,
+                        },
                     )
                 )
 
@@ -393,7 +399,9 @@ class RecommendationConflictResolver:
         return conflict.conflict_type == ConflictType.RECOMMENDATION
 
     def resolve(self, conflict: Conflict) -> ConflictResolution:
-        direction = conflict.data.get("direction", "fundamental_bullish_technical_bearish")
+        direction = conflict.data.get(
+            "direction", "fundamental_bullish_technical_bearish"
+        )
         weights = self.WEIGHT_ADJUSTMENTS.get(direction, {}).get(
             self.time_horizon, {"fundamental": 0.5, "technical": 0.5}
         )
@@ -633,7 +641,9 @@ class DeterministicConflictResolver:
         """
         # Detect conflicts if not provided
         if conflicts is None:
-            detected = self.detect_conflicts(fundamental, technical, sec, market_context)
+            detected = self.detect_conflicts(
+                fundamental, technical, sec, market_context
+            )
         else:
             # Convert dict conflicts to Conflict objects
             detected = []
@@ -641,7 +651,9 @@ class DeterministicConflictResolver:
                 try:
                     detected.append(
                         Conflict(
-                            conflict_type=ConflictType(c.get("conflict_type", "recommendation_conflict")),
+                            conflict_type=ConflictType(
+                                c.get("conflict_type", "recommendation_conflict")
+                            ),
                             severity=ConflictSeverity(c.get("severity", "medium")),
                             sources=c.get("sources", []),
                             description=c.get("description", ""),
@@ -667,12 +679,20 @@ class DeterministicConflictResolver:
         if not resolutions:
             overall_coherence = "High - No significant conflicts detected"
             confidence_impact = 0.0
-            reconciled_recommendation = self._determine_recommendation(fundamental, technical, sec)
+            reconciled_recommendation = self._determine_recommendation(
+                fundamental, technical, sec
+            )
         else:
             # Coherence based on severity
-            high_severity = sum(1 for c in detected if c.severity in [ConflictSeverity.HIGH, ConflictSeverity.CRITICAL])
+            high_severity = sum(
+                1
+                for c in detected
+                if c.severity in [ConflictSeverity.HIGH, ConflictSeverity.CRITICAL]
+            )
             if high_severity >= 2:
-                overall_coherence = "Low - Multiple significant conflicts require resolution"
+                overall_coherence = (
+                    "Low - Multiple significant conflicts require resolution"
+                )
                 confidence_impact = -0.15
             elif high_severity == 1:
                 overall_coherence = "Moderate - One significant conflict identified"
@@ -683,7 +703,9 @@ class DeterministicConflictResolver:
 
             # Blend weights from resolutions
             blended_weights = self._blend_resolution_weights(resolutions)
-            reconciled_recommendation = self._weighted_recommendation(fundamental, technical, sec, blended_weights)
+            reconciled_recommendation = self._weighted_recommendation(
+                fundamental, technical, sec, blended_weights
+            )
 
         return ReconciliationResult(
             overall_coherence=overall_coherence,
@@ -692,7 +714,9 @@ class DeterministicConflictResolver:
             resolutions=resolutions,
         )
 
-    def _blend_resolution_weights(self, resolutions: List[ConflictResolution]) -> Dict[str, float]:
+    def _blend_resolution_weights(
+        self, resolutions: List[ConflictResolution]
+    ) -> Dict[str, float]:
         """Blend weight adjustments from multiple resolutions."""
         if not resolutions:
             return {"fundamental": 0.5, "technical": 0.3, "sec": 0.2}
@@ -718,7 +742,10 @@ class DeterministicConflictResolver:
         return blended
 
     def _determine_recommendation(
-        self, fundamental: Optional[Dict[str, Any]], technical: Optional[Dict[str, Any]], sec: Optional[Dict[str, Any]]
+        self,
+        fundamental: Optional[Dict[str, Any]],
+        technical: Optional[Dict[str, Any]],
+        sec: Optional[Dict[str, Any]],
     ) -> str:
         """Determine recommendation when no conflicts exist."""
         # Extract recommendations
@@ -757,7 +784,9 @@ class DeterministicConflictResolver:
                 scores["fundamental"] = 0
 
         if technical:
-            signal = str(technical.get("signal", technical.get("overall_signal", ""))).lower()
+            signal = str(
+                technical.get("signal", technical.get("overall_signal", ""))
+            ).lower()
             if any(s in signal for s in ["buy", "bullish"]):
                 scores["technical"] = 1
             elif any(s in signal for s in ["sell", "bearish"]):
@@ -824,7 +853,11 @@ def reconcile_conflicts(
     """
     resolver = DeterministicConflictResolver(time_horizon=time_horizon)
     result = resolver.reconcile(
-        conflicts=conflicts, fundamental=fundamental, technical=technical, sec=sec, market_context=market_context
+        conflicts=conflicts,
+        fundamental=fundamental,
+        technical=technical,
+        sec=sec,
+        market_context=market_context,
     )
     return result.to_dict()
 

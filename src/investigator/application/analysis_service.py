@@ -6,10 +6,13 @@ Provides simplified interface to the orchestrator.
 """
 
 import logging
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from investigator.application.orchestrator import AgentOrchestrator, AnalysisMode, Priority
+from investigator.application.orchestrator import (
+    AgentOrchestrator,
+    AnalysisMode,
+    Priority,
+)
 from investigator.infrastructure.cache.cache_manager import CacheManager
 from investigator.infrastructure.monitoring import MetricsCollector
 
@@ -26,7 +29,10 @@ class AnalysisService:
     """
 
     def __init__(
-        self, cache_manager: CacheManager, metrics_collector: MetricsCollector, max_concurrent_analyses: int = 5
+        self,
+        cache_manager: CacheManager,
+        metrics_collector: MetricsCollector,
+        max_concurrent_analyses: int = 5,
     ):
         """
         Initialize the analysis service
@@ -87,7 +93,9 @@ class AnalysisService:
         priority_level = self._parse_priority(priority)
 
         # Submit analysis task
-        task_id = await self.orchestrator.analyze(symbol=symbol, mode=analysis_mode, priority=priority_level, **kwargs)
+        task_id = await self.orchestrator.analyze(
+            symbol=symbol, mode=analysis_mode, priority=priority_level, **kwargs
+        )
 
         # Wait for completion
         results = await self.orchestrator.get_results(task_id, wait=True, timeout=600)
@@ -123,12 +131,16 @@ class AnalysisService:
         priority_level = self._parse_priority(priority)
 
         # Submit all tasks
-        task_ids = await self.orchestrator.analyze_batch(symbols=symbols, mode=analysis_mode, priority=priority_level)
+        task_ids = await self.orchestrator.analyze_batch(
+            symbols=symbols, mode=analysis_mode, priority=priority_level
+        )
 
         # Collect results
         results = []
         for task_id in task_ids:
-            result = await self.orchestrator.get_results(task_id, wait=True, timeout=600)
+            result = await self.orchestrator.get_results(
+                task_id, wait=True, timeout=600
+            )
             if result:
                 results.append(result)
             else:
@@ -136,7 +148,9 @@ class AnalysisService:
 
         return results
 
-    async def peer_comparison(self, target: str, peers: List[str], mode: str = "comprehensive") -> Dict[str, Any]:
+    async def peer_comparison(
+        self, target: str, peers: List[str], mode: str = "comprehensive"
+    ) -> Dict[str, Any]:
         """
         Analyze a target company and its peers for comparison
 
@@ -161,7 +175,9 @@ class AnalysisService:
         analysis_mode = self._parse_mode(mode)
 
         # Submit peer comparison task
-        task_id = await self.orchestrator.analyze_peer_group(target=target, peers=peers, mode=analysis_mode)
+        task_id = await self.orchestrator.analyze_peer_group(
+            target=target, peers=peers, mode=analysis_mode
+        )
 
         # Wait for completion
         results = await self.orchestrator.get_results(task_id, wait=True, timeout=900)
@@ -183,7 +199,9 @@ class AnalysisService:
         """
         return await self.orchestrator.get_status(task_id)
 
-    async def get_results(self, task_id: str, wait: bool = False, timeout: int = 300) -> Optional[Dict]:
+    async def get_results(
+        self, task_id: str, wait: bool = False, timeout: int = 300
+    ) -> Optional[Dict]:
         """
         Get results of an analysis task
 

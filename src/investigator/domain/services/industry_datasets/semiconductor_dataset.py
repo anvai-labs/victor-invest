@@ -15,7 +15,7 @@ Date: 2025-12-30
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from investigator.domain.services.industry_datasets.base import (
     BaseIndustryDataset,
@@ -169,7 +169,9 @@ class SemiconductorDataset(BaseIndustryDataset):
             ),
         ]
 
-    def extract_metrics(self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs) -> IndustryMetrics:
+    def extract_metrics(
+        self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs
+    ) -> IndustryMetrics:
         """Extract semiconductor-specific metrics from XBRL data and financials."""
         metrics = IndustryMetrics(
             industry="semiconductor",
@@ -187,7 +189,9 @@ class SemiconductorDataset(BaseIndustryDataset):
             warnings.append("Could not extract inventory days")
 
         # Extract book-to-bill (often not in standard XBRL)
-        book_to_bill = self._extract_from_xbrl(xbrl_data, "book_to_bill", ["BookToOrderRatio"], default=None)
+        book_to_bill = self._extract_from_xbrl(
+            xbrl_data, "book_to_bill", ["BookToOrderRatio"], default=None
+        )
         if book_to_bill:
             metrics.metrics["book_to_bill"] = book_to_bill
         else:
@@ -230,7 +234,9 @@ class SemiconductorDataset(BaseIndustryDataset):
 
         return metrics
 
-    def _extract_inventory_days(self, xbrl_data: Optional[Dict], financials: Dict) -> Optional[float]:
+    def _extract_inventory_days(
+        self, xbrl_data: Optional[Dict], financials: Dict
+    ) -> Optional[float]:
         """Extract or calculate inventory days."""
         # Try direct XBRL extraction first
         inv_days = self._extract_from_xbrl(
@@ -306,11 +312,20 @@ class SemiconductorDataset(BaseIndustryDataset):
         if required_available == len(required_metrics) and important_available >= 1:
             return (MetricQuality.EXCELLENT, "All key semiconductor metrics available")
         elif required_available == len(required_metrics):
-            return (MetricQuality.GOOD, "Required metrics available, some optional missing")
+            return (
+                MetricQuality.GOOD,
+                "Required metrics available, some optional missing",
+            )
         elif required_available >= 1:
-            return (MetricQuality.FAIR, "Partial metrics available, cycle assessment may be limited")
+            return (
+                MetricQuality.FAIR,
+                "Partial metrics available, cycle assessment may be limited",
+            )
         else:
-            return (MetricQuality.POOR, "Missing key metrics for semiconductor valuation")
+            return (
+                MetricQuality.POOR,
+                "Missing key metrics for semiconductor valuation",
+            )
 
     def get_valuation_adjustments(
         self, metrics: IndustryMetrics, financials: Dict, **kwargs

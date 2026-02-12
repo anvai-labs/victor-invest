@@ -21,7 +21,12 @@ class TestWeightAdjustment:
 
     def test_creation(self):
         """Test creating a weight adjustment."""
-        adj = WeightAdjustment(model="dcf", source="market_context", multiplier=0.90, reason="Bearish trend detected")
+        adj = WeightAdjustment(
+            model="dcf",
+            source="market_context",
+            multiplier=0.90,
+            reason="Bearish trend detected",
+        )
         assert adj.model == "dcf"
         assert adj.source == "market_context"
         assert adj.multiplier == 0.90
@@ -260,7 +265,11 @@ class TestWeightAuditTrail:
     def test_get_summary_warnings(self, trail):
         """Test summary generates warnings for large changes."""
         trail.capture(
-            step_number=1, step_name="base", weights_before={}, weights_after={"dcf": 40, "pe": 60}, adjustments=[]
+            step_number=1,
+            step_name="base",
+            weights_before={},
+            weights_after={"dcf": 40, "pe": 60},
+            adjustments=[],
         )
         trail.capture(
             step_number=2,
@@ -294,7 +303,11 @@ class TestWeightAuditTrail:
     def test_to_json(self, trail):
         """Test converting trail to JSON string."""
         trail.capture(
-            step_number=1, step_name="test", weights_before={}, weights_after={"dcf": 50, "pe": 50}, adjustments=[]
+            step_number=1,
+            step_name="test",
+            weights_before={},
+            weights_after={"dcf": 50, "pe": 50},
+            adjustments=[],
         )
 
         json_str = trail.to_json()
@@ -304,7 +317,13 @@ class TestWeightAuditTrail:
 
     def test_to_json_with_indent(self, trail):
         """Test JSON with custom indent."""
-        trail.capture(step_number=1, step_name="test", weights_before={}, weights_after={"dcf": 100}, adjustments=[])
+        trail.capture(
+            step_number=1,
+            step_name="test",
+            weights_before={},
+            weights_after={"dcf": 100},
+            adjustments=[],
+        )
 
         json_str = trail.to_json(indent=4)
         # Should have newlines due to indentation
@@ -312,9 +331,19 @@ class TestWeightAuditTrail:
 
     def test_get_step_found(self, trail):
         """Test getting step by number."""
-        trail.capture(step_number=1, step_name="first", weights_before={}, weights_after={"dcf": 50}, adjustments=[])
         trail.capture(
-            step_number=2, step_name="second", weights_before={"dcf": 50}, weights_after={"dcf": 40}, adjustments=[]
+            step_number=1,
+            step_name="first",
+            weights_before={},
+            weights_after={"dcf": 50},
+            adjustments=[],
+        )
+        trail.capture(
+            step_number=2,
+            step_name="second",
+            weights_before={"dcf": 50},
+            weights_after={"dcf": 40},
+            adjustments=[],
         )
 
         step = trail.get_step(2)
@@ -323,7 +352,13 @@ class TestWeightAuditTrail:
 
     def test_get_step_not_found(self, trail):
         """Test getting non-existent step."""
-        trail.capture(step_number=1, step_name="only", weights_before={}, weights_after={"dcf": 50}, adjustments=[])
+        trail.capture(
+            step_number=1,
+            step_name="only",
+            weights_before={},
+            weights_after={"dcf": 50},
+            adjustments=[],
+        )
 
         step = trail.get_step(99)
         assert step is None
@@ -331,7 +366,11 @@ class TestWeightAuditTrail:
     def test_get_steps_for_model(self, trail):
         """Test getting steps that affected a model."""
         trail.capture(
-            step_number=1, step_name="base", weights_before={}, weights_after={"dcf": 50, "pe": 50}, adjustments=[]
+            step_number=1,
+            step_name="base",
+            weights_before={},
+            weights_after={"dcf": 50, "pe": 50},
+            adjustments=[],
         )
         trail.capture(
             step_number=2,
@@ -356,7 +395,13 @@ class TestWeightAuditTrail:
 
     def test_get_steps_for_model_none(self, trail):
         """Test getting steps for model with no changes."""
-        trail.capture(step_number=1, step_name="base", weights_before={}, weights_after={"dcf": 50}, adjustments=[])
+        trail.capture(
+            step_number=1,
+            step_name="base",
+            weights_before={},
+            weights_after={"dcf": 50},
+            adjustments=[],
+        )
 
         steps = trail.get_steps_for_model("pe")  # PE not in trail
         assert len(steps) == 0
@@ -368,7 +413,11 @@ class TestWeightAuditTrail:
         caplog.set_level(logging.INFO)
 
         trail.capture(
-            step_number=1, step_name="base", weights_before={}, weights_after={"dcf": 50, "pe": 50}, adjustments=[]
+            step_number=1,
+            step_name="base",
+            weights_before={},
+            weights_after={"dcf": 50, "pe": 50},
+            adjustments=[],
         )
         trail.mark_bounds_applied()
 
@@ -385,7 +434,13 @@ class TestWeightAuditTrailEdgeCases:
     def test_empty_weights(self):
         """Test with empty weights dictionaries."""
         trail = WeightAuditTrail(symbol="TEST")
-        trail.capture(step_number=1, step_name="empty", weights_before={}, weights_after={}, adjustments=[])
+        trail.capture(
+            step_number=1,
+            step_name="empty",
+            weights_before={},
+            weights_after={},
+            adjustments=[],
+        )
         summary = trail.get_summary()
         assert summary.initial_weights == {}
         assert summary.final_weights == {}
@@ -393,16 +448,28 @@ class TestWeightAuditTrailEdgeCases:
     def test_single_model(self):
         """Test with single model only."""
         trail = WeightAuditTrail(symbol="TEST")
-        trail.capture(step_number=1, step_name="single", weights_before={}, weights_after={"dcf": 100}, adjustments=[])
+        trail.capture(
+            step_number=1,
+            step_name="single",
+            weights_before={},
+            weights_after={"dcf": 100},
+            adjustments=[],
+        )
         summary = trail.get_summary()
         assert summary.final_weights == {"dcf": 100}
 
     def test_many_adjustments(self):
         """Test with many adjustments in one step."""
         trail = WeightAuditTrail(symbol="TEST")
-        adjustments = [WeightAdjustment(f"model_{i}", "source", 1.0 + i * 0.1) for i in range(20)]
+        adjustments = [
+            WeightAdjustment(f"model_{i}", "source", 1.0 + i * 0.1) for i in range(20)
+        ]
         trail.capture(
-            step_number=1, step_name="many", weights_before={}, weights_after={"dcf": 100}, adjustments=adjustments
+            step_number=1,
+            step_name="many",
+            weights_before={},
+            weights_after={"dcf": 100},
+            adjustments=adjustments,
         )
         summary = trail.get_summary()
         assert summary.total_adjustments == 20
@@ -411,7 +478,11 @@ class TestWeightAuditTrailEdgeCases:
         """Test delta percentage when before is zero."""
         trail = WeightAuditTrail(symbol="TEST")
         trail.capture(
-            step_number=1, step_name="from_zero", weights_before={"dcf": 0}, weights_after={"dcf": 50}, adjustments=[]
+            step_number=1,
+            step_name="from_zero",
+            weights_before={"dcf": 0},
+            weights_after={"dcf": 50},
+            adjustments=[],
         )
         step = trail.steps[0]
         changes = step.get_changes()

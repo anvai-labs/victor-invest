@@ -117,7 +117,7 @@ def convert_file(file_path: Path):
     if content != original_content:
         file_path.write_text(content)
         print(f"✅ Updated {file_path.name}")
-        print(f"   Replacements made:")
+        print("   Replacements made:")
         for key, count in sorted(replacements.items(), key=lambda x: -x[1])[:10]:
             print(f"     {key}: {count} occurrences")
         print(f"   Total patterns replaced: {sum(replacements.values())}")
@@ -151,7 +151,9 @@ def main():
         print("Next steps:")
         print("  1. Review the changes: git diff agents/fundamental_agent.py")
         print("  2. Run tests to verify nothing broke")
-        print("  3. Test with NEE: python3 cli_orchestrator.py analyze NEE -m standard --force-refresh")
+        print(
+            "  3. Test with NEE: python3 cli_orchestrator.py analyze NEE -m standard --force-refresh"
+        )
     else:
         print()
         print("ℹ️  File already uses snake_case consistently")

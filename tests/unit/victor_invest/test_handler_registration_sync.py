@@ -17,7 +17,11 @@ def test_ensure_handlers_registered_is_idempotent(monkeypatch):
         assert direction == "to_executor"
 
     monkeypatch.setattr(handlers_module, "register_handlers", _register_handlers)
-    monkeypatch.setattr(handler_registry_module, "sync_handlers_with_executor", _sync_handlers_with_executor)
+    monkeypatch.setattr(
+        handler_registry_module,
+        "sync_handlers_with_executor",
+        _sync_handlers_with_executor,
+    )
 
     workflows.ensure_handlers_registered()
     workflows.ensure_handlers_registered()

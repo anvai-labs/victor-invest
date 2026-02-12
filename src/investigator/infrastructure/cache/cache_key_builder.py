@@ -225,7 +225,9 @@ class CacheKeyBuilder:
         return key
 
     @staticmethod
-    def validate_key(cache_type: CacheType, key: Dict[str, Any], strict: bool = True) -> bool:
+    def validate_key(
+        cache_type: CacheType, key: Dict[str, Any], strict: bool = True
+    ) -> bool:
         """
         Validate that cache key has required fields for cache type.
 

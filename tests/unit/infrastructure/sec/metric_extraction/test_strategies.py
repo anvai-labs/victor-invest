@@ -5,7 +5,6 @@ Tests ByPeriodEndMatcher, ByDateRangeMatcher, ByFrameFieldMatcher,
 ByAdshOnlyMatcher, and ByAdshFyFpMatcher strategies.
 """
 
-import pytest
 
 from investigator.infrastructure.sec.metric_extraction.result import MatchMethod
 from investigator.infrastructure.sec.metric_extraction.strategies import (
@@ -15,8 +14,6 @@ from investigator.infrastructure.sec.metric_extraction.strategies import (
     ByFrameFieldMatcher,
     ByPeriodEndMatcher,
     MatchContext,
-    MatchResult,
-    PeriodMatchStrategy,
 )
 
 # Sample SEC entries for testing
@@ -140,7 +137,7 @@ class TestByPeriodEndMatcher:
         assert len(result.entries) >= 1
 
         # Verify we found the entry with the "wrong" fy field
-        fy_values = [e["fy"] for e in result.entries]
+        [e["fy"] for e in result.entries]
         # Either should work - we match by date, not fy
         assert any(e["end"] == "2025-06-27" for e in result.entries)
 

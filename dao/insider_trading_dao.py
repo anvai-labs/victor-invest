@@ -35,7 +35,10 @@ Usage:
 import json
 import logging
 from datetime import date, datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+if TYPE_CHECKING:
+    from src.investigator.infrastructure.external.sec.insider_transactions import Form4Filing
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
@@ -50,7 +53,9 @@ class InsiderTradingDAO:
     stored in PostgreSQL.
     """
 
-    def __init__(self, db_config: Optional[Dict] = None, engine: Optional[Engine] = None):
+    def __init__(
+        self, db_config: Optional[Dict] = None, engine: Optional[Engine] = None
+    ):
         """Initialize DAO with database configuration.
 
         Args:
@@ -80,7 +85,7 @@ class InsiderTradingDAO:
             pool_size=5,
             max_overflow=10,
             pool_pre_ping=True,
-            echo=False
+            echo=False,
         )
 
     def save_filing(self, filing: "Form4Filing") -> bool:
@@ -137,18 +142,30 @@ class InsiderTradingDAO:
                 reasons.append(f"Large sale: ${filing.total_sale_value:,.0f}")
 
             params = {
-                "symbol": filing.issuer_symbol.upper() if filing.issuer_symbol else None,
+                "symbol": filing.issuer_symbol.upper()
+                if filing.issuer_symbol
+                else None,
                 "cik": filing.issuer_cik,
                 "accession_number": filing.accession_number,
                 "filing_date": filing.filing_date,
-                "owner_name": filing.reporting_owner.name if filing.reporting_owner else None,
-                "owner_title": filing.reporting_owner.title if filing.reporting_owner else None,
-                "is_director": filing.reporting_owner.is_director if filing.reporting_owner else False,
-                "is_officer": filing.reporting_owner.is_officer if filing.reporting_owner else False,
+                "owner_name": filing.reporting_owner.name
+                if filing.reporting_owner
+                else None,
+                "owner_title": filing.reporting_owner.title
+                if filing.reporting_owner
+                else None,
+                "is_director": filing.reporting_owner.is_director
+                if filing.reporting_owner
+                else False,
+                "is_officer": filing.reporting_owner.is_officer
+                if filing.reporting_owner
+                else False,
                 "transaction_type": transaction_type,
                 "transaction_code": transaction_code,
                 "shares": sum(t.shares for t in filing.transactions),
-                "price_per_share": filing.transactions[0].price_per_share if filing.transactions else 0,
+                "price_per_share": filing.transactions[0].price_per_share
+                if filing.transactions
+                else 0,
                 "total_value": filing.net_value,
                 "is_significant": filing.is_significant,
                 "significance_reasons": reasons,
@@ -157,7 +174,7 @@ class InsiderTradingDAO:
             }
 
             with self.engine.connect() as conn:
-                result = conn.execute(query, params)
+                conn.execute(query, params)
                 conn.commit()
                 logger.info(f"Saved Form 4 filing: {filing.accession_number}")
                 return True
@@ -182,10 +199,7 @@ class InsiderTradingDAO:
         return saved
 
     def get_recent_activity(
-        self,
-        symbol: str,
-        days: int = 30,
-        significant_only: bool = False
+        self, symbol: str, days: int = 30, significant_only: bool = False
     ) -> List[Dict[str, Any]]:
         """Get recent insider activity for a symbol.
 
@@ -229,29 +243,30 @@ class InsiderTradingDAO:
             query = text(query_str)
 
             with self.engine.connect() as conn:
-                result = conn.execute(query, {
-                    "symbol": symbol,
-                    "cutoff_date": cutoff_date
-                })
+                result = conn.execute(
+                    query, {"symbol": symbol, "cutoff_date": cutoff_date}
+                )
 
                 filings = []
                 for row in result.fetchall():
-                    filings.append({
-                        "accession_number": row[0],
-                        "filing_date": str(row[1]) if row[1] else None,
-                        "owner_name": row[2],
-                        "owner_title": row[3],
-                        "is_director": row[4],
-                        "is_officer": row[5],
-                        "transaction_type": row[6],
-                        "transaction_code": row[7],
-                        "shares": float(row[8]) if row[8] else 0,
-                        "price_per_share": float(row[9]) if row[9] else 0,
-                        "total_value": float(row[10]) if row[10] else 0,
-                        "is_significant": row[11],
-                        "significance_reasons": row[12],
-                        "filing_data": row[13],
-                    })
+                    filings.append(
+                        {
+                            "accession_number": row[0],
+                            "filing_date": str(row[1]) if row[1] else None,
+                            "owner_name": row[2],
+                            "owner_title": row[3],
+                            "is_director": row[4],
+                            "is_officer": row[5],
+                            "transaction_type": row[6],
+                            "transaction_code": row[7],
+                            "shares": float(row[8]) if row[8] else 0,
+                            "price_per_share": float(row[9]) if row[9] else 0,
+                            "total_value": float(row[10]) if row[10] else 0,
+                            "is_significant": row[11],
+                            "significance_reasons": row[12],
+                            "filing_data": row[13],
+                        }
+                    )
 
                 return filings
 
@@ -259,11 +274,7 @@ class InsiderTradingDAO:
             logger.error(f"Error getting recent activity for {symbol}: {e}")
             return []
 
-    def get_insider_sentiment(
-        self,
-        symbol: str,
-        days: int = 90
-    ) -> Dict[str, Any]:
+    def get_insider_sentiment(self, symbol: str, days: int = 90) -> Dict[str, Any]:
         """Calculate insider sentiment for a symbol.
 
         Sentiment is based on the ratio of buys to sells and total value.
@@ -292,10 +303,9 @@ class InsiderTradingDAO:
             """)
 
             with self.engine.connect() as conn:
-                result = conn.execute(query, {
-                    "symbol": symbol,
-                    "cutoff_date": cutoff_date
-                }).fetchone()
+                result = conn.execute(
+                    query, {"symbol": symbol, "cutoff_date": cutoff_date}
+                ).fetchone()
 
                 if not result:
                     return self._empty_sentiment(symbol, days)
@@ -337,9 +347,8 @@ class InsiderTradingDAO:
 
                 # Detect cluster buying/selling
                 cluster_detected = (
-                    (purchase_count >= 3 and purchase_value > 500000) or
-                    (sale_count >= 3 and sale_value > 500000)
-                )
+                    purchase_count >= 3 and purchase_value > 500000
+                ) or (sale_count >= 3 and sale_value > 500000)
 
                 return {
                     "symbol": symbol,
@@ -380,9 +389,7 @@ class InsiderTradingDAO:
         }
 
     def get_key_insider_transactions(
-        self,
-        symbol: str,
-        days: int = 90
+        self, symbol: str, days: int = 90
     ) -> List[Dict[str, Any]]:
         """Get transactions from key insiders only.
 
@@ -423,23 +430,24 @@ class InsiderTradingDAO:
             """)
 
             with self.engine.connect() as conn:
-                result = conn.execute(query, {
-                    "symbol": symbol,
-                    "cutoff_date": cutoff_date
-                })
+                result = conn.execute(
+                    query, {"symbol": symbol, "cutoff_date": cutoff_date}
+                )
 
                 transactions = []
                 for row in result.fetchall():
-                    transactions.append({
-                        "accession_number": row[0],
-                        "filing_date": str(row[1]) if row[1] else None,
-                        "owner_name": row[2],
-                        "owner_title": row[3],
-                        "is_director": row[4],
-                        "transaction_type": row[5],
-                        "shares": float(row[6]) if row[6] else 0,
-                        "total_value": float(row[7]) if row[7] else 0,
-                    })
+                    transactions.append(
+                        {
+                            "accession_number": row[0],
+                            "filing_date": str(row[1]) if row[1] else None,
+                            "owner_name": row[2],
+                            "owner_title": row[3],
+                            "is_director": row[4],
+                            "transaction_type": row[5],
+                            "shares": float(row[6]) if row[6] else 0,
+                            "total_value": float(row[7]) if row[7] else 0,
+                        }
+                    )
 
                 return transactions
 

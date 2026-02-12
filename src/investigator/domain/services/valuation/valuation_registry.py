@@ -60,8 +60,12 @@ class HandlerRegistration:
     handler: Callable
     sectors: Set[str]
     industries: Set[str]
-    sector_patterns: List[Tuple[MatchType, Union[str, Pattern]]] = field(default_factory=list)
-    industry_patterns: List[Tuple[MatchType, Union[str, Pattern]]] = field(default_factory=list)
+    sector_patterns: List[Tuple[MatchType, Union[str, Pattern]]] = field(
+        default_factory=list
+    )
+    industry_patterns: List[Tuple[MatchType, Union[str, Pattern]]] = field(
+        default_factory=list
+    )
     priority: int = 0  # Higher priority = checked first
     description: str = ""
 
@@ -295,7 +299,8 @@ class ValuationRegistry:
         # No match, return default
         if self._default_handler:
             self.logger.debug(
-                f"{symbol or 'Unknown'} - Using default handler " f"(sector={sector}, industry={industry})"
+                f"{symbol or 'Unknown'} - Using default handler "
+                f"(sector={sector}, industry={industry})"
             )
             return (None, self._default_handler)
 
@@ -396,12 +401,18 @@ class ValuationRegistry:
         if pattern.startswith("*"):
             # Ends with pattern -> regex
             suffix = pattern[1:]
-            return (MatchType.REGEX, re.compile(f".*{re.escape(suffix)}$", re.IGNORECASE))
+            return (
+                MatchType.REGEX,
+                re.compile(f".*{re.escape(suffix)}$", re.IGNORECASE),
+            )
 
         if pattern.endswith("*"):
             # Starts with pattern -> regex
             prefix = pattern[:-1]
-            return (MatchType.REGEX, re.compile(f"^{re.escape(prefix)}.*", re.IGNORECASE))
+            return (
+                MatchType.REGEX,
+                re.compile(f"^{re.escape(prefix)}.*", re.IGNORECASE),
+            )
 
         # Exact match
         return (MatchType.EXACT, pattern)
@@ -514,7 +525,9 @@ def _initialize_default_handlers(registry: ValuationRegistry) -> None:
     )
 
     registry._initialized = True
-    logger.info(f"Initialized valuation registry with {len(registry._handlers)} handlers")
+    logger.info(
+        f"Initialized valuation registry with {len(registry._handlers)} handlers"
+    )
 
 
 # Lazy handler wrappers to avoid circular imports

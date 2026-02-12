@@ -4,7 +4,6 @@ Unit tests for data_validation module.
 Tests data validation, completeness scoring, and outlier detection.
 """
 
-import math
 
 import pytest
 
@@ -82,7 +81,13 @@ class TestValidationResult:
             is_valid=False,
             completeness_score=0.0,
             quality_score=0.0,
-            issues=[ValidationIssue(field="data", severity=ValidationSeverity.CRITICAL, message="Data is empty")],
+            issues=[
+                ValidationIssue(
+                    field="data",
+                    severity=ValidationSeverity.CRITICAL,
+                    message="Data is empty",
+                )
+            ],
         )
         assert result.has_critical_issues()
 
@@ -92,7 +97,13 @@ class TestValidationResult:
             is_valid=True,
             completeness_score=90.0,
             quality_score=85.0,
-            issues=[ValidationIssue(field="pe_ratio", severity=ValidationSeverity.WARNING, message="Unusually high")],
+            issues=[
+                ValidationIssue(
+                    field="pe_ratio",
+                    severity=ValidationSeverity.WARNING,
+                    message="Unusually high",
+                )
+            ],
         )
         assert not result.has_critical_issues()
 
@@ -102,7 +113,13 @@ class TestValidationResult:
             is_valid=False,
             completeness_score=70.0,
             quality_score=60.0,
-            issues=[ValidationIssue(field="pe_ratio", severity=ValidationSeverity.ERROR, message="Value too high")],
+            issues=[
+                ValidationIssue(
+                    field="pe_ratio",
+                    severity=ValidationSeverity.ERROR,
+                    message="Value too high",
+                )
+            ],
         )
         assert result.has_errors()
 
@@ -113,9 +130,15 @@ class TestValidationResult:
             completeness_score=90.0,
             quality_score=80.0,
             issues=[
-                ValidationIssue(field="a", severity=ValidationSeverity.INFO, message="Info"),
-                ValidationIssue(field="b", severity=ValidationSeverity.WARNING, message="Warn1"),
-                ValidationIssue(field="c", severity=ValidationSeverity.WARNING, message="Warn2"),
+                ValidationIssue(
+                    field="a", severity=ValidationSeverity.INFO, message="Info"
+                ),
+                ValidationIssue(
+                    field="b", severity=ValidationSeverity.WARNING, message="Warn1"
+                ),
+                ValidationIssue(
+                    field="c", severity=ValidationSeverity.WARNING, message="Warn2"
+                ),
             ],
         )
         warnings = result.get_issues_by_severity(ValidationSeverity.WARNING)
@@ -123,7 +146,9 @@ class TestValidationResult:
 
     def test_summary_method(self):
         """Test summary string generation."""
-        result = ValidationResult(is_valid=True, completeness_score=85.5, quality_score=80.0, issues=[])
+        result = ValidationResult(
+            is_valid=True, completeness_score=85.5, quality_score=80.0, issues=[]
+        )
         summary = result.summary()
         assert "Completeness: 85.5%" in summary
         assert "Quality: 80.0%" in summary
@@ -215,7 +240,10 @@ class TestDataValidator:
         result = validator.validate_quarterly_data(data, required_fields=required)
 
         # ebitda is required but missing
-        assert any(i.field == "ebitda" and i.severity == ValidationSeverity.ERROR for i in result.issues)
+        assert any(
+            i.field == "ebitda" and i.severity == ValidationSeverity.ERROR
+            for i in result.issues
+        )
 
     def test_outlier_detection_pe_ratio(self, validator):
         """Test outlier detection for P/E ratio."""
@@ -236,7 +264,10 @@ class TestDataValidator:
         result = validator.validate_quarterly_data(data)
         assert "pe_ratio" in result.outlier_flags
         assert result.outlier_flags["pe_ratio"] == "high_warning"
-        assert any(i.severity == ValidationSeverity.WARNING and i.field == "pe_ratio" for i in result.issues)
+        assert any(
+            i.severity == ValidationSeverity.WARNING and i.field == "pe_ratio"
+            for i in result.issues
+        )
 
     def test_outlier_negative_value(self, validator):
         """Test outlier detection for negative values."""
@@ -308,7 +339,9 @@ class TestDataValidator:
     def test_validate_for_model_unknown(self, validator):
         """Test validation for unknown model type."""
         data = {"revenue": 1_000_000_000}
-        is_applicable, confidence, missing = validator.validate_for_model(data, "unknown_model")
+        is_applicable, confidence, missing = validator.validate_for_model(
+            data, "unknown_model"
+        )
         # Should return default values for unknown model
         assert is_applicable
         assert confidence == 1.0
@@ -323,7 +356,11 @@ class TestDataValidator:
         }
         issues = validator.validate_consistency(data)
         # Should have no margin consistency issues
-        margin_issues = [i for i in issues if "margin" in i.field and "inconsistent" in i.message.lower()]
+        margin_issues = [
+            i
+            for i in issues
+            if "margin" in i.field and "inconsistent" in i.message.lower()
+        ]
         assert len(margin_issues) == 0
 
     def test_validate_consistency_margin_mismatch(self, validator):

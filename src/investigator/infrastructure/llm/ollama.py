@@ -38,7 +38,9 @@ class OllamaError(Exception):
         if model:
             parts.append(f"model={model}")
 
-        super().__init__(f"{parts[0]} ({', '.join(parts[1:])})" if len(parts) > 1 else parts[0])
+        super().__init__(
+            f"{parts[0]} ({', '.join(parts[1:])})" if len(parts) > 1 else parts[0]
+        )
 
 
 class OllamaHTTPError(OllamaError):
@@ -63,7 +65,9 @@ class OllamaModel(Enum):
     """Available Ollama models with their characteristics (from actual installed models)"""
 
     # Premium reasoning models (70B+ parameters) - BEST FOR ACCURACY
-    LLAMA3_3_70B_CUSTOM = "llama-3.3-70b-instruct-q4_k_m-128K-custom"  # 70.6B, 128K context
+    LLAMA3_3_70B_CUSTOM = (
+        "llama-3.3-70b-instruct-q4_k_m-128K-custom"  # 70.6B, 128K context
+    )
     LLAMA3_3_70B = "llama3.3:70b"  # 70.6B, 128K context - LATEST, MOST ACCURATE
 
     # Large reasoning models (30-40B parameters)
@@ -113,7 +117,12 @@ class OllamaClient:
     Async client for Ollama REST API with advanced features
     """
 
-    def __init__(self, base_url: str = "http://localhost:11434", timeout: int = 300, max_retries: int = 3):
+    def __init__(
+        self,
+        base_url: str = "http://localhost:11434",
+        timeout: int = 300,
+        max_retries: int = 3,
+    ):
         self.base_url = base_url
         self.timeout = aiohttp.ClientTimeout(total=timeout)
         self.max_retries = max_retries
@@ -153,7 +162,9 @@ class OllamaClient:
         """Initialize HTTP session"""
         if not self._session:
             connector = aiohttp.TCPConnector(limit=100, limit_per_host=30)
-            self._session = aiohttp.ClientSession(connector=connector, timeout=self.timeout)
+            self._session = aiohttp.ClientSession(
+                connector=connector, timeout=self.timeout
+            )
 
             # Check Ollama availability
             await self.health_check()
@@ -228,15 +239,21 @@ class OllamaClient:
 
         except aiohttp.ClientError as e:
             raise OllamaConnectionError(
-                f"Connection error pulling model '{model}': {e}", endpoint=endpoint, model=model
+                f"Connection error pulling model '{model}': {e}",
+                endpoint=endpoint,
+                model=model,
             )
 
         except asyncio.TimeoutError as e:
-            raise OllamaTimeoutError(f"Timeout pulling model '{model}': {e}", endpoint=endpoint, model=model)
+            raise OllamaTimeoutError(
+                f"Timeout pulling model '{model}': {e}", endpoint=endpoint, model=model
+            )
 
         except Exception as e:
             self.logger.error(f"Unexpected error pulling model {model}: {e}")
-            raise OllamaError(f"Unexpected error pulling model: {e}", endpoint=endpoint, model=model)
+            raise OllamaError(
+                f"Unexpected error pulling model: {e}", endpoint=endpoint, model=model
+            )
 
     async def generate(
         self,
@@ -283,7 +300,9 @@ class OllamaClient:
                 task_type = "synthesis"
 
         # Check if this might be using cached data
-        is_cached = "cache" in prompt.lower() or (hasattr(self, "_use_cached_data") and self._use_cached_data)
+        is_cached = "cache" in prompt.lower() or (
+            hasattr(self, "_use_cached_data") and self._use_cached_data
+        )
 
         task_id = f"{model}_{format or 'text'}_{len(prompt)}"
 
@@ -291,12 +310,20 @@ class OllamaClient:
         prompt_tokens = self._estimate_tokens(prompt)
         prompt_tokens += self._estimate_tokens(system) if system else 0
 
-        context_limit = config.num_ctx if config and getattr(config, "num_ctx", None) else 4096
+        context_limit = (
+            config.num_ctx if config and getattr(config, "num_ctx", None) else 4096
+        )
         context_limit = max(1024, context_limit)
 
         prompt_tokens = min(prompt_tokens, context_limit)
-        response_tokens = config.num_predict if config and getattr(config, "num_predict", None) else 1024
-        response_tokens = max(1, min(response_tokens, max(1, context_limit - prompt_tokens)))
+        response_tokens = (
+            config.num_predict
+            if config and getattr(config, "num_predict", None)
+            else 1024
+        )
+        response_tokens = max(
+            1, min(response_tokens, max(1, context_limit - prompt_tokens))
+        )
 
         async with DynamicLLMContext(
             model,
@@ -316,7 +343,9 @@ class OllamaClient:
 
             # Check if model is available (skip pulling for now)
             if model not in self.loaded_models:
-                self.logger.info(f"Model {model} not in cache, attempting to use directly")
+                self.logger.info(
+                    f"Model {model} not in cache, attempting to use directly"
+                )
                 self.loaded_models.add(model)
 
             payload = {
@@ -374,21 +403,29 @@ class OllamaClient:
             # Warn about any unused kwargs to aid debugging
             if extra_kwargs:
                 self.logger.debug(
-                    "Ignoring unsupported generate() kwargs for model %s: %s", model, ", ".join(extra_kwargs.keys())
+                    "Ignoring unsupported generate() kwargs for model %s: %s",
+                    model,
+                    ", ".join(extra_kwargs.keys()),
                 )
 
             # Retry logic with intelligent error handling
             for attempt in range(self.max_retries):
                 try:
-                    return await self._make_generation_request(payload, stream, prompt_name)
+                    return await self._make_generation_request(
+                        payload, stream, prompt_name
+                    )
 
                 except OllamaHTTPError as e:
                     # Only retry on 5xx errors (server errors) or 429 (rate limit)
-                    is_retryable = (e.status_code and e.status_code >= 500) or e.status_code == 429
+                    is_retryable = (
+                        e.status_code and e.status_code >= 500
+                    ) or e.status_code == 429
 
                     if not is_retryable or attempt == self.max_retries - 1:
                         # Don't retry 4xx errors (client errors like 404, 400)
-                        self.logger.error(f"HTTP {e.status_code} error (non-retryable): {e}")
+                        self.logger.error(
+                            f"HTTP {e.status_code} error (non-retryable): {e}"
+                        )
                         raise
 
                     # Retryable error - log and retry
@@ -414,10 +451,14 @@ class OllamaClient:
                 except Exception as e:
                     # Unknown errors - retry but log clearly
                     if attempt == self.max_retries - 1:
-                        self.logger.error(f"Unexpected error after {self.max_retries} attempts: {e}")
+                        self.logger.error(
+                            f"Unexpected error after {self.max_retries} attempts: {e}"
+                        )
                         raise
 
-                    self.logger.warning(f"Unexpected error on attempt {attempt + 1}, retrying: {e}")
+                    self.logger.warning(
+                        f"Unexpected error on attempt {attempt + 1}, retrying: {e}"
+                    )
                     await asyncio.sleep(2**attempt)
 
     async def _make_generation_request(
@@ -484,7 +525,9 @@ class OllamaClient:
                 # Determine model type and which field has the actual content
                 is_reasoning_model = len(thinking_text) > 0 and len(response_text) == 0
                 primary_field = "thinking" if is_reasoning_model else "response"
-                primary_length = len(thinking_text) if is_reasoning_model else len(response_text)
+                primary_length = (
+                    len(thinking_text) if is_reasoning_model else len(response_text)
+                )
 
                 duration = (datetime.now() - start_time).total_seconds()
                 self.logger.info(
@@ -500,7 +543,9 @@ class OllamaClient:
                 # DEBUG: Log what we're preserving with clear indication of model type
                 self.logger.info(
                     "🔍 Ollama response structure | model_type=%s | response_chars=%d | thinking_chars=%d",
-                    "Reasoning (thinking-based)" if is_reasoning_model else "Standard (response-based)",
+                    "Reasoning (thinking-based)"
+                    if is_reasoning_model
+                    else "Standard (response-based)",
                     len(response_text),
                     len(thinking_text),
                 )
@@ -519,7 +564,9 @@ class OllamaClient:
                 # For backward compatibility, keep 'response' as the primary field
                 # If response is empty but thinking has content, use thinking as fallback
                 if is_reasoning_model:
-                    self.logger.info("🧠 Using 'thinking' field as primary response (reasoning model)")
+                    self.logger.info(
+                        "🧠 Using 'thinking' field as primary response (reasoning model)"
+                    )
                     result["response"] = thinking_text
                 else:
                     result["response"] = response_text
@@ -579,7 +626,9 @@ class OllamaClient:
         payload = {"model": model, "prompt": prompt}
 
         try:
-            async with self._session.post(f"{self.base_url}/api/embeddings", json=payload) as response:
+            async with self._session.post(
+                f"{self.base_url}/api/embeddings", json=payload
+            ) as response:
                 result = await response.json()
                 return result.get("embedding", [])
         except Exception as e:
@@ -623,7 +672,9 @@ class OllamaClient:
             payload["format"] = format
 
         try:
-            async with self._session.post(f"{self.base_url}/api/chat", json=payload) as response:
+            async with self._session.post(
+                f"{self.base_url}/api/chat", json=payload
+            ) as response:
                 if stream:
                     return self._stream_chat_response(response)
                 else:
@@ -633,7 +684,9 @@ class OllamaClient:
             self.logger.error(f"Chat completion failed: {e}")
             raise
 
-    async def _stream_chat_response(self, response: aiohttp.ClientResponse) -> AsyncIterator[Dict]:
+    async def _stream_chat_response(
+        self, response: aiohttp.ClientResponse
+    ) -> AsyncIterator[Dict]:
         """Stream chat response"""
         async for line in response.content:
             if line:
@@ -656,14 +709,18 @@ class OllamaClient:
 
     async def get_metrics(self) -> Dict:
         """Get client performance metrics"""
-        avg_duration = self.total_duration / self.request_count if self.request_count > 0 else 0
+        avg_duration = (
+            self.total_duration / self.request_count if self.request_count > 0 else 0
+        )
 
         return {
             "request_count": self.request_count,
             "total_tokens": self.total_tokens,
             "total_duration": self.total_duration,
             "average_duration": avg_duration,
-            "tokens_per_second": self.total_tokens / self.total_duration if self.total_duration > 0 else 0,
+            "tokens_per_second": self.total_tokens / self.total_duration
+            if self.total_duration > 0
+            else 0,
             "loaded_models": list(self.loaded_models),
         }
 
@@ -672,7 +729,9 @@ class OllamaClient:
         payload = {"name": model}
 
         try:
-            async with self._session.post(f"{self.base_url}/api/unload", json=payload) as response:
+            async with self._session.post(
+                f"{self.base_url}/api/unload", json=payload
+            ) as response:
                 if response.status == 200:
                     self.loaded_models.discard(model)
                     return True
@@ -686,7 +745,9 @@ class OllamaClient:
         payload = {"name": model}
 
         try:
-            async with self._session.post(f"{self.base_url}/api/show", json=payload) as response:
+            async with self._session.post(
+                f"{self.base_url}/api/show", json=payload
+            ) as response:
                 if response.status == 200:
                     return await response.json()
                 return {}
@@ -699,7 +760,9 @@ class OllamaClient:
         payload = {"source": source, "destination": destination}
 
         try:
-            async with self._session.post(f"{self.base_url}/api/copy", json=payload) as response:
+            async with self._session.post(
+                f"{self.base_url}/api/copy", json=payload
+            ) as response:
                 return response.status == 200
         except Exception as e:
             self.logger.error(f"Failed to copy model {source} to {destination}: {e}")
@@ -710,7 +773,9 @@ class OllamaClient:
         payload = {"name": model}
 
         try:
-            async with self._session.delete(f"{self.base_url}/api/delete", json=payload) as response:
+            async with self._session.delete(
+                f"{self.base_url}/api/delete", json=payload
+            ) as response:
                 if response.status == 200:
                     self.loaded_models.discard(model)
                     self.model_info.pop(model, None)
@@ -959,7 +1024,9 @@ class OllamaModelSelector:
                 # Standard context (<8K)
                 return OllamaModel.MISTRAL_7B.value  # Fast + good quality
 
-    async def benchmark_models(self, prompt: str, models: Optional[List[str]] = None) -> Dict:
+    async def benchmark_models(
+        self, prompt: str, models: Optional[List[str]] = None
+    ) -> Dict:
         """Benchmark multiple models on the same prompt"""
         if not models:
             models = [m.value for m in OllamaModel]
@@ -974,12 +1041,18 @@ class OllamaModelSelector:
 
             try:
                 response = await self.client.generate(
-                    model=model, prompt=prompt, config=ModelConfig(temperature=0.7, num_predict=500)
+                    model=model,
+                    prompt=prompt,
+                    config=ModelConfig(temperature=0.7, num_predict=500),
                 )
 
                 duration = (datetime.now() - start_time).total_seconds()
 
-                results[model] = {"duration": duration, "response_length": len(str(response)), "success": True}
+                results[model] = {
+                    "duration": duration,
+                    "response_length": len(str(response)),
+                    "success": True,
+                }
             except Exception as e:
                 results[model] = {"error": str(e), "success": False}
 

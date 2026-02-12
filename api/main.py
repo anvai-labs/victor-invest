@@ -20,22 +20,25 @@ The Victor API provides:
 See victor_invest/api/app.py for the new architecture.
 """
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, Request
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from pydantic import BaseModel, Field, validator
 from typing import List, Dict, Optional, Any
 from datetime import datetime
 import asyncio
 import logging
-import json
 import uuid
-from enum import Enum
 
 # Import agent components
-from agents import create_agent, AGENT_REGISTRY, AgentTask, AnalysisType, Priority, TaskStatus
+from agents import (
+    create_agent,
+    AGENT_REGISTRY,
+    AnalysisType,
+    Priority,
+)
 from agents.manager import AgentManager
 from core.ollama_client import OllamaClient
 from core.event_bus import EventBus
@@ -69,7 +72,9 @@ async def lifespan(app: FastAPI):
     app.state.cache = IntelligentCacheManager()
     app.state.db = DatabaseManager()
     app.state.agent_manager = AgentManager(
-        ollama_client=app.state.ollama, event_bus=app.state.event_bus, cache_manager=app.state.cache
+        ollama_client=app.state.ollama,
+        event_bus=app.state.event_bus,
+        cache_manager=app.state.cache,
     )
 
     # Connect to services
@@ -91,7 +96,9 @@ async def lifespan(app: FastAPI):
 
     # Start background workers
     app.state.background_tasks = []
-    app.state.background_tasks.append(asyncio.create_task(app.state.agent_manager.process_queue()))
+    app.state.background_tasks.append(
+        asyncio.create_task(app.state.agent_manager.process_queue())
+    )
 
     logger.info("InvestiGator API started successfully")
 
@@ -151,7 +158,9 @@ class AnalysisRequest(BaseModel):
         description="Types of analysis to perform",
     )
     priority: str = Field(default="medium", description="Task priority")
-    options: Dict[str, Any] = Field(default_factory=dict, description="Additional options")
+    options: Dict[str, Any] = Field(
+        default_factory=dict, description="Additional options"
+    )
 
     @validator("symbol")
     def validate_symbol(cls, v):
@@ -191,7 +200,9 @@ class BatchAnalysisRequest(BaseModel):
     """Request for batch analysis"""
 
     symbols: List[str] = Field(..., description="List of symbols to analyze")
-    analysis_types: List[str] = Field(default=["sec_fundamental", "technical_analysis", "investment_synthesis"])
+    analysis_types: List[str] = Field(
+        default=["sec_fundamental", "technical_analysis", "investment_synthesis"]
+    )
     priority: str = Field(default="medium")
     parallel: bool = Field(default=True, description="Process symbols in parallel")
 
@@ -224,7 +235,12 @@ class HealthResponse(BaseModel):
 @app.get("/", tags=["Root"])
 async def root():
     """Root endpoint"""
-    return {"name": "InvestiGator API", "version": "2.0.0", "status": "operational", "documentation": "/docs"}
+    return {
+        "name": "InvestiGator API",
+        "version": "2.0.0",
+        "status": "operational",
+        "documentation": "/docs",
+    }
 
 
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
@@ -238,21 +254,21 @@ async def health_check(request: Request):
         try:
             models = await request.app.state.ollama.list_models()
             services_status["ollama"] = "healthy" if models else "degraded"
-        except:
+        except Exception:
             services_status["ollama"] = "unhealthy"
 
         # Check Redis
         try:
             await request.app.state.event_bus.redis_client.ping()
             services_status["redis"] = "healthy"
-        except:
+        except Exception:
             services_status["redis"] = "unhealthy"
 
         # Check Database
         try:
             await request.app.state.db.health_check()
             services_status["database"] = "healthy"
-        except:
+        except Exception:
             services_status["database"] = "unhealthy"
 
         # Check Cache
@@ -280,7 +296,9 @@ async def health_check(request: Request):
 
 
 @app.post("/analyze", response_model=AnalysisResponse, tags=["Analysis"])
-async def analyze_symbol(request: AnalysisRequest, background_tasks: BackgroundTasks, app_state: Request):
+async def analyze_symbol(
+    request: AnalysisRequest, background_tasks: BackgroundTasks, app_state: Request
+):
     """Submit a symbol for comprehensive analysis"""
     try:
         # Convert analysis types to enums
@@ -289,7 +307,9 @@ async def analyze_symbol(request: AnalysisRequest, background_tasks: BackgroundT
             try:
                 analysis_enums.append(AnalysisType(analysis_type))
             except ValueError:
-                raise HTTPException(status_code=400, detail=f"Invalid analysis type: {analysis_type}")
+                raise HTTPException(
+                    status_code=400, detail=f"Invalid analysis type: {analysis_type}"
+                )
 
         # Submit to agent manager
         workflow_id = await app_state.app.state.agent_manager.submit_analysis_request(
@@ -323,7 +343,9 @@ async def analyze_symbol(request: AnalysisRequest, background_tasks: BackgroundT
 async def get_analysis_status(workflow_id: str, app_state: Request):
     """Get status of an analysis workflow"""
     try:
-        status = await app_state.app.state.agent_manager.get_workflow_status(workflow_id)
+        status = await app_state.app.state.agent_manager.get_workflow_status(
+            workflow_id
+        )
 
         if not status:
             raise HTTPException(status_code=404, detail="Workflow not found")
@@ -331,7 +353,9 @@ async def get_analysis_status(workflow_id: str, app_state: Request):
         # Calculate progress
         progress = 0.0
         if status["total_tasks"] > 0:
-            progress = (status["completed_tasks"] + status["failed_tasks"]) / status["total_tasks"]
+            progress = (status["completed_tasks"] + status["failed_tasks"]) / status[
+                "total_tasks"
+            ]
 
         # Determine overall status
         if status["failed_tasks"] > 0:
@@ -363,7 +387,9 @@ async def get_analysis_status(workflow_id: str, app_state: Request):
 
 
 @app.post("/analyze/batch", tags=["Analysis"])
-async def analyze_batch(request: BatchAnalysisRequest, background_tasks: BackgroundTasks, app_state: Request):
+async def analyze_batch(
+    request: BatchAnalysisRequest, background_tasks: BackgroundTasks, app_state: Request
+):
     """Submit multiple symbols for analysis"""
     try:
         workflows = []
@@ -374,12 +400,18 @@ async def analyze_batch(request: BatchAnalysisRequest, background_tasks: Backgro
             try:
                 analysis_enums.append(AnalysisType(analysis_type))
             except ValueError:
-                raise HTTPException(status_code=400, detail=f"Invalid analysis type: {analysis_type}")
+                raise HTTPException(
+                    status_code=400, detail=f"Invalid analysis type: {analysis_type}"
+                )
 
         # Submit each symbol
         for symbol in request.symbols:
-            workflow_id = await app_state.app.state.agent_manager.submit_analysis_request(
-                symbol=symbol.upper(), analysis_types=analysis_enums, priority=Priority[request.priority.upper()]
+            workflow_id = (
+                await app_state.app.state.agent_manager.submit_analysis_request(
+                    symbol=symbol.upper(),
+                    analysis_types=analysis_enums,
+                    priority=Priority[request.priority.upper()],
+                )
             )
             workflows.append({"symbol": symbol.upper(), "workflow_id": workflow_id})
 
@@ -402,7 +434,10 @@ async def analyze_peer_group(request: PeerGroupRequest, app_state: Request):
     try:
         # Get peer group for the symbol
         peers = await app_state.app.state.agent_manager.get_peer_group(
-            symbol=request.symbol, sector=request.sector, industry=request.industry, count=request.peer_count
+            symbol=request.symbol,
+            sector=request.sector,
+            industry=request.industry,
+            count=request.peer_count,
         )
 
         # Submit analysis for main symbol and peers
@@ -427,16 +462,25 @@ async def analyze_peer_group(request: PeerGroupRequest, app_state: Request):
             options={"peer_symbols": peers},
         )
 
-        workflows.append({"symbol": request.symbol, "workflow_id": main_workflow, "is_primary": True})
+        workflows.append(
+            {"symbol": request.symbol, "workflow_id": main_workflow, "is_primary": True}
+        )
 
         # Submit peer analyses
         for peer in peers:
-            peer_workflow = await app_state.app.state.agent_manager.submit_analysis_request(
-                symbol=peer,
-                analysis_types=[AnalysisType.SEC_FUNDAMENTAL, AnalysisType.TECHNICAL_ANALYSIS],
-                priority=Priority.MEDIUM,
+            peer_workflow = (
+                await app_state.app.state.agent_manager.submit_analysis_request(
+                    symbol=peer,
+                    analysis_types=[
+                        AnalysisType.SEC_FUNDAMENTAL,
+                        AnalysisType.TECHNICAL_ANALYSIS,
+                    ],
+                    priority=Priority.MEDIUM,
+                )
             )
-            workflows.append({"symbol": peer, "workflow_id": peer_workflow, "is_primary": False})
+            workflows.append(
+                {"symbol": peer, "workflow_id": peer_workflow, "is_primary": False}
+            )
 
         return {
             "peer_group_id": str(uuid.uuid4()),
@@ -475,7 +519,10 @@ async def pull_model(model_name: str, app_state: Request):
 
         asyncio.create_task(pull_progress())
 
-        return {"message": f"Started pulling model {model_name}", "status": "in_progress"}
+        return {
+            "message": f"Started pulling model {model_name}",
+            "status": "in_progress",
+        }
     except Exception as e:
         logger.error(f"Failed to pull model: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -497,7 +544,10 @@ async def warm_cache(symbols: List[str], app_state: Request):
     """Warm cache for specified symbols"""
     try:
         await app_state.app.state.cache.warm_cache(symbols)
-        return {"message": f"Cache warming started for {len(symbols)} symbols", "symbols": symbols}
+        return {
+            "message": f"Cache warming started for {len(symbols)} symbols",
+            "symbols": symbols,
+        }
     except Exception as e:
         logger.error(f"Failed to warm cache: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -518,19 +568,29 @@ async def clear_symbol_cache(symbol: str, app_state: Request):
 # WebSocket Endpoints for Real-time Updates
 # ========================================================================================
 
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket, WebSocketDisconnect  # noqa: E402
 
 
 @app.websocket("/ws/analysis/{workflow_id}")
-async def websocket_analysis_updates(websocket: WebSocket, workflow_id: str, app_state: Request):
+async def websocket_analysis_updates(
+    websocket: WebSocket, workflow_id: str, app_state: Request
+):
     """WebSocket endpoint for real-time analysis updates"""
     await websocket.accept()
 
     try:
         # Subscribe to workflow events
         async def send_updates():
-            async for event in app_state.app.state.event_bus.subscribe_to_workflow(workflow_id):
-                await websocket.send_json({"type": "update", "workflow_id": workflow_id, "event": event.dict()})
+            async for event in app_state.app.state.event_bus.subscribe_to_workflow(
+                workflow_id
+            ):
+                await websocket.send_json(
+                    {
+                        "type": "update",
+                        "workflow_id": workflow_id,
+                        "event": event.dict(),
+                    }
+                )
 
         await send_updates()
 
@@ -567,7 +627,11 @@ async def websocket_events(websocket: WebSocket, app_state: Request):
 async def http_exception_handler(request, exc):
     return JSONResponse(
         status_code=exc.status_code,
-        content={"error": exc.detail, "status_code": exc.status_code, "timestamp": datetime.now().isoformat()},
+        content={
+            "error": exc.detail,
+            "status_code": exc.status_code,
+            "timestamp": datetime.now().isoformat(),
+        },
     )
 
 
@@ -576,11 +640,17 @@ async def general_exception_handler(request, exc):
     logger.error(f"Unhandled exception: {exc}")
     return JSONResponse(
         status_code=500,
-        content={"error": "Internal server error", "status_code": 500, "timestamp": datetime.now().isoformat()},
+        content={
+            "error": "Internal server error",
+            "status_code": 500,
+            "timestamp": datetime.now().isoformat(),
+        },
     )
 
 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True, log_level="info")
+    uvicorn.run(
+        "api.main:app", host="0.0.0.0", port=8000, reload=True, log_level="info"
+    )

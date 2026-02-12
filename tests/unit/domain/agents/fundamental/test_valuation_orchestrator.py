@@ -41,7 +41,10 @@ def test_run_multi_model_blending_updates_summary_and_weights():
         normalized_ps=None,
         normalized_pb=None,
         select_models_for_company=lambda _profile: None,
-        resolve_fallback_weights=lambda *_args, **_kwargs: ({"dcf": 60.0, "pe": 40.0}, "tier_1"),
+        resolve_fallback_weights=lambda *_args, **_kwargs: (
+            {"dcf": 60.0, "pe": 40.0},
+            "tier_1",
+        ),
         multi_model_orchestrator=orchestrator,
         logger=MagicMock(),
     )
@@ -72,8 +75,18 @@ def test_log_multi_model_summary_returns_metrics():
         valuation_results=valuation_results,
         company_data={"current_price": 100},
         tier_classification="tier_2",
-        dcf_professional={"model": "dcf", "fair_value_per_share": 130, "confidence_score": 0.8, "weight": 0.5},
-        normalized_pe={"model": "pe", "fair_value_per_share": 125, "confidence_score": 0.7, "weight": 0.5},
+        dcf_professional={
+            "model": "dcf",
+            "fair_value_per_share": 130,
+            "confidence_score": 0.8,
+            "weight": 0.5,
+        },
+        normalized_pe={
+            "model": "pe",
+            "fair_value_per_share": 125,
+            "confidence_score": 0.7,
+            "weight": 0.5,
+        },
         normalized_ev_ebitda=None,
         normalized_ps=None,
         normalized_pb=None,

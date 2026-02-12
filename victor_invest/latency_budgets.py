@@ -46,7 +46,9 @@ def get_latency_budget(mode: str, profile: str = "production") -> float:
     profile_budgets = LATENCY_BUDGET_PROFILES.get(normalized_profile)
     if profile_budgets is None:
         supported_profiles = ", ".join(sorted(LATENCY_BUDGET_PROFILES.keys()))
-        raise ValueError(f"Unsupported profile '{profile}'. Supported profiles: {supported_profiles}")
+        raise ValueError(
+            f"Unsupported profile '{profile}'. Supported profiles: {supported_profiles}"
+        )
 
     if normalized_mode not in profile_budgets:
         supported = ", ".join(sorted(profile_budgets.keys()))
@@ -54,7 +56,9 @@ def get_latency_budget(mode: str, profile: str = "production") -> float:
     return profile_budgets[normalized_mode]
 
 
-def evaluate_latency(mode: str, elapsed_seconds: float, profile: str = "production") -> LatencyEvaluation:
+def evaluate_latency(
+    mode: str, elapsed_seconds: float, profile: str = "production"
+) -> LatencyEvaluation:
     """Evaluate an observed latency against the configured budget."""
     budget = get_latency_budget(mode, profile=profile)
     return LatencyEvaluation(

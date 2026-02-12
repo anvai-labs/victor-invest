@@ -11,7 +11,7 @@ import inspect
 from dataclasses import is_dataclass
 
 from victor.framework.workflows.base_handler import BaseHandler
-from victor.workflows.executor import WorkflowContext, ComputeNode
+from victor.workflows.executor import WorkflowContext
 
 
 class MockNode:
@@ -20,12 +20,12 @@ class MockNode:
     def __init__(self, handler_id, output_key=None):
         self.id = handler_id
         self.handler = handler_id
-        self.output_key = output_key or handler_id.replace('_handler', '')
+        self.output_key = output_key or handler_id.replace("_handler", "")
 
 
 async def test_comprehensive():
     """Run comprehensive end-to-end test."""
-    print('=' * 70)
+    print("=" * 70)
     print("COMPREHENSIVE END-TO-END TEST - Migrated Handlers")
     print("=" * 70)
 
@@ -103,13 +103,13 @@ async def test_comprehensive():
             "FetchMarketDataHandler",
             {"symbol": "AAPL"},
             "market_data",
-            "API call expected (no API key configured)"
+            "API call expected (no API key configured)",
         ),
         (
             "RunTechnicalAnalysisHandler",
             {"symbol": "AAPL", "market_data": {"status": "skipped"}},
             "technical_analysis",
-            "Correctly skipped when no market data"
+            "Correctly skipped when no market data",
         ),
         (
             "RunSynthesisHandler",
@@ -120,7 +120,7 @@ async def test_comprehensive():
                 "market_context": {},
             },
             "synthesis",
-            "Rule-based synthesis works"
+            "Rule-based synthesis works",
         ),
     ]
 
@@ -139,7 +139,9 @@ async def test_comprehensive():
         except Exception as e:
             error_type = type(e).__name__
             if "ModuleNotFoundError" in str(e) or "Database" in str(e):
-                print(f"⚠ {handler_name}: Infrastructure error (expected) - {error_type}")
+                print(
+                    f"⚠ {handler_name}: Infrastructure error (expected) - {error_type}"
+                )
             else:
                 print(f"✗ {handler_name}: {error_type}: {str(e)[:80]}")
 

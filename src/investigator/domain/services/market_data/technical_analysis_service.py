@@ -30,9 +30,8 @@ Example:
 import logging
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional
 
-import numpy as np
 import pandas as pd
 
 from investigator.domain.services.market_data.price_service import PriceService
@@ -120,7 +119,9 @@ class TechnicalAnalysisService:
     def entry_exit_engine(self):
         """Lazy load entry/exit engine to avoid circular imports."""
         if self._entry_exit_engine is None:
-            from investigator.domain.services.signals.entry_exit_engine import EntryExitEngine
+            from investigator.domain.services.signals.entry_exit_engine import (
+                EntryExitEngine,
+            )
 
             self._entry_exit_engine = EntryExitEngine()
         return self._entry_exit_engine
@@ -209,7 +210,11 @@ class TechnicalAnalysisService:
             df = self.price_service.get_price_history(symbol, start_date, analysis_date)
 
             if df.empty or len(df) < 50:
-                return {"entry_signals": [], "exit_signals": [], "optimal_entry_zone": None}
+                return {
+                    "entry_signals": [],
+                    "exit_signals": [],
+                    "optimal_entry_zone": None,
+                }
 
             df_enhanced = self._calculate_indicators(df, symbol)
             current_price = float(df_enhanced["Close"].iloc[-1])
@@ -218,12 +223,16 @@ class TechnicalAnalysisService:
             indicators = self._build_indicators_dict(df_enhanced)
 
             # Get support/resistance levels
-            support_resistance = self._get_support_resistance(df_enhanced, current_price)
+            support_resistance = self._get_support_resistance(
+                df_enhanced, current_price
+            )
 
             # Valuation info
             valuation = {
                 "fair_value": fair_value,
-                "upside": (fair_value - current_price) / current_price if current_price > 0 else 0,
+                "upside": (fair_value - current_price) / current_price
+                if current_price > 0
+                else 0,
             }
 
             # Generate signals
@@ -237,18 +246,30 @@ class TechnicalAnalysisService:
             exit_signals = self.entry_exit_engine.generate_exit_signals(
                 price_data=df_enhanced,
                 indicators=indicators,
-                position_info={"entry_price": current_price, "current_price": current_price, "fair_value": fair_value},
+                position_info={
+                    "entry_price": current_price,
+                    "current_price": current_price,
+                    "fair_value": fair_value,
+                },
             )
 
             # Calculate optimal entry zone
-            support_levels = [support_resistance["support_2"], support_resistance["support_1"]]
-            resistance_levels = [support_resistance["resistance_1"], support_resistance["resistance_2"]]
+            support_levels = [
+                support_resistance["support_2"],
+                support_resistance["support_1"],
+            ]
+            resistance_levels = [
+                support_resistance["resistance_1"],
+                support_resistance["resistance_2"],
+            ]
             entry_zone = self.entry_exit_engine.calculate_optimal_entry_zone(
                 current_price=current_price,
                 fair_value=fair_value,
                 support_levels=support_levels,
                 resistance_levels=resistance_levels,
-                volatility=indicators.get("atr_14", 0) / current_price if current_price > 0 else 0.02,
+                volatility=indicators.get("atr_14", 0) / current_price
+                if current_price > 0
+                else 0.02,
                 atr=indicators.get("atr_14", 0),
             )
 
@@ -285,10 +306,16 @@ class TechnicalAnalysisService:
         Returns:
             Dictionary with technical_indicators and entry_exit_signals
         """
-        features = self.get_technical_features(symbol, analysis_date, lookback_days, fair_value)
+        features = self.get_technical_features(
+            symbol, analysis_date, lookback_days, fair_value
+        )
 
         # Compute trend score from price vs moving averages
-        trend_score = (features.price_vs_sma_20 + features.price_vs_sma_50 + features.price_vs_sma_200) / 3
+        trend_score = (
+            features.price_vs_sma_20
+            + features.price_vs_sma_50
+            + features.price_vs_sma_200
+        ) / 3
         trend_score = max(-1.0, min(1.0, trend_score))
 
         # Compute sentiment from momentum indicators
@@ -328,7 +355,14 @@ class TechnicalAnalysisService:
 
         # Rename to expected format
         df_calc = df_calc.rename(
-            columns={"date": "Date", "open": "Open", "high": "High", "low": "Low", "close": "Close", "volume": "Volume"}
+            columns={
+                "date": "Date",
+                "open": "Open",
+                "high": "High",
+                "low": "Low",
+                "close": "Close",
+                "volume": "Volume",
+            }
         )
 
         return self.calculator.calculate_all_indicators(df_calc, symbol)
@@ -499,7 +533,9 @@ class TechnicalAnalysisService:
             "EMA_200": float(latest.get("EMA_200", current_price)),
         }
 
-    def _get_support_resistance(self, df: pd.DataFrame, current_price: float) -> Dict[str, float]:
+    def _get_support_resistance(
+        self, df: pd.DataFrame, current_price: float
+    ) -> Dict[str, float]:
         """Get support/resistance levels from DataFrame."""
         latest = df.iloc[-1]
 
@@ -515,10 +551,18 @@ class TechnicalAnalysisService:
             resistance_1 = latest.get("BB_Upper", current_price * 1.05)
 
         return {
-            "support_1": float(support_1) if not pd.isna(support_1) else current_price * 0.95,
-            "support_2": float(support_2) if not pd.isna(support_2) else current_price * 0.90,
-            "resistance_1": float(resistance_1) if not pd.isna(resistance_1) else current_price * 1.05,
-            "resistance_2": float(resistance_2) if not pd.isna(resistance_2) else current_price * 1.10,
+            "support_1": float(support_1)
+            if not pd.isna(support_1)
+            else current_price * 0.95,
+            "support_2": float(support_2)
+            if not pd.isna(support_2)
+            else current_price * 0.90,
+            "resistance_1": float(resistance_1)
+            if not pd.isna(resistance_1)
+            else current_price * 1.05,
+            "resistance_2": float(resistance_2)
+            if not pd.isna(resistance_2)
+            else current_price * 1.10,
         }
 
 

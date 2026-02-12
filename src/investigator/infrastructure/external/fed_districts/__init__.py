@@ -42,7 +42,11 @@ Key Investment Signals:
 
 from .atlanta_fed import AtlantaFedClient, GDPNowData, get_atlanta_fed_client
 from .chicago_fed import CFNAIData, ChicagoFedClient, get_chicago_fed_client
-from .cleveland_fed import ClevelandFedClient, InflationExpectations, get_cleveland_fed_client
+from .cleveland_fed import (
+    ClevelandFedClient,
+    InflationExpectations,
+    get_cleveland_fed_client,
+)
 from .dallas_fed import DallasFedClient, TexasManufacturing, get_dallas_fed_client
 from .kansas_city_fed import KansasCityFedClient, KCManufacturing, get_kc_fed_client
 from .philadelphia_fed import (
@@ -51,7 +55,11 @@ from .philadelphia_fed import (
     PhiladelphiaFedClient,
     get_philly_fed_client,
 )
-from .richmond_fed import FifthDistrictSurvey, RichmondFedClient, get_richmond_fed_client
+from .richmond_fed import (
+    FifthDistrictSurvey,
+    RichmondFedClient,
+    get_richmond_fed_client,
+)
 
 __all__ = [
     # Atlanta Fed

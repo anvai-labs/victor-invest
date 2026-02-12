@@ -5,8 +5,12 @@ from __future__ import annotations
 from typing import Any, Awaitable, Callable, Dict, List
 
 from investigator.domain.services.valuation.damodaran_dcf import DamodaranDCFModel
-from investigator.domain.services.valuation.models.saas_valuation import SaaSValuationModel
-from investigator.domain.services.valuation.rule_of_40_valuation import RuleOf40Valuation
+from investigator.domain.services.valuation.models.saas_valuation import (
+    SaaSValuationModel,
+)
+from investigator.domain.services.valuation.rule_of_40_valuation import (
+    RuleOf40Valuation,
+)
 
 
 async def calculate_valuation_extensions(
@@ -42,8 +46,12 @@ async def calculate_valuation_extensions(
 
     if is_significant_dividend_stock:
         cost_of_equity = calculate_cost_of_equity(symbol)
-        logger.info("%s - GGM cost_of_equity passed: %.2f%%", symbol, cost_of_equity * 100)
-        ggm_result = await calculate_ggm(symbol, cost_of_equity, quarterly_data, company_profile)
+        logger.info(
+            "%s - GGM cost_of_equity passed: %.2f%%", symbol, cost_of_equity * 100
+        )
+        ggm_result = await calculate_ggm(
+            symbol, cost_of_equity, quarterly_data, company_profile
+        )
         valuation_results["ggm"] = ggm_result
         logger.info(
             "%s - GGM applicable: payout ratio %.1f%% (≥20%% threshold for meaningful dividend policy)",
@@ -53,9 +61,7 @@ async def calculate_valuation_extensions(
         log_model_result(logger, symbol, "GGM", ggm_result)
     else:
         if dividends_paid > 0 and payout_ratio < 20.0:
-            reason = (
-                f"Low payout ratio ({payout_ratio:.1f}%) - token dividend, not meaningful dividend policy (need ≥20%)"
-            )
+            reason = f"Low payout ratio ({payout_ratio:.1f}%) - token dividend, not meaningful dividend policy (need ≥20%)"
         elif dividends_paid == 0:
             reason = "No dividends paid - GGM requires dividend-paying stock"
         else:
@@ -77,7 +83,9 @@ async def calculate_valuation_extensions(
             current_fcf=financials.get("free_cash_flow") or financials.get("fcf"),
             revenue_growth=company_profile.revenue_growth_yoy,
             fcf_margin=ratios.get("fcf_margin") or ratios.get("free_cash_flow_margin"),
-            current_revenue=financials.get("revenues") or financials.get("revenue") or financials.get("total_revenue"),
+            current_revenue=financials.get("revenues")
+            or financials.get("revenue")
+            or financials.get("total_revenue"),
             shares_outstanding=company_profile.shares_outstanding,
         )
         normalized_damodaran = normalize_model_output(damodaran_result)
@@ -85,24 +93,36 @@ async def calculate_valuation_extensions(
         log_model_result(logger, symbol, "Damodaran DCF", normalized_damodaran)
     except Exception as exc:
         logger.warning("%s - Damodaran DCF failed: %s", symbol, exc)
-        valuation_results["damodaran_dcf"] = {"applicable": False, "reason": str(exc), "model": "damodaran_dcf"}
+        valuation_results["damodaran_dcf"] = {
+            "applicable": False,
+            "reason": str(exc),
+            "model": "damodaran_dcf",
+        }
 
     is_saas_company = bool(
         company_profile.industry
-        and any(kw in company_profile.industry.lower() for kw in ["software", "saas", "cloud", "internet"])
+        and any(
+            kw in company_profile.industry.lower()
+            for kw in ["software", "saas", "cloud", "internet"]
+        )
     )
-    is_growth_company = bool(company_profile.revenue_growth_yoy and company_profile.revenue_growth_yoy > 0.10)
+    is_growth_company = bool(
+        company_profile.revenue_growth_yoy and company_profile.revenue_growth_yoy > 0.10
+    )
 
     if is_saas_company or is_growth_company:
         try:
             rule_of_40_model = RuleOf40Valuation(company_profile)
             rule_of_40_result = rule_of_40_model.calculate(
                 revenue_growth=company_profile.revenue_growth_yoy,
-                fcf_margin=ratios.get("fcf_margin") or ratios.get("free_cash_flow_margin"),
+                fcf_margin=ratios.get("fcf_margin")
+                or ratios.get("free_cash_flow_margin"),
                 current_revenue=financials.get("revenues")
                 or financials.get("revenue")
                 or financials.get("total_revenue"),
-                current_price=market_data.get("price") or market_data.get("close") or market_data.get("current_price"),
+                current_price=market_data.get("price")
+                or market_data.get("close")
+                or market_data.get("current_price"),
                 shares_outstanding=company_profile.shares_outstanding,
             )
             normalized_rule_of_40 = normalize_model_output(rule_of_40_result)
@@ -110,7 +130,11 @@ async def calculate_valuation_extensions(
             log_model_result(logger, symbol, "Rule of 40", normalized_rule_of_40)
         except Exception as exc:
             logger.warning("%s - Rule of 40 failed: %s", symbol, exc)
-            valuation_results["rule_of_40"] = {"applicable": False, "reason": str(exc), "model": "rule_of_40"}
+            valuation_results["rule_of_40"] = {
+                "applicable": False,
+                "reason": str(exc),
+                "model": "rule_of_40",
+            }
     else:
         valuation_results["rule_of_40"] = {
             "applicable": False,
@@ -123,20 +147,30 @@ async def calculate_valuation_extensions(
             saas_model = SaaSValuationModel(company_profile)
             saas_result = saas_model.calculate(
                 revenue_growth=company_profile.revenue_growth_yoy,
-                current_revenue=financials.get("revenues") or financials.get("revenue") or financials.get("total_revenue"),
-                current_price=market_data.get("price") or market_data.get("close") or market_data.get("current_price"),
+                current_revenue=financials.get("revenues")
+                or financials.get("revenue")
+                or financials.get("total_revenue"),
+                current_price=market_data.get("price")
+                or market_data.get("close")
+                or market_data.get("current_price"),
                 shares_outstanding=company_profile.shares_outstanding,
-                gross_margin=ratios.get("gross_margin") or ratios.get("gross_profit_margin"),
+                gross_margin=ratios.get("gross_margin")
+                or ratios.get("gross_profit_margin"),
                 nrr=ratios.get("net_revenue_retention") or ratios.get("nrr"),
                 ltv_cac=ratios.get("ltv_cac") or ratios.get("ltv_cac_ratio"),
-                fcf_margin=ratios.get("fcf_margin") or ratios.get("free_cash_flow_margin"),
+                fcf_margin=ratios.get("fcf_margin")
+                or ratios.get("free_cash_flow_margin"),
             )
             normalized_saas = normalize_model_output(saas_result)
             valuation_results["saas"] = normalized_saas
             log_model_result(logger, symbol, "SaaS", normalized_saas)
         except Exception as exc:
             logger.warning("%s - SaaS valuation failed: %s", symbol, exc)
-            valuation_results["saas"] = {"applicable": False, "reason": str(exc), "model": "saas"}
+            valuation_results["saas"] = {
+                "applicable": False,
+                "reason": str(exc),
+                "model": "saas",
+            }
     else:
         valuation_results["saas"] = {
             "applicable": False,

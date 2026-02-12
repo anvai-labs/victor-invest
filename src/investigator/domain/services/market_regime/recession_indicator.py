@@ -37,10 +37,9 @@ Example:
     print(f"Investment posture: {assessment.investment_posture}")
 """
 
-import asyncio
 import logging
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -135,7 +134,9 @@ class RecessionAssessment:
             EconomicPhase.RECOVERY: InvestmentPosture.AGGRESSIVE,
             EconomicPhase.UNKNOWN: InvestmentPosture.BALANCED,
         }
-        self.investment_posture = posture_map.get(self.phase, InvestmentPosture.BALANCED)
+        self.investment_posture = posture_map.get(
+            self.phase, InvestmentPosture.BALANCED
+        )
 
         # Adjust for supply chain stress
         if self.gscpi_stress and self.investment_posture == InvestmentPosture.GROWTH:
@@ -216,7 +217,9 @@ class RecessionAssessment:
                 "Consider increasing equity, favor cyclicals."
             ),
         }
-        return interpretations.get(self.phase, "Economic conditions uncertain. Maintain balanced positioning.")
+        return interpretations.get(
+            self.phase, "Economic conditions uncertain. Maintain balanced positioning."
+        )
 
     @property
     def equity_allocation_range(self) -> tuple:
@@ -290,7 +293,9 @@ class RecessionIndicator:
     def _get_yield_analyzer(self):
         """Lazy-load yield curve analyzer."""
         if self._yield_analyzer is None:
-            from investigator.domain.services.market_regime.yield_curve_analyzer import get_yield_curve_analyzer
+            from investigator.domain.services.market_regime.yield_curve_analyzer import (
+                get_yield_curve_analyzer,
+            )
 
             self._yield_analyzer = get_yield_curve_analyzer()
         return self._yield_analyzer
@@ -324,11 +329,16 @@ class RecessionIndicator:
             curve_analysis = await yield_analyzer.analyze()
 
             if curve_analysis:
-                assessment.yield_curve_inverted = curve_analysis.shape.value in ("inverted", "deeply_inverted")
+                assessment.yield_curve_inverted = curve_analysis.shape.value in (
+                    "inverted",
+                    "deeply_inverted",
+                )
                 assessment.inversion_days = curve_analysis.days_inverted
 
             # Build leading indicators summary
-            assessment.leading_indicators = self._build_leading_indicators(recession_prob, gscpi, curve_analysis)
+            assessment.leading_indicators = self._build_leading_indicators(
+                recession_prob, gscpi, curve_analysis
+            )
 
             # Recalculate derived values after setting all inputs
             assessment._classify_phase()
@@ -342,7 +352,9 @@ class RecessionIndicator:
             assessment.warnings.append(f"Assessment error: {str(e)}")
             return assessment
 
-    def _build_leading_indicators(self, recession_prob, gscpi, curve_analysis) -> Dict[str, str]:
+    def _build_leading_indicators(
+        self, recession_prob, gscpi, curve_analysis
+    ) -> Dict[str, str]:
         """Build leading indicators summary."""
         indicators = {}
 
@@ -405,7 +417,9 @@ class RecessionIndicator:
             "economic_phase": assessment.phase.value,
             "investment_posture": assessment.investment_posture.value,
             "recession_assessment": assessment.to_dict(),
-            "yield_curve_analysis": curve_analysis.to_dict() if curve_analysis else None,
+            "yield_curve_analysis": curve_analysis.to_dict()
+            if curve_analysis
+            else None,
             "allocation_guidance": {
                 "equity_range": assessment.equity_allocation_range,
                 "sector_recommendations": assessment.sector_recommendations,

@@ -25,9 +25,8 @@ import logging
 import os
 import sys
 import time
-from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Set
+from typing import List, Optional
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -57,14 +56,19 @@ class SECDataExtractor:
         self.stock_engine = self.symbol_repo.stock_engine
 
         # Get SEC User Agent from environment (REQUIRED by SEC)
-        user_agent = os.environ.get("SEC_USER_AGENT", "InvestiGator/1.0 (contact@example.com)")
+        user_agent = os.environ.get(
+            "SEC_USER_AGENT", "InvestiGator/1.0 (contact@example.com)"
+        )
         print(f"  Using SEC User-Agent: {user_agent}", flush=True)
 
         # Initialize the actual SEC API client that makes HTTP requests
         self.sec_api_client = SECAPIClient(user_agent=user_agent)
 
         # Import SEC extraction components for saving data
-        from investigator.infrastructure.sec.companyfacts_extractor import SECCompanyFactsExtractor
+        from investigator.infrastructure.sec.companyfacts_extractor import (
+            SECCompanyFactsExtractor,
+        )
+
         self.facts_extractor = SECCompanyFactsExtractor()
 
     def get_symbols_missing_sec_data(self, order_by: str = "stockid") -> List[str]:
@@ -167,6 +171,7 @@ class SECDataExtractor:
             result["error"] = str(e)[:100]
             logger.error(f"  Error extracting {symbol}: {e}")
             import traceback
+
             traceback.print_exc()
 
         return result
@@ -203,7 +208,10 @@ class SECDataExtractor:
             batch_num = i // batch_size + 1
             total_batches = (total + batch_size - 1) // batch_size
 
-            print(f"\nBatch {batch_num}/{total_batches}: {', '.join(batch_symbols)}", flush=True)
+            print(
+                f"\nBatch {batch_num}/{total_batches}: {', '.join(batch_symbols)}",
+                flush=True,
+            )
 
             for idx, symbol in enumerate(batch_symbols):
                 result = await self.extract_for_symbol(symbol)
@@ -226,7 +234,7 @@ class SECDataExtractor:
             # Progress
             processed = min(i + batch_size, total)
             print(
-                f"  Progress: {processed}/{total} ({processed/total*100:.1f}%) | "
+                f"  Progress: {processed}/{total} ({processed / total * 100:.1f}%) | "
                 f"Success: {success_count} | Errors: {error_count}",
                 flush=True,
             )
@@ -258,20 +266,45 @@ class SECDataExtractor:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="SEC Data Extractor - Bulk fetch SEC filings")
+    parser = argparse.ArgumentParser(
+        description="SEC Data Extractor - Bulk fetch SEC filings"
+    )
 
     # Symbol source options
     source_group = parser.add_mutually_exclusive_group(required=True)
-    source_group.add_argument("--russell1000", action="store_true", help="Extract for Russell 1000 symbols")
-    source_group.add_argument("--sp500", action="store_true", help="Extract for S&P 500 symbols")
-    source_group.add_argument("--all", action="store_true", help="Extract for ALL stocks with CIK")
-    source_group.add_argument("--missing-only", action="store_true", help="Only extract for symbols missing SEC data")
-    source_group.add_argument("--symbols", nargs="+", help="Specific symbols to extract")
+    source_group.add_argument(
+        "--russell1000", action="store_true", help="Extract for Russell 1000 symbols"
+    )
+    source_group.add_argument(
+        "--sp500", action="store_true", help="Extract for S&P 500 symbols"
+    )
+    source_group.add_argument(
+        "--all", action="store_true", help="Extract for ALL stocks with CIK"
+    )
+    source_group.add_argument(
+        "--missing-only",
+        action="store_true",
+        help="Only extract for symbols missing SEC data",
+    )
+    source_group.add_argument(
+        "--symbols", nargs="+", help="Specific symbols to extract"
+    )
 
     # Processing options
-    parser.add_argument("--batch-size", type=int, default=10, help="Symbols per batch (default: 10)")
-    parser.add_argument("--delay", type=float, default=5.0, help="Delay between batches in seconds (default: 5.0)")
-    parser.add_argument("--skip-existing", action="store_true", help="Skip symbols that already have SEC data")
+    parser.add_argument(
+        "--batch-size", type=int, default=10, help="Symbols per batch (default: 10)"
+    )
+    parser.add_argument(
+        "--delay",
+        type=float,
+        default=5.0,
+        help="Delay between batches in seconds (default: 5.0)",
+    )
+    parser.add_argument(
+        "--skip-existing",
+        action="store_true",
+        help="Skip symbols that already have SEC data",
+    )
     parser.add_argument(
         "--order-by",
         choices=["stockid", "mktcap", "ticker"],
@@ -297,18 +330,29 @@ def main():
         symbols = extractor.symbol_repo.get_sp500_symbols()
         print(f"  Found {len(symbols)} S&P 500 symbols", flush=True)
     elif args.all:
-        symbols = extractor.symbol_repo.get_all_symbols(us_only=True, order_by=args.order_by)
-        print(f"  Found {len(symbols)} total US stocks with CIK (order: {args.order_by})", flush=True)
+        symbols = extractor.symbol_repo.get_all_symbols(
+            us_only=True, order_by=args.order_by
+        )
+        print(
+            f"  Found {len(symbols)} total US stocks with CIK (order: {args.order_by})",
+            flush=True,
+        )
     elif args.missing_only:
         symbols = extractor.get_symbols_missing_sec_data(order_by=args.order_by)
-        print(f"  Found {len(symbols)} symbols missing SEC data (order: {args.order_by})", flush=True)
+        print(
+            f"  Found {len(symbols)} symbols missing SEC data (order: {args.order_by})",
+            flush=True,
+        )
 
     # Filter to skip existing if requested
     if args.skip_existing and not args.missing_only:
         existing = extractor.symbol_repo.get_domestic_filers()
         original_count = len(symbols)
         symbols = [s for s in symbols if s not in existing]
-        print(f"  Skipping {original_count - len(symbols)} symbols with existing data", flush=True)
+        print(
+            f"  Skipping {original_count - len(symbols)} symbols with existing data",
+            flush=True,
+        )
         print(f"  Processing {len(symbols)} symbols", flush=True)
 
     if not symbols:

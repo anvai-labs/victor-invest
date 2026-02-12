@@ -130,6 +130,7 @@ class ToolResult(VictorToolResult):
             metadata=metadata or {},
         )
 
+
 class BaseTool(VictorBaseTool):
     """Abstract base class for all investment tools.
 
@@ -192,7 +193,9 @@ class BaseTool(VictorBaseTool):
         return self.get_schema()
 
     @abstractmethod
-    async def execute(self, _exec_ctx: Optional[Dict[str, Any]] = None, **kwargs) -> ToolResult:
+    async def execute(
+        self, _exec_ctx: Optional[Dict[str, Any]] = None, **kwargs
+    ) -> ToolResult:
         """Execute the tool with provided parameters.
 
         Args:

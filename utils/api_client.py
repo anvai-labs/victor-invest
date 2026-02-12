@@ -23,9 +23,9 @@ from investigator.infrastructure.http import (
 )
 
 __all__ = [
-    'BaseAPIClient',
-    'SECAPIClient',
-    'OllamaAPIClient',
-    'rate_limit',
-    'retry_on_failure',
+    "BaseAPIClient",
+    "SECAPIClient",
+    "OllamaAPIClient",
+    "rate_limit",
+    "retry_on_failure",
 ]

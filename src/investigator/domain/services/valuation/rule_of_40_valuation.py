@@ -23,8 +23,8 @@ Usage:
 """
 
 import logging
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass
+from typing import Any, Dict, Optional
 
 from investigator.domain.services.valuation.models.base import (
     BaseValuationModel,
@@ -33,7 +33,6 @@ from investigator.domain.services.valuation.models.base import (
     ValuationModelResult,
     ValuationOutput,
 )
-from investigator.domain.services.valuation.models.company_profile import CompanyProfile
 
 logger = logging.getLogger(__name__)
 
@@ -64,22 +63,40 @@ class RuleOf40Valuation(BaseValuationModel):
     # Industry benchmarks
     INDUSTRY_BENCHMARKS = {
         "SaaS - Enterprise": Rule40Benchmarks(
-            median_score=35.0, top_quartile_score=55.0, median_ps_multiple=8.0, top_quartile_ps_multiple=15.0
+            median_score=35.0,
+            top_quartile_score=55.0,
+            median_ps_multiple=8.0,
+            top_quartile_ps_multiple=15.0,
         ),
         "SaaS - SMB": Rule40Benchmarks(
-            median_score=30.0, top_quartile_score=45.0, median_ps_multiple=6.0, top_quartile_ps_multiple=12.0
+            median_score=30.0,
+            top_quartile_score=45.0,
+            median_ps_multiple=6.0,
+            top_quartile_ps_multiple=12.0,
         ),
         "Software - Application": Rule40Benchmarks(
-            median_score=32.0, top_quartile_score=50.0, median_ps_multiple=7.0, top_quartile_ps_multiple=14.0
+            median_score=32.0,
+            top_quartile_score=50.0,
+            median_ps_multiple=7.0,
+            top_quartile_ps_multiple=14.0,
         ),
         "Software - Infrastructure": Rule40Benchmarks(
-            median_score=35.0, top_quartile_score=55.0, median_ps_multiple=9.0, top_quartile_ps_multiple=18.0
+            median_score=35.0,
+            top_quartile_score=55.0,
+            median_ps_multiple=9.0,
+            top_quartile_ps_multiple=18.0,
         ),
         "Internet Software/Services": Rule40Benchmarks(
-            median_score=30.0, top_quartile_score=50.0, median_ps_multiple=6.0, top_quartile_ps_multiple=12.0
+            median_score=30.0,
+            top_quartile_score=50.0,
+            median_ps_multiple=6.0,
+            top_quartile_ps_multiple=12.0,
         ),
         "default": Rule40Benchmarks(
-            median_score=30.0, top_quartile_score=45.0, median_ps_multiple=5.0, top_quartile_ps_multiple=10.0
+            median_score=30.0,
+            top_quartile_score=45.0,
+            median_ps_multiple=5.0,
+            top_quartile_ps_multiple=10.0,
         ),
     }
 
@@ -145,7 +162,9 @@ class RuleOf40Valuation(BaseValuationModel):
 
         # Calculate Rule of 40 score
         # Convert decimals to percentages for the calculation
-        revenue_growth_pct = revenue_growth * 100 if abs(revenue_growth) < 5 else revenue_growth
+        revenue_growth_pct = (
+            revenue_growth * 100 if abs(revenue_growth) < 5 else revenue_growth
+        )
         fcf_margin_pct = fcf_margin * 100 if abs(fcf_margin) < 5 else fcf_margin
 
         rule_40_score = revenue_growth_pct + fcf_margin_pct
@@ -155,7 +174,9 @@ class RuleOf40Valuation(BaseValuationModel):
         benchmarks = self._get_benchmarks(industry)
 
         # Determine P/S multiple based on score
-        ps_multiple, score_classification = self._get_ps_multiple(rule_40_score, benchmarks)
+        ps_multiple, score_classification = self._get_ps_multiple(
+            rule_40_score, benchmarks
+        )
 
         # Calculate fair value
         fair_market_cap = current_revenue * ps_multiple
@@ -167,7 +188,9 @@ class RuleOf40Valuation(BaseValuationModel):
             upside_potential = (fair_value / current_price - 1) * 100
 
         # Estimate confidence
-        confidence = self._calculate_confidence(rule_40_score, score_classification, revenue_growth_pct)
+        confidence = self._calculate_confidence(
+            rule_40_score, score_classification, revenue_growth_pct
+        )
 
         # Build assumptions
         assumptions = {
@@ -204,7 +227,8 @@ class RuleOf40Valuation(BaseValuationModel):
             methodology=self.methodology,
             assumptions=assumptions,
             diagnostics=ModelDiagnostics(
-                data_quality_score=0.85 if rule_40_score > 0 else 0.6, flags=[f"rule40_score_{score_classification}"]
+                data_quality_score=0.85 if rule_40_score > 0 else 0.6,
+                flags=[f"rule40_score_{score_classification}"],
             ),
             metadata=metadata,
         )
@@ -226,12 +250,16 @@ class RuleOf40Valuation(BaseValuationModel):
         # Try partial match
         industry_lower = industry.lower()
         for key, benchmarks in self.INDUSTRY_BENCHMARKS.items():
-            if key != "default" and (industry_lower in key.lower() or key.lower() in industry_lower):
+            if key != "default" and (
+                industry_lower in key.lower() or key.lower() in industry_lower
+            ):
                 return benchmarks
 
         return self.INDUSTRY_BENCHMARKS["default"]
 
-    def _get_ps_multiple(self, rule_40_score: float, benchmarks: Rule40Benchmarks) -> tuple:
+    def _get_ps_multiple(
+        self, rule_40_score: float, benchmarks: Rule40Benchmarks
+    ) -> tuple:
         """
         Determine P/S multiple based on Rule of 40 score.
 
@@ -271,7 +299,9 @@ class RuleOf40Valuation(BaseValuationModel):
             multiple = median_ps * 0.4
             return (multiple, "distressed")
 
-    def _calculate_confidence(self, score: float, classification: str, revenue_growth: float) -> float:
+    def _calculate_confidence(
+        self, score: float, classification: str, revenue_growth: float
+    ) -> float:
         """Calculate confidence score for the valuation."""
         base_confidence = 0.70
 

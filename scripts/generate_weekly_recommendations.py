@@ -13,7 +13,6 @@ Usage:
 
 import argparse
 import json
-import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -129,7 +128,7 @@ def format_recommendation(pred: Dict, tier_perf: Dict) -> Dict:
     if isinstance(context, str):
         try:
             context = json.loads(context)
-        except:
+        except Exception:
             context = {}
 
     return {
@@ -162,12 +161,10 @@ def generate_report(
             "skipped": len(categorized["skips"]),
         },
         "top_longs": [
-            format_recommendation(p, tier_perf)
-            for p in categorized["longs"][:top_n]
+            format_recommendation(p, tier_perf) for p in categorized["longs"][:top_n]
         ],
         "top_shorts": [
-            format_recommendation(p, tier_perf)
-            for p in categorized["shorts"][:top_n]
+            format_recommendation(p, tier_perf) for p in categorized["shorts"][:top_n]
         ],
         "best_tiers": [
             {
@@ -177,9 +174,7 @@ def generate_report(
                 "win_rate": round(info["win_rate"], 1),
             }
             for tier, info in sorted(
-                tier_perf.items(),
-                key=lambda x: x[1]["avg_reward"],
-                reverse=True
+                tier_perf.items(), key=lambda x: x[1]["avg_reward"], reverse=True
             )[:5]
         ],
     }
@@ -202,26 +197,32 @@ def print_report(report: Dict) -> None:
         print("TOP LONG RECOMMENDATIONS")
         print("-" * 40)
         for i, rec in enumerate(report["top_longs"][:5], 1):
-            print(f"{i}. {rec['symbol']:6s} | +{rec['upside_pct']:5.1f}% | "
-                  f"${rec['current_price']:.2f} → ${rec['fair_value']:.2f} | "
-                  f"{rec['tier']}")
+            print(
+                f"{i}. {rec['symbol']:6s} | +{rec['upside_pct']:5.1f}% | "
+                f"${rec['current_price']:.2f} → ${rec['fair_value']:.2f} | "
+                f"{rec['tier']}"
+            )
 
     if report["top_shorts"]:
         print("\n" + "-" * 40)
         print("TOP SHORT RECOMMENDATIONS")
         print("-" * 40)
         for i, rec in enumerate(report["top_shorts"][:5], 1):
-            print(f"{i}. {rec['symbol']:6s} | {rec['upside_pct']:5.1f}% | "
-                  f"${rec['current_price']:.2f} → ${rec['fair_value']:.2f} | "
-                  f"{rec['tier']}")
+            print(
+                f"{i}. {rec['symbol']:6s} | {rec['upside_pct']:5.1f}% | "
+                f"${rec['current_price']:.2f} → ${rec['fair_value']:.2f} | "
+                f"{rec['tier']}"
+            )
 
     if report["best_tiers"]:
         print("\n" + "-" * 40)
         print("BEST PERFORMING TIERS")
         print("-" * 40)
         for tier in report["best_tiers"]:
-            print(f"  {tier['tier']}: {tier['avg_reward']:+.4f} reward, "
-                  f"{tier['win_rate']:.0f}% win rate")
+            print(
+                f"  {tier['tier']}: {tier['avg_reward']:+.4f} reward, "
+                f"{tier['win_rate']:.0f}% win rate"
+            )
 
     print("\n" + "=" * 60)
 

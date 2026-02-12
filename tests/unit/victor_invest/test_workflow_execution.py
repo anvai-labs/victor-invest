@@ -9,7 +9,10 @@ from victor.workflows.executor import (
 )
 from victor.tools.registry import ToolRegistry
 
-from victor_invest.workflows import InvestmentWorkflowProvider, ensure_handlers_registered
+from victor_invest.workflows import (
+    InvestmentWorkflowProvider,
+    ensure_handlers_registered,
+)
 
 
 class _MinimalOrchestrator:
@@ -39,7 +42,9 @@ def test_quick_workflow_executes_with_stub_handlers():
 
     handlers = {
         "fetch_market_data": _stub_handler({"status": "success", "data": {}}),
-        "run_technical_analysis": _stub_handler({"status": "success", "data": {"trend": {}}}),
+        "run_technical_analysis": _stub_handler(
+            {"status": "success", "data": {"trend": {}}}
+        ),
         "run_synthesis": _stub_handler({"status": "success", "recommendation": "HOLD"}),
     }
 
@@ -49,7 +54,9 @@ def test_quick_workflow_executes_with_stub_handlers():
         for name, handler in handlers.items():
             register_compute_handler(name, handler)
 
-        executor = WorkflowExecutor(_MinimalOrchestrator(), tool_registry=ToolRegistry())
+        executor = WorkflowExecutor(
+            _MinimalOrchestrator(), tool_registry=ToolRegistry()
+        )
         result = asyncio.run(
             executor.execute(workflow, initial_context={"symbol": "AAPL"}, timeout=60.0)
         )
@@ -71,8 +78,12 @@ def test_standard_workflow_executes_with_stub_handlers():
     handlers = {
         "fetch_sec_data": _stub_handler({"status": "success", "data": {}}),
         "fetch_market_data": _stub_handler({"status": "success", "data": {}}),
-        "run_fundamental_analysis": _stub_handler({"status": "success", "data": {"score": 70}}),
-        "run_technical_analysis": _stub_handler({"status": "success", "data": {"trend": {}}}),
+        "run_fundamental_analysis": _stub_handler(
+            {"status": "success", "data": {"score": 70}}
+        ),
+        "run_technical_analysis": _stub_handler(
+            {"status": "success", "data": {"trend": {}}}
+        ),
         "run_synthesis": _stub_handler({"status": "success", "recommendation": "HOLD"}),
     }
 
@@ -82,7 +93,9 @@ def test_standard_workflow_executes_with_stub_handlers():
         for name, handler in handlers.items():
             register_compute_handler(name, handler)
 
-        executor = WorkflowExecutor(_MinimalOrchestrator(), tool_registry=ToolRegistry())
+        executor = WorkflowExecutor(
+            _MinimalOrchestrator(), tool_registry=ToolRegistry()
+        )
         result = asyncio.run(
             executor.execute(workflow, initial_context={"symbol": "AAPL"}, timeout=60.0)
         )
@@ -107,9 +120,15 @@ def test_comprehensive_workflow_executes_with_stub_handlers():
         "fetch_sec_data": _stub_handler({"status": "success", "data": {}}),
         "fetch_market_data": _stub_handler({"status": "success", "data": {}}),
         "fetch_macro_data": _stub_handler({"status": "success", "data": {}}),
-        "run_fundamental_analysis": _stub_handler({"status": "success", "data": {"score": 70}}),
-        "run_technical_analysis": _stub_handler({"status": "success", "data": {"trend": {}}}),
-        "run_market_context_analysis": _stub_handler({"status": "success", "market_regime": "neutral"}),
+        "run_fundamental_analysis": _stub_handler(
+            {"status": "success", "data": {"score": 70}}
+        ),
+        "run_technical_analysis": _stub_handler(
+            {"status": "success", "data": {"trend": {}}}
+        ),
+        "run_market_context_analysis": _stub_handler(
+            {"status": "success", "market_regime": "neutral"}
+        ),
         "identify_peers": _stub_handler({"peers": [], "peer_metrics": {}}),
         "run_synthesis": _stub_handler({"status": "success", "recommendation": "HOLD"}),
         "generate_report": _stub_handler({"status": "success", "path": "report.pdf"}),
@@ -121,7 +140,9 @@ def test_comprehensive_workflow_executes_with_stub_handlers():
         for name, handler in handlers.items():
             register_compute_handler(name, handler)
 
-        executor = WorkflowExecutor(_MinimalOrchestrator(), tool_registry=ToolRegistry())
+        executor = WorkflowExecutor(
+            _MinimalOrchestrator(), tool_registry=ToolRegistry()
+        )
         result = asyncio.run(
             executor.execute(workflow, initial_context={"symbol": "AAPL"}, timeout=60.0)
         )

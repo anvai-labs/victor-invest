@@ -65,7 +65,12 @@ def test_extract_latest_financials_from_dict_payload_calculates_ebitda():
 
 def test_extract_latest_financials_from_quarterly_data_object():
     financial_data = SimpleNamespace(
-        income_statement={"revenue": 62000, "net_income": 22000, "operating_income": 26000, "gross_profit": 43000},
+        income_statement={
+            "revenue": 62000,
+            "net_income": 22000,
+            "operating_income": 26000,
+            "gross_profit": 43000,
+        },
         balance_sheet={
             "total_assets": 500000,
             "total_liabilities": 200000,

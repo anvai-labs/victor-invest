@@ -43,7 +43,7 @@ References:
 """
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date
 from enum import Enum
 from typing import Any, Dict, List, Optional
@@ -208,7 +208,9 @@ class BeneishMScoreCalculator:
 
         # Must have prior period data
         if data.prior_period is None:
-            result.interpretation = "Cannot calculate - requires prior period data for comparison"
+            result.interpretation = (
+                "Cannot calculate - requires prior period data for comparison"
+            )
             return result
 
         try:
@@ -217,10 +219,16 @@ class BeneishMScoreCalculator:
             result.components = indices
 
             # Count how many indices we successfully calculated
-            valid_indices = [v for k, v in indices.items() if k.endswith("_index") and v is not None]
+            valid_indices = [
+                v for k, v in indices.items() if k.endswith("_index") and v is not None
+            ]
 
-            if len(valid_indices) < 4:  # Need at least 4 indices for meaningful calculation
-                result.warnings.append(f"Only {len(valid_indices)} indices calculated (need 4+)")
+            if (
+                len(valid_indices) < 4
+            ):  # Need at least 4 indices for meaningful calculation
+                result.warnings.append(
+                    f"Only {len(valid_indices)} indices calculated (need 4+)"
+                )
                 result.interpretation = "Insufficient data for reliable M-Score"
                 return result
 
@@ -232,7 +240,9 @@ class BeneishMScoreCalculator:
             result.risk_level = self._classify_risk(m_score)
 
             # Set interpretation
-            result.interpretation = self._get_interpretation(result.risk_level, result.score)
+            result.interpretation = self._get_interpretation(
+                result.risk_level, result.score
+            )
 
             # Estimate manipulation probability
             result.manipulation_probability = self._estimate_manipulation_prob(m_score)
@@ -264,25 +274,42 @@ class BeneishMScoreCalculator:
 
         # DSRI: Days Sales in Receivables Index
         # (AR_t / Sales_t) / (AR_t-1 / Sales_t-1)
-        dsri = self._safe_ratio_index(curr.accounts_receivable, curr.revenue, prior.accounts_receivable, prior.revenue)
+        dsri = self._safe_ratio_index(
+            curr.accounts_receivable,
+            curr.revenue,
+            prior.accounts_receivable,
+            prior.revenue,
+        )
         indices["dsri_index"] = dsri
-        indices["dsri_current_ratio"] = self._safe_divide(curr.accounts_receivable, curr.revenue)
-        indices["dsri_prior_ratio"] = self._safe_divide(prior.accounts_receivable, prior.revenue)
+        indices["dsri_current_ratio"] = self._safe_divide(
+            curr.accounts_receivable, curr.revenue
+        )
+        indices["dsri_prior_ratio"] = self._safe_divide(
+            prior.accounts_receivable, prior.revenue
+        )
 
         # GMI: Gross Margin Index
         # ((Sales_t-1 - COGS_t-1) / Sales_t-1) / ((Sales_t - COGS_t) / Sales_t)
         # Note: Inverted - prior margin / current margin
         curr_gm_ratio = self._safe_divide(curr.gross_profit, curr.revenue)
         prior_gm_ratio = self._safe_divide(prior.gross_profit, prior.revenue)
-        gmi = self._safe_divide(prior_gm_ratio, curr_gm_ratio) if curr_gm_ratio and prior_gm_ratio else None
+        gmi = (
+            self._safe_divide(prior_gm_ratio, curr_gm_ratio)
+            if curr_gm_ratio and prior_gm_ratio
+            else None
+        )
         indices["gmi_index"] = gmi
         indices["gmi_current_margin"] = curr_gm_ratio
         indices["gmi_prior_margin"] = prior_gm_ratio
 
         # AQI: Asset Quality Index
         # (1 - (CA_t + PPE_t) / TA_t) / (1 - (CA_t-1 + PPE_t-1) / TA_t-1)
-        curr_tangible = self._safe_sum(curr.current_assets, curr.property_plant_equipment)
-        prior_tangible = self._safe_sum(prior.current_assets, prior.property_plant_equipment)
+        curr_tangible = self._safe_sum(
+            curr.current_assets, curr.property_plant_equipment
+        )
+        prior_tangible = self._safe_sum(
+            prior.current_assets, prior.property_plant_equipment
+        )
         curr_aqi_ratio = self._safe_divide(curr_tangible, curr.total_assets)
         prior_aqi_ratio = self._safe_divide(prior_tangible, prior.total_assets)
 
@@ -303,23 +330,37 @@ class BeneishMScoreCalculator:
         # (Dep_t-1 / (Dep_t-1 + PPE_t-1)) / (Dep_t / (Dep_t + PPE_t))
         curr_dep_ratio = self._safe_divide(
             curr.depreciation_amortization,
-            self._safe_sum(curr.depreciation_amortization, curr.property_plant_equipment),
+            self._safe_sum(
+                curr.depreciation_amortization, curr.property_plant_equipment
+            ),
         )
         prior_dep_ratio = self._safe_divide(
             prior.depreciation_amortization,
-            self._safe_sum(prior.depreciation_amortization, prior.property_plant_equipment),
+            self._safe_sum(
+                prior.depreciation_amortization, prior.property_plant_equipment
+            ),
         )
-        depi = self._safe_divide(prior_dep_ratio, curr_dep_ratio) if curr_dep_ratio and prior_dep_ratio else None
+        depi = (
+            self._safe_divide(prior_dep_ratio, curr_dep_ratio)
+            if curr_dep_ratio and prior_dep_ratio
+            else None
+        )
         indices["depi_index"] = depi
 
         # SGAI: SG&A Index
         # (SGA_t / Sales_t) / (SGA_t-1 / Sales_t-1)
-        sgai = self._safe_ratio_index(curr.sga_expense, curr.revenue, prior.sga_expense, prior.revenue)
+        sgai = self._safe_ratio_index(
+            curr.sga_expense, curr.revenue, prior.sga_expense, prior.revenue
+        )
         indices["sgai_index"] = sgai
 
         # TATA: Total Accruals to Total Assets
         # (Net Income - CFO) / Total Assets
-        if curr.net_income is not None and curr.operating_cash_flow is not None and curr.total_assets:
+        if (
+            curr.net_income is not None
+            and curr.operating_cash_flow is not None
+            and curr.total_assets
+        ):
             tata = (curr.net_income - curr.operating_cash_flow) / curr.total_assets
         else:
             tata = None
@@ -383,7 +424,9 @@ class BeneishMScoreCalculator:
         else:
             return ManipulationRisk.MODERATE
 
-    def _get_interpretation(self, risk: Optional[ManipulationRisk], score: Optional[float]) -> str:
+    def _get_interpretation(
+        self, risk: Optional[ManipulationRisk], score: Optional[float]
+    ) -> str:
         """Generate human-readable interpretation."""
         if risk is None or score is None:
             return "Unable to calculate M-Score due to missing data"
@@ -429,7 +472,9 @@ class BeneishMScoreCalculator:
             return 1.0 if m_score > -1.78 else 0.0
 
     @staticmethod
-    def _safe_divide(numerator: Optional[float], denominator: Optional[float]) -> Optional[float]:
+    def _safe_divide(
+        numerator: Optional[float], denominator: Optional[float]
+    ) -> Optional[float]:
         """Safely divide two numbers, handling None and zero."""
         if numerator is None or denominator is None or denominator == 0:
             return None

@@ -11,7 +11,10 @@ from victor.workflows.executor import (
     register_compute_handler,
 )
 
-from victor_invest.workflows import InvestmentWorkflowProvider, ensure_handlers_registered
+from victor_invest.workflows import (
+    InvestmentWorkflowProvider,
+    ensure_handlers_registered,
+)
 
 
 class _MinimalOrchestrator:
@@ -41,8 +44,12 @@ def _load_expected(name: str):
 def _extract_golden_payload(result, symbol: str):
     return {
         "symbol": symbol,
-        "fundamental_status": (result.context.get("fundamental_analysis") or {}).get("status"),
-        "technical_status": (result.context.get("technical_analysis") or {}).get("status"),
+        "fundamental_status": (result.context.get("fundamental_analysis") or {}).get(
+            "status"
+        ),
+        "technical_status": (result.context.get("technical_analysis") or {}).get(
+            "status"
+        ),
         "synthesis_status": (result.context.get("synthesis") or {}).get("status"),
         "recommendation": (result.context.get("synthesis") or {}).get("recommendation"),
         "confidence": (result.context.get("synthesis") or {}).get("confidence"),
@@ -57,10 +64,18 @@ def _run_standard_workflow(symbol: str, synthesis_output: dict):
     assert workflow is not None
 
     handlers = {
-        "fetch_sec_data": _stub_handler({"status": "success", "data": {"source": "sec"}}),
-        "fetch_market_data": _stub_handler({"status": "success", "data": {"source": "market"}}),
-        "run_fundamental_analysis": _stub_handler({"status": "success", "data": {"score": 72}}),
-        "run_technical_analysis": _stub_handler({"status": "success", "data": {"trend": "bullish"}}),
+        "fetch_sec_data": _stub_handler(
+            {"status": "success", "data": {"source": "sec"}}
+        ),
+        "fetch_market_data": _stub_handler(
+            {"status": "success", "data": {"source": "market"}}
+        ),
+        "run_fundamental_analysis": _stub_handler(
+            {"status": "success", "data": {"score": 72}}
+        ),
+        "run_technical_analysis": _stub_handler(
+            {"status": "success", "data": {"trend": "bullish"}}
+        ),
         "run_synthesis": _stub_handler(synthesis_output),
     }
 
@@ -70,7 +85,9 @@ def _run_standard_workflow(symbol: str, synthesis_output: dict):
         for name, handler in handlers.items():
             register_compute_handler(name, handler)
 
-        executor = WorkflowExecutor(_MinimalOrchestrator(), tool_registry=ToolRegistry())
+        executor = WorkflowExecutor(
+            _MinimalOrchestrator(), tool_registry=ToolRegistry()
+        )
         return asyncio.run(
             executor.execute(workflow, initial_context={"symbol": symbol}, timeout=60.0)
         )

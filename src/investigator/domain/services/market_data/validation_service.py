@@ -26,7 +26,6 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +74,10 @@ class DataValidationService:
             stock_db_url: Connection string for stock database.
                          If None, builds from environment variables.
         """
-        from investigator.domain.services.market_data import get_sec_db_url, get_stock_db_url
+        from investigator.domain.services.market_data import (
+            get_sec_db_url,
+            get_stock_db_url,
+        )
 
         if sec_db_url is None:
             sec_db_url = get_sec_db_url()
@@ -131,11 +133,13 @@ class DataValidationService:
         if sec_shares and symbol_shares:
             ratio = sec_shares / symbol_shares if symbol_shares > 0 else 0
 
-            if ratio > 1.8:  # SEC has more shares - possible recent split not in symbol table
+            if (
+                ratio > 1.8
+            ):  # SEC has more shares - possible recent split not in symbol table
                 warnings.append(
                     DataQualityWarning(
                         code="SHARES_MISMATCH_FORWARD_SPLIT",
-                        message=f"SEC shares ({sec_shares/1e9:.2f}B) >> symbol table ({symbol_shares/1e9:.2f}B) - possible forward split",
+                        message=f"SEC shares ({sec_shares / 1e9:.2f}B) >> symbol table ({symbol_shares / 1e9:.2f}B) - possible forward split",
                         severity=WarningSeverity.WARNING,
                         details={
                             "sec_shares": sec_shares,
@@ -149,13 +153,13 @@ class DataValidationService:
                 warnings.append(
                     DataQualityWarning(
                         code="SHARES_MISMATCH_REVERSE_SPLIT",
-                        message=f"SEC shares ({sec_shares/1e9:.2f}B) << symbol table ({symbol_shares/1e9:.2f}B) - possible reverse split",
+                        message=f"SEC shares ({sec_shares / 1e9:.2f}B) << symbol table ({symbol_shares / 1e9:.2f}B) - possible reverse split",
                         severity=WarningSeverity.WARNING,
                         details={
                             "sec_shares": sec_shares,
                             "symbol_shares": symbol_shares,
                             "ratio": ratio,
-                            "likely_split": f"1:{round(1/ratio)}",
+                            "likely_split": f"1:{round(1 / ratio)}",
                         },
                     )
                 )
@@ -169,7 +173,7 @@ class DataValidationService:
                 warnings.append(
                     DataQualityWarning(
                         code="MKTCAP_MISMATCH",
-                        message=f"Calculated mktcap (${calc_mktcap/1e9:.1f}B) differs from stored (${symbol_mktcap/1e9:.1f}B)",
+                        message=f"Calculated mktcap (${calc_mktcap / 1e9:.1f}B) differs from stored (${symbol_mktcap / 1e9:.1f}B)",
                         severity=WarningSeverity.WARNING,
                         details={
                             "calculated_mktcap": calc_mktcap,
@@ -269,7 +273,11 @@ class DataValidationService:
                         code="SUSPICIOUS_NET_MARGIN",
                         message=f"Net margin > 100%: {net_margin:.1%}",
                         severity=WarningSeverity.WARNING,
-                        details={"net_margin": net_margin, "net_income": net_income, "revenue": revenue},
+                        details={
+                            "net_margin": net_margin,
+                            "net_income": net_income,
+                            "revenue": revenue,
+                        },
                     )
                 )
 
@@ -304,17 +312,29 @@ class DataValidationService:
             all_warnings.extend(fin_warnings)
 
         # Calculate quality score
-        error_count = sum(1 for w in all_warnings if w.severity == WarningSeverity.ERROR)
-        warning_count = sum(1 for w in all_warnings if w.severity == WarningSeverity.WARNING)
+        error_count = sum(
+            1 for w in all_warnings if w.severity == WarningSeverity.ERROR
+        )
+        warning_count = sum(
+            1 for w in all_warnings if w.severity == WarningSeverity.WARNING
+        )
         info_count = sum(1 for w in all_warnings if w.severity == WarningSeverity.INFO)
 
         # Score: 100 - (30 * errors) - (10 * warnings) - (2 * info)
-        score = max(0, 100 - (30 * error_count) - (10 * warning_count) - (2 * info_count))
+        score = max(
+            0, 100 - (30 * error_count) - (10 * warning_count) - (2 * info_count)
+        )
 
         return {
             "symbol": symbol,
             "quality_score": score,
-            "assessment": "excellent" if score >= 90 else "good" if score >= 70 else "fair" if score >= 50 else "poor",
+            "assessment": "excellent"
+            if score >= 90
+            else "good"
+            if score >= 70
+            else "fair"
+            if score >= 50
+            else "poor",
             "error_count": error_count,
             "warning_count": warning_count,
             "info_count": info_count,

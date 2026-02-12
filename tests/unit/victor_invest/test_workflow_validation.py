@@ -2,7 +2,10 @@ from victor.framework.handler_registry import get_handler_registry
 from victor.workflows.executor import get_compute_handler
 from victor.workflows.definition import ComputeNode
 
-from victor_invest.workflows import InvestmentWorkflowProvider, ensure_handlers_registered
+from victor_invest.workflows import (
+    InvestmentWorkflowProvider,
+    ensure_handlers_registered,
+)
 
 
 def test_workflows_validate_and_handlers_resolve():

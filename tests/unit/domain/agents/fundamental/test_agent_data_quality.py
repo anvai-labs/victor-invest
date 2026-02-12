@@ -111,7 +111,10 @@ class TestAssessDataQuality:
 
         result = agent._assess_data_quality(company_data, {})
 
-        assert any("Current liabilities exceed" in issue for issue in result["consistency_issues"])
+        assert any(
+            "Current liabilities exceed" in issue
+            for issue in result["consistency_issues"]
+        )
 
     def test_detects_unrealistic_current_ratio(self, agent):
         """Should detect impossibly high current ratio."""
@@ -120,7 +123,10 @@ class TestAssessDataQuality:
 
         result = agent._assess_data_quality(company_data, ratios)
 
-        assert any("Unrealistic current ratio" in issue for issue in result["consistency_issues"])
+        assert any(
+            "Unrealistic current ratio" in issue
+            for issue in result["consistency_issues"]
+        )
 
     def test_calculates_enhancement_summary(self, agent):
         """Should calculate enhancement summary for enriched data."""
@@ -329,25 +335,41 @@ class TestCalculateConfidenceLevel:
         """Test confidence levels at exact boundaries."""
         # Exactly 90
         result = agent._calculate_confidence_level(
-            {"data_quality_score": 90, "quality_grade": "Excellent", "consistency_issues": []}
+            {
+                "data_quality_score": 90,
+                "quality_grade": "Excellent",
+                "consistency_issues": [],
+            }
         )
         assert result["confidence_level"] == "VERY HIGH"
 
         # Exactly 75
         result = agent._calculate_confidence_level(
-            {"data_quality_score": 75, "quality_grade": "Good", "consistency_issues": []}
+            {
+                "data_quality_score": 75,
+                "quality_grade": "Good",
+                "consistency_issues": [],
+            }
         )
         assert result["confidence_level"] == "HIGH"
 
         # Exactly 60
         result = agent._calculate_confidence_level(
-            {"data_quality_score": 60, "quality_grade": "Fair", "consistency_issues": []}
+            {
+                "data_quality_score": 60,
+                "quality_grade": "Fair",
+                "consistency_issues": [],
+            }
         )
         assert result["confidence_level"] == "MODERATE"
 
         # Exactly 40
         result = agent._calculate_confidence_level(
-            {"data_quality_score": 40, "quality_grade": "Poor", "consistency_issues": []}
+            {
+                "data_quality_score": 40,
+                "quality_grade": "Poor",
+                "consistency_issues": [],
+            }
         )
         assert result["confidence_level"] == "LOW"
 

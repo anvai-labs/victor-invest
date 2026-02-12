@@ -15,9 +15,7 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 from investigator.domain.services.industry_datasets.base import (
-    BaseIndustryDataset,
     IndustryMetrics,
-    MetricQuality,
     ValuationAdjustment,
 )
 from investigator.domain.services.industry_datasets.registry import (
@@ -276,7 +274,9 @@ def apply_adjustments_to_fair_value(
 
         # Apply the adjustment
         adjusted_value *= adj.factor
-        applied_reasons.append(f"{adj.adjustment_type}: {adj.factor:.2f}x - {adj.reason}")
+        applied_reasons.append(
+            f"{adj.adjustment_type}: {adj.factor:.2f}x - {adj.reason}"
+        )
 
     return adjusted_value, applied_reasons
 

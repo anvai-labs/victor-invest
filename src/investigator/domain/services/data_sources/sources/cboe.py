@@ -6,10 +6,17 @@ Free data from CBOE and FRED.
 """
 
 import logging
-from datetime import date, datetime
+from datetime import date
 from typing import Any, Dict, Optional
 
-from ..base import DataCategory, DataFrequency, DataQuality, DataResult, DataSource, SourceMetadata
+from ..base import (
+    DataCategory,
+    DataFrequency,
+    DataQuality,
+    DataResult,
+    DataSource,
+    SourceMetadata,
+)
 from ..registry import register_source
 
 logger = logging.getLogger(__name__)
@@ -28,7 +35,9 @@ class CBOEVolatilitySource(DataSource):
     """
 
     def __init__(self):
-        super().__init__("cboe_volatility", DataCategory.VOLATILITY, DataFrequency.DAILY)
+        super().__init__(
+            "cboe_volatility", DataCategory.VOLATILITY, DataFrequency.DAILY
+        )
 
     @property
     def metadata(self) -> SourceMetadata:
@@ -218,13 +227,19 @@ class CBOEVolatilitySource(DataSource):
             else (
                 "fear"
                 if fear_score > 60
-                else "neutral" if fear_score > 40 else "greed" if fear_score > 20 else "extreme_greed"
+                else "neutral"
+                if fear_score > 40
+                else "greed"
+                if fear_score > 20
+                else "extreme_greed"
             )
         )
 
         return analysis
 
-    def get_vix_percentile(self, vix_value: float, lookback_days: int = 252) -> DataResult:
+    def get_vix_percentile(
+        self, vix_value: float, lookback_days: int = 252
+    ) -> DataResult:
         """Calculate VIX percentile rank"""
         try:
             from datetime import timedelta
@@ -253,7 +268,9 @@ class CBOEVolatilitySource(DataSource):
                 values = [float(r[0]) for r in result]
 
             if not values:
-                return DataResult(success=False, error="No VIX history", source=self.name)
+                return DataResult(
+                    success=False, error="No VIX history", source=self.name
+                )
 
             # Calculate percentile
             below_count = sum(1 for v in values if v < vix_value)

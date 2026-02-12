@@ -3,25 +3,23 @@ Admin Dashboard for InvestiGator
 Web-based administration interface for system management
 """
 
-from fastapi import FastAPI, WebSocket, HTTPException, Depends, Request
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from fastapi import FastAPI, WebSocket, HTTPException, Depends
+from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import secrets
-from typing import Dict, List, Optional, Any
-from datetime import datetime, timedelta
+from typing import Dict, List, Optional
+from datetime import datetime
 import asyncio
 import json
+import os
 
 from agents.orchestrator import AgentOrchestrator, AnalysisMode
 from utils.cache.cache_manager import CacheManager
 from investigator.infrastructure.monitoring import MetricsCollector
 from utils.ollama_client import OllamaClient
 from utils.profiler import get_profiler
-from models.database import Analysis, AgentResult, SystemMetric
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
+from models.database import Analysis
+from sqlalchemy import select, func
 
 
 # Security
@@ -31,7 +29,9 @@ security = HTTPBasic()
 def verify_credentials(credentials: HTTPBasicCredentials = Depends(security)):
     """Verify admin credentials"""
     correct_username = secrets.compare_digest(credentials.username, "admin")
-    correct_password = secrets.compare_digest(credentials.password, os.environ.get("ADMIN_PASSWORD", ""))
+    correct_password = secrets.compare_digest(
+        credentials.password, os.environ.get("ADMIN_PASSWORD", "")
+    )
 
     if not (correct_username and correct_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -45,7 +45,10 @@ class AdminDashboard:
     """
 
     def __init__(
-        self, orchestrator: AgentOrchestrator, cache_manager: CacheManager, metrics_collector: MetricsCollector
+        self,
+        orchestrator: AgentOrchestrator,
+        cache_manager: CacheManager,
+        metrics_collector: MetricsCollector,
     ):
         self.orchestrator = orchestrator
         self.cache = cache_manager
@@ -94,7 +97,10 @@ class AdminDashboard:
             "cpu_percent": health["metrics"].get("cpu_percent", 0),
             "memory_percent": health["metrics"].get("memory_percent", 0),
             "disk_usage": health["metrics"].get("disk_usage", 0),
-            "uptime_hours": (datetime.now() - self.metrics.system_metrics["start_time"]).total_seconds() / 3600,
+            "uptime_hours": (
+                datetime.now() - self.metrics.system_metrics["start_time"]
+            ).total_seconds()
+            / 3600,
         }
 
     async def _get_analysis_stats(self) -> Dict:
@@ -111,14 +117,17 @@ class AdminDashboard:
                     "mode": task.mode.value,
                     "status": task.status,
                     "duration": task.results.get("duration", 0) if task.results else 0,
-                    "completed_at": task.results.get("completed_at", "") if task.results else "",
+                    "completed_at": task.results.get("completed_at", "")
+                    if task.results
+                    else "",
                 }
             )
 
         return {
             "total": stats["total_analyses"],
             "successful": stats.get("successful_analyses", 0),
-            "failed": stats.get("total_analyses", 0) - stats.get("successful_analyses", 0),
+            "failed": stats.get("total_analyses", 0)
+            - stats.get("successful_analyses", 0),
             "success_rate": stats.get("success_rate", 0),
             "active": len(self.orchestrator.active_tasks),
             "queued": self.orchestrator.task_queue.qsize(),
@@ -151,7 +160,9 @@ class AdminDashboard:
         total_misses = sum(s["operations"]["misses"] for s in perf_stats.values())
 
         return {
-            "hit_rate": (total_hits / (total_hits + total_misses) * 100) if (total_hits + total_misses) > 0 else 0,
+            "hit_rate": (total_hits / (total_hits + total_misses) * 100)
+            if (total_hits + total_misses) > 0
+            else 0,
             "total_hits": total_hits,
             "total_misses": total_misses,
             "l1_memory_mb": cache_stats.get("l1_memory_mb", 0),
@@ -179,7 +190,7 @@ class AdminDashboard:
         for websocket in self.websocket_connections:
             try:
                 await websocket.send_text(message)
-            except:
+            except Exception:
                 disconnected.append(websocket)
 
         # Remove disconnected clients
@@ -188,7 +199,10 @@ class AdminDashboard:
 
     async def get_dashboard_data(self) -> Dict:
         """Get complete dashboard data"""
-        if not self.stats_cache or (datetime.now() - self.stats_cache_time).seconds > 30:
+        if (
+            not self.stats_cache
+            or (datetime.now() - self.stats_cache_time).seconds > 30
+        ):
             await self._update_stats()
 
         return self.stats_cache
@@ -202,19 +216,29 @@ class AdminDashboard:
         else:
             success = self.cache.clear_all_caches()
 
-        return {"success": success, "message": f"Cache {'cleared' if success else 'clear failed'}"}
+        return {
+            "success": success,
+            "message": f"Cache {'cleared' if success else 'clear failed'}",
+        }
 
-    async def manage_agents(self, action: str, agent_type: Optional[str] = None) -> Dict:
+    async def manage_agents(
+        self, action: str, agent_type: Optional[str] = None
+    ) -> Dict:
         """Manage agent operations"""
         if action == "list":
-            return {"agents": list(self.orchestrator.agents.keys()), "status": "success"}
+            return {
+                "agents": list(self.orchestrator.agents.keys()),
+                "status": "success",
+            }
 
         elif action == "restart" and agent_type:
             # Restart specific agent
             if agent_type in self.orchestrator.agents:
-                old_agent = self.orchestrator.agents[agent_type]
+                self.orchestrator.agents[agent_type]
                 # Recreate agent
-                self.orchestrator.agents[agent_type] = self.orchestrator._initialize_agents()[agent_type]
+                self.orchestrator.agents[agent_type] = (
+                    self.orchestrator._initialize_agents()[agent_type]
+                )
                 return {"status": "success", "message": f"Agent {agent_type} restarted"}
 
         return {"status": "error", "message": "Invalid action or agent type"}
@@ -236,15 +260,23 @@ class AdminDashboard:
                         success = True
                         break
 
-                return {"success": success, "message": f"Model {model} {'pulled' if success else 'pull failed'}"}
+                return {
+                    "success": success,
+                    "message": f"Model {model} {'pulled' if success else 'pull failed'}",
+                }
 
             elif action == "unload" and model:
                 success = await ollama_client.unload_model(model)
-                return {"success": success, "message": f"Model {model} {'unloaded' if success else 'unload failed'}"}
+                return {
+                    "success": success,
+                    "message": f"Model {model} {'unloaded' if success else 'unload failed'}",
+                }
 
         return {"status": "error", "message": "Invalid action"}
 
-    async def get_performance_profile(self, function_name: Optional[str] = None) -> Dict:
+    async def get_performance_profile(
+        self, function_name: Optional[str] = None
+    ) -> Dict:
         """Get performance profiling data"""
         if function_name:
             return self.profiler.analyze_profile(function_name)
@@ -265,12 +297,16 @@ class AdminDashboard:
             ollama_healthy = await ollama_client.health_check()
             diagnostics["checks"]["ollama"] = {
                 "status": "healthy" if ollama_healthy else "unhealthy",
-                "models": len(await ollama_client.list_models()) if ollama_healthy else 0,
+                "models": len(await ollama_client.list_models())
+                if ollama_healthy
+                else 0,
             }
 
         # Check cache
         cache_healthy = await self.cache.ping()
-        diagnostics["checks"]["cache"] = {"status": "healthy" if cache_healthy else "unhealthy"}
+        diagnostics["checks"]["cache"] = {
+            "status": "healthy" if cache_healthy else "unhealthy"
+        }
 
         # Check database
         try:
@@ -280,7 +316,10 @@ class AdminDashboard:
             async with get_db_session() as session:
                 result = await session.execute(select(func.count(Analysis.id)))
                 count = result.scalar()
-                diagnostics["checks"]["database"] = {"status": "healthy", "analyses_count": count}
+                diagnostics["checks"]["database"] = {
+                    "status": "healthy",
+                    "analyses_count": count,
+                }
         except Exception as e:
             diagnostics["checks"]["database"] = {"status": "unhealthy", "error": str(e)}
 
@@ -317,19 +356,30 @@ class AdminDashboard:
         except Exception as e:
             return [f"Error reading logs: {str(e)}"]
 
-    async def schedule_analysis(self, symbol: str, mode: str, schedule_time: Optional[datetime] = None) -> Dict:
+    async def schedule_analysis(
+        self, symbol: str, mode: str, schedule_time: Optional[datetime] = None
+    ) -> Dict:
         """Schedule an analysis for later execution"""
         # For immediate execution
         if not schedule_time or schedule_time <= datetime.now():
-            task_id = await self.orchestrator.analyze(symbol, AnalysisMode[mode.upper()])
+            task_id = await self.orchestrator.analyze(
+                symbol, AnalysisMode[mode.upper()]
+            )
             return {"status": "submitted", "task_id": task_id, "scheduled": False}
 
         # For scheduled execution (would need a scheduler implementation)
-        return {"status": "scheduled", "symbol": symbol, "mode": mode, "schedule_time": schedule_time.isoformat()}
+        return {
+            "status": "scheduled",
+            "symbol": symbol,
+            "mode": mode,
+            "schedule_time": schedule_time.isoformat(),
+        }
 
 
 def create_admin_app(
-    orchestrator: AgentOrchestrator, cache_manager: CacheManager, metrics_collector: MetricsCollector
+    orchestrator: AgentOrchestrator,
+    cache_manager: CacheManager,
+    metrics_collector: MetricsCollector,
 ) -> FastAPI:
     """Create FastAPI admin application"""
 
@@ -513,7 +563,7 @@ def create_admin_app(
         try:
             while True:
                 await websocket.receive_text()
-        except:
+        except Exception:
             dashboard.websocket_connections.remove(websocket)
 
     @app.get("/api/stats")
@@ -527,36 +577,48 @@ def create_admin_app(
         return await dashboard.run_diagnostics()
 
     @app.post("/api/cache/clear")
-    async def clear_cache(cache_type: Optional[str] = None, username: str = Depends(verify_credentials)):
+    async def clear_cache(
+        cache_type: Optional[str] = None, username: str = Depends(verify_credentials)
+    ):
         """Clear cache"""
         return await dashboard.clear_cache(cache_type)
 
     @app.post("/api/analyze")
-    async def schedule_analysis(symbol: str, mode: str, username: str = Depends(verify_credentials)):
+    async def schedule_analysis(
+        symbol: str, mode: str, username: str = Depends(verify_credentials)
+    ):
         """Schedule an analysis"""
         return await dashboard.schedule_analysis(symbol, mode)
 
     @app.get("/api/logs/{component}")
-    async def get_logs(component: str, lines: int = 100, username: str = Depends(verify_credentials)):
+    async def get_logs(
+        component: str, lines: int = 100, username: str = Depends(verify_credentials)
+    ):
         """Get component logs"""
         return await dashboard.get_logs(component, lines)
 
     @app.get("/api/agents")
     async def manage_agents(
-        action: str = "list", agent_type: Optional[str] = None, username: str = Depends(verify_credentials)
+        action: str = "list",
+        agent_type: Optional[str] = None,
+        username: str = Depends(verify_credentials),
     ):
         """Manage agents"""
         return await dashboard.manage_agents(action, agent_type)
 
     @app.get("/api/ollama")
     async def manage_ollama(
-        action: str = "list", model: Optional[str] = None, username: str = Depends(verify_credentials)
+        action: str = "list",
+        model: Optional[str] = None,
+        username: str = Depends(verify_credentials),
     ):
         """Manage Ollama models"""
         return await dashboard.manage_ollama(action, model)
 
     @app.get("/api/profile")
-    async def get_profile(function: Optional[str] = None, username: str = Depends(verify_credentials)):
+    async def get_profile(
+        function: Optional[str] = None, username: str = Depends(verify_credentials)
+    ):
         """Get performance profile"""
         return await dashboard.get_performance_profile(function)
 

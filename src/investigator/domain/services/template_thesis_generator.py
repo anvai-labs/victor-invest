@@ -171,7 +171,9 @@ class CoreNarrativeGenerator:
             positive_summary = "The company demonstrates solid fundamentals."
 
         if context.negative_factors:
-            negative_summary = f"Concerns include {self._format_list(context.negative_factors[:2])}."
+            negative_summary = (
+                f"Concerns include {self._format_list(context.negative_factors[:2])}."
+            )
         else:
             negative_summary = "Risk factors warrant monitoring."
 
@@ -281,11 +283,17 @@ class ValueDriversGenerator:
 
         # Add metrics-based drivers
         if context.revenue_growth and context.revenue_growth > 0.10:
-            drivers.append(f"Strong revenue growth of {context.revenue_growth:.0%} demonstrates market share gains")
+            drivers.append(
+                f"Strong revenue growth of {context.revenue_growth:.0%} demonstrates market share gains"
+            )
         if context.profit_margin and context.profit_margin > 0.15:
-            drivers.append(f"Above-average profit margins of {context.profit_margin:.0%} support valuation premium")
+            drivers.append(
+                f"Above-average profit margins of {context.profit_margin:.0%} support valuation premium"
+            )
         if context.dividend_yield and context.dividend_yield > 0.02:
-            drivers.append(f"Dividend yield of {context.dividend_yield:.1%} provides income component")
+            drivers.append(
+                f"Dividend yield of {context.dividend_yield:.1%} provides income component"
+            )
 
         # Add sector-specific drivers
         sector_specific = self.SECTOR_DRIVERS.get(context.sector, self.DEFAULT_DRIVERS)
@@ -334,7 +342,9 @@ class CompetitiveAdvantagesGenerator:
         advantages = []
 
         # Get sector-appropriate moats
-        sector_moats = self.SECTOR_MOATS.get(context.sector, ["brand", "cost_advantage"])
+        sector_moats = self.SECTOR_MOATS.get(
+            context.sector, ["brand", "cost_advantage"]
+        )
 
         for moat_type in sector_moats:
             if moat_type in self.MOAT_TEMPLATES:
@@ -399,7 +409,9 @@ class GrowthCatalystsGenerator:
 
         # Add revenue-growth specific catalyst if applicable
         if context.revenue_growth and context.revenue_growth > 0.15:
-            catalysts = [f"Momentum in core business with {context.revenue_growth:.0%} revenue growth"] + catalysts
+            catalysts = [
+                f"Momentum in core business with {context.revenue_growth:.0%} revenue growth"
+            ] + catalysts
 
         return catalysts[:4]
 
@@ -465,7 +477,9 @@ class BearCaseGenerator:
 
         # Add valuation risk if overvalued
         if context.upside < 0:
-            risks.append(f"Valuation risk with {abs(context.upside):.0%} implied downside to fair value")
+            risks.append(
+                f"Valuation risk with {abs(context.upside):.0%} implied downside to fair value"
+            )
 
         return risks[:4]
 
@@ -519,7 +533,9 @@ class KeyMetricsGenerator:
 
         # Add valuation metric
         if context.pe_ratio:
-            metrics = metrics + [f"P/E ratio vs. historical average ({context.pe_ratio:.1f}x current)"]
+            metrics = metrics + [
+                f"P/E ratio vs. historical average ({context.pe_ratio:.1f}x current)"
+            ]
 
         return metrics[:5]
 
@@ -541,26 +557,36 @@ class InvalidationTriggersGenerator:
         # Revenue growth trigger
         if context.revenue_growth:
             min_growth = max(0, context.revenue_growth - 0.10)
-            triggers.append(f"Revenue growth decelerates below {min_growth:.0%} for two consecutive quarters")
+            triggers.append(
+                f"Revenue growth decelerates below {min_growth:.0%} for two consecutive quarters"
+            )
         else:
-            triggers.append("Revenue growth turns negative for two consecutive quarters")
+            triggers.append(
+                "Revenue growth turns negative for two consecutive quarters"
+            )
 
         # Margin trigger
         if context.profit_margin:
             margin_floor = context.profit_margin * 0.7
-            triggers.append(f"Operating margin contracts below {margin_floor:.0%} (30% compression from current)")
+            triggers.append(
+                f"Operating margin contracts below {margin_floor:.0%} (30% compression from current)"
+            )
         else:
             triggers.append("Operating margin declines materially from current levels")
 
         # Leverage trigger
         if context.debt_to_equity:
             leverage_ceiling = context.debt_to_equity * 1.5
-            triggers.append(f"Debt-to-equity ratio exceeds {leverage_ceiling:.1f}x (50% increase from current)")
+            triggers.append(
+                f"Debt-to-equity ratio exceeds {leverage_ceiling:.1f}x (50% increase from current)"
+            )
         else:
             triggers.append("Significant deterioration in balance sheet leverage")
 
         # Fair value trigger
-        triggers.append(f"Stock price exceeds fair value estimate of ${context.fair_value:.2f} by more than 20%")
+        triggers.append(
+            f"Stock price exceeds fair value estimate of ${context.fair_value:.2f} by more than 20%"
+        )
 
         return triggers[:4]
 
@@ -578,7 +604,9 @@ class TimeHorizonDeterminer:
         # Factors affecting time horizon
         is_growth = context.revenue_growth and context.revenue_growth > 0.15
         is_value = context.upside > 0.20
-        is_high_quality = context.data_quality_score >= 70 and context.model_agreement >= 0.6
+        is_high_quality = (
+            context.data_quality_score >= 70 and context.model_agreement >= 0.6
+        )
 
         if is_growth:
             # Growth stocks need longer horizon
@@ -623,13 +651,23 @@ class TemplateBasedThesisGenerator:
         time_horizon_determiner: Optional[TimeHorizonDeterminer] = None,
     ):
         self.narrative_generator = narrative_generator or CoreNarrativeGenerator()
-        self.value_drivers_generator = value_drivers_generator or ValueDriversGenerator()
-        self.competitive_advantages_generator = competitive_advantages_generator or CompetitiveAdvantagesGenerator()
-        self.growth_catalysts_generator = growth_catalysts_generator or GrowthCatalystsGenerator()
+        self.value_drivers_generator = (
+            value_drivers_generator or ValueDriversGenerator()
+        )
+        self.competitive_advantages_generator = (
+            competitive_advantages_generator or CompetitiveAdvantagesGenerator()
+        )
+        self.growth_catalysts_generator = (
+            growth_catalysts_generator or GrowthCatalystsGenerator()
+        )
         self.bear_case_generator = bear_case_generator or BearCaseGenerator()
         self.key_metrics_generator = key_metrics_generator or KeyMetricsGenerator()
-        self.invalidation_triggers_generator = invalidation_triggers_generator or InvalidationTriggersGenerator()
-        self.time_horizon_determiner = time_horizon_determiner or TimeHorizonDeterminer()
+        self.invalidation_triggers_generator = (
+            invalidation_triggers_generator or InvalidationTriggersGenerator()
+        )
+        self.time_horizon_determiner = (
+            time_horizon_determiner or TimeHorizonDeterminer()
+        )
 
     def generate(self, context: ThesisContext) -> InvestmentThesis:
         """
@@ -644,12 +682,16 @@ class TemplateBasedThesisGenerator:
         return InvestmentThesis(
             core_investment_narrative=self.narrative_generator.generate(context),
             key_value_drivers=self.value_drivers_generator.generate(context),
-            competitive_advantages=self.competitive_advantages_generator.generate(context),
+            competitive_advantages=self.competitive_advantages_generator.generate(
+                context
+            ),
             growth_catalysts=self.growth_catalysts_generator.generate(context),
             bear_case_considerations=self.bear_case_generator.generate(context),
             time_horizon=self.time_horizon_determiner.determine(context),
             key_metrics_to_monitor=self.key_metrics_generator.generate(context),
-            thesis_invalidation_triggers=self.invalidation_triggers_generator.generate(context),
+            thesis_invalidation_triggers=self.invalidation_triggers_generator.generate(
+                context
+            ),
         )
 
     @classmethod
@@ -698,7 +740,9 @@ class TemplateBasedThesisGenerator:
             valuation = fundamental_analysis.get("valuation", {})
             ratios = fundamental_analysis.get("ratios", {})
             revenue_growth = ratios.get("revenue_growth")
-            profit_margin = ratios.get("profit_margin") or ratios.get("operating_margin")
+            profit_margin = ratios.get("profit_margin") or ratios.get(
+                "operating_margin"
+            )
             dividend_yield = valuation.get("dividend_yield")
             pe_ratio = valuation.get("pe_ratio")
             debt_to_equity = ratios.get("debt_to_equity")
@@ -714,8 +758,12 @@ class TemplateBasedThesisGenerator:
         # Build context
         context = ThesisContext(
             symbol=symbol,
-            company_name=company_profile.get("company_name", symbol) if company_profile else symbol,
-            sector=company_profile.get("sector", "Unknown") if company_profile else "Unknown",
+            company_name=company_profile.get("company_name", symbol)
+            if company_profile
+            else symbol,
+            sector=company_profile.get("sector", "Unknown")
+            if company_profile
+            else "Unknown",
             industry=company_profile.get("industry") if company_profile else None,
             overall_score=composite_scores.get("overall_score", 50),
             confidence=composite_scores.get("confidence", 50),
@@ -730,12 +778,16 @@ class TemplateBasedThesisGenerator:
             pe_ratio=pe_ratio,
             debt_to_equity=debt_to_equity,
             data_quality_score=(
-                fundamental_analysis.get("data_quality", {}).get("data_quality_score", 50)
+                fundamental_analysis.get("data_quality", {}).get(
+                    "data_quality_score", 50
+                )
                 if fundamental_analysis
                 else 50
             ),
             model_agreement=(
-                fundamental_analysis.get("multi_model_summary", {}).get("model_agreement_score", 0.5)
+                fundamental_analysis.get("multi_model_summary", {}).get(
+                    "model_agreement_score", 0.5
+                )
                 if fundamental_analysis
                 else 0.5
             ),

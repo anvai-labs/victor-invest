@@ -211,16 +211,22 @@ async def fetch_sec_data(state_input) -> dict:
         sec_tool = await _get_sec_tool()
 
         # Get company facts (structured financial data from SEC CompanyFacts API)
-        facts_result = await sec_tool.execute(symbol=state.symbol, action="get_company_facts")
+        facts_result = await sec_tool.execute(
+            symbol=state.symbol, action="get_company_facts"
+        )
 
         # Extract financial metrics
-        metrics_result = await sec_tool.execute(symbol=state.symbol, action="extract_metrics")
+        metrics_result = await sec_tool.execute(
+            symbol=state.symbol, action="extract_metrics"
+        )
 
         if facts_result.success or metrics_result.success:
             state.sec_data = {
                 "symbol": state.symbol,
                 "company_facts": facts_result.output if facts_result.success else None,
-                "financial_metrics": metrics_result.output if metrics_result.success else None,
+                "financial_metrics": metrics_result.output
+                if metrics_result.success
+                else None,
                 "agent_spec": SEC_AGENT_SPEC.name,
                 "status": "success",
             }
@@ -229,7 +235,9 @@ async def fetch_sec_data(state_input) -> dict:
                 "symbol": state.symbol,
                 "status": "partial_failure",
                 "facts_error": facts_result.error if not facts_result.success else None,
-                "metrics_error": metrics_result.error if not metrics_result.success else None,
+                "metrics_error": metrics_result.error
+                if not metrics_result.success
+                else None,
             }
 
         state.mark_step_completed("fetch_sec_data")
@@ -259,10 +267,14 @@ async def fetch_market_data(state_input) -> dict:
         market_tool = await _get_market_tool()
 
         # Get current quote
-        quote_result = await market_tool.execute(symbol=state.symbol, action="get_quote")
+        quote_result = await market_tool.execute(
+            symbol=state.symbol, action="get_quote"
+        )
 
         # Get historical data (1 year for technical analysis)
-        history_result = await market_tool.execute(symbol=state.symbol, action="get_history", days=365)
+        history_result = await market_tool.execute(
+            symbol=state.symbol, action="get_history", days=365
+        )
 
         # Get company info
         info_result = await market_tool.execute(symbol=state.symbol, action="get_info")
@@ -280,7 +292,9 @@ async def fetch_market_data(state_input) -> dict:
                 "symbol": state.symbol,
                 "status": "partial_failure",
                 "quote_error": quote_result.error if not quote_result.success else None,
-                "history_error": history_result.error if not history_result.success else None,
+                "history_error": history_result.error
+                if not history_result.success
+                else None,
             }
 
         state.mark_step_completed("fetch_market_data")
@@ -314,7 +328,9 @@ async def run_fundamental_analysis(state_input) -> dict:
         market_tool = await _get_market_tool()
 
         # Get current price for valuation models
-        quote_result = await market_tool.execute(symbol=state.symbol, action="get_quote")
+        quote_result = await market_tool.execute(
+            symbol=state.symbol, action="get_quote"
+        )
         current_price = None
         if quote_result.success and quote_result.output:
             current_price = quote_result.output.get("current_price")
@@ -336,16 +352,22 @@ async def run_fundamental_analysis(state_input) -> dict:
         )
 
         # Get archetype detection (identifies company type for model weighting)
-        archetype_result = await valuation_tool.execute(symbol=state.symbol, model="detect_archetype")
+        archetype_result = await valuation_tool.execute(
+            symbol=state.symbol, model="detect_archetype"
+        )
 
         if valuation_result.success:
             state.fundamental_analysis = {
                 "symbol": state.symbol,
                 "valuation_models": valuation_result.output,
-                "archetype": archetype_result.output if archetype_result.success else None,
+                "archetype": archetype_result.output
+                if archetype_result.success
+                else None,
                 "current_price": current_price,
                 "agent_spec": FUNDAMENTAL_AGENT_SPEC.name,
-                "model_weights": SYNTHESIS_AGENT_SPEC.metadata.get("weight_distribution", {}),
+                "model_weights": SYNTHESIS_AGENT_SPEC.metadata.get(
+                    "weight_distribution", {}
+                ),
                 "status": "success",
             }
         else:
@@ -360,7 +382,11 @@ async def run_fundamental_analysis(state_input) -> dict:
         error_msg = f"Fundamental analysis failed: {e}"
         logger.error(error_msg)
         state.add_error(error_msg)
-        state.fundamental_analysis = {"symbol": state.symbol, "status": "error", "error": str(e)}
+        state.fundamental_analysis = {
+            "symbol": state.symbol,
+            "status": "error",
+            "error": str(e),
+        }
     return _state_to_dict(state)
 
 
@@ -386,20 +412,28 @@ async def run_technical_analysis(state_input) -> dict:
         technical_tool = await _get_technical_tool()
 
         # Run comprehensive technical analysis
-        analysis_result = await technical_tool.execute(symbol=state.symbol, action="calculate_all")
+        analysis_result = await technical_tool.execute(
+            symbol=state.symbol, action="calculate_all"
+        )
 
         # Get technical summary with signals
-        trend_result = await technical_tool.execute(symbol=state.symbol, action="get_summary")
+        trend_result = await technical_tool.execute(
+            symbol=state.symbol, action="get_summary"
+        )
 
         # Get support/resistance levels
-        levels_result = await technical_tool.execute(symbol=state.symbol, action="get_support_resistance")
+        levels_result = await technical_tool.execute(
+            symbol=state.symbol, action="get_support_resistance"
+        )
 
         if analysis_result.success:
             state.technical_analysis = {
                 "symbol": state.symbol,
                 "indicators": analysis_result.output,
                 "trend": trend_result.output if trend_result.success else None,
-                "support_resistance": levels_result.output if levels_result.success else None,
+                "support_resistance": levels_result.output
+                if levels_result.success
+                else None,
                 "agent_spec": TECHNICAL_AGENT_SPEC.name,
                 "status": "success",
             }
@@ -415,7 +449,11 @@ async def run_technical_analysis(state_input) -> dict:
         error_msg = f"Technical analysis failed: {e}"
         logger.error(error_msg)
         state.add_error(error_msg)
-        state.technical_analysis = {"symbol": state.symbol, "status": "error", "error": str(e)}
+        state.technical_analysis = {
+            "symbol": state.symbol,
+            "status": "error",
+            "error": str(e),
+        }
     return _state_to_dict(state)
 
 
@@ -448,12 +486,16 @@ async def run_market_context_analysis(state_input) -> dict:
         price_changes = {}
 
         for period in periods:
-            result = await market_tool.execute(symbol=state.symbol, action="get_price_change", period=period)
+            result = await market_tool.execute(
+                symbol=state.symbol, action="get_price_change", period=period
+            )
             if result.success:
                 price_changes[period] = result.output
 
         # Calculate relative performance vs market (SPY)
-        market_result = await market_tool.execute(symbol="SPY", action="get_price_change", period="1y")
+        market_result = await market_tool.execute(
+            symbol="SPY", action="get_price_change", period="1y"
+        )
 
         relative_performance = None
         if market_result.success and "1y" in price_changes:
@@ -478,7 +520,11 @@ async def run_market_context_analysis(state_input) -> dict:
         error_msg = f"Market context analysis failed: {e}"
         logger.error(error_msg)
         state.add_error(error_msg)
-        state.market_context = {"symbol": state.symbol, "status": "error", "error": str(e)}
+        state.market_context = {
+            "symbol": state.symbol,
+            "status": "error",
+            "error": str(e),
+        }
     return _state_to_dict(state)
 
 
@@ -534,9 +580,13 @@ async def _run_llm_synthesis(
         if fundamental and fundamental.get("status") == "success":
             valuation = fundamental.get("valuation_models", {})
             if valuation.get("composite_fair_value"):
-                fund_summary = f"Composite Fair Value: ${valuation['composite_fair_value']:.2f}"
+                fund_summary = (
+                    f"Composite Fair Value: ${valuation['composite_fair_value']:.2f}"
+                )
             if valuation.get("composite_upside_percent"):
-                fund_summary += f", Upside: {valuation['composite_upside_percent']:.1f}%"
+                fund_summary += (
+                    f", Upside: {valuation['composite_upside_percent']:.1f}%"
+                )
 
         # Build prompt
         prompt = f"""You are an expert investment analyst. Synthesize the following analysis data for {symbol} into a coherent investment recommendation.
@@ -544,11 +594,11 @@ async def _run_llm_synthesis(
 ## Technical Analysis
 - Current Price: ${current_price}
 - Overall Signal: {overall_signal}
-- Bullish Signals: {signal_pcts.get('bullish_pct', 0):.0f}%
-- Bearish Signals: {signal_pcts.get('bearish_pct', 0):.0f}%
+- Bullish Signals: {signal_pcts.get("bullish_pct", 0):.0f}%
+- Bearish Signals: {signal_pcts.get("bearish_pct", 0):.0f}%
 - Support Level: ${support}
 - Resistance Level: ${resistance}
-- 52-Week Range: ${week_52.get('low', 'N/A')} - ${week_52.get('high', 'N/A')}
+- 52-Week Range: ${week_52.get("low", "N/A")} - ${week_52.get("high", "N/A")}
 
 ## Market Context
 - Sector: {sector}
@@ -645,7 +695,10 @@ async def run_synthesis(state_input) -> dict:
         )
 
         # Process fundamental analysis
-        if state.fundamental_analysis and state.fundamental_analysis.get("status") == "success":
+        if (
+            state.fundamental_analysis
+            and state.fundamental_analysis.get("status") == "success"
+        ):
             available_analyses.append("fundamental")
             valuation_data = state.fundamental_analysis.get("valuation_models", {})
             # Extract composite score if available, otherwise estimate from upside
@@ -654,12 +707,17 @@ async def run_synthesis(state_input) -> dict:
                 if composite_upside is not None:
                     # Convert upside % to score (0-100 scale)
                     # +30% upside = 80, 0% = 50, -30% = 20
-                    scores["fundamental"] = min(100, max(0, 50 + (composite_upside * 1.0)))
+                    scores["fundamental"] = min(
+                        100, max(0, 50 + (composite_upside * 1.0))
+                    )
 
         # Process technical analysis
-        if state.technical_analysis and state.technical_analysis.get("status") == "success":
+        if (
+            state.technical_analysis
+            and state.technical_analysis.get("status") == "success"
+        ):
             available_analyses.append("technical")
-            indicators = state.technical_analysis.get("indicators", {})
+            state.technical_analysis.get("indicators", {})
             trend = state.technical_analysis.get("trend", {})
             # Use trend signal for scoring
             if isinstance(trend, dict):
@@ -731,8 +789,12 @@ async def run_synthesis(state_input) -> dict:
             "status": "success",
             # LLM-generated content (if available)
             "synthesis_method": "llm" if llm_synthesis else "rule_based",
-            "executive_summary": llm_synthesis.get("executive_summary", "") if llm_synthesis else "",
-            "key_catalysts": llm_synthesis.get("key_catalysts", []) if llm_synthesis else [],
+            "executive_summary": llm_synthesis.get("executive_summary", "")
+            if llm_synthesis
+            else "",
+            "key_catalysts": llm_synthesis.get("key_catalysts", [])
+            if llm_synthesis
+            else [],
             "key_risks": llm_synthesis.get("key_risks", []) if llm_synthesis else [],
             "reasoning": llm_synthesis.get("reasoning", "") if llm_synthesis else "",
         }
@@ -740,15 +802,23 @@ async def run_synthesis(state_input) -> dict:
         state.recommendation = {
             "symbol": state.symbol,
             "action": (
-                llm_synthesis.get("recommendation", recommendation_action) if llm_synthesis else recommendation_action
+                llm_synthesis.get("recommendation", recommendation_action)
+                if llm_synthesis
+                else recommendation_action
             ),
             "composite_score": round(composite_score, 2),
-            "confidence": llm_synthesis.get("confidence", confidence) if llm_synthesis else confidence,
+            "confidence": llm_synthesis.get("confidence", confidence)
+            if llm_synthesis
+            else confidence,
             "analyses_included": available_analyses,
             "thresholds_used": thresholds,
             "errors_during_analysis": state.errors,
-            "executive_summary": llm_synthesis.get("executive_summary", "") if llm_synthesis else "",
-            "key_catalysts": llm_synthesis.get("key_catalysts", []) if llm_synthesis else [],
+            "executive_summary": llm_synthesis.get("executive_summary", "")
+            if llm_synthesis
+            else "",
+            "key_catalysts": llm_synthesis.get("key_catalysts", [])
+            if llm_synthesis
+            else [],
             "key_risks": llm_synthesis.get("key_risks", []) if llm_synthesis else [],
         }
 
@@ -758,7 +828,11 @@ async def run_synthesis(state_input) -> dict:
         logger.error(error_msg)
         state.add_error(error_msg)
         state.synthesis = {"symbol": state.symbol, "status": "error", "error": str(e)}
-        state.recommendation = {"symbol": state.symbol, "action": "UNABLE TO RECOMMEND", "error": str(e)}
+        state.recommendation = {
+            "symbol": state.symbol,
+            "action": "UNABLE TO RECOMMEND",
+            "error": str(e),
+        }
     return _state_to_dict(state)
 
 
@@ -816,7 +890,9 @@ async def run_analyses_parallel_standard(state_input) -> dict:
     fundamental_task = asyncio.create_task(run_fundamental_analysis(state.to_dict()))
     technical_task = asyncio.create_task(run_technical_analysis(state.to_dict()))
 
-    results = await asyncio.gather(fundamental_task, technical_task, return_exceptions=True)
+    results = await asyncio.gather(
+        fundamental_task, technical_task, return_exceptions=True
+    )
 
     # Merge results back into state
     for result in results:
@@ -849,7 +925,9 @@ async def run_analyses_parallel_comprehensive(state_input) -> dict:
     technical_task = asyncio.create_task(run_technical_analysis(state.to_dict()))
     context_task = asyncio.create_task(run_market_context_analysis(state.to_dict()))
 
-    results = await asyncio.gather(fundamental_task, technical_task, context_task, return_exceptions=True)
+    results = await asyncio.gather(
+        fundamental_task, technical_task, context_task, return_exceptions=True
+    )
 
     # Merge results back into state
     for result in results:
@@ -1058,121 +1136,61 @@ async def run_yaml_analysis(
     symbol: str,
     mode: AnalysisMode = AnalysisMode.STANDARD,
 ) -> AnalysisWorkflowState:
-    """Run analysis using YAML workflow with BaseYAMLProvider and handlers.
+    """Run analysis using YAML workflows executed by Victor's WorkflowExecutor.
 
-    This execution path uses the YAML workflow definitions with registered
-    compute handlers from handlers.py. The handlers implement the actual
-    business logic including LLM synthesis via OllamaClient.
-
-    This approach provides:
-    - YAML-defined workflow DAG for flexibility
-    - Handlers.py for actual implementation
-    - LLM synthesis via RunSynthesisHandler with OllamaClient
-    - Escape hatches for complex conditions
-
-    Args:
-        symbol: Stock ticker symbol to analyze.
-        mode: Analysis mode (default: STANDARD).
-
-    Returns:
-        Final AnalysisWorkflowState with results including LLM synthesis.
-
-    Example:
-        result = await run_yaml_analysis("AAPL", AnalysisMode.COMPREHENSIVE)
-        print(result.synthesis)  # LLM-synthesized investment narrative
+    This path relies on `InvestmentWorkflowProvider.run_workflow_with_handlers(...)`,
+    which in turn uses the framework handler registry/sync contracts.
     """
-    from victor_invest.handlers import HANDLERS
     from victor_invest.workflows import InvestmentWorkflowProvider
 
-    # Map mode to workflow name
+    def _context_to_dict(ctx: Any) -> Dict[str, Any]:
+        if ctx is None:
+            return {}
+        if isinstance(ctx, dict):
+            return dict(ctx)
+        to_dict = getattr(ctx, "to_dict", None)
+        if callable(to_dict):
+            data = to_dict()
+            if isinstance(data, dict):
+                return data
+        try:
+            return dict(ctx)
+        except Exception:
+            return {}
+
+    def _collect_errors(workflow_result: Any) -> list[str]:
+        errors: list[str] = []
+        top_level_error = getattr(workflow_result, "error", None)
+        if top_level_error:
+            errors.append(str(top_level_error))
+
+        context_obj = getattr(workflow_result, "context", None)
+        node_results = getattr(context_obj, "node_results", None)
+        if isinstance(node_results, dict):
+            for node_id, node_result in node_results.items():
+                node_error = getattr(node_result, "error", None)
+                if node_error:
+                    errors.append(f"{node_id}: {node_error}")
+        return errors
+
     workflow_map = {
         AnalysisMode.QUICK: "quick",
         AnalysisMode.STANDARD: "standard",
         AnalysisMode.COMPREHENSIVE: "comprehensive",
     }
     workflow_name = workflow_map.get(mode, "standard")
+    symbol_normalized = symbol.upper()
 
-    logger.info(f"Running YAML workflow '{workflow_name}' for {symbol} using handlers")
-
-    # Initialize workflow provider
+    logger.info("Running YAML workflow '%s' for %s", workflow_name, symbol_normalized)
     provider = InvestmentWorkflowProvider()
-
-    # Get the workflow definition
-    workflow = provider.get_workflow(workflow_name)
-    if not workflow:
-        raise ValueError(f"Workflow '{workflow_name}' not found")
-
-    # Create workflow context
-    class WorkflowContext:
-        """Simple context for workflow execution."""
-
-        def __init__(self, initial_data: dict):
-            self._data = initial_data.copy()
-
-        def get(self, key: str, default=None):
-            return self._data.get(key, default)
-
-        def set(self, key: str, value):
-            self._data[key] = value
-
-        def all(self) -> dict:
-            return self._data.copy()
-
-    # Create mock node for handlers
-    class MockNode:
-        def __init__(self, node_id: str, output_key: str = None):
-            self.id = node_id
-            self.output_key = output_key
-
-    ctx = WorkflowContext(
-        {
-            "symbol": symbol.upper(),
-            "mode": mode.value,
-        }
+    workflow_result = await provider.run_workflow_with_handlers(
+        workflow_name,
+        context={"symbol": symbol_normalized},
     )
 
-    # Phase 1: Fetch data in parallel
-    logger.info(f"Fetching data in parallel for {symbol}")
-
-    async def execute_handler(handler_name: str, node_id: str, output_key: str):
-        handler = HANDLERS.get(handler_name)
-        if handler:
-            try:
-                result = await handler(MockNode(node_id, output_key), ctx, None)
-                return result.output if hasattr(result, "output") else {}
-            except Exception as e:
-                logger.warning(f"Handler {handler_name} failed: {e}")
-                return {"status": "error", "error": str(e)}
-        return {"status": "error", "error": f"Handler {handler_name} not found"}
-
-    # Execute data fetches in parallel
-    sec_result, market_result = await asyncio.gather(
-        execute_handler("fetch_sec_data", "fetch_sec_data", "sec_data"),
-        execute_handler("fetch_market_data", "fetch_market_data", "market_data"),
-    )
-    ctx.set("sec_data", sec_result)
-    ctx.set("market_data", market_result)
-
-    # Phase 2: Run analyses in parallel
-    logger.info(f"Running analyses in parallel for {symbol}")
-
-    fundamental_result, technical_result, market_context_result = await asyncio.gather(
-        execute_handler("run_fundamental_analysis", "fundamental_analysis", "fundamental_analysis"),
-        execute_handler("run_technical_analysis", "technical_analysis", "technical_analysis"),
-        execute_handler("run_market_context_analysis", "market_context_analysis", "market_context"),
-    )
-    ctx.set("fundamental_analysis", fundamental_result)
-    ctx.set("technical_analysis", technical_result)
-    ctx.set("market_context", market_context_result)
-
-    # Phase 3: LLM Synthesis using RunSynthesisHandler
-    logger.info(f"Running LLM synthesis for {symbol}")
-    synthesis_result = await execute_handler("run_synthesis", "synthesize", "synthesis")
-    ctx.set("synthesis", synthesis_result)
-
-    # Build recommendation from synthesis
-    synthesis = ctx.get("synthesis", {})
-    recommendation = {
+    context_data = _context_to_dict(getattr(workflow_result, "context", None))
+    synthesis = context_data.get("synthesis") or {}
+    recommendation = context_data.get("recommendation") or {
         "action": synthesis.get("recommendation", "HOLD"),
         "confidence": synthesis.get("confidence", "MEDIUM"),
         "key_catalysts": synthesis.get("key_catalysts", []),
@@ -1180,18 +1198,20 @@ async def run_yaml_analysis(
         "executive_summary": synthesis.get("executive_summary", ""),
         "reasoning": synthesis.get("reasoning", ""),
     }
-    ctx.set("recommendation", recommendation)
 
-    # Convert to AnalysisWorkflowState
+    errors = _collect_errors(workflow_result)
+    if not getattr(workflow_result, "success", False) and not errors:
+        errors.append(f"Workflow '{workflow_name}' execution failed")
+
     return AnalysisWorkflowState(
-        symbol=symbol.upper(),
+        symbol=symbol_normalized,
         mode=mode,
-        fundamental_analysis=ctx.get("fundamental_analysis"),
-        technical_analysis=ctx.get("technical_analysis"),
-        market_context=ctx.get("market_context"),
-        synthesis=ctx.get("synthesis"),
-        recommendation=ctx.get("recommendation"),
-        errors=[],
+        fundamental_analysis=context_data.get("fundamental_analysis"),
+        technical_analysis=context_data.get("technical_analysis"),
+        market_context=context_data.get("market_context"),
+        synthesis=synthesis,
+        recommendation=recommendation,
+        errors=errors,
     )
 
 

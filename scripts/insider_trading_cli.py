@@ -42,7 +42,6 @@ import argparse
 import asyncio
 import json
 import sys
-from datetime import datetime
 
 # Add project root to path
 sys.path.insert(0, "/Users/vijaysingh/code/victor-invest")
@@ -66,13 +65,13 @@ def format_sentiment_output(data: dict) -> str:
     lines.append(f"{'=' * 60}")
 
     # Main sentiment score
-    score = data.get('sentiment_score', 0)
-    level = data.get('sentiment_level', 'no_data').upper()
+    score = data.get("sentiment_score", 0)
+    level = data.get("sentiment_level", "no_data").upper()
 
     # Color-code sentiment level in description
-    if 'bullish' in level.lower():
+    if "bullish" in level.lower():
         indicator = "[+]"
-    elif 'bearish' in level.lower():
+    elif "bearish" in level.lower():
         indicator = "[-]"
     else:
         indicator = "[=]"
@@ -80,42 +79,46 @@ def format_sentiment_output(data: dict) -> str:
     lines.append(f"\nSentiment: {indicator} {level} (score: {score:+.4f})")
 
     # Transaction summary
-    txns = data.get('transactions', {})
-    lines.append(f"\nTransactions ({data.get('metadata', {}).get('analysis_period_days', 90)} days):")
+    txns = data.get("transactions", {})
+    lines.append(
+        f"\nTransactions ({data.get('metadata', {}).get('analysis_period_days', 90)} days):"
+    )
     lines.append(f"  Purchases: {txns.get('purchase_count', 0)}")
     lines.append(f"  Sales:     {txns.get('sale_count', 0)}")
     lines.append(f"  Total:     {txns.get('total_count', 0)}")
 
     # Value summary
-    vals = data.get('values', {})
-    lines.append(f"\nValues:")
+    vals = data.get("values", {})
+    lines.append("\nValues:")
     lines.append(f"  Purchase Value: {format_currency(vals.get('purchase_value', 0))}")
     lines.append(f"  Sale Value:     {format_currency(vals.get('sale_value', 0))}")
     lines.append(f"  Net Value:      {format_currency(vals.get('net_value', 0))}")
 
     # Insider summary
-    insiders = data.get('insiders', {})
-    lines.append(f"\nInsiders:")
+    insiders = data.get("insiders", {})
+    lines.append("\nInsiders:")
     lines.append(f"  Unique Insiders:     {insiders.get('unique_count', 0)}")
     lines.append(f"  Key Insider Activity: {insiders.get('key_insider_activity', 0)}")
 
     # Signals
-    signals = data.get('signals', {})
-    lines.append(f"\nSignals:")
-    lines.append(f"  Cluster Detected:    {'Yes' if signals.get('cluster_detected') else 'No'}")
-    if signals.get('cluster_detected'):
+    signals = data.get("signals", {})
+    lines.append("\nSignals:")
+    lines.append(
+        f"  Cluster Detected:    {'Yes' if signals.get('cluster_detected') else 'No'}"
+    )
+    if signals.get("cluster_detected"):
         lines.append(f"  Cluster Type:        {signals.get('cluster_type', 'unknown')}")
     lines.append(f"  Significant Filings: {signals.get('significant_filings', 0)}")
 
     # Confidence
-    meta = data.get('metadata', {})
+    meta = data.get("metadata", {})
     lines.append(f"\nConfidence: {meta.get('confidence', 0) * 100:.0f}%")
     lines.append(f"Analysis Date: {meta.get('analysis_date', 'N/A')}")
 
     # Warnings
-    warnings = data.get('warnings', [])
+    warnings = data.get("warnings", [])
     if warnings:
-        lines.append(f"\nWarnings:")
+        lines.append("\nWarnings:")
         for w in warnings:
             lines.append(f"  - {w}")
 
@@ -130,24 +133,30 @@ def format_recent_output(data: dict) -> str:
     lines.append(f"RECENT INSIDER TRANSACTIONS: {data['symbol']}")
     lines.append(f"{'=' * 70}")
 
-    summary = data.get('summary', {})
+    summary = data.get("summary", {})
     lines.append(f"\nSummary ({data.get('period_days', 90)} days):")
     lines.append(f"  Total Transactions: {summary.get('total_count', 0)}")
-    lines.append(f"  Purchase Value:     {format_currency(summary.get('purchase_value', 0))}")
-    lines.append(f"  Sale Value:         {format_currency(summary.get('sale_value', 0))}")
-    lines.append(f"  Net Value:          {format_currency(summary.get('net_value', 0))}")
+    lines.append(
+        f"  Purchase Value:     {format_currency(summary.get('purchase_value', 0))}"
+    )
+    lines.append(
+        f"  Sale Value:         {format_currency(summary.get('sale_value', 0))}"
+    )
+    lines.append(
+        f"  Net Value:          {format_currency(summary.get('net_value', 0))}"
+    )
 
-    transactions = data.get('transactions', [])
+    transactions = data.get("transactions", [])
     if transactions:
         lines.append(f"\n{'Date':<12} {'Type':<6} {'Insider':<25} {'Value':>12}")
         lines.append("-" * 60)
         for t in transactions[:20]:  # Limit to 20
-            date = t.get('date', 'N/A')[:10] if t.get('date') else 'N/A'
-            code = t.get('code', '?')
-            name = (t.get('insider') or 'Unknown')[:24]
-            value = t.get('value', 0)
+            date = t.get("date", "N/A")[:10] if t.get("date") else "N/A"
+            code = t.get("code", "?")
+            name = (t.get("insider") or "Unknown")[:24]
+            value = t.get("value", 0)
             value_str = format_currency(abs(value))
-            if code == 'S':
+            if code == "S":
                 value_str = f"-{value_str}"
             lines.append(f"{date:<12} {code:<6} {name:<25} {value_str:>12}")
 
@@ -167,24 +176,30 @@ def format_clusters_output(data: dict) -> str:
     lines.append(f"CLUSTER DETECTION: {data['symbol']}")
     lines.append(f"{'=' * 60}")
 
-    signal = data.get('cluster_signal', 'no_significant_clusters')
+    signal = data.get("cluster_signal", "no_significant_clusters")
     lines.append(f"\nCluster Signal: {signal.upper()}")
     lines.append(f"Significant Clusters: {data.get('significant_clusters', 0)}")
 
-    clusters = data.get('clusters', [])
+    clusters = data.get("clusters", [])
     if clusters:
         for i, c in enumerate(clusters, 1):
             lines.append(f"\n--- Cluster {i} ---")
             lines.append(f"  Type:         {c.get('cluster_type', 'unknown')}")
-            period = c.get('period', {})
-            lines.append(f"  Period:       {period.get('start_date')} to {period.get('end_date')}")
+            period = c.get("period", {})
+            lines.append(
+                f"  Period:       {period.get('start_date')} to {period.get('end_date')}"
+            )
             lines.append(f"  Days:         {period.get('days', 0)}")
-            activity = c.get('activity', {})
+            activity = c.get("activity", {})
             lines.append(f"  Insiders:     {activity.get('insider_count', 0)}")
             lines.append(f"  Transactions: {activity.get('transaction_count', 0)}")
-            lines.append(f"  Total Value:  {format_currency(activity.get('total_value', 0))}")
-            lines.append(f"  Significant:  {'Yes' if c.get('is_significant') else 'No'}")
-            insiders = c.get('insiders', [])
+            lines.append(
+                f"  Total Value:  {format_currency(activity.get('total_value', 0))}"
+            )
+            lines.append(
+                f"  Significant:  {'Yes' if c.get('is_significant') else 'No'}"
+            )
+            insiders = c.get("insiders", [])
             if insiders:
                 lines.append(f"  Participants: {', '.join(insiders[:5])}")
                 if len(insiders) > 5:
@@ -208,15 +223,15 @@ def format_key_insiders_output(data: dict) -> str:
     lines.append(f"Net Value: {format_currency(data.get('net_value', 0))}")
     lines.append(f"Direction: {data.get('direction', 'neutral').upper()}")
 
-    insiders = data.get('key_insiders', [])
+    insiders = data.get("key_insiders", [])
     if insiders:
         lines.append(f"\n{'Name':<30} {'Title':<20} {'Txns':>6} {'Net Value':>14}")
         lines.append("-" * 72)
         for ins in insiders:
-            name = (ins.get('name') or 'Unknown')[:29]
-            title = (ins.get('title') or 'N/A')[:19]
-            txns = ins.get('transactions', 0)
-            net = ins.get('net_value', 0)
+            name = (ins.get("name") or "Unknown")[:29]
+            title = (ins.get("title") or "N/A")[:19]
+            txns = ins.get("transactions", 0)
+            net = ins.get("net_value", 0)
             lines.append(f"{name:<30} {title:<20} {txns:>6} {format_currency(net):>14}")
     else:
         lines.append("\nNo key insider activity found.")
@@ -249,58 +264,42 @@ Examples:
   %(prog)s NVDA --clusters           Detect cluster activity
   %(prog)s TSLA --key-insiders       Get C-suite/director summary
   %(prog)s AAPL --fetch              Fetch fresh Form 4 data
-        """
+        """,
     )
 
-    parser.add_argument(
-        "symbol",
-        help="Stock ticker symbol (e.g., AAPL, MSFT)"
-    )
+    parser.add_argument("symbol", help="Stock ticker symbol (e.g., AAPL, MSFT)")
 
     # Action arguments (mutually exclusive)
     action_group = parser.add_mutually_exclusive_group(required=True)
     action_group.add_argument(
-        "--sentiment",
-        action="store_true",
-        help="Get insider sentiment analysis"
+        "--sentiment", action="store_true", help="Get insider sentiment analysis"
     )
     action_group.add_argument(
-        "--recent",
-        action="store_true",
-        help="Get recent insider transactions"
+        "--recent", action="store_true", help="Get recent insider transactions"
     )
     action_group.add_argument(
-        "--clusters",
-        action="store_true",
-        help="Detect cluster buying/selling activity"
+        "--clusters", action="store_true", help="Detect cluster buying/selling activity"
     )
     action_group.add_argument(
         "--key-insiders",
         action="store_true",
-        help="Get key insider (C-suite, directors) summary"
+        help="Get key insider (C-suite, directors) summary",
     )
     action_group.add_argument(
-        "--fetch",
-        action="store_true",
-        help="Fetch fresh Form 4 filings from SEC EDGAR"
+        "--fetch", action="store_true", help="Fetch fresh Form 4 filings from SEC EDGAR"
     )
 
     # Options
     parser.add_argument(
-        "--days",
-        type=int,
-        default=90,
-        help="Analysis period in days (default: 90)"
+        "--days", type=int, default=90, help="Analysis period in days (default: 90)"
     )
     parser.add_argument(
         "--significant-only",
         action="store_true",
-        help="For --recent: only show significant transactions"
+        help="For --recent: only show significant transactions",
     )
     parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output raw JSON instead of formatted text"
+        "--json", action="store_true", help="Output raw JSON instead of formatted text"
     )
 
     args = parser.parse_args()
@@ -331,7 +330,7 @@ Examples:
         symbol=args.symbol,
         action=action,
         days=args.days,
-        significant_only=args.significant_only
+        significant_only=args.significant_only,
     )
 
     if not result.success:

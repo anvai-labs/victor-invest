@@ -44,10 +44,15 @@ def test_trend_methods_delegate_to_trend_analyzer(agent_method, analyzer_method)
 def test_get_trend_analyzer_caches_singleton_resolution():
     """Resolver should be invoked once per agent instance and then cached."""
     agent = MagicMock(spec=FundamentalAnalysisAgent)
-    agent._get_trend_analyzer = FundamentalAnalysisAgent._get_trend_analyzer.__get__(agent)
+    agent._get_trend_analyzer = FundamentalAnalysisAgent._get_trend_analyzer.__get__(
+        agent
+    )
 
     analyzer = MagicMock()
-    with patch("investigator.domain.agents.fundamental.agent.get_trend_analyzer", return_value=analyzer) as resolver:
+    with patch(
+        "investigator.domain.agents.fundamental.agent.get_trend_analyzer",
+        return_value=analyzer,
+    ) as resolver:
         first = agent._get_trend_analyzer()
         second = agent._get_trend_analyzer()
 

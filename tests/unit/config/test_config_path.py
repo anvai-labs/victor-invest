@@ -5,11 +5,8 @@ Verifies that the --config flag is properly honored and users can
 point the CLI at alternate configuration files.
 """
 
-import tempfile
-from pathlib import Path
 
 import pytest
-import yaml
 from click.testing import CliRunner
 
 from investigator.config import get_config
@@ -69,7 +66,9 @@ sec:
 
     # Verify custom values are loaded
     assert cfg.database.host == "custom-test-host", "Should load custom database host"
-    assert cfg.ollama.base_url == "http://custom-ollama:11434", "Should load custom Ollama URL"
+    assert cfg.ollama.base_url == "http://custom-ollama:11434", (
+        "Should load custom Ollama URL"
+    )
     assert cfg.sec.user_agent == "test-agent", "Should load custom SEC user agent"
 
     print("✅ get_config() honors custom config path")
@@ -265,7 +264,9 @@ sec:
 
     # The status command should use the custom config
     # We can't easily verify output, but we can verify no errors
-    assert result.exit_code == 0 or result.exit_code == 1, f"CLI should execute (got exit={result.exit_code})"
+    assert result.exit_code == 0 or result.exit_code == 1, (
+        f"CLI should execute (got exit={result.exit_code})"
+    )
 
     print("✅ CLI --config flag integration works")
 

@@ -27,7 +27,7 @@ Usage:
 
 import logging
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 from investigator.domain.services.valuation.cost_of_capital import (
@@ -108,7 +108,11 @@ class DamodaranDCFModel(BaseValuationModel):
     DEFAULT_TRANSITION_YEARS = 5
     DEFAULT_TERMINAL_GROWTH = 0.025  # 2.5% (long-term GDP)
 
-    def __init__(self, company_profile: CompanyProfile, cost_of_capital: Optional[IndustryCostOfCapital] = None):
+    def __init__(
+        self,
+        company_profile: CompanyProfile,
+        cost_of_capital: Optional[IndustryCostOfCapital] = None,
+    ):
         """
         Initialize DCF model.
 
@@ -177,12 +181,16 @@ class DamodaranDCFModel(BaseValuationModel):
             use_revenue_bridge = True
             logger.info(
                 f"[{self.company_profile.symbol}] Using revenue bridge approach "
-                f"(FCF={current_fcf}, Revenue={current_revenue/1e9:.1f}B)"
+                f"(FCF={current_fcf}, Revenue={current_revenue / 1e9:.1f}B)"
             )
 
         # Get cost of capital
-        industry = self.company_profile.industry or self.company_profile.sector or "default"
-        coc_result = self.coc.calculate_wacc(industry=industry, debt_to_equity=debt_to_equity, tax_rate=tax_rate)
+        industry = (
+            self.company_profile.industry or self.company_profile.sector or "default"
+        )
+        coc_result = self.coc.calculate_wacc(
+            industry=industry, debt_to_equity=debt_to_equity, tax_rate=tax_rate
+        )
 
         # Get terminal growth rate
         if terminal_growth is None:
@@ -191,7 +199,9 @@ class DamodaranDCFModel(BaseValuationModel):
 
         # Normalize growth rate
         if revenue_growth is not None:
-            growth_rate = revenue_growth if abs(revenue_growth) < 5 else revenue_growth / 100
+            growth_rate = (
+                revenue_growth if abs(revenue_growth) < 5 else revenue_growth / 100
+            )
         else:
             # Default to moderate growth
             growth_rate = 0.10
@@ -260,7 +270,10 @@ class DamodaranDCFModel(BaseValuationModel):
 
         # Estimate confidence
         confidence = self._calculate_confidence(
-            use_revenue_bridge=use_revenue_bridge, growth_rate=growth_rate, fcf_margin=margin, monte_carlo=monte_carlo
+            use_revenue_bridge=use_revenue_bridge,
+            growth_rate=growth_rate,
+            fcf_margin=margin,
+            monte_carlo=monte_carlo,
         )
 
         # Build assumptions
@@ -282,7 +295,9 @@ class DamodaranDCFModel(BaseValuationModel):
         metadata = {
             "enterprise_value": enterprise_value,
             "terminal_value": terminal_value,
-            "terminal_value_pct_of_ev": terminal_value / enterprise_value * 100 if enterprise_value > 0 else 0,
+            "terminal_value_pct_of_ev": terminal_value / enterprise_value * 100
+            if enterprise_value > 0
+            else 0,
             "projection_summary": self._summarize_projections(projections),
         }
 
@@ -301,7 +316,7 @@ class DamodaranDCFModel(BaseValuationModel):
 
         logger.info(
             f"[{self.company_profile.symbol}] Damodaran DCF: "
-            f"Fair Value=${fair_value:.2f}, EV=${enterprise_value/1e9:.1f}B, "
+            f"Fair Value=${fair_value:.2f}, EV=${enterprise_value / 1e9:.1f}B, "
             f"WACC={coc_result.wacc:.1%}, Terminal={terminal_growth:.1%}"
         )
 
@@ -580,7 +595,9 @@ class DamodaranDCFModel(BaseValuationModel):
             iterations=n,
         )
 
-    def _summarize_projections(self, projections: List[DCFProjection]) -> Dict[str, Any]:
+    def _summarize_projections(
+        self, projections: List[DCFProjection]
+    ) -> Dict[str, Any]:
         """Summarize projections for metadata."""
         if not projections:
             return {}
@@ -597,7 +614,11 @@ class DamodaranDCFModel(BaseValuationModel):
         }
 
     def _calculate_confidence(
-        self, use_revenue_bridge: bool, growth_rate: float, fcf_margin: float, monte_carlo: Optional[MonteCarloResult]
+        self,
+        use_revenue_bridge: bool,
+        growth_rate: float,
+        fcf_margin: float,
+        monte_carlo: Optional[MonteCarloResult],
     ) -> float:
         """Calculate confidence score for DCF."""
         base = 0.70

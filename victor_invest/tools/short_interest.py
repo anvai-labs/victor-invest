@@ -109,12 +109,16 @@ Investment Signals:
 
             # Initialize DataSourceManager for unified data access
             try:
-                from investigator.domain.services.data_sources.manager import DataSourceManager
+                from investigator.domain.services.data_sources.manager import (
+                    DataSourceManager,
+                )
 
                 self._data_source_manager = DataSourceManager()
                 logger.debug("DataSourceManager initialized for short interest")
             except ImportError as e:
-                logger.warning(f"DataSourceManager not available, using fetcher only: {e}")
+                logger.warning(
+                    f"DataSourceManager not available, using fetcher only: {e}"
+                )
                 self._data_source_manager = None
 
             self._initialized = True
@@ -159,22 +163,30 @@ Investment Signals:
 
             if action == "current":
                 if not symbol:
-                    return ToolResult.create_failure("Symbol required for current action")
+                    return ToolResult.create_failure(
+                        "Symbol required for current action"
+                    )
                 return await self._get_current(symbol)
 
             elif action == "history":
                 if not symbol:
-                    return ToolResult.create_failure("Symbol required for history action")
+                    return ToolResult.create_failure(
+                        "Symbol required for history action"
+                    )
                 return await self._get_history(symbol, periods)
 
             elif action == "volume":
                 if not symbol:
-                    return ToolResult.create_failure("Symbol required for volume action")
+                    return ToolResult.create_failure(
+                        "Symbol required for volume action"
+                    )
                 return await self._get_volume(symbol, days)
 
             elif action == "squeeze":
                 if not symbol:
-                    return ToolResult.create_failure("Symbol required for squeeze action")
+                    return ToolResult.create_failure(
+                        "Symbol required for squeeze action"
+                    )
                 return await self._get_squeeze_risk(symbol)
 
             elif action == "most_shorted":
@@ -182,13 +194,15 @@ Investment Signals:
 
             else:
                 return ToolResult.create_failure(
-                    f"Unknown action: {action}. Valid actions: " "current, history, volume, squeeze, most_shorted"
+                    f"Unknown action: {action}. Valid actions: "
+                    "current, history, volume, squeeze, most_shorted"
                 )
 
         except Exception as e:
             logger.error(f"ShortInterestTool execute error: {e}")
             return ToolResult.create_failure(
-                f"Short interest query failed: {str(e)}", metadata={"action": action, "symbol": symbol}
+                f"Short interest query failed: {str(e)}",
+                metadata={"action": action, "symbol": symbol},
             )
 
     async def _get_current(self, symbol: str) -> ToolResult:
@@ -212,7 +226,9 @@ Investment Signals:
                         source = "data_source_manager"
                         logger.debug(f"Using DataSourceManager data for {symbol}")
             except Exception as e:
-                logger.warning(f"DataSourceManager failed for {symbol}: {e}, falling back to fetcher")
+                logger.warning(
+                    f"DataSourceManager failed for {symbol}: {e}, falling back to fetcher"
+                )
 
         # Fall back to direct fetcher if DataSourceManager didn't provide data
         if not data:
@@ -220,17 +236,23 @@ Investment Signals:
             source = "finra"
 
         if not data:
-            return ToolResult.create_success(output={
+            return ToolResult.create_success(
+                output={
                     "symbol": symbol.upper(),
                     "message": "No short interest data found",
                 },
-                metadata={"warnings": ["No FINRA short interest data available for this symbol"]},
+                metadata={
+                    "warnings": [
+                        "No FINRA short interest data available for this symbol"
+                    ]
+                },
             )
 
         # Calculate signal
         signal = self._calculate_signal(data)
 
-        return ToolResult.create_success(output={
+        return ToolResult.create_success(
+            output={
                 **data.to_dict(),
                 "signal": signal,
             },
@@ -245,7 +267,8 @@ Investment Signals:
         history = await self._fetcher.get_short_interest_history(symbol, periods)
 
         if not history:
-            return ToolResult.create_success(output={
+            return ToolResult.create_success(
+                output={
                     "symbol": symbol.upper(),
                     "history": [],
                     "message": "No historical short interest data found",
@@ -256,7 +279,8 @@ Investment Signals:
         # Calculate trend
         trend = self._analyze_trend(history)
 
-        return ToolResult.create_success(output={
+        return ToolResult.create_success(
+            output={
                 "symbol": symbol.upper(),
                 "periods": len(history),
                 "history": [h.to_dict() for h in history],
@@ -273,18 +297,24 @@ Investment Signals:
         volume = await self._fetcher.get_short_volume(symbol, days)
 
         if not volume:
-            return ToolResult.create_success(output={
+            return ToolResult.create_success(
+                output={
                     "symbol": symbol.upper(),
                     "volume": [],
                     "message": "No short volume data found",
                 },
-                metadata={"warnings": ["No daily short volume data available for this symbol"]},
+                metadata={
+                    "warnings": ["No daily short volume data available for this symbol"]
+                },
             )
 
         # Calculate average short volume ratio
-        avg_short_pct = sum(v.short_percent for v in volume) / len(volume) if volume else 0
+        avg_short_pct = (
+            sum(v.short_percent for v in volume) / len(volume) if volume else 0
+        )
 
-        return ToolResult.create_success(output={
+        return ToolResult.create_success(
+            output={
                 "symbol": symbol.upper(),
                 "days": len(volume),
                 "avg_short_percent": round(avg_short_pct, 2),
@@ -300,7 +330,8 @@ Investment Signals:
         """Calculate short squeeze risk assessment."""
         risk = await self._fetcher.calculate_squeeze_risk(symbol)
 
-        return ToolResult.create_success(output=risk.to_dict(),
+        return ToolResult.create_success(
+            output=risk.to_dict(),
             metadata={
                 "source": "finra",
                 "risk_level": risk.risk_level,
@@ -312,13 +343,15 @@ Investment Signals:
         stocks = await self._fetcher.get_most_shorted(limit)
 
         if not stocks:
-            return ToolResult.create_success(output={
+            return ToolResult.create_success(
+                output={
                     "stocks": [],
                     "message": "No most shorted data available",
                 }
             )
 
-        return ToolResult.create_success(output={
+        return ToolResult.create_success(
+            output={
                 "count": len(stocks),
                 "stocks": stocks,
             },
@@ -361,7 +394,9 @@ Investment Signals:
             avg_daily_volume=int(current.get("avg_volume", 0) or 0),
             days_to_cover=float(current.get("days_to_cover", 0.0) or 0.0),
             short_percent_float=(
-                float(current.get("short_pct_float") or 0.0) if current.get("short_pct_float") else None
+                float(current.get("short_pct_float") or 0.0)
+                if current.get("short_pct_float")
+                else None
             ),
             short_percent_outstanding=None,  # Not available from DataSourceManager
             previous_short_interest=None,  # Not available from DataSourceManager
@@ -389,13 +424,17 @@ Investment Signals:
             spf = data.short_percent_float
             if spf >= 25:
                 signal["level"] = "very_high_short"
-                signal["factors"].append(f"Very high short interest: {spf:.1f}% of float")
+                signal["factors"].append(
+                    f"Very high short interest: {spf:.1f}% of float"
+                )
             elif spf >= 15:
                 signal["level"] = "high_short"
                 signal["factors"].append(f"High short interest: {spf:.1f}% of float")
             elif spf >= 10:
                 signal["level"] = "elevated_short"
-                signal["factors"].append(f"Elevated short interest: {spf:.1f}% of float")
+                signal["factors"].append(
+                    f"Elevated short interest: {spf:.1f}% of float"
+                )
             elif spf <= 3:
                 signal["factors"].append(f"Low short interest: {spf:.1f}% of float")
 
@@ -411,7 +450,9 @@ Investment Signals:
         # Check trend
         if data.change_percent:
             if data.change_percent > 20:
-                signal["factors"].append(f"Rapidly increasing: +{data.change_percent:.1f}%")
+                signal["factors"].append(
+                    f"Rapidly increasing: +{data.change_percent:.1f}%"
+                )
                 if "high" not in signal["level"]:
                     signal["level"] = "increasing_short"
             elif data.change_percent > 10:
@@ -440,14 +481,19 @@ Investment Signals:
             )
         elif signal["level"] == "covering":
             signal["interpretation"] = (
-                "Active short covering in progress. " "Could support near-term price appreciation."
+                "Active short covering in progress. "
+                "Could support near-term price appreciation."
             )
         elif signal["level"] == "increasing_short":
             signal["interpretation"] = (
-                "Short interest increasing rapidly. " "Bears are building positions - watch for fundamental concerns."
+                "Short interest increasing rapidly. "
+                "Bears are building positions - watch for fundamental concerns."
             )
         else:
-            signal["interpretation"] = "Normal short interest levels. " "No significant short-driven dynamics expected."
+            signal["interpretation"] = (
+                "Normal short interest levels. "
+                "No significant short-driven dynamics expected."
+            )
 
         return signal
 
@@ -507,7 +553,8 @@ Investment Signals:
         elif avg_change < -5:
             direction = "decreasing"
             interpretation = (
-                f"Short interest steadily decreasing ({avg_change:+.1f}% avg per period). " f"Bears reducing positions."
+                f"Short interest steadily decreasing ({avg_change:+.1f}% avg per period). "
+                f"Bears reducing positions."
             )
         else:
             direction = "stable"
@@ -542,8 +589,16 @@ Investment Signals:
                     "description": "Number of bi-monthly periods for history",
                     "default": 12,
                 },
-                "days": {"type": "integer", "description": "Number of trading days for volume", "default": 30},
-                "limit": {"type": "integer", "description": "Number of stocks for most_shorted", "default": 20},
+                "days": {
+                    "type": "integer",
+                    "description": "Number of trading days for volume",
+                    "default": 30,
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Number of stocks for most_shorted",
+                    "default": 20,
+                },
             },
             "required": [],
         }

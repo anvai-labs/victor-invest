@@ -38,18 +38,16 @@ import asyncio
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List, Optional
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from scripts.scheduled.base import (
+from scripts.scheduled.base import (  # noqa: E402
     BaseCollector,
     CollectionMetrics,
     get_database_connection,
-    retry_with_backoff,
 )
 
 # Top institutional investors to track (by 13F CIK)
@@ -110,7 +108,7 @@ class Form13FCollector(BaseCollector):
             since_date = datetime.now() - timedelta(days=self.lookback_days)
 
             # Check each top institution for new filings
-            institutions = list(TOP_INSTITUTIONS.items())[:self.top_institutions]
+            institutions = list(TOP_INSTITUTIONS.items())[: self.top_institutions]
 
             for cik, name in institutions:
                 try:
@@ -141,18 +139,22 @@ class Form13FCollector(BaseCollector):
                             continue
 
                         # Store institution if not exists
-                        cursor.execute("""
+                        cursor.execute(
+                            """
                             INSERT INTO institutions (cik, name)
                             VALUES (%s, %s)
                             ON CONFLICT (cik) DO UPDATE SET
                                 name = EXCLUDED.name,
                                 updated_at = NOW()
                             RETURNING id
-                        """, (cik, name))
+                        """,
+                            (cik, name),
+                        )
                         institution_id = cursor.fetchone()[0]
 
                         # Store filing
-                        cursor.execute("""
+                        cursor.execute(
+                            """
                             INSERT INTO form13f_filings
                                 (institution_id, accession_number, report_quarter,
                                  filing_date, total_value)
@@ -160,18 +162,21 @@ class Form13FCollector(BaseCollector):
                             ON CONFLICT (accession_number) DO UPDATE SET
                                 updated_at = NOW()
                             RETURNING id
-                        """, (
-                            institution_id,
-                            filing.get("accession_number"),
-                            filing.get("report_quarter"),
-                            filing.get("filing_date"),
-                            filing.get("total_value"),
-                        ))
+                        """,
+                            (
+                                institution_id,
+                                filing.get("accession_number"),
+                                filing.get("report_quarter"),
+                                filing.get("filing_date"),
+                                filing.get("total_value"),
+                            ),
+                        )
                         filing_id = cursor.fetchone()[0]
 
                         # Store holdings
                         for holding in holdings:
-                            cursor.execute("""
+                            cursor.execute(
+                                """
                                 INSERT INTO form13f_holdings
                                     (filing_id, symbol, cusip, shares,
                                      value_thousands, put_call, investment_discretion)
@@ -180,15 +185,17 @@ class Form13FCollector(BaseCollector):
                                     shares = EXCLUDED.shares,
                                     value_thousands = EXCLUDED.value_thousands,
                                     updated_at = NOW()
-                            """, (
-                                filing_id,
-                                holding.get("symbol"),
-                                holding.get("cusip"),
-                                holding.get("shares"),
-                                holding.get("value_thousands"),
-                                holding.get("put_call"),
-                                holding.get("investment_discretion"),
-                            ))
+                            """,
+                                (
+                                    filing_id,
+                                    holding.get("symbol"),
+                                    holding.get("cusip"),
+                                    holding.get("shares"),
+                                    holding.get("value_thousands"),
+                                    holding.get("put_call"),
+                                    holding.get("investment_discretion"),
+                                ),
+                            )
 
                             self.metrics.records_inserted += 1
 
@@ -226,7 +233,8 @@ class Form13FCollector(BaseCollector):
                 return
 
             # Aggregate ownership by symbol for this quarter
-            cursor.execute("""
+            cursor.execute(
+                """
                 WITH holdings_agg AS (
                     SELECT
                         h.symbol,
@@ -249,7 +257,9 @@ class Form13FCollector(BaseCollector):
                     total_institutional_shares = EXCLUDED.total_institutional_shares,
                     total_institutional_value = EXCLUDED.total_institutional_value,
                     updated_at = NOW()
-            """, (report_quarter, report_quarter))
+            """,
+                (report_quarter, report_quarter),
+            )
 
         except Exception as e:
             self.logger.debug(f"Could not update ownership aggregates: {e}")
@@ -263,13 +273,13 @@ def main():
         "--days",
         type=int,
         default=1,
-        help="Days to look back for new filings (default: 1)"
+        help="Days to look back for new filings (default: 1)",
     )
     parser.add_argument(
         "--top-institutions",
         type=int,
         default=100,
-        help="Number of top institutions to track (default: 100)"
+        help="Number of top institutions to track (default: 100)",
     )
     args = parser.parse_args()
 

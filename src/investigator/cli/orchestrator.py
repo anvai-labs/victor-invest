@@ -21,18 +21,17 @@ src_dir = Path(__file__).parent / "src"
 if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
-from investigator.application import (
+from investigator.application import (  # noqa: E402
     AgentOrchestrator,
     AnalysisMode,
     OutputDetailLevel,
-    Priority,
     format_analysis_output,
 )
-from investigator.domain.agents.sec import SECAnalysisAgent
-from investigator.infrastructure.cache import CacheManager
-from investigator.infrastructure.events import EventBus
-from investigator.infrastructure.llm import OllamaClient
-from investigator.infrastructure.monitoring import AlertManager, MetricsCollector
+from investigator.domain.agents.sec import SECAnalysisAgent  # noqa: E402
+from investigator.infrastructure.cache import CacheManager  # noqa: E402
+from investigator.infrastructure.events import EventBus  # noqa: E402
+from investigator.infrastructure.llm import OllamaClient  # noqa: E402
+from investigator.infrastructure.monitoring import MetricsCollector  # noqa: E402
 
 # from api.main import create_app  # Will fix this separately
 
@@ -42,8 +41,8 @@ except ImportError:
     uvicorn = None
 
 # PDF Report generation
-from investigator.application import InvestmentSynthesizer
-from investigator.domain.models import InvestmentRecommendation
+from investigator.application import InvestmentSynthesizer  # noqa: E402
+from investigator.domain.models import InvestmentRecommendation  # noqa: E402
 
 
 # Configure logging
@@ -92,7 +91,11 @@ def setup_logging(log_level: str = "INFO", log_file: Optional[str] = None):
             logging.getLogger(name).setLevel(logging.WARNING)
 
     # Canonical mapper debug tracing can be toggled independently
-    if profile == "debug" or numeric_level <= logging.DEBUG or os.getenv("INVESTIGATOR_DEBUG_CANONICAL") == "1":
+    if (
+        profile == "debug"
+        or numeric_level <= logging.DEBUG
+        or os.getenv("INVESTIGATOR_DEBUG_CANONICAL") == "1"
+    ):
         logging.getLogger("utils.canonical_key_mapper").setLevel(logging.DEBUG)
 
 
@@ -104,8 +107,16 @@ def load_config(config_file: str = "config.yaml") -> dict:
     if not config_path.exists():
         # Create default config
         default_config = {
-            "ollama": {"base_url": "http://localhost:11434", "timeout": 300, "max_retries": 3},
-            "cache": {"redis_url": "redis://localhost:6379", "file_cache_path": "data/cache", "ttl_default": 3600},
+            "ollama": {
+                "base_url": "http://localhost:11434",
+                "timeout": 300,
+                "max_retries": 3,
+            },
+            "cache": {
+                "redis_url": "redis://localhost:6379",
+                "file_cache_path": "data/cache",
+                "ttl_default": 3600,
+            },
             "orchestrator": {"max_concurrent_analyses": 5, "max_concurrent_agents": 10},
             "api": {"host": "0.0.0.0", "port": 8000, "workers": 4},
             "monitoring": {"export_interval": 60, "metrics_port": 9090},
@@ -168,7 +179,9 @@ def generate_executive_summary(full_analysis: dict) -> dict:
             "expected_return": f"{((valuation.get('price_target_12_month', 0) - ratios.get('current_price', 0)) / ratios.get('current_price', 1) * 100) if ratios.get('current_price', 0) > 0 else 0:.1f}%",
             # Investment grade
             "investment_grade": valuation.get("investment_grade", "N/A"),
-            "financial_health_score": health_analysis.get("overall_health_score", "N/A"),
+            "financial_health_score": health_analysis.get(
+                "overall_health_score", "N/A"
+            ),
             # Key strengths (top 3)
             "key_strengths": (
                 investment_thesis.get("value_drivers", [])[:3]
@@ -189,7 +202,9 @@ def generate_executive_summary(full_analysis: dict) -> dict:
                 else "N/A"
             ),
             # Data quality
-            "data_quality": full_analysis.get("fundamental", {}).get("data_quality", {}).get("quality_grade", "N/A"),
+            "data_quality": full_analysis.get("fundamental", {})
+            .get("data_quality", {})
+            .get("quality_grade", "N/A"),
             "data_quality_score": full_analysis.get("fundamental", {})
             .get("data_quality", {})
             .get("data_quality_score", "N/A"),
@@ -220,7 +235,12 @@ def generate_executive_summary(full_analysis: dict) -> dict:
 @click.option("--config", "-c", default="config.yaml", help="Configuration file")
 @click.option("--log-level", "-l", default="INFO", help="Log level")
 @click.option("--log-file", "-f", help="Log file path")
-@click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging (equivalent to --log-level DEBUG)")
+@click.option(
+    "--verbose",
+    "-v",
+    is_flag=True,
+    help="Enable verbose logging (equivalent to --log-level DEBUG)",
+)
 @click.pass_context
 def cli(ctx, config, log_level, log_file, verbose):
     """InvestiGator - Agentic AI Investment Analysis System"""
@@ -240,7 +260,13 @@ def cli(ctx, config, log_level, log_file, verbose):
     help="Analysis mode",
 )
 @click.option("--output", "-o", help="Output file for results")
-@click.option("--format", "-f", type=click.Choice(["json", "yaml", "text"]), default="json", help="Output format")
+@click.option(
+    "--format",
+    "-f",
+    type=click.Choice(["json", "yaml", "text"]),
+    default="json",
+    help="Output format",
+)
 @click.option(
     "--detail-level",
     "-d",
@@ -248,18 +274,36 @@ def cli(ctx, config, log_level, log_file, verbose):
     default="standard",
     help="Output detail level: minimal (summary only), standard (investor decision-making, default), verbose (full with metadata)",
 )
-@click.option("--report", is_flag=True, default=False, help="Generate PDF investment report")
+@click.option(
+    "--report", is_flag=True, default=False, help="Generate PDF investment report"
+)
 @click.option(
     "--force-refresh",
     is_flag=True,
     default=False,
     help="Bypass cache for this run (clears cached data before analysis)",
 )
-@click.option("--refresh", "refresh_alias", is_flag=True, default=False, help="Alias for --force-refresh")
+@click.option(
+    "--refresh",
+    "refresh_alias",
+    is_flag=True,
+    default=False,
+    help="Alias for --force-refresh",
+)
 @click.pass_context
-def analyze(ctx, symbol, mode, output, format, detail_level, report, force_refresh, refresh_alias):
+def analyze(
+    ctx,
+    symbol,
+    mode,
+    output,
+    format,
+    detail_level,
+    report,
+    force_refresh,
+    refresh_alias,
+):
     """Analyze a single stock symbol"""
-    config = ctx.obj["config"]
+    ctx.obj["config"]
     force_refresh = force_refresh or refresh_alias
 
     async def run_analysis():
@@ -269,7 +313,9 @@ def analyze(ctx, symbol, mode, output, format, detail_level, report, force_refre
 
         cfg = get_config()
         original_force_refresh = getattr(cfg.cache_control, "force_refresh", False)
-        original_force_symbols = getattr(cfg.cache_control, "force_refresh_symbols", None)
+        original_force_symbols = getattr(
+            cfg.cache_control, "force_refresh_symbols", None
+        )
 
         if force_refresh:
             cfg.cache_control.force_refresh = True
@@ -295,7 +341,7 @@ def analyze(ctx, symbol, mode, output, format, detail_level, report, force_refre
             for cache_type in cache_types_to_clear:
                 try:
                     cache_manager.delete(cache_type, {"symbol": symbol})
-                except Exception as e:
+                except Exception:
                     # Silently continue if cache doesn't exist
                     pass
 
@@ -324,14 +370,19 @@ def analyze(ctx, symbol, mode, output, format, detail_level, report, force_refre
             # Wait for results with progress indicator
             with click.progressbar(length=100, label="Analyzing") as bar:
                 elapsed = 0
-                while elapsed < 900:  # 15 minute timeout (exceeds agent timeout in agents/base.py:270)
+                while (
+                    elapsed < 900
+                ):  # 15 minute timeout (exceeds agent timeout in agents/base.py:270)
                     status = await orchestrator.get_status(task_id)
 
                     if status["status"] == "completed":
                         bar.update(100 - bar.pos)
                         break
                     elif status["status"] == "processing":
-                        progress = (status.get("agents_completed", 0) / status.get("total_agents", 1)) * 100
+                        progress = (
+                            status.get("agents_completed", 0)
+                            / status.get("total_agents", 1)
+                        ) * 100
                         bar.update(progress - bar.pos)
 
                     await asyncio.sleep(2)
@@ -362,7 +413,9 @@ def analyze(ctx, symbol, mode, output, format, detail_level, report, force_refre
                                 failures.append(f"{agent_name}: {error_msg}")
 
                 if failures:
-                    click.echo("\n❌ Analysis failed - critical agent errors:", err=True)
+                    click.echo(
+                        "\n❌ Analysis failed - critical agent errors:", err=True
+                    )
                     for failure in failures:
                         click.echo(f"  - {failure}", err=True)
                     sys.exit(1)
@@ -373,7 +426,9 @@ def analyze(ctx, symbol, mode, output, format, detail_level, report, force_refre
                 formatted_results = format_analysis_output(results, detail_level_enum)
 
                 # Generate executive summary using MINIMAL detail level
-                exec_summary = format_analysis_output(results, OutputDetailLevel.MINIMAL)
+                exec_summary = format_analysis_output(
+                    results, OutputDetailLevel.MINIMAL
+                )
 
                 # Display executive summary to console (always shown)
                 # Extract nested values from MINIMAL format
@@ -409,11 +464,11 @@ def analyze(ctx, symbol, mode, output, format, detail_level, report, force_refre
                 else:
                     click.echo(f"Data Quality: {dq_assess}")
 
-                click.echo(f"\nKey Strengths:")
+                click.echo("\nKey Strengths:")
                 for strength in thesis.get("key_strengths", []):
                     click.echo(f"  • {strength}")
 
-                click.echo(f"\nKey Risks:")
+                click.echo("\nKey Risks:")
                 for risk in thesis.get("key_risks", []):
                     click.echo(f"  • {risk}")
 
@@ -454,18 +509,24 @@ def analyze(ctx, symbol, mode, output, format, detail_level, report, force_refre
                         click.echo("\nGenerating PDF report...")
 
                         # Convert results to InvestmentRecommendation format
-                        recommendation = convert_to_investment_recommendation(results, symbol)
+                        recommendation = convert_to_investment_recommendation(
+                            results, symbol
+                        )
 
                         # Initialize synthesizer for report generation
                         synthesizer = InvestmentSynthesizer()
 
                         # Generate PDF report
-                        report_path = synthesizer.generate_report([recommendation], report_type="synthesis")
+                        report_path = synthesizer.generate_report(
+                            [recommendation], report_type="synthesis"
+                        )
 
                         click.echo(f"✅ PDF report generated: {report_path}")
 
                     except Exception as e:
-                        click.echo(f"❌ Failed to generate PDF report: {str(e)}", err=True)
+                        click.echo(
+                            f"❌ Failed to generate PDF report: {str(e)}", err=True
+                        )
                         # Don't fail the entire command if PDF generation fails
 
             else:
@@ -488,7 +549,11 @@ def analyze(ctx, symbol, mode, output, format, detail_level, report, force_refre
 @cli.command()
 @click.argument("symbols", nargs=-1, required=True)
 @click.option(
-    "--mode", "-m", type=click.Choice(["quick", "standard", "comprehensive"]), default="standard", help="Analysis mode"
+    "--mode",
+    "-m",
+    type=click.Choice(["quick", "standard", "comprehensive"]),
+    default="standard",
+    help="Analysis mode",
 )
 @click.option("--output-dir", "-o", default="results", help="Output directory")
 @click.option(
@@ -498,12 +563,23 @@ def analyze(ctx, symbol, mode, output, format, detail_level, report, force_refre
     default="standard",
     help="Output detail level: minimal (summary only), standard (investor decision-making, default), verbose (full with metadata)",
 )
-@click.option("--force-refresh", is_flag=True, default=False, help="Bypass cache for all symbols in this batch run")
-@click.option("--refresh", "refresh_alias", is_flag=True, default=False, help="Alias for --force-refresh")
+@click.option(
+    "--force-refresh",
+    is_flag=True,
+    default=False,
+    help="Bypass cache for all symbols in this batch run",
+)
+@click.option(
+    "--refresh",
+    "refresh_alias",
+    is_flag=True,
+    default=False,
+    help="Alias for --force-refresh",
+)
 @click.pass_context
 def batch(ctx, symbols, mode, output_dir, detail_level, force_refresh, refresh_alias):
     """Analyze multiple symbols in batch"""
-    config = ctx.obj["config"]
+    ctx.obj["config"]
     force_refresh = force_refresh or refresh_alias
 
     async def run_batch():
@@ -513,7 +589,9 @@ def batch(ctx, symbols, mode, output_dir, detail_level, force_refresh, refresh_a
 
         cfg = get_config()
         original_force_refresh = getattr(cfg.cache_control, "force_refresh", False)
-        original_force_symbols = getattr(cfg.cache_control, "force_refresh_symbols", None)
+        original_force_symbols = getattr(
+            cfg.cache_control, "force_refresh_symbols", None
+        )
 
         if force_refresh:
             cfg.cache_control.force_refresh = True
@@ -546,20 +624,30 @@ def batch(ctx, symbols, mode, output_dir, detail_level, force_refresh, refresh_a
             detail_level_enum = OutputDetailLevel(detail_level)
             with click.progressbar(symbols, label="Processing") as bar:
                 for symbol, task_id in zip(bar, task_ids):
-                    result = await orchestrator.get_results(task_id, wait=True, timeout=300)
+                    result = await orchestrator.get_results(
+                        task_id, wait=True, timeout=300
+                    )
                     if result:
                         results[symbol] = result
 
                         # Apply detail level formatting
-                        formatted_result = format_analysis_output(result, detail_level_enum)
+                        formatted_result = format_analysis_output(
+                            result, detail_level_enum
+                        )
 
                         # Save individual result
-                        output_file = Path(output_dir) / f"{symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                        output_file = (
+                            Path(output_dir)
+                            / f"{symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                        )
                         with open(output_file, "w") as f:
                             json.dump(formatted_result, f, indent=2, default=str)
 
             # Save summary
-            summary_file = Path(output_dir) / f"batch_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            summary_file = (
+                Path(output_dir)
+                / f"batch_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            )
             with open(summary_file, "w") as f:
                 json.dump(
                     {
@@ -593,7 +681,7 @@ def batch(ctx, symbols, mode, output_dir, detail_level, force_refresh, refresh_a
 @click.pass_context
 def compare(ctx, target, peers, output):
     """Compare target symbol with peer companies"""
-    config = ctx.obj["config"]
+    ctx.obj["config"]
 
     async def run_comparison():
         # Initialize components
@@ -719,7 +807,7 @@ def status(ctx):
                 click.echo(f"  - {issue}")
 
         if health.get("metrics"):
-            click.echo(f"\nMetrics:")
+            click.echo("\nMetrics:")
             for key, value in health["metrics"].items():
                 if isinstance(value, float):
                     click.echo(f"  {key}: {value:.2f}")
@@ -734,11 +822,11 @@ def status(ctx):
 @click.pass_context
 def metrics(ctx, days):
     """View system metrics and performance"""
-    config = ctx.obj["config"]
+    ctx.obj["config"]
 
     async def show_metrics():
         # Initialize metrics collector
-        metrics_collector = MetricsCollector()
+        MetricsCollector()
 
         # Load historical metrics
         import glob
@@ -755,7 +843,7 @@ def metrics(ctx, days):
                     timestamp = datetime.fromisoformat(data["timestamp"])
                     if timestamp >= cutoff_date:
                         all_metrics.append(data)
-            except:
+            except Exception:
                 continue
 
         if not all_metrics:
@@ -784,7 +872,9 @@ def metrics(ctx, days):
             for agent, metrics in latest["agent_metrics"].items():
                 click.echo(f"  {agent}:")
                 click.echo(f"    Executions: {metrics.get('executions', 0)}")
-                click.echo(f"    Avg Duration: {metrics.get('average_duration', 0):.2f}s")
+                click.echo(
+                    f"    Avg Duration: {metrics.get('average_duration', 0):.2f}s"
+                )
                 click.echo(
                     f"    Success Rate: {((metrics.get('executions', 0) - metrics.get('failures', 0)) / max(metrics.get('executions', 1), 1) * 100):.1f}%"
                 )
@@ -824,7 +914,9 @@ def pull(ctx, model):
 
 
 @cli.command()
-@click.option("--source", "-s", default=None, help="Filter by source (e.g., atlanta_fed, cboe)")
+@click.option(
+    "--source", "-s", default=None, help="Filter by source (e.g., atlanta_fed, cboe)"
+)
 @click.option("--json", "json_output", is_flag=True, help="Output as JSON")
 @click.pass_context
 def economic(ctx, source, json_output):
@@ -891,7 +983,9 @@ def economic(ctx, source, json_output):
             click.echo("  ⚠️  VIX in BACKWARDATION (fear signal)")
 
     # Show Regional Fed summary
-    fed_summary = regional_fed.get("summary", {}) if isinstance(regional_fed, dict) else {}
+    fed_summary = (
+        regional_fed.get("summary", {}) if isinstance(regional_fed, dict) else {}
+    )
     if fed_summary and (source is None or source not in ["cboe"]):
         click.echo("\n📊 ECONOMIC ACTIVITY")
         click.echo("-" * 40)
@@ -917,12 +1011,16 @@ def economic(ctx, source, json_output):
         if fed_summary.get("nfci") is not None:
             nfci = fed_summary["nfci"]
             nfci_status = "🔴" if nfci > 0.5 else "🟢" if nfci < 0 else "🟡"
-            click.echo(f"  {nfci_status} NFCI (Chicago Fed):   {nfci:.3f} (0=avg, +=tight)")
+            click.echo(
+                f"  {nfci_status} NFCI (Chicago Fed):   {nfci:.3f} (0=avg, +=tight)"
+            )
 
         if fed_summary.get("kcfsi") is not None:
             kcfsi = fed_summary["kcfsi"]
             kcfsi_status = "🔴" if kcfsi > 0.5 else "🟢" if kcfsi < 0 else "🟡"
-            click.echo(f"  {kcfsi_status} KCFSI (Kansas City):  {kcfsi:.3f} (0=avg, +=stress)")
+            click.echo(
+                f"  {kcfsi_status} KCFSI (Kansas City):  {kcfsi:.3f} (0=avg, +=stress)"
+            )
 
         click.echo("\n📈 INFLATION & RECESSION")
         click.echo("-" * 40)
@@ -940,7 +1038,9 @@ def economic(ctx, source, json_output):
             click.echo(f"  {rec_status} Recession Probability:  {rec_pct:.1f}%")
 
     # Show detailed data by district if requested
-    by_district = regional_fed.get("by_district", {}) if isinstance(regional_fed, dict) else {}
+    by_district = (
+        regional_fed.get("by_district", {}) if isinstance(regional_fed, dict) else {}
+    )
     if source and source != "cboe" and by_district:
         if source in by_district:
             click.echo(f"\n📋 {source.upper()} DETAILS")
@@ -975,9 +1075,13 @@ def format_results_text(results: dict) -> str:
 
                 if "recommendation" in synthesis:
                     rec = synthesis["recommendation"]
-                    output.append(f"\nRecommendation: {rec.get('final_recommendation', 'N/A').upper()}")
+                    output.append(
+                        f"\nRecommendation: {rec.get('final_recommendation', 'N/A').upper()}"
+                    )
                     output.append(f"Conviction: {rec.get('conviction_level', 'N/A')}")
-                    output.append(f"Expected Return: {rec.get('expected_return', 0):.1%}")
+                    output.append(
+                        f"Expected Return: {rec.get('expected_return', 0):.1%}"
+                    )
 
             elif "analysis" in agent_data:
                 analysis = agent_data["analysis"]
@@ -988,7 +1092,9 @@ def format_results_text(results: dict) -> str:
     return "\n".join(output)
 
 
-def convert_to_investment_recommendation(results: dict, symbol: str) -> InvestmentRecommendation:
+def convert_to_investment_recommendation(
+    results: dict, symbol: str
+) -> InvestmentRecommendation:
     """
     Convert AgentOrchestrator results to InvestmentRecommendation format
 
@@ -1035,8 +1141,12 @@ def convert_to_investment_recommendation(results: dict, symbol: str) -> Investme
     stop_loss = recommendation_data.get("stop_loss")
 
     # Extract entry/exit strategies
-    entry_strategy = recommendation_data.get("entry_strategy", "Market order at current levels")
-    exit_strategy = recommendation_data.get("exit_strategy", "Target-based or stop-loss exit")
+    entry_strategy = recommendation_data.get(
+        "entry_strategy", "Market order at current levels"
+    )
+    exit_strategy = recommendation_data.get(
+        "exit_strategy", "Target-based or stop-loss exit"
+    )
 
     # Determine time horizon and position size
     expected_return = recommendation_data.get("expected_return", 0.0)
@@ -1124,8 +1234,12 @@ def clean_cache(ctx, clean_all, clean_db, clean_disk, symbol):
     """Clean analysis caches"""
     from investigator.infrastructure.cache import get_cache_manager
     from investigator.infrastructure.cache.cache_types import CacheType
-    from investigator.infrastructure.cache.file_cache_handler import FileCacheStorageHandler
-    from investigator.infrastructure.cache.rdbms_cache_handler import RdbmsCacheStorageHandler
+    from investigator.infrastructure.cache.file_cache_handler import (
+        FileCacheStorageHandler,
+    )
+    from investigator.infrastructure.cache.rdbms_cache_handler import (
+        RdbmsCacheStorageHandler,
+    )
 
     cache_manager = get_cache_manager()
 
@@ -1147,8 +1261,13 @@ def clean_cache(ctx, clean_all, clean_db, clean_disk, symbol):
                             try:
                                 deleted += handler.delete_by_symbol(symbol)
                             except Exception as exc:
-                                click.echo(f"❌ Error cleaning DB handler {handler}: {exc}", err=True)
-                click.echo(f"✅ Database cache cleared for {symbol} (entries removed: {deleted})")
+                                click.echo(
+                                    f"❌ Error cleaning DB handler {handler}: {exc}",
+                                    err=True,
+                                )
+                click.echo(
+                    f"✅ Database cache cleared for {symbol} (entries removed: {deleted})"
+                )
             else:
                 click.echo("Cleaning database cache...")
                 cache_manager.clear(CacheType.LLM_RESPONSE, storage_type="rdbms")
@@ -1166,8 +1285,13 @@ def clean_cache(ctx, clean_all, clean_db, clean_disk, symbol):
                             try:
                                 deleted += handler.delete_by_symbol(symbol)
                             except Exception as exc:
-                                click.echo(f"❌ Error cleaning disk handler {handler}: {exc}", err=True)
-                click.echo(f"✅ Disk cache cleared for {symbol} (entries removed: {deleted})")
+                                click.echo(
+                                    f"❌ Error cleaning disk handler {handler}: {exc}",
+                                    err=True,
+                                )
+                click.echo(
+                    f"✅ Disk cache cleared for {symbol} (entries removed: {deleted})"
+                )
             else:
                 click.echo("Cleaning disk cache...")
                 cache_manager.clear(CacheType.LLM_RESPONSE, storage_type="disk")
@@ -1216,7 +1340,7 @@ def inspect_cache(ctx, symbol, verbose):
                         click.echo(f"     Size: {len(str(data))} bytes")
                 else:
                     click.echo(f"  ❌ {cache_type.value}: Not cached")
-            except:
+            except Exception:
                 pass
     else:
         click.echo("\nCache Statistics:")
@@ -1233,7 +1357,6 @@ def inspect_cache(ctx, symbol, verbose):
 @click.pass_context
 def cache_sizes(ctx):
     """Show cache sizes by type"""
-    import os
     from pathlib import Path
 
     click.echo("Cache Directory Sizes")
@@ -1404,17 +1527,23 @@ def cache_facts(symbols_file, symbol_list, parallel, process_raw, hydrate_from_d
             try:
                 with open(path) as handle:
                     symbols = [
-                        line.strip().upper() for line in handle if line.strip() and not line.lstrip().startswith("#")
+                        line.strip().upper()
+                        for line in handle
+                        if line.strip() and not line.lstrip().startswith("#")
                     ]
             except OSError as exc:
-                raise click.ClickException(f"Unable to read {symbols_file}: {exc}") from exc
+                raise click.ClickException(
+                    f"Unable to read {symbols_file}: {exc}"
+                ) from exc
             return sorted(set(symbols))
 
         try:
             with open(path) as handle:
                 payload = json.load(handle)
         except json.JSONDecodeError as exc:
-            raise click.ClickException(f"Unable to parse {symbols_file}: {exc}") from exc
+            raise click.ClickException(
+                f"Unable to parse {symbols_file}: {exc}"
+            ) from exc
         except OSError as exc:
             raise click.ClickException(f"Unable to read {symbols_file}: {exc}") from exc
 
@@ -1459,18 +1588,27 @@ def cache_facts(symbols_file, symbol_list, parallel, process_raw, hydrate_from_d
                 companyfacts = row.companyfacts
                 if isinstance(companyfacts, str):
                     companyfacts = json.loads(companyfacts)
-                hash_suffix = hashlib.sha256(json.dumps(companyfacts, sort_keys=True).encode()).hexdigest()[:12]
-                sec_agent._persist_raw_companyfacts(symbol, row.cik, companyfacts, hash_suffix)
+                hash_suffix = hashlib.sha256(
+                    json.dumps(companyfacts, sort_keys=True).encode()
+                ).hexdigest()[:12]
+                sec_agent._persist_raw_companyfacts(
+                    symbol, row.cik, companyfacts, hash_suffix
+                )
                 written += 1
                 click.echo(f"🗃️  {symbol} raw cache hydrated from DB")
 
-        click.echo(f"\nHydrated {written}/{len(symbols)} symbols from sec_companyfacts_raw")
+        click.echo(
+            f"\nHydrated {written}/{len(symbols)} symbols from sec_companyfacts_raw"
+        )
         if missing:
-            click.echo(f"Symbols missing in DB: {', '.join(missing[:20])}{' ...' if len(missing) > 20 else ''}")
+            click.echo(
+                f"Symbols missing in DB: {', '.join(missing[:20])}{' ...' if len(missing) > 20 else ''}"
+            )
         return
 
     click.echo(
-        f"Fetching raw CompanyFacts for {len(symbols)} symbols " f"(parallel={parallel}, process_raw={process_raw})"
+        f"Fetching raw CompanyFacts for {len(symbols)} symbols "
+        f"(parallel={parallel}, process_raw={process_raw})"
     )
 
     async def _runner():
@@ -1480,9 +1618,13 @@ def cache_facts(symbols_file, symbol_list, parallel, process_raw, hydrate_from_d
         async def _fetch(symbol: str):
             async with sem:
                 try:
-                    await sec_agent._fetch_and_cache_companyfacts(symbol, process_raw=process_raw)
+                    await sec_agent._fetch_and_cache_companyfacts(
+                        symbol, process_raw=process_raw
+                    )
                     results.append((symbol, True, "cached"))
-                    click.echo(f"✅ {symbol} cached{' (processed)' if process_raw else ' (raw-only)'}")
+                    click.echo(
+                        f"✅ {symbol} cached{' (processed)' if process_raw else ' (raw-only)'}"
+                    )
                 except Exception as exc:
                     results.append((symbol, False, str(exc)))
                     click.echo(f"❌ {symbol} failed: {exc}")
@@ -1561,7 +1703,9 @@ def setup_system(ctx):
     # Install dependencies
     if not ctx.params.get("skip_deps"):
         click.echo("\n2. Installing dependencies...")
-        result = subprocess.run(["pip", "install", "-r", "requirements.txt"], capture_output=True)
+        result = subprocess.run(
+            ["pip", "install", "-r", "requirements.txt"], capture_output=True
+        )
         if result.returncode == 0:
             click.echo("   ✅ Dependencies installed")
             steps.append(("Dependencies", True))
@@ -1571,7 +1715,15 @@ def setup_system(ctx):
 
     # Create directories
     click.echo("\n3. Creating data directories...")
-    dirs = ["data/sec_cache", "data/llm_cache", "data/technical_cache", "data/vector_db", "logs", "reports", "results"]
+    dirs = [
+        "data/sec_cache",
+        "data/llm_cache",
+        "data/technical_cache",
+        "data/vector_db",
+        "logs",
+        "reports",
+        "results",
+    ]
     for dir_path in dirs:
         Path(dir_path).mkdir(parents=True, exist_ok=True)
     click.echo("   ✅ Directories created")
@@ -1596,7 +1748,6 @@ def setup_system(ctx):
 def system_stats(ctx):
     """Show system statistics and information"""
     import platform
-    from pathlib import Path
 
     import psutil
 
@@ -1614,7 +1765,9 @@ def system_stats(ctx):
     click.echo(f"  CPU Cores: {psutil.cpu_count()}")
     click.echo(f"  CPU Usage: {psutil.cpu_percent()}%")
     memory = psutil.virtual_memory()
-    click.echo(f"  Memory: {memory.used / (1024**3):.1f}GB / {memory.total / (1024**3):.1f}GB ({memory.percent}%)")
+    click.echo(
+        f"  Memory: {memory.used / (1024**3):.1f}GB / {memory.total / (1024**3):.1f}GB ({memory.percent}%)"
+    )
 
     # Disk usage
     click.echo("\nDisk:")
@@ -1631,14 +1784,14 @@ def system_stats(ctx):
         response = requests.get("http://localhost:11434/api/tags", timeout=5)
         if response.status_code == 200:
             models = response.json().get("models", [])
-            click.echo(f"  Status: ✅ Running")
+            click.echo("  Status: ✅ Running")
             click.echo(f"  Models: {len(models)}")
             for model in models[:5]:  # Show first 5
                 click.echo(f"    - {model['name']}")
         else:
-            click.echo(f"  Status: ❌ Not responding")
-    except:
-        click.echo(f"  Status: ❌ Not available")
+            click.echo("  Status: ❌ Not responding")
+    except Exception:
+        click.echo("  Status: ❌ Not available")
 
     # Database status
     click.echo("\nDatabase:")
@@ -1646,10 +1799,10 @@ def system_stats(ctx):
         from investigator.infrastructure.database.db import get_engine
 
         engine = get_engine()
-        click.echo(f"  Status: ✅ Connected")
+        click.echo("  Status: ✅ Connected")
         click.echo(f"  URL: {engine.url}")
-    except Exception as e:
-        click.echo(f"  Status: ❌ Not connected")
+    except Exception:
+        click.echo("  Status: ❌ Not connected")
 
 
 if __name__ == "__main__":

@@ -38,7 +38,7 @@ Example:
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from victor_invest.tools.base import BaseTool, ToolResult
 
@@ -109,7 +109,11 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
             raise
 
     async def execute(
-        self, _exec_ctx: Optional[Dict[str, Any]] = None, symbol: str = "", action: str = "composite", **kwargs
+        self,
+        _exec_ctx: Optional[Dict[str, Any]] = None,
+        symbol: str = "",
+        action: str = "composite",
+        **kwargs,
     ) -> ToolResult:
         """Execute credit risk assessment.
 
@@ -136,15 +140,17 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
             action = action.lower().strip()
 
             # Get SEC financial data
-            sec_result = await self._sec_tool.execute(symbol=symbol, action="extract_metrics")
+            sec_result = await self._sec_tool.execute(
+                symbol=symbol, action="extract_metrics"
+            )
 
             if not sec_result.success:
                 return ToolResult.create_failure(
-                    f"Failed to get financial data for {symbol}: {sec_result.error}", metadata={"symbol": symbol}
+                    f"Failed to get financial data for {symbol}: {sec_result.error}",
+                    metadata={"symbol": symbol},
                 )
 
             # Transform to FinancialData format
-            from investigator.domain.services.credit_risk.protocols import FinancialData
 
             fin_data = self._transform_sec_data(symbol, sec_result.output)
 
@@ -161,13 +167,15 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
                 return await self._calculate_composite(fin_data)
             else:
                 return ToolResult.create_failure(
-                    f"Unknown action: {action}. Valid actions: " "all, altman, beneish, piotroski, composite"
+                    f"Unknown action: {action}. Valid actions: "
+                    "all, altman, beneish, piotroski, composite"
                 )
 
         except Exception as e:
             logger.error(f"CreditRiskTool execute error for {symbol}: {e}")
             return ToolResult.create_failure(
-                f"Credit risk assessment failed: {str(e)}", metadata={"symbol": symbol, "action": action}
+                f"Credit risk assessment failed: {str(e)}",
+                metadata={"symbol": symbol, "action": action},
             )
 
     def _transform_sec_data(self, symbol: str, sec_data: Dict[str, Any]):
@@ -199,7 +207,9 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
             stockholders_equity=bs.get("stockholders_equity"),
             retained_earnings=bs.get("retained_earnings"),
             # Income Statement
-            revenue=is_.get("revenue") or is_.get("revenues") or is_.get("total_revenue"),
+            revenue=is_.get("revenue")
+            or is_.get("revenues")
+            or is_.get("total_revenue"),
             gross_profit=is_.get("gross_profit"),
             operating_income=is_.get("operating_income"),
             net_income=is_.get("net_income") or is_.get("net_income_loss"),
@@ -211,15 +221,19 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
             operating_cash_flow=cf.get("operating_cash_flow"),
             capital_expenditures=cf.get("capital_expenditures") or cf.get("capex"),
             # Market Data
-            shares_outstanding=bs.get("shares_outstanding") or ratios.get("shares_outstanding"),
+            shares_outstanding=bs.get("shares_outstanding")
+            or ratios.get("shares_outstanding"),
         )
 
     async def _calculate_all(self, fin_data) -> ToolResult:
         """Calculate all credit risk scores."""
         loop = asyncio.get_event_loop()
-        assessment = await loop.run_in_executor(None, self._service.calculate_all, fin_data)
+        assessment = await loop.run_in_executor(
+            None, self._service.calculate_all, fin_data
+        )
 
-        return ToolResult.create_success(output=assessment.to_dict(),
+        return ToolResult.create_success(
+            output=assessment.to_dict(),
             metadata={
                 "source": "credit_risk_service",
                 "data_quality": assessment.data_quality,
@@ -229,9 +243,12 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
     async def _calculate_altman(self, fin_data) -> ToolResult:
         """Calculate Altman Z-Score."""
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(None, self._service.calculate_altman, fin_data)
+        result = await loop.run_in_executor(
+            None, self._service.calculate_altman, fin_data
+        )
 
-        return ToolResult.create_success(output=result.to_dict(),
+        return ToolResult.create_success(
+            output=result.to_dict(),
             metadata={
                 "score_name": "Altman Z-Score",
                 "model": result.model_used.value if result.model_used else None,
@@ -242,9 +259,12 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
     async def _calculate_beneish(self, fin_data) -> ToolResult:
         """Calculate Beneish M-Score."""
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(None, self._service.calculate_beneish, fin_data)
+        result = await loop.run_in_executor(
+            None, self._service.calculate_beneish, fin_data
+        )
 
-        return ToolResult.create_success(output=result.to_dict(),
+        return ToolResult.create_success(
+            output=result.to_dict(),
             metadata={
                 "score_name": "Beneish M-Score",
                 "requires_prior_period": True,
@@ -255,9 +275,12 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
     async def _calculate_piotroski(self, fin_data) -> ToolResult:
         """Calculate Piotroski F-Score."""
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(None, self._service.calculate_piotroski, fin_data)
+        result = await loop.run_in_executor(
+            None, self._service.calculate_piotroski, fin_data
+        )
 
-        return ToolResult.create_success(output=result.to_dict(),
+        return ToolResult.create_success(
+            output=result.to_dict(),
             metadata={
                 "score_name": "Piotroski F-Score",
                 "max_score": 9,
@@ -269,9 +292,12 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
     async def _calculate_composite(self, fin_data) -> ToolResult:
         """Calculate composite distress assessment."""
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(None, self._service.calculate_composite, fin_data)
+        result = await loop.run_in_executor(
+            None, self._service.calculate_composite, fin_data
+        )
 
-        return ToolResult.create_success(output=result.to_dict(),
+        return ToolResult.create_success(
+            output=result.to_dict(),
             metadata={
                 "score_name": "Composite Credit Risk",
                 "includes": ["altman_zscore", "beneish_mscore", "piotroski_fscore"],
@@ -284,7 +310,10 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
         return {
             "type": "object",
             "properties": {
-                "symbol": {"type": "string", "description": "Stock ticker symbol (e.g., AAPL, MSFT)"},
+                "symbol": {
+                    "type": "string",
+                    "description": "Stock ticker symbol (e.g., AAPL, MSFT)",
+                },
                 "action": {
                     "type": "string",
                     "enum": ["all", "altman", "beneish", "piotroski", "composite"],

@@ -74,11 +74,11 @@ class FetchSECDataHandler:
 # AFTER: New Pattern (Recommended)
 # =============================================================================
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Tuple
+from dataclasses import dataclass  # noqa: E402
+from typing import TYPE_CHECKING, Any, Tuple  # noqa: E402
 
-from victor.framework.handler_registry import handler_decorator
-from victor.framework.workflows.base_handler import BaseHandler
+from victor.framework.handler_registry import handler_decorator  # noqa: E402
+from victor.framework.workflows.base_handler import BaseHandler  # noqa: E402
 
 if TYPE_CHECKING:
     from victor.tools.registry import ToolRegistry
@@ -86,7 +86,11 @@ if TYPE_CHECKING:
     from victor.workflows.executor import WorkflowContext
 
 
-@handler_decorator("fetch_sec_data", vertical="investment", description="Fetch SEC filing data for analysis")
+@handler_decorator(
+    "fetch_sec_data",
+    vertical="investment",
+    description="Fetch SEC filing data for analysis",
+)
 @dataclass
 class FetchSECDataHandler(BaseHandler):
     """Fetch SEC filing data for analysis.

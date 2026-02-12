@@ -26,9 +26,9 @@ Usage:
 
 import hashlib
 import logging
-from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from datetime import date, timedelta
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import text
 
@@ -200,7 +200,6 @@ class ABTestingFramework:
                         baseline_metrics = metrics
 
                 # Calculate improvement and significance
-                improvement_pct = 0.0
                 is_significant = False
 
                 if rl_metrics and baseline_metrics:
@@ -208,10 +207,14 @@ class ABTestingFramework:
                     baseline_reward = baseline_metrics.get("avg_reward", 0)
 
                     if baseline_reward != 0:
-                        improvement_pct = (rl_reward - baseline_reward) / abs(baseline_reward) * 100
+                        (
+                            (rl_reward - baseline_reward) / abs(baseline_reward) * 100
+                        )
 
                     # Check significance (simple t-test approximation)
-                    is_significant = self._check_significance(rl_metrics, baseline_metrics)
+                    is_significant = self._check_significance(
+                        rl_metrics, baseline_metrics
+                    )
 
                 # Calculate p-values and effect sizes
                 reward_p_value = 1.0
@@ -219,10 +222,14 @@ class ABTestingFramework:
                 if rl_metrics and baseline_metrics:
                     reward_p_value = 0.01 if is_significant else 0.10
                     # Cohen's d effect size
-                    pooled_std = (rl_metrics.get("std_reward", 0.01) + baseline_metrics.get("std_reward", 0.01)) / 2
+                    pooled_std = (
+                        rl_metrics.get("std_reward", 0.01)
+                        + baseline_metrics.get("std_reward", 0.01)
+                    ) / 2
                     if pooled_std > 0:
                         reward_effect_size = (
-                            rl_metrics.get("avg_reward", 0) - baseline_metrics.get("avg_reward", 0)
+                            rl_metrics.get("avg_reward", 0)
+                            - baseline_metrics.get("avg_reward", 0)
                         ) / pooled_std
 
                 return ABTestResults(
@@ -235,7 +242,9 @@ class ABTestingFramework:
                     rl_mape=rl_metrics.get("avg_mape", 0),
                     baseline_mape=baseline_metrics.get("avg_mape", 0),
                     rl_direction_accuracy=rl_metrics.get("direction_accuracy", 0),
-                    baseline_direction_accuracy=baseline_metrics.get("direction_accuracy", 0),
+                    baseline_direction_accuracy=baseline_metrics.get(
+                        "direction_accuracy", 0
+                    ),
                     reward_p_value=reward_p_value,
                     mape_p_value=reward_p_value,  # Simplified
                     direction_p_value=reward_p_value,  # Simplified
@@ -286,7 +295,10 @@ class ABTestingFramework:
         n2 = baseline_metrics.get("num_predictions", 0)
 
         # Need minimum samples
-        if n1 < self.config.min_samples_per_group or n2 < self.config.min_samples_per_group:
+        if (
+            n1 < self.config.min_samples_per_group
+            or n2 < self.config.min_samples_per_group
+        ):
             return False
 
         mean1 = rl_metrics.get("avg_reward", 0)
@@ -409,7 +421,9 @@ class ABTestingFramework:
                         periods[period_key] = {"period": period_key}
 
                     periods[period_key][f"{group}_count"] = int(row[2])
-                    periods[period_key][f"{group}_reward"] = float(row[3]) if row[3] else 0
+                    periods[period_key][f"{group}_reward"] = (
+                        float(row[3]) if row[3] else 0
+                    )
 
                 return list(periods.values())
 
@@ -446,7 +460,9 @@ class ABTestingFramework:
         improvement_pct = 0.0
         if results.baseline_mean_reward != 0:
             improvement_pct = (
-                (results.rl_mean_reward - results.baseline_mean_reward) / abs(results.baseline_mean_reward) * 100
+                (results.rl_mean_reward - results.baseline_mean_reward)
+                / abs(results.baseline_mean_reward)
+                * 100
             )
 
         if results.is_significant:
@@ -456,7 +472,9 @@ class ABTestingFramework:
                     "action": "expand_rl",
                     "reason": f"Significant improvement ({improvement_pct:.1f}%)",
                     "current_rl_pct": self.config.rl_traffic_pct * 100,
-                    "recommended_rl_pct": min(100, self.config.rl_traffic_pct * 100 + 20),
+                    "recommended_rl_pct": min(
+                        100, self.config.rl_traffic_pct * 100 + 20
+                    ),
                 }
             elif improvement_pct < -10:
                 # Strong negative result - reduce
@@ -489,7 +507,11 @@ class ABTestingFramework:
             "total_assignments": total,
             "rl_count": self._assignment_counts[ABTestGroup.RL],
             "baseline_count": self._assignment_counts[ABTestGroup.BASELINE],
-            "actual_rl_pct": (self._assignment_counts[ABTestGroup.RL] / total * 100 if total > 0 else 0),
+            "actual_rl_pct": (
+                self._assignment_counts[ABTestGroup.RL] / total * 100
+                if total > 0
+                else 0
+            ),
             "target_rl_pct": self.config.rl_traffic_pct * 100,
             "cached_symbols": len(self._assignment_cache),
         }

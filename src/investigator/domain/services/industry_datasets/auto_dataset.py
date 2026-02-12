@@ -15,7 +15,7 @@ Date: 2025-12-30
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from investigator.domain.services.industry_datasets.base import (
     BaseIndustryDataset,
@@ -205,7 +205,9 @@ class AutoDataset(BaseIndustryDataset):
             ),
         ]
 
-    def extract_metrics(self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs) -> IndustryMetrics:
+    def extract_metrics(
+        self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs
+    ) -> IndustryMetrics:
         """Extract auto-specific metrics from XBRL data and financials."""
         metrics = IndustryMetrics(
             industry="auto_manufacturing",
@@ -219,7 +221,9 @@ class AutoDataset(BaseIndustryDataset):
 
         # Extract EV Sales Mix
         ev_mix = self._extract_from_xbrl(
-            xbrl_data, "ev_sales_mix", ["ElectricVehicleRevenuePct", "EVtoTotalRevenueRatio"]
+            xbrl_data,
+            "ev_sales_mix",
+            ["ElectricVehicleRevenuePct", "EVtoTotalRevenueRatio"],
         )
         if ev_mix:
             metrics.metrics["ev_sales_mix"] = ev_mix
@@ -231,7 +235,9 @@ class AutoDataset(BaseIndustryDataset):
 
         # Extract Vehicle Unit Sales
         units = self._extract_from_xbrl(
-            xbrl_data, "vehicle_unit_sales", ["UnitsSold", "VehicleUnitsSold", "TotalVehicleDeliveries"]
+            xbrl_data,
+            "vehicle_unit_sales",
+            ["UnitsSold", "VehicleUnitsSold", "TotalVehicleDeliveries"],
         )
         if units:
             metrics.metrics["vehicle_unit_sales"] = units
@@ -285,7 +291,9 @@ class AutoDataset(BaseIndustryDataset):
 
         return metrics
 
-    def _extract_warranty_ratio(self, xbrl_data: Optional[Dict], financials: Dict) -> Optional[float]:
+    def _extract_warranty_ratio(
+        self, xbrl_data: Optional[Dict], financials: Dict
+    ) -> Optional[float]:
         """Extract or calculate warranty reserve ratio."""
         warranty = self._extract_from_xbrl(
             xbrl_data,
@@ -335,7 +343,11 @@ class AutoDataset(BaseIndustryDataset):
     def assess_quality(self, metrics: IndustryMetrics) -> Tuple[MetricQuality, str]:
         """Assess quality of auto metrics."""
         required_metrics = ["ev_sales_mix", "gross_margin"]
-        important_metrics = ["vehicle_unit_sales", "warranty_reserve_ratio", "rd_to_revenue"]
+        important_metrics = [
+            "vehicle_unit_sales",
+            "warranty_reserve_ratio",
+            "rd_to_revenue",
+        ]
 
         required_available = sum(1 for m in required_metrics if metrics.has(m))
         important_available = sum(1 for m in important_metrics if metrics.has(m))

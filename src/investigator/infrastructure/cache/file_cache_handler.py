@@ -23,7 +23,9 @@ logger = logging.getLogger(__name__)
 class FileCacheStorageHandler(CacheStorageHandler):
     """File/Directory based cache storage handler integrated with existing disk methods"""
 
-    def __init__(self, cache_type: CacheType, base_path: Path, priority: int = 0, config=None):
+    def __init__(
+        self, cache_type: CacheType, base_path: Path, priority: int = 0, config=None
+    ):
         """
         Initialize file cache handler
 
@@ -62,11 +64,17 @@ class FileCacheStorageHandler(CacheStorageHandler):
             and hasattr(self.config, "cache_control")
             and hasattr(self.config.cache_control, "disk_structure")
         ):
-            use_symbol_dirs = self.config.cache_control.disk_structure.get("use_symbol_directories", True)
+            use_symbol_dirs = self.config.cache_control.disk_structure.get(
+                "use_symbol_directories", True
+            )
 
         if use_symbol_dirs:
             # New symbol-directory structure
-            if self.cache_type in [CacheType.SUBMISSION_DATA, CacheType.COMPANY_FACTS, CacheType.QUARTERLY_METRICS]:
+            if self.cache_type in [
+                CacheType.SUBMISSION_DATA,
+                CacheType.COMPANY_FACTS,
+                CacheType.QUARTERLY_METRICS,
+            ]:
                 cache_type_name = self._get_cache_type_name()
                 base_dir = self.base_path
                 base_parts = {part.lower() for part in base_dir.parts}
@@ -97,7 +105,9 @@ class FileCacheStorageHandler(CacheStorageHandler):
         }
         return cache_type_names.get(self.cache_type, self.cache_type.value)
 
-    def _generate_filename(self, key_dict: Dict[str, str], include_symbol: bool = True) -> str:
+    def _generate_filename(
+        self, key_dict: Dict[str, str], include_symbol: bool = True
+    ) -> str:
         """Generate filename based on cache type and key data with universal gzip compression"""
         symbol = key_dict.get("symbol", "UNKNOWN").upper()
 
@@ -107,7 +117,9 @@ class FileCacheStorageHandler(CacheStorageHandler):
             base_name = f"quarterly_summary_{fiscal_year}-{fiscal_period}"
 
         elif self.cache_type == CacheType.LLM_RESPONSE:
-            llm_type = key_dict.get("llm_type") or key_dict.get("analysis_type", "unknown")
+            llm_type = key_dict.get("llm_type") or key_dict.get(
+                "analysis_type", "unknown"
+            )
             form_type = key_dict.get("form_type", "")
 
             # Handle different analysis types with clear, descriptive names
@@ -126,7 +138,11 @@ class FileCacheStorageHandler(CacheStorageHandler):
             elif llm_type == "full" or "synthesis" in llm_type.lower():
                 # Legacy synthesis - not tied to specific quarter
                 base_name = "investment_synthesis"
-            elif "period" in key_dict and key_dict["period"] not in ["UNKNOWN", "unknown", ""]:
+            elif "period" in key_dict and key_dict["period"] not in [
+                "UNKNOWN",
+                "unknown",
+                "",
+            ]:
                 # Individual quarterly analysis with period
                 period = key_dict["period"]
                 # For actual SEC filings, include form_type if available to distinguish 10-Q vs 10-K
@@ -155,10 +171,14 @@ class FileCacheStorageHandler(CacheStorageHandler):
             fiscal_period = key_dict.get("fiscal_period", "")
             if fiscal_period and fiscal_period != "unknown":
                 base_name = (
-                    f"companyfacts_{cik}_{fiscal_period}" if cik != "unknown" else f"companyfacts_{fiscal_period}"
+                    f"companyfacts_{cik}_{fiscal_period}"
+                    if cik != "unknown"
+                    else f"companyfacts_{fiscal_period}"
                 )
             else:
-                base_name = f"companyfacts_{cik}" if cik != "unknown" else "companyfacts"
+                base_name = (
+                    f"companyfacts_{cik}" if cik != "unknown" else "companyfacts"
+                )
 
         elif self.cache_type == CacheType.QUARTERLY_METRICS:
             fiscal_year = key_dict.get("fiscal_year", "2024")
@@ -206,7 +226,9 @@ class FileCacheStorageHandler(CacheStorageHandler):
             and hasattr(self.config, "cache_control")
             and hasattr(self.config.cache_control, "disk_structure")
         ):
-            compression_config = self.config.cache_control.disk_structure.get("compression", {})
+            compression_config = self.config.cache_control.disk_structure.get(
+                "compression", {}
+            )
             if compression_config.get("apply_to_all", True):
                 return True
 
@@ -223,7 +245,9 @@ class FileCacheStorageHandler(CacheStorageHandler):
             return None  # Skip lookup for negative priority
 
         try:
-            logger.info(f"🔍 FILE CACHE GET: Original key: {key}, type: {type(key)}, cache_type: {self.cache_type}")
+            logger.info(
+                f"🔍 FILE CACHE GET: Original key: {key}, type: {type(key)}, cache_type: {self.cache_type}"
+            )
             key_dict = self._normalize_key(key)
             logger.info(f"🔍 FILE CACHE GET: Normalized key_dict: {key_dict}")
             file_path = self._get_file_path(key_dict)
@@ -233,7 +257,9 @@ class FileCacheStorageHandler(CacheStorageHandler):
             if self.cache_type == CacheType.LLM_RESPONSE:
                 # Get directory and base filename
                 file_dir = file_path.parent
-                base_name = file_path.stem.replace(".json", "")  # Remove .json from stem if present
+                base_name = file_path.stem.replace(
+                    ".json", ""
+                )  # Remove .json from stem if present
 
                 # Read prompt file
                 prompt_path = file_dir / f"prompt_{base_name}.txt.gz"
@@ -261,7 +287,9 @@ class FileCacheStorageHandler(CacheStorageHandler):
                     "metadata": response_data.get("metadata", {}),
                 }
 
-                logger.info(f"🔍 Cache HIT (LLM): prompt_path={prompt_path}, response_path={response_path}")
+                logger.info(
+                    f"🔍 Cache HIT (LLM): prompt_path={prompt_path}, response_path={response_path}"
+                )
                 return combined_data
             else:
                 # Try both compressed and uncompressed versions
@@ -308,12 +336,16 @@ class FileCacheStorageHandler(CacheStorageHandler):
             if self.cache_type == CacheType.LLM_RESPONSE:
                 # Get directory and base filename
                 file_dir = file_path.parent
-                base_name = file_path.stem.replace(".json", "")  # Remove .json from stem if present
+                base_name = file_path.stem.replace(
+                    ".json", ""
+                )  # Remove .json from stem if present
 
                 # Store prompt as text file
                 prompt_path = file_dir / f"prompt_{base_name}.txt.gz"
                 prompt_text = value.get("prompt", "")
-                with gzip.open(prompt_path, "wt", encoding="utf-8", compresslevel=9) as f:
+                with gzip.open(
+                    prompt_path, "wt", encoding="utf-8", compresslevel=9
+                ) as f:
                     f.write(prompt_text)
 
                 # Store response as JSON file
@@ -327,14 +359,22 @@ class FileCacheStorageHandler(CacheStorageHandler):
                         "cache_type": self.cache_type.value,
                     },
                 }
-                with gzip.open(response_path, "wt", encoding="utf-8", compresslevel=9) as f:
+                with gzip.open(
+                    response_path, "wt", encoding="utf-8", compresslevel=9
+                ) as f:
                     json.dump(response_data, f, separators=(",", ":"), default=str)
 
-                logger.debug(f"Cache WRITE (LLM): prompt={prompt_path}, response={response_path}")
+                logger.debug(
+                    f"Cache WRITE (LLM): prompt={prompt_path}, response={response_path}"
+                )
                 return True
             else:
                 # For COMPANY_FACTS, extract the raw companyfacts to avoid double-wrapping
-                if self.cache_type == CacheType.COMPANY_FACTS and isinstance(value, dict) and "companyfacts" in value:
+                if (
+                    self.cache_type == CacheType.COMPANY_FACTS
+                    and isinstance(value, dict)
+                    and "companyfacts" in value
+                ):
                     # Extract raw SEC JSON structure and preserve additional metadata fields
                     company_facts_data = value[
                         "companyfacts"
@@ -356,7 +396,9 @@ class FileCacheStorageHandler(CacheStorageHandler):
                 else:
                     # Add metadata for audit (standard wrapping for other cache types)
                     # Check if value is a dataclass or object with to_dict() method
-                    if hasattr(value, "to_dict") and callable(getattr(value, "to_dict")):
+                    if hasattr(value, "to_dict") and callable(
+                        getattr(value, "to_dict")
+                    ):
                         data_to_cache = value.to_dict()
                     elif hasattr(value, "__dict__") and not isinstance(
                         value, (dict, list, str, int, float, bool, type(None))
@@ -380,12 +422,16 @@ class FileCacheStorageHandler(CacheStorageHandler):
 
                 # Use gzip compression for all cache types (uniform compression)
                 if file_path.suffix == ".gz":
-                    with gzip.open(file_path, "wt", encoding="utf-8", compresslevel=9) as f:
+                    with gzip.open(
+                        file_path, "wt", encoding="utf-8", compresslevel=9
+                    ) as f:
                         json.dump(cache_data, f, separators=(",", ":"), default=str)
                 else:
                     # For backward compatibility, if file doesn't have .gz extension, add it
                     gz_path = file_path.with_suffix(file_path.suffix + ".gz")
-                    with gzip.open(gz_path, "wt", encoding="utf-8", compresslevel=9) as f:
+                    with gzip.open(
+                        gz_path, "wt", encoding="utf-8", compresslevel=9
+                    ) as f:
                         json.dump(cache_data, f, separators=(",", ":"), default=str)
                     file_path = gz_path
 
@@ -513,11 +559,17 @@ class FileCacheStorageHandler(CacheStorageHandler):
                 and hasattr(self.config, "cache_control")
                 and hasattr(self.config.cache_control, "disk_structure")
             ):
-                use_symbol_dirs = self.config.cache_control.disk_structure.get("use_symbol_directories", True)
+                use_symbol_dirs = self.config.cache_control.disk_structure.get(
+                    "use_symbol_directories", True
+                )
 
             if use_symbol_dirs:
                 # New symbol-directory structure - delete specific symbol directories
-                if self.cache_type in [CacheType.SUBMISSION_DATA, CacheType.COMPANY_FACTS, CacheType.QUARTERLY_METRICS]:
+                if self.cache_type in [
+                    CacheType.SUBMISSION_DATA,
+                    CacheType.COMPANY_FACTS,
+                    CacheType.QUARTERLY_METRICS,
+                ]:
                     cache_type_name = self._get_cache_type_name()
                     base_dir = self.base_path
                     base_parts = {part.lower() for part in base_dir.parts}
@@ -533,12 +585,16 @@ class FileCacheStorageHandler(CacheStorageHandler):
 
                     try:
                         # Count files before deletion for accurate reporting
-                        file_count = sum(1 for _ in symbol_dir.rglob("*") if _.is_file())
+                        file_count = sum(
+                            1 for _ in symbol_dir.rglob("*") if _.is_file()
+                        )
                         shutil.rmtree(symbol_dir)
                         deleted_count = file_count
                         logger.info(f"Deleted symbol directory: {symbol_dir}")
                     except Exception as e:
-                        logger.error(f"Error deleting symbol directory {symbol_dir}: {e}")
+                        logger.error(
+                            f"Error deleting symbol directory {symbol_dir}: {e}"
+                        )
                 else:
                     logger.debug(f"Symbol directory does not exist: {symbol_dir}")
             else:
@@ -576,7 +632,9 @@ class FileCacheStorageHandler(CacheStorageHandler):
                     try:
                         file_path.unlink()
                         deleted_count += 1
-                        logger.debug(f"Deleted file matching pattern '{pattern}': {file_path}")
+                        logger.debug(
+                            f"Deleted file matching pattern '{pattern}': {file_path}"
+                        )
                     except Exception as e:
                         logger.error(f"Error deleting file {file_path}: {e}")
 

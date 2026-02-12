@@ -32,7 +32,7 @@ import logging
 import os
 import pickle
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 from scipy import linalg
@@ -66,21 +66,112 @@ TIER_CLASSIFICATIONS = [
 
 # Weight templates for each tier (maps tier to model weights)
 TIER_WEIGHT_TEMPLATES = {
-    "pre_profit_negative_ebitda": {"dcf": 0, "pe": 0, "ps": 70, "ev_ebitda": 0, "pb": 30, "ggm": 0},
-    "pre_profit_positive_ebitda": {"dcf": 0, "pe": 0, "ps": 50, "ev_ebitda": 30, "pb": 20, "ggm": 0},
-    "pre_profit_high_growth": {"dcf": 10, "pe": 0, "ps": 60, "ev_ebitda": 20, "pb": 10, "ggm": 0},
-    "dividend_aristocrat_pure": {"dcf": 25, "pe": 25, "ps": 10, "ev_ebitda": 15, "pb": 5, "ggm": 20},
-    "dividend_aristocrat_hybrid": {"dcf": 30, "pe": 25, "ps": 10, "ev_ebitda": 20, "pb": 5, "ggm": 10},
-    "dividend_high_yield": {"dcf": 20, "pe": 20, "ps": 15, "ev_ebitda": 20, "pb": 10, "ggm": 15},
-    "high_growth_saas": {"dcf": 20, "pe": 15, "ps": 40, "ev_ebitda": 15, "pb": 10, "ggm": 0},
-    "high_growth_emerging": {"dcf": 15, "pe": 20, "ps": 35, "ev_ebitda": 20, "pb": 10, "ggm": 0},
-    "high_growth_established": {"dcf": 25, "pe": 25, "ps": 25, "ev_ebitda": 20, "pb": 5, "ggm": 0},
-    "transitioning_to_profit": {"dcf": 20, "pe": 25, "ps": 30, "ev_ebitda": 20, "pb": 5, "ggm": 0},
-    "transitioning_to_mature": {"dcf": 30, "pe": 30, "ps": 15, "ev_ebitda": 20, "pb": 5, "ggm": 0},
+    "pre_profit_negative_ebitda": {
+        "dcf": 0,
+        "pe": 0,
+        "ps": 70,
+        "ev_ebitda": 0,
+        "pb": 30,
+        "ggm": 0,
+    },
+    "pre_profit_positive_ebitda": {
+        "dcf": 0,
+        "pe": 0,
+        "ps": 50,
+        "ev_ebitda": 30,
+        "pb": 20,
+        "ggm": 0,
+    },
+    "pre_profit_high_growth": {
+        "dcf": 10,
+        "pe": 0,
+        "ps": 60,
+        "ev_ebitda": 20,
+        "pb": 10,
+        "ggm": 0,
+    },
+    "dividend_aristocrat_pure": {
+        "dcf": 25,
+        "pe": 25,
+        "ps": 10,
+        "ev_ebitda": 15,
+        "pb": 5,
+        "ggm": 20,
+    },
+    "dividend_aristocrat_hybrid": {
+        "dcf": 30,
+        "pe": 25,
+        "ps": 10,
+        "ev_ebitda": 20,
+        "pb": 5,
+        "ggm": 10,
+    },
+    "dividend_high_yield": {
+        "dcf": 20,
+        "pe": 20,
+        "ps": 15,
+        "ev_ebitda": 20,
+        "pb": 10,
+        "ggm": 15,
+    },
+    "high_growth_saas": {
+        "dcf": 20,
+        "pe": 15,
+        "ps": 40,
+        "ev_ebitda": 15,
+        "pb": 10,
+        "ggm": 0,
+    },
+    "high_growth_emerging": {
+        "dcf": 15,
+        "pe": 20,
+        "ps": 35,
+        "ev_ebitda": 20,
+        "pb": 10,
+        "ggm": 0,
+    },
+    "high_growth_established": {
+        "dcf": 25,
+        "pe": 25,
+        "ps": 25,
+        "ev_ebitda": 20,
+        "pb": 5,
+        "ggm": 0,
+    },
+    "transitioning_to_profit": {
+        "dcf": 20,
+        "pe": 25,
+        "ps": 30,
+        "ev_ebitda": 20,
+        "pb": 5,
+        "ggm": 0,
+    },
+    "transitioning_to_mature": {
+        "dcf": 30,
+        "pe": 30,
+        "ps": 15,
+        "ev_ebitda": 20,
+        "pb": 5,
+        "ggm": 0,
+    },
     "mature_value": {"dcf": 35, "pe": 30, "ps": 10, "ev_ebitda": 20, "pb": 5, "ggm": 0},
     "mature_garp": {"dcf": 30, "pe": 30, "ps": 15, "ev_ebitda": 20, "pb": 5, "ggm": 0},
-    "mature_quality": {"dcf": 30, "pe": 25, "ps": 15, "ev_ebitda": 25, "pb": 5, "ggm": 0},
-    "balanced_default": {"dcf": 25, "pe": 25, "ps": 20, "ev_ebitda": 25, "pb": 5, "ggm": 0},
+    "mature_quality": {
+        "dcf": 30,
+        "pe": 25,
+        "ps": 15,
+        "ev_ebitda": 25,
+        "pb": 5,
+        "ggm": 0,
+    },
+    "balanced_default": {
+        "dcf": 25,
+        "pe": 25,
+        "ps": 20,
+        "ev_ebitda": 25,
+        "pb": 5,
+        "ggm": 0,
+    },
 }
 
 
@@ -133,7 +224,9 @@ class ContextualBanditPolicy(RLPolicy):
         # Posterior: theta_a ~ N(mu_a, Sigma_a)
         self._initialized = False
         self._mu: Optional[np.ndarray] = None  # Shape: (n_actions, n_features)
-        self._Sigma: Optional[np.ndarray] = None  # Shape: (n_actions, n_features, n_features)
+        self._Sigma: Optional[np.ndarray] = (
+            None  # Shape: (n_actions, n_features, n_features)
+        )
         self._Lambda: Optional[np.ndarray] = None  # Precision matrices
 
         self.action_counts = np.zeros(n_actions)
@@ -152,14 +245,20 @@ class ContextualBanditPolicy(RLPolicy):
         # Precision matrix (inverse covariance)
         # Lambda = (1/prior_variance) * I
         prior_precision = 1.0 / self.prior_variance
-        self._Lambda = np.array([np.eye(n_features) * prior_precision for _ in range(self.n_actions)])
+        self._Lambda = np.array(
+            [np.eye(n_features) * prior_precision for _ in range(self.n_actions)]
+        )
 
         # Covariance is inverse of precision
-        self._Sigma = np.array([np.eye(n_features) * self.prior_variance for _ in range(self.n_actions)])
+        self._Sigma = np.array(
+            [np.eye(n_features) * self.prior_variance for _ in range(self.n_actions)]
+        )
 
         self._initialized = True
         self._ready = True
-        logger.info(f"Initialized bandit with {n_features} features, {self.n_actions} actions")
+        logger.info(
+            f"Initialized bandit with {n_features} features, {self.n_actions} actions"
+        )
 
     def predict(self, context: ValuationContext) -> Dict[str, float]:
         """
@@ -182,7 +281,9 @@ class ContextualBanditPolicy(RLPolicy):
         for a in range(self.n_actions):
             # Sample theta_a ~ N(mu_a, Sigma_a)
             try:
-                theta_sample = np.random.multivariate_normal(self._mu[a], self._Sigma[a] * self.exploration_weight)
+                theta_sample = np.random.multivariate_normal(
+                    self._mu[a], self._Sigma[a] * self.exploration_weight
+                )
             except np.linalg.LinAlgError:
                 # Fallback if covariance is singular
                 theta_sample = self._mu[a] + np.random.randn(self.n_features) * 0.1
@@ -195,7 +296,9 @@ class ContextualBanditPolicy(RLPolicy):
         tier = TIER_CLASSIFICATIONS[best_action]
 
         # Get weight template for this tier
-        weights = TIER_WEIGHT_TEMPLATES.get(tier, TIER_WEIGHT_TEMPLATES["balanced_default"])
+        weights = TIER_WEIGHT_TEMPLATES.get(
+            tier, TIER_WEIGHT_TEMPLATES["balanced_default"]
+        )
 
         # Apply applicability mask
         weights = self.apply_applicability_mask(dict(weights), context)
@@ -221,11 +324,15 @@ class ContextualBanditPolicy(RLPolicy):
         for a in range(self.n_actions):
             expected_rewards[a] = np.dot(features, self._mu[a])
             # Uncertainty: sqrt(x^T Sigma x)
-            uncertainties[a] = np.sqrt(np.dot(features, np.dot(self._Sigma[a], features)))
+            uncertainties[a] = np.sqrt(
+                np.dot(features, np.dot(self._Sigma[a], features))
+            )
 
         best_action = np.argmax(expected_rewards)
         tier = TIER_CLASSIFICATIONS[best_action]
-        weights = TIER_WEIGHT_TEMPLATES.get(tier, TIER_WEIGHT_TEMPLATES["balanced_default"])
+        weights = TIER_WEIGHT_TEMPLATES.get(
+            tier, TIER_WEIGHT_TEMPLATES["balanced_default"]
+        )
         weights = self.apply_applicability_mask(dict(weights), context)
 
         # Confidence: inverse of uncertainty (normalized)
@@ -274,8 +381,14 @@ class ContextualBanditPolicy(RLPolicy):
             self._Sigma[action_idx] = linalg.inv(self._Lambda[action_idx])
 
         # Update mean
-        old_precision_mean = np.dot(self._Lambda[action_idx] - noise_precision * outer_prod, self._mu[action_idx])
-        self._mu[action_idx] = np.dot(self._Sigma[action_idx], old_precision_mean + noise_precision * features * reward)
+        old_precision_mean = np.dot(
+            self._Lambda[action_idx] - noise_precision * outer_prod,
+            self._mu[action_idx],
+        )
+        self._mu[action_idx] = np.dot(
+            self._Sigma[action_idx],
+            old_precision_mean + noise_precision * features * reward,
+        )
 
         # Track statistics
         self.action_counts[action_idx] += 1
@@ -337,7 +450,9 @@ class ContextualBanditPolicy(RLPolicy):
     def save(self, path: str) -> bool:
         """Save policy state to file."""
         try:
-            os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
+            os.makedirs(
+                os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True
+            )
 
             state = {
                 "name": self.name,
@@ -379,7 +494,9 @@ class ContextualBanditPolicy(RLPolicy):
             self.n_actions = state["n_actions"]
             self.prior_variance = state.get("prior_variance", self.prior_variance)
             self.noise_variance = state.get("noise_variance", self.noise_variance)
-            self.exploration_weight = state.get("exploration_weight", self.exploration_weight)
+            self.exploration_weight = state.get(
+                "exploration_weight", self.exploration_weight
+            )
             self._mu = state["mu"]
             self._Lambda = state["Lambda"]
             self._Sigma = state["Sigma"]
@@ -411,8 +528,12 @@ class ContextualBanditPolicy(RLPolicy):
             {
                 "n_features": self.n_features,
                 "n_actions": self.n_actions,
-                "action_counts": self.action_counts.tolist() if self.action_counts is not None else [],
-                "action_rewards": self.action_rewards.tolist() if self.action_rewards is not None else [],
+                "action_counts": self.action_counts.tolist()
+                if self.action_counts is not None
+                else [],
+                "action_rewards": self.action_rewards.tolist()
+                if self.action_rewards is not None
+                else [],
                 "total_updates": self._update_count,
             }
         )
@@ -426,6 +547,8 @@ class ContextualBanditPolicy(RLPolicy):
             stats[tier] = {
                 "count": int(count),
                 "total_reward": float(self.action_rewards[i]),
-                "avg_reward": float(self.action_rewards[i] / count) if count > 0 else 0.0,
+                "avg_reward": float(self.action_rewards[i] / count)
+                if count > 0
+                else 0.0,
             }
         return stats

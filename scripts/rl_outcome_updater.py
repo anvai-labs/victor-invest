@@ -21,7 +21,6 @@ import argparse
 import logging
 import sys
 from datetime import date, timedelta
-from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import text, create_engine
@@ -49,7 +48,9 @@ class OutcomeUpdater:
         self.db = get_db_manager()  # SEC database
 
         # Create separate connection for stock database
-        self.stock_engine = create_engine("postgresql://stockuser:${STOCK_DB_PASSWORD}@${STOCK_DB_HOST}:5432/stock")
+        self.stock_engine = create_engine(
+            "postgresql://stockuser:${STOCK_DB_PASSWORD}@${STOCK_DB_HOST}:5432/stock"
+        )
         self.StockSession = sessionmaker(bind=self.stock_engine)
 
     def get_pending_30d_updates(self, limit: int = 1000) -> List[Dict[str, Any]]:
@@ -130,7 +131,9 @@ class OutcomeUpdater:
                 ORDER BY date DESC
                 LIMIT 1
             """
-            result = session.execute(text(query), {"symbol": symbol, "target_date": target_date}).fetchone()
+            result = session.execute(
+                text(query), {"symbol": symbol, "target_date": target_date}
+            ).fetchone()
 
             if result:
                 return float(result[0])
@@ -228,7 +231,9 @@ class OutcomeUpdater:
                         session.commit()
 
                     # Calculate and update 30d reward
-                    reward_30d = self.calculate_reward(record["blended_fair_value"], record["current_price"], price)
+                    reward_30d = self.calculate_reward(
+                        record["blended_fair_value"], record["current_price"], price
+                    )
                     with self.db.get_session() as session:
                         session.execute(
                             text(
@@ -249,7 +254,9 @@ class OutcomeUpdater:
                         f"Actual=${price:.2f}, Reward={reward_30d:.3f}"
                     )
                 else:
-                    logger.warning(f"{record['symbol']} - No price data for {target_date}")
+                    logger.warning(
+                        f"{record['symbol']} - No price data for {target_date}"
+                    )
                     errors += 1
 
             except Exception as e:
@@ -273,7 +280,9 @@ class OutcomeUpdater:
 
                 if price:
                     # Calculate rewards
-                    reward_90d = self.calculate_reward(record["blended_fair_value"], record["current_price"], price)
+                    reward_90d = self.calculate_reward(
+                        record["blended_fair_value"], record["current_price"], price
+                    )
 
                     per_model_rewards = self.calculate_per_model_rewards(
                         record["model_fair_values"], record["current_price"], price
@@ -308,7 +317,9 @@ class OutcomeUpdater:
                         f"Actual=${price:.2f}, Reward={reward_90d:.3f}"
                     )
                 else:
-                    logger.warning(f"{record['symbol']} - No price data for {target_date}")
+                    logger.warning(
+                        f"{record['symbol']} - No price data for {target_date}"
+                    )
                     errors += 1
 
             except Exception as e:
@@ -337,7 +348,8 @@ class OutcomeUpdater:
         }
 
         logger.info(
-            f"Outcome update complete: " f"{results['total_updated']} updated, {results['total_errors']} errors"
+            f"Outcome update complete: "
+            f"{results['total_updated']} updated, {results['total_errors']} errors"
         )
 
         return results
@@ -345,9 +357,15 @@ class OutcomeUpdater:
 
 def main():
     parser = argparse.ArgumentParser(description="RL Outcome Updater")
-    parser.add_argument("--30d-only", action="store_true", help="Only update 30-day outcomes")
-    parser.add_argument("--90d-only", action="store_true", help="Only update 90-day outcomes")
-    parser.add_argument("--dry-run", action="store_true", help="Show pending updates without applying")
+    parser.add_argument(
+        "--30d-only", action="store_true", help="Only update 30-day outcomes"
+    )
+    parser.add_argument(
+        "--90d-only", action="store_true", help="Only update 90-day outcomes"
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Show pending updates without applying"
+    )
 
     args = parser.parse_args()
 
@@ -356,7 +374,7 @@ def main():
     if args.dry_run:
         pending_30d = updater.get_pending_30d_updates()
         pending_90d = updater.get_pending_90d_updates()
-        print(f"\n=== DRY RUN ===")
+        print("\n=== DRY RUN ===")
         print(f"Pending 30-day updates: {len(pending_30d)}")
         for p in pending_30d[:10]:
             print(f"  - {p['symbol']} ({p['analysis_date']})")
@@ -381,9 +399,15 @@ def main():
         print("\n" + "=" * 50)
         print("OUTCOME UPDATE SUMMARY")
         print("=" * 50)
-        print(f"30-day updates: {results['30d_updated']} updated, {results['30d_errors']} errors")
-        print(f"90-day updates: {results['90d_updated']} updated, {results['90d_errors']} errors")
-        print(f"Total: {results['total_updated']} updated, {results['total_errors']} errors")
+        print(
+            f"30-day updates: {results['30d_updated']} updated, {results['30d_errors']} errors"
+        )
+        print(
+            f"90-day updates: {results['90d_updated']} updated, {results['90d_errors']} errors"
+        )
+        print(
+            f"Total: {results['total_updated']} updated, {results['total_errors']} errors"
+        )
         print("=" * 50)
 
 

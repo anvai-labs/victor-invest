@@ -51,11 +51,10 @@ import pickle
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-import numpy as np
 
 from investigator.domain.services.rl.feature_normalizer import FeatureNormalizer
 from investigator.domain.services.rl.models import ValuationContext
-from investigator.domain.services.rl.policy.base import VALUATION_MODELS, RLPolicy
+from investigator.domain.services.rl.policy.base import RLPolicy
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +188,9 @@ class HybridPolicy(RLPolicy):
         # Get confidence from adjustment policy if available
         confidence = 0.7  # Base confidence from expert rules
 
-        if self.adjustment_policy and hasattr(self.adjustment_policy, "predict_with_confidence"):
+        if self.adjustment_policy and hasattr(
+            self.adjustment_policy, "predict_with_confidence"
+        ):
             _, rl_confidence = self.adjustment_policy.predict_with_confidence(context)
             # Blend confidences (expert rules get more weight)
             confidence = 0.6 * confidence + 0.4 * rl_confidence
@@ -296,7 +297,9 @@ class HybridPolicy(RLPolicy):
                         best_period = period
             if best_period:
                 self._sector_optimal_periods[sector] = best_period
-                logger.info(f"Updated optimal holding period for {sector}: {best_period} (avg reward: {best_avg:.3f})")
+                logger.info(
+                    f"Updated optimal holding period for {sector}: {best_period} (avg reward: {best_avg:.3f})"
+                )
 
         # Update symbol optimal period if we have enough data
         best_symbol_period = None
@@ -306,7 +309,9 @@ class HybridPolicy(RLPolicy):
                 best_symbol_reward = reward
                 best_symbol_period = period
 
-        if best_symbol_period and best_symbol_reward > 0.1:  # Only store if significantly positive
+        if (
+            best_symbol_period and best_symbol_reward > 0.1
+        ):  # Only store if significantly positive
             self._symbol_optimal_periods[symbol] = best_symbol_period
 
     def update(
@@ -379,7 +384,9 @@ class HybridPolicy(RLPolicy):
             ratios = self._context_to_ratios(context)
 
             # Handle both ValuationContext objects and dicts for symbol
-            symbol = context.get("symbol") if isinstance(context, dict) else context.symbol
+            symbol = (
+                context.get("symbol") if isinstance(context, dict) else context.symbol
+            )
 
             # Note: We pass market_context=None because DynamicModelWeightingService
             # expects a MarketContext object (with enum attributes), not a dict.
@@ -426,7 +433,10 @@ class HybridPolicy(RLPolicy):
                 # Center around 1.0 and apply bounds
                 # If predicted is higher, multiplier > 1
                 # If predicted is lower, multiplier < 1
-                bounded = max(1 - self.max_adjustment, min(1 + self.max_adjustment, raw_multiplier))
+                bounded = max(
+                    1 - self.max_adjustment,
+                    min(1 + self.max_adjustment, raw_multiplier),
+                )
                 adjustments[model] = bounded
 
             return adjustments
@@ -508,7 +518,9 @@ class HybridPolicy(RLPolicy):
             "pe_ratio": None,  # We have pe_level but not raw PE
         }
 
-    def _context_to_market_context(self, context: ValuationContext) -> Optional[Dict[str, Any]]:
+    def _context_to_market_context(
+        self, context: ValuationContext
+    ) -> Optional[Dict[str, Any]]:
         """Convert context to market context dict."""
         # Handle both ValuationContext objects and dicts
         logger.debug(
@@ -559,7 +571,10 @@ class HybridPolicy(RLPolicy):
             if self._model_adjustment_count[model] > 10:
                 # Use correlation to determine direction
                 corr = self._model_reward_correlation[model]
-                avg_adj = self._model_adjustment_sum[model] / self._model_adjustment_count[model]
+                avg_adj = (
+                    self._model_adjustment_sum[model]
+                    / self._model_adjustment_count[model]
+                )
 
                 # If positive correlation, adjusting up helps
                 # If negative correlation, adjusting down helps
@@ -577,7 +592,9 @@ class HybridPolicy(RLPolicy):
     def save(self, path: str) -> bool:
         """Save hybrid policy state."""
         try:
-            os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
+            os.makedirs(
+                os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True
+            )
 
             state = {
                 "name": self.name,
@@ -621,10 +638,18 @@ class HybridPolicy(RLPolicy):
             self.name = state.get("name", self.name)
             self.version = state.get("version", self.version)
             self.max_adjustment = state.get("max_adjustment", self.max_adjustment)
-            self.learn_adjustments = state.get("learn_adjustments", self.learn_adjustments)
-            self._model_adjustment_sum = state.get("model_adjustment_sum", {m: 0.0 for m in self.model_names})
-            self._model_adjustment_count = state.get("model_adjustment_count", {m: 0 for m in self.model_names})
-            self._model_reward_correlation = state.get("model_reward_correlation", {m: 0.0 for m in self.model_names})
+            self.learn_adjustments = state.get(
+                "learn_adjustments", self.learn_adjustments
+            )
+            self._model_adjustment_sum = state.get(
+                "model_adjustment_sum", {m: 0.0 for m in self.model_names}
+            )
+            self._model_adjustment_count = state.get(
+                "model_adjustment_count", {m: 0 for m in self.model_names}
+            )
+            self._model_reward_correlation = state.get(
+                "model_reward_correlation", {m: 0.0 for m in self.model_names}
+            )
             self._update_count = state.get("update_count", 0)
 
             # Load holding period learning
@@ -673,7 +698,9 @@ class HybridPolicy(RLPolicy):
         for sector, period_data in self._sector_period_rewards.items():
             sector_stats[sector] = {
                 "samples_per_period": {p: len(r) for p, r in period_data.items()},
-                "avg_reward_per_period": {p: (sum(r) / len(r) if r else 0) for p, r in period_data.items()},
+                "avg_reward_per_period": {
+                    p: (sum(r) / len(r) if r else 0) for p, r in period_data.items()
+                },
                 "optimal_period": self._sector_optimal_periods.get(sector),
             }
 

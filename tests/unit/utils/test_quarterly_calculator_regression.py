@@ -73,7 +73,9 @@ class TestIssue1FiscalPeriodSortingRegression:
             result = get_rolling_ttm_periods(quarterly_metrics, compute_missing=True)
 
             # If we get here, the fix works - no NameError was raised
-            assert True, "Successfully called get_rolling_ttm_periods with compute_missing=True"
+            assert True, (
+                "Successfully called get_rolling_ttm_periods with compute_missing=True"
+            )
 
             # Additionally verify the result is a list
             assert isinstance(result, list), "Result should be a list of periods"
@@ -132,18 +134,20 @@ class TestIssue1FiscalPeriodSortingRegression:
 
         # Verify fiscal periods are in expected order (most recent first)
         # Expected order: 2024-Q3, 2024-Q2, 2024-Q1, ...
-        fiscal_periods = [p.get("fiscal_period") for p in result if p.get("fiscal_year") == 2024]
+        fiscal_periods = [
+            p.get("fiscal_period") for p in result if p.get("fiscal_year") == 2024
+        ]
 
         # Q3 should come before Q2, Q2 before Q1 (reverse chronological)
         if "Q3" in fiscal_periods and "Q2" in fiscal_periods:
-            assert fiscal_periods.index("Q3") < fiscal_periods.index(
-                "Q2"
-            ), "Q3 should come before Q2 in reverse chronological order"
+            assert fiscal_periods.index("Q3") < fiscal_periods.index("Q2"), (
+                "Q3 should come before Q2 in reverse chronological order"
+            )
 
         if "Q2" in fiscal_periods and "Q1" in fiscal_periods:
-            assert fiscal_periods.index("Q2") < fiscal_periods.index(
-                "Q1"
-            ), "Q2 should come before Q1 in reverse chronological order"
+            assert fiscal_periods.index("Q2") < fiscal_periods.index("Q1"), (
+                "Q2 should come before Q1 in reverse chronological order"
+            )
 
 
 class TestIssue2YTDConversionRegression:
@@ -174,8 +178,16 @@ class TestIssue2YTDConversionRegression:
             "fiscal_year": 2025,
             "fiscal_period": "FY",
             "period_end_date": "2025-09-30",
-            "income_statement": {"total_revenue": 40000000000, "net_income": 20000000000, "is_ytd": False},
-            "cash_flow": {"operating_cash_flow": 25000000000, "capital_expenditures": -2000000000, "is_ytd": False},
+            "income_statement": {
+                "total_revenue": 40000000000,
+                "net_income": 20000000000,
+                "is_ytd": False,
+            },
+            "cash_flow": {
+                "operating_cash_flow": 25000000000,
+                "capital_expenditures": -2000000000,
+                "is_ytd": False,
+            },
             "balance_sheet": {"total_assets": 100000000000},
         }
 
@@ -199,11 +211,16 @@ class TestIssue2YTDConversionRegression:
 
         # Call compute_missing_quarter with no Q1/Q2, only Q3 YTD
         q4_result = compute_missing_quarter(
-            fy_data=fy_data, q1_data=None, q2_data=None, q3_data=q3_ytd_data  # Missing  # Missing  # YTD
+            fy_data=fy_data,
+            q1_data=None,
+            q2_data=None,
+            q3_data=q3_ytd_data,  # Missing  # Missing  # YTD
         )
 
         # Should NOT return None (was the bug)
-        assert q4_result is not None, "Q4 computation should proceed with Q3 YTD when Q1/Q2 missing"
+        assert q4_result is not None, (
+            "Q4 computation should proceed with Q3 YTD when Q1/Q2 missing"
+        )
 
         # Verify Q4 was computed correctly: Q4 = FY - Q3_YTD
         assert q4_result["fiscal_period"] == "Q4", "Should be Q4"
@@ -212,16 +229,22 @@ class TestIssue2YTDConversionRegression:
         # Verify revenue: Q4 = FY - Q3_YTD = 40B - 30B = 10B
         q4_revenue = q4_result["income_statement"]["total_revenue"]
         expected_q4_revenue = 40000000000 - 30000000000
-        assert q4_revenue == expected_q4_revenue, f"Q4 revenue should be {expected_q4_revenue}, got {q4_revenue}"
+        assert q4_revenue == expected_q4_revenue, (
+            f"Q4 revenue should be {expected_q4_revenue}, got {q4_revenue}"
+        )
 
         # Verify cash flow: Q4 OCF = FY - Q3_YTD = 25B - 18B = 7B
         q4_ocf = q4_result["cash_flow"]["operating_cash_flow"]
         expected_q4_ocf = 25000000000 - 18000000000
-        assert q4_ocf == expected_q4_ocf, f"Q4 OCF should be {expected_q4_ocf}, got {q4_ocf}"
+        assert q4_ocf == expected_q4_ocf, (
+            f"Q4 OCF should be {expected_q4_ocf}, got {q4_ocf}"
+        )
 
         # Verify is_ytd is False for Q4
         assert q4_result["income_statement"]["is_ytd"] is False, "Q4 should not be YTD"
-        assert q4_result["cash_flow"]["is_ytd"] is False, "Q4 cash_flow should not be YTD"
+        assert q4_result["cash_flow"]["is_ytd"] is False, (
+            "Q4 cash_flow should not be YTD"
+        )
 
     def test_q4_computation_still_skipped_when_q2_ytd_with_missing_q1(self):
         """
@@ -255,7 +278,12 @@ class TestIssue2YTDConversionRegression:
 
         # Should return None because Q2 is YTD and Q1 is missing (can't convert)
         q4_result = compute_missing_quarter(
-            fy_data=fy_data, q1_data=None, q2_data=q2_ytd_data, q3_data=q3_data  # Missing  # YTD  # Individual
+            fy_data=fy_data,
+            q1_data=None,
+            q2_data=q2_ytd_data,
+            q3_data=q3_data,  # Missing  # YTD  # Individual
         )
 
-        assert q4_result is None, "Q4 computation should be skipped when Q2 is YTD but Q1 is missing"
+        assert q4_result is None, (
+            "Q4 computation should be skipped when Q2 is YTD but Q1 is missing"
+        )

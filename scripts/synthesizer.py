@@ -21,7 +21,7 @@ warnings.warn(
 )
 
 # Re-export from Clean Architecture
-from investigator.application import InvestmentSynthesizer
-from investigator.domain.models import InvestmentRecommendation
+from investigator.application import InvestmentSynthesizer  # noqa: E402
+from investigator.domain.models import InvestmentRecommendation  # noqa: E402
 
 __all__ = ["InvestmentSynthesizer", "InvestmentRecommendation"]

@@ -18,7 +18,6 @@ Environment:
 import argparse
 import json
 import logging
-import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -29,7 +28,9 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from investigator.domain.services.rl.outcome_tracker import OutcomeTracker
-from investigator.domain.services.rl.policy.contextual_bandit import ContextualBanditPolicy
+from investigator.domain.services.rl.policy.contextual_bandit import (
+    ContextualBanditPolicy,
+)
 from investigator.domain.services.rl.training.trainer import RLTrainer
 from investigator.domain.services.rl.feature_normalizer import FeatureNormalizer
 
@@ -114,7 +115,9 @@ def train_policy(
 
     if resume_from and Path(resume_from).exists():
         # Load existing policy for incremental training
-        logger.info(f"Loading existing policy from {resume_from} for incremental training...")
+        logger.info(
+            f"Loading existing policy from {resume_from} for incremental training..."
+        )
         policy = ContextualBanditPolicy(
             n_features=None,
             prior_variance=1.0,
@@ -220,14 +223,29 @@ def deploy_policy():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Train RL policy on valuation outcomes")
+    parser = argparse.ArgumentParser(
+        description="Train RL policy on valuation outcomes"
+    )
     parser.add_argument("--epochs", type=int, default=20, help="Training epochs")
     parser.add_argument("--batch-size", type=int, default=32, help="Batch size")
-    parser.add_argument("--min-samples", type=int, default=50, help="Minimum samples required")
+    parser.add_argument(
+        "--min-samples", type=int, default=50, help="Minimum samples required"
+    )
     parser.add_argument("--deploy", action="store_true", help="Deploy after training")
-    parser.add_argument("--validation-split", type=float, default=0.15, help="Validation split")
-    parser.add_argument("--resume", action="store_true", help="Resume training from deployed active policy (incremental learning)")
-    parser.add_argument("--resume-from", type=str, default=None, help="Path to policy file to resume from")
+    parser.add_argument(
+        "--validation-split", type=float, default=0.15, help="Validation split"
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume training from deployed active policy (incremental learning)",
+    )
+    parser.add_argument(
+        "--resume-from",
+        type=str,
+        default=None,
+        help="Path to policy file to resume from",
+    )
     args = parser.parse_args()
 
     print("=" * 70)
@@ -239,7 +257,7 @@ def main():
     experiences = load_experiences(args.min_samples)
     analysis = analyze_experiences(experiences)
 
-    print(f"\nExperience Distribution (top 10):")
+    print("\nExperience Distribution (top 10):")
     for tier, data in list(analysis["tier_distribution"].items())[:10]:
         print(f"  {tier}: {data['count']} samples, avg_reward={data['avg_reward']}")
 
@@ -262,7 +280,7 @@ def main():
     )
 
     # Save results
-    training_log = save_policy(policy, normalizer, metrics, eval_metrics, analysis)
+    save_policy(policy, normalizer, metrics, eval_metrics, analysis)
 
     # Print summary
     print("\n" + "=" * 70)

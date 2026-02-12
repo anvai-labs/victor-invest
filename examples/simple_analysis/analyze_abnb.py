@@ -5,23 +5,25 @@ Simple script to analyze ABNB without complex dependencies
 
 import subprocess
 import sys
-import json
 from datetime import datetime
 
 
 def run_analysis(symbol="ABNB"):
     """Run comprehensive analysis for a symbol"""
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Starting Comprehensive Analysis for {symbol}")
     print(f"Time: {datetime.now()}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     # Step 1: Run SEC fundamental analysis
     print("Step 1: Running SEC Fundamental Analysis...")
     try:
         result = subprocess.run(
-            ["python", "sec_fundamental.py", "--symbol", symbol], capture_output=True, text=True, timeout=300
+            ["python", "sec_fundamental.py", "--symbol", symbol],
+            capture_output=True,
+            text=True,
+            timeout=300,
         )
         if result.returncode == 0:
             print("✅ SEC analysis completed")
@@ -36,7 +38,10 @@ def run_analysis(symbol="ABNB"):
     print("Step 2: Running Technical Analysis...")
     try:
         result = subprocess.run(
-            ["python", "yahoo_technical.py", "--symbol", symbol], capture_output=True, text=True, timeout=120
+            ["python", "yahoo_technical.py", "--symbol", symbol],
+            capture_output=True,
+            text=True,
+            timeout=120,
         )
         if result.returncode == 0:
             print("✅ Technical analysis completed")
@@ -51,7 +56,15 @@ def run_analysis(symbol="ABNB"):
     print("Step 3: Running Investment Synthesis...")
     try:
         result = subprocess.run(
-            ["python", "synthesizer.py", "--symbol", symbol, "--synthesis-mode", "comprehensive", "--report"],
+            [
+                "python",
+                "synthesizer.py",
+                "--symbol",
+                symbol,
+                "--synthesis-mode",
+                "comprehensive",
+                "--report",
+            ],
             capture_output=True,
             text=True,
             timeout=300,
@@ -75,10 +88,10 @@ def run_analysis(symbol="ABNB"):
         print(f"❌ Synthesis failed: {e}")
 
     print()
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"Analysis Complete for {symbol}")
-    print(f"Check the 'reports' directory for detailed PDF report")
-    print(f"{'='*60}\n")
+    print("Check the 'reports' directory for detailed PDF report")
+    print(f"{'=' * 60}\n")
 
 
 if __name__ == "__main__":

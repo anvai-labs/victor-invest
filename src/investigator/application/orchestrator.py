@@ -20,11 +20,9 @@ See victor_invest/workflows/graphs.py for the new architecture.
 """
 
 import asyncio
-import json
 import logging
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set
 
@@ -32,7 +30,6 @@ import networkx as nx
 
 from investigator.config import get_config
 from investigator.domain.agents.base import AgentResult, AgentTask, AnalysisType
-from investigator.domain.agents.base import TaskStatus as AgentStatus
 from investigator.domain.agents.fundamental import FundamentalAnalysisAgent
 from investigator.domain.agents.market_context import ETFMarketContextAgent
 from investigator.domain.agents.sec import SECAnalysisAgent
@@ -42,7 +39,6 @@ from investigator.domain.agents.technical import TechnicalAnalysisAgent
 from investigator.infrastructure.cache.cache_manager import CacheManager
 from investigator.infrastructure.database.market_data import get_market_data_fetcher
 from investigator.infrastructure.events import EventBus
-from investigator.infrastructure.llm.ollama import OllamaClient
 from investigator.infrastructure.llm.pool import create_resource_aware_pool
 from investigator.infrastructure.monitoring import MetricsCollector
 
@@ -130,17 +126,25 @@ class AgentOrchestrator:
         try:
             self.market_data_fetcher = get_market_data_fetcher(self._config)
         except Exception as e:
-            self._logger.warning("ETF detection disabled (market data fetcher init failed): %s", e, exc_info=True)
+            self._logger.warning(
+                "ETF detection disabled (market data fetcher init failed): %s",
+                e,
+                exc_info=True,
+            )
             self.market_data_fetcher = None
 
         # Initialize DataSourceManager for unified data access (Phase 1)
         try:
-            from investigator.domain.services.data_sources.manager import DataSourceManager
+            from investigator.domain.services.data_sources.manager import (
+                DataSourceManager,
+            )
 
             self.data_source_manager = DataSourceManager()
             self._logger.info("DataSourceManager initialized for unified data access")
         except Exception as e:
-            self._logger.warning("DataSourceManager init failed, using legacy fetchers: %s", e)
+            self._logger.warning(
+                "DataSourceManager init failed, using legacy fetchers: %s", e
+            )
             self.data_source_manager = None
 
         self.max_concurrent_analyses = max_concurrent_analyses
@@ -178,18 +182,30 @@ class AgentOrchestrator:
     def _initialize_agents(self) -> Dict[str, Any]:
         """Initialize all available agents"""
         agents = {
-            "sec": SECAnalysisAgent("sec_agent_1", self.ollama_client, self.event_bus, self.cache_manager),
-            "technical": TechnicalAnalysisAgent("tech_agent_1", self.ollama_client, self.event_bus, self.cache_manager),
+            "sec": SECAnalysisAgent(
+                "sec_agent_1", self.ollama_client, self.event_bus, self.cache_manager
+            ),
+            "technical": TechnicalAnalysisAgent(
+                "tech_agent_1", self.ollama_client, self.event_bus, self.cache_manager
+            ),
             "fundamental": FundamentalAnalysisAgent(
                 "fund_agent_1", self.ollama_client, self.event_bus, self.cache_manager
             ),
             "symbol_update": SymbolUpdateAgent(
-                "symbol_update_agent_1", self.ollama_client, self.event_bus, self.cache_manager
+                "symbol_update_agent_1",
+                self.ollama_client,
+                self.event_bus,
+                self.cache_manager,
             ),
             "market_context": ETFMarketContextAgent(
-                "market_context_agent_1", self.ollama_client, self.event_bus, self.cache_manager
+                "market_context_agent_1",
+                self.ollama_client,
+                self.event_bus,
+                self.cache_manager,
             ),
-            "synthesis": SynthesisAgent("synth_agent_1", self.ollama_client, self.event_bus, self.cache_manager),
+            "synthesis": SynthesisAgent(
+                "synth_agent_1", self.ollama_client, self.event_bus, self.cache_manager
+            ),
         }
 
         return agents
@@ -210,7 +226,16 @@ class AgentOrchestrator:
         G = nx.DiGraph()
 
         # Add all agent nodes
-        G.add_nodes_from(["sec", "technical", "fundamental", "symbol_update", "market_context", "synthesis"])
+        G.add_nodes_from(
+            [
+                "sec",
+                "technical",
+                "fundamental",
+                "symbol_update",
+                "market_context",
+                "synthesis",
+            ]
+        )
 
         # Add dependency edges
         # Level 1 agents depend on SEC data being fetched and cached first
@@ -294,11 +319,15 @@ class AgentOrchestrator:
             self.workers.append(worker)
 
         # Start event handler
-        event_handler = asyncio.create_task(self._handle_events(), name="orchestrator-event-handler")
+        event_handler = asyncio.create_task(
+            self._handle_events(), name="orchestrator-event-handler"
+        )
         self._background_tasks.append(event_handler)
 
         # Start metrics reporter
-        metrics_reporter = asyncio.create_task(self._report_metrics(), name="orchestrator-metrics-reporter")
+        metrics_reporter = asyncio.create_task(
+            self._report_metrics(), name="orchestrator-metrics-reporter"
+        )
         self._background_tasks.append(metrics_reporter)
 
         # Phase 4.1: Start cache cleanup service (TTL enforcement)
@@ -371,7 +400,9 @@ class AgentOrchestrator:
         kwargs = dict(kwargs)
 
         is_etf = self._is_etf(symbol)
-        agents = self._get_agents_for_mode(symbol, mode, kwargs.get("custom_agents", []), is_etf)
+        agents = self._get_agents_for_mode(
+            symbol, mode, kwargs.get("custom_agents", []), is_etf
+        )
         kwargs["is_etf"] = is_etf
 
         if is_etf:
@@ -397,12 +428,17 @@ class AgentOrchestrator:
         # Add to queue with priority
         await self.task_queue.put((priority.value, task))
 
-        self.logger.info(f"Analysis task {task_id} queued for {symbol} with {mode.value} mode")
+        self.logger.info(
+            f"Analysis task {task_id} queued for {symbol} with {mode.value} mode"
+        )
 
         return task_id
 
     async def analyze_batch(
-        self, symbols: List[str], mode: AnalysisMode = AnalysisMode.STANDARD, priority: Priority = Priority.NORMAL
+        self,
+        symbols: List[str],
+        mode: AnalysisMode = AnalysisMode.STANDARD,
+        priority: Priority = Priority.NORMAL,
     ) -> List[str]:
         """Submit multiple symbols for analysis"""
         task_ids = []
@@ -414,7 +450,10 @@ class AgentOrchestrator:
         return task_ids
 
     async def analyze_peer_group(
-        self, target: str, peers: List[str], mode: AnalysisMode = AnalysisMode.COMPREHENSIVE
+        self,
+        target: str,
+        peers: List[str],
+        mode: AnalysisMode = AnalysisMode.COMPREHENSIVE,
     ) -> str:
         """Analyze a target company and its peers"""
         # Create tasks for all companies
@@ -460,7 +499,9 @@ class AgentOrchestrator:
                 "status": "processing",
                 "symbol": task.symbol,
                 "mode": task.mode.value,
-                "agents_completed": len([a for a in task.results if "result" in task.results.get(a, {})]),
+                "agents_completed": len(
+                    [a for a in task.results if "result" in task.results.get(a, {})]
+                ),
                 "total_agents": len(task.agents),
             }
         else:
@@ -486,7 +527,9 @@ class AgentOrchestrator:
 
             return {"status": "not_found", "task_id": task_id}
 
-    async def get_results(self, task_id: str, wait: bool = False, timeout: int = 300) -> Optional[Dict]:
+    async def get_results(
+        self, task_id: str, wait: bool = False, timeout: int = 300
+    ) -> Optional[Dict]:
         """
         Get results of an analysis task
 
@@ -521,12 +564,16 @@ class AgentOrchestrator:
         while self.running:
             try:
                 # Get task from queue with timeout
-                priority, task = await asyncio.wait_for(self.task_queue.get(), timeout=1.0)
+                priority, task = await asyncio.wait_for(
+                    self.task_queue.get(), timeout=1.0
+                )
 
                 # Check dependencies
                 # Resolves Technical Debt Issue 1.3 (HIGH) - Task dependency race condition
                 if task.dependencies:
-                    missing_deps = [d for d in task.dependencies if d not in self.completed_tasks]
+                    missing_deps = [
+                        d for d in task.dependencies if d not in self.completed_tasks
+                    ]
 
                     if missing_deps:
                         # Track dependency wait count
@@ -542,7 +589,9 @@ class AgentOrchestrator:
                                 f"Waited {task.dependency_wait_count * 0.5}s. Marking as failed."
                             )
                             task.status = "failed"
-                            task.results = {"error": f"Dependencies timeout: {missing_deps}"}
+                            task.results = {
+                                "error": f"Dependencies timeout: {missing_deps}"
+                            }
                             self.completed_tasks[task.id] = task
                             if task.id in self.active_tasks:
                                 del self.active_tasks[task.id]
@@ -570,7 +619,12 @@ class AgentOrchestrator:
 
                     # Emit completion event
                     await self.event_bus.emit(
-                        "analysis_completed", {"task_id": task.id, "symbol": task.symbol, "mode": task.mode.value}
+                        "analysis_completed",
+                        {
+                            "task_id": task.id,
+                            "symbol": task.symbol,
+                            "mode": task.mode.value,
+                        },
                     )
 
                 except Exception as e:
@@ -591,7 +645,10 @@ class AgentOrchestrator:
             except asyncio.TimeoutError:
                 continue
             except Exception as e:
-                self.logger.error(f"Worker {worker_id} encountered unexpected error: {e}", exc_info=True)
+                self.logger.error(
+                    f"Worker {worker_id} encountered unexpected error: {e}",
+                    exc_info=True,
+                )
 
     async def _process_task(self, task: OrchestrationTask) -> Dict:
         """Process a single orchestration task"""
@@ -623,7 +680,10 @@ class AgentOrchestrator:
 
         # Pre-fetch consolidated data via DataSourceManager (Phase 1 integration)
         consolidated_data = None
-        if hasattr(self, "data_source_manager") and self.data_source_manager is not None:
+        if (
+            hasattr(self, "data_source_manager")
+            and self.data_source_manager is not None
+        ):
             try:
                 # Run synchronous get_data in thread pool to avoid blocking
                 loop = asyncio.get_event_loop()
@@ -678,7 +738,10 @@ class AgentOrchestrator:
                             "error": "agent_not_registered",
                         }
                     )
-                    agent_results[agent_name] = {"status": "error", "error": "Agent not registered"}
+                    agent_results[agent_name] = {
+                        "status": "error",
+                        "error": "Agent not registered",
+                    }
                     continue
 
                 agent_task = AgentTask(
@@ -721,11 +784,15 @@ class AgentOrchestrator:
                 elif agent_name == "symbol_update":
                     # Pass previous agent results with _analysis suffix for consistency
                     if "fundamental" in agent_results:
-                        agent_task.context["fundamental_analysis"] = agent_results["fundamental"]
+                        agent_task.context["fundamental_analysis"] = agent_results[
+                            "fundamental"
+                        ]
                     if "sec" in agent_results:
                         agent_task.context["sec_analysis"] = agent_results["sec"]
 
-                level_tasks.append(self._run_agent_with_semaphore(self.agents[agent_name], agent_task))
+                level_tasks.append(
+                    self._run_agent_with_semaphore(self.agents[agent_name], agent_task)
+                )
                 executed_agents.append(agent_name)
 
             if not level_tasks:
@@ -743,7 +810,10 @@ class AgentOrchestrator:
                 if isinstance(agent_outcome, Exception):
                     error_message = str(agent_outcome)
                     trace_entry.update({"status": "error", "error": error_message})
-                    agent_results[agent_name] = {"status": "error", "error": error_message}
+                    agent_results[agent_name] = {
+                        "status": "error",
+                        "error": error_message,
+                    }
                     self.logger.error(
                         "Task %s (%s): %s -> %s failed: %s",
                         task.id,
@@ -754,7 +824,11 @@ class AgentOrchestrator:
                     )
                 else:
                     agent_results[agent_name] = agent_outcome.result_data
-                    status_value = agent_outcome.status.value if hasattr(agent_outcome, "status") else "completed"
+                    status_value = (
+                        agent_outcome.status.value
+                        if hasattr(agent_outcome, "status")
+                        else "completed"
+                    )
                     trace_entry["status"] = status_value
 
                     duration = getattr(agent_outcome, "processing_time", None)
@@ -770,9 +844,16 @@ class AgentOrchestrator:
                     if hasattr(agent_outcome, "metadata") and agent_outcome.metadata:
                         trace_entry["metadata"] = agent_outcome.metadata
 
-                    duration_display = f"{duration:.2f}s" if isinstance(duration, (int, float)) else "n/a"
+                    duration_display = (
+                        f"{duration:.2f}s"
+                        if isinstance(duration, (int, float))
+                        else "n/a"
+                    )
                     log_fn = self.logger.info
-                    if hasattr(agent_outcome, "is_successful") and not agent_outcome.is_successful():
+                    if (
+                        hasattr(agent_outcome, "is_successful")
+                        and not agent_outcome.is_successful()
+                    ):
                         log_fn = self.logger.warning
                     log_fn(
                         "Task %s (%s): %s -> %s completed (%s) duration=%s",
@@ -811,7 +892,9 @@ class AgentOrchestrator:
         }
         try:
             # FIX Issue #3: Use async cache to prevent event loop blocking
-            await self.cache_manager.set_async(CacheType.LLM_RESPONSE, cache_key, results)
+            await self.cache_manager.set_async(
+                CacheType.LLM_RESPONSE, cache_key, results
+            )
         except Exception as e:
             self.logger.warning(f"Failed to cache comprehensive results: {e}")
 
@@ -833,7 +916,9 @@ class AgentOrchestrator:
 
         # Run synthesis agent for peer comparison
         synthesis_agent = self.agents["synthesis"]
-        comparison_result = await synthesis_agent.generate_peer_synthesis(target, peers, analyses)
+        comparison_result = await synthesis_agent.generate_peer_synthesis(
+            target, peers, analyses
+        )
 
         return {
             "task_id": task.id,
@@ -885,20 +970,43 @@ class AgentOrchestrator:
         if mode == AnalysisMode.QUICK:
             agents = ["technical", "market_context"]
         elif mode == AnalysisMode.STANDARD:
-            agents = ["sec", "technical", "fundamental", "symbol_update", "market_context", "synthesis"]
+            agents = [
+                "sec",
+                "technical",
+                "fundamental",
+                "symbol_update",
+                "market_context",
+                "synthesis",
+            ]
         elif mode == AnalysisMode.COMPREHENSIVE:
-            agents = ["sec", "technical", "fundamental", "symbol_update", "market_context", "synthesis"]
+            agents = [
+                "sec",
+                "technical",
+                "fundamental",
+                "symbol_update",
+                "market_context",
+                "synthesis",
+            ]
         elif mode == AnalysisMode.CUSTOM:
             agents = custom_agents or ["technical"]
         else:
-            agents = ["sec", "technical", "fundamental", "symbol_update", "market_context", "synthesis"]
+            agents = [
+                "sec",
+                "technical",
+                "fundamental",
+                "symbol_update",
+                "market_context",
+                "synthesis",
+            ]
 
         # Deduplicate while preserving order
         agents = list(dict.fromkeys(agents))
 
         if is_etf:
             # ETFs get: technical + market_context + synthesis (no SEC/fundamental/symbol_update)
-            filtered = [a for a in agents if a not in {"sec", "fundamental", "symbol_update"}]
+            filtered = [
+                a for a in agents if a not in {"sec", "fundamental", "symbol_update"}
+            ]
             if "technical" not in filtered:
                 filtered.insert(0, "technical")
             if "market_context" not in filtered:
@@ -943,7 +1051,7 @@ class AgentOrchestrator:
         # Topological sort using Kahn's algorithm
         levels = []
         processed = set()
-        in_degree = {node: subgraph.in_degree(node) for node in subgraph.nodes()}
+        {node: subgraph.in_degree(node) for node in subgraph.nodes()}
 
         while len(processed) < len(agents):
             # Find all nodes with no unprocessed dependencies
@@ -959,13 +1067,16 @@ class AgentOrchestrator:
                 # No nodes ready - circular dependency detected
                 unprocessed = [a for a in agents if a not in processed]
                 raise ValueError(
-                    f"Circular dependency detected in agents: {unprocessed}. " f"Cannot determine execution order."
+                    f"Circular dependency detected in agents: {unprocessed}. "
+                    f"Cannot determine execution order."
                 )
 
             processed.update(level)
             levels.append(level)
 
-        self.logger.info(f"✅ Execution order computed: {len(levels)} levels → {levels}")
+        self.logger.info(
+            f"✅ Execution order computed: {len(levels)} levels → {levels}"
+        )
 
         return levels
 
@@ -980,7 +1091,9 @@ class AgentOrchestrator:
                 # Process events from the queue
                 await asyncio.sleep(0.1)  # Small delay to prevent busy waiting
             except Exception as e:
-                self.logger.error(f"Event handler encountered unexpected error: {e}", exc_info=True)
+                self.logger.error(
+                    f"Event handler encountered unexpected error: {e}", exc_info=True
+                )
                 await asyncio.sleep(1)
 
     def _process_event_sync(self, event):
@@ -1023,7 +1136,8 @@ class AgentOrchestrator:
                 # Calculate average duration
                 if self.performance_stats["total_analyses"] > 0:
                     success_rate = (
-                        self.performance_stats["successful_analyses"] / self.performance_stats["total_analyses"]
+                        self.performance_stats["successful_analyses"]
+                        / self.performance_stats["total_analyses"]
                     ) * 100
                 else:
                     success_rate = 0
@@ -1040,7 +1154,11 @@ class AgentOrchestrator:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                self.logger.error("Metrics reporter encountered unexpected error: %s", e, exc_info=True)
+                self.logger.error(
+                    "Metrics reporter encountered unexpected error: %s",
+                    e,
+                    exc_info=True,
+                )
                 await asyncio.sleep(1)
 
     async def optimize_agent_allocation(self):
@@ -1057,7 +1175,11 @@ class AgentOrchestrator:
                 self.workers.append(worker)
                 self.logger.info(f"Added dynamic worker {worker_id}")
 
-        elif queue_size == 0 and active_count == 0 and len(self.workers) > self.max_concurrent_analyses:
+        elif (
+            queue_size == 0
+            and active_count == 0
+            and len(self.workers) > self.max_concurrent_analyses
+        ):
             # Remove excess workers
             excess = len(self.workers) - self.max_concurrent_analyses
             for _ in range(min(excess, 2)):

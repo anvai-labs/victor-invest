@@ -46,8 +46,12 @@ from investigator.domain.services.industry_datasets.base import (
     MetricQuality,
     ValuationAdjustment,
 )
-from investigator.domain.services.industry_datasets.defense_dataset import DefenseDataset
-from investigator.domain.services.industry_datasets.insurance_dataset import InsuranceDataset
+from investigator.domain.services.industry_datasets.defense_dataset import (
+    DefenseDataset,
+)
+from investigator.domain.services.industry_datasets.insurance_dataset import (
+    InsuranceDataset,
+)
 
 # Integration helpers - simpler API for using datasets
 from investigator.domain.services.industry_datasets.integration import (
@@ -72,7 +76,9 @@ from investigator.domain.services.industry_datasets.registry import (
 from investigator.domain.services.industry_datasets.reit_dataset import REITDataset
 
 # Import and auto-register all industry datasets
-from investigator.domain.services.industry_datasets.semiconductor_dataset import SemiconductorDataset
+from investigator.domain.services.industry_datasets.semiconductor_dataset import (
+    SemiconductorDataset,
+)
 
 __all__ = [
     # Base classes

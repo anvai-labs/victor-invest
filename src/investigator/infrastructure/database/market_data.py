@@ -10,15 +10,12 @@ Connects to read-only market data database on ${DB_HOST:-localhost}
 
 import logging
 import threading
-from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any, Dict, Optional
 
 import numpy as np
 import pandas as pd
-import psycopg2
 from sqlalchemy import create_engine, text
-from sqlalchemy.pool import StaticPool
 
 logger = logging.getLogger(__name__)
 
@@ -63,9 +60,13 @@ class DatabaseMarketDataFetcher:
 
         # Warning tuning – prevent false alarms on intentionally short lookbacks.
         self.history_warning_days = getattr(config.analysis, "history_warning_days", 50)
-        self.history_warning_tolerance = getattr(config.analysis, "history_warning_tolerance", 0.8)
+        self.history_warning_tolerance = getattr(
+            config.analysis, "history_warning_tolerance", 0.8
+        )
         # Clamp tolerance to sensible bounds (10%-100%)
-        self.history_warning_tolerance = min(1.0, max(0.1, self.history_warning_tolerance))
+        self.history_warning_tolerance = min(
+            1.0, max(0.1, self.history_warning_tolerance)
+        )
         self.low_volume_notice_min_days = getattr(
             config.analysis, "low_volume_notice_min_days", 30
         )  # only escalate low volume when we have a reasonable sample size
@@ -116,7 +117,9 @@ class DatabaseMarketDataFetcher:
             if days is None:
                 days = self.default_days
 
-            logger.info(f"Fetching {days} days of market data for {symbol} from database")
+            logger.info(
+                f"Fetching {days} days of market data for {symbol} from database"
+            )
 
             # SQL query to fetch OHLCV data - get exact N trading days using LIMIT
             # Database contains only trading days (no weekends/holidays)
@@ -163,7 +166,9 @@ class DatabaseMarketDataFetcher:
                 df[col] = pd.to_numeric(df[col], errors="coerce")
 
             # Convert volume to int
-            df["Volume"] = pd.to_numeric(df["Volume"], errors="coerce").fillna(0).astype(np.int64)
+            df["Volume"] = (
+                pd.to_numeric(df["Volume"], errors="coerce").fillna(0).astype(np.int64)
+            )
 
             # Remove any rows with all NaN values
             df = df.dropna(how="all")
@@ -182,7 +187,11 @@ class DatabaseMarketDataFetcher:
             # Check volume requirement – only escalate when we have a reasonable sample
             avg_volume = df["Volume"].mean()
             if avg_volume < self.min_volume:
-                log_fn = logger.info if len(df) < self.low_volume_notice_min_days else logger.warning
+                log_fn = (
+                    logger.info
+                    if len(df) < self.low_volume_notice_min_days
+                    else logger.warning
+                )
                 log_fn(
                     "Low volume for %s: %s < %s (lookback %d days)",
                     symbol,
@@ -191,7 +200,11 @@ class DatabaseMarketDataFetcher:
                     len(df),
                 )
 
-            logger.info("Successfully fetched %d days of data for %s from database", len(df), symbol)
+            logger.info(
+                "Successfully fetched %d days of data for %s from database",
+                len(df),
+                symbol,
+            )
             return df
 
         except Exception as e:
@@ -210,7 +223,9 @@ class DatabaseMarketDataFetcher:
         expected = int(cap * self.history_warning_tolerance)
         return max(5, expected)
 
-    async def get_historical_data(self, symbol: str, period: str = "1y") -> pd.DataFrame:
+    async def get_historical_data(
+        self, symbol: str, period: str = "1y"
+    ) -> pd.DataFrame:
         """
         Async alias for get_stock_data to match technical agent expectations
 
@@ -253,15 +268,25 @@ class DatabaseMarketDataFetcher:
             )
 
             with self.engine.connect() as conn:
-                price_info = conn.execute(query_price, {"symbol": symbol.upper()}).fetchone()
+                price_info = conn.execute(
+                    query_price, {"symbol": symbol.upper()}
+                ).fetchone()
 
             if not price_info:
                 logger.warning(f"No recent price data found for {symbol}")
                 current_price = None
                 current_volume = None
             else:
-                current_price = float(price_info.current_price) if price_info.current_price else None
-                current_volume = int(price_info.current_volume) if price_info.current_volume else None
+                current_price = (
+                    float(price_info.current_price)
+                    if price_info.current_price
+                    else None
+                )
+                current_volume = (
+                    int(price_info.current_volume)
+                    if price_info.current_volume
+                    else None
+                )
 
             # Calculate 52-week high/low
             query_52w = text(
@@ -277,12 +302,15 @@ class DatabaseMarketDataFetcher:
             )
 
             with self.engine.connect() as conn:
-                result_52w = conn.execute(query_52w, {"symbol": symbol.upper()}).fetchone()
+                result_52w = conn.execute(
+                    query_52w, {"symbol": symbol.upper()}
+                ).fetchone()
 
             # Calculate market cap if we have shares outstanding and current price
             market_cap = None
             shares_outstanding = self._extract_int(
-                company_info.get("outstandingshares") or company_info.get("shares_outstanding")
+                company_info.get("outstandingshares")
+                or company_info.get("shares_outstanding")
             )
             if shares_outstanding and current_price:
                 market_cap = shares_outstanding * current_price
@@ -312,12 +340,22 @@ class DatabaseMarketDataFetcher:
             info = {
                 "current_price": current_price,
                 "current_volume": current_volume,
-                "52_week_high": float(result_52w.week_52_high) if result_52w and result_52w.week_52_high else None,
-                "52_week_low": float(result_52w.week_52_low) if result_52w and result_52w.week_52_low else None,
-                "avg_volume": int(result_52w.avg_volume) if result_52w and result_52w.avg_volume else None,
+                "52_week_high": float(result_52w.week_52_high)
+                if result_52w and result_52w.week_52_high
+                else None,
+                "52_week_low": float(result_52w.week_52_low)
+                if result_52w and result_52w.week_52_low
+                else None,
+                "avg_volume": int(result_52w.avg_volume)
+                if result_52w and result_52w.avg_volume
+                else None,
                 "market_cap": market_cap,
-                "sector": self._extract_first_nonempty(company_info, ["sec_sector", "sector", "gics_sector"]),
-                "industry": self._extract_first_nonempty(company_info, ["sec_industry", "industry", "gics_industry"]),
+                "sector": self._extract_first_nonempty(
+                    company_info, ["sec_sector", "sector", "gics_sector"]
+                ),
+                "industry": self._extract_first_nonempty(
+                    company_info, ["sec_industry", "industry", "gics_industry"]
+                ),
                 "beta": beta,
                 "cik": self._format_cik(company_info.get("cik")),
                 "sic_code": company_info.get("sic_code"),
@@ -329,7 +367,13 @@ class DatabaseMarketDataFetcher:
                 "is_etf": is_etf,
                 "asset_type": self._extract_first_nonempty(
                     company_info,
-                    ["asset_type", "assettype", "security_type", "instrument_type", "asset_class"],
+                    [
+                        "asset_type",
+                        "assettype",
+                        "security_type",
+                        "instrument_type",
+                        "asset_class",
+                    ],
                 ),
             }
 
@@ -452,7 +496,13 @@ class DatabaseMarketDataFetcher:
                     return False
             return None
 
-        bool_fields = ["is_etf", "is_etf_flag", "etf_flag", "fund_is_etf", "is_exchange_traded_fund"]
+        bool_fields = [
+            "is_etf",
+            "is_etf_flag",
+            "etf_flag",
+            "fund_is_etf",
+            "is_exchange_traded_fund",
+        ]
         for field in bool_fields:
             if field in metadata:
                 coerced = coerce_bool(metadata[field])

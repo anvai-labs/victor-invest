@@ -386,7 +386,9 @@ class ThresholdRegistry:
         if industry_overrides:
             self.industry_overrides.update(industry_overrides)
 
-    def get_pe_thresholds(self, sector: Optional[str] = None, industry: Optional[str] = None) -> PEThresholds:
+    def get_pe_thresholds(
+        self, sector: Optional[str] = None, industry: Optional[str] = None
+    ) -> PEThresholds:
         """
         Get P/E thresholds for a sector/industry.
 
@@ -407,7 +409,9 @@ class ThresholdRegistry:
 
         # Try industry override first (case-insensitive lookup)
         if industry:
-            industry_match = self._find_key_case_insensitive(industry, self.industry_overrides)
+            industry_match = self._find_key_case_insensitive(
+                industry, self.industry_overrides
+            )
             if industry_match:
                 thresholds = self.industry_overrides[industry_match]
                 source_industry = industry_match
@@ -415,7 +419,9 @@ class ThresholdRegistry:
 
         # Fall back to sector (case-insensitive lookup)
         if thresholds is None and sector:
-            sector_match = self._find_key_case_insensitive(sector, self.sector_thresholds)
+            sector_match = self._find_key_case_insensitive(
+                sector, self.sector_thresholds
+            )
             if sector_match:
                 thresholds = self.sector_thresholds[sector_match]
                 logger.debug(f"Using sector thresholds for '{sector_match}'")
@@ -423,7 +429,9 @@ class ThresholdRegistry:
         # Fall back to default
         if thresholds is None:
             thresholds = self.DEFAULT_THRESHOLDS
-            logger.debug(f"Using default thresholds (sector='{sector}', industry='{industry}' not found)")
+            logger.debug(
+                f"Using default thresholds (sector='{sector}', industry='{industry}' not found)"
+            )
 
         return PEThresholds(
             extreme_high=thresholds["extreme"],
@@ -434,7 +442,9 @@ class ThresholdRegistry:
             industry=source_industry,
         )
 
-    def _find_key_case_insensitive(self, key: str, dictionary: Dict[str, Any]) -> Optional[str]:
+    def _find_key_case_insensitive(
+        self, key: str, dictionary: Dict[str, Any]
+    ) -> Optional[str]:
         """Find a key in dictionary case-insensitively."""
         key_lower = key.lower()
         for dict_key in dictionary:
@@ -443,7 +453,10 @@ class ThresholdRegistry:
         return None
 
     def classify_pe_level(
-        self, pe_ratio: float, sector: Optional[str] = None, industry: Optional[str] = None
+        self,
+        pe_ratio: float,
+        sector: Optional[str] = None,
+        industry: Optional[str] = None,
     ) -> PELevel:
         """
         Classify a P/E ratio against sector/industry thresholds.
@@ -460,7 +473,10 @@ class ThresholdRegistry:
         return thresholds.classify(pe_ratio)
 
     def get_pe_weight_adjustment(
-        self, pe_ratio: float, sector: Optional[str] = None, industry: Optional[str] = None
+        self,
+        pe_ratio: float,
+        sector: Optional[str] = None,
+        industry: Optional[str] = None,
     ) -> Tuple[float, str]:
         """
         Get weight adjustment multiplier based on P/E level.
@@ -480,7 +496,10 @@ class ThresholdRegistry:
         thresholds = self.get_pe_thresholds(sector, industry)
 
         adjustments = {
-            PELevel.EXTREME: (0.50, f"Extreme P/E ({pe_ratio:.0f}x > {thresholds.extreme_high}x)"),
+            PELevel.EXTREME: (
+                0.50,
+                f"Extreme P/E ({pe_ratio:.0f}x > {thresholds.extreme_high}x)",
+            ),
             PELevel.HIGH: (0.75, f"High P/E ({pe_ratio:.0f}x > {thresholds.high}x)"),
             PELevel.MODERATE: (1.00, f"Moderate P/E ({pe_ratio:.0f}x)"),
             PELevel.LOW: (1.10, f"Low P/E ({pe_ratio:.0f}x < {thresholds.moderate}x)"),

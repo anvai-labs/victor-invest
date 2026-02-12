@@ -3,8 +3,8 @@
 Test script to verify semaphore model reuse tracking
 Simulates two concurrent tasks using the same model
 """
+
 import asyncio
-import sys
 from core.llm_semaphore import DynamicLLMSemaphore, TaskType
 
 
@@ -14,14 +14,21 @@ async def simulate_task(task_name: str, model: str, delay: float = 1.0):
 
     print(f"\n[{task_name}] Requesting semaphore for {model}...")
     task_id = await semaphore.acquire(
-        model=model, task_type=TaskType.TECHNICAL.value, prompt_tokens=5000, response_tokens=2000
+        model=model,
+        task_type=TaskType.TECHNICAL.value,
+        prompt_tokens=5000,
+        response_tokens=2000,
     )
 
     try:
         print(f"[{task_name}] Acquired semaphore with task_id={task_id}")
         print(f"[{task_name}] Loaded models: {semaphore.loaded_models}")
-        print(f"[{task_name}] Active tasks per model: {semaphore.active_tasks_per_model}")
-        print(f"[{task_name}] Used VRAM: {semaphore.used_vram_gb:.2f}GB / {semaphore.available_vram_gb:.2f}GB")
+        print(
+            f"[{task_name}] Active tasks per model: {semaphore.active_tasks_per_model}"
+        )
+        print(
+            f"[{task_name}] Used VRAM: {semaphore.used_vram_gb:.2f}GB / {semaphore.available_vram_gb:.2f}GB"
+        )
         print(f"[{task_name}] Concurrent tasks: {len(semaphore.active_tasks)}")
 
         # Simulate work

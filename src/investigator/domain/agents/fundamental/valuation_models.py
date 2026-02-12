@@ -25,7 +25,9 @@ def calculate_relative_valuation_models(
     config: Any,
     sector_specific_result: Optional[Dict[str, Any]],
     lookup_sector_multiple: Callable[[Optional[str], str], Optional[float]],
-    calculate_enterprise_value: Callable[[Dict[str, Any], Dict[str, Any]], Optional[float]],
+    calculate_enterprise_value: Callable[
+        [Dict[str, Any], Dict[str, Any]], Optional[float]
+    ],
     logger: Any,
 ) -> Dict[str, Dict[str, Any]]:
     """Calculate P/E, EV/EBITDA, P/S and P/B model outputs."""
@@ -38,7 +40,9 @@ def calculate_relative_valuation_models(
     growth_adjusted_pe = None
     peg_ratio = ratios.get("peg_ratio") or ratios.get("peg")
     if peg_ratio and peg_ratio > 0:
-        growth_adjusted_pe = sector_median_pe * (1 + min(peg_ratio, 3)) if sector_median_pe else None
+        growth_adjusted_pe = (
+            sector_median_pe * (1 + min(peg_ratio, 3)) if sector_median_pe else None
+        )
 
     current_price = (
         market_data.get("price")
@@ -57,7 +61,11 @@ def calculate_relative_valuation_models(
     )
     normalized_pe = normalize_model_output(pe_model.calculate())
 
-    ttm_ebitda = financials.get("ebitda") or ratios.get("ebitda") or financials.get("operating_income")
+    ttm_ebitda = (
+        financials.get("ebitda")
+        or ratios.get("ebitda")
+        or financials.get("operating_income")
+    )
     enterprise_value = calculate_enterprise_value(market_data, financials)
     sector_ev_ebitda = (
         company_data.get("sector_metrics", {}).get("median_ev_ebitda")
@@ -68,7 +76,9 @@ def calculate_relative_valuation_models(
     leverage_adjusted_multiple = None
     if sector_ev_ebitda and company_profile.net_debt_to_ebitda is not None:
         leverage_delta = max(company_profile.net_debt_to_ebitda - 2.0, 0.0)
-        leverage_adjusted_multiple = sector_ev_ebitda * clamp(1.0 - 0.06 * leverage_delta, 0.6, 1.1)
+        leverage_adjusted_multiple = sector_ev_ebitda * clamp(
+            1.0 - 0.06 * leverage_delta, 0.6, 1.1
+        )
 
     ev_ebitda_model = EVEBITDAModel(
         company_profile=company_profile,
@@ -76,7 +86,8 @@ def calculate_relative_valuation_models(
         enterprise_value=enterprise_value,
         sector_median_ev_ebitda=sector_ev_ebitda,
         leverage_adjusted_multiple=leverage_adjusted_multiple,
-        interest_coverage=ratios.get("interest_coverage") or ratios.get("interest_coverage_ratio"),
+        interest_coverage=ratios.get("interest_coverage")
+        or ratios.get("interest_coverage_ratio"),
     )
     normalized_ev_ebitda = normalize_model_output(ev_ebitda_model.calculate())
 
@@ -85,7 +96,9 @@ def calculate_relative_valuation_models(
         revenue_per_share = ratios.get("revenue_per_share")
     elif financials.get("revenues") and company_profile.shares_outstanding:
         try:
-            revenue_per_share = float(financials.get("revenues")) / float(company_profile.shares_outstanding)
+            revenue_per_share = float(financials.get("revenues")) / float(
+                company_profile.shares_outstanding
+            )
         except (TypeError, ValueError, ZeroDivisionError) as exc:
             revenue_per_share = None
             logger.debug("%s - Failed to calculate revenue_per_share: %s", symbol, exc)
@@ -101,7 +114,9 @@ def calculate_relative_valuation_models(
     if isinstance(valuation_settings, dict):
         liquidity_floor = valuation_settings.get("liquidity_floor_usd", liquidity_floor)
     elif valuation_settings is not None:
-        liquidity_floor = getattr(valuation_settings, "liquidity_floor_usd", liquidity_floor)
+        liquidity_floor = getattr(
+            valuation_settings, "liquidity_floor_usd", liquidity_floor
+        )
 
     ps_model = PSMultipleModel(
         company_profile=company_profile,
@@ -128,7 +143,9 @@ def calculate_relative_valuation_models(
 
     if sector_specific_result and "P/BV" in sector_specific_result.get("method", ""):
         confidence_map = {"high": 0.9, "medium": 0.7, "low": 0.5}
-        insurance_confidence = confidence_map.get(sector_specific_result.get("confidence", "medium"), 0.7)
+        insurance_confidence = confidence_map.get(
+            sector_specific_result.get("confidence", "medium"), 0.7
+        )
         normalized_pb = {
             "model": "pb",
             "fair_value_per_share": sector_specific_result.get("fair_value"),

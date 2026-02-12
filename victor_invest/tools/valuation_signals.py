@@ -162,7 +162,9 @@ Signal Integration:
             action = action.lower().strip()
 
             if action == "integrate":
-                return await self._integrate_signals(symbol, base_fair_value, current_price, **kwargs)
+                return await self._integrate_signals(
+                    symbol, base_fair_value, current_price, **kwargs
+                )
 
             elif action == "credit_risk":
                 return await self._get_credit_risk_signal(symbol, **kwargs)
@@ -185,19 +187,28 @@ Signal Integration:
         except Exception as e:
             logger.error(f"ValuationSignalsTool execute error: {e}")
             return ToolResult.create_failure(
-                f"Valuation signal query failed: {str(e)}", metadata={"action": action, "symbol": symbol}
+                f"Valuation signal query failed: {str(e)}",
+                metadata={"action": action, "symbol": symbol},
             )
 
     async def _integrate_signals(
-        self, symbol: Optional[str], base_fair_value: Optional[float], current_price: Optional[float], **kwargs
+        self,
+        symbol: Optional[str],
+        base_fair_value: Optional[float],
+        current_price: Optional[float],
+        **kwargs,
     ) -> ToolResult:
         """Integrate all signals for adjusted fair value."""
         if not symbol:
             return ToolResult.create_failure("Symbol is required for integration")
         if base_fair_value is None:
-            return ToolResult.create_failure("base_fair_value is required for integration")
+            return ToolResult.create_failure(
+                "base_fair_value is required for integration"
+            )
         if current_price is None:
-            return ToolResult.create_failure("current_price is required for integration")
+            return ToolResult.create_failure(
+                "current_price is required for integration"
+            )
 
         # Collect data from all sources
         credit_risk_data = await self._fetch_credit_risk_data(symbol)
@@ -216,7 +227,8 @@ Signal Integration:
             market_regime_data=market_regime_data,
         )
 
-        return ToolResult.create_success(output=result.to_dict(),
+        return ToolResult.create_success(
+            output=result.to_dict(),
             metadata={
                 "source": "valuation_signal_integrator",
                 "symbol": symbol,
@@ -225,10 +237,14 @@ Signal Integration:
             },
         )
 
-    async def _get_credit_risk_signal(self, symbol: Optional[str], **kwargs) -> ToolResult:
+    async def _get_credit_risk_signal(
+        self, symbol: Optional[str], **kwargs
+    ) -> ToolResult:
         """Get credit risk signal only."""
         if not symbol:
-            return ToolResult.create_failure("Symbol is required for credit risk signal")
+            return ToolResult.create_failure(
+                "Symbol is required for credit risk signal"
+            )
 
         # Use provided data or fetch
         altman_zscore = kwargs.get("altman_zscore")
@@ -236,7 +252,11 @@ Signal Integration:
         piotroski_fscore = kwargs.get("piotroski_fscore")
 
         # If no data provided, try to fetch
-        if altman_zscore is None and beneish_mscore is None and piotroski_fscore is None:
+        if (
+            altman_zscore is None
+            and beneish_mscore is None
+            and piotroski_fscore is None
+        ):
             credit_data = await self._fetch_credit_risk_data(symbol)
             if credit_data:
                 altman_zscore = credit_data.get("altman_zscore")
@@ -255,7 +275,8 @@ Signal Integration:
         if signal.distress_tier.value in ["distressed", "severe_distress"]:
             warnings.append(f"Company in {signal.distress_tier.value} tier")
 
-        return ToolResult.create_success(output=signal.to_dict(),
+        return ToolResult.create_success(
+            output=signal.to_dict(),
             metadata={
                 "source": "credit_risk_signal",
                 "symbol": symbol,
@@ -291,7 +312,8 @@ Signal Integration:
             sentiment_score=sentiment_score,
         )
 
-        return ToolResult.create_success(output=signal.to_dict(),
+        return ToolResult.create_success(
+            output=signal.to_dict(),
             metadata={
                 "source": "insider_sentiment_signal",
                 "symbol": symbol,
@@ -299,10 +321,14 @@ Signal Integration:
             },
         )
 
-    async def _get_short_interest_signal(self, symbol: Optional[str], **kwargs) -> ToolResult:
+    async def _get_short_interest_signal(
+        self, symbol: Optional[str], **kwargs
+    ) -> ToolResult:
         """Get short interest signal only."""
         if not symbol:
-            return ToolResult.create_failure("Symbol is required for short interest signal")
+            return ToolResult.create_failure(
+                "Symbol is required for short interest signal"
+            )
 
         # Use provided data or fetch
         short_percent_float = kwargs.get("short_percent_float")
@@ -327,7 +353,8 @@ Signal Integration:
         if signal.warning_flag:
             warnings.append(signal.interpretation)
 
-        return ToolResult.create_success(output=signal.to_dict(),
+        return ToolResult.create_success(
+            output=signal.to_dict(),
             metadata={
                 "source": "short_interest_signal",
                 "symbol": symbol,
@@ -364,7 +391,8 @@ Signal Integration:
             yield_curve_spread_bps=kwargs.get("yield_curve_spread_bps"),
         )
 
-        return ToolResult.create_success(output=signal.to_dict(),
+        return ToolResult.create_success(
+            output=signal.to_dict(),
             metadata={
                 "source": "market_regime_adjustment",
                 "phase": signal.credit_cycle_phase,
@@ -385,7 +413,9 @@ Signal Integration:
                 return {
                     "altman_zscore": result.output.get("altman_z", {}).get("zscore"),
                     "beneish_mscore": result.output.get("beneish_m", {}).get("mscore"),
-                    "piotroski_fscore": result.output.get("piotroski_f", {}).get("fscore"),
+                    "piotroski_fscore": result.output.get("piotroski_f", {}).get(
+                        "fscore"
+                    ),
                 }
         except Exception as e:
             logger.debug(f"Could not fetch credit risk data for {symbol}: {e}")
@@ -444,10 +474,18 @@ Signal Integration:
                 classifications = result.output.get("classifications", {})
                 indicators = result.output.get("indicators", {})
                 return {
-                    "credit_cycle_phase": classifications.get("credit_cycle", "mid_cycle"),
-                    "volatility_regime": classifications.get("volatility_regime", "normal"),
-                    "recession_probability": classifications.get("recession_probability", "low"),
-                    "fed_policy_stance": classifications.get("fed_policy_stance", "neutral"),
+                    "credit_cycle_phase": classifications.get(
+                        "credit_cycle", "mid_cycle"
+                    ),
+                    "volatility_regime": classifications.get(
+                        "volatility_regime", "normal"
+                    ),
+                    "recession_probability": classifications.get(
+                        "recession_probability", "low"
+                    ),
+                    "fed_policy_stance": classifications.get(
+                        "fed_policy_stance", "neutral"
+                    ),
                     "yield_curve_spread_bps": indicators.get("yield_10y_2y_spread_bps"),
                 }
         except Exception as e:
@@ -461,13 +499,25 @@ Signal Integration:
             "properties": {
                 "action": {
                     "type": "string",
-                    "enum": ["integrate", "credit_risk", "insider", "short_interest", "market_regime"],
+                    "enum": [
+                        "integrate",
+                        "credit_risk",
+                        "insider",
+                        "short_interest",
+                        "market_regime",
+                    ],
                     "description": "Type of signal query",
                     "default": "integrate",
                 },
                 "symbol": {"type": "string", "description": "Stock symbol"},
-                "base_fair_value": {"type": "number", "description": "Base fair value from valuation models"},
-                "current_price": {"type": "number", "description": "Current stock price"},
+                "base_fair_value": {
+                    "type": "number",
+                    "description": "Base fair value from valuation models",
+                },
+                "current_price": {
+                    "type": "number",
+                    "description": "Current stock price",
+                },
             },
             "required": [],
         }

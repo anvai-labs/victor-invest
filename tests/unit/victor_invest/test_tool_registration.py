@@ -46,7 +46,9 @@ def test_local_base_tool_is_victor_base_tool_contract():
     assert tool.parameters["required"] == ["symbol"]
 
 
-def test_register_investment_tools_registers_native_tools_for_registry_execute(monkeypatch):
+def test_register_investment_tools_registers_native_tools_for_registry_execute(
+    monkeypatch,
+):
     class DummyLocalTool(LocalBaseTool):
         name = "dummy_local_tool"
         description = "Dummy local investment tool for adapter contract test"

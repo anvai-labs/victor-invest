@@ -32,9 +32,10 @@ import os
 from datetime import datetime
 from typing import Any, Dict, Optional, Tuple
 
-from investigator.domain.services.rl.feature_normalizer import FeatureNormalizer
 from investigator.domain.services.rl.models import ValuationContext
-from investigator.domain.services.rl.policy.fundamental_policy import FundamentalRLPolicy
+from investigator.domain.services.rl.policy.fundamental_policy import (
+    FundamentalRLPolicy,
+)
 from investigator.domain.services.rl.policy.technical_policy import TechnicalRLPolicy
 
 logger = logging.getLogger(__name__)
@@ -72,7 +73,9 @@ class DualRLPolicy:
 
         # Initialize or use provided policies
         self.technical = technical_policy or TechnicalRLPolicy()
-        self.fundamental = fundamental_policy or FundamentalRLPolicy(base_weighting_service=base_weighting_service)
+        self.fundamental = fundamental_policy or FundamentalRLPolicy(
+            base_weighting_service=base_weighting_service
+        )
 
         # Try to load existing policies
         self._load_policies()
@@ -84,11 +87,15 @@ class DualRLPolicy:
         """Load policies from disk if available."""
         if os.path.exists(self.technical_path):
             self.technical.load(self.technical_path)
-            logger.info(f"Loaded technical policy: {self.technical._update_count} updates")
+            logger.info(
+                f"Loaded technical policy: {self.technical._update_count} updates"
+            )
 
         if os.path.exists(self.fundamental_path):
             self.fundamental.load(self.fundamental_path)
-            logger.info(f"Loaded fundamental policy: {self.fundamental._update_count} updates")
+            logger.info(
+                f"Loaded fundamental policy: {self.fundamental._update_count} updates"
+            )
 
     def predict_position(self, context: ValuationContext) -> Tuple[int, float]:
         """

@@ -22,8 +22,8 @@ from investigator.infrastructure.database.ticker_mapper import (
 )
 
 __all__ = [
-    'TickerCIKMapper',
-    'get_ticker_mapper',
-    'ticker_to_cik',
-    'ticker_to_cik_padded',
+    "TickerCIKMapper",
+    "get_ticker_mapper",
+    "ticker_to_cik",
+    "ticker_to_cik_padded",
 ]

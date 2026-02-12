@@ -21,7 +21,7 @@ from investigator.application.prompts import (
 )
 
 __all__ = [
-    'PromptManager',
-    'get_prompt_manager',
-    'get_enhanced_prompt_manager',
+    "PromptManager",
+    "get_prompt_manager",
+    "get_enhanced_prompt_manager",
 ]

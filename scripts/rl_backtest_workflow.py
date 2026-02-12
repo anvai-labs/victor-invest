@@ -30,7 +30,7 @@ import logging
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -41,7 +41,6 @@ from sqlalchemy import create_engine, text
 # Victor-Invest workflow imports
 from victor_invest.workflows import (
     run_rl_backtest,
-    run_rl_backtest_batch,
     generate_lookback_list,
     RLBacktestWorkflowState,
 )
@@ -86,13 +85,15 @@ def get_all_eligible_symbols() -> List[str]:
     """Get all eligible symbols from database."""
     engine = get_db_engine()
     with engine.connect() as conn:
-        result = conn.execute(text("""
+        result = conn.execute(
+            text("""
             SELECT DISTINCT symbol
             FROM stock_symbols
             WHERE is_active = true
               AND (is_sp500 = true OR is_russell1000 = true)
             ORDER BY symbol
-        """))
+        """)
+        )
         return [row[0] for row in result.fetchall()]
 
 
@@ -100,14 +101,17 @@ def get_top_n_symbols(n: int) -> List[str]:
     """Get top N symbols by market cap."""
     engine = get_db_engine()
     with engine.connect() as conn:
-        result = conn.execute(text("""
+        result = conn.execute(
+            text("""
             SELECT symbol
             FROM stock_symbols
             WHERE is_active = true
               AND market_cap IS NOT NULL
             ORDER BY market_cap DESC
             LIMIT :n
-        """), {"n": n})
+        """),
+            {"n": n},
+        )
         return [row[0] for row in result.fetchall()]
 
 
@@ -153,9 +157,7 @@ async def run_batch_backtest(
 
     async def limited_backtest(symbol: str) -> RLBacktestWorkflowState:
         async with semaphore:
-            return await run_backtest_for_symbol(
-                symbol, max_lookback_months, interval
-            )
+            return await run_backtest_for_symbol(symbol, max_lookback_months, interval)
 
     tasks = [limited_backtest(s) for s in symbols]
     results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -185,37 +187,31 @@ def main():
         description="Run RL backtest using victor workflow (StateGraph)"
     )
     parser.add_argument(
-        "--symbols",
-        nargs="+",
-        help="List of stock symbols to backtest"
+        "--symbols", nargs="+", help="List of stock symbols to backtest"
     )
     parser.add_argument(
         "--all-symbols",
         action="store_true",
-        help="Process all eligible symbols (SP500 + Russell 1000)"
+        help="Process all eligible symbols (SP500 + Russell 1000)",
     )
-    parser.add_argument(
-        "--top-n",
-        type=int,
-        help="Process top N symbols by market cap"
-    )
+    parser.add_argument("--top-n", type=int, help="Process top N symbols by market cap")
     parser.add_argument(
         "--max-lookback",
         type=int,
         default=120,
-        help="Maximum lookback in months (default: 120 = 10 years)"
+        help="Maximum lookback in months (default: 120 = 10 years)",
     )
     parser.add_argument(
         "--interval",
         choices=["quarterly", "monthly"],
         default="quarterly",
-        help="Interval between lookback periods (default: quarterly)"
+        help="Interval between lookback periods (default: quarterly)",
     )
     parser.add_argument(
         "--parallel",
         type=int,
         default=5,
-        help="Number of parallel workers (default: 5)"
+        help="Number of parallel workers (default: 5)",
     )
 
     args = parser.parse_args()

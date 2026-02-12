@@ -3,15 +3,13 @@
 # load libraries
 import numpy as np
 from sklearn.linear_model import LinearRegression
-import psycopg2
 from sqlalchemy import create_engine
 import pandas as pd
 import logging
 from datetime import datetime
-from datetime import date
 from dateutil.relativedelta import relativedelta
+import os
 import sys
-import time
 from sqlalchemy import text
 
 
@@ -34,7 +32,10 @@ def getTickerClosePriceDataframe(connEngine, ticker, dt):
                     AND ticker = '{ticker}'
                     ORDER BY {dtfield} 
                     ) Y ORDER BY Y.wkdt """.format(
-        dtfield="date", table="tickerdata", fromdt=dt.strftime("%Y-%m-%d"), ticker=ticker
+        dtfield="date",
+        table="tickerdata",
+        fromdt=dt.strftime("%Y-%m-%d"),
+        ticker=ticker,
     )
     # logging.info("Executing Query: " + sqlQuery);
     try:
@@ -68,9 +69,7 @@ def getTickerList(connEngine, dt, column):
                      AND S.skiptametric = FALSE
                      Group By S.ticker
               ) X
-              Order By 2 DESC """.format(
-        dtstr=dt.strftime("%Y-%m-%d"), column=column
-    )
+              Order By 2 DESC """.format(dtstr=dt.strftime("%Y-%m-%d"), )
     try:
         logging.info("Executing ticker list sql: {sql}".format(sql=sql))
         return pd.read_sql(sql, con=connEngine)
@@ -81,7 +80,11 @@ def getTickerList(connEngine, dt, column):
 
 def main():
     connEngine = getConnectionEngine(
-        user="stockuser", password=os.environ.get("STOCK_DB_PASSWORD", ""), database="stock", host="${DB_HOST:-localhost}", port=5432
+        user="stockuser",
+        password=os.environ.get("STOCK_DB_PASSWORD", ""),
+        database="stock",
+        host="${DB_HOST:-localhost}",
+        port=5432,
     )
     todate = datetime.now() + relativedelta(hours=9)
     logging.info("todate:{todate}".format(todate=todate))
@@ -108,7 +111,11 @@ def clean_and_validate_data(y: np.ndarray) -> np.ndarray:
 
     # Create mask for valid values
     valid_mask = (
-        ~np.isinf(y) & ~np.isnan(y) & (np.abs(y) < 1e100)  # Remove infinity  # Remove NaN  # Remove too large values
+        ~np.isinf(y)
+        & ~np.isnan(y)
+        & (
+            np.abs(y) < 1e100
+        )  # Remove infinity  # Remove NaN  # Remove too large values
     )
 
     # Apply mask
@@ -122,7 +129,6 @@ def clean_and_validate_data(y: np.ndarray) -> np.ndarray:
 
 
 def calcBetaMonth(connEngine, todate, months):
-
     dt = todate - relativedelta(months=months)
     logging.info("Process From dt:{dt}".format(dt=dt))
     column = "b_{months}_month".format(months=months)
@@ -147,8 +153,6 @@ def calcBetaMonth(connEngine, todate, months):
     min_obs = MIN_OBSERVATIONS.get(months, 20)
 
     # Beta validation thresholds
-    BETA_FLOOR = 0.10  # Minimum meaningful beta
-    BETA_CAP = 5.0  # Maximum reasonable beta
     R2_THRESHOLD = 0.05  # Minimum R² (5%) for statistical significance
 
     for idx, row in tickerDF.iterrows():
@@ -156,7 +160,10 @@ def calcBetaMonth(connEngine, todate, months):
         ticker = row["ticker"]
         logging.info(
             "Process [{counter}/{tickerLength}]\t[{ticker}]\t from [{dtstr}]".format(
-                ticker=ticker, dtstr=dt.strftime("%Y-%m-%d"), counter=counter, tickerLength=tickerLength
+                ticker=ticker,
+                dtstr=dt.strftime("%Y-%m-%d"),
+                counter=counter,
+                tickerLength=tickerLength,
             )
         )
         # Convert historical stock prices to weekly percent change
@@ -175,7 +182,11 @@ def calcBetaMonth(connEngine, todate, months):
             if len(aligned) < min_obs:
                 logging.info(
                     "Skipped [{counter}/{tickerLength}]\t[{ticker}]\t insufficient data ({obs} < {min_obs})".format(
-                        ticker=ticker, counter=counter, tickerLength=tickerLength, obs=len(aligned), min_obs=min_obs
+                        ticker=ticker,
+                        counter=counter,
+                        tickerLength=tickerLength,
+                        obs=len(aligned),
+                        min_obs=min_obs,
                     )
                 )
                 continue
@@ -202,7 +213,12 @@ def calcBetaMonth(connEngine, todate, months):
 
             logging.info(
                 "Completed [{counter}/{tickerLength}]\t[{ticker}]\t beta={beta:.4f}\t R²={r2:.4f}\t obs={obs}".format(
-                    ticker=ticker, counter=counter, tickerLength=tickerLength, beta=beta, r2=r_squared, obs=len(aligned)
+                    ticker=ticker,
+                    counter=counter,
+                    tickerLength=tickerLength,
+                    beta=beta,
+                    r2=r_squared,
+                    obs=len(aligned),
                 )
             )
 
@@ -221,7 +237,9 @@ if __name__ == "__main__":
         level=logging.INFO,
         handlers=[
             logging.FileHandler(
-                "/var/log/saveBetaForStock.{currdatestr}.log".format(currdatestr=currdate.strftime("%Y-%m-%d"))
+                "/var/log/saveBetaForStock.{currdatestr}.log".format(
+                    currdatestr=currdate.strftime("%Y-%m-%d")
+                )
             ),
             logging.StreamHandler(sys.stdout),
         ],

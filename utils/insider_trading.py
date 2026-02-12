@@ -4,11 +4,10 @@ Insider Trading Analysis Module
 Analyzes Form 4 filings to track insider buying/selling patterns
 and calculate insider sentiment scores.
 """
+
 import logging
-import requests
 from typing import List, Dict, Optional
 from datetime import datetime, timedelta
-from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
 
@@ -68,16 +67,16 @@ class InsiderTradingAnalyzer:
         # In production: fetch_form4_filings() -> parse_transactions() -> calculate_sentiment()
 
         return {
-            'sentiment_score': 5.0,  # Neutral by default
-            'sentiment_rating': 'Neutral',
-            'buy_count': 0,
-            'sell_count': 0,
-            'total_buy_value': 0.0,
-            'total_sell_value': 0.0,
-            'unusual_patterns': [],
-            'period_days': 180,
-            'data_available': False,  # Mark as not yet implemented
-            'note': 'Insider trading analysis requires SEC EDGAR API integration - coming soon'
+            "sentiment_score": 5.0,  # Neutral by default
+            "sentiment_rating": "Neutral",
+            "buy_count": 0,
+            "sell_count": 0,
+            "total_buy_value": 0.0,
+            "total_sell_value": 0.0,
+            "unusual_patterns": [],
+            "period_days": 180,
+            "data_available": False,  # Mark as not yet implemented
+            "note": "Insider trading analysis requires SEC EDGAR API integration - coming soon",
         }
 
     def fetch_form4_filings(self, symbol: str, days: int = 180) -> List[Dict]:
@@ -127,7 +126,7 @@ class InsiderTradingAnalyzer:
             query = text("SELECT cik FROM ticker_cik_mapping WHERE ticker = :symbol")
 
             with self.db_manager.get_session() as session:
-                result = session.execute(query, {'symbol': symbol}).fetchone()
+                result = session.execute(query, {"symbol": symbol}).fetchone()
                 if result:
                     return str(result[0]).zfill(10)  # Pad to 10 digits
 
@@ -148,22 +147,26 @@ class InsiderTradingAnalyzer:
         """
         if not transactions:
             return {
-                'sentiment_score': 5.0,
-                'sentiment_rating': 'Neutral',
-                'buy_count': 0,
-                'sell_count': 0,
-                'total_buy_value': 0.0,
-                'total_sell_value': 0.0,
-                'unusual_patterns': []
+                "sentiment_score": 5.0,
+                "sentiment_rating": "Neutral",
+                "buy_count": 0,
+                "sell_count": 0,
+                "total_buy_value": 0.0,
+                "total_sell_value": 0.0,
+                "unusual_patterns": [],
             }
 
         # Separate buys and sells
-        buys = [t for t in transactions if t.get('transaction_type') == 'Purchase']
-        sells = [t for t in transactions if t.get('transaction_type') == 'Sale']
+        buys = [t for t in transactions if t.get("transaction_type") == "Purchase"]
+        sells = [t for t in transactions if t.get("transaction_type") == "Sale"]
 
         # Calculate metrics
-        total_buy_value = sum(t.get('shares', 0) * t.get('price_per_share', 0) for t in buys)
-        total_sell_value = sum(t.get('shares', 0) * t.get('price_per_share', 0) for t in sells)
+        total_buy_value = sum(
+            t.get("shares", 0) * t.get("price_per_share", 0) for t in buys
+        )
+        total_sell_value = sum(
+            t.get("shares", 0) * t.get("price_per_share", 0) for t in sells
+        )
 
         buy_count = len(buys)
         sell_count = len(sells)
@@ -174,7 +177,11 @@ class InsiderTradingAnalyzer:
             sentiment_score = 5.0  # Neutral if no activity
         else:
             buy_ratio = buy_count / (buy_count + sell_count)
-            value_ratio = total_buy_value / (total_buy_value + total_sell_value) if (total_buy_value + total_sell_value) > 0 else 0.5
+            value_ratio = (
+                total_buy_value / (total_buy_value + total_sell_value)
+                if (total_buy_value + total_sell_value) > 0
+                else 0.5
+            )
 
             # Weight count (60%) and value (40%)
             combined_ratio = buy_ratio * 0.6 + value_ratio * 0.4
@@ -184,14 +191,14 @@ class InsiderTradingAnalyzer:
         unusual_patterns = self._detect_unusual_patterns(transactions)
 
         return {
-            'sentiment_score': round(sentiment_score, 1),
-            'sentiment_rating': self._get_sentiment_rating(sentiment_score),
-            'buy_count': buy_count,
-            'sell_count': sell_count,
-            'total_buy_value': round(total_buy_value, 2),
-            'total_sell_value': round(total_sell_value, 2),
-            'unusual_patterns': unusual_patterns,
-            'period_days': 180
+            "sentiment_score": round(sentiment_score, 1),
+            "sentiment_rating": self._get_sentiment_rating(sentiment_score),
+            "buy_count": buy_count,
+            "sell_count": sell_count,
+            "total_buy_value": round(total_buy_value, 2),
+            "total_sell_value": round(total_sell_value, 2),
+            "unusual_patterns": unusual_patterns,
+            "period_days": 180,
         }
 
     def _detect_unusual_patterns(self, transactions: List[Dict]) -> List[str]:
@@ -208,17 +215,22 @@ class InsiderTradingAnalyzer:
 
         # Pattern 1: Cluster of insider buys (3+ in 30 days)
         recent_buys = [
-            t for t in transactions
-            if t.get('transaction_type') == 'Purchase'
-            and self._is_recent(t.get('transaction_date', ''), days=30)
+            t
+            for t in transactions
+            if t.get("transaction_type") == "Purchase"
+            and self._is_recent(t.get("transaction_date", ""), days=30)
         ]
 
         if len(recent_buys) >= 3:
-            patterns.append(f"Cluster of {len(recent_buys)} insider purchases in last 30 days")
+            patterns.append(
+                f"Cluster of {len(recent_buys)} insider purchases in last 30 days"
+            )
 
         # Pattern 2: Unusually large transaction
         if transactions and len(transactions) >= 2:
-            values = [t.get('shares', 0) * t.get('price_per_share', 0) for t in transactions]
+            values = [
+                t.get("shares", 0) * t.get("price_per_share", 0) for t in transactions
+            ]
             if values:
                 # For small samples, use median-based detection to avoid outlier influence
                 if len(values) <= 5:
@@ -227,20 +239,26 @@ class InsiderTradingAnalyzer:
                     # If any transaction is 10x the median, it's unusual
                     threshold = median * 10
                     for t in transactions:
-                        value = t.get('shares', 0) * t.get('price_per_share', 0)
+                        value = t.get("shares", 0) * t.get("price_per_share", 0)
                         if value > threshold:
-                            trans_type = t.get('transaction_type', 'Transaction')
-                            patterns.append(f"Unusually large {trans_type.lower()}: ${value:,.0f}")
+                            trans_type = t.get("transaction_type", "Transaction")
+                            patterns.append(
+                                f"Unusually large {trans_type.lower()}: ${value:,.0f}"
+                            )
                 else:
                     # For larger samples, use mean + 2 std dev
                     mean_value = sum(values) / len(values)
-                    std_dev = (sum((x - mean_value) ** 2 for x in values) / len(values)) ** 0.5
+                    std_dev = (
+                        sum((x - mean_value) ** 2 for x in values) / len(values)
+                    ) ** 0.5
 
                     for t in transactions:
-                        value = t.get('shares', 0) * t.get('price_per_share', 0)
+                        value = t.get("shares", 0) * t.get("price_per_share", 0)
                         if value > mean_value + 2 * std_dev:
-                            trans_type = t.get('transaction_type', 'Transaction')
-                            patterns.append(f"Unusually large {trans_type.lower()}: ${value:,.0f}")
+                            trans_type = t.get("transaction_type", "Transaction")
+                            patterns.append(
+                                f"Unusually large {trans_type.lower()}: ${value:,.0f}"
+                            )
 
         return patterns
 
@@ -256,10 +274,10 @@ class InsiderTradingAnalyzer:
             True if within last N days
         """
         try:
-            trans_date = datetime.strptime(date_str, '%Y-%m-%d')
+            trans_date = datetime.strptime(date_str, "%Y-%m-%d")
             cutoff = datetime.now() - timedelta(days=days)
             return trans_date >= cutoff
-        except:
+        except Exception:
             return False
 
     def _get_sentiment_rating(self, score: float) -> str:
@@ -273,12 +291,12 @@ class InsiderTradingAnalyzer:
             Rating string
         """
         if score >= 7.5:
-            return 'Very Bullish'
+            return "Very Bullish"
         elif score >= 6.0:
-            return 'Bullish'
+            return "Bullish"
         elif score >= 4.0:
-            return 'Neutral'
+            return "Neutral"
         elif score >= 2.5:
-            return 'Bearish'
+            return "Bearish"
         else:
-            return 'Very Bearish'
+            return "Very Bearish"

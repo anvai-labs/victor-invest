@@ -14,7 +14,7 @@ Date: 2025-12-30
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from investigator.domain.services.industry_datasets.base import (
     BaseIndustryDataset,
@@ -181,7 +181,9 @@ class BankDataset(BaseIndustryDataset):
             ),
         ]
 
-    def extract_metrics(self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs) -> IndustryMetrics:
+    def extract_metrics(
+        self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs
+    ) -> IndustryMetrics:
         """Extract bank-specific metrics from XBRL data and financials."""
         metrics = IndustryMetrics(
             industry="bank",
@@ -192,7 +194,9 @@ class BankDataset(BaseIndustryDataset):
         warnings = []
 
         # Extract Net Interest Margin
-        nim = self._extract_from_xbrl(xbrl_data, "net_interest_margin", ["NetInterestMargin", "InterestMarginNet"])
+        nim = self._extract_from_xbrl(
+            xbrl_data, "net_interest_margin", ["NetInterestMargin", "InterestMarginNet"]
+        )
         if nim:
             metrics.metrics["net_interest_margin"] = nim
         else:
@@ -205,7 +209,9 @@ class BankDataset(BaseIndustryDataset):
 
         # Extract Tier 1 Capital Ratio
         tier1 = self._extract_from_xbrl(
-            xbrl_data, "tier_1_capital_ratio", ["Tier1CapitalRatio", "CoreCapitalRatio", "Tier1RiskBasedCapitalRatio"]
+            xbrl_data,
+            "tier_1_capital_ratio",
+            ["Tier1CapitalRatio", "CoreCapitalRatio", "Tier1RiskBasedCapitalRatio"],
         )
         if tier1:
             metrics.metrics["tier_1_capital_ratio"] = tier1
@@ -214,7 +220,9 @@ class BankDataset(BaseIndustryDataset):
 
         # Extract Efficiency Ratio
         efficiency = self._extract_from_xbrl(
-            xbrl_data, "efficiency_ratio", ["EfficiencyRatio", "NonInterestExpenseToRevenue"]
+            xbrl_data,
+            "efficiency_ratio",
+            ["EfficiencyRatio", "NonInterestExpenseToRevenue"],
         )
         if efficiency:
             metrics.metrics["efficiency_ratio"] = efficiency
@@ -225,7 +233,9 @@ class BankDataset(BaseIndustryDataset):
 
         # Extract NPL Ratio
         npl = self._extract_from_xbrl(
-            xbrl_data, "npl_ratio", ["NonPerformingLoansRatio", "NonperformingLoansToTotalLoans"]
+            xbrl_data,
+            "npl_ratio",
+            ["NonPerformingLoansRatio", "NonperformingLoansToTotalLoans"],
         )
         if npl:
             metrics.metrics["npl_ratio"] = npl
@@ -246,7 +256,9 @@ class BankDataset(BaseIndustryDataset):
                 warnings.append("ROE not available")
 
         # Extract Loan to Deposit ratio
-        ltd = self._extract_from_xbrl(xbrl_data, "loan_to_deposit", ["LoanToDepositRatio", "LoansToDeposits"])
+        ltd = self._extract_from_xbrl(
+            xbrl_data, "loan_to_deposit", ["LoanToDepositRatio", "LoansToDeposits"]
+        )
         if ltd:
             metrics.metrics["loan_to_deposit"] = ltd
 
@@ -313,7 +325,12 @@ class BankDataset(BaseIndustryDataset):
 
     def assess_quality(self, metrics: IndustryMetrics) -> Tuple[MetricQuality, str]:
         """Assess quality of bank metrics."""
-        required_metrics = ["net_interest_margin", "tier_1_capital_ratio", "npl_ratio", "roe"]
+        required_metrics = [
+            "net_interest_margin",
+            "tier_1_capital_ratio",
+            "npl_ratio",
+            "roe",
+        ]
         important_metrics = ["efficiency_ratio", "loan_to_deposit"]
 
         required_available = sum(1 for m in required_metrics if metrics.has(m))

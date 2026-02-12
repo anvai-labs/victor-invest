@@ -32,7 +32,6 @@ Usage:
 
 import argparse
 import sys
-from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
@@ -41,7 +40,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from scripts.scheduled.base import (
+from scripts.scheduled.base import (  # noqa: E402
     BaseCollector,
     CollectionMetrics,
     get_database_connection,
@@ -100,11 +99,14 @@ class CreditRiskCalculator(BaseCollector):
                 try:
                     # Check if we need to refresh
                     if not self.force_refresh:
-                        cursor.execute("""
+                        cursor.execute(
+                            """
                             SELECT updated_at FROM credit_risk_scores
                             WHERE symbol = %s
                               AND updated_at > CURRENT_DATE - INTERVAL '7 days'
-                        """, (symbol,))
+                        """,
+                            (symbol,),
+                        )
                         if cursor.fetchone():
                             continue
 
@@ -112,28 +114,36 @@ class CreditRiskCalculator(BaseCollector):
 
                     # Calculate all credit risk scores using the service
                     try:
-                        assessment = asyncio.run(
-                            service.calculate_from_symbol(symbol)
-                        )
+                        assessment = asyncio.run(service.calculate_from_symbol(symbol))
                     except Exception as e:
-                        self.logger.warning(f"Failed to calculate scores for {symbol}: {e}")
+                        self.logger.warning(
+                            f"Failed to calculate scores for {symbol}: {e}"
+                        )
                         self.metrics.records_failed += 1
                         continue
 
                     # Extract scores from assessment
                     z_score = assessment.altman.score if assessment.altman else None
                     z_interpretation = (
-                        assessment.altman.zone.value if assessment.altman and assessment.altman.zone else None
+                        assessment.altman.zone.value
+                        if assessment.altman and assessment.altman.zone
+                        else None
                     )
 
                     m_score = assessment.beneish.score if assessment.beneish else None
                     m_interpretation = (
-                        assessment.beneish.risk_level.value if assessment.beneish and assessment.beneish.risk_level else None
+                        assessment.beneish.risk_level.value
+                        if assessment.beneish and assessment.beneish.risk_level
+                        else None
                     )
 
-                    f_score = assessment.piotroski.score if assessment.piotroski else None
+                    f_score = (
+                        assessment.piotroski.score if assessment.piotroski else None
+                    )
                     f_interpretation = (
-                        assessment.piotroski.strength.value if assessment.piotroski and assessment.piotroski.strength else None
+                        assessment.piotroski.strength.value
+                        if assessment.piotroski and assessment.piotroski.strength
+                        else None
                     )
 
                     # Get distress tier from composite assessment
@@ -144,7 +154,8 @@ class CreditRiskCalculator(BaseCollector):
                     )
 
                     # Store results
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         INSERT INTO credit_risk_scores
                             (symbol, calculation_date,
                              altman_z_score, altman_z_interpretation,
@@ -161,21 +172,24 @@ class CreditRiskCalculator(BaseCollector):
                             piotroski_f_interpretation = EXCLUDED.piotroski_f_interpretation,
                             distress_tier = EXCLUDED.distress_tier,
                             updated_at = NOW()
-                    """, (
-                        symbol,
-                        z_score,
-                        z_interpretation,
-                        m_score,
-                        m_interpretation,
-                        f_score,
-                        f_interpretation,
-                        distress_tier,
-                    ))
+                    """,
+                        (
+                            symbol,
+                            z_score,
+                            z_interpretation,
+                            m_score,
+                            m_interpretation,
+                            f_score,
+                            f_interpretation,
+                            distress_tier,
+                        ),
+                    )
 
                     self.metrics.records_inserted += 1
 
                     # Store in current scores table for quick lookup
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         INSERT INTO current_credit_risk
                             (symbol, altman_z_score, beneish_m_score,
                              piotroski_f_score, distress_tier, last_updated)
@@ -186,7 +200,9 @@ class CreditRiskCalculator(BaseCollector):
                             piotroski_f_score = EXCLUDED.piotroski_f_score,
                             distress_tier = EXCLUDED.distress_tier,
                             last_updated = NOW()
-                    """, (symbol, z_score, m_score, f_score, distress_tier))
+                    """,
+                        (symbol, z_score, m_score, f_score, distress_tier),
+                    )
 
                     self.metrics.records_updated += 1
 
@@ -281,7 +297,10 @@ class CreditRiskCalculator(BaseCollector):
             if tier_scores[tier] > 0:
                 # But also consider if majority of models agree on better tier
                 better_score = sum(
-                    tier_scores[t] for t in list(DISTRESS_TIERS.keys())[:list(DISTRESS_TIERS.keys()).index(tier)]
+                    tier_scores[t]
+                    for t in list(DISTRESS_TIERS.keys())[
+                        : list(DISTRESS_TIERS.keys()).index(tier)
+                    ]
                 )
                 if better_score >= 2:
                     continue
@@ -333,12 +352,12 @@ def main():
     parser.add_argument(
         "--symbols",
         type=str,
-        help="Comma-separated list of symbols (default: Russell 1000)"
+        help="Comma-separated list of symbols (default: Russell 1000)",
     )
     parser.add_argument(
         "--force-refresh",
         action="store_true",
-        help="Force recalculation even if recent scores exist"
+        help="Force recalculation even if recent scores exist",
     )
     args = parser.parse_args()
 

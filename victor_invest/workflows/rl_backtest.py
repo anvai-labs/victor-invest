@@ -59,7 +59,7 @@ Example:
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date
 from typing import Any, Dict, List, Optional
 
 from dateutil.relativedelta import relativedelta
@@ -479,7 +479,10 @@ async def finalize_backtest(state_input) -> dict:
     }
 
     state.mark_step_completed("finalize_backtest")
-    logger.info(f"Backtest complete for {state.symbol}: " f"{successful} recorded, {failed} failed, {skipped} skipped")
+    logger.info(
+        f"Backtest complete for {state.symbol}: "
+        f"{successful} recorded, {failed} failed, {skipped} skipped"
+    )
 
     return _state_to_dict(state)
 
@@ -608,10 +611,14 @@ async def run_rl_backtest(
                 workflow_result = await executor.execute(workflow, context)
 
                 # Convert to RLBacktestWorkflowState
-                return _convert_yaml_result_to_state(symbol, lookback_months_list, interval, workflow_result)
+                return _convert_yaml_result_to_state(
+                    symbol, lookback_months_list, interval, workflow_result
+                )
 
         except Exception as e:
-            logger.warning(f"YAML workflow execution failed, falling back to Python: {e}")
+            logger.warning(
+                f"YAML workflow execution failed, falling back to Python: {e}"
+            )
 
     # Fallback: Python StateGraph execution
     state = RLBacktestWorkflowState(

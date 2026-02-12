@@ -129,7 +129,12 @@ Investment Signals by Regime:
             logger.error(f"Failed to initialize MarketRegimeTool: {e}")
             raise
 
-    async def execute(self, _exec_ctx: Optional[Dict[str, Any]] = None, action: str = "summary", **kwargs) -> ToolResult:
+    async def execute(
+        self,
+        _exec_ctx: Optional[Dict[str, Any]] = None,
+        action: str = "summary",
+        **kwargs,
+    ) -> ToolResult:
         """Execute market regime query.
 
         Args:
@@ -176,14 +181,16 @@ Investment Signals by Regime:
 
         except Exception as e:
             logger.error(f"MarketRegimeTool execute error: {e}")
-            return ToolResult.create_failure(f"Market regime query failed: {str(e)}", metadata={"action": action})
+            return ToolResult.create_failure(
+                f"Market regime query failed: {str(e)}", metadata={"action": action}
+            )
 
     async def _get_summary(self) -> ToolResult:
         """Get comprehensive market regime summary."""
         # Get all analyses
         yc_analysis = await self._yield_curve_analyzer.analyze()
         cc_analysis = await self._credit_cycle_analyzer.analyze()
-        recession_assessment = await self._recession_indicator.assess()
+        await self._recession_indicator.assess()
 
         # Combine into comprehensive summary
         summary = {
@@ -222,7 +229,8 @@ Investment Signals by Regime:
 
         warnings = yc_analysis.warnings + cc_analysis.warnings
 
-        return ToolResult.create_success(output=summary,
+        return ToolResult.create_success(
+            output=summary,
             metadata={
                 "source": "market_regime_services",
                 "credit_cycle": cc_analysis.phase.value,
@@ -235,7 +243,8 @@ Investment Signals by Regime:
         """Get yield curve analysis."""
         analysis = await self._yield_curve_analyzer.analyze()
 
-        return ToolResult.create_success(output=analysis.to_dict(),
+        return ToolResult.create_success(
+            output=analysis.to_dict(),
             metadata={
                 "source": "treasury_yield_curve",
                 "shape": analysis.shape.value,
@@ -247,7 +256,8 @@ Investment Signals by Regime:
         """Get credit cycle analysis."""
         analysis = await self._credit_cycle_analyzer.analyze()
 
-        return ToolResult.create_success(output=analysis.to_dict(),
+        return ToolResult.create_success(
+            output=analysis.to_dict(),
             metadata={
                 "source": "credit_cycle_analyzer",
                 "phase": analysis.phase.value,
@@ -260,7 +270,8 @@ Investment Signals by Regime:
         """Get recession probability assessment."""
         assessment = await self._recession_indicator.assess()
 
-        return ToolResult.create_success(output=assessment.to_dict(),
+        return ToolResult.create_success(
+            output=assessment.to_dict(),
             metadata={
                 "source": "recession_indicator",
                 "phase": assessment.phase.value,
@@ -273,11 +284,14 @@ Investment Signals by Regime:
         """Get volatility regime analysis."""
         cc_analysis = await self._credit_cycle_analyzer.analyze()
 
-        return ToolResult.create_success(output={
+        return ToolResult.create_success(
+            output={
                 "date": str(cc_analysis.date),
                 "vix_level": cc_analysis.vix_level,
                 "volatility_regime": cc_analysis.volatility_regime.value,
-                "interpretation": self._get_volatility_interpretation(cc_analysis.volatility_regime),
+                "interpretation": self._get_volatility_interpretation(
+                    cc_analysis.volatility_regime
+                ),
             },
             metadata={
                 "source": "vix_analysis",
@@ -303,7 +317,8 @@ Investment Signals by Regime:
             "interpretation": cc_analysis.interpretation,
         }
 
-        return ToolResult.create_success(output=recommendations,
+        return ToolResult.create_success(
+            output=recommendations,
             metadata={
                 "source": "market_regime_services",
                 "phase": cc_analysis.phase.value,
@@ -371,7 +386,9 @@ Investment Signals by Regime:
 
     def _get_duration_guidance(self, shape) -> str:
         """Get fixed income duration guidance."""
-        from investigator.domain.services.market_regime.yield_curve_analyzer import YieldCurveShape
+        from investigator.domain.services.market_regime.yield_curve_analyzer import (
+            YieldCurveShape,
+        )
 
         guidance = {
             YieldCurveShape.STEEP: "Extend duration - rates likely to fall",
@@ -389,7 +406,14 @@ Investment Signals by Regime:
             "properties": {
                 "action": {
                     "type": "string",
-                    "enum": ["summary", "yield_curve", "credit_cycle", "recession", "volatility", "recommendations"],
+                    "enum": [
+                        "summary",
+                        "yield_curve",
+                        "credit_cycle",
+                        "recession",
+                        "volatility",
+                        "recommendations",
+                    ],
                     "description": "Type of market regime query",
                     "default": "summary",
                 }

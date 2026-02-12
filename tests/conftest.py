@@ -1,6 +1,5 @@
 """Test configuration helpers and fixtures."""
 
-import json
 import sys
 from pathlib import Path
 from typing import Any, Dict
@@ -76,13 +75,17 @@ def sample_quarterly_metrics() -> Dict[str, Any]:
 @pytest.fixture
 def cache_manager(cache_root):
     from investigator.infrastructure.cache.cache_manager import CacheManager, CacheType
-    from investigator.infrastructure.cache.file_cache_handler import FileCacheStorageHandler
+    from investigator.infrastructure.cache.file_cache_handler import (
+        FileCacheStorageHandler,
+    )
 
     manager = CacheManager()
     # Replace handlers with file-based test handlers rooted in tmp dir
     handler_map = {}
     for cache_type in CacheType:
-        handler = FileCacheStorageHandler(cache_type=cache_type, base_path=cache_root / cache_type.value, priority=10)
+        handler = FileCacheStorageHandler(
+            cache_type=cache_type, base_path=cache_root / cache_type.value, priority=10
+        )
         handler_map[cache_type] = [handler]
     manager.handlers = handler_map
     return manager

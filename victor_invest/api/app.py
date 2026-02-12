@@ -36,7 +36,6 @@ Endpoints migrated:
 - GET /models - List available LLM models
 """
 
-import asyncio
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -54,7 +53,10 @@ try:
 except ImportError:
     Agent = None
 
-from victor_invest.workflows import AnalysisMode, AnalysisWorkflowState, build_graph_for_mode
+from victor_invest.workflows import (
+    AnalysisMode,
+    run_analysis as run_workflow_analysis,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -250,7 +252,6 @@ async def health():
 
     # Check cache
     try:
-        from investigator.infrastructure.cache import CacheManager
 
         services["cache"] = "healthy"
     except Exception:
@@ -261,7 +262,9 @@ async def health():
         import aiohttp
 
         async with aiohttp.ClientSession() as session:
-            async with session.get("http://localhost:11434/api/tags", timeout=2) as resp:
+            async with session.get(
+                "http://localhost:11434/api/tags", timeout=2
+            ) as resp:
                 services["ollama"] = "healthy" if resp.status == 200 else "degraded"
     except Exception:
         services["ollama"] = "unavailable"
@@ -311,15 +314,7 @@ async def analyze_symbol(symbol: str, request: AnalysisRequest = None):
         )
 
     try:
-        # Build workflow
-        workflow = build_graph_for_mode(analysis_mode)
-
-        # Execute
-        initial_state = {
-            "symbol": symbol.upper(),
-            "mode": analysis_mode,
-        }
-        result = await workflow.invoke(initial_state)
+        result = await run_workflow_analysis(symbol.upper(), analysis_mode)
 
         # Convert to response
         return AnalysisResponse(
@@ -369,7 +364,9 @@ async def batch_analyze(
     }
 
     # Add background task
-    background_tasks.add_task(_run_batch_analysis, job_id, request.symbols, request.mode)
+    background_tasks.add_task(
+        _run_batch_analysis, job_id, request.symbols, request.mode
+    )
 
     return BatchAnalysisResponse(
         submitted=len(request.symbols),
@@ -422,7 +419,9 @@ async def list_models():
                         "count": len(models),
                     }
                 else:
-                    raise HTTPException(status_code=resp.status, detail="Ollama unavailable")
+                    raise HTTPException(
+                        status_code=resp.status, detail="Ollama unavailable"
+                    )
     except aiohttp.ClientError as e:
         raise HTTPException(status_code=503, detail=f"Cannot connect to Ollama: {e}")
 
@@ -503,12 +502,10 @@ async def _run_batch_analysis(job_id: str, symbols: List[str], mode: str):
     app.state.analysis_jobs[job_id]["status"] = "running"
 
     analysis_mode = AnalysisMode(mode)
-    workflow = build_graph_for_mode(analysis_mode)
 
     for symbol in symbols:
         try:
-            initial_state = {"symbol": symbol.upper(), "mode": analysis_mode}
-            result = await workflow.invoke(initial_state)
+            result = await run_workflow_analysis(symbol.upper(), analysis_mode)
 
             app.state.analysis_jobs[job_id]["results"][symbol] = {
                 "status": "completed",
@@ -538,7 +535,9 @@ async def _warm_cache_for_symbols(symbols: List[str]):
                 # Fetch SEC data to warm cache
                 await sec_tool.execute(symbol=symbol.upper())
                 # Fetch market data to warm cache
-                await market_tool.execute(symbol=symbol.upper(), action="get_price_history")
+                await market_tool.execute(
+                    symbol=symbol.upper(), action="get_history", days=365
+                )
                 logger.info(f"Cache warmed for {symbol}")
             except Exception as e:
                 logger.warning(f"Failed to warm cache for {symbol}: {e}")

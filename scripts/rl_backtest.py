@@ -22,7 +22,6 @@ Date: 2025-12-30
 """
 
 import argparse
-import asyncio
 import json
 import logging
 import os
@@ -49,7 +48,9 @@ from investigator.domain.services.data_sources import get_data_source_facade
 from investigator.infrastructure.database.db import get_db_manager, safe_json_dumps
 
 # Dynamic model weighting (tier classification)
-from investigator.domain.services.dynamic_model_weighting import DynamicModelWeightingService
+from investigator.domain.services.dynamic_model_weighting import (
+    DynamicModelWeightingService,
+)
 
 # RL model weighting (drop-in replacement that uses trained RL policy)
 from investigator.domain.services.rl.rl_model_weighting import RLModelWeightingService
@@ -59,43 +60,43 @@ from investigator.domain.services.valuation.dcf import DCFValuation
 from investigator.domain.services.valuation.ggm import GordonGrowthModel
 
 # Sector-specific valuation modules
-from investigator.domain.services.valuation.bank_valuation import value_bank, extract_bank_metrics_from_xbrl, BankType
+from investigator.domain.services.valuation.bank_valuation import (
+    value_bank,
+)
 from investigator.domain.services.valuation.semiconductor_valuation import (
     value_semiconductor,
     is_semiconductor_industry,
-    classify_semiconductor_company,
 )
-from investigator.domain.services.valuation.insurance_valuation import value_insurance_company, InsuranceType
-from investigator.domain.services.valuation.reit_valuation import value_reit, detect_reit_property_type
+from investigator.domain.services.valuation.insurance_valuation import (
+    value_insurance_company,
+)
+from investigator.domain.services.valuation.reit_valuation import (
+    value_reit,
+)
 from investigator.domain.services.valuation.defense_valuation import (
     value_defense_contractor,
     is_defense_industry,
-    classify_defense_contractor,
-)
-from investigator.domain.services.valuation.biotech_valuation import (
-    value_biotech,
-    is_biotech_company,
-    is_pre_revenue_biotech,
 )
 
 # Growth-adjusted valuation
 from investigator.domain.services.valuation.growth_adjusted_valuation import (
     calculate_growth_adjusted_valuation,
-    classify_growth_profile,
-    GrowthProfile,
 )
 
 # Shared reward calculator (ensures consistency with outcome_tracker and rl_update_outcomes)
 from investigator.domain.services.rl.reward_calculator import (
-    RewardCalculator,
     get_reward_calculator,
 )
 
 # RL models for context
-from investigator.domain.services.rl.models import ValuationContext, GrowthStage, CompanySize
+from investigator.domain.services.rl.models import (
+    ValuationContext,
+    GrowthStage,
+    CompanySize,
+)
 
 # Dual RL Policy (technical + fundamental)
-from investigator.domain.services.rl.policy import load_dual_policy, DualRLPolicy
+from investigator.domain.services.rl.policy import load_dual_policy
 
 # Shared symbol repository for consistent ticker fetching
 from investigator.infrastructure.database.symbol_repository import SymbolRepository
@@ -106,7 +107,6 @@ from investigator.domain.services.market_data import (
     PriceService,
     DataValidationService,
     SymbolMetadataService,
-    TechnicalAnalysisService,
     get_technical_analysis_service,
 )
 
@@ -167,7 +167,9 @@ class RLBacktester:
         if use_dual_policy:
             logger.info("Loading Dual RL Policy (technical + fundamental)...")
             self.dual_policy = load_dual_policy()
-            logger.info(f"Dual policy loaded: tech={self.dual_policy.technical._update_count}, fund={self.dual_policy.fundamental._update_count}")
+            logger.info(
+                f"Dual policy loaded: tech={self.dual_policy.technical._update_count}, fund={self.dual_policy.fundamental._update_count}"
+            )
 
         # Shared symbol repository for consistent ticker fetching
         self.symbol_repo = SymbolRepository()
@@ -175,6 +177,7 @@ class RLBacktester:
 
         # Session maker for stock database
         from sqlalchemy.orm import sessionmaker
+
         self.StockSession = sessionmaker(bind=self.stock_engine)
 
         # Load config
@@ -197,11 +200,16 @@ class RLBacktester:
                 normalizer_path=rl_policy_path.replace("policy.pkl", "normalizer.pkl"),
             )
             # Check if policy loaded successfully
-            if hasattr(self.weighting_service, "policy") and self.weighting_service.policy:
+            if (
+                hasattr(self.weighting_service, "policy")
+                and self.weighting_service.policy
+            ):
                 if self.weighting_service.policy.is_ready():
                     logger.info("RL policy loaded and ready")
                 else:
-                    logger.warning("RL policy loaded but not ready - falling back to rule-based")
+                    logger.warning(
+                        "RL policy loaded but not ready - falling back to rule-based"
+                    )
             else:
                 logger.warning("RL policy not loaded - falling back to rule-based")
         else:
@@ -215,7 +223,9 @@ class RLBacktester:
         self.metadata_service = SymbolMetadataService()
         self.validation_service = DataValidationService()
         self.technical_analysis_service = get_technical_analysis_service()
-        logger.info("Shared market data services initialized (including TechnicalAnalysisService)")
+        logger.info(
+            "Shared market data services initialized (including TechnicalAnalysisService)"
+        )
 
         # Initialize unified data source facade for insider, institutional, macro data
         self.data_source_facade = get_data_source_facade()
@@ -223,7 +233,10 @@ class RLBacktester:
 
         # Initialize DataSourceManager for consolidated data access (optional, Phase 1)
         try:
-            from investigator.domain.services.data_sources.manager import get_data_source_manager
+            from investigator.domain.services.data_sources.manager import (
+                get_data_source_manager,
+            )
+
             self.data_source_manager = get_data_source_manager()
             logger.info("DataSourceManager initialized for consolidated data access")
         except Exception as e:
@@ -233,7 +246,9 @@ class RLBacktester:
         # Initialize shared valuation config services
         # Single source of truth for sector multiples, CAPM, GGM defaults
         self.valuation_config_service = ValuationConfigService()
-        self.sector_multiples_service = SectorMultiplesService(self.valuation_config_service)
+        self.sector_multiples_service = SectorMultiplesService(
+            self.valuation_config_service
+        )
         logger.info("Shared valuation config services initialized")
 
     def get_quarterly_metrics_structured(
@@ -280,7 +295,12 @@ class RLBacktester:
                 LIMIT :num_quarters
             """
             results = session.execute(
-                text(query), {"symbol": symbol, "as_of_date": as_of_date, "num_quarters": num_quarters}
+                text(query),
+                {
+                    "symbol": symbol,
+                    "as_of_date": as_of_date,
+                    "num_quarters": num_quarters,
+                },
             ).fetchall()
 
             quarterly_metrics = []
@@ -360,7 +380,8 @@ class RLBacktester:
                 LIMIT :num_years
             """
             results = session.execute(
-                text(query), {"symbol": symbol, "as_of_date": as_of_date, "num_years": num_years}
+                text(query),
+                {"symbol": symbol, "as_of_date": as_of_date, "num_years": num_years},
             ).fetchall()
 
             multi_year_data = []
@@ -397,7 +418,9 @@ class RLBacktester:
             return [s.upper() for s in symbols]
 
         # Use shared repository - gets symbols with both stock and SEC data
-        valid_symbols = self.symbol_repo.get_symbols_with_sec_data(min_market_cap=1_000_000_000)
+        valid_symbols = self.symbol_repo.get_symbols_with_sec_data(
+            min_market_cap=1_000_000_000
+        )
         return valid_symbols[: top_n or 500]
 
     def get_russell1000_symbols(self) -> List[str]:
@@ -408,7 +431,9 @@ class RLBacktester:
         """Delegate to shared SymbolRepository."""
         return self.symbol_repo.get_sp500_symbols()
 
-    def get_all_symbols(self, us_only: bool = True, order_by: str = "stockid") -> List[str]:
+    def get_all_symbols(
+        self, us_only: bool = True, order_by: str = "stockid"
+    ) -> List[str]:
         """Delegate to shared SymbolRepository."""
         return self.symbol_repo.get_all_symbols(us_only=us_only, order_by=order_by)
 
@@ -449,7 +474,9 @@ class RLBacktester:
                 ORDER BY fiscal_year DESC
                 LIMIT 1
             """
-            fy_result = session.execute(text(fy_query), {"symbol": symbol, "as_of_date": as_of_date}).fetchone()
+            fy_result = session.execute(
+                text(fy_query), {"symbol": symbol, "as_of_date": as_of_date}
+            ).fetchone()
 
             # Get most recent quarterly data for balance sheet
             q_query = """
@@ -475,7 +502,9 @@ class RLBacktester:
                          END DESC
                 LIMIT 8
             """
-            q_results = session.execute(text(q_query), {"symbol": symbol, "as_of_date": as_of_date}).fetchall()
+            q_results = session.execute(
+                text(q_query), {"symbol": symbol, "as_of_date": as_of_date}
+            ).fetchall()
 
             # Decide which data to use
             if fy_result:
@@ -493,10 +522,16 @@ class RLBacktester:
                 latest = q_results[0]
                 balance_sheet = latest
                 ttm_revenue = sum(self._to_float(r[3]) for r in q_results[:4] if r[3])
-                ttm_net_income = sum(self._to_float(r[4]) for r in q_results[:4] if r[4])
+                ttm_net_income = sum(
+                    self._to_float(r[4]) for r in q_results[:4] if r[4]
+                )
                 ttm_fcf = sum(self._to_float(r[6]) for r in q_results[:4] if r[6])
-                ttm_operating_income = sum(self._to_float(r[15]) for r in q_results[:4] if r[15])
-                ttm_dividends = sum(abs(self._to_float(r[18]) or 0) for r in q_results[:4] if r[18])
+                ttm_operating_income = sum(
+                    self._to_float(r[15]) for r in q_results[:4] if r[15]
+                )
+                ttm_dividends = sum(
+                    abs(self._to_float(r[18]) or 0) for r in q_results[:4] if r[18]
+                )
                 quarters_available = len(q_results)
             elif q_results:
                 latest = q_results[0]
@@ -511,10 +546,14 @@ class RLBacktester:
                 return None
 
             # EBITDA approximation
-            ttm_ebitda = ttm_operating_income + (self._to_float(balance_sheet[8]) * 0.05)
+            ttm_ebitda = ttm_operating_income + (
+                self._to_float(balance_sheet[8]) * 0.05
+            )
 
             # Get shares_outstanding from the filing (index 19 after adding to query)
-            filing_shares = self._to_float(balance_sheet[19]) if len(balance_sheet) > 19 else None
+            filing_shares = (
+                self._to_float(balance_sheet[19]) if len(balance_sheet) > 19 else None
+            )
 
             return {
                 "symbol": symbol,
@@ -576,7 +615,9 @@ class RLBacktester:
             "shares_outstanding": None,
         }
 
-    def get_shares_history_for_normalization(self, symbol: str, lookback_months: List[int]) -> pd.DataFrame:
+    def get_shares_history_for_normalization(
+        self, symbol: str, lookback_months: List[int]
+    ) -> pd.DataFrame:
         """
         Get shares outstanding history and detect/normalize for splits.
 
@@ -610,21 +651,32 @@ class RLBacktester:
         if adjusted_shares and adjusted_shares > 0:
             shares = adjusted_shares
             shares_source = "split_normalized"
-        elif financials.get("shares_outstanding") and financials["shares_outstanding"] > 0:
+        elif (
+            financials.get("shares_outstanding")
+            and financials["shares_outstanding"] > 0
+        ):
             shares = financials["shares_outstanding"]
             shares_source = "SEC_filing"
-        elif metadata and metadata.get("shares_outstanding") and metadata["shares_outstanding"] > 0:
+        elif (
+            metadata
+            and metadata.get("shares_outstanding")
+            and metadata["shares_outstanding"] > 0
+        ):
             shares = metadata["shares_outstanding"]
             shares_source = "symbol_table"
         elif metadata and metadata.get("market_cap", 0) > 0 and current_price > 0:
             shares = metadata["market_cap"] / current_price
             shares_source = "derived_from_mktcap"
         else:
-            raise ValueError(f"{symbol}: No shares data available - cannot calculate ratios")
+            raise ValueError(
+                f"{symbol}: No shares data available - cannot calculate ratios"
+            )
 
         market_cap = shares * current_price
 
-        logger.debug(f"{symbol} shares: {shares/1e9:.3f}B ({shares_source}), mktcap: ${market_cap/1e9:.1f}B")
+        logger.debug(
+            f"{symbol} shares: {shares / 1e9:.3f}B ({shares_source}), mktcap: ${market_cap / 1e9:.1f}B"
+        )
         financials["shares_outstanding"] = shares
 
         revenue = financials.get("total_revenue", 0) or 0
@@ -634,7 +686,9 @@ class RLBacktester:
         equity = financials.get("stockholders_equity", 0) or 1
         dividends = abs(financials.get("dividends_paid", 0) or 0)
         gross_profit = financials.get("gross_profit", 0) or 0
-        debt = (financials.get("long_term_debt", 0) or 0) + (financials.get("short_term_debt", 0) or 0)
+        debt = (financials.get("long_term_debt", 0) or 0) + (
+            financials.get("short_term_debt", 0) or 0
+        )
 
         eps = net_income / shares if shares > 0 else 0
         bvps = equity / shares if shares > 0 else 0
@@ -650,7 +704,9 @@ class RLBacktester:
             "revenue_growth_pct": 0,  # Would need prior year data
             "fcf_margin": fcf / revenue if revenue > 0 else 0,
             "gross_margin": gross_profit / revenue if revenue > 0 else 0,
-            "operating_margin": (financials.get("operating_income", 0) or 0) / revenue if revenue > 0 else 0,
+            "operating_margin": (financials.get("operating_income", 0) or 0) / revenue
+            if revenue > 0
+            else 0,
             "net_margin": net_income / revenue if revenue > 0 else 0,
             "roe": net_income / equity if equity > 0 else 0,
             "debt_to_equity": debt / equity if equity > 0 else 0,
@@ -688,7 +744,7 @@ class RLBacktester:
         ebitda = financials.get("ebitda", 0) or 0
         fcf = financials.get("free_cash_flow", 0) or 0
         dividends = abs(financials.get("dividends_paid", 0) or 0)
-        net_income = financials.get("net_income", 0) or 0
+        financials.get("net_income", 0) or 0
         market_cap = ratios.get("market_cap", 0)
 
         fair_values = {}
@@ -738,11 +794,20 @@ class RLBacktester:
             # Insurance, Managed Care & Health Care Distribution
             # (health insurers and drug distributors are in Health Care sector, not Finance)
             # All have same economics: high revenue, thin margins (1-3%), PS model inappropriate
-            elif any(term in industry.lower() for term in [
-                "insurance", "insurers", "insurer",
-                "managed health care", "managed care", "hmo", "health maintenance",
-                "health care distribution", "healthcare distribution"
-            ]):
+            elif any(
+                term in industry.lower()
+                for term in [
+                    "insurance",
+                    "insurers",
+                    "insurer",
+                    "managed health care",
+                    "managed care",
+                    "hmo",
+                    "health maintenance",
+                    "health care distribution",
+                    "healthcare distribution",
+                ]
+            ):
                 ins_result = value_insurance_company(
                     symbol=symbol,
                     financials=financials,
@@ -786,7 +851,7 @@ class RLBacktester:
                 if growth_result and growth_result.fair_value:
                     fair_values["pe"] = growth_result.fair_value
                     audit["models_used"].append("growth_adjusted_pe")
-            except Exception as e:
+            except Exception:
                 # Fallback to simple P/E
                 pe_multiple = self._get_sector_pe_multiple(sector)
                 fair_values["pe"] = eps * pe_multiple
@@ -812,7 +877,9 @@ class RLBacktester:
         if ebitda > 0:
             ev_multiple = self._get_sector_ev_multiple(sector)
             ev = ebitda * ev_multiple
-            debt = (financials.get("long_term_debt", 0) or 0) + (financials.get("short_term_debt", 0) or 0)
+            debt = (financials.get("long_term_debt", 0) or 0) + (
+                financials.get("short_term_debt", 0) or 0
+            )
             cash = financials.get("cash_and_equivalents", 0) or 0
             equity_value = ev - debt + cash
             fair_values["ev_ebitda"] = equity_value / shares if shares > 0 else None
@@ -821,7 +888,11 @@ class RLBacktester:
             fair_values["ev_ebitda"] = None
 
         # DCF valuation (using FULL DCFValuation model)
-        if fcf > 0 and hasattr(self, "_current_quarterly_metrics") and self._current_quarterly_metrics:
+        if (
+            fcf > 0
+            and hasattr(self, "_current_quarterly_metrics")
+            and self._current_quarterly_metrics
+        ):
             try:
                 dcf_model = DCFValuation(
                     symbol=symbol,
@@ -830,7 +901,10 @@ class RLBacktester:
                     db_manager=self.db,
                 )
                 dcf_result = dcf_model.calculate_dcf_valuation()
-                if dcf_result.get("applicable", False) and dcf_result.get("fair_value_per_share", 0) > 0:
+                if (
+                    dcf_result.get("applicable", False)
+                    and dcf_result.get("fair_value_per_share", 0) > 0
+                ):
                     fair_values["dcf"] = dcf_result["fair_value_per_share"]
                     audit["models_used"].append("dcf_full")
                     audit["dcf_assumptions"] = dcf_result.get("assumptions", {})
@@ -851,7 +925,10 @@ class RLBacktester:
         # GGM (using FULL GordonGrowthModel)
         payout_ratio = ratios.get("payout_ratio", 0)
         if dividends > 0 and payout_ratio >= 0.20:
-            if hasattr(self, "_current_quarterly_metrics") and self._current_quarterly_metrics:
+            if (
+                hasattr(self, "_current_quarterly_metrics")
+                and self._current_quarterly_metrics
+            ):
                 try:
                     ggm_model = GordonGrowthModel(
                         symbol=symbol,
@@ -866,8 +943,13 @@ class RLBacktester:
                     market_premium = capm_params.get("market_equity_premium", 0.05)
                     cost_of_equity = risk_free_rate + beta * market_premium
 
-                    ggm_result = ggm_model.calculate_ggm_valuation(cost_of_equity=cost_of_equity)
-                    if ggm_result.get("applicable", False) and ggm_result.get("fair_value_per_share", 0) > 0:
+                    ggm_result = ggm_model.calculate_ggm_valuation(
+                        cost_of_equity=cost_of_equity
+                    )
+                    if (
+                        ggm_result.get("applicable", False)
+                        and ggm_result.get("fair_value_per_share", 0) > 0
+                    ):
                         fair_values["ggm"] = ggm_result["fair_value_per_share"]
                         audit["models_used"].append("ggm_full")
                         audit["ggm_assumptions"] = ggm_result.get("assumptions", {})
@@ -933,7 +1015,9 @@ class RLBacktester:
             elif isinstance(fv, (int, float)) and not isinstance(fv, complex):
                 sanitized_fvs[model] = fv
             else:
-                logger.warning(f"{symbol} - Discarding {model} fair value (non-numeric: {type(fv).__name__})")
+                logger.warning(
+                    f"{symbol} - Discarding {model} fair value (non-numeric: {type(fv).__name__})"
+                )
                 sanitized_fvs[model] = None
 
         return sanitized_fvs, tier, audit
@@ -989,7 +1073,9 @@ class RLBacktester:
             if fv is not None and isinstance(fv, (int, float)) and fv > 0:
                 clean_fair_values[model] = float(fv)
             elif fv is not None and not isinstance(fv, (int, float)):
-                logger.warning(f"Skipping {model} with non-numeric fair value: {type(fv).__name__}")
+                logger.warning(
+                    f"Skipping {model} with non-numeric fair value: {type(fv).__name__}"
+                )
 
         # Use shared FairValueService for consistent calculation
         fv_service = FairValueService()
@@ -1048,7 +1134,13 @@ class RLBacktester:
 
         for model, fv in fair_values.items():
             # Protect against complex numbers (from sqrt of negative in growth calculations)
-            if fv is not None and isinstance(fv, (int, float)) and fv > 0 and actual_price > 0 and price_at_prediction > 0:
+            if (
+                fv is not None
+                and isinstance(fv, (int, float))
+                and fv > 0
+                and actual_price > 0
+                and price_at_prediction > 0
+            ):
                 result = calculator.calculate(
                     predicted_fv=fv,
                     price_at_prediction=price_at_prediction,
@@ -1101,7 +1193,9 @@ class RLBacktester:
         # Extract economic indicator values
         regional_fed = economic_indicators.get("regional_fed", {})
         cboe = economic_indicators.get("cboe", {})
-        fed_summary = regional_fed.get("summary", {}) if isinstance(regional_fed, dict) else {}
+        fed_summary = (
+            regional_fed.get("summary", {}) if isinstance(regional_fed, dict) else {}
+        )
         market_cap = ratios.get("market_cap", 0)
 
         # Company size classification
@@ -1144,6 +1238,7 @@ class RLBacktester:
         except Exception as e:
             logger.warning(f"Could not get technical features for {symbol}: {e}")
             from investigator.domain.services.market_data import TechnicalFeatures
+
             tech_features = TechnicalFeatures()
 
         return ValuationContext(
@@ -1153,7 +1248,9 @@ class RLBacktester:
             industry=metadata.get("industry", "Unknown"),
             growth_stage=growth_stage,
             company_size=company_size,
-            profitability_score=min(1.0, max(0, ratios.get("net_margin", 0) + 0.1) / 0.3),
+            profitability_score=min(
+                1.0, max(0, ratios.get("net_margin", 0) + 0.1) / 0.3
+            ),
             pe_level=min(1.0, ratios.get("pe_ratio", 20) / 50),
             revenue_growth=revenue_growth,
             fcf_margin=ratios.get("fcf_margin", 0),
@@ -1164,7 +1261,9 @@ class RLBacktester:
             operating_margin=ratios.get("operating_margin", 0),
             net_margin=self._calculate_net_margin(financials, ratios),
             margin_bin=self._calculate_margin_bin(financials, ratios),
-            is_low_margin_industry=self._is_low_margin_industry(metadata.get("sector", ""), metadata.get("industry", "")),
+            is_low_margin_industry=self._is_low_margin_industry(
+                metadata.get("sector", ""), metadata.get("industry", "")
+            ),
             data_quality_score=75.0,  # Default for backtest
             quarters_available=financials.get("quarters_available", 4),
             current_price=current_price,
@@ -1183,7 +1282,12 @@ class RLBacktester:
             risk_reward_ratio=tech_features.risk_reward_ratio,
             # Market context
             volatility=tech_features.volatility,
-            technical_trend=(tech_features.price_vs_sma_20 + tech_features.price_vs_sma_50 + tech_features.price_vs_sma_200) / 3,
+            technical_trend=(
+                tech_features.price_vs_sma_20
+                + tech_features.price_vs_sma_50
+                + tech_features.price_vs_sma_200
+            )
+            / 3,
             # Insider sentiment features (from DataSourceFacade)
             insider_sentiment=insider_data.get("sentiment_score", 0.0),
             insider_buy_ratio=self._calculate_insider_buy_ratio(insider_data),
@@ -1204,9 +1308,12 @@ class RLBacktester:
             empire_state_mfg=fed_summary.get("empire_state_mfg") or 0.0,
             # CBOE volatility data
             vix=cboe.get("vix") or 18.0,
-            vix_term_structure=(cboe.get("vix3m") or 18.0) / max(cboe.get("vix") or 18.0, 1.0),
+            vix_term_structure=(cboe.get("vix3m") or 18.0)
+            / max(cboe.get("vix") or 18.0, 1.0),
             skew=cboe.get("skew") or 120.0,
-            volatility_regime=self._classify_volatility_regime_int(cboe.get("volatility_regime")),
+            volatility_regime=self._classify_volatility_regime_int(
+                cboe.get("volatility_regime")
+            ),
             is_backwardation=cboe.get("is_backwardation", False),
         )
 
@@ -1239,7 +1346,9 @@ class RLBacktester:
             return 1.0
         return -1.0
 
-    def _calculate_net_margin(self, financials: Dict[str, Any], ratios: Dict[str, float]) -> float:
+    def _calculate_net_margin(
+        self, financials: Dict[str, Any], ratios: Dict[str, float]
+    ) -> float:
         """Calculate net profit margin from financials or ratios."""
         # Try ratios first
         net_margin = ratios.get("net_margin", 0.0)
@@ -1252,7 +1361,9 @@ class RLBacktester:
             return net_income / revenue
         return 0.0
 
-    def _calculate_margin_bin(self, financials: Dict[str, Any], ratios: Dict[str, float]) -> int:
+    def _calculate_margin_bin(
+        self, financials: Dict[str, Any], ratios: Dict[str, float]
+    ) -> int:
         """Categorize net margin into bins for RL learning.
 
         Bins:
@@ -1279,19 +1390,38 @@ class RLBacktester:
         industry_lower = industry.lower()
 
         low_margin_industries = [
-            "department", "specialty retail", "discount stores", "warehouse clubs",
-            "food chains", "grocery", "supermarket",
+            "department",
+            "specialty retail",
+            "discount stores",
+            "warehouse clubs",
+            "food chains",
+            "grocery",
+            "supermarket",
             "consumer electronics/video chains",
-            "computer manufacturing", "computer hardware",
-            "electrical products", "electronic components",
-            "air freight", "airlines", "airline",
-            "meat/poultry/fish", "packaged foods", "food processing",
-            "farm products", "farming/seeds",
-            "hospital", "nursing", "medical/nursing services",
-            "insurance", "insurers", "managed health care", "managed care",
+            "computer manufacturing",
+            "computer hardware",
+            "electrical products",
+            "electronic components",
+            "air freight",
+            "airlines",
+            "airline",
+            "meat/poultry/fish",
+            "packaged foods",
+            "food processing",
+            "farm products",
+            "farming/seeds",
+            "hospital",
+            "nursing",
+            "medical/nursing services",
+            "insurance",
+            "insurers",
+            "managed health care",
+            "managed care",
             "health care distribution",
-            "cable", "pay television",
-            "oil/gas transmission", "gas distribution",
+            "cable",
+            "pay television",
+            "oil/gas transmission",
+            "gas distribution",
             "beverages",
         ]
 
@@ -1366,15 +1496,23 @@ class RLBacktester:
                 insider_data = {}
                 if consolidated.insider:
                     summary = consolidated.insider.get("summary", {})
-                    sentiment_score_obj = consolidated.insider.get("sentiment_score", {})
+                    sentiment_score_obj = consolidated.insider.get(
+                        "sentiment_score", {}
+                    )
                     insider_data = {
                         # sentiment_score is nested: {"score": float, "buy_value": float, ...}
-                        "sentiment_score": sentiment_score_obj.get("score", 0.0) if isinstance(sentiment_score_obj, dict) else 0.0,
+                        "sentiment_score": sentiment_score_obj.get("score", 0.0)
+                        if isinstance(sentiment_score_obj, dict)
+                        else 0.0,
                         "buy_count": summary.get("buys", 0),
                         "sell_count": summary.get("sells", 0),
                         # buy_value/sell_value from sentiment_score object
-                        "buy_value": sentiment_score_obj.get("buy_value", 0) if isinstance(sentiment_score_obj, dict) else 0,
-                        "sell_value": sentiment_score_obj.get("sell_value", 0) if isinstance(sentiment_score_obj, dict) else 0,
+                        "buy_value": sentiment_score_obj.get("buy_value", 0)
+                        if isinstance(sentiment_score_obj, dict)
+                        else 0,
+                        "sell_value": sentiment_score_obj.get("sell_value", 0)
+                        if isinstance(sentiment_score_obj, dict)
+                        else 0,
                         "cluster_detected": summary.get("cluster_detected", False),
                         "key_exec_activity": summary.get("key_exec_activity", 0.0),
                     }
@@ -1396,7 +1534,9 @@ class RLBacktester:
                 return insider_data, economic_indicators
 
             except Exception as e:
-                logger.debug(f"DataSourceManager fetch failed for {symbol}, falling back to legacy: {e}")
+                logger.debug(
+                    f"DataSourceManager fetch failed for {symbol}, falling back to legacy: {e}"
+                )
 
         # Fallback to legacy fetchers
         insider_data = self.fetch_insider_data_sync(symbol, as_of_date)
@@ -1444,7 +1584,9 @@ class RLBacktester:
 
         try:
             predicted_upside_pct = (
-                ((blended_fair_value - current_price) / current_price * 100) if current_price > 0 else 0
+                ((blended_fair_value - current_price) / current_price * 100)
+                if current_price > 0
+                else 0
             )
 
             # Default entry_date to analysis_date if not provided
@@ -1569,16 +1711,16 @@ class RLBacktester:
             # LONG: positive when price goes up
             long_raw = annualized
             if long_raw >= 0:
-                rewards["LONG"]["reward_30d"] = long_raw / max(0.5, safe_beta ** 0.5)
+                rewards["LONG"]["reward_30d"] = long_raw / max(0.5, safe_beta**0.5)
             else:
-                rewards["LONG"]["reward_30d"] = long_raw * max(1.0, safe_beta ** 0.75)
+                rewards["LONG"]["reward_30d"] = long_raw * max(1.0, safe_beta**0.75)
 
             # SHORT: positive when price goes down (inverse of LONG)
             short_raw = -annualized
             if short_raw >= 0:
-                rewards["SHORT"]["reward_30d"] = short_raw / max(0.5, safe_beta ** 0.5)
+                rewards["SHORT"]["reward_30d"] = short_raw / max(0.5, safe_beta**0.5)
             else:
-                rewards["SHORT"]["reward_30d"] = short_raw * max(1.0, safe_beta ** 0.75)
+                rewards["SHORT"]["reward_30d"] = short_raw * max(1.0, safe_beta**0.75)
 
         # 90-day rewards
         if actual_price_90d and actual_price_90d > 0:
@@ -1588,16 +1730,16 @@ class RLBacktester:
             # LONG
             long_raw = annualized
             if long_raw >= 0:
-                rewards["LONG"]["reward_90d"] = long_raw / max(0.5, safe_beta ** 0.5)
+                rewards["LONG"]["reward_90d"] = long_raw / max(0.5, safe_beta**0.5)
             else:
-                rewards["LONG"]["reward_90d"] = long_raw * max(1.0, safe_beta ** 0.75)
+                rewards["LONG"]["reward_90d"] = long_raw * max(1.0, safe_beta**0.75)
 
             # SHORT
             short_raw = -annualized
             if short_raw >= 0:
-                rewards["SHORT"]["reward_90d"] = short_raw / max(0.5, safe_beta ** 0.5)
+                rewards["SHORT"]["reward_90d"] = short_raw / max(0.5, safe_beta**0.5)
             else:
-                rewards["SHORT"]["reward_90d"] = short_raw * max(1.0, safe_beta ** 0.75)
+                rewards["SHORT"]["reward_90d"] = short_raw * max(1.0, safe_beta**0.75)
 
         # Clamp rewards to [-1, 1]
         for pos in rewards:
@@ -1648,22 +1790,24 @@ class RLBacktester:
             # LONG: positive when price goes up
             long_raw = annualized
             if long_raw >= 0:
-                rewards["LONG"][period] = long_raw / max(0.5, safe_beta ** 0.5)
+                rewards["LONG"][period] = long_raw / max(0.5, safe_beta**0.5)
             else:
-                rewards["LONG"][period] = long_raw * max(1.0, safe_beta ** 0.75)
+                rewards["LONG"][period] = long_raw * max(1.0, safe_beta**0.75)
 
             # SHORT: positive when price goes down
             short_raw = -annualized
             if short_raw >= 0:
-                rewards["SHORT"][period] = short_raw / max(0.5, safe_beta ** 0.5)
+                rewards["SHORT"][period] = short_raw / max(0.5, safe_beta**0.5)
             else:
-                rewards["SHORT"][period] = short_raw * max(1.0, safe_beta ** 0.75)
+                rewards["SHORT"][period] = short_raw * max(1.0, safe_beta**0.75)
 
         # Clamp rewards to [-1, 1]
         for pos in rewards:
             for period in rewards[pos]:
                 if rewards[pos][period] is not None:
-                    rewards[pos][period] = round(max(-1.0, min(1.0, rewards[pos][period])), 4)
+                    rewards[pos][period] = round(
+                        max(-1.0, min(1.0, rewards[pos][period])), 4
+                    )
 
         return rewards
 
@@ -1706,7 +1850,9 @@ class RLBacktester:
         shares_df = self.get_shares_history_for_normalization(symbol, lookback_months)
         shares_lookup = {}
         if not shares_df.empty:
-            shares_lookup = dict(zip(shares_df["months_back"], shares_df["adjusted_shares"]))
+            shares_lookup = dict(
+                zip(shares_df["months_back"], shares_df["adjusted_shares"])
+            )
             # Log if splits were detected
             if (shares_df["split_factor"] != 1.0).any():
                 logger.info(
@@ -1732,14 +1878,20 @@ class RLBacktester:
                 # Calculate ratios (use split-adjusted shares if available)
                 adjusted_shares = shares_lookup.get(months_back)
                 ratios = self.calculate_ratios(
-                    financials, price_at_prediction, metadata, symbol=symbol, adjusted_shares=adjusted_shares
+                    financials,
+                    price_at_prediction,
+                    metadata,
+                    symbol=symbol,
+                    adjusted_shares=adjusted_shares,
                 )
 
                 # Fetch structured quarterly metrics for DCF/GGM (FULL framework)
                 self._current_quarterly_metrics = self.get_quarterly_metrics_structured(
                     symbol, analysis_date, num_quarters=12
                 )
-                self._current_multi_year_data = self.get_multi_year_data(symbol, analysis_date, num_years=5)
+                self._current_multi_year_data = self.get_multi_year_data(
+                    symbol, analysis_date, num_years=5
+                )
 
                 # Calculate fair values using FULL framework
                 fair_values, tier, audit = self.calculate_fair_values_full_framework(
@@ -1769,20 +1921,32 @@ class RLBacktester:
                 )
 
                 if blended_fv <= 0:
-                    results["errors"].append(f"{months_back}m: Could not calculate fair value")
+                    results["errors"].append(
+                        f"{months_back}m: Could not calculate fair value"
+                    )
                     continue
 
                 # Calculate position signal: Long=1, Short=-1, Skip=0
-                valuation_gap = (blended_fv - price_at_prediction) / price_at_prediction if price_at_prediction > 0 else 0
+                valuation_gap = (
+                    (blended_fv - price_at_prediction) / price_at_prediction
+                    if price_at_prediction > 0
+                    else 0
+                )
 
                 # Calculate valuation confidence based on model agreement
                 # Filter out complex numbers (from sqrt of negative in growth calculations)
-                valid_fvs = [fv for fv in fair_values.values() if fv and isinstance(fv, (int, float)) and fv > 0]
+                valid_fvs = [
+                    fv
+                    for fv in fair_values.values()
+                    if fv and isinstance(fv, (int, float)) and fv > 0
+                ]
                 if len(valid_fvs) >= 2:
                     # How many models agree on direction (above or below current price)?
                     above_price = sum(1 for fv in valid_fvs if fv > price_at_prediction)
                     below_price = len(valid_fvs) - above_price
-                    valuation_confidence = max(above_price, below_price) / len(valid_fvs)
+                    valuation_confidence = max(above_price, below_price) / len(
+                        valid_fvs
+                    )
                 else:
                     valuation_confidence = 0.5  # Single model, moderate confidence
 
@@ -1800,7 +1964,9 @@ class RLBacktester:
                     position_signal = -1  # Short: FV < Price
 
                 # Get actual prices for all holding periods
-                multi_period_prices = self.get_multi_period_prices(symbol, analysis_date)
+                multi_period_prices = self.get_multi_period_prices(
+                    symbol, analysis_date
+                )
                 actual_price_30d = multi_period_prices.get("1m")
                 actual_price_90d = multi_period_prices.get("3m")
 
@@ -1818,7 +1984,11 @@ class RLBacktester:
                 per_model_rewards = {}
                 if actual_price_90d:
                     per_model_rewards = self.calculate_per_model_rewards(
-                        fair_values, price_at_prediction, actual_price_90d, days=90, beta=stock_beta
+                        fair_values,
+                        price_at_prediction,
+                        actual_price_90d,
+                        days=90,
+                        beta=stock_beta,
                     )
 
                 # Build exit dates for all holding periods
@@ -1832,7 +2002,10 @@ class RLBacktester:
                 # Add multi-period data to per_model_rewards for storage (JSONB is source of truth)
                 per_model_rewards["multi_period"] = {
                     "entry_date": analysis_date.isoformat(),
-                    "prices": {k: round(v, 2) if v else None for k, v in multi_period_prices.items()},
+                    "prices": {
+                        k: round(v, 2) if v else None
+                        for k, v in multi_period_prices.items()
+                    },
                     "exit_dates": exit_dates,
                     "long_rewards": multi_period_rewards["LONG"],
                     "short_rewards": multi_period_rewards["SHORT"],
@@ -1869,8 +2042,12 @@ class RLBacktester:
                 )
 
                 # Calculate exit dates for position tracking
-                exit_date_30d = analysis_date + timedelta(days=30) if actual_price_30d else None
-                exit_date_90d = analysis_date + timedelta(days=90) if actual_price_90d else None
+                exit_date_30d = (
+                    analysis_date + timedelta(days=30) if actual_price_30d else None
+                )
+                exit_date_90d = (
+                    analysis_date + timedelta(days=90) if actual_price_90d else None
+                )
 
                 # Record BOTH LONG and SHORT positions for balanced RL training
                 record_ids = []
@@ -1902,7 +2079,9 @@ class RLBacktester:
                 short_reward_90d = position_rewards["SHORT"]["reward_90d"]
 
                 # Position signal label (must be defined before results append)
-                pos_label = {1: "LONG", -1: "SHORT", 0: "SKIP"}.get(position_signal, "?")
+                pos_label = {1: "LONG", -1: "SHORT", 0: "SKIP"}.get(
+                    position_signal, "?"
+                )
 
                 # Find optimal holding period (highest reward across all periods)
                 best_long_period, best_long_reward = None, -999
@@ -1941,10 +2120,18 @@ class RLBacktester:
                         "sector_specific": audit.get("sector_specific", False),
                         "blended_fv": round(blended_fv, 2),
                         "price_at_pred": round(price_at_prediction, 2),
-                        "actual_90d": round(actual_price_90d, 2) if actual_price_90d else None,
-                        "long_reward_90d": round(long_reward_90d, 3) if long_reward_90d else None,
-                        "short_reward_90d": round(short_reward_90d, 3) if short_reward_90d else None,
-                        "upside_pct": round((blended_fv / price_at_prediction - 1) * 100, 1),
+                        "actual_90d": round(actual_price_90d, 2)
+                        if actual_price_90d
+                        else None,
+                        "long_reward_90d": round(long_reward_90d, 3)
+                        if long_reward_90d
+                        else None,
+                        "short_reward_90d": round(short_reward_90d, 3)
+                        if short_reward_90d
+                        else None,
+                        "upside_pct": round(
+                            (blended_fv / price_at_prediction - 1) * 100, 1
+                        ),
                         # Position signal
                         "position_signal": position_signal,
                         "position_signal_label": pos_label,
@@ -1956,12 +2143,18 @@ class RLBacktester:
                         # Optimal position and holding period (hindsight)
                         "optimal_position": optimal_position,
                         "optimal_holding_period": optimal_period,
-                        "optimal_reward": round(optimal_reward, 3) if optimal_reward != 0 else 0,
+                        "optimal_reward": round(optimal_reward, 3)
+                        if optimal_reward != 0
+                        else 0,
                     }
                 )
 
-                long_str = f"{long_reward_90d:.3f}" if long_reward_90d is not None else "N/A"
-                short_str = f"{short_reward_90d:.3f}" if short_reward_90d is not None else "N/A"
+                long_str = (
+                    f"{long_reward_90d:.3f}" if long_reward_90d is not None else "N/A"
+                )
+                short_str = (
+                    f"{short_reward_90d:.3f}" if short_reward_90d is not None else "N/A"
+                )
 
                 logger.info(
                     f"{symbol} [{months_back}m back]: FV=${blended_fv:.2f}, "
@@ -1984,7 +2177,9 @@ class RLBacktester:
         parallel: int = 1,
     ) -> Dict[str, Any]:
         """Run backtest for all symbols with optional parallelization."""
-        logger.info(f"Starting FULL FRAMEWORK backtest for {len(symbols)} symbols at {lookback_months} month lookbacks")
+        logger.info(
+            f"Starting FULL FRAMEWORK backtest for {len(symbols)} symbols at {lookback_months} month lookbacks"
+        )
         if parallel > 1:
             logger.info(f"Parallel mode: {parallel} symbols concurrently")
 
@@ -2000,7 +2195,7 @@ class RLBacktester:
             """Process a single symbol (for parallel execution)."""
             idx, symbol, total = args
             try:
-                logger.info(f"Processing [{idx+1}/{total}] {symbol}")
+                logger.info(f"Processing [{idx + 1}/{total}] {symbol}")
                 result = self.run_backtest_for_symbol(symbol, lookback_months)
                 return {"success": True, "symbol": symbol, "result": result}
             except Exception as e:
@@ -2027,14 +2222,18 @@ class RLBacktester:
             work_items = [(i, symbol, len(symbols)) for i, symbol in enumerate(symbols)]
 
             with ThreadPoolExecutor(max_workers=parallel) as executor:
-                futures = {executor.submit(process_symbol, item): item for item in work_items}
+                futures = {
+                    executor.submit(process_symbol, item): item for item in work_items
+                }
 
                 for future in as_completed(futures):
                     outcome = future.result()
                     if outcome["success"]:
                         result = outcome["result"]
                         all_results["symbols_processed"] += 1
-                        all_results["predictions_recorded"] += len(result["predictions"])
+                        all_results["predictions_recorded"] += len(
+                            result["predictions"]
+                        )
                         all_results["errors"] += len(result["errors"])
                         all_results["symbol_results"].append(result)
                         self._aggregate_predictions(all_results, result)
@@ -2080,15 +2279,25 @@ class RLBacktester:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="RL Backtesting Script - Full Valuation Framework")
+    parser = argparse.ArgumentParser(
+        description="RL Backtesting Script - Full Valuation Framework"
+    )
 
     # Symbol source options
     parser.add_argument("--symbols", nargs="+", help="Specific symbols to backtest")
-    parser.add_argument("--russell1000", action="store_true", help="Backtest Russell 1000 symbols")
+    parser.add_argument(
+        "--russell1000", action="store_true", help="Backtest Russell 1000 symbols"
+    )
     parser.add_argument("--sp500", action="store_true", help="Backtest S&P 500 symbols")
-    parser.add_argument("--all", action="store_true", help="Backtest ALL stocks from symbol table")
-    parser.add_argument("--all-symbols", action="store_true", help="(Deprecated) Same as --all")
-    parser.add_argument("--top-n", type=int, default=100, help="Top N symbols by market cap")
+    parser.add_argument(
+        "--all", action="store_true", help="Backtest ALL stocks from symbol table"
+    )
+    parser.add_argument(
+        "--all-symbols", action="store_true", help="(Deprecated) Same as --all"
+    )
+    parser.add_argument(
+        "--top-n", type=int, default=100, help="Top N symbols by market cap"
+    )
     parser.add_argument(
         "--order-by",
         choices=["stockid", "mktcap", "ticker"],
@@ -2108,9 +2317,11 @@ def main():
         help="Include foreign stocks without SEC CIK (default: US only)",
     )
     parser.add_argument(
-        "--lookback", nargs="+", type=int,
+        "--lookback",
+        nargs="+",
+        type=int,
         default=list(RL_BACKTEST_PERIODS.standard_lookback_months),
-        help=f"Lookback periods in months (default: {list(RL_BACKTEST_PERIODS.standard_lookback_months)})"
+        help=f"Lookback periods in months (default: {list(RL_BACKTEST_PERIODS.standard_lookback_months)})",
     )
     parser.add_argument(
         "--lookback-range",
@@ -2130,13 +2341,21 @@ def main():
         help="Use trained RL policy for weight determination (default: rule-based)",
     )
     parser.add_argument(
-        "--rl-policy-path", type=str, default="data/rl_models/active_policy.pkl", help="Path to trained RL policy file"
+        "--rl-policy-path",
+        type=str,
+        default="data/rl_models/active_policy.pkl",
+        help="Path to trained RL policy file",
     )
     parser.add_argument(
-        "--parallel", type=int, default=1, help="Number of symbols to process in parallel (default: 1 = sequential)"
+        "--parallel",
+        type=int,
+        default=1,
+        help="Number of symbols to process in parallel (default: 1 = sequential)",
     )
     parser.add_argument(
-        "--skip-processed", type=str, help="Path to log file - skip symbols already processed in that log"
+        "--skip-processed",
+        type=str,
+        help="Path to log file - skip symbols already processed in that log",
     )
 
     args = parser.parse_args()
@@ -2149,14 +2368,15 @@ def main():
         interval_months = 1 if args.interval == "monthly" else 3
         # Generate lookback periods from 3 months to lookback_range
         # E.g., for 120 months quarterly: [3, 6, 9, 12, ..., 117, 120]
-        args.lookback = list(range(interval_months, args.lookback_range + 1, interval_months))
+        args.lookback = list(
+            range(interval_months, args.lookback_range + 1, interval_months)
+        )
         logger.info(
             f"Generated {len(args.lookback)} lookback periods ({args.interval}) "
             f"from {args.lookback[0]} to {args.lookback[-1]} months"
         )
 
     # Create logs directory
-    import os
 
     os.makedirs("logs", exist_ok=True)
 
@@ -2171,20 +2391,23 @@ def main():
     print("  Backtester initialized successfully", flush=True)
 
     # Get symbols based on source
-    us_only = not getattr(args, 'include_foreign', False)
+    us_only = not getattr(args, "include_foreign", False)
     if args.symbols:
         print(f"  Processing {len(args.symbols)} specified symbols", flush=True)
         symbols = [s.upper() for s in args.symbols]
-    elif getattr(args, 'russell1000', False):
+    elif getattr(args, "russell1000", False):
         print("  Fetching Russell 1000 symbols...", flush=True)
         symbols = backtester.get_russell1000_symbols()
         print(f"  Found {len(symbols)} Russell 1000 symbols", flush=True)
-    elif getattr(args, 'sp500', False):
+    elif getattr(args, "sp500", False):
         print("  Fetching S&P 500 symbols...", flush=True)
         symbols = backtester.get_sp500_symbols()
         print(f"  Found {len(symbols)} S&P 500 symbols", flush=True)
-    elif getattr(args, 'all', False) or args.all_symbols:
-        print(f"  Fetching ALL stocks from symbol table (order: {args.order_by})...", flush=True)
+    elif getattr(args, "all", False) or args.all_symbols:
+        print(
+            f"  Fetching ALL stocks from symbol table (order: {args.order_by})...",
+            flush=True,
+        )
         symbols = backtester.get_all_symbols(us_only=us_only, order_by=args.order_by)
         print(f"  Found {len(symbols)} symbols", flush=True)
     else:
@@ -2193,7 +2416,7 @@ def main():
         print(f"  Found {len(symbols)} symbols", flush=True)
 
     # Filter domestic filers (unless skipped)
-    skip_domestic = getattr(args, 'skip_domestic_filter', False)
+    skip_domestic = getattr(args, "skip_domestic_filter", False)
     if not skip_domestic:
         print("  Checking for domestic filers...", flush=True)
         domestic_filers = backtester.get_domestic_filers()
@@ -2201,21 +2424,30 @@ def main():
         symbols = [s for s in symbols if s in domestic_filers]
         filtered_count = original_count - len(symbols)
         if filtered_count > 0:
-            print(f"  Filtered out {filtered_count} foreign filers -> {len(symbols)} remaining", flush=True)
+            print(
+                f"  Filtered out {filtered_count} foreign filers -> {len(symbols)} remaining",
+                flush=True,
+            )
     else:
         print("  Skipping domestic filer filter (--skip-domestic-filter)", flush=True)
 
     # Skip already-processed symbols if resuming
     if args.skip_processed and os.path.exists(args.skip_processed):
         import re
+
         with open(args.skip_processed, "r") as f:
             log_content = f.read()
         # Extract symbols from log: "INFO - AAPL ["
         processed = set(re.findall(r" - INFO - ([A-Z]+) \[", log_content))
         original_count = len(symbols)
         symbols = [s for s in symbols if s not in processed]
-        print(f"  Resuming: skipping {len(processed)} already-processed symbols, {len(symbols)}/{original_count} remaining", flush=True)
-        logger.info(f"Resuming: skipping {len(processed)} already-processed symbols, {len(symbols)}/{original_count} remaining")
+        print(
+            f"  Resuming: skipping {len(processed)} already-processed symbols, {len(symbols)}/{original_count} remaining",
+            flush=True,
+        )
+        logger.info(
+            f"Resuming: skipping {len(processed)} already-processed symbols, {len(symbols)}/{original_count} remaining"
+        )
 
     if args.use_dual_policy:
         weighting_mode = "Dual RL Policy (Technical + Fundamental)"
@@ -2235,10 +2467,14 @@ def main():
 
     logger.info(f"Backtesting {len(symbols)} symbols with lookbacks: {args.lookback}")
     logger.info(f"Weighting mode: {weighting_mode}")
-    logger.info("Using FULL valuation framework (sector-specific, growth-adjusted, all models)")
+    logger.info(
+        "Using FULL valuation framework (sector-specific, growth-adjusted, all models)"
+    )
 
     # Run backtest
-    results = backtester.run_full_backtest(symbols, args.lookback, parallel=args.parallel)
+    results = backtester.run_full_backtest(
+        symbols, args.lookback, parallel=args.parallel
+    )
 
     # Print summary
     print("\n" + "=" * 70)

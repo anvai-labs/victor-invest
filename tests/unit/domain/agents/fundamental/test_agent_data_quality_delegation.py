@@ -11,15 +11,25 @@ from investigator.domain.agents.fundamental.agent import FundamentalAnalysisAgen
     ("agent_method", "assessor_method", "payload"),
     [
         ("_assess_quarter_quality", "assess_quarter_quality", {"revenues": 1}),
-        ("_assess_data_quality", "assess_data_quality", ({"symbol": "AAPL"}, {"pe_ratio": 10})),
+        (
+            "_assess_data_quality",
+            "assess_data_quality",
+            ({"symbol": "AAPL"}, {"pe_ratio": 10}),
+        ),
         (
             "_calculate_confidence_level",
             "calculate_confidence_level",
-            {"data_quality_score": 85, "quality_grade": "Good", "consistency_issues": []},
+            {
+                "data_quality_score": 85,
+                "quality_grade": "Good",
+                "consistency_issues": [],
+            },
         ),
     ],
 )
-def test_data_quality_methods_delegate_to_assessor(agent_method, assessor_method, payload):
+def test_data_quality_methods_delegate_to_assessor(
+    agent_method, assessor_method, payload
+):
     """Each data-quality agent method should forward work to DataQualityAssessor."""
     agent = MagicMock(spec=FundamentalAnalysisAgent)
     agent._get_data_quality_assessor = MagicMock()
@@ -48,7 +58,9 @@ def test_data_quality_methods_delegate_to_assessor(agent_method, assessor_method
 def test_get_data_quality_assessor_caches_singleton_resolution():
     """Resolver should be invoked once per agent instance and then cached."""
     agent = MagicMock(spec=FundamentalAnalysisAgent)
-    agent._get_data_quality_assessor = FundamentalAnalysisAgent._get_data_quality_assessor.__get__(agent)
+    agent._get_data_quality_assessor = (
+        FundamentalAnalysisAgent._get_data_quality_assessor.__get__(agent)
+    )
 
     assessor = MagicMock()
     with patch(

@@ -33,7 +33,9 @@ def collect_models_for_blending(
         models_for_blending.append(normalized_pb)
 
     sector_spec = valuation_results.get("sector_specific")
-    if isinstance(sector_spec, dict) and "P/BV" not in str(sector_spec.get("method", "")):
+    if isinstance(sector_spec, dict) and "P/BV" not in str(
+        sector_spec.get("method", "")
+    ):
         models_for_blending.append(sector_spec)
         info_messages.append(
             f"Added sector-specific valuation to blending: {sector_spec.get('method')}"
@@ -78,7 +80,11 @@ def filter_models_for_company(
         resolved_allowed_models.append("pb")
         added_pb_for_insurance = True
 
-    filtered = [model for model in models_for_blending if model.get("model") in resolved_allowed_models]
+    filtered = [
+        model
+        for model in models_for_blending
+        if model.get("model") in resolved_allowed_models
+    ]
     return filtered, resolved_allowed_models, added_pb_for_insurance
 
 
@@ -90,13 +96,19 @@ def _count_fcf_quarters(quarterly_metrics: Any) -> int:
     for quarter in quarterly_metrics:
         if isinstance(quarter, dict):
             cash_flow = quarter.get("cash_flow", {})
-            if isinstance(cash_flow, dict) and cash_flow.get("free_cash_flow") is not None:
+            if (
+                isinstance(cash_flow, dict)
+                and cash_flow.get("free_cash_flow") is not None
+            ):
                 count += 1
             continue
 
         if hasattr(quarter, "cash_flow"):
             cash_flow = getattr(quarter, "cash_flow", {})
-            if isinstance(cash_flow, dict) and cash_flow.get("free_cash_flow") is not None:
+            if (
+                isinstance(cash_flow, dict)
+                and cash_flow.get("free_cash_flow") is not None
+            ):
                 count += 1
 
     return count
@@ -131,14 +143,18 @@ def hydrate_financials_for_blending(
         if revenue_value and revenue_value > 0:
             financials["revenue"] = revenue_value
 
-    fcf_quarters_count = _count_fcf_quarters(getattr(company_profile, "quarterly_metrics", None))
+    fcf_quarters_count = _count_fcf_quarters(
+        getattr(company_profile, "quarterly_metrics", None)
+    )
     financials["fcf_quarters_count"] = fcf_quarters_count
 
     profile_fcf = getattr(company_profile, "free_cash_flow", None)
     if profile_fcf:
         financials["free_cash_flow"] = profile_fcf
     elif isinstance(getattr(company_profile, "ttm_metrics", None), dict):
-        financials["free_cash_flow"] = company_profile.ttm_metrics.get("free_cash_flow", 0)
+        financials["free_cash_flow"] = company_profile.ttm_metrics.get(
+            "free_cash_flow", 0
+        )
 
     profile_dividends = getattr(company_profile, "dividends_paid", None)
     if profile_dividends:
@@ -151,8 +167,10 @@ def hydrate_financials_for_blending(
         financials["ebitda"] = profile_ebitda
     elif "ebitda" not in financials or financials.get("ebitda", 0) == 0:
         ttm_metrics = company_data.get("ttm_metrics", {})
-        ebitda_value = ttm_metrics.get("ebitda") or ttm_metrics.get("operating_income") or financials.get(
-            "operating_income"
+        ebitda_value = (
+            ttm_metrics.get("ebitda")
+            or ttm_metrics.get("operating_income")
+            or financials.get("operating_income")
         )
         if ebitda_value:
             financials["ebitda"] = ebitda_value
@@ -169,7 +187,9 @@ def hydrate_financials_for_blending(
     if profile_net_income:
         financials["net_income"] = profile_net_income
     elif "net_income" not in financials or financials.get("net_income", 0) == 0:
-        net_income_value = (company_data.get("ttm_metrics", {}) or {}).get("net_income") or 0
+        net_income_value = (company_data.get("ttm_metrics", {}) or {}).get(
+            "net_income"
+        ) or 0
         if net_income_value:
             financials["net_income"] = net_income_value
 
@@ -194,7 +214,9 @@ def hydrate_financials_for_blending(
         "dividends_paid": financials.get("dividends_paid", 0),
         "payout_ratio": financials.get("payout_ratio", 0),
         "net_income": financials.get("net_income", 0),
-        "book_value": financials.get("stockholders_equity", financials.get("book_value", 0)),
+        "book_value": financials.get(
+            "stockholders_equity", financials.get("book_value", 0)
+        ),
     }
 
 

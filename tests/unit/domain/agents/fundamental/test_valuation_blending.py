@@ -87,7 +87,13 @@ def test_apply_weight_lookup_backfills_model_weights():
     pe = {"model": "pe"}
     pb = {"model": "pb"}
     valuation_results = {"ggm": {"model": "ggm"}}
-    summary = {"models": [{"model": "dcf", "weight": 0.4}, {"model": "pe", "weight": 0.2}, {"model": "ggm", "weight": 0.1}]}
+    summary = {
+        "models": [
+            {"model": "dcf", "weight": 0.4},
+            {"model": "pe", "weight": 0.2},
+            {"model": "ggm", "weight": 0.1},
+        ]
+    }
 
     apply_weight_lookup(
         multi_model_summary=summary,

@@ -55,7 +55,12 @@ class EventBus:
         self.max_history_size = 100
 
         # Metrics
-        self.metrics = {"events_published": 0, "events_delivered": 0, "events_dropped": 0, "active_subscriptions": 0}
+        self.metrics = {
+            "events_published": 0,
+            "events_delivered": 0,
+            "events_dropped": 0,
+            "active_subscriptions": 0,
+        }
 
         # Pattern subscriptions (for wildcard matching)
         self.pattern_subscribers: List[tuple[str, Callable]] = []
@@ -86,7 +91,9 @@ class EventBus:
 
         self.logger.info("Event bus stopped")
 
-    def subscribe(self, event_type: str, handler: Callable, filter_func: Optional[Callable] = None):
+    def subscribe(
+        self, event_type: str, handler: Callable, filter_func: Optional[Callable] = None
+    ):
         """
         Subscribe to an event type
 
@@ -122,7 +129,9 @@ class EventBus:
 
         # Remove from pattern subscriptions
         self.pattern_subscribers = [
-            (pattern, h) for pattern, h in self.pattern_subscribers if not (pattern == event_type and h == handler)
+            (pattern, h)
+            for pattern, h in self.pattern_subscribers
+            if not (pattern == event_type and h == handler)
         ]
 
         # Remove filter if exists
@@ -185,7 +194,9 @@ class EventBus:
         while self.running:
             try:
                 # Get event with timeout to allow checking running status
-                priority, event = await asyncio.wait_for(self.event_queue.get(), timeout=1.0)
+                priority, event = await asyncio.wait_for(
+                    self.event_queue.get(), timeout=1.0
+                )
 
                 # Process event
                 await self._deliver_event(event)
@@ -271,7 +282,10 @@ class EventBus:
         return count
 
     async def wait_for(
-        self, event_type: str, timeout: Optional[float] = None, filter_func: Optional[Callable] = None
+        self,
+        event_type: str,
+        timeout: Optional[float] = None,
+        filter_func: Optional[Callable] = None,
     ) -> Optional[Event]:
         """
         Wait for a specific event
@@ -301,7 +315,12 @@ class EventBus:
             self.unsubscribe(event_type, handler)
 
     async def request_response(
-        self, request_type: str, response_type: str, data: Dict[str, Any], source: str, timeout: float = 30.0
+        self,
+        request_type: str,
+        response_type: str,
+        data: Dict[str, Any],
+        source: str,
+        timeout: float = 30.0,
     ) -> Optional[Event]:
         """
         Send request and wait for response (RPC-style)
@@ -321,13 +340,15 @@ class EventBus:
         correlation_id = str(uuid.uuid4())
 
         # Set up response listener
-        response_future = asyncio.Future()
+        asyncio.Future()
 
         def response_filter(event: Event) -> bool:
             return event.correlation_id == correlation_id
 
         # Subscribe to response
-        response_task = asyncio.create_task(self.wait_for(response_type, timeout, response_filter))
+        response_task = asyncio.create_task(
+            self.wait_for(response_type, timeout, response_filter)
+        )
 
         # Send request
         await self.publish(request_type, data, source, correlation_id=correlation_id)
@@ -337,10 +358,17 @@ class EventBus:
 
     def get_metrics(self) -> Dict[str, Any]:
         """Get event bus metrics"""
-        return {**self.metrics, "queue_size": self.event_queue.qsize(), "max_queue_size": self.event_queue.maxsize}
+        return {
+            **self.metrics,
+            "queue_size": self.event_queue.qsize(),
+            "max_queue_size": self.event_queue.maxsize,
+        }
 
     def get_history(
-        self, event_type: Optional[str] = None, source: Optional[str] = None, limit: int = 10
+        self,
+        event_type: Optional[str] = None,
+        source: Optional[str] = None,
+        limit: int = 10,
     ) -> List[Event]:
         """
         Get event history
@@ -424,8 +452,14 @@ class EventChannel:
         self.event_bus.unsubscribe(f"channel:{self.name}", handler)
         self.subscribers.discard(handler)
 
-    async def request(self, data: Dict[str, Any], timeout: float = 30.0) -> Optional[Event]:
+    async def request(
+        self, data: Dict[str, Any], timeout: float = 30.0
+    ) -> Optional[Event]:
         """Send request and wait for response on this channel"""
         return await self.event_bus.request_response(
-            f"channel:{self.name}:request", f"channel:{self.name}:response", data, self.name, timeout
+            f"channel:{self.name}:request",
+            f"channel:{self.name}:response",
+            data,
+            self.name,
+            timeout,
         )

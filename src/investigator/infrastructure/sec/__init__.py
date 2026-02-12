@@ -26,7 +26,9 @@ def __getattr__(name):
     - SECCompanyFactsExtractor: companyfacts_extractor -> domain services -> ... -> sec
     """
     if name == "SECQuarterlyProcessor":
-        from investigator.infrastructure.sec.quarterly_processor import SECQuarterlyProcessor
+        from investigator.infrastructure.sec.quarterly_processor import (
+            SECQuarterlyProcessor,
+        )
 
         return SECQuarterlyProcessor
     elif name == "SECDataProcessor":
@@ -34,7 +36,9 @@ def __getattr__(name):
 
         return SECDataProcessor
     elif name == "SECCompanyFactsExtractor":
-        from investigator.infrastructure.sec.companyfacts_extractor import SECCompanyFactsExtractor
+        from investigator.infrastructure.sec.companyfacts_extractor import (
+            SECCompanyFactsExtractor,
+        )
 
         return SECCompanyFactsExtractor
     elif name == "SECApiClient":

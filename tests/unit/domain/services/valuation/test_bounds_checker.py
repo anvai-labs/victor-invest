@@ -57,7 +57,12 @@ class TestBoundsValidationResult:
         result = BoundsValidationResult(
             is_valid=False,
             issues=[
-                ValidationIssue(field="growth_rate", value=2.0, severity=ValidationSeverity.ERROR, message="Too high")
+                ValidationIssue(
+                    field="growth_rate",
+                    value=2.0,
+                    severity=ValidationSeverity.ERROR,
+                    message="Too high",
+                )
             ],
         )
         assert result.has_errors
@@ -68,7 +73,10 @@ class TestBoundsValidationResult:
             is_valid=True,
             issues=[
                 ValidationIssue(
-                    field="growth_rate", value=0.6, severity=ValidationSeverity.WARNING, message="High but allowed"
+                    field="growth_rate",
+                    value=0.6,
+                    severity=ValidationSeverity.WARNING,
+                    message="High but allowed",
                 )
             ],
         )
@@ -79,7 +87,12 @@ class TestBoundsValidationResult:
         result = BoundsValidationResult(
             is_valid=True,
             issues=[
-                ValidationIssue(field="pe_ratio", value=120, severity=ValidationSeverity.WARNING, message="High P/E")
+                ValidationIssue(
+                    field="pe_ratio",
+                    value=120,
+                    severity=ValidationSeverity.WARNING,
+                    message="High P/E",
+                )
             ],
         )
         assert result.has_warnings
@@ -96,8 +109,18 @@ class TestBoundsValidationResult:
         result = BoundsValidationResult(
             is_valid=False,
             issues=[
-                ValidationIssue(field="x", value=0, severity=ValidationSeverity.ERROR, message="Error"),
-                ValidationIssue(field="y", value=0, severity=ValidationSeverity.WARNING, message="Warning"),
+                ValidationIssue(
+                    field="x",
+                    value=0,
+                    severity=ValidationSeverity.ERROR,
+                    message="Error",
+                ),
+                ValidationIssue(
+                    field="y",
+                    value=0,
+                    severity=ValidationSeverity.WARNING,
+                    message="Warning",
+                ),
             ],
         )
         summary = result.summary()
@@ -127,7 +150,10 @@ class TestBoundsChecker:
             },
         )
         assert result.is_valid
-        assert len([i for i in result.issues if i.severity == ValidationSeverity.ERROR]) == 0
+        assert (
+            len([i for i in result.issues if i.severity == ValidationSeverity.ERROR])
+            == 0
+        )
 
     def test_validate_inputs_invalid_growth_rate(self, checker):
         """Test detecting invalid growth rate."""
@@ -240,7 +266,10 @@ class TestBoundsChecker:
             },
         )
         assert not result.is_valid
-        assert any(i.field == "growth_rate" and "not a valid number" in i.message for i in result.issues)
+        assert any(
+            i.field == "growth_rate" and "not a valid number" in i.message
+            for i in result.issues
+        )
 
     def test_validate_inputs_none_values(self, checker):
         """Test handling None values."""
@@ -269,14 +298,18 @@ class TestBoundsChecker:
 
     def test_validate_output_valid(self, checker):
         """Test validating valid output."""
-        result = checker.validate_output(fair_value=150.0, current_price=100.0, model_type="dcf")
+        result = checker.validate_output(
+            fair_value=150.0, current_price=100.0, model_type="dcf"
+        )
         # 1.5x is within bounds
         assert result.is_valid
 
     def test_validate_output_too_high(self, checker):
         """Test detecting fair value too high."""
         result = checker.validate_output(
-            fair_value=600.0, current_price=100.0, model_type="dcf"  # 6x current price  # DCF max is 5x
+            fair_value=600.0,
+            current_price=100.0,
+            model_type="dcf",  # 6x current price  # DCF max is 5x
         )
         # In non-strict mode, this is a warning
         assert result.has_warnings or result.has_errors
@@ -284,7 +317,9 @@ class TestBoundsChecker:
     def test_validate_output_too_low(self, checker):
         """Test detecting fair value too low."""
         result = checker.validate_output(
-            fair_value=10.0, current_price=100.0, model_type="dcf"  # 0.1x current price  # DCF min is 0.2x
+            fair_value=10.0,
+            current_price=100.0,
+            model_type="dcf",  # 0.1x current price  # DCF min is 0.2x
         )
         assert result.has_warnings or result.has_errors
 
@@ -383,7 +418,9 @@ class TestBoundsChecker:
         checker = BoundsChecker(fair_value_ratio_bounds=custom_bounds)
 
         # 3x would be valid by default but triggers warning with custom
-        result = checker.validate_output(fair_value=300.0, current_price=100.0, model_type="dcf")
+        result = checker.validate_output(
+            fair_value=300.0, current_price=100.0, model_type="dcf"
+        )
         assert result.has_warnings or result.has_errors
 
 

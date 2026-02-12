@@ -67,7 +67,10 @@ class TestAssessDataQuality:
 
         result_with_market = assessor.assess_data_quality(company_data_with_market, {})
 
-        assert result_with_market["data_quality_score"] > result_no_market["data_quality_score"]
+        assert (
+            result_with_market["data_quality_score"]
+            > result_no_market["data_quality_score"]
+        )
         assert result_with_market["market_metrics_populated"] == "2/2"
 
     def test_ratios_increase_quality(self, assessor):
@@ -79,7 +82,10 @@ class TestAssessDataQuality:
         ratios = {"pe_ratio": 15.0, "roe": 0.12, "current_ratio": 2.0}
         result_with_ratios = assessor.assess_data_quality(company_data, ratios)
 
-        assert result_with_ratios["data_quality_score"] > result_no_ratios["data_quality_score"]
+        assert (
+            result_with_ratios["data_quality_score"]
+            > result_no_ratios["data_quality_score"]
+        )
 
     def test_consistency_issues_detected(self, assessor):
         """Should detect and report consistency issues."""
@@ -190,7 +196,11 @@ class TestCalculateConfidenceLevel:
 
     def test_very_high_confidence(self, assessor):
         """Excellent quality should yield very high confidence."""
-        data_quality = {"data_quality_score": 95, "quality_grade": "Excellent", "consistency_issues": []}
+        data_quality = {
+            "data_quality_score": 95,
+            "quality_grade": "Excellent",
+            "consistency_issues": [],
+        }
 
         result = assessor.calculate_confidence_level(data_quality)
 
@@ -199,7 +209,11 @@ class TestCalculateConfidenceLevel:
 
     def test_high_confidence(self, assessor):
         """Good quality should yield high confidence."""
-        data_quality = {"data_quality_score": 80, "quality_grade": "Good", "consistency_issues": []}
+        data_quality = {
+            "data_quality_score": 80,
+            "quality_grade": "Good",
+            "consistency_issues": [],
+        }
 
         result = assessor.calculate_confidence_level(data_quality)
 
@@ -208,7 +222,11 @@ class TestCalculateConfidenceLevel:
 
     def test_moderate_confidence(self, assessor):
         """Fair quality should yield moderate confidence."""
-        data_quality = {"data_quality_score": 65, "quality_grade": "Fair", "consistency_issues": []}
+        data_quality = {
+            "data_quality_score": 65,
+            "quality_grade": "Fair",
+            "consistency_issues": [],
+        }
 
         result = assessor.calculate_confidence_level(data_quality)
 
@@ -217,7 +235,11 @@ class TestCalculateConfidenceLevel:
 
     def test_low_confidence(self, assessor):
         """Poor quality should yield low confidence."""
-        data_quality = {"data_quality_score": 45, "quality_grade": "Poor", "consistency_issues": []}
+        data_quality = {
+            "data_quality_score": 45,
+            "quality_grade": "Poor",
+            "consistency_issues": [],
+        }
 
         result = assessor.calculate_confidence_level(data_quality)
 
@@ -226,7 +248,11 @@ class TestCalculateConfidenceLevel:
 
     def test_very_low_confidence(self, assessor):
         """Very poor quality should yield very low confidence."""
-        data_quality = {"data_quality_score": 30, "quality_grade": "Very Poor", "consistency_issues": []}
+        data_quality = {
+            "data_quality_score": 30,
+            "quality_grade": "Very Poor",
+            "consistency_issues": [],
+        }
 
         result = assessor.calculate_confidence_level(data_quality)
 
@@ -235,7 +261,11 @@ class TestCalculateConfidenceLevel:
 
     def test_consistency_issues_reduce_confidence(self, assessor):
         """Consistency issues should reduce confidence by 10."""
-        data_quality = {"data_quality_score": 80, "quality_grade": "Good", "consistency_issues": ["Issue 1"]}
+        data_quality = {
+            "data_quality_score": 80,
+            "quality_grade": "Good",
+            "consistency_issues": ["Issue 1"],
+        }
 
         result = assessor.calculate_confidence_level(data_quality)
 
@@ -244,11 +274,21 @@ class TestCalculateConfidenceLevel:
 
     def test_returns_all_expected_keys(self, assessor):
         """Should return all expected keys in result."""
-        data_quality = {"data_quality_score": 70, "quality_grade": "Fair", "consistency_issues": []}
+        data_quality = {
+            "data_quality_score": 70,
+            "quality_grade": "Fair",
+            "consistency_issues": [],
+        }
 
         result = assessor.calculate_confidence_level(data_quality)
 
-        expected_keys = ["confidence_level", "confidence_score", "rationale", "based_on_data_quality", "quality_grade"]
+        expected_keys = [
+            "confidence_level",
+            "confidence_score",
+            "rationale",
+            "based_on_data_quality",
+            "quality_grade",
+        ]
 
         for key in expected_keys:
             assert key in result, f"Missing key: {key}"

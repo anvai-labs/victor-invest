@@ -1,6 +1,9 @@
 import math
 
-from utils.quarterly_calculator import analyze_quarterly_patterns, compute_missing_quarter
+from utils.quarterly_calculator import (
+    analyze_quarterly_patterns,
+    compute_missing_quarter,
+)
 
 
 def test_compute_missing_quarter_derives_free_cash_flow():
@@ -63,7 +66,9 @@ def test_compute_missing_quarter_normalizes_income_statement():
         },
     }
 
-    def income_quarter(period: str, revenue: float, net_income: float, operating_income: float):
+    def income_quarter(
+        period: str, revenue: float, net_income: float, operating_income: float
+    ):
         return {
             "fiscal_year": 2025,
             "fiscal_period": period,

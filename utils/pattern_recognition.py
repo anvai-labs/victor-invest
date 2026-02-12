@@ -4,10 +4,11 @@ Chart Pattern Recognition Module
 Detects technical chart patterns in price data for investment analysis.
 Foundation for Tier 4 advanced analytics.
 """
+
 import logging
 import numpy as np
 import pandas as pd
-from typing import List, Tuple, Optional, Dict
+from typing import List, Tuple, Dict
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -18,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 class PatternType(Enum):
     """Chart pattern types"""
+
     DOUBLE_TOP = "double_top"
     DOUBLE_BOTTOM = "double_bottom"
     HEAD_AND_SHOULDERS = "head_and_shoulders"
@@ -33,6 +35,7 @@ class PatternType(Enum):
 @dataclass
 class PatternResult:
     """Result from pattern detection"""
+
     pattern_type: PatternType
     confidence: float  # 0.0 to 1.0
     start_date: datetime
@@ -51,7 +54,7 @@ class PatternRecognizer:
         self,
         min_pattern_length: int = 5,
         peak_prominence: float = 1.0,
-        similarity_threshold: float = 0.10
+        similarity_threshold: float = 0.10,
     ):
         """
         Initialize pattern recognizer
@@ -83,11 +86,13 @@ class PatternRecognizer:
 
         # Ensure we have enough data
         if len(price_data) < self.min_pattern_length:
-            logger.warning(f"Insufficient data for pattern detection: {len(price_data)} bars")
+            logger.warning(
+                f"Insufficient data for pattern detection: {len(price_data)} bars"
+            )
             return patterns
 
         # Find peaks and troughs
-        prices = price_data['close'].values
+        prices = price_data["close"].values
         peaks, troughs = find_peaks_and_troughs(prices, prominence=self.peak_prominence)
 
         # Check for double top
@@ -103,19 +108,27 @@ class PatternRecognizer:
         patterns.extend(head_shoulders)
 
         # Check for inverse head and shoulders
-        inverse_head_shoulders = self._detect_inverse_head_and_shoulders(price_data, peaks, troughs)
+        inverse_head_shoulders = self._detect_inverse_head_and_shoulders(
+            price_data, peaks, troughs
+        )
         patterns.extend(inverse_head_shoulders)
 
         # Check for ascending triangle
-        ascending_triangles = self._detect_ascending_triangle(price_data, peaks, troughs)
+        ascending_triangles = self._detect_ascending_triangle(
+            price_data, peaks, troughs
+        )
         patterns.extend(ascending_triangles)
 
         # Check for descending triangle
-        descending_triangles = self._detect_descending_triangle(price_data, peaks, troughs)
+        descending_triangles = self._detect_descending_triangle(
+            price_data, peaks, troughs
+        )
         patterns.extend(descending_triangles)
 
         # Check for symmetrical triangle
-        symmetrical_triangles = self._detect_symmetrical_triangle(price_data, peaks, troughs)
+        symmetrical_triangles = self._detect_symmetrical_triangle(
+            price_data, peaks, troughs
+        )
         patterns.extend(symmetrical_triangles)
 
         # Check for bullish flag
@@ -135,10 +148,7 @@ class PatternRecognizer:
         return patterns
 
     def _detect_double_top(
-        self,
-        price_data: pd.DataFrame,
-        peaks: np.ndarray,
-        troughs: np.ndarray
+        self, price_data: pd.DataFrame, peaks: np.ndarray, troughs: np.ndarray
     ) -> List[PatternResult]:
         """
         Detect double top patterns
@@ -150,7 +160,7 @@ class PatternRecognizer:
         - Bearish reversal signal
         """
         patterns = []
-        prices = price_data['close'].values
+        prices = price_data["close"].values
 
         # Need at least 2 peaks
         if len(peaks) < 2:
@@ -190,7 +200,7 @@ class PatternRecognizer:
                 continue  # Not enough data after second peak
 
             # Check for decline after second peak
-            prices_after = prices[peak2_idx:min(peak2_idx + 10, len(prices))]
+            prices_after = prices[peak2_idx : min(peak2_idx + 10, len(prices))]
             if len(prices_after) > 0 and prices_after[-1] >= peak2_price * 0.98:
                 continue  # No significant decline
 
@@ -199,8 +209,8 @@ class PatternRecognizer:
             peaks_prices = np.array([peak1_price, peak2_price])
             confidence = calculate_pattern_confidence(
                 peaks_prices,
-                pattern_type='double_top',
-                volume_confirmation=volume_confirmation
+                pattern_type="double_top",
+                volume_confirmation=volume_confirmation,
             )
 
             # Calculate price target (depth of pattern projected down)
@@ -213,29 +223,28 @@ class PatternRecognizer:
             pattern = PatternResult(
                 pattern_type=PatternType.DOUBLE_TOP,
                 confidence=confidence,
-                start_date=price_data['date'].iloc[peak1_idx],
-                end_date=price_data['date'].iloc[peak2_idx],
-                direction='bearish',
+                start_date=price_data["date"].iloc[peak1_idx],
+                end_date=price_data["date"].iloc[peak2_idx],
+                direction="bearish",
                 key_points={
-                    'peak1': (peak1_idx, peak1_price),
-                    'trough': (trough_idx, trough_price),
-                    'peak2': (peak2_idx, peak2_price)
+                    "peak1": (peak1_idx, peak1_price),
+                    "trough": (trough_idx, trough_price),
+                    "peak2": (peak2_idx, peak2_price),
                 },
                 price_target=price_target,
                 stop_loss=stop_loss,
-                description=f"Double top at ${peak1_price:.2f}, targeting ${price_target:.2f}"
+                description=f"Double top at ${peak1_price:.2f}, targeting ${price_target:.2f}",
             )
 
             patterns.append(pattern)
-            logger.info(f"Detected double top: {peak1_price:.2f} -> {trough_price:.2f} -> {peak2_price:.2f}")
+            logger.info(
+                f"Detected double top: {peak1_price:.2f} -> {trough_price:.2f} -> {peak2_price:.2f}"
+            )
 
         return patterns
 
     def _detect_double_bottom(
-        self,
-        price_data: pd.DataFrame,
-        peaks: np.ndarray,
-        troughs: np.ndarray
+        self, price_data: pd.DataFrame, peaks: np.ndarray, troughs: np.ndarray
     ) -> List[PatternResult]:
         """
         Detect double bottom patterns
@@ -247,7 +256,7 @@ class PatternRecognizer:
         - Bullish reversal signal
         """
         patterns = []
-        prices = price_data['close'].values
+        prices = price_data["close"].values
 
         # Need at least 2 troughs
         if len(troughs) < 2:
@@ -287,7 +296,7 @@ class PatternRecognizer:
                 continue  # Not enough data after second trough
 
             # Check for rise after second trough
-            prices_after = prices[trough2_idx:min(trough2_idx + 10, len(prices))]
+            prices_after = prices[trough2_idx : min(trough2_idx + 10, len(prices))]
             if len(prices_after) > 0 and prices_after[-1] <= trough2_price * 1.02:
                 continue  # No significant rise
 
@@ -296,8 +305,8 @@ class PatternRecognizer:
             troughs_prices = np.array([trough1_price, trough2_price])
             confidence = calculate_pattern_confidence(
                 troughs_prices,
-                pattern_type='double_bottom',
-                volume_confirmation=volume_confirmation
+                pattern_type="double_bottom",
+                volume_confirmation=volume_confirmation,
             )
 
             # Calculate price target (height of pattern projected up)
@@ -310,29 +319,28 @@ class PatternRecognizer:
             pattern = PatternResult(
                 pattern_type=PatternType.DOUBLE_BOTTOM,
                 confidence=confidence,
-                start_date=price_data['date'].iloc[trough1_idx],
-                end_date=price_data['date'].iloc[trough2_idx],
-                direction='bullish',
+                start_date=price_data["date"].iloc[trough1_idx],
+                end_date=price_data["date"].iloc[trough2_idx],
+                direction="bullish",
                 key_points={
-                    'trough1': (trough1_idx, trough1_price),
-                    'peak': (peak_idx, peak_price),
-                    'trough2': (trough2_idx, trough2_price)
+                    "trough1": (trough1_idx, trough1_price),
+                    "peak": (peak_idx, peak_price),
+                    "trough2": (trough2_idx, trough2_price),
                 },
                 price_target=price_target,
                 stop_loss=stop_loss,
-                description=f"Double bottom at ${trough1_price:.2f}, targeting ${price_target:.2f}"
+                description=f"Double bottom at ${trough1_price:.2f}, targeting ${price_target:.2f}",
             )
 
             patterns.append(pattern)
-            logger.info(f"Detected double bottom: {trough1_price:.2f} -> {peak_price:.2f} -> {trough2_price:.2f}")
+            logger.info(
+                f"Detected double bottom: {trough1_price:.2f} -> {peak_price:.2f} -> {trough2_price:.2f}"
+            )
 
         return patterns
 
     def _detect_head_and_shoulders(
-        self,
-        price_data: pd.DataFrame,
-        peaks: np.ndarray,
-        troughs: np.ndarray
+        self, price_data: pd.DataFrame, peaks: np.ndarray, troughs: np.ndarray
     ) -> List[PatternResult]:
         """
         Detect head and shoulders patterns
@@ -345,7 +353,7 @@ class PatternRecognizer:
         - Bearish reversal signal
         """
         patterns = []
-        prices = price_data['close'].values
+        prices = price_data["close"].values
 
         # Need at least 3 peaks
         if len(peaks) < 3:
@@ -372,13 +380,17 @@ class PatternRecognizer:
                 continue
 
             # Shoulders should be at similar levels
-            shoulder_diff = abs(left_shoulder_price - right_shoulder_price) / left_shoulder_price
+            shoulder_diff = (
+                abs(left_shoulder_price - right_shoulder_price) / left_shoulder_price
+            )
 
             if shoulder_diff > self.similarity_threshold * 2:  # Allow more variation
                 continue
 
             # Find troughs (neckline points)
-            troughs_between = troughs[(troughs > left_shoulder_idx) & (troughs < right_shoulder_idx)]
+            troughs_between = troughs[
+                (troughs > left_shoulder_idx) & (troughs < right_shoulder_idx)
+            ]
 
             if len(troughs_between) < 2:
                 continue  # Need at least 2 troughs for neckline
@@ -396,7 +408,9 @@ class PatternRecognizer:
             if right_shoulder_idx >= len(prices) - 5:
                 continue
 
-            prices_after = prices[right_shoulder_idx:min(right_shoulder_idx + 10, len(prices))]
+            prices_after = prices[
+                right_shoulder_idx : min(right_shoulder_idx + 10, len(prices))
+            ]
             if len(prices_after) > 0 and prices_after[-1] >= neckline_avg * 0.97:
                 continue  # No breakdown
 
@@ -417,30 +431,29 @@ class PatternRecognizer:
             pattern = PatternResult(
                 pattern_type=PatternType.HEAD_AND_SHOULDERS,
                 confidence=confidence,
-                start_date=price_data['date'].iloc[left_shoulder_idx],
-                end_date=price_data['date'].iloc[right_shoulder_idx],
-                direction='bearish',
+                start_date=price_data["date"].iloc[left_shoulder_idx],
+                end_date=price_data["date"].iloc[right_shoulder_idx],
+                direction="bearish",
                 key_points={
-                    'left_shoulder': (left_shoulder_idx, left_shoulder_price),
-                    'head': (head_idx, head_price),
-                    'right_shoulder': (right_shoulder_idx, right_shoulder_price),
-                    'neckline': neckline_avg
+                    "left_shoulder": (left_shoulder_idx, left_shoulder_price),
+                    "head": (head_idx, head_price),
+                    "right_shoulder": (right_shoulder_idx, right_shoulder_price),
+                    "neckline": neckline_avg,
                 },
                 price_target=price_target,
                 stop_loss=stop_loss,
-                description=f"Head and shoulders: shoulders at ${left_shoulder_price:.2f}, head at ${head_price:.2f}"
+                description=f"Head and shoulders: shoulders at ${left_shoulder_price:.2f}, head at ${head_price:.2f}",
             )
 
             patterns.append(pattern)
-            logger.info(f"Detected head and shoulders: {left_shoulder_price:.2f} -> {head_price:.2f} -> {right_shoulder_price:.2f}")
+            logger.info(
+                f"Detected head and shoulders: {left_shoulder_price:.2f} -> {head_price:.2f} -> {right_shoulder_price:.2f}"
+            )
 
         return patterns
 
     def _detect_inverse_head_and_shoulders(
-        self,
-        price_data: pd.DataFrame,
-        peaks: np.ndarray,
-        troughs: np.ndarray
+        self, price_data: pd.DataFrame, peaks: np.ndarray, troughs: np.ndarray
     ) -> List[PatternResult]:
         """
         Detect inverse head and shoulders patterns
@@ -453,7 +466,7 @@ class PatternRecognizer:
         - Bullish reversal signal
         """
         patterns = []
-        prices = price_data['close'].values
+        prices = price_data["close"].values
 
         # Need at least 3 troughs
         if len(troughs) < 3:
@@ -480,13 +493,17 @@ class PatternRecognizer:
                 continue
 
             # Shoulders should be at similar levels
-            shoulder_diff = abs(left_shoulder_price - right_shoulder_price) / left_shoulder_price
+            shoulder_diff = (
+                abs(left_shoulder_price - right_shoulder_price) / left_shoulder_price
+            )
 
             if shoulder_diff > self.similarity_threshold * 2:
                 continue
 
             # Find peaks (neckline points)
-            peaks_between = peaks[(peaks > left_shoulder_idx) & (peaks < right_shoulder_idx)]
+            peaks_between = peaks[
+                (peaks > left_shoulder_idx) & (peaks < right_shoulder_idx)
+            ]
 
             if len(peaks_between) < 2:
                 continue
@@ -504,7 +521,9 @@ class PatternRecognizer:
             if right_shoulder_idx >= len(prices) - 5:
                 continue
 
-            prices_after = prices[right_shoulder_idx:min(right_shoulder_idx + 10, len(prices))]
+            prices_after = prices[
+                right_shoulder_idx : min(right_shoulder_idx + 10, len(prices))
+            ]
             if len(prices_after) > 0 and prices_after[-1] <= neckline_avg * 1.03:
                 continue  # No breakout
 
@@ -525,30 +544,29 @@ class PatternRecognizer:
             pattern = PatternResult(
                 pattern_type=PatternType.INVERSE_HEAD_AND_SHOULDERS,
                 confidence=confidence,
-                start_date=price_data['date'].iloc[left_shoulder_idx],
-                end_date=price_data['date'].iloc[right_shoulder_idx],
-                direction='bullish',
+                start_date=price_data["date"].iloc[left_shoulder_idx],
+                end_date=price_data["date"].iloc[right_shoulder_idx],
+                direction="bullish",
                 key_points={
-                    'left_shoulder': (left_shoulder_idx, left_shoulder_price),
-                    'head': (head_idx, head_price),
-                    'right_shoulder': (right_shoulder_idx, right_shoulder_price),
-                    'neckline': neckline_avg
+                    "left_shoulder": (left_shoulder_idx, left_shoulder_price),
+                    "head": (head_idx, head_price),
+                    "right_shoulder": (right_shoulder_idx, right_shoulder_price),
+                    "neckline": neckline_avg,
                 },
                 price_target=price_target,
                 stop_loss=stop_loss,
-                description=f"Inverse head and shoulders: shoulders at ${left_shoulder_price:.2f}, head at ${head_price:.2f}"
+                description=f"Inverse head and shoulders: shoulders at ${left_shoulder_price:.2f}, head at ${head_price:.2f}",
             )
 
             patterns.append(pattern)
-            logger.info(f"Detected inverse head and shoulders: {left_shoulder_price:.2f} -> {head_price:.2f} -> {right_shoulder_price:.2f}")
+            logger.info(
+                f"Detected inverse head and shoulders: {left_shoulder_price:.2f} -> {head_price:.2f} -> {right_shoulder_price:.2f}"
+            )
 
         return patterns
 
     def _detect_ascending_triangle(
-        self,
-        price_data: pd.DataFrame,
-        peaks: np.ndarray,
-        troughs: np.ndarray
+        self, price_data: pd.DataFrame, peaks: np.ndarray, troughs: np.ndarray
     ) -> List[PatternResult]:
         """
         Detect ascending triangle patterns
@@ -560,7 +578,7 @@ class PatternRecognizer:
         - Usually breaks upward
         """
         patterns = []
-        prices = price_data['close'].values
+        prices = price_data["close"].values
 
         # Need at least 3 peaks and 3 troughs
         if len(peaks) < 3 or len(troughs) < 3:
@@ -569,18 +587,22 @@ class PatternRecognizer:
         # Look for flat resistance and rising support
         for i in range(len(peaks) - 2):
             # Get 3 consecutive peaks
-            peak_indices = peaks[i:i+3]
+            peak_indices = peaks[i : i + 3]
             peak_prices = prices[peak_indices]
 
             # Check if peaks are at similar level (flat resistance)
             resistance_level = np.mean(peak_prices)
             peak_variance = np.std(peak_prices) / resistance_level
 
-            if peak_variance > 0.05:  # More than 5% variance (triangles are less strict than double tops)
+            if (
+                peak_variance > 0.05
+            ):  # More than 5% variance (triangles are less strict than double tops)
                 continue
 
             # Find troughs within this range
-            troughs_in_range = troughs[(troughs > peak_indices[0]) & (troughs < peak_indices[-1])]
+            troughs_in_range = troughs[
+                (troughs > peak_indices[0]) & (troughs < peak_indices[-1])
+            ]
 
             if len(troughs_in_range) < 2:
                 continue
@@ -590,7 +612,9 @@ class PatternRecognizer:
             # Check if troughs are rising (ascending support)
             if len(trough_prices) >= 2:
                 # Simple linear fit to check rising trend
-                trough_slope = (trough_prices[-1] - trough_prices[0]) / len(trough_prices)
+                trough_slope = (trough_prices[-1] - trough_prices[0]) / len(
+                    trough_prices
+                )
 
                 if trough_slope <= 0:  # Not rising
                     continue
@@ -600,12 +624,14 @@ class PatternRecognizer:
             if last_peak_idx >= len(prices) - 5:
                 continue
 
-            prices_after = prices[last_peak_idx:min(last_peak_idx + 10, len(prices))]
+            prices_after = prices[last_peak_idx : min(last_peak_idx + 10, len(prices))]
             if len(prices_after) > 0 and prices_after[-1] <= resistance_level * 1.02:
                 continue  # No breakout
 
             # Calculate confidence
-            confidence = 0.6 + (0.4 * min(1.0, trough_slope / 2))  # Higher slope = higher confidence
+            confidence = 0.6 + (
+                0.4 * min(1.0, trough_slope / 2)
+            )  # Higher slope = higher confidence
 
             # Price target: height of triangle projected upward
             pattern_height = resistance_level - trough_prices[0]
@@ -618,30 +644,29 @@ class PatternRecognizer:
             pattern = PatternResult(
                 pattern_type=PatternType.ASCENDING_TRIANGLE,
                 confidence=confidence,
-                start_date=price_data['date'].iloc[peak_indices[0]],
-                end_date=price_data['date'].iloc[last_peak_idx],
-                direction='bullish',
+                start_date=price_data["date"].iloc[peak_indices[0]],
+                end_date=price_data["date"].iloc[last_peak_idx],
+                direction="bullish",
                 key_points={
-                    'resistance_level': resistance_level,
-                    'support_slope': trough_slope,
-                    'peak_indices': peak_indices.tolist(),
-                    'trough_indices': troughs_in_range.tolist()
+                    "resistance_level": resistance_level,
+                    "support_slope": trough_slope,
+                    "peak_indices": peak_indices.tolist(),
+                    "trough_indices": troughs_in_range.tolist(),
                 },
                 price_target=price_target,
                 stop_loss=stop_loss,
-                description=f"Ascending triangle with resistance at ${resistance_level:.2f}, targeting ${price_target:.2f}"
+                description=f"Ascending triangle with resistance at ${resistance_level:.2f}, targeting ${price_target:.2f}",
             )
 
             patterns.append(pattern)
-            logger.info(f"Detected ascending triangle: resistance ${resistance_level:.2f}")
+            logger.info(
+                f"Detected ascending triangle: resistance ${resistance_level:.2f}"
+            )
 
         return patterns
 
     def _detect_descending_triangle(
-        self,
-        price_data: pd.DataFrame,
-        peaks: np.ndarray,
-        troughs: np.ndarray
+        self, price_data: pd.DataFrame, peaks: np.ndarray, troughs: np.ndarray
     ) -> List[PatternResult]:
         """
         Detect descending triangle patterns
@@ -653,7 +678,7 @@ class PatternRecognizer:
         - Usually breaks downward
         """
         patterns = []
-        prices = price_data['close'].values
+        prices = price_data["close"].values
 
         # Need at least 3 peaks and 3 troughs
         if len(peaks) < 3 or len(troughs) < 3:
@@ -662,18 +687,22 @@ class PatternRecognizer:
         # Look for descending resistance and flat support
         for i in range(len(troughs) - 2):
             # Get 3 consecutive troughs
-            trough_indices = troughs[i:i+3]
+            trough_indices = troughs[i : i + 3]
             trough_prices = prices[trough_indices]
 
             # Check if troughs are at similar level (flat support)
             support_level = np.mean(trough_prices)
             trough_variance = np.std(trough_prices) / support_level
 
-            if trough_variance > 0.05:  # More than 5% variance (triangles are less strict)
+            if (
+                trough_variance > 0.05
+            ):  # More than 5% variance (triangles are less strict)
                 continue
 
             # Find peaks within this range
-            peaks_in_range = peaks[(peaks > trough_indices[0]) & (peaks < trough_indices[-1])]
+            peaks_in_range = peaks[
+                (peaks > trough_indices[0]) & (peaks < trough_indices[-1])
+            ]
 
             if len(peaks_in_range) < 2:
                 continue
@@ -692,7 +721,9 @@ class PatternRecognizer:
             if last_trough_idx >= len(prices) - 5:
                 continue
 
-            prices_after = prices[last_trough_idx:min(last_trough_idx + 10, len(prices))]
+            prices_after = prices[
+                last_trough_idx : min(last_trough_idx + 10, len(prices))
+            ]
             if len(prices_after) > 0 and prices_after[-1] >= support_level * 0.98:
                 continue  # No breakdown
 
@@ -710,18 +741,18 @@ class PatternRecognizer:
             pattern = PatternResult(
                 pattern_type=PatternType.DESCENDING_TRIANGLE,
                 confidence=confidence,
-                start_date=price_data['date'].iloc[trough_indices[0]],
-                end_date=price_data['date'].iloc[last_trough_idx],
-                direction='bearish',
+                start_date=price_data["date"].iloc[trough_indices[0]],
+                end_date=price_data["date"].iloc[last_trough_idx],
+                direction="bearish",
                 key_points={
-                    'support_level': support_level,
-                    'resistance_slope': peak_slope,
-                    'trough_indices': trough_indices.tolist(),
-                    'peak_indices': peaks_in_range.tolist()
+                    "support_level": support_level,
+                    "resistance_slope": peak_slope,
+                    "trough_indices": trough_indices.tolist(),
+                    "peak_indices": peaks_in_range.tolist(),
                 },
                 price_target=price_target,
                 stop_loss=stop_loss,
-                description=f"Descending triangle with support at ${support_level:.2f}, targeting ${price_target:.2f}"
+                description=f"Descending triangle with support at ${support_level:.2f}, targeting ${price_target:.2f}",
             )
 
             patterns.append(pattern)
@@ -730,10 +761,7 @@ class PatternRecognizer:
         return patterns
 
     def _detect_symmetrical_triangle(
-        self,
-        price_data: pd.DataFrame,
-        peaks: np.ndarray,
-        troughs: np.ndarray
+        self, price_data: pd.DataFrame, peaks: np.ndarray, troughs: np.ndarray
     ) -> List[PatternResult]:
         """
         Detect symmetrical triangle patterns
@@ -745,7 +773,7 @@ class PatternRecognizer:
         - Neutral pattern - can break either direction
         """
         patterns = []
-        prices = price_data['close'].values
+        prices = price_data["close"].values
 
         # Need at least 3 peaks and 3 troughs
         if len(peaks) < 3 or len(troughs) < 3:
@@ -757,11 +785,14 @@ class PatternRecognizer:
             if i >= len(peaks) - 2 or i >= len(troughs) - 2:
                 continue
 
-            peak_indices = peaks[i:i+3]
-            trough_indices = troughs[i:i+3]
+            peak_indices = peaks[i : i + 3]
+            trough_indices = troughs[i : i + 3]
 
             # Ensure they interleave properly
-            if peak_indices[0] > trough_indices[-1] or trough_indices[0] > peak_indices[-1]:
+            if (
+                peak_indices[0] > trough_indices[-1]
+                or trough_indices[0] > peak_indices[-1]
+            ):
                 continue
 
             peak_prices = prices[peak_indices]
@@ -778,7 +809,9 @@ class PatternRecognizer:
                 continue
 
             # Check convergence (slopes should be similar magnitude)
-            slope_ratio = abs(peak_slope) / abs(trough_slope) if trough_slope != 0 else 0
+            slope_ratio = (
+                abs(peak_slope) / abs(trough_slope) if trough_slope != 0 else 0
+            )
             if slope_ratio < 0.5 or slope_ratio > 2.0:  # Not converging symmetrically
                 continue
 
@@ -791,28 +824,30 @@ class PatternRecognizer:
             mid_price = (peak_prices[-1] + trough_prices[-1]) / 2
 
             # Determine breakout direction
-            prices_after = prices[last_point_idx:min(last_point_idx + 10, len(prices))]
+            prices_after = prices[
+                last_point_idx : min(last_point_idx + 10, len(prices))
+            ]
             if len(prices_after) == 0:
                 continue
 
             final_price = prices_after[-1]
             if final_price > mid_price * 1.02:
-                direction = 'bullish'
+                direction = "bullish"
                 price_target = mid_price + (peak_prices[0] - trough_prices[0])
             elif final_price < mid_price * 0.98:
-                direction = 'bearish'
+                direction = "bearish"
                 price_target = mid_price - (peak_prices[0] - trough_prices[0])
             else:
-                direction = 'neutral'
+                direction = "neutral"
                 price_target = mid_price
 
             # Calculate confidence (lower for symmetrical as direction is uncertain until breakout)
             confidence = 0.5 + (0.3 * min(1.0, 1.0 / abs(1.0 - slope_ratio)))
 
             # Stop loss on opposite side of breakout
-            if direction == 'bullish':
+            if direction == "bullish":
                 stop_loss = trough_prices[-1] * 0.98
-            elif direction == 'bearish':
+            elif direction == "bearish":
                 stop_loss = peak_prices[-1] * 1.02
             else:
                 stop_loss = mid_price * 0.98
@@ -821,32 +856,33 @@ class PatternRecognizer:
             pattern = PatternResult(
                 pattern_type=PatternType.SYMMETRICAL_TRIANGLE,
                 confidence=confidence,
-                start_date=price_data['date'].iloc[min(peak_indices[0], trough_indices[0])],
-                end_date=price_data['date'].iloc[last_point_idx],
+                start_date=price_data["date"].iloc[
+                    min(peak_indices[0], trough_indices[0])
+                ],
+                end_date=price_data["date"].iloc[last_point_idx],
                 direction=direction,
                 key_points={
-                    'apex': mid_price,
-                    'converging_point': (last_point_idx, mid_price),
-                    'peak_slope': peak_slope,
-                    'trough_slope': trough_slope,
-                    'peak_indices': peak_indices.tolist(),
-                    'trough_indices': trough_indices.tolist()
+                    "apex": mid_price,
+                    "converging_point": (last_point_idx, mid_price),
+                    "peak_slope": peak_slope,
+                    "trough_slope": trough_slope,
+                    "peak_indices": peak_indices.tolist(),
+                    "trough_indices": trough_indices.tolist(),
                 },
                 price_target=price_target,
                 stop_loss=stop_loss,
-                description=f"Symmetrical triangle converging at ${mid_price:.2f}, {direction} breakout"
+                description=f"Symmetrical triangle converging at ${mid_price:.2f}, {direction} breakout",
             )
 
             patterns.append(pattern)
-            logger.info(f"Detected symmetrical triangle: {direction} breakout from ${mid_price:.2f}")
+            logger.info(
+                f"Detected symmetrical triangle: {direction} breakout from ${mid_price:.2f}"
+            )
 
         return patterns
 
     def _detect_bullish_flag(
-        self,
-        price_data: pd.DataFrame,
-        peaks: np.ndarray,
-        troughs: np.ndarray
+        self, price_data: pd.DataFrame, peaks: np.ndarray, troughs: np.ndarray
     ) -> List[PatternResult]:
         """
         Detect bullish flag patterns
@@ -858,7 +894,7 @@ class PatternRecognizer:
         - Bullish continuation pattern
         """
         patterns = []
-        prices = price_data['close'].values
+        prices = price_data["close"].values
 
         # Need sufficient data
         if len(prices) < 30:
@@ -910,7 +946,7 @@ class PatternRecognizer:
             if flag_end >= len(prices) - 5:
                 continue
 
-            breakout_prices = prices[flag_end:min(flag_end + 5, len(prices))]
+            breakout_prices = prices[flag_end : min(flag_end + 5, len(prices))]
             if len(breakout_prices) == 0:
                 continue
 
@@ -936,32 +972,31 @@ class PatternRecognizer:
             pattern = PatternResult(
                 pattern_type=PatternType.BULLISH_FLAG,
                 confidence=confidence,
-                start_date=price_data['date'].iloc[pole_start],
-                end_date=price_data['date'].iloc[flag_end],
-                direction='bullish',
+                start_date=price_data["date"].iloc[pole_start],
+                end_date=price_data["date"].iloc[flag_end],
+                direction="bullish",
                 key_points={
-                    'pole_start': pole_start,
-                    'pole_end': pole_end,
-                    'pole_gain': pole_gain,
-                    'flag_high': flag_high,
-                    'flag_low': flag_low,
-                    'pole_height': pole_height
+                    "pole_start": pole_start,
+                    "pole_end": pole_end,
+                    "pole_gain": pole_gain,
+                    "flag_high": flag_high,
+                    "flag_low": flag_low,
+                    "pole_height": pole_height,
                 },
                 price_target=price_target,
                 stop_loss=stop_loss,
-                description=f"Bullish flag with {pole_gain*100:.1f}% pole, targeting ${price_target:.2f}"
+                description=f"Bullish flag with {pole_gain * 100:.1f}% pole, targeting ${price_target:.2f}",
             )
 
             patterns.append(pattern)
-            logger.info(f"Detected bullish flag: pole gain {pole_gain*100:.1f}%, target ${price_target:.2f}")
+            logger.info(
+                f"Detected bullish flag: pole gain {pole_gain * 100:.1f}%, target ${price_target:.2f}"
+            )
 
         return patterns
 
     def _detect_bearish_flag(
-        self,
-        price_data: pd.DataFrame,
-        peaks: np.ndarray,
-        troughs: np.ndarray
+        self, price_data: pd.DataFrame, peaks: np.ndarray, troughs: np.ndarray
     ) -> List[PatternResult]:
         """
         Detect bearish flag patterns
@@ -973,7 +1008,7 @@ class PatternRecognizer:
         - Bearish continuation pattern
         """
         patterns = []
-        prices = price_data['close'].values
+        prices = price_data["close"].values
 
         # Need sufficient data
         if len(prices) < 30:
@@ -1025,7 +1060,7 @@ class PatternRecognizer:
             if flag_end >= len(prices) - 5:
                 continue
 
-            breakdown_prices = prices[flag_end:min(flag_end + 5, len(prices))]
+            breakdown_prices = prices[flag_end : min(flag_end + 5, len(prices))]
             if len(breakdown_prices) == 0:
                 continue
 
@@ -1051,32 +1086,31 @@ class PatternRecognizer:
             pattern = PatternResult(
                 pattern_type=PatternType.BEARISH_FLAG,
                 confidence=confidence,
-                start_date=price_data['date'].iloc[pole_start],
-                end_date=price_data['date'].iloc[flag_end],
-                direction='bearish',
+                start_date=price_data["date"].iloc[pole_start],
+                end_date=price_data["date"].iloc[flag_end],
+                direction="bearish",
                 key_points={
-                    'pole_start': pole_start,
-                    'pole_end': pole_end,
-                    'pole_loss': pole_loss,
-                    'flag_high': flag_high,
-                    'flag_low': flag_low,
-                    'pole_height': pole_height
+                    "pole_start": pole_start,
+                    "pole_end": pole_end,
+                    "pole_loss": pole_loss,
+                    "flag_high": flag_high,
+                    "flag_low": flag_low,
+                    "pole_height": pole_height,
                 },
                 price_target=price_target,
                 stop_loss=stop_loss,
-                description=f"Bearish flag with {pole_loss*100:.1f}% pole, targeting ${price_target:.2f}"
+                description=f"Bearish flag with {pole_loss * 100:.1f}% pole, targeting ${price_target:.2f}",
             )
 
             patterns.append(pattern)
-            logger.info(f"Detected bearish flag: pole loss {pole_loss*100:.1f}%, target ${price_target:.2f}")
+            logger.info(
+                f"Detected bearish flag: pole loss {pole_loss * 100:.1f}%, target ${price_target:.2f}"
+            )
 
         return patterns
 
     def _detect_consolidation(
-        self,
-        price_data: pd.DataFrame,
-        peaks: np.ndarray,
-        troughs: np.ndarray
+        self, price_data: pd.DataFrame, peaks: np.ndarray, troughs: np.ndarray
     ) -> List[PatternResult]:
         """
         Detect consolidation/range-bound patterns
@@ -1088,7 +1122,7 @@ class PatternRecognizer:
         - Neutral pattern awaiting breakout
         """
         patterns = []
-        prices = price_data['close'].values
+        prices = price_data["close"].values
 
         # Need sufficient data
         if len(prices) < 30:
@@ -1116,7 +1150,9 @@ class PatternRecognizer:
                 continue
 
             # Check for horizontal movement (low slope)
-            window_slope = abs((window_prices[-1] - window_prices[0]) / len(window_prices))
+            window_slope = abs(
+                (window_prices[-1] - window_prices[0]) / len(window_prices)
+            )
             avg_price = np.mean(window_prices)
 
             # Slope should be minimal for consolidation
@@ -1133,7 +1169,9 @@ class PatternRecognizer:
 
             # Calculate price stability (how much time spent in middle)
             middle_range = (price_mid * 0.97, price_mid * 1.03)
-            in_middle = np.sum((window_prices >= middle_range[0]) & (window_prices <= middle_range[1]))
+            in_middle = np.sum(
+                (window_prices >= middle_range[0]) & (window_prices <= middle_range[1])
+            )
             stability = in_middle / len(window_prices)
 
             # Higher stability = better consolidation
@@ -1145,44 +1183,44 @@ class PatternRecognizer:
             confidence = 0.5 + (0.25 * tightness_score) + (0.25 * stability)
 
             # Price targets at breakout levels
-            price_target_up = price_high * 1.02
-            price_target_down = price_low * 0.98
+            price_high * 1.02
+            price_low * 0.98
 
             # Stop loss on opposite side
             stop_loss_long = price_low * 0.98
-            stop_loss_short = price_high * 1.02
+            price_high * 1.02
 
             # Create pattern result
             pattern = PatternResult(
                 pattern_type=PatternType.CONSOLIDATION,
                 confidence=confidence,
-                start_date=price_data['date'].iloc[window_start],
-                end_date=price_data['date'].iloc[window_end],
-                direction='neutral',
+                start_date=price_data["date"].iloc[window_start],
+                end_date=price_data["date"].iloc[window_end],
+                direction="neutral",
                 key_points={
-                    'resistance': price_high,
-                    'support': price_low,
-                    'midpoint': price_mid,
-                    'range_pct': range_pct,
-                    'stability': stability,
-                    'resistance_touches': int(resistance_touches),
-                    'support_touches': int(support_touches)
+                    "resistance": price_high,
+                    "support": price_low,
+                    "midpoint": price_mid,
+                    "range_pct": range_pct,
+                    "stability": stability,
+                    "resistance_touches": int(resistance_touches),
+                    "support_touches": int(support_touches),
                 },
                 price_target=price_mid,  # Neutral - could go either way
                 stop_loss=stop_loss_long,
-                description=f"Consolidation between ${price_low:.2f} and ${price_high:.2f} ({range_pct*100:.1f}% range)"
+                description=f"Consolidation between ${price_low:.2f} and ${price_high:.2f} ({range_pct * 100:.1f}% range)",
             )
 
             patterns.append(pattern)
-            logger.info(f"Detected consolidation: ${price_low:.2f} - ${price_high:.2f}, {range_pct*100:.1f}% range")
+            logger.info(
+                f"Detected consolidation: ${price_low:.2f} - ${price_high:.2f}, {range_pct * 100:.1f}% range"
+            )
 
         return patterns
 
 
 def find_peaks_and_troughs(
-    prices: np.ndarray,
-    prominence: float = 1.0,
-    distance: int = 5
+    prices: np.ndarray, prominence: float = 1.0, distance: int = 5
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Find peaks (local maxima) and troughs (local minima) in price data
@@ -1207,9 +1245,7 @@ def find_peaks_and_troughs(
 
 
 def calculate_pattern_confidence(
-    key_prices: np.ndarray,
-    pattern_type: str,
-    volume_confirmation: bool = False
+    key_prices: np.ndarray, pattern_type: str, volume_confirmation: bool = False
 ) -> float:
     """
     Calculate confidence score for a detected pattern

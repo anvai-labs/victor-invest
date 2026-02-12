@@ -4,7 +4,6 @@ Unit tests for configuration settings.
 Updated for Phase 4: Nested InvestiGatorConfig structure.
 """
 
-import pytest
 
 from investigator.config import settings
 
@@ -18,7 +17,13 @@ class TestSettings:
 
     def test_settings_has_required_fields(self):
         """Test settings has required nested configuration sections."""
-        required_sections = ["application", "database", "sec", "ollama", "cache_control"]
+        required_sections = [
+            "application",
+            "database",
+            "sec",
+            "ollama",
+            "cache_control",
+        ]
 
         for section in required_sections:
             assert hasattr(settings, section), f"Settings missing section: {section}"

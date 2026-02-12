@@ -20,7 +20,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from .result import MatchMethod
 
@@ -86,7 +86,9 @@ class PeriodMatchStrategy(ABC):
 
     def _filter_valid_forms(self, entries: List[Dict]) -> List[Dict]:
         """Filter to only 10-K and 10-Q forms."""
-        return [e for e in entries if e.get("form") in ("10-K", "10-Q", "10-K/A", "10-Q/A")]
+        return [
+            e for e in entries if e.get("form") in ("10-K", "10-Q", "10-K/A", "10-Q/A")
+        ]
 
 
 class ByPeriodEndMatcher(PeriodMatchStrategy):
@@ -114,14 +116,17 @@ class ByPeriodEndMatcher(PeriodMatchStrategy):
     def match(self, entries: List[Dict], context: MatchContext) -> MatchResult:
         if not context.target_period_end:
             return MatchResult(
-                matched=False, entries=[], method=self.match_method, reason="No target_period_end provided"
+                matched=False,
+                entries=[],
+                method=self.match_method,
+                reason="No target_period_end provided",
             )
 
         valid_entries = self._filter_valid_forms(entries)
 
         # Parse target date for comparison
         try:
-            target_date = datetime.strptime(context.target_period_end, "%Y-%m-%d")
+            datetime.strptime(context.target_period_end, "%Y-%m-%d")
         except ValueError:
             return MatchResult(
                 matched=False,
@@ -141,17 +146,27 @@ class ByPeriodEndMatcher(PeriodMatchStrategy):
             # Also filter by fiscal_period if provided (FY vs Q1/Q2/Q3/Q4)
             if context.target_fiscal_period:
                 fp_matches = [
-                    e for e in exact_matches if self._matches_fiscal_period_by_duration(e, context.target_fiscal_period)
+                    e
+                    for e in exact_matches
+                    if self._matches_fiscal_period_by_duration(
+                        e, context.target_fiscal_period
+                    )
                 ]
                 if fp_matches:
                     logger.debug(
                         f"[{self.name}] Found {len(fp_matches)} entries with "
                         f"end={context.target_period_end}, fp={context.target_fiscal_period}"
                     )
-                    return MatchResult(matched=True, entries=fp_matches, method=self.match_method)
+                    return MatchResult(
+                        matched=True, entries=fp_matches, method=self.match_method
+                    )
 
-            logger.debug(f"[{self.name}] Found {len(exact_matches)} entries with end={context.target_period_end}")
-            return MatchResult(matched=True, entries=exact_matches, method=self.match_method)
+            logger.debug(
+                f"[{self.name}] Found {len(exact_matches)} entries with end={context.target_period_end}"
+            )
+            return MatchResult(
+                matched=True, entries=exact_matches, method=self.match_method
+            )
 
         return MatchResult(
             matched=False,
@@ -207,7 +222,10 @@ class ByDateRangeMatcher(PeriodMatchStrategy):
     def match(self, entries: List[Dict], context: MatchContext) -> MatchResult:
         if not context.target_period_end:
             return MatchResult(
-                matched=False, entries=[], method=self.match_method, reason="No target_period_end provided"
+                matched=False,
+                entries=[],
+                method=self.match_method,
+                reason="No target_period_end provided",
             )
 
         valid_entries = self._filter_valid_forms(entries)
@@ -244,20 +262,28 @@ class ByDateRangeMatcher(PeriodMatchStrategy):
             # Filter by fiscal period if provided
             if context.target_fiscal_period:
                 fp_matches = [
-                    e for e in range_matches if self._matches_fiscal_period_by_duration(e, context.target_fiscal_period)
+                    e
+                    for e in range_matches
+                    if self._matches_fiscal_period_by_duration(
+                        e, context.target_fiscal_period
+                    )
                 ]
                 if fp_matches:
                     logger.debug(
                         f"[{self.name}] Found {len(fp_matches)} entries within "
                         f"±{context.tolerance_days} days of {context.target_period_end}"
                     )
-                    return MatchResult(matched=True, entries=fp_matches, method=self.match_method)
+                    return MatchResult(
+                        matched=True, entries=fp_matches, method=self.match_method
+                    )
 
             logger.debug(
                 f"[{self.name}] Found {len(range_matches)} entries within "
                 f"±{context.tolerance_days} days of {context.target_period_end}"
             )
-            return MatchResult(matched=True, entries=range_matches, method=self.match_method)
+            return MatchResult(
+                matched=True, entries=range_matches, method=self.match_method
+            )
 
         return MatchResult(
             matched=False,
@@ -310,7 +336,10 @@ class ByFrameFieldMatcher(PeriodMatchStrategy):
     def match(self, entries: List[Dict], context: MatchContext) -> MatchResult:
         if not context.target_period_end:
             return MatchResult(
-                matched=False, entries=[], method=self.match_method, reason="No target_period_end for frame derivation"
+                matched=False,
+                entries=[],
+                method=self.match_method,
+                reason="No target_period_end for frame derivation",
             )
 
         valid_entries = self._filter_valid_forms(entries)
@@ -353,9 +382,12 @@ class ByFrameFieldMatcher(PeriodMatchStrategy):
 
         if frame_matches:
             logger.debug(
-                f"[{self.name}] Found {len(frame_matches)} entries with " f"frame matching {expected_patterns}"
+                f"[{self.name}] Found {len(frame_matches)} entries with "
+                f"frame matching {expected_patterns}"
             )
-            return MatchResult(matched=True, entries=frame_matches, method=self.match_method)
+            return MatchResult(
+                matched=True, entries=frame_matches, method=self.match_method
+            )
 
         return MatchResult(
             matched=False,
@@ -442,10 +474,17 @@ class ByAdshOnlyMatcher(PeriodMatchStrategy):
 
     def match(self, entries: List[Dict], context: MatchContext) -> MatchResult:
         if not context.target_adsh:
-            return MatchResult(matched=False, entries=[], method=self.match_method, reason="No target_adsh provided")
+            return MatchResult(
+                matched=False,
+                entries=[],
+                method=self.match_method,
+                reason="No target_adsh provided",
+            )
 
         valid_entries = self._filter_valid_forms(entries)
-        adsh_matches = [e for e in valid_entries if e.get("accn") == context.target_adsh]
+        adsh_matches = [
+            e for e in valid_entries if e.get("accn") == context.target_adsh
+        ]
 
         if not adsh_matches:
             return MatchResult(
@@ -469,7 +508,10 @@ class ByAdshOnlyMatcher(PeriodMatchStrategy):
 
                         if context.target_fiscal_period == "FY" and days >= 330:
                             duration_matches.append(entry)
-                        elif context.target_fiscal_period in ("Q1", "Q2", "Q3", "Q4") and days < 120:
+                        elif (
+                            context.target_fiscal_period in ("Q1", "Q2", "Q3", "Q4")
+                            and days < 120
+                        ):
                             duration_matches.append(entry)
                     except ValueError:
                         continue
@@ -479,7 +521,11 @@ class ByAdshOnlyMatcher(PeriodMatchStrategy):
                     f"[{self.name}] Found {len(duration_matches)} entries with "
                     f"adsh={context.target_adsh[:15]}... matching {context.target_fiscal_period} duration"
                 )
-                return MatchResult(matched=True, entries=duration_matches, method=self.match_method)
+                return MatchResult(
+                    matched=True, entries=duration_matches, method=self.match_method
+                )
 
-        logger.debug(f"[{self.name}] Found {len(adsh_matches)} entries with adsh={context.target_adsh[:15]}...")
+        logger.debug(
+            f"[{self.name}] Found {len(adsh_matches)} entries with adsh={context.target_adsh[:15]}..."
+        )
         return MatchResult(matched=True, entries=adsh_matches, method=self.match_method)

@@ -37,7 +37,6 @@ Usage:
 import argparse
 import asyncio
 import sys
-from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Optional
 
@@ -46,12 +45,11 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from scripts.scheduled.base import (
+from scripts.scheduled.base import (  # noqa: E402
     BaseCollector,
     CollectionMetrics,
     get_database_connection,
     get_sp500_symbols,
-    retry_with_backoff,
 )
 
 
@@ -83,9 +81,7 @@ class ShortInterestCollector(BaseCollector):
             else:
                 symbols = get_sp500_symbols()
 
-            self.logger.info(
-                f"Fetching short interest data for {len(symbols)} symbols"
-            )
+            self.logger.info(f"Fetching short interest data for {len(symbols)} symbols")
 
             conn = get_database_connection()
             cursor = conn.cursor()
@@ -93,9 +89,7 @@ class ShortInterestCollector(BaseCollector):
             for symbol in symbols:
                 try:
                     # Fetch latest short interest
-                    data = asyncio.run(
-                        fetcher.get_short_interest(symbol=symbol)
-                    )
+                    data = asyncio.run(fetcher.get_short_interest(symbol=symbol))
 
                     if not data:
                         continue
@@ -124,7 +118,8 @@ class ShortInterestCollector(BaseCollector):
                         and short_interest_ratio >= 15
                     )
 
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         INSERT INTO short_interest
                             (symbol, settlement_date, short_interest,
                              avg_daily_volume, days_to_cover, short_interest_ratio,
@@ -137,16 +132,18 @@ class ShortInterestCollector(BaseCollector):
                             short_interest_ratio = EXCLUDED.short_interest_ratio,
                             squeeze_potential = EXCLUDED.squeeze_potential,
                             updated_at = NOW()
-                    """, (
-                        symbol,
-                        data.get("settlement_date"),
-                        short_interest,
-                        avg_volume,
-                        days_to_cover,
-                        short_interest_ratio,
-                        shares_outstanding,
-                        squeeze_potential,
-                    ))
+                    """,
+                        (
+                            symbol,
+                            data.get("settlement_date"),
+                            short_interest,
+                            avg_volume,
+                            days_to_cover,
+                            short_interest_ratio,
+                            shares_outstanding,
+                            squeeze_potential,
+                        ),
+                    )
 
                     self.metrics.records_inserted += 1
 
@@ -184,14 +181,17 @@ class ShortInterestCollector(BaseCollector):
                 return
 
             # Get previous period data
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT short_interest, settlement_date
                 FROM short_interest
                 WHERE symbol = %s
                   AND settlement_date < %s
                 ORDER BY settlement_date DESC
                 LIMIT 1
-            """, (symbol, settlement_date))
+            """,
+                (symbol, settlement_date),
+            )
 
             prev = cursor.fetchone()
             if prev:
@@ -201,34 +201,34 @@ class ShortInterestCollector(BaseCollector):
                 if prev_short_interest and prev_short_interest > 0:
                     pct_change = (
                         (current_short_interest - prev_short_interest)
-                        / prev_short_interest * 100
+                        / prev_short_interest
+                        * 100
                     )
 
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         UPDATE short_interest
                         SET short_interest_change_pct = %s,
                             prev_settlement_date = %s
                         WHERE symbol = %s AND settlement_date = %s
-                    """, (pct_change, prev_date, symbol, settlement_date))
+                    """,
+                        (pct_change, prev_date, symbol, settlement_date),
+                    )
 
         except Exception as e:
             self.logger.debug(f"Could not update change metrics for {symbol}: {e}")
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Collect FINRA short interest data"
-    )
+    parser = argparse.ArgumentParser(description="Collect FINRA short interest data")
     parser.add_argument(
-        "--symbols",
-        type=str,
-        help="Comma-separated list of symbols (default: S&P 500)"
+        "--symbols", type=str, help="Comma-separated list of symbols (default: S&P 500)"
     )
     parser.add_argument(
         "--threshold",
         type=float,
         default=5.0,
-        help="Days to cover threshold for squeeze detection (default: 5.0)"
+        help="Days to cover threshold for squeeze detection (default: 5.0)",
     )
     args = parser.parse_args()
 

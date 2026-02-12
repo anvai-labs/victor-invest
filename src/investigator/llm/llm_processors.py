@@ -8,12 +8,10 @@ LLM Processor Pattern Implementations
 Chain of Responsibility, Template Method, and Queue-based processors
 """
 
-import json
 import logging
 import queue
 import threading
 import time
-import uuid
 from concurrent.futures import Future
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -94,7 +92,12 @@ class LLMCacheHandler(ILLMHandler):
                 if not period:
                     period = f"{fiscal_year}-FY" if fiscal_year else "2025-FY"
 
-            return {"symbol": symbol, "form_type": form_type, "period": period, "llm_type": llm_type}
+            return {
+                "symbol": symbol,
+                "form_type": form_type,
+                "period": period,
+                "llm_type": llm_type,
+            }
         elif task_type == "technical_analysis":
             # Generate period based on current date for technical analysis caching
             from datetime import datetime
@@ -102,7 +105,12 @@ class LLMCacheHandler(ILLMHandler):
             current_date = datetime.now()
             period = f"{current_date.year}-{current_date.strftime('%m')}"
 
-            return {"symbol": symbol, "form_type": "TECHNICAL", "period": period, "llm_type": "ta"}
+            return {
+                "symbol": symbol,
+                "form_type": "TECHNICAL",
+                "period": period,
+                "llm_type": "ta",
+            }
         elif task_type == "synthesis":
             return {
                 "symbol": symbol,
@@ -131,13 +139,23 @@ class LLMCacheHandler(ILLMHandler):
             cached_response = self.cache_manager.get(CacheType.LLM_RESPONSE, cache_key)
 
             if cached_response:
-                symbol = request.metadata.get("symbol", "UNKNOWN") if request.metadata else "UNKNOWN"
-                task_type = request.metadata.get("task_type", "unknown") if request.metadata else "unknown"
+                symbol = (
+                    request.metadata.get("symbol", "UNKNOWN")
+                    if request.metadata
+                    else "UNKNOWN"
+                )
+                task_type = (
+                    request.metadata.get("task_type", "unknown")
+                    if request.metadata
+                    else "unknown"
+                )
 
                 # Log comprehensive cache hit details
                 cached_tokens = cached_response.get("tokens_used", 0)
                 # Check both content and response fields for content length
-                content_for_logging = cached_response.get("content") or cached_response.get("response", "")
+                content_for_logging = cached_response.get(
+                    "content"
+                ) or cached_response.get("response", "")
                 # Handle case where content_for_logging might be None
                 if content_for_logging is None:
                     content_for_logging = ""
@@ -186,7 +204,9 @@ class LLMCacheHandler(ILLMHandler):
 
                 # Ensure we have valid content
                 if not content:
-                    self.logger.warning(f"Cache entry for {symbol} has no content, falling back to fresh request")
+                    self.logger.warning(
+                        f"Cache entry for {symbol} has no content, falling back to fresh request"
+                    )
                     raise KeyError("content")
 
                 return LLMResponse(
@@ -199,8 +219,16 @@ class LLMCacheHandler(ILLMHandler):
                     timestamp=datetime.utcnow(),
                 )
 
-            symbol = request.metadata.get("symbol", "UNKNOWN") if request.metadata else "UNKNOWN"
-            task_type = request.metadata.get("task_type", "unknown") if request.metadata else "unknown"
+            symbol = (
+                request.metadata.get("symbol", "UNKNOWN")
+                if request.metadata
+                else "UNKNOWN"
+            )
+            task_type = (
+                request.metadata.get("task_type", "unknown")
+                if request.metadata
+                else "unknown"
+            )
             prompt_length = len(request.prompt) + len(request.system_prompt or "")
 
             cache_miss_msg = (
@@ -256,7 +284,9 @@ class LLMCacheHandler(ILLMHandler):
                     "processing_time_ms": response.processing_time_ms,
                     "tokens_used": response.tokens_used,
                     "metadata": response.metadata,
-                    "timestamp": response.timestamp.isoformat() if response.timestamp else None,
+                    "timestamp": response.timestamp.isoformat()
+                    if response.timestamp
+                    else None,
                     "model_info": {  # Add model info for comprehensive caching
                         "model": response.model,
                         "temperature": getattr(request, "temperature", 0.3),
@@ -266,16 +296,26 @@ class LLMCacheHandler(ILLMHandler):
 
                 from investigator.infrastructure.cache.cache_types import CacheType
 
-                success = self.cache_manager.set(CacheType.LLM_RESPONSE, cache_key, cache_data)
-                symbol = request.metadata.get("symbol", "UNKNOWN") if request.metadata else "UNKNOWN"
-                task_type_str = request.metadata.get("task_type", "unknown") if request.metadata else "unknown"
+                success = self.cache_manager.set(
+                    CacheType.LLM_RESPONSE, cache_key, cache_data
+                )
+                symbol = (
+                    request.metadata.get("symbol", "UNKNOWN")
+                    if request.metadata
+                    else "UNKNOWN"
+                )
+                task_type_str = (
+                    request.metadata.get("task_type", "unknown")
+                    if request.metadata
+                    else "unknown"
+                )
 
                 if success:
                     cache_write_msg = (
                         f"💾 CACHE STORE - {symbol} {task_type_str} | "
                         f"Size: {len(response.content)} chars | "
                         f"Tokens: {response.tokens_used} | "
-                        f"TTL: {ttl//86400}d"
+                        f"TTL: {ttl // 86400}d"
                     )
                     self._log_to_both(symbol, cache_write_msg)
                 else:
@@ -382,7 +422,9 @@ class LLMExecutionHandler(ILLMHandler):
                 f"🔍 MODEL INFO - {model_name}: context_size={capabilities['context_size']}, available={capabilities['available']}"
             )
             if capabilities.get("parameter_size"):
-                self.logger.info(f"🔍 MODEL INFO - {model_name}: parameter_size={capabilities['parameter_size']}")
+                self.logger.info(
+                    f"🔍 MODEL INFO - {model_name}: parameter_size={capabilities['parameter_size']}"
+                )
 
             # Log memory requirements if available
             memory_req = capabilities.get("memory_requirements", {})
@@ -473,7 +515,9 @@ class LLMExecutionHandler(ILLMHandler):
             # Adjust num_predict to fit within context if possible
             max_output = api_context - total_input_tokens - 100  # Leave small buffer
             if max_output > 0:
-                context_params["num_predict"] = min(context_params["num_predict"], max_output)
+                context_params["num_predict"] = min(
+                    context_params["num_predict"], max_output
+                )
                 self.logger.info(
                     f"🔧 CONTEXT ADJUSTMENT - Reduced num_predict to {context_params['num_predict']} to fit context"
                 )
@@ -500,7 +544,10 @@ class LLMExecutionHandler(ILLMHandler):
                 "options": {
                     "temperature": request.temperature,
                     "top_p": request.top_p,
-                    "num_ctx": request.num_ctx or context_params["num_ctx"],  # Use dynamic context if not specified
+                    "num_ctx": request.num_ctx
+                    or context_params[
+                        "num_ctx"
+                    ],  # Use dynamic context if not specified
                     "num_predict": request.num_predict
                     or context_params["num_predict"],  # Use optimized prediction size
                 },
@@ -512,8 +559,16 @@ class LLMExecutionHandler(ILLMHandler):
             # Log comprehensive request details being sent to Ollama
             import json
 
-            symbol = request.metadata.get("symbol", "UNKNOWN") if request.metadata else "UNKNOWN"
-            task_type = request.metadata.get("task_type", "unknown") if request.metadata else "unknown"
+            symbol = (
+                request.metadata.get("symbol", "UNKNOWN")
+                if request.metadata
+                else "UNKNOWN"
+            )
+            task_type = (
+                request.metadata.get("task_type", "unknown")
+                if request.metadata
+                else "unknown"
+            )
             prompt_length = len(api_request.get("prompt", ""))
             system_length = len(api_request.get("system", ""))
 
@@ -536,10 +591,14 @@ class LLMExecutionHandler(ILLMHandler):
             )
             self._log_to_both(symbol, context_msg)
 
-            self.logger.debug(f"🔍 OLLAMA API DEBUG - Request options: {json.dumps(api_request['options'], indent=2)}")
+            self.logger.debug(
+                f"🔍 OLLAMA API DEBUG - Request options: {json.dumps(api_request['options'], indent=2)}"
+            )
 
             # Execute request
-            response_data = self.api_client.post_json("/api/generate", json=api_request, timeout=request.timeout)
+            response_data = self.api_client.post_json(
+                "/api/generate", json=api_request, timeout=request.timeout
+            )
 
             processing_time = int((time.time() - start_time) * 1000)
 
@@ -551,10 +610,18 @@ class LLMExecutionHandler(ILLMHandler):
             response_length = len(response_content)
 
             # Calculate timing details
-            prompt_eval_duration = response_data.get("prompt_eval_duration", 0) / 1_000_000  # Convert to ms
-            eval_duration = response_data.get("eval_duration", 0) / 1_000_000  # Convert to ms
-            total_duration = response_data.get("total_duration", 0) / 1_000_000  # Convert to ms
-            load_duration = response_data.get("load_duration", 0) / 1_000_000  # Convert to ms
+            prompt_eval_duration = (
+                response_data.get("prompt_eval_duration", 0) / 1_000_000
+            )  # Convert to ms
+            eval_duration = (
+                response_data.get("eval_duration", 0) / 1_000_000
+            )  # Convert to ms
+            total_duration = (
+                response_data.get("total_duration", 0) / 1_000_000
+            )  # Convert to ms
+            load_duration = (
+                response_data.get("load_duration", 0) / 1_000_000
+            )  # Convert to ms
 
             # Log comprehensive response details
             complete_msg = (
@@ -582,7 +649,7 @@ class LLMExecutionHandler(ILLMHandler):
                 efficiency_msg = (
                     f"✅ LLM EFFICIENCY - {symbol} | "
                     f"Generation speed: {tokens_per_second:.1f} tokens/sec | "
-                    f"Context utilization: {total_tokens}/{api_request['options']['num_ctx']} ({(total_tokens/api_request['options']['num_ctx']*100):.1f}%)"
+                    f"Context utilization: {total_tokens}/{api_request['options']['num_ctx']} ({(total_tokens / api_request['options']['num_ctx'] * 100):.1f}%)"
                 )
                 self._log_to_both(symbol, efficiency_msg)
 
@@ -593,7 +660,11 @@ class LLMExecutionHandler(ILLMHandler):
                     import json
 
                     parsed_response = json.loads(response_content)
-                    response_keys = list(parsed_response.keys()) if isinstance(parsed_response, dict) else []
+                    response_keys = (
+                        list(parsed_response.keys())
+                        if isinstance(parsed_response, dict)
+                        else []
+                    )
                     json_keys_msg = (
                         f"✅ LLM JSON KEYS - {symbol} | "
                         f"Response keys: {response_keys[:10]} | "  # Limit to first 10 keys
@@ -615,7 +686,11 @@ class LLMExecutionHandler(ILLMHandler):
 
             # Add token details to metadata
             enhanced_metadata = request.metadata or {}
-            enhanced_metadata["tokens"] = {"input": prompt_eval_count, "output": eval_count, "total": total_tokens}
+            enhanced_metadata["tokens"] = {
+                "input": prompt_eval_count,
+                "output": eval_count,
+                "total": total_tokens,
+            }
             enhanced_metadata["timings"] = {
                 "prompt_eval_duration": response_data.get("prompt_eval_duration", 0),
                 "eval_duration": response_data.get("eval_duration", 0),
@@ -666,7 +741,9 @@ class LLMExecutionHandler(ILLMHandler):
 class QueuedLLMProcessor(ILLMProcessor, ILLMSubject):
     """Queue-based LLM processor with observer notifications"""
 
-    def __init__(self, config, num_threads: int = 1, cache_manager=None, cache_strategy=None):
+    def __init__(
+        self, config, num_threads: int = 1, cache_manager=None, cache_strategy=None
+    ):
         self.config = config
         self.num_threads = num_threads
         self.request_queue = queue.PriorityQueue()
@@ -684,7 +761,11 @@ class QueuedLLMProcessor(ILLMProcessor, ILLMSubject):
     def _create_handler_chain(self, cache_manager, cache_strategy) -> ILLMHandler:
         """Create processing handler chain"""
         # Create handlers
-        cache_handler = LLMCacheHandler(cache_manager, cache_strategy, self.config) if cache_manager else None
+        cache_handler = (
+            LLMCacheHandler(cache_manager, cache_strategy, self.config)
+            if cache_manager
+            else None
+        )
         validation_handler = LLMValidationHandler()
         execution_handler = LLMExecutionHandler(self.config, cache_handler)
 
@@ -702,7 +783,9 @@ class QueuedLLMProcessor(ILLMProcessor, ILLMSubject):
         self.processing_threads = []
 
         for i in range(self.num_threads):
-            thread = threading.Thread(target=self._process_queue, daemon=True, name=f"LLMProcessor-{i}")
+            thread = threading.Thread(
+                target=self._process_queue, daemon=True, name=f"LLMProcessor-{i}"
+            )
             thread.start()
             self.processing_threads.append(thread)
 
@@ -755,7 +838,9 @@ class QueuedLLMProcessor(ILLMProcessor, ILLMSubject):
         while not self.stop_event.is_set():
             try:
                 # Get request with timeout
-                priority, timestamp, request, future = self.request_queue.get(timeout=1.0)
+                priority, timestamp, request, future = self.request_queue.get(
+                    timeout=1.0
+                )
 
                 # Notify observers
                 self.notify_started(request)
@@ -771,7 +856,9 @@ class QueuedLLMProcessor(ILLMProcessor, ILLMSubject):
                     self.notify_completed(request, response)
 
                 except Exception as e:
-                    self.logger.error(f"Error processing request {request.request_id}: {e}")
+                    self.logger.error(
+                        f"Error processing request {request.request_id}: {e}"
+                    )
 
                     # Create error response
                     error_response = LLMResponse(
@@ -852,7 +939,9 @@ class StandardLLMAnalysisTemplate(ILLMAnalysisTemplate):
         self.strategy = strategy
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-    def validate_input(self, symbol: str, data: Dict[str, Any], task_type: LLMTaskType) -> bool:
+    def validate_input(
+        self, symbol: str, data: Dict[str, Any], task_type: LLMTaskType
+    ) -> bool:
         """Validate input parameters"""
         if not symbol or len(symbol) > 10:
             return False
@@ -865,7 +954,9 @@ class StandardLLMAnalysisTemplate(ILLMAnalysisTemplate):
 
         return True
 
-    def prepare_analysis_request(self, symbol: str, data: Dict[str, Any], task_type: LLMTaskType) -> LLMRequest:
+    def prepare_analysis_request(
+        self, symbol: str, data: Dict[str, Any], task_type: LLMTaskType
+    ) -> LLMRequest:
         """Prepare analysis request using strategy"""
         return self.strategy.prepare_request(task_type, {**data, "symbol": symbol})
 
@@ -873,10 +964,16 @@ class StandardLLMAnalysisTemplate(ILLMAnalysisTemplate):
         """Execute analysis using processor"""
         return self.processor.process_request(request)
 
-    def process_analysis_results(self, response: LLMResponse, task_type: LLMTaskType) -> Dict[str, Any]:
+    def process_analysis_results(
+        self, response: LLMResponse, task_type: LLMTaskType
+    ) -> Dict[str, Any]:
         """Process results using strategy"""
         return self.strategy.process_response(response, task_type)
 
     def create_error_result(self, error_message: str) -> Dict[str, Any]:
         """Create standardized error result"""
-        return {"error": error_message, "timestamp": datetime.utcnow().isoformat(), "success": False}
+        return {
+            "error": error_message,
+            "timestamp": datetime.utcnow().isoformat(),
+            "success": False,
+        }

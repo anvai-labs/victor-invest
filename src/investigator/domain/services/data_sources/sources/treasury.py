@@ -6,10 +6,17 @@ and curve analysis (inversion detection, steepening, etc.)
 """
 
 import logging
-from datetime import date, datetime
-from typing import Any, Dict, List, Optional
+from datetime import date
+from typing import Any, Dict, Optional
 
-from ..base import DataCategory, DataFrequency, DataQuality, DataResult, DataSource, SourceMetadata
+from ..base import (
+    DataCategory,
+    DataFrequency,
+    DataQuality,
+    DataResult,
+    DataSource,
+    SourceMetadata,
+)
 from ..registry import register_source
 
 logger = logging.getLogger(__name__)
@@ -43,7 +50,9 @@ class TreasuryYieldSource(DataSource):
     """
 
     def __init__(self):
-        super().__init__("treasury_yields", DataCategory.FIXED_INCOME, DataFrequency.DAILY)
+        super().__init__(
+            "treasury_yields", DataCategory.FIXED_INCOME, DataFrequency.DAILY
+        )
 
     @property
     def metadata(self) -> SourceMetadata:
@@ -95,15 +104,42 @@ class TreasuryYieldSource(DataSource):
 
             # Map columns to maturity labels
             yields = {
-                "1M": {"rate": float(row[1]) if row[1] else None, "date": row[0].isoformat()},
-                "3M": {"rate": float(row[2]) if row[2] else None, "date": row[0].isoformat()},
-                "6M": {"rate": float(row[3]) if row[3] else None, "date": row[0].isoformat()},
-                "1Y": {"rate": float(row[4]) if row[4] else None, "date": row[0].isoformat()},
-                "2Y": {"rate": float(row[5]) if row[5] else None, "date": row[0].isoformat()},
-                "5Y": {"rate": float(row[6]) if row[6] else None, "date": row[0].isoformat()},
-                "10Y": {"rate": float(row[7]) if row[7] else None, "date": row[0].isoformat()},
-                "20Y": {"rate": float(row[8]) if row[8] else None, "date": row[0].isoformat()},
-                "30Y": {"rate": float(row[9]) if row[9] else None, "date": row[0].isoformat()},
+                "1M": {
+                    "rate": float(row[1]) if row[1] else None,
+                    "date": row[0].isoformat(),
+                },
+                "3M": {
+                    "rate": float(row[2]) if row[2] else None,
+                    "date": row[0].isoformat(),
+                },
+                "6M": {
+                    "rate": float(row[3]) if row[3] else None,
+                    "date": row[0].isoformat(),
+                },
+                "1Y": {
+                    "rate": float(row[4]) if row[4] else None,
+                    "date": row[0].isoformat(),
+                },
+                "2Y": {
+                    "rate": float(row[5]) if row[5] else None,
+                    "date": row[0].isoformat(),
+                },
+                "5Y": {
+                    "rate": float(row[6]) if row[6] else None,
+                    "date": row[0].isoformat(),
+                },
+                "10Y": {
+                    "rate": float(row[7]) if row[7] else None,
+                    "date": row[0].isoformat(),
+                },
+                "20Y": {
+                    "rate": float(row[8]) if row[8] else None,
+                    "date": row[0].isoformat(),
+                },
+                "30Y": {
+                    "rate": float(row[9]) if row[9] else None,
+                    "date": row[0].isoformat(),
+                },
             }
 
             # Filter out None rates
@@ -177,7 +213,9 @@ class TreasuryYieldSource(DataSource):
 
         return analysis
 
-    def get_historical_spreads(self, spread_type: str = "10y_2y", lookback_days: int = 365) -> DataResult:
+    def get_historical_spreads(
+        self, spread_type: str = "10y_2y", lookback_days: int = 365
+    ) -> DataResult:
         """Get historical spread data"""
         try:
             from datetime import timedelta
@@ -190,9 +228,9 @@ class TreasuryYieldSource(DataSource):
             start_date = date.today() - timedelta(days=lookback_days)
 
             if spread_type == "10y_2y":
-                series_a, series_b = "DGS10", "DGS2"
+                _series_a, _series_b = "DGS10", "DGS2"
             elif spread_type == "10y_3m":
-                series_a, series_b = "DGS10", "DGS3MO"
+                _series_a, _series_b = "DGS10", "DGS3MO"
             else:
                 return DataResult(
                     success=False,
@@ -201,7 +239,9 @@ class TreasuryYieldSource(DataSource):
                 )
 
             # Map spread type to column
-            spread_column = "spread_10y_2y" if spread_type == "10y_2y" else "spread_10y_3m"
+            spread_column = (
+                "spread_10y_2y" if spread_type == "10y_2y" else "spread_10y_3m"
+            )
 
             with engine.connect() as conn:
                 result = conn.execute(

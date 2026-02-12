@@ -74,7 +74,9 @@ def test_handler_migration():
         # Test 4: Return type
         return_annotation = sig.return_annotation
         if "Tuple" not in str(return_annotation):
-            errors.append(f"{handler_name}.execute() wrong return type: {return_annotation}")
+            errors.append(
+                f"{handler_name}.execute() wrong return type: {return_annotation}"
+            )
 
         # Test 5: Is dataclass
         if not is_dataclass(handler_cls):
@@ -103,9 +105,9 @@ if __name__ == "__main__":
     else:
         print("\n✅ All Migration Tests Passed!")
         print(f"  ✓ All {len(ALL_HANDLERS)} handlers extend BaseHandler")
-        print(f"  ✓ All handlers have execute() method")
-        print(f"  ✓ All handlers return Tuple[Any, int]")
-        print(f"  ✓ All handlers are dataclasses")
-        print(f"  ✓ register_handlers() is no-op (backward compatible)")
+        print("  ✓ All handlers have execute() method")
+        print("  ✓ All handlers return Tuple[Any, int]")
+        print("  ✓ All handlers are dataclasses")
+        print("  ✓ register_handlers() is no-op (backward compatible)")
         print("=" * 60)
         exit(0)

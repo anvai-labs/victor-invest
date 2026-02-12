@@ -5,7 +5,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from investigator.domain.agents.fundamental.valuation_extensions import calculate_valuation_extensions
+from investigator.domain.agents.fundamental.valuation_extensions import (
+    calculate_valuation_extensions,
+)
 
 
 def _profile(industry="Software", revenue_growth_yoy=0.15):
@@ -29,7 +31,9 @@ def _model_mock(result):
 async def test_calculate_valuation_extensions_populates_models_when_applicable(
     damodaran_cls, rule_cls, saas_cls
 ):
-    damodaran_cls.return_value = _model_mock({"model": "damodaran_dcf", "applicable": True})
+    damodaran_cls.return_value = _model_mock(
+        {"model": "damodaran_dcf", "applicable": True}
+    )
     rule_cls.return_value = _model_mock({"model": "rule_of_40", "applicable": True})
     saas_cls.return_value = _model_mock({"model": "saas", "applicable": True})
 
@@ -39,7 +43,12 @@ async def test_calculate_valuation_extensions_populates_models_when_applicable(
     payout_ratio = await calculate_valuation_extensions(
         symbol="AAPL",
         valuation_results=valuation_results,
-        financials={"dividends_paid": 200, "net_income": 500, "revenues": 1_000, "free_cash_flow": 100},
+        financials={
+            "dividends_paid": 200,
+            "net_income": 500,
+            "revenues": 1_000,
+            "free_cash_flow": 100,
+        },
         ratios={"fcf_margin": 0.1, "gross_margin": 0.5},
         market_data={"current_price": 100.0},
         company_profile=_profile(),
@@ -66,13 +75,20 @@ async def test_calculate_valuation_extensions_populates_models_when_applicable(
 async def test_calculate_valuation_extensions_sets_non_applicable_paths(
     damodaran_cls, _rule_cls, _saas_cls
 ):
-    damodaran_cls.return_value = _model_mock({"model": "damodaran_dcf", "applicable": True})
+    damodaran_cls.return_value = _model_mock(
+        {"model": "damodaran_dcf", "applicable": True}
+    )
     valuation_results = {}
 
     payout_ratio = await calculate_valuation_extensions(
         symbol="KO",
         valuation_results=valuation_results,
-        financials={"dividends_paid": 0, "net_income": 500, "revenues": 1_000, "free_cash_flow": 100},
+        financials={
+            "dividends_paid": 0,
+            "net_income": 500,
+            "revenues": 1_000,
+            "free_cash_flow": 100,
+        },
         ratios={},
         market_data={"current_price": 50.0},
         company_profile=_profile(industry="Manufacturing", revenue_growth_yoy=0.05),

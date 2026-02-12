@@ -28,7 +28,9 @@ from investigator.domain.agents.fundamental.agent import FundamentalAnalysisAgen
         ),
     ],
 )
-async def test_deterministic_methods_delegate_to_deterministic_analyzer(agent_method, analyzer_method, args):
+async def test_deterministic_methods_delegate_to_deterministic_analyzer(
+    agent_method, analyzer_method, args
+):
     """Each deterministic agent method should forward work to DeterministicAnalyzer."""
     agent = MagicMock(spec=FundamentalAnalysisAgent)
     agent._get_deterministic_analyzer = MagicMock()
@@ -55,10 +57,15 @@ def test_get_deterministic_analyzer_caches_per_agent_instance():
     agent = MagicMock(spec=FundamentalAnalysisAgent)
     agent.agent_id = "agent-test"
     agent.logger = MagicMock()
-    agent._get_deterministic_analyzer = FundamentalAnalysisAgent._get_deterministic_analyzer.__get__(agent)
+    agent._get_deterministic_analyzer = (
+        FundamentalAnalysisAgent._get_deterministic_analyzer.__get__(agent)
+    )
 
     analyzer = MagicMock()
-    with patch("investigator.domain.agents.fundamental.agent.DeterministicAnalyzer", return_value=analyzer) as cls:
+    with patch(
+        "investigator.domain.agents.fundamental.agent.DeterministicAnalyzer",
+        return_value=analyzer,
+    ) as cls:
         first = agent._get_deterministic_analyzer()
         second = agent._get_deterministic_analyzer()
 

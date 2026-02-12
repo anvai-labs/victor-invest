@@ -13,9 +13,8 @@ Database Tables:
 import logging
 import os
 import ssl
-from datetime import datetime, timedelta
-from decimal import Decimal
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 try:
     import certifi
@@ -80,7 +79,11 @@ def get_stock_db_manager():
 
     # Create engine for stock database
     engine = create_engine(
-        stock_db_url, pool_size=db_config.pool_size, max_overflow=db_config.max_overflow, echo=False, pool_pre_ping=True
+        stock_db_url,
+        pool_size=db_config.pool_size,
+        max_overflow=db_config.max_overflow,
+        echo=False,
+        pool_pre_ping=True,
     )
 
     # Create session factory
@@ -158,7 +161,9 @@ class MacroIndicatorsFetcher:
         """Get or create aiohttp session."""
         if self._session is None or self._session.closed:
             connector = aiohttp.TCPConnector(ssl=SSL_CONTEXT)
-            self._session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30), connector=connector)
+            self._session = aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=30), connector=connector
+            )
         return self._session
 
     async def get_indicator_data(
@@ -185,7 +190,10 @@ class MacroIndicatorsFetcher:
             }
         """
         if not self._api_key:
-            self.logger.warning("FRED_API_KEY not configured. " "Set via: victor keys --set-service fred --keyring")
+            self.logger.warning(
+                "FRED_API_KEY not configured. "
+                "Set via: victor keys --set-service fred --keyring"
+            )
             return {}
 
         result: Dict[str, Any] = {
@@ -353,7 +361,9 @@ class MacroIndicatorsFetcher:
                         "value": value,
                         "date": row.date,
                         "prev_value": prev_value,
-                        "prev_date": row.prev_date if hasattr(row, "prev_date") else None,
+                        "prev_date": row.prev_date
+                        if hasattr(row, "prev_date")
+                        else None,
                         "change_abs": change_abs,
                         "change_pct": change_pct,
                         "name": row.name,
@@ -380,7 +390,9 @@ class MacroIndicatorsFetcher:
             "get_latest_indicators() is deprecated; use get_latest_values() instead. "
             "Maintaining compatibility for legacy valuation workflows."
         )
-        return self.get_latest_values(indicator_ids=indicator_ids, lookback_days=lookback_days)
+        return self.get_latest_values(
+            indicator_ids=indicator_ids, lookback_days=lookback_days
+        )
 
     def get_time_series(
         self,
@@ -418,7 +430,12 @@ class MacroIndicatorsFetcher:
 
                 result = session.execute(
                     query,
-                    {"indicator_id": indicator_id, "start_date": start_date, "end_date": end_date, "limit": limit},
+                    {
+                        "indicator_id": indicator_id,
+                        "start_date": start_date,
+                        "end_date": end_date,
+                        "limit": limit,
+                    },
                 )
 
                 data = [(row.date, float(row.value)) for row in result if row.value]
@@ -489,11 +506,15 @@ class MacroIndicatorsFetcher:
             vti_data = self.get_vti_price()
 
             if "GDP" not in indicators:
-                self.logger.warning("Cannot calculate Buffett Indicator: Missing GDP data")
+                self.logger.warning(
+                    "Cannot calculate Buffett Indicator: Missing GDP data"
+                )
                 return None
 
             if not vti_data:
-                self.logger.warning("Cannot calculate Buffett Indicator: Missing VTI price data")
+                self.logger.warning(
+                    "Cannot calculate Buffett Indicator: Missing VTI price data"
+                )
                 return None
 
             vti_price = vti_data["price"]
@@ -590,7 +611,9 @@ class MacroIndicatorsFetcher:
 
         for category, indicator_list in categories.items():
             summary["categories"][category] = {
-                ind_id: indicators.get(ind_id) for ind_id in indicator_list if ind_id in indicators
+                ind_id: indicators.get(ind_id)
+                for ind_id in indicator_list
+                if ind_id in indicators
             }
 
         # Generate alerts for significant changes or levels
@@ -603,7 +626,9 @@ class MacroIndicatorsFetcher:
                             "type": "large_change",
                             "indicator": data["name"],
                             "change_pct": data["change_pct"],
-                            "severity": "high" if abs(data["change_pct"]) > 20 else "medium",
+                            "severity": "high"
+                            if abs(data["change_pct"]) > 20
+                            else "medium",
                         }
                     )
 
@@ -619,7 +644,9 @@ class MacroIndicatorsFetcher:
                         "indicator": "Market Valuation",
                         "interpretation": buffett["interpretation"],
                         "ratio": buffett["ratio"],
-                        "severity": "high" if buffett["signal"] == "warning" else "medium",
+                        "severity": "high"
+                        if buffett["signal"] == "warning"
+                        else "medium",
                     }
                 )
 
