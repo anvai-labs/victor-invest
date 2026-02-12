@@ -228,14 +228,14 @@ class DataValidationService:
 
         # Required fields for valuation
         required_fields = ["total_revenue", "net_income"]
-        for field in required_fields:
-            if not financials.get(field):
+        for field_name in required_fields:
+            if not financials.get(field_name):
                 warnings.append(
                     DataQualityWarning(
                         code="MISSING_REQUIRED_FIELD",
-                        message=f"Missing required field: {field}",
+                        message=f"Missing required field: {field_name}",
                         severity=WarningSeverity.ERROR,
-                        details={"field": field},
+                        details={"field": field_name},
                     )
                 )
 

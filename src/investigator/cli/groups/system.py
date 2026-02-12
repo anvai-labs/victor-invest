@@ -421,7 +421,7 @@ def logs(ctx, lines, follow, level):
         with open(latest) as f:
             all_lines = f.readlines()
             if level:
-                all_lines = [l for l in all_lines if level in l]
+                all_lines = [ln for ln in all_lines if level in ln]
             for line in all_lines[-lines:]:
                 click.echo(line.rstrip())
 

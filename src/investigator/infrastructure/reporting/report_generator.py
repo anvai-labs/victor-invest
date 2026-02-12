@@ -24,18 +24,18 @@ except ImportError:
     logging.warning("markdown not available - some report features will be limited")
 
 try:
-    from reportlab.graphics import renderPDF
-    from reportlab.graphics.shapes import Circle, Drawing, Rect
+    from reportlab.graphics import renderPDF  # noqa: F401
+    from reportlab.graphics.shapes import Circle, Drawing, Rect  # noqa: F401
     from reportlab.lib import colors
-    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT, TA_RIGHT
+    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT, TA_RIGHT  # noqa: F401
     from reportlab.lib.pagesizes import A4, letter
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import inch
     from reportlab.pdfgen import canvas
     from reportlab.platypus import (
-        HRFlowable,
+        HRFlowable,  # noqa: F401
         Image,
-        KeepTogether,
+        KeepTogether,  # noqa: F401
         PageBreak,
         Paragraph,
         SimpleDocTemplate,

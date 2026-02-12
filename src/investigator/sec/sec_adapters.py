@@ -163,7 +163,7 @@ class SECToInternalAdapter(IDataFormatAdapter):
                     return year, "Q2"
                 else:
                     return year, "Q3"
-        except:
+        except Exception:
             return 0, ""
 
     def reverse_adapt(self, internal_data: List[QuarterlyData]) -> Dict[str, Any]:

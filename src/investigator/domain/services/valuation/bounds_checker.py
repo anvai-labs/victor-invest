@@ -220,13 +220,13 @@ class BoundsChecker:
         issues: List[ValidationIssue] = []
         model_bounds = self.input_bounds.get(model_type, {})
 
-        for field, value in inputs.items():
+        for field_name, value in inputs.items():
             if value is None:
                 continue
 
             # Check if we have bounds for this field
-            if field in model_bounds:
-                min_val, max_val = model_bounds[field]
+            if field_name in model_bounds:
+                min_val, max_val = model_bounds[field_name]
 
                 try:
                     num_value = float(value)
@@ -235,7 +235,7 @@ class BoundsChecker:
                     if num_value < min_val or num_value > max_val:
                         issues.append(
                             ValidationIssue(
-                                field=field,
+                                field=field_name,
                                 value=num_value,
                                 severity=ValidationSeverity.ERROR,
                                 message=f"{field}={num_value:.4f} outside bounds [{min_val}, {max_val}]",

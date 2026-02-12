@@ -229,7 +229,7 @@ except ImportError:
 
 
 # Register investment domain handlers when this module is loaded
-from investigator.domain.handlers import register_handlers as _register_handlers
+from investigator.domain.handlers import register_handlers as _register_handlers  # noqa: E402
 
 _register_handlers()
 

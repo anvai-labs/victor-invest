@@ -671,7 +671,7 @@ class LLMExecutionHandler(ILLMHandler):
                         f"Total keys: {len(response_keys)}"
                     )
                     self._log_to_both(symbol, json_keys_msg)
-            except:
+            except Exception:
                 # Not JSON or parsing failed - that's fine
                 pass
 

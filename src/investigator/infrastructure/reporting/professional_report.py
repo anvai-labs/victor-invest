@@ -17,7 +17,7 @@ try:
     from reportlab.graphics.charts.piecharts import Pie  # noqa: F401
     from reportlab.graphics.shapes import Circle, Drawing, Line, Rect, String, Wedge  # noqa: F401
     from reportlab.lib import colors
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT  # noqa: F401
     from reportlab.lib.pagesizes import letter
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import inch
