@@ -196,6 +196,64 @@
   - Switched `FundamentalAnalysisAgent` to delegating wrapper for company-level processed snapshot fetch
   - Added company-fetch helper coverage in
     `tests/unit/domain/agents/fundamental/test_company_fetch.py`
+  - Extracted deterministic financial-ratio pipeline from
+    `FundamentalAnalysisAgent._calculate_financial_ratios(...)` into
+    `src/investigator/domain/agents/fundamental/financial_ratios.py`
+    (market input resolution, valuation ratios, balance-sheet/cashflow ratios, market-context hydration,
+    revenue-growth YoY derivation)
+  - Reduced `_calculate_financial_ratios(...)` to a thin orchestrating wrapper in
+    `src/investigator/domain/agents/fundamental/agent.py`
+  - Added ratio-helper coverage in
+    `tests/unit/domain/agents/fundamental/test_financial_ratios.py`
+  - Extracted LLM payload sanitation/normalization pipeline from
+    `FundamentalAnalysisAgent._sanitize_for_llm(...)` into
+    `src/investigator/domain/agents/fundamental/llm_sanitization.py`
+    (market field backfill, leverage ratio normalization, quick/current consistency enforcement,
+    and data-quality issue logging dispatch)
+  - Reduced `_sanitize_for_llm(...)` to delegating wrapper in
+    `src/investigator/domain/agents/fundamental/agent.py`
+  - Added sanitation-helper coverage in
+    `tests/unit/domain/agents/fundamental/test_llm_sanitization.py`
+  - Extracted cost-of-capital helper cluster from `FundamentalAnalysisAgent` into
+    `src/investigator/domain/agents/fundamental/cost_of_capital.py`
+    (`hydrate_cost_of_capital_inputs`, `evaluate_cost_of_capital_inputs`,
+    `apply_cost_of_capital_penalty`)
+  - Converted corresponding agent methods to thin delegating wrappers in
+    `src/investigator/domain/agents/fundamental/agent.py`
+  - Added cost-of-capital helper coverage in
+    `tests/unit/domain/agents/fundamental/test_cost_of_capital.py`
+  - Extracted CAPM cost-of-equity computation from
+    `FundamentalAnalysisAgent._calculate_cost_of_equity(...)` into
+    `src/investigator/domain/agents/fundamental/cost_of_equity.py`
+    (beta floor/cap handling, FRED risk-free fallback, exception fallback policy)
+  - Reduced `_calculate_cost_of_equity(...)` to a delegating wrapper in
+    `src/investigator/domain/agents/fundamental/agent.py`
+  - Added cost-of-equity helper coverage in
+    `tests/unit/domain/agents/fundamental/test_cost_of_equity.py`
+  - Extracted CompanyProfile enrichment/archetype assignment logic from
+    `FundamentalAnalysisAgent._build_company_profile(...)` into
+    `src/investigator/domain/agents/fundamental/company_profile_enrichment.py`
+  - Reduced `_build_company_profile(...)` to orchestration + helper dispatch in
+    `src/investigator/domain/agents/fundamental/agent.py`
+  - Added CompanyProfile enrichment helper coverage in
+    `tests/unit/domain/agents/fundamental/test_company_profile_enrichment.py`
+  - Extracted company-data fetch orchestration and compatibility mapping helpers from
+    `FundamentalAnalysisAgent._fetch_company_data(...)` into
+    `src/investigator/domain/agents/fundamental/company_data_fetch.py`
+    (CIK resolution, cache-key composition, cache hit validation, processed-table mapping, payload assembly,
+    validation, and cache persistence helpers)
+  - Reduced `_fetch_company_data(...)` to orchestrating wrapper in
+    `src/investigator/domain/agents/fundamental/agent.py`
+  - Added company-data-fetch helper coverage in
+    `tests/unit/domain/agents/fundamental/test_company_data_fetch.py`
+  - Extracted per-quarter resolution path from `FundamentalAnalysisAgent._fetch_historical_quarters(...)`
+    into `src/investigator/domain/agents/fundamental/quarterly_fetch.py` via
+    `resolve_quarter_data(...)` (cache hit normalization, processed-table resolution,
+    canonical fallback extraction, QuarterlyData assembly, per-quarter cache write)
+  - Reduced `_fetch_historical_quarters(...)` loop complexity in
+    `src/investigator/domain/agents/fundamental/agent.py` to helper dispatch
+  - Extended quarterly-fetch helper coverage in
+    `tests/unit/domain/agents/fundamental/test_quarterly_fetch.py`
 
 ## Concrete Issues to Address Next
 | Priority | Issue | Evidence | Impact |

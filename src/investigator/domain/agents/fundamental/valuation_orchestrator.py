@@ -5,7 +5,9 @@ from __future__ import annotations
 import json
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
-from investigator.domain.services.deterministic_valuation_synthesizer import synthesize_valuation
+from investigator.domain.services.deterministic_valuation_synthesizer import (
+    synthesize_valuation,
+)
 
 from .valuation_blending import (
     apply_weight_lookup,
@@ -14,6 +16,225 @@ from .valuation_blending import (
     hydrate_financials_for_blending,
 )
 from .valuation_synthesis import build_valuation_summary_rows
+
+
+def run_sector_specific_valuation(
+    *,
+    symbol: str,
+    company_profile: Any,
+    market_data: Dict[str, Any],
+    financials: Dict[str, Any],
+    router_cls: Any,
+    get_config: Callable[[], Any],
+    logger: Any,
+) -> Optional[Dict[str, Any]]:
+    """Attempt sector-specific valuation routing and return normalized result if applicable."""
+    if not (company_profile.sector and company_profile.industry):
+        return None
+    current_price = market_data.get("current_price")
+    if not current_price:
+        return None
+
+    try:
+        router = router_cls()
+        config = get_config()
+        database_url = (
+            f"postgresql://{config.database.username}:{config.database.password}"
+            f"@{config.database.host}:{config.database.port}/{config.database.database}"
+        )
+        valuation_result = router.route_valuation(
+            symbol=symbol,
+            sector=company_profile.sector,
+            industry=company_profile.industry,
+            financials=financials,
+            current_price=current_price,
+            database_url=database_url,
+        )
+        if valuation_result is None:
+            return None
+
+        normalized = {
+            "method": valuation_result.method,
+            "fair_value": valuation_result.fair_value,
+            "current_price": valuation_result.current_price,
+            "upside_percent": valuation_result.upside_percent,
+            "confidence": valuation_result.confidence,
+            "details": valuation_result.details,
+            "warnings": valuation_result.warnings,
+        }
+        logger.info(
+            "%s - Used sector-specific valuation: %s (FV=$%.2f, Upside=%+.1f%%)",
+            symbol,
+            valuation_result.method,
+            valuation_result.fair_value,
+            valuation_result.upside_percent,
+        )
+        return normalized
+    except Exception as exc:
+        logger.warning(
+            "%s - Sector-specific valuation failed: %s, falling back to DCF",
+            symbol,
+            exc,
+        )
+        return None
+
+
+async def run_sector_and_dcf(
+    *,
+    symbol: str,
+    company_profile: Any,
+    company_data: Dict[str, Any],
+    market_data: Dict[str, Any],
+    financials: Dict[str, Any],
+    quarterly_data: List[Any],
+    valuation_results: Dict[str, Any],
+    cost_of_capital_issues: List[str],
+    router_cls: Any,
+    get_config: Callable[[], Any],
+    calculate_dcf_professional: Callable[
+        [str, List[Any], Any], Awaitable[Dict[str, Any]]
+    ],
+    apply_cost_of_capital_penalty: Callable[
+        [Dict[str, Any], List[str]], Dict[str, Any]
+    ],
+    store_deterministic_analysis: Callable[..., None],
+    log_model_result: Callable[[Any, str, str, Dict[str, Any]], None],
+    logger: Any,
+) -> Dict[str, Any]:
+    """Run sector-specific routing + DCF preparation and update valuation_results."""
+    sector_specific_result = run_sector_specific_valuation(
+        symbol=symbol,
+        company_profile=company_profile,
+        market_data=market_data,
+        financials=financials,
+        router_cls=router_cls,
+        get_config=get_config,
+        logger=logger,
+    )
+    if sector_specific_result is not None:
+        valuation_results["sector_specific"] = sector_specific_result
+
+    dcf_professional = await calculate_dcf_professional(
+        symbol, quarterly_data, company_profile
+    )
+    dcf_professional = prepare_dcf_result(
+        symbol=symbol,
+        dcf_professional=dcf_professional,
+        cost_of_capital_issues=cost_of_capital_issues,
+        apply_cost_of_capital_penalty=apply_cost_of_capital_penalty,
+        store_deterministic_analysis=store_deterministic_analysis,
+        period=company_data.get("fiscal_period"),
+        log_model_result=log_model_result,
+        logger=logger,
+    )
+    valuation_results["dcf_professional"] = dcf_professional
+    return {
+        "dcf_professional": dcf_professional,
+        "sector_specific_result": sector_specific_result,
+    }
+
+
+def assign_and_log_relative_models(
+    *,
+    symbol: str,
+    valuation_results: Dict[str, Any],
+    company_profile: Any,
+    company_data: Dict[str, Any],
+    ratios: Dict[str, Any],
+    financials: Dict[str, Any],
+    market_data: Dict[str, Any],
+    config: Any,
+    calculate_relative_models: Callable[..., Dict[str, Any]],
+    lookup_sector_multiple: Callable[[str, str, str], Optional[float]],
+    calculate_enterprise_value: Callable[[Dict[str, Any], Dict[str, Any]], float],
+    log_model_result: Callable[[Any, str, str, Dict[str, Any]], None],
+    logger: Any,
+) -> Dict[str, Any]:
+    """Compute relative models, write into valuation_results, and emit model logs."""
+    relative_models = calculate_relative_models(
+        symbol=symbol,
+        company_profile=company_profile,
+        company_data=company_data,
+        ratios=ratios,
+        financials=financials,
+        market_data=market_data,
+        config=config,
+        sector_specific_result=valuation_results.get("sector_specific"),
+        lookup_sector_multiple=lookup_sector_multiple,
+        calculate_enterprise_value=calculate_enterprise_value,
+        logger=logger,
+    )
+    normalized_pe = relative_models["pe"]
+    normalized_ev_ebitda = relative_models["ev_ebitda"]
+    normalized_ps = relative_models["ps"]
+    normalized_pb = relative_models["pb"]
+    valuation_results["pe"] = normalized_pe
+    valuation_results["ev_ebitda"] = normalized_ev_ebitda
+    valuation_results["ps"] = normalized_ps
+    valuation_results["pb"] = normalized_pb
+
+    log_model_result(logger, symbol, "P/E", normalized_pe)
+    log_model_result(logger, symbol, "EV/EBITDA", normalized_ev_ebitda)
+    log_model_result(logger, symbol, "P/S", normalized_ps)
+    log_model_result(logger, symbol, "P/B", normalized_pb)
+
+    return {
+        "pe": normalized_pe,
+        "ev_ebitda": normalized_ev_ebitda,
+        "ps": normalized_ps,
+        "pb": normalized_pb,
+    }
+
+
+def prepare_dcf_result(
+    *,
+    symbol: str,
+    dcf_professional: Dict[str, Any],
+    cost_of_capital_issues: List[str],
+    apply_cost_of_capital_penalty: Callable[
+        [Dict[str, Any], List[str]], Dict[str, Any]
+    ],
+    store_deterministic_analysis: Callable[..., None],
+    period: Optional[str],
+    log_model_result: Callable[[Any, str, str, Dict[str, Any]], None],
+    logger: Any,
+) -> Dict[str, Any]:
+    """Normalize DCF payload for blending, apply penalties, persist snapshot, and log result."""
+    if isinstance(dcf_professional, dict) and dcf_professional.get(
+        "fair_value_per_share"
+    ):
+        dcf_professional.setdefault("model", "dcf")
+        dcf_professional.setdefault("applicable", True)
+        dcf_professional.setdefault("confidence_score", 0.7)
+        dcf_professional.setdefault("weight", 0.0)
+        logger.info(
+            "🔧 %s - Added orchestrator fields to DCF: model=%s, applicable=%s, confidence=%s",
+            symbol,
+            dcf_professional.get("model"),
+            dcf_professional.get("applicable"),
+            dcf_professional.get("confidence_score"),
+        )
+    else:
+        logger.warning(
+            "⚠️ %s - DCF did not get orchestrator fields: isinstance=%s, fair_value=%s",
+            symbol,
+            isinstance(dcf_professional, dict),
+            dcf_professional.get("fair_value_per_share")
+            if isinstance(dcf_professional, dict)
+            else "N/A",
+        )
+
+    dcf_professional = apply_cost_of_capital_penalty(
+        dcf_professional, cost_of_capital_issues
+    )
+    store_deterministic_analysis(
+        symbol=symbol,
+        label="deterministic_dcf",
+        payload=dcf_professional,
+        period=period,
+    )
+    log_model_result(logger, symbol, "DCF", dcf_professional)
+    return dcf_professional
 
 
 def run_multi_model_blending(
@@ -30,7 +251,10 @@ def run_multi_model_blending(
     normalized_ps: Optional[Dict[str, Any]],
     normalized_pb: Optional[Dict[str, Any]],
     select_models_for_company: Callable[[Any], Optional[List[str]]],
-    resolve_fallback_weights: Callable[[Any, List[Dict[str, Any]], Optional[Dict[str, Any]], Optional[Dict[str, Any]]], Any],
+    resolve_fallback_weights: Callable[
+        [Any, List[Dict[str, Any]], Optional[Dict[str, Any]], Optional[Dict[str, Any]]],
+        Any,
+    ],
     multi_model_orchestrator: Any,
     logger: Any,
 ) -> Tuple[Dict[str, Any], Optional[str]]:
@@ -50,17 +274,25 @@ def run_multi_model_blending(
                 logger.info("✅ [SECTOR_VALUATION] %s - %s", symbol, message)
             else:
                 logger.info("✅ %s - %s", symbol, message)
-        logger.debug("%s - Models for blending: %s", symbol, [m.get("model") for m in models_for_blending])
+        logger.debug(
+            "%s - Models for blending: %s",
+            symbol,
+            [m.get("model") for m in models_for_blending],
+        )
 
         allowed_models = select_models_for_company(company_profile)
-        models_for_blending, resolved_allowed_models, added_pb_for_insurance = filter_models_for_company(
-            models_for_blending=models_for_blending,
-            allowed_models=allowed_models,
-            industry=company_profile.industry,
+        models_for_blending, resolved_allowed_models, added_pb_for_insurance = (
+            filter_models_for_company(
+                models_for_blending=models_for_blending,
+                allowed_models=allowed_models,
+                industry=company_profile.industry,
+            )
         )
         if resolved_allowed_models is not None:
             if added_pb_for_insurance:
-                logger.info("🏦 %s - Added 'pb' to allowed_models for insurance company", symbol)
+                logger.info(
+                    "🏦 %s - Added 'pb' to allowed_models for insurance company", symbol
+                )
             logger.debug(
                 "%s - Filtered models (allowed=%s): %s",
                 symbol,
@@ -75,12 +307,25 @@ def run_multi_model_blending(
             company_profile=company_profile,
             ratios=ratios,
         )
-        if ratios and "market_cap" in ratios and pre_market_cap is None and financials.get("market_cap") is not None:
-            logger.debug("%s - Copied market_cap from ratios to financials: $%s", symbol, format(ratios["market_cap"], ",.0f"))
+        if (
+            ratios
+            and "market_cap" in ratios
+            and pre_market_cap is None
+            and financials.get("market_cap") is not None
+        ):
+            logger.debug(
+                "%s - Copied market_cap from ratios to financials: $%s",
+                symbol,
+                format(ratios["market_cap"], ",.0f"),
+            )
 
         if financials.get("revenue"):
             if not (financials.get("revenues") or financials.get("total_revenue")):
-                logger.info("%s - Added missing 'revenue' key to financials: $%s", symbol, format(financials.get("revenue", 0), ",.0f"))
+                logger.info(
+                    "%s - Added missing 'revenue' key to financials: $%s",
+                    symbol,
+                    format(financials.get("revenue", 0), ",.0f"),
+                )
 
         if hydration["fcf_quarters_count"] == 4 and (
             not getattr(company_profile, "quarterly_metrics", None)
@@ -100,7 +345,9 @@ def run_multi_model_blending(
             hydration["book_value"] / 1e9,
         )
 
-        fallback_weights_result = resolve_fallback_weights(company_profile, models_for_blending, financials, ratios)
+        fallback_weights_result = resolve_fallback_weights(
+            company_profile, models_for_blending, financials, ratios
+        )
         if isinstance(fallback_weights_result, tuple):
             fallback_weights, tier_classification = fallback_weights_result
         else:
@@ -194,8 +441,14 @@ def log_multi_model_summary(
         logger.warning("%s - Failed to format valuation summary table: %s", symbol, exc)
 
     if blended_fair_value and blended_fair_value > 0:
-        agreement_str = f"{model_agreement_score:.2f}" if model_agreement_score is not None else "N/A"
-        confidence_str = f"{overall_confidence:.1%}" if overall_confidence is not None else "N/A"
+        agreement_str = (
+            f"{model_agreement_score:.2f}"
+            if model_agreement_score is not None
+            else "N/A"
+        )
+        confidence_str = (
+            f"{overall_confidence:.1%}" if overall_confidence is not None else "N/A"
+        )
         logger.info(
             "✅ %s - Multi-Model Blended Fair Value: $%.2f | Confidence: %s | Agreement: %s | Applicable Models: %s",
             symbol,
@@ -211,7 +464,11 @@ def log_multi_model_summary(
                 model_agreement_score,
             )
     else:
-        logger.warning("⚠️  %s - No blended fair value calculated (applicable models: %s)", symbol, applicable_models)
+        logger.warning(
+            "⚠️  %s - No blended fair value calculated (applicable models: %s)",
+            symbol,
+            applicable_models,
+        )
 
     return {
         "multi_model_summary": multi_model_summary,
@@ -248,7 +505,9 @@ async def dispatch_valuation_synthesis(
 ) -> Dict[str, Any]:
     """Run deterministic or LLM valuation synthesis and return wrapped response."""
     if use_deterministic and deterministic_valuation_synthesis:
-        logger.debug("%s - Using deterministic valuation synthesis (LLM bypass)", symbol)
+        logger.debug(
+            "%s - Using deterministic valuation synthesis (LLM bypass)", symbol
+        )
         response_data = synthesize_valuation(
             symbol=symbol,
             current_price=market_data.get("current_price", market_data.get("price", 0)),
@@ -259,7 +518,9 @@ async def dispatch_valuation_synthesis(
             notes=notes,
         )
         response_data["valuation_methods"] = valuation_results
-        response_data["current_price"] = market_data.get("current_price", market_data.get("price", 0))
+        response_data["current_price"] = market_data.get(
+            "current_price", market_data.get("price", 0)
+        )
         response_data["company_profile"] = company_profile_payload
         return build_deterministic_response("valuation_synthesis", response_data)
 
@@ -302,7 +563,9 @@ async def dispatch_valuation_synthesis(
 
     if isinstance(response_data, dict):
         response_data["valuation_methods"] = valuation_results
-        response_data["current_price"] = market_data.get("current_price", market_data.get("price", 0))
+        response_data["current_price"] = market_data.get(
+            "current_price", market_data.get("price", 0)
+        )
         response_data["company_profile"] = company_profile_payload
 
     return wrap_llm_response(

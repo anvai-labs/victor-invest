@@ -10,6 +10,7 @@ from investigator.domain.agents.fundamental.quarterly_fetch import (
     fetch_processed_quarter_payload,
     normalize_cached_quarter,
     query_recent_processed_periods,
+    resolve_quarter_data,
 )
 
 
@@ -124,7 +125,12 @@ def test_build_financials_from_bulk_tables_derives_fcf():
         fiscal_period="Q3",
         adsh="0002",
         sector="Technology",
-        canonical_keys_needed=["operating_cash_flow", "capital_expenditures", "free_cash_flow", "total_revenue"],
+        canonical_keys_needed=[
+            "operating_cash_flow",
+            "capital_expenditures",
+            "free_cash_flow",
+            "total_revenue",
+        ],
         canonical_mapper=canonical_mapper,
         strategy=strategy,
         logger=MagicMock(),
@@ -230,3 +236,170 @@ def test_fetch_processed_quarter_payload_maps_data():
     assert data["income_statement"]["is_ytd"] is True
     assert data["cash_flow"]["is_ytd"] is True
     assert data["cash_flow"]["free_cash_flow"] == 110.0
+
+
+def test_resolve_quarter_data_uses_cached_quarter():
+    quarter = {
+        "fiscal_year": 2024,
+        "fiscal_period": "Q4",
+        "adsh": "0004",
+        "filed": "2025-01-01",
+    }
+    cached_quarter = QuarterlyData(
+        fiscal_year=2024,
+        fiscal_period="Q4",
+        financial_data={"revenues": 100.0},
+        ratios={},
+        data_quality={},
+        filing_date="2025-01-01",
+    )
+    cache = MagicMock()
+    cache.get.return_value = cached_quarter
+
+    qdata, returned_strategy = resolve_quarter_data(
+        symbol="AAPL",
+        quarter=quarter,
+        cache=cache,
+        cache_type="quarter_cache",
+        build_cache_key=lambda *_args, **_kwargs: "cache-key",
+        quarterly_data_cls=QuarterlyData,
+        fetch_from_processed_table=MagicMock(),
+        get_sector_for_symbol=MagicMock(),
+        get_fiscal_period_strategy=MagicMock(),
+        bulk_strategy="existing-strategy",
+        canonical_mapper=MagicMock(),
+        fallback_canonical_keys=["total_revenue"],
+        calculate_quarterly_ratios=MagicMock(),
+        assess_quarter_quality=MagicMock(),
+        logger=MagicMock(),
+    )
+
+    assert qdata is cached_quarter
+    assert returned_strategy == "existing-strategy"
+
+
+def test_resolve_quarter_data_uses_processed_payload_and_caches():
+    quarter = {
+        "fiscal_year": 2024,
+        "fiscal_period": "Q3",
+        "adsh": "0005",
+        "filed": "2024-11-01",
+        "period_end": "2024-09-30",
+        "form": "10-Q",
+        "shares_outstanding": 100.0,
+    }
+    cache = MagicMock()
+    cache.get.return_value = None
+    processed_data = {
+        "income_statement": {
+            "total_revenue": 500.0,
+            "net_income": 100.0,
+            "is_ytd": True,
+        },
+        "cash_flow": {
+            "operating_cash_flow": 120.0,
+            "capital_expenditures": -20.0,
+            "is_ytd": True,
+        },
+        "balance_sheet": {"total_assets": 1000.0, "total_liabilities": 400.0},
+        "ratios": {"quick_ratio": 1.5},
+        "data_quality_score": 90.0,
+    }
+
+    qdata, returned_strategy = resolve_quarter_data(
+        symbol="MSFT",
+        quarter=quarter,
+        cache=cache,
+        cache_type="quarter_cache",
+        build_cache_key=lambda *_args, **_kwargs: "cache-key",
+        quarterly_data_cls=QuarterlyData,
+        fetch_from_processed_table=lambda *_args: processed_data,
+        get_sector_for_symbol=MagicMock(),
+        get_fiscal_period_strategy=MagicMock(),
+        bulk_strategy=None,
+        canonical_mapper=MagicMock(),
+        fallback_canonical_keys=["total_revenue"],
+        calculate_quarterly_ratios=MagicMock(),
+        assess_quarter_quality=MagicMock(),
+        logger=MagicMock(),
+    )
+
+    assert isinstance(qdata, QuarterlyData)
+    assert qdata.is_ytd_income is True
+    assert qdata.ratios == {"quick_ratio": 1.5}
+    assert returned_strategy is None
+    cache.set.assert_called_once()
+
+
+def test_resolve_quarter_data_falls_back_to_bulk_strategy():
+    quarter = {
+        "fiscal_year": 2024,
+        "fiscal_period": "Q2",
+        "adsh": "0006",
+        "filed": "2024-08-01",
+        "period_end": "2024-06-30",
+        "form": "10-Q",
+    }
+    cache = MagicMock()
+    cache.get.return_value = None
+
+    canonical_mapper = MagicMock()
+    canonical_mapper.get_tags.side_effect = lambda key, _sector: [key]
+
+    strategy = MagicMock()
+    strategy.get_num_data_for_adsh.return_value = {
+        "total_revenue": 300.0,
+        "net_income": 50.0,
+        "total_assets": 900.0,
+        "total_liabilities": 300.0,
+        "stockholders_equity": 600.0,
+        "current_assets": 250.0,
+        "current_liabilities": 120.0,
+        "long_term_debt": 100.0,
+        "short_term_debt": 20.0,
+        "total_debt": 120.0,
+        "operating_cash_flow": 80.0,
+        "capital_expenditures": -15.0,
+        "free_cash_flow": 0.0,
+        "dividends_paid": 5.0,
+        "weighted_average_diluted_shares_outstanding": 42.0,
+    }
+
+    qdata, returned_strategy = resolve_quarter_data(
+        symbol="NVDA",
+        quarter=quarter,
+        cache=cache,
+        cache_type="quarter_cache",
+        build_cache_key=lambda *_args, **_kwargs: "cache-key",
+        quarterly_data_cls=QuarterlyData,
+        fetch_from_processed_table=lambda *_args: None,
+        get_sector_for_symbol=lambda _symbol: "Technology",
+        get_fiscal_period_strategy=lambda: strategy,
+        bulk_strategy=None,
+        canonical_mapper=canonical_mapper,
+        fallback_canonical_keys=[
+            "total_revenue",
+            "net_income",
+            "total_assets",
+            "total_liabilities",
+            "stockholders_equity",
+            "current_assets",
+            "current_liabilities",
+            "long_term_debt",
+            "short_term_debt",
+            "total_debt",
+            "operating_cash_flow",
+            "capital_expenditures",
+            "free_cash_flow",
+            "dividends_paid",
+            "weighted_average_diluted_shares_outstanding",
+        ],
+        calculate_quarterly_ratios=lambda _financial_data: {"calc": 1},
+        assess_quarter_quality=lambda _financial_data: {"quality": 80},
+        logger=MagicMock(),
+    )
+
+    assert isinstance(qdata, QuarterlyData)
+    assert qdata.financial_data["revenues"] == 300.0
+    assert qdata.ratios == {"calc": 1}
+    assert returned_strategy is strategy
