@@ -226,3 +226,24 @@ export interface RankingsFilterParams {
   sectors?: string[];
   top_n?: number;
 }
+
+export interface PredictionRecord {
+  id: number;
+  symbol: string;
+  analysis_date: string;
+  blended_fair_value: number | null;
+  current_price: number | null;
+  predicted_upside_pct: number | null;
+  model_fair_values: Record<string, number | null>;
+  actual_price_30d: number | null;
+  actual_price_90d: number | null;
+  actual_price_365d: number | null;
+  reward_30d: number | null;
+  reward_90d: number | null;
+  tier_classification: string;
+}
+
+export interface PredictionsResponse {
+  symbol: string;
+  predictions: PredictionRecord[];
+}

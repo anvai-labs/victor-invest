@@ -740,6 +740,35 @@ def _extract_forward_guidance(sec_section: Any, models: Any) -> Dict[str, Any]:
     return _extract_forward_guidance_from_models(models)
 
 
+def _apply_thesis_fallback(result: Dict[str, Any]) -> Dict[str, Any]:
+    """Fill empty thesis with a template-based fallback using available data."""
+    summary = result.get("summary", {})
+    if summary.get("thesis"):
+        return result
+    try:
+        from investigator.domain.services.template_thesis_generator import (
+            generate_investment_thesis,
+        )
+
+        thesis_data = generate_investment_thesis(
+            symbol=summary.get("symbol", ""),
+            key_insights={},
+            composite_scores={
+                "overall_score": summary.get("confidence_score", 50),
+                "confidence": summary.get("overall_confidence", 50),
+            },
+            fundamental_analysis=result.get("fundamental", {}),
+        )
+        summary["thesis"] = thesis_data.get("core_investment_narrative", "")
+        if not summary.get("key_catalysts"):
+            summary["key_catalysts"] = thesis_data.get("growth_catalysts", [])
+        if not summary.get("key_risks"):
+            summary["key_risks"] = thesis_data.get("bear_case_considerations", [])
+    except Exception:
+        pass  # Template fallback is best-effort
+    return result
+
+
 def _extract_ui_view_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     """
     Normalize either compact analysis JSON or legacy orchestrator JSON into a
@@ -759,6 +788,7 @@ def _extract_ui_view_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
         technical = payload.get("technical", {}) or {}
         market = payload.get("market", {}) or {}
         sec = payload.get("sec", {}) or {}
+        synth = payload.get("synthesis", {}) or {}
 
         basis = valuation.get("basis")
         horizon = valuation.get("forward_horizon")
@@ -771,46 +801,59 @@ def _extract_ui_view_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
             horizon = inferred_horizon
 
         forward_guidance = _extract_forward_guidance(sec, valuation.get("models", {}))
-        return {
-            "schema": "compact",
-            "summary": {
-                "symbol": payload.get("symbol"),
-                "action": rec.get("action"),
-                "confidence_score": rec.get("confidence_score"),
-                "investment_grade": rec.get("investment_grade"),
-                "current_price": price.get("current"),
-                "target_price": price.get("target"),
-                "expected_return_pct": price.get("expected_return_pct"),
-                "data_quality_score": quality.get("data_quality_score"),
-                "quality_grade": quality.get("quality_grade"),
-                "valuation_basis": basis,
-                "forward_horizon": horizon,
-                "blended_fair_value": valuation.get("blended_fair_value"),
-                "overall_confidence": valuation.get("overall_confidence"),
-                "model_agreement_score": valuation.get("model_agreement_score"),
-                "dispersion_ratio": valuation.get("dispersion_ratio"),
-                "market_regime": market.get("market_regime"),
-                "sector": market.get("sector"),
-                "guidance_source_form": (
-                    forward_guidance.get("source_form")
-                    if isinstance(forward_guidance, dict)
-                    else None
-                ),
-                "guidance_confidence_score": (
-                    forward_guidance.get("confidence_score")
-                    if isinstance(forward_guidance, dict)
-                    else None
-                ),
-            },
-            "fundamental": {
-                "valuation": valuation,
-                "notes": payload.get("notes", []),
-                "forward_guidance": forward_guidance,
-                "sec": sec if isinstance(sec, dict) else {},
-            },
-            "technical": technical,
-            "raw": payload,
-        }
+        return _apply_thesis_fallback(
+            {
+                "schema": "compact",
+                "summary": {
+                    "symbol": payload.get("symbol"),
+                    "action": rec.get("action"),
+                    "confidence_score": rec.get("confidence_score"),
+                    "investment_grade": rec.get("investment_grade"),
+                    "current_price": price.get("current"),
+                    "target_price": price.get("target"),
+                    "expected_return_pct": price.get("expected_return_pct"),
+                    "data_quality_score": quality.get("data_quality_score"),
+                    "quality_grade": quality.get("quality_grade"),
+                    "valuation_basis": basis,
+                    "forward_horizon": horizon,
+                    "blended_fair_value": valuation.get("blended_fair_value"),
+                    "overall_confidence": valuation.get("overall_confidence"),
+                    "model_agreement_score": valuation.get("model_agreement_score"),
+                    "dispersion_ratio": valuation.get("dispersion_ratio"),
+                    "market_regime": market.get("market_regime"),
+                    "sector": market.get("sector"),
+                    "guidance_source_form": (
+                        forward_guidance.get("source_form")
+                        if isinstance(forward_guidance, dict)
+                        else None
+                    ),
+                    "guidance_confidence_score": (
+                        forward_guidance.get("confidence_score")
+                        if isinstance(forward_guidance, dict)
+                        else None
+                    ),
+                    "thesis": (
+                        rec.get("executive_summary")
+                        or synth.get("executive_summary")
+                        or ""
+                    ),
+                    "key_catalysts": (
+                        rec.get("key_catalysts") or synth.get("key_catalysts") or []
+                    ),
+                    "key_risks": (
+                        rec.get("key_risks") or synth.get("key_risks") or []
+                    ),
+                },
+                "fundamental": {
+                    "valuation": valuation,
+                    "notes": payload.get("notes", []),
+                    "forward_guidance": forward_guidance,
+                    "sec": sec if isinstance(sec, dict) else {},
+                },
+                "technical": technical,
+                "raw": payload,
+            }
+        )
 
     # Legacy orchestrator shape
     agents = (
@@ -879,38 +922,60 @@ def _extract_ui_view_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     if isinstance(forward_guidance, dict) and forward_guidance:
         fundamental_view["forward_guidance"] = forward_guidance
 
-    return {
-        "schema": "legacy",
-        "summary": {
-            "symbol": payload.get("symbol"),
-            "action": recommendation,
-            "confidence_score": (
-                (fundamental.get("confidence") or {}).get("confidence_score")
-                if isinstance(fundamental.get("confidence"), dict)
-                else None
-            ),
-            "investment_grade": fundamental.get("investment_grade"),
-            "current_price": current_price,
-            "target_price": target_price,
-            "expected_return_pct": expected_return_pct,
-            "valuation_basis": basis or fundamental.get("fiscal_period"),
-            "forward_horizon": horizon,
-            "blended_fair_value": fundamental.get("fair_value"),
-            "guidance_source_form": (
-                forward_guidance.get("source_form")
-                if isinstance(forward_guidance, dict)
-                else None
-            ),
-            "guidance_confidence_score": (
-                forward_guidance.get("confidence_score")
-                if isinstance(forward_guidance, dict)
-                else None
-            ),
-        },
-        "fundamental": fundamental_view,
-        "technical": technical,
-        "raw": payload,
-    }
+    synth = payload.get("synthesis", {}) if isinstance(payload.get("synthesis"), dict) else {}
+    legacy_rec = (
+        payload.get("recommendation", {})
+        if isinstance(payload.get("recommendation"), dict)
+        else {}
+    )
+
+    return _apply_thesis_fallback(
+        {
+            "schema": "legacy",
+            "summary": {
+                "symbol": payload.get("symbol"),
+                "action": recommendation,
+                "confidence_score": (
+                    (fundamental.get("confidence") or {}).get("confidence_score")
+                    if isinstance(fundamental.get("confidence"), dict)
+                    else None
+                ),
+                "investment_grade": fundamental.get("investment_grade"),
+                "current_price": current_price,
+                "target_price": target_price,
+                "expected_return_pct": expected_return_pct,
+                "valuation_basis": basis or fundamental.get("fiscal_period"),
+                "forward_horizon": horizon,
+                "blended_fair_value": fundamental.get("fair_value"),
+                "guidance_source_form": (
+                    forward_guidance.get("source_form")
+                    if isinstance(forward_guidance, dict)
+                    else None
+                ),
+                "guidance_confidence_score": (
+                    forward_guidance.get("confidence_score")
+                    if isinstance(forward_guidance, dict)
+                    else None
+                ),
+                "thesis": (
+                    legacy_rec.get("executive_summary")
+                    or synth.get("executive_summary")
+                    or ""
+                ),
+                "key_catalysts": (
+                    legacy_rec.get("key_catalysts")
+                    or synth.get("key_catalysts")
+                    or []
+                ),
+                "key_risks": (
+                    legacy_rec.get("key_risks") or synth.get("key_risks") or []
+                ),
+            },
+            "fundamental": fundamental_view,
+            "technical": technical,
+            "raw": payload,
+        }
+    )
 
 
 def _safe_float(value: Any) -> Optional[float]:
@@ -2329,6 +2394,21 @@ async def ui_refresh_analysis(symbol: str, request: UIRefreshRequest):
                     else None
                 ),
                 "valuation_basis": valuation_basis,
+                "thesis": (
+                    recommendation.get("executive_summary", "")
+                    if isinstance(recommendation, dict)
+                    else ""
+                ),
+                "key_catalysts": (
+                    recommendation.get("key_catalysts", [])
+                    if isinstance(recommendation, dict)
+                    else []
+                ),
+                "key_risks": (
+                    recommendation.get("key_risks", [])
+                    if isinstance(recommendation, dict)
+                    else []
+                ),
             },
             "fundamental": live_result.fundamental_analysis,
             "technical": live_result.technical_analysis,
@@ -2360,6 +2440,28 @@ async def ui_refresh_analysis(symbol: str, request: UIRefreshRequest):
     )
     logger.error("UI refresh failed for %s: %s", normalized_symbol, error_msg)
     raise HTTPException(status_code=500, detail=error_msg)
+
+
+@app.get("/ui/api/predictions/{symbol}")
+async def ui_predictions(
+    symbol: str, limit: int = Query(50, ge=1, le=200)
+):
+    """Get RL prediction history for a symbol."""
+    normalized_symbol = symbol.strip().upper()
+    try:
+        from investigator.domain.services.rl.outcome_tracker import (
+            ValuationOutcomesDAO,
+        )
+
+        dao = ValuationOutcomesDAO()
+        records = dao.get_by_symbol(normalized_symbol, limit=limit)
+        return {"symbol": normalized_symbol, "predictions": records}
+    except Exception as e:
+        return {
+            "symbol": normalized_symbol,
+            "predictions": [],
+            "error": str(e),
+        }
 
 
 @app.get("/ui/api/history")

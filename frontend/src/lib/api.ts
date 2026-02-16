@@ -3,6 +3,7 @@ import type {
   ChartPayload,
   HealthResponse,
   HistoryEntry,
+  PredictionsResponse,
   RankedSymbol,
   RankingsFilterParams,
   RankingsResponse,
@@ -340,4 +341,8 @@ export function getHealth(): Promise<HealthResponse> {
 
 export function getHistory(symbol: string): Promise<HistoryEntry[]> {
   return fetchJSON(`${BASE}/analysis/${encodeURIComponent(symbol)}/history`);
+}
+
+export function getPredictions(symbol: string, limit = 50): Promise<PredictionsResponse> {
+  return fetchJSON(`${BASE}/predictions/${encodeURIComponent(symbol)}?limit=${limit}`);
 }

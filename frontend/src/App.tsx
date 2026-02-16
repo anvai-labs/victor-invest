@@ -5,6 +5,7 @@ import { SymbolSearch } from "@/components/search/SymbolSearch";
 import { SummaryTab } from "@/components/analysis/SummaryTab";
 import { FundamentalTab } from "@/components/analysis/FundamentalTab";
 import { TechnicalTab } from "@/components/analysis/TechnicalTab";
+import { PredictionsTab } from "@/components/analysis/PredictionsTab";
 import { ChartPanel } from "@/components/charts/ChartPanel";
 import { RankingsTab } from "@/components/rankings/RankingsTab";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -12,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { useAnalysis, useRefreshAnalysis } from "@/hooks/useAnalysis";
 import { useChart } from "@/hooks/useChart";
+import { usePredictions } from "@/hooks/usePredictions";
 import type { UIRefreshRequest } from "@/lib/types";
 import { RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 
@@ -32,6 +34,7 @@ function Dashboard() {
   const [forwardHorizon, setForwardHorizon] = useState<UIRefreshRequest["forward_horizon"]>("1y");
   const { data: analysis, isLoading, error } = useAnalysis(symbol);
   const { data: chart } = useChart(symbol);
+  const { data: predictions } = usePredictions(symbol);
   const refresh = useRefreshAnalysis(symbol);
 
   const view = analysis?.data ?? null;
@@ -147,6 +150,9 @@ function Dashboard() {
               <TabsTrigger value="fundamental">Fundamental</TabsTrigger>
               <TabsTrigger value="technical">Technical</TabsTrigger>
               {chart && <TabsTrigger value="charts">Charts</TabsTrigger>}
+              {predictions?.predictions && predictions.predictions.length > 0 && (
+                <TabsTrigger value="predictions">Predictions</TabsTrigger>
+              )}
               <TabsTrigger value="rankings">Rankings</TabsTrigger>
             </TabsList>
 
@@ -179,6 +185,10 @@ function Dashboard() {
                 <ChartPanel chart={chart} />
               </TabsContent>
             )}
+
+            <TabsContent value="predictions">
+              <PredictionsTab predictions={predictions} />
+            </TabsContent>
 
             <TabsContent value="rankings">
               <RankingsTab />
