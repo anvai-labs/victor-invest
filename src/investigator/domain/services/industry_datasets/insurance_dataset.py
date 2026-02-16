@@ -15,7 +15,7 @@ Date: 2025-12-30
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from investigator.domain.services.industry_datasets.base import (
     BaseIndustryDataset,
@@ -203,7 +203,9 @@ class InsuranceDataset(BaseIndustryDataset):
             ),
         ]
 
-    def extract_metrics(self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs) -> IndustryMetrics:
+    def extract_metrics(
+        self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs
+    ) -> IndustryMetrics:
         """Extract insurance-specific metrics from XBRL data and financials."""
         metrics = IndustryMetrics(
             industry="insurance",
@@ -215,7 +217,9 @@ class InsuranceDataset(BaseIndustryDataset):
 
         # Extract Combined Ratio
         combined = self._extract_from_xbrl(
-            xbrl_data, "combined_ratio", ["CombinedRatio", "PropertyCasualtyInsuranceCombinedRatio"]
+            xbrl_data,
+            "combined_ratio",
+            ["CombinedRatio", "PropertyCasualtyInsuranceCombinedRatio"],
         )
         if combined:
             # Convert to decimal if needed
@@ -232,7 +236,9 @@ class InsuranceDataset(BaseIndustryDataset):
 
         # Extract Loss Ratio
         loss_ratio = self._extract_from_xbrl(
-            xbrl_data, "loss_ratio", ["LossRatio", "InsuranceLossRatio", "LossAndLossAdjustmentExpenseRatio"]
+            xbrl_data,
+            "loss_ratio",
+            ["LossRatio", "InsuranceLossRatio", "LossAndLossAdjustmentExpenseRatio"],
         )
         if loss_ratio:
             if loss_ratio > 2:
@@ -245,7 +251,9 @@ class InsuranceDataset(BaseIndustryDataset):
 
         # Extract Expense Ratio
         expense_ratio = self._extract_from_xbrl(
-            xbrl_data, "expense_ratio", ["ExpenseRatio", "InsuranceExpenseRatio", "UnderwritingExpenseRatio"]
+            xbrl_data,
+            "expense_ratio",
+            ["ExpenseRatio", "InsuranceExpenseRatio", "UnderwritingExpenseRatio"],
         )
         if expense_ratio:
             if expense_ratio > 2:
@@ -254,7 +262,9 @@ class InsuranceDataset(BaseIndustryDataset):
 
         # Extract Investment Yield
         inv_yield = self._extract_from_xbrl(
-            xbrl_data, "investment_yield", ["InvestmentYield", "NetInvestmentIncomeYield"]
+            xbrl_data,
+            "investment_yield",
+            ["InvestmentYield", "NetInvestmentIncomeYield"],
         )
         if inv_yield:
             metrics.metrics["investment_yield"] = inv_yield
@@ -274,20 +284,26 @@ class InsuranceDataset(BaseIndustryDataset):
 
         # Extract Reserve to Premium Ratio
         reserve_ratio = self._extract_from_xbrl(
-            xbrl_data, "reserve_to_premium", ["ReserveToPremiumRatio", "LossReserveToEarnedPremium"]
+            xbrl_data,
+            "reserve_to_premium",
+            ["ReserveToPremiumRatio", "LossReserveToEarnedPremium"],
         )
         if reserve_ratio:
             metrics.metrics["reserve_to_premium"] = reserve_ratio
 
         # Extract Premium Growth
         prem_growth = self._extract_from_xbrl(
-            xbrl_data, "premium_growth", ["PremiumGrowthRate", "NetPremiumsWrittenGrowth"]
+            xbrl_data,
+            "premium_growth",
+            ["PremiumGrowthRate", "NetPremiumsWrittenGrowth"],
         )
         if prem_growth:
             metrics.metrics["premium_growth"] = prem_growth
 
         # Determine insurance type
-        ins_type = self._determine_insurance_type(symbol.upper(), kwargs.get("industry", ""))
+        ins_type = self._determine_insurance_type(
+            symbol.upper(), kwargs.get("industry", "")
+        )
         metrics.metrics["insurance_type"] = ins_type
         metrics.metadata["insurance_type"] = ins_type
 
@@ -306,10 +322,16 @@ class InsuranceDataset(BaseIndustryDataset):
 
         return metrics
 
-    def _calculate_combined_ratio(self, xbrl_data: Optional[Dict], financials: Dict) -> Optional[float]:
+    def _calculate_combined_ratio(
+        self, xbrl_data: Optional[Dict], financials: Dict
+    ) -> Optional[float]:
         """Calculate combined ratio from loss and expense ratios."""
-        loss_ratio = self._extract_from_xbrl(xbrl_data, "loss_ratio", ["LossRatio", "InsuranceLossRatio"])
-        expense_ratio = self._extract_from_xbrl(xbrl_data, "expense_ratio", ["ExpenseRatio", "InsuranceExpenseRatio"])
+        loss_ratio = self._extract_from_xbrl(
+            xbrl_data, "loss_ratio", ["LossRatio", "InsuranceLossRatio"]
+        )
+        expense_ratio = self._extract_from_xbrl(
+            xbrl_data, "expense_ratio", ["ExpenseRatio", "InsuranceExpenseRatio"]
+        )
 
         if loss_ratio and expense_ratio:
             # Convert to decimal if needed
@@ -323,8 +345,12 @@ class InsuranceDataset(BaseIndustryDataset):
 
     def _calculate_loss_ratio(self, financials: Dict) -> Optional[float]:
         """Calculate loss ratio from available data."""
-        incurred_losses = financials.get("incurredLosses") or financials.get("claimsExpense")
-        earned_premiums = financials.get("earnedPremiums") or financials.get("netPremiumsEarned")
+        incurred_losses = financials.get("incurredLosses") or financials.get(
+            "claimsExpense"
+        )
+        earned_premiums = financials.get("earnedPremiums") or financials.get(
+            "netPremiumsEarned"
+        )
 
         if incurred_losses and earned_premiums and earned_premiums > 0:
             return incurred_losses / earned_premiums
@@ -333,8 +359,12 @@ class InsuranceDataset(BaseIndustryDataset):
 
     def _calculate_investment_yield(self, financials: Dict) -> Optional[float]:
         """Calculate investment yield."""
-        inv_income = financials.get("investmentIncome") or financials.get("netInvestmentIncome")
-        invested_assets = financials.get("investedAssets") or financials.get("totalInvestments")
+        inv_income = financials.get("investmentIncome") or financials.get(
+            "netInvestmentIncome"
+        )
+        invested_assets = financials.get("investedAssets") or financials.get(
+            "totalInvestments"
+        )
 
         if inv_income and invested_assets and invested_assets > 0:
             return inv_income / invested_assets

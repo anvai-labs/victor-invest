@@ -75,7 +75,10 @@ RUSSELL1000_OVERRIDES = {
     "ARMK": ("Technology", "Interactive Media"),
     "ARW": ("Technology", "Electronic Components"),
     "ASH": ("Industrials", "Specialty Chemicals"),
-    "ASTS": ("Technology", "Telecommunications Equipment"),  # P0-1: Telecom equipment is Technology
+    "ASTS": (
+        "Technology",
+        "Telecommunications Equipment",
+    ),  # P0-1: Telecom equipment is Technology
     "ATI": ("Industrials", "Steel/Iron Ore"),
     "ATO": ("Utilities", "Oil/Gas Transmission"),
     "ATR": ("Health Care", "Medical/Dental Instruments"),
@@ -138,7 +141,10 @@ RUSSELL1000_OVERRIDES = {
     "CACC": ("Finance", "Finance: Consumer Services"),
     "CACI": ("Technology", "EDP Services"),
     "CAG": ("Consumer Staples", "Packaged Foods"),
-    "CAH": ("Health Care", "Health Care Distribution"),  # Cardinal Health - drug distributor, low-margin
+    "CAH": (
+        "Health Care",
+        "Health Care Distribution",
+    ),  # Cardinal Health - drug distributor, low-margin
     "CAR": ("Consumer Discretionary", "Rental/Leasing Companies"),
     "CARR": ("Consumer Discretionary", "Wholesale Distributors"),
     "CASY": ("Miscellaneous", "Diversified Commercial Services"),
@@ -168,23 +174,35 @@ RUSSELL1000_OVERRIDES = {
     "CHH": ("Consumer Discretionary", "Hotels/Resorts"),
     "CHRD": ("Energy", "Oil & Gas Production"),
     "CHRW": ("Consumer Discretionary", "Oil Refining/Marketing"),
-    "CHTR": ("Technology", "Telecommunications Equipment"),  # P0-1: Telecom equipment is Technology
+    "CHTR": (
+        "Technology",
+        "Telecommunications Equipment",
+    ),  # P0-1: Telecom equipment is Technology
     "CHWY": ("Consumer Discretionary", "Catalog/Specialty Distribution"),
     "CI": ("Health Care", "Managed Health Care"),  # Health insurance/managed care,
-    "CIEN": ("Technology", "Telecommunications Equipment"),  # P0-1: Telecom equipment is Technology
+    "CIEN": (
+        "Technology",
+        "Telecommunications Equipment",
+    ),  # P0-1: Telecom equipment is Technology
     "CINF": ("Finance", "Property-Casualty Insurers"),
     "CIVI": ("Energy", "Oil & Gas Production"),
     "CL": ("Consumer Discretionary", "Package Goods/Cosmetics"),
     "CLVT": ("Technology", "EDP Services"),
     "CLX": ("Consumer Discretionary", "Specialty Chemicals"),
     "CMA": ("Finance", "Major Banks"),
-    "CMCSA": ("Technology", "Telecommunications Equipment"),  # P0-1: Telecom equipment is Technology
+    "CMCSA": (
+        "Technology",
+        "Telecommunications Equipment",
+    ),  # P0-1: Telecom equipment is Technology
     "CME": ("Finance", "Investment Bankers/Brokers/Service"),
     "CMG": ("Consumer Discretionary", "Restaurants"),
     "CMI": ("Industrials", "Construction/Ag Equipment/Trucks"),
     "CMS": ("Utilities", "Power Generation"),
     "CNA": ("Finance", "Property-Casualty Insurers"),
-    "CNC": ("Health Care", "Managed Health Care"),  # Health insurance/managed care - use insurance valuation
+    "CNC": (
+        "Health Care",
+        "Managed Health Care",
+    ),  # Health insurance/managed care - use insurance valuation
     "CNM": ("Industrials", "Industrial Machinery/Components"),
     "CNP": ("Utilities", "Electric Utilities: Central"),
     "CNXC": ("Technology", "Computer Software: Prepackaged Software"),
@@ -212,7 +230,10 @@ RUSSELL1000_OVERRIDES = {
     "CRS": ("Industrials", "Steel/Iron Ore"),
     "CRUS": ("Technology", "Semiconductors"),
     "CRWD": ("Technology", "EDP Services"),
-    "CSCO": ("Technology", "Computer Communications Equipment"),  # P0-1: Computer comms is Technology
+    "CSCO": (
+        "Technology",
+        "Computer Communications Equipment",
+    ),  # P0-1: Computer comms is Technology
     "CSGP": ("Finance", "Real Estate"),
     "CSX": ("Industrials", "Railroads"),
     "CTAS": ("Consumer Discretionary", "Business Services"),
@@ -351,7 +372,10 @@ RUSSELL1000_OVERRIDES = {
     "FTV": ("Industrials", "Industrial Machinery/Components"),
     "FWONA": ("Consumer Discretionary", "Movies/Entertainment"),
     "FWONK": ("Consumer Discretionary", "Movies/Entertainment"),
-    "FYBR": ("Technology", "Telecommunications Equipment"),  # P0-1: Telecom equipment is Technology
+    "FYBR": (
+        "Technology",
+        "Telecommunications Equipment",
+    ),  # P0-1: Telecom equipment is Technology
     "G": ("Consumer Discretionary", "Professional Services"),
     "GD": ("Industrials", "Aerospace"),
     "GDDY": ("Technology", "EDP Services"),
@@ -387,7 +411,10 @@ RUSSELL1000_OVERRIDES = {
     ),  # GWW is Grainger - industrial distributor, not telecom
     "H": ("Consumer Discretionary", "Hotels/Resorts"),
     "HAL": ("Energy", "Oil & Gas Production"),
-    "HALO": ("Health Care", "Biotechnology: Biological Products (No Diagnostic Substances)"),
+    "HALO": (
+        "Health Care",
+        "Biotechnology: Biological Products (No Diagnostic Substances)",
+    ),
     "HAS": ("Consumer Discretionary", "Recreational Games/Products/Toys"),
     "HAYW": ("Technology", "Electronic Components"),
     "HBAN": ("Finance", "Major Banks"),
@@ -424,7 +451,10 @@ RUSSELL1000_OVERRIDES = {
     "ICE": ("Finance", "Investment Bankers/Brokers/Service"),
     "IDA": ("Utilities", "Electric Utilities: Central"),
     "IDXX": ("Health Care", "Biotechnology: In Vitro & In Vivo Diagnostic Substances"),
-    "IEP": ("Finance", "Diversified Investments"),  # Icahn Enterprises - holding company
+    "IEP": (
+        "Finance",
+        "Diversified Investments",
+    ),  # Icahn Enterprises - holding company
     "IEX": ("Industrials", "Fluid Controls"),
     "IFF": ("Industrials", "Major Chemicals"),
     "ILMN": ("Health Care", "Medical Specialities"),
@@ -432,7 +462,10 @@ RUSSELL1000_OVERRIDES = {
     "INFA": ("Technology", "EDP Services"),
     "INGR": ("Consumer Staples", "Farming/Seeds/Milling"),
     "INSM": ("Health Care", "Biotechnology: Pharmaceutical Preparations"),
-    "INSP": ("Health Care", "Biotechnology: Electromedical & Electrotherapeutic Apparatus"),
+    "INSP": (
+        "Health Care",
+        "Biotechnology: Electromedical & Electrotherapeutic Apparatus",
+    ),
     "INTC": ("Technology", "Semiconductors"),
     "INTU": ("Technology", "Computer Software: Prepackaged Software"),
     "INVH": ("Real Estate", "Real Estate Investment Trusts"),
@@ -443,7 +476,10 @@ RUSSELL1000_OVERRIDES = {
     "IPGP": ("Technology", "Semiconductors"),
     "IQV": ("Health Care", "Managed Health Care"),
     "IR": ("Industrials", "Industrial Machinery/Components"),
-    "IRDM": ("Technology", "Telecommunications Equipment"),  # P0-1: Telecom equipment is Technology
+    "IRDM": (
+        "Technology",
+        "Telecommunications Equipment",
+    ),  # P0-1: Telecom equipment is Technology
     "IRM": ("Real Estate", "Real Estate Investment Trusts"),
     "ISRG": ("Health Care", "Medical/Dental Instruments"),
     "IT": ("Finance", "Diversified Commercial Services"),
@@ -486,8 +522,14 @@ RUSSELL1000_OVERRIDES = {
     "LAD": ("Consumer Discretionary", "Other Specialty Stores"),
     "LAMR": ("Real Estate", "Real Estate Investment Trusts"),
     "LAZ": ("Finance", "Investment Managers"),
-    "LBRDA": ("Technology", "Telecommunications Equipment"),  # P0-1: Telecom equipment is Technology
-    "LBRDK": ("Technology", "Telecommunications Equipment"),  # P0-1: Telecom equipment is Technology
+    "LBRDA": (
+        "Technology",
+        "Telecommunications Equipment",
+    ),  # P0-1: Telecom equipment is Technology
+    "LBRDK": (
+        "Technology",
+        "Telecommunications Equipment",
+    ),  # P0-1: Telecom equipment is Technology
     "LBTYA": ("Telecommunications", "Cable & Other Pay Television Services"),
     "LBTYK": ("Telecommunications", "Cable & Other Pay Television Services"),
     "LCID": ("Consumer Discretionary", "Auto Manufacturing"),
@@ -531,11 +573,17 @@ RUSSELL1000_OVERRIDES = {
     "MAT": ("Consumer Discretionary", "Recreational Games/Products/Toys"),
     "MCD": ("Consumer Discretionary", "Restaurants"),
     "MCHP": ("Technology", "Semiconductors"),
-    "MCK": ("Health Care", "Health Care Distribution"),  # McKesson - drug distributor, low-margin
+    "MCK": (
+        "Health Care",
+        "Health Care Distribution",
+    ),  # McKesson - drug distributor, low-margin
     "MCO": ("Finance", "Advertising"),
     "MDB": ("Technology", "Retail: Computer Software & Peripheral Equipment"),
     "MDLZ": ("Consumer Staples", "Meat/Poultry/Fish"),
-    "MDT": ("Health Care", "Biotechnology: Electromedical & Electrotherapeutic Apparatus"),
+    "MDT": (
+        "Health Care",
+        "Biotechnology: Electromedical & Electrotherapeutic Apparatus",
+    ),
     "MDU": ("Industrials", "Consumer Electronics/Appliances"),
     "MEDP": ("Health Care", "Biotechnology: Commercial Physical & Biological Resarch"),
     "MET": ("Finance", "Life Insurance"),
@@ -561,14 +609,20 @@ RUSSELL1000_OVERRIDES = {
     "MPW": ("Real Estate", "Real Estate Investment Trusts"),
     "MPWR": ("Technology", "Semiconductors"),
     "MRK": ("Health Care", "Biotechnology: Pharmaceutical Preparations"),
-    "MRNA": ("Health Care", "Biotechnology: Biological Products (No Diagnostic Substances)"),
+    "MRNA": (
+        "Health Care",
+        "Biotechnology: Biological Products (No Diagnostic Substances)",
+    ),
     "MRVL": ("Technology", "Semiconductors"),
     "MS": ("Finance", "Investment Bankers/Brokers/Service"),
     "MSA": ("Technology", "Security Systems Services"),
     "MSCI": ("Finance", "Advertising"),
     "MSFT": ("Technology", "Computer Software: Prepackaged Software"),
     "MSGS": ("Consumer Discretionary", "Hotels/Resorts"),
-    "MSI": ("Technology", "Radio And Television Broadcasting And Communications Equipment"),
+    "MSI": (
+        "Technology",
+        "Radio And Television Broadcasting And Communications Equipment",
+    ),
     "MSM": ("Industrials", "Industrial Machinery/Components"),
     "MSTR": ("Technology", "Computer Software: Prepackaged Software"),
     "MTB": ("Finance", "Major Banks"),
@@ -581,7 +635,10 @@ RUSSELL1000_OVERRIDES = {
     "MTZ": ("Industrials", "Water Sewer Pipeline Comm & Power Line Construction"),
     "MU": ("Technology", "Semiconductors"),
     "MUSA": ("Utilities", "Natural Gas Distribution"),
-    "NBIX": ("Health Care", "Biotechnology: Biological Products (No Diagnostic Substances)"),
+    "NBIX": (
+        "Health Care",
+        "Biotechnology: Biological Products (No Diagnostic Substances)",
+    ),
     "NCLH": ("Consumer Discretionary", "Marine Transportation"),
     "NCNO": ("Technology", "Computer Software: Prepackaged Software"),
     "NDAQ": ("Finance", "Investment Bankers/Brokers/Service"),
@@ -693,7 +750,10 @@ RUSSELL1000_OVERRIDES = {
     "PWR": ("Industrials", "Engineering & Construction"),
     "PYPL": ("Consumer Discretionary", "Business Services"),
     "QCOM": ("Technology", "Computer peripheral equipment"),
-    "QGEN": ("Health Care", "Biotechnology: Biological Products (No Diagnostic Substances)"),
+    "QGEN": (
+        "Health Care",
+        "Biotechnology: Biological Products (No Diagnostic Substances)",
+    ),
     "QRVO": ("Industrials", "Industrial Machinery/Components"),
     "QS": ("Consumer Discretionary", "Auto Parts:O.E.M."),
     "R": ("Consumer Discretionary", "Rental/Leasing Companies"),
@@ -789,13 +849,19 @@ RUSSELL1000_OVERRIDES = {
     "SYF": ("Finance", "Diversified Financial Services"),
     "SYK": ("Health Care", "Medical/Dental Instruments"),
     "SYY": ("Consumer Discretionary", "Food Distributors"),
-    "T": ("Technology", "Telecommunications Equipment"),  # P0-1: Telecom equipment is Technology
+    "T": (
+        "Technology",
+        "Telecommunications Equipment",
+    ),  # P0-1: Telecom equipment is Technology
     "TAP": ("Consumer Staples", "Beverages (Production/Distribution)"),
     "TDC": ("Technology", "EDP Services"),
     "TDG": ("Industrials", "Military/Government/Technical"),
     "TDY": ("Industrials", "Industrial Machinery/Components"),
     "TEAM": ("Technology", "EDP Services"),
-    "TECH": ("Health Care", "Biotechnology: Biological Products (No Diagnostic Substances)"),
+    "TECH": (
+        "Health Care",
+        "Biotechnology: Biological Products (No Diagnostic Substances)",
+    ),
     "TER": ("Industrials", "Electrical Products"),
     "TFC": ("Finance", "Major Banks"),
     "TFSL": ("Finance", "Savings Institutions"),
@@ -844,7 +910,10 @@ RUSSELL1000_OVERRIDES = {
     "UHAL": ("Consumer Discretionary", "Rental/Leasing Companies"),
     "UHALB": ("Consumer Discretionary", "Rental/Leasing Companies"),
     "UHS": ("Health Care", "Hospital/Nursing Management"),
-    "UI": ("Technology", "Radio And Television Broadcasting And Communications Equipment"),
+    "UI": (
+        "Technology",
+        "Radio And Television Broadcasting And Communications Equipment",
+    ),
     "ULTA": ("Consumer Cyclical", "Specialty Retail"),
     "UNH": ("Health Care", "Managed Health Care"),  # Health insurance/managed care,
     "UNM": ("Finance", "Accident &Health Insurance"),
@@ -882,7 +951,10 @@ RUSSELL1000_OVERRIDES = {
     "WAT": ("Health Care", "Medical Specialities"),
     "WBD": ("Telecommunications", "Cable & Other Pay Television Services"),
     "WBS": ("Finance", "Major Banks"),
-    "WCC": ("Technology", "Telecommunications Equipment"),  # P0-1: Telecom equipment is Technology
+    "WCC": (
+        "Technology",
+        "Telecommunications Equipment",
+    ),  # P0-1: Telecom equipment is Technology
     "WDAY": ("Technology", "Computer Software: Prepackaged Software"),
     "WDC": ("Technology", "Electronic Components"),
     "WEC": ("Utilities", "Power Generation"),

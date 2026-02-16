@@ -42,10 +42,9 @@ Example:
     history = await analyzer.get_shape_history(days=365)
 """
 
-import asyncio
 import logging
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -124,7 +123,9 @@ class YieldCurveAnalysis:
             YieldCurveShape.DEEPLY_INVERTED: InvestmentSignal.STRONGLY_DEFENSIVE,
             YieldCurveShape.UNKNOWN: InvestmentSignal.MODERATE_RISK,
         }
-        self.investment_signal = signal_map.get(self.shape, InvestmentSignal.MODERATE_RISK)
+        self.investment_signal = signal_map.get(
+            self.shape, InvestmentSignal.MODERATE_RISK
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
@@ -145,7 +146,8 @@ class YieldCurveAnalysis:
                 "risk_free_rate": self.risk_free_rate,
             },
             "inversion": {
-                "is_inverted": self.shape in (YieldCurveShape.INVERTED, YieldCurveShape.DEEPLY_INVERTED),
+                "is_inverted": self.shape
+                in (YieldCurveShape.INVERTED, YieldCurveShape.DEEPLY_INVERTED),
                 "days_inverted": self.days_inverted,
             },
             "historical_context": self.historical_context,
@@ -162,7 +164,8 @@ class YieldCurveAnalysis:
                 "Banks typically benefit from wider margins."
             ),
             YieldCurveShape.NORMAL: (
-                "Normal curve indicates balanced growth outlook. " "Maintain diversified positioning across sectors."
+                "Normal curve indicates balanced growth outlook. "
+                "Maintain diversified positioning across sectors."
             ),
             YieldCurveShape.FLAT: (
                 "Flat curve suggests economic uncertainty or late-cycle. "
@@ -231,7 +234,9 @@ class YieldCurveAnalyzer:
     def _get_treasury_client(self):
         """Lazy-load treasury client to avoid circular imports."""
         if self._treasury_client is None:
-            from investigator.infrastructure.external.treasury import get_treasury_client
+            from investigator.infrastructure.external.treasury import (
+                get_treasury_client,
+            )
 
             self._treasury_client = get_treasury_client()
         return self._treasury_client
@@ -271,7 +276,9 @@ class YieldCurveAnalyzer:
             # Add historical context
             analysis.historical_context = {
                 "vs_historical_avg_bps": (
-                    curve.spread_10y_2y - self.HISTORICAL_AVG_SPREAD if curve.spread_10y_2y else None
+                    curve.spread_10y_2y - self.HISTORICAL_AVG_SPREAD
+                    if curve.spread_10y_2y
+                    else None
                 ),
                 "historical_avg_spread_bps": self.HISTORICAL_AVG_SPREAD,
             }
@@ -381,7 +388,9 @@ class YieldCurveAnalyzer:
             "wacc_spread_adjustment_bps": analysis.wacc_spread_adjustment,
             "equity_allocation_adjustment": analysis.equity_adjustment,
             "discount_rate_adjustment": (
-                analysis.wacc_spread_adjustment / 100 if analysis.wacc_spread_adjustment else 0
+                analysis.wacc_spread_adjustment / 100
+                if analysis.wacc_spread_adjustment
+                else 0
             ),
             "curve_shape": analysis.shape.value,
             "investment_signal": analysis.investment_signal.value,

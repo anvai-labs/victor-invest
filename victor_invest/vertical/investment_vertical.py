@@ -61,11 +61,44 @@ DATABASE ACCESS PATTERN:
 See: docs/ARCHITECTURE_DECISION_DATA_ACCESS.md for full rationale.
 """
 
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from victor.core.verticals import StageDefinition, VerticalBase, VerticalConfig
+from victor.core.vertical_types import StageDefinition
+from victor.core.verticals.base import VerticalBase
 
-from victor_invest.prompts.investment_prompts import INVESTMENT_SYSTEM_PROMPT
+DEFAULT_INVESTMENT_TOOL_NAMES = [
+    "sec_filing",
+    "valuation",
+    "technical_indicators",
+    "market_data",
+    "cache",
+    "entry_exit_signals",
+]
+
+
+def _ensure_investment_tool_pack_registered(tool_names: List[str]) -> None:
+    """Register the investment tool pack in Victor's registry (if available)."""
+    try:
+        from victor.framework.tool_packs import ToolPack, get_tool_pack_registry
+    except Exception:
+        return
+
+    registry = get_tool_pack_registry()
+    if registry.get("investment") is not None:
+        return
+
+    try:
+        registry.register(
+            ToolPack(
+                name="investment",
+                tools=tool_names,
+                description="Investment analysis tool pack",
+            )
+        )
+    except ValueError:
+        # Already registered by another import path
+        pass
 
 
 class InvestmentVertical(VerticalBase):
@@ -81,7 +114,51 @@ class InvestmentVertical(VerticalBase):
 
     name = "investment"
     description = "Institutional-grade investment research and equity analysis"
-    version = "1.0.0"
+    version = "0.5.0"
+    _yaml_config_cache: Optional[Dict[str, Any]] = None
+
+    @classmethod
+    def _vertical_config_path(cls) -> Path:
+        return Path(__file__).parent / "config" / "vertical.yaml"
+
+    @classmethod
+    def _load_vertical_yaml_config(cls) -> Dict[str, Any]:
+        if cls._yaml_config_cache is not None:
+            return cls._yaml_config_cache
+
+        config_path = cls._vertical_config_path()
+        if not config_path.exists():
+            cls._yaml_config_cache = {}
+            return cls._yaml_config_cache
+
+        try:
+            import yaml
+
+            data = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+            cls._yaml_config_cache = data if isinstance(data, dict) else {}
+        except Exception:
+            cls._yaml_config_cache = {}
+
+        return cls._yaml_config_cache
+
+    @classmethod
+    def _yaml_stage_definitions(cls) -> Dict[str, StageDefinition]:
+        config = cls._load_vertical_yaml_config()
+        stages_config = config.get("core", {}).get("stages", {})
+        if not isinstance(stages_config, dict):
+            return {}
+
+        stages: Dict[str, StageDefinition] = {}
+        for stage_name, raw in stages_config.items():
+            stage_data = raw if isinstance(raw, dict) else {}
+            stages[stage_name] = StageDefinition(
+                name=stage_name,
+                description=str(stage_data.get("description", "")),
+                tools=set(stage_data.get("tools", []) or []),
+                keywords=list(stage_data.get("keywords", []) or []),
+                next_stages=set(stage_data.get("next_stages", []) or []),
+            )
+        return stages
 
     @classmethod
     def get_tools(cls) -> List[str]:
@@ -90,117 +167,94 @@ class InvestmentVertical(VerticalBase):
         Returns:
             List of tool names to enable.
         """
-        return [
-            "sec_filing",
-            "valuation",
-            "technical_indicators",
-            "market_data",
-            "cache",
-            "entry_exit_signals",
-        ]
+        config = cls._load_vertical_yaml_config()
+        yaml_tools = config.get("core", {}).get("tools", {}).get("list", [])
+        if not isinstance(yaml_tools, list) or not yaml_tools:
+            yaml_tools = list(DEFAULT_INVESTMENT_TOOL_NAMES)
+        else:
+            yaml_tools = [str(tool) for tool in yaml_tools]
+
+        _ensure_investment_tool_pack_registered(yaml_tools)
+        try:
+            from victor.framework.tool_packs import resolve_tool_pack
+
+            resolved_tools = resolve_tool_pack("investment")
+            if resolved_tools:
+                result: list[str] = resolved_tools
+                return result
+        except Exception:
+            pass
+        return yaml_tools
 
     @classmethod
     def get_system_prompt(cls) -> str:
-        """Get the system prompt for investment analysis.
+        """Get the investment system prompt text."""
+        config = cls._load_vertical_yaml_config()
+        source_cfg = config.get("core", {}).get("system_prompt", {})
+        if isinstance(source_cfg, dict) and source_cfg.get("source") == "file":
+            prompt_file = source_cfg.get("file_path")
+            if prompt_file:
+                prompt_path = Path(__file__).parent / "config" / str(prompt_file)
+                if prompt_path.exists():
+                    return prompt_path.read_text(encoding="utf-8").strip()
 
-        Returns:
-            System prompt text with investment domain expertise.
-        """
-        return INVESTMENT_SYSTEM_PROMPT
+        return (
+            "You are an institutional-grade investment analyst. "
+            "Use SEC fundamentals, valuation models, technical analysis, and "
+            "market context to produce a disciplined recommendation."
+        )
 
     @classmethod
     def get_stages(cls) -> Dict[str, StageDefinition]:
-        """Get investment-specific stage definitions.
-
-        Returns:
-            Dictionary mapping stage names to definitions.
-        """
-        return {
-            "INITIAL": StageDefinition(
-                name="INITIAL",
-                description="Understanding the investment research request",
-                keywords=["analyze", "research", "evaluate", "what", "how"],
-                next_stages={"DATA_GATHERING", "PLANNING"},
-            ),
-            "PLANNING": StageDefinition(
-                name="PLANNING",
-                description="Planning the analysis approach",
-                keywords=["plan", "approach", "strategy", "methodology"],
-                next_stages={"DATA_GATHERING"},
-            ),
-            "DATA_GATHERING": StageDefinition(
-                name="DATA_GATHERING",
-                description="Collecting SEC filings and market data",
-                keywords=["sec", "filing", "data", "fetch", "gather"],
-                tools={"sec_filing", "market_data", "cache"},
-                next_stages={"FUNDAMENTAL_ANALYSIS", "TECHNICAL_ANALYSIS"},
-            ),
-            "FUNDAMENTAL_ANALYSIS": StageDefinition(
-                name="FUNDAMENTAL_ANALYSIS",
-                description="Performing valuation and financial analysis",
-                keywords=["valuation", "dcf", "pe", "fundamental", "financial"],
-                tools={"valuation", "cache"},
-                next_stages={"TECHNICAL_ANALYSIS", "SYNTHESIS"},
-            ),
-            "TECHNICAL_ANALYSIS": StageDefinition(
-                name="TECHNICAL_ANALYSIS",
-                description="Analyzing price action, technical indicators, and entry/exit signals",
-                keywords=["technical", "chart", "indicator", "rsi", "macd", "entry", "exit", "signal"],
-                tools={"technical_indicators", "market_data", "entry_exit_signals", "cache"},
-                next_stages={"MARKET_CONTEXT", "SYNTHESIS"},
-            ),
-            "MARKET_CONTEXT": StageDefinition(
-                name="MARKET_CONTEXT",
-                description="Evaluating market conditions and sector dynamics",
-                keywords=["market", "sector", "macro", "context"],
-                tools={"market_data", "cache"},
-                next_stages={"SYNTHESIS"},
-            ),
-            "SYNTHESIS": StageDefinition(
-                name="SYNTHESIS",
-                description="Synthesizing analysis into investment recommendation",
-                keywords=["recommend", "conclusion", "thesis", "summary"],
-                next_stages={"COMPLETION"},
-            ),
-            "COMPLETION": StageDefinition(
-                name="COMPLETION",
-                description="Finalizing investment analysis",
-                keywords=["done", "finished", "complete", "final"],
-                next_stages=set(),
-            ),
-        }
+        """Get stage definitions, preferring YAML-backed workflow stages."""
+        yaml_stages = cls._yaml_stage_definitions()
+        if yaml_stages:
+            return yaml_stages
+        result: Dict[str, StageDefinition] = super().get_stages()
+        return result
 
     @classmethod
     def get_provider_hints(cls) -> Dict[str, Any]:
-        """Get hints for provider selection.
-
-        Investment analysis benefits from strong reasoning capabilities.
-
-        Returns:
-            Dictionary with provider preferences.
-        """
-        return {
-            "preferred_providers": ["anthropic", "openai"],
-            "min_context_window": 100000,
-            "requires_tool_calling": True,
-            "preferred_capabilities": ["reasoning", "structured_output"],
-        }
+        """Get provider hints, preferring YAML metadata."""
+        config = cls._load_vertical_yaml_config()
+        hints = config.get("provider", {}).get("hints")
+        if isinstance(hints, dict) and hints:
+            return hints
+        result: Dict[str, Any] = super().get_provider_hints()
+        return result
 
     @classmethod
     def get_evaluation_criteria(cls) -> List[str]:
-        """Get criteria for evaluating investment analysis quality.
+        """Get evaluation criteria, preferring YAML metadata."""
+        config = cls._load_vertical_yaml_config()
+        criteria = config.get("evaluation", {}).get("criteria")
+        if isinstance(criteria, list) and criteria:
+            return [str(item) for item in criteria]
+        result: list[str] = super().get_evaluation_criteria()
+        return result
 
-        Returns:
-            List of evaluation criteria descriptions.
+    @classmethod
+    def clear_config_cache(cls, *, clear_all: bool = False) -> None:
+        """Clear config and YAML caches for this vertical."""
+        cls._yaml_config_cache = None
+        super().clear_config_cache(clear_all=clear_all)
+
+    @classmethod
+    def get_config(cls, *, use_cache: bool = True, use_yaml: bool = True):
+        """Get vertical config with compatibility for older `use_yaml` callers.
+
+        Args:
+            use_cache: Whether to use cached VerticalConfig.
+            use_yaml: Backward-compatible arg retained for older call sites.
         """
-        return [
-            "Data accuracy and completeness",
-            "Multi-model valuation consistency",
-            "Technical analysis precision",
-            "Market context relevance",
-            "Recommendation clarity and confidence",
-            "Risk factor identification",
-        ]
+        _ = use_yaml
+        config = super().get_config(use_cache=use_cache)
+
+        # Backward compatibility for tests/callers that expect config.name.
+        if not hasattr(config, "name"):
+            setattr(config, "name", cls.name)
+
+        return config
 
     @classmethod
     def get_task_type_hints(cls) -> Dict[str, Any]:
@@ -238,7 +292,12 @@ class InvestmentVertical(VerticalBase):
                 "task_type": "synthesis",
                 "hint": "[SYNTHESIS MODE] Combine analysis streams into actionable recommendations.",
                 "tool_budget": 35,
-                "priority_tools": ["sec_filing", "valuation", "technical_indicators", "market_data"],
+                "priority_tools": [
+                    "sec_filing",
+                    "valuation",
+                    "technical_indicators",
+                    "market_data",
+                ],
             },
         }
 
@@ -322,36 +381,32 @@ class InvestmentVertical(VerticalBase):
             Configured AgentOrchestrator instance.
 
         Example:
+            # For most use cases, prefer run_agentic_workflow():
+            provider = InvestmentWorkflowProvider()
+            result = await provider.run_agentic_workflow(
+                "comprehensive",
+                context={"symbol": "AAPL"},
+                provider="ollama",
+            )
+
+            # For custom orchestrator usage:
             orchestrator = await InvestmentVertical.create_orchestrator(
                 provider="ollama",
                 model="gpt-oss:20b"
             )
-            executor = workflow_provider.create_executor(orchestrator)
-            result = await executor.execute(workflow, context)
+            # Use with WorkflowExecutor directly
+            executor = WorkflowExecutor(orchestrator)
+            workflow = provider.get_workflow("comprehensive")
+            result = await executor.execute(workflow, {"symbol": "AAPL"})
         """
-        from victor.framework import Agent
+        from victor_invest.framework_bootstrap import create_investment_orchestrator
+        from victor_invest.workflows import ensure_handlers_registered
 
-        # Get default model from investigator config if not specified
-        if model is None and provider == "ollama":
-            try:
-                from investigator.config import get_config
-
-                config = get_config()
-                model = config.ollama.models.get("synthesis", "gpt-oss:20b")
-            except Exception:
-                model = "gpt-oss:20b"
-
-        # Create Agent with Investment vertical
-        agent = await Agent.create(
+        return await create_investment_orchestrator(
             provider=provider,
             model=model,
-            tools=cls.get_tools(),
-            vertical=cls,
-            temperature=0.3,
+            ensure_handlers=ensure_handlers_registered,
         )
-
-        # Return the underlying orchestrator
-        return agent.get_orchestrator()
 
     @classmethod
     async def run_analysis(
@@ -362,7 +417,8 @@ class InvestmentVertical(VerticalBase):
         """Run investment analysis using the workflow system.
 
         This is the primary entry point for running investment analysis
-        through Victor's workflow framework.
+        through Victor's workflow framework. Uses WorkflowExecutor with
+        registered compute handlers for the context-stuffing pattern.
 
         Args:
             symbol: Stock ticker symbol to analyze.
@@ -377,7 +433,20 @@ class InvestmentVertical(VerticalBase):
         """
         workflow_provider = cls.get_workflow_provider()
         if workflow_provider:
-            return await workflow_provider.run_workflow(mode, symbol)
+            # Use run_workflow_with_handlers() for handler-based execution
+            # This avoids deprecated run_workflow() while maintaining handler support
+            result = await workflow_provider.run_workflow_with_handlers(
+                mode,
+                context={"symbol": symbol},
+            )
+            # Convert WorkflowResult to dict
+            if hasattr(result, "context") and result.context:
+                return (
+                    result.context.to_dict()
+                    if hasattr(result.context, "to_dict")
+                    else dict(result.context)
+                )
+            return {"success": result.success, "error": getattr(result, "error", None)}
 
         # Fallback to direct workflow call
         from victor_invest.workflows import AnalysisMode

@@ -95,8 +95,8 @@ Investment Signals:
             config: Optional investigator config object.
         """
         super().__init__(config)
-        self._fetcher = None
-        self._data_source_manager = None
+        self._fetcher: Optional[Any] = None
+        self._data_source_manager: Optional[Any] = None
 
     async def initialize(self) -> None:
         """Initialize institutional holdings fetcher and DataSourceManager."""
@@ -109,12 +109,16 @@ Investment Signals:
 
             # Initialize DataSourceManager for consolidated data access
             try:
-                from investigator.domain.services.data_sources.manager import DataSourceManager
+                from investigator.domain.services.data_sources.manager import (
+                    DataSourceManager,
+                )
 
                 self._data_source_manager = DataSourceManager()
                 logger.info("DataSourceManager initialized for institutional holdings")
             except ImportError as e:
-                logger.warning(f"DataSourceManager not available, using fetcher only: {e}")
+                logger.warning(
+                    f"DataSourceManager not available, using fetcher only: {e}"
+                )
                 self._data_source_manager = None
 
             self._initialized = True
@@ -126,7 +130,7 @@ Investment Signals:
 
     async def execute(
         self,
-        _exec_ctx: Dict[str, Any],
+        _exec_ctx: Optional[Dict[str, Any]] = None,
         action: str = "holdings",
         symbol: Optional[str] = None,
         limit: int = 20,
@@ -163,41 +167,53 @@ Investment Signals:
 
             if action == "holdings":
                 if not symbol:
-                    return ToolResult.error_result("Symbol required for holdings action")
+                    return ToolResult.create_failure(
+                        "Symbol required for holdings action"
+                    )
                 return await self._get_holdings(symbol, quarter)
 
             elif action == "top_holders":
                 if not symbol:
-                    return ToolResult.error_result("Symbol required for top_holders action")
+                    return ToolResult.create_failure(
+                        "Symbol required for top_holders action"
+                    )
                 return await self._get_top_holders(symbol, limit)
 
             elif action == "changes":
                 if not symbol:
-                    return ToolResult.error_result("Symbol required for changes action")
+                    return ToolResult.create_failure(
+                        "Symbol required for changes action"
+                    )
                 return await self._get_ownership_changes(symbol, quarters)
 
             elif action == "institution":
                 if not cik:
-                    return ToolResult.error_result("CIK required for institution action")
+                    return ToolResult.create_failure(
+                        "CIK required for institution action"
+                    )
                 return await self._get_institution_holdings(cik, quarter)
 
             elif action == "search":
                 if not query:
-                    return ToolResult.error_result("Query required for search action")
+                    return ToolResult.create_failure("Query required for search action")
                 return await self._search_institutions(query, limit)
 
             else:
-                return ToolResult.error_result(
-                    f"Unknown action: {action}. Valid actions: " "holdings, top_holders, changes, institution, search"
+                return ToolResult.create_failure(
+                    f"Unknown action: {action}. Valid actions: "
+                    "holdings, top_holders, changes, institution, search"
                 )
 
         except Exception as e:
             logger.error(f"InstitutionalHoldingsTool execute error: {e}")
-            return ToolResult.error_result(
-                f"Institutional holdings query failed: {str(e)}", metadata={"action": action, "symbol": symbol}
+            return ToolResult.create_failure(
+                f"Institutional holdings query failed: {str(e)}",
+                metadata={"action": action, "symbol": symbol},
             )
 
-    async def _get_holdings(self, symbol: str, quarter: Optional[str] = None) -> ToolResult:
+    async def _get_holdings(
+        self, symbol: str, quarter: Optional[str] = None
+    ) -> ToolResult:
         """Get institutional holdings for a symbol.
 
         Uses DataSourceManager for consolidated data access when available,
@@ -236,8 +252,8 @@ Investment Signals:
 
                     signal = self._calculate_ownership_signal(ownership_proxy)
 
-                    return ToolResult.success_result(
-                        data={
+                    return ToolResult.create_success(
+                        output={
                             **ownership_proxy.to_dict(),
                             "investment_signal": signal,
                         },
@@ -253,23 +269,27 @@ Investment Signals:
 
         # Fallback to direct fetcher (required for quarter-specific queries
         # or when DataSourceManager is unavailable/failed)
+        if self._fetcher is None:
+            return ToolResult.create_failure(
+                "Institutional holdings fetcher not initialized"
+            )
         ownership = await self._fetcher.get_holdings_by_symbol(symbol, quarter)
 
         if ownership.num_institutions == 0:
-            return ToolResult.success_result(
-                data={
+            return ToolResult.create_success(
+                output={
                     "symbol": symbol,
                     "message": "No institutional holdings data found",
                     "num_institutions": 0,
                 },
-                warnings=["No 13F data available for this symbol"],
+                metadata={"warnings": ["No 13F data available for this symbol"]},
             )
 
         # Calculate signal based on ownership
         signal = self._calculate_ownership_signal(ownership)
 
-        return ToolResult.success_result(
-            data={
+        return ToolResult.create_success(
+            output={
                 **ownership.to_dict(),
                 "investment_signal": signal,
             },
@@ -297,10 +317,12 @@ Investment Signals:
                     if top_holders:
                         # Calculate total value from top holders
                         # DataSourceManager returns value in dollars, not thousands
-                        total_value_dollars = sum(h.get("value", 0) or 0 for h in top_holders)
+                        total_value_dollars = sum(
+                            h.get("value", 0) or 0 for h in top_holders
+                        )
 
-                        return ToolResult.success_result(
-                            data={
+                        return ToolResult.create_success(
+                            output={
                                 "symbol": symbol,
                                 "num_holders": len(top_holders),
                                 "total_value_thousands": total_value_dollars / 1000,
@@ -313,27 +335,33 @@ Investment Signals:
                             },
                         )
             except Exception as e:
-                logger.debug(f"DataSourceManager fallback to fetcher for top_holders: {e}")
+                logger.debug(
+                    f"DataSourceManager fallback to fetcher for top_holders: {e}"
+                )
                 # Fall through to use fetcher
 
         # Fallback to direct fetcher (for custom limits or when DataSourceManager unavailable)
+        if self._fetcher is None:
+            return ToolResult.create_failure(
+                "Institutional holdings fetcher not initialized"
+            )
         holders = await self._fetcher.get_top_holders(symbol, limit)
 
         if not holders:
-            return ToolResult.success_result(
-                data={
+            return ToolResult.create_success(
+                output={
                     "symbol": symbol,
                     "top_holders": [],
                     "message": "No institutional holders found",
                 },
-                warnings=["No 13F data available for this symbol"],
+                metadata={"warnings": ["No 13F data available for this symbol"]},
             )
 
         # Calculate total value from top holders
         total_value = sum(h.get("value_thousands", 0) for h in holders)
 
-        return ToolResult.success_result(
-            data={
+        return ToolResult.create_success(
+            output={
                 "symbol": symbol,
                 "num_holders": len(holders),
                 "total_value_thousands": total_value,
@@ -346,25 +374,31 @@ Investment Signals:
             },
         )
 
-    async def _get_ownership_changes(self, symbol: str, quarters: int = 4) -> ToolResult:
+    async def _get_ownership_changes(
+        self, symbol: str, quarters: int = 4
+    ) -> ToolResult:
         """Get ownership changes over multiple quarters."""
+        if self._fetcher is None:
+            return ToolResult.create_failure(
+                "Institutional holdings fetcher not initialized"
+            )
         changes = await self._fetcher.get_ownership_changes(symbol, quarters)
 
         if not changes:
-            return ToolResult.success_result(
-                data={
+            return ToolResult.create_success(
+                output={
                     "symbol": symbol,
                     "changes": [],
                     "message": "No historical ownership data found",
                 },
-                warnings=["Insufficient 13F history for this symbol"],
+                metadata={"warnings": ["Insufficient 13F history for this symbol"]},
             )
 
         # Analyze trend
         trend = self._analyze_ownership_trend(changes)
 
-        return ToolResult.success_result(
-            data={
+        return ToolResult.create_success(
+            output={
                 "symbol": symbol,
                 "quarters_analyzed": len(changes),
                 "changes": changes,
@@ -376,13 +410,19 @@ Investment Signals:
             },
         )
 
-    async def _get_institution_holdings(self, cik: str, quarter: Optional[str] = None) -> ToolResult:
+    async def _get_institution_holdings(
+        self, cik: str, quarter: Optional[str] = None
+    ) -> ToolResult:
         """Get holdings for a specific institution."""
+        if self._fetcher is None:
+            return ToolResult.create_failure(
+                "Institutional holdings fetcher not initialized"
+            )
         holdings = await self._fetcher.get_institution_holdings(cik, quarter)
 
         if not holdings:
-            return ToolResult.success_result(
-                data={
+            return ToolResult.create_success(
+                output={
                     "cik": cik,
                     "holdings": [],
                     "message": "No holdings found for this institution",
@@ -406,8 +446,8 @@ Investment Signals:
             for h in holdings[:50]  # Limit to top 50
         ]
 
-        return ToolResult.success_result(
-            data={
+        return ToolResult.create_success(
+            output={
                 "cik": cik,
                 "total_positions": total_positions,
                 "total_value_thousands": total_value,
@@ -422,11 +462,15 @@ Investment Signals:
 
     async def _search_institutions(self, query: str, limit: int = 20) -> ToolResult:
         """Search for institutions by name."""
+        if self._fetcher is None:
+            return ToolResult.create_failure(
+                "Institutional holdings fetcher not initialized"
+            )
         institutions = await self._fetcher.search_institutions(query, limit)
 
         if not institutions:
-            return ToolResult.success_result(
-                data={
+            return ToolResult.create_success(
+                output={
                     "query": query,
                     "institutions": [],
                     "message": f"No institutions found matching '{query}'",
@@ -442,8 +486,8 @@ Investment Signals:
             for inst in institutions
         ]
 
-        return ToolResult.success_result(
-            data={
+        return ToolResult.create_success(
+            output={
                 "query": query,
                 "num_results": len(institution_data),
                 "institutions": institution_data,
@@ -462,42 +506,63 @@ Investment Signals:
         Returns:
             Signal dict with level and interpretation
         """
-        signal = {
+        factors: list[str] = []
+        signal: Dict[str, Any] = {
             "level": "neutral",
             "interpretation": "",
-            "factors": [],
+            "factors": factors,
         }
 
         # Check QoQ change
         if ownership.qoq_change_pct is not None:
             if ownership.qoq_change_pct > 10:
                 signal["level"] = "bullish"
-                signal["factors"].append(f"Strong institutional buying (+{ownership.qoq_change_pct:.1f}% QoQ)")
+                signal["factors"].append(
+                    f"Strong institutional buying (+{ownership.qoq_change_pct:.1f}% QoQ)"
+                )
             elif ownership.qoq_change_pct > 5:
                 signal["level"] = "moderately_bullish"
-                signal["factors"].append(f"Moderate institutional buying (+{ownership.qoq_change_pct:.1f}% QoQ)")
+                signal["factors"].append(
+                    f"Moderate institutional buying (+{ownership.qoq_change_pct:.1f}% QoQ)"
+                )
             elif ownership.qoq_change_pct < -10:
                 signal["level"] = "bearish"
-                signal["factors"].append(f"Strong institutional selling ({ownership.qoq_change_pct:.1f}% QoQ)")
+                signal["factors"].append(
+                    f"Strong institutional selling ({ownership.qoq_change_pct:.1f}% QoQ)"
+                )
             elif ownership.qoq_change_pct < -5:
                 signal["level"] = "moderately_bearish"
-                signal["factors"].append(f"Moderate institutional selling ({ownership.qoq_change_pct:.1f}% QoQ)")
+                signal["factors"].append(
+                    f"Moderate institutional selling ({ownership.qoq_change_pct:.1f}% QoQ)"
+                )
 
         # Check number of institutions
         if ownership.num_institutions > 100:
-            signal["factors"].append(f"High institutional interest ({ownership.num_institutions} holders)")
+            signal["factors"].append(
+                f"High institutional interest ({ownership.num_institutions} holders)"
+            )
         elif ownership.num_institutions < 10:
-            signal["factors"].append(f"Low institutional interest ({ownership.num_institutions} holders)")
+            signal["factors"].append(
+                f"Low institutional interest ({ownership.num_institutions} holders)"
+            )
 
         # Set interpretation
         if signal["level"] == "bullish":
-            signal["interpretation"] = "Strong institutional accumulation suggests positive outlook"
+            signal["interpretation"] = (
+                "Strong institutional accumulation suggests positive outlook"
+            )
         elif signal["level"] == "bearish":
-            signal["interpretation"] = "Significant institutional distribution warrants caution"
+            signal["interpretation"] = (
+                "Significant institutional distribution warrants caution"
+            )
         elif signal["level"] == "moderately_bullish":
-            signal["interpretation"] = "Moderate institutional buying indicates growing interest"
+            signal["interpretation"] = (
+                "Moderate institutional buying indicates growing interest"
+            )
         elif signal["level"] == "moderately_bearish":
-            signal["interpretation"] = "Moderate institutional selling may indicate reduced conviction"
+            signal["interpretation"] = (
+                "Moderate institutional selling may indicate reduced conviction"
+            )
         else:
             signal["interpretation"] = "Institutional ownership relatively stable"
 
@@ -526,7 +591,9 @@ Investment Signals:
                 "interpretation": "No significant ownership changes detected",
             }
 
-        avg_change = sum(c["qoq_change_pct"] for c in changes_with_pct) / len(changes_with_pct)
+        avg_change = sum(c["qoq_change_pct"] for c in changes_with_pct) / len(
+            changes_with_pct
+        )
 
         # Count up vs down quarters
         up_quarters = sum(1 for c in changes_with_pct if c["qoq_change_pct"] > 0)
@@ -547,15 +614,22 @@ Investment Signals:
             )
         elif abs(avg_change) <= 5:
             direction = "stable"
-            interpretation = f"Stable institutional ownership " f"(avg {avg_change:+.1f}% per quarter)"
+            interpretation = (
+                f"Stable institutional ownership (avg {avg_change:+.1f}% per quarter)"
+            )
         else:
             direction = "mixed"
-            interpretation = f"Mixed institutional activity " f"({up_quarters} up, {down_quarters} down quarters)"
+            interpretation = (
+                f"Mixed institutional activity "
+                f"({up_quarters} up, {down_quarters} down quarters)"
+            )
 
         # Total change over period
         first_shares = changes[0].get("total_shares", 0)
         last_shares = changes[-1].get("total_shares", 0)
-        total_change_pct = ((last_shares - first_shares) / first_shares * 100) if first_shares else 0
+        total_change_pct = (
+            ((last_shares - first_shares) / first_shares * 100) if first_shares else 0
+        )
 
         return {
             "direction": direction,
@@ -573,16 +647,39 @@ Investment Signals:
             "properties": {
                 "action": {
                     "type": "string",
-                    "enum": ["holdings", "top_holders", "changes", "institution", "search"],
+                    "enum": [
+                        "holdings",
+                        "top_holders",
+                        "changes",
+                        "institution",
+                        "search",
+                    ],
                     "description": "Type of institutional holdings query",
                     "default": "holdings",
                 },
                 "symbol": {"type": "string", "description": "Stock ticker symbol"},
-                "limit": {"type": "integer", "description": "Maximum results to return", "default": 20},
-                "quarters": {"type": "integer", "description": "Number of quarters for change analysis", "default": 4},
-                "cik": {"type": "string", "description": "Institution CIK for institution action"},
-                "query": {"type": "string", "description": "Search query for search action"},
-                "quarter": {"type": "string", "description": "Specific quarter (e.g., '2024-Q4')"},
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum results to return",
+                    "default": 20,
+                },
+                "quarters": {
+                    "type": "integer",
+                    "description": "Number of quarters for change analysis",
+                    "default": 4,
+                },
+                "cik": {
+                    "type": "string",
+                    "description": "Institution CIK for institution action",
+                },
+                "query": {
+                    "type": "string",
+                    "description": "Search query for search action",
+                },
+                "quarter": {
+                    "type": "string",
+                    "description": "Specific quarter (e.g., '2024-Q4')",
+                },
             },
             "required": [],
         }

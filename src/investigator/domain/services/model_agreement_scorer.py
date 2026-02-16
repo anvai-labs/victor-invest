@@ -129,7 +129,10 @@ class ModelAgreementScorer:
         self.config = config or AgreementConfig()
 
     def analyze(
-        self, model_fair_values: Dict[str, float], symbol: str, model_weights: Optional[Dict[str, float]] = None
+        self,
+        model_fair_values: Dict[str, float],
+        symbol: str,
+        model_weights: Optional[Dict[str, float]] = None,
     ) -> AgreementScore:
         """
         Analyze agreement between model fair values.
@@ -146,7 +149,9 @@ class ModelAgreementScorer:
 
         # Filter out invalid values
         valid_values = {
-            model: value for model, value in model_fair_values.items() if self._is_valid_number(value) and value > 0
+            model: value
+            for model, value in model_fair_values.items()
+            if self._is_valid_number(value) and value > 0
         }
 
         if len(valid_values) < 2:
@@ -166,14 +171,17 @@ class ModelAgreementScorer:
 
         # Calculate statistics
         values = list(valid_values.values())
-        models = list(valid_values.keys())
+        list(valid_values.keys())
 
         # Simple mean
         simple_mean = sum(values) / len(values)
 
         # Weighted mean (if weights provided)
         if model_weights:
-            weighted_sum = sum(value * model_weights.get(model, 1.0) for model, value in valid_values.items())
+            weighted_sum = sum(
+                value * model_weights.get(model, 1.0)
+                for model, value in valid_values.items()
+            )
             weight_sum = sum(model_weights.get(model, 1.0) for model in valid_values)
             weighted_mean = weighted_sum / weight_sum if weight_sum > 0 else simple_mean
         else:
@@ -201,7 +209,9 @@ class ModelAgreementScorer:
             if abs(z_score) > self.config.zscore_threshold:
                 outlier_models.append(model)
                 direction = "above" if z_score > 0 else "below"
-                notes.append(f"{model} is outlier ({direction} mean by {abs(z_score):.1f} sigma)")
+                notes.append(
+                    f"{model} is outlier ({direction} mean by {abs(z_score):.1f} sigma)"
+                )
 
         # Determine agreement level
         if cv < self.config.high_agreement_threshold:
@@ -259,7 +269,10 @@ class ModelAgreementScorer:
         )
 
     def apply_outlier_penalty(
-        self, weights: Dict[str, float], outlier_models: List[str], normalize: bool = True
+        self,
+        weights: Dict[str, float],
+        outlier_models: List[str],
+        normalize: bool = True,
     ) -> Dict[str, float]:
         """
         Apply weight penalties to outlier models.
@@ -277,7 +290,10 @@ class ModelAgreementScorer:
         for model, weight in weights.items():
             if model in outlier_models:
                 adjusted[model] = weight * (1 - self.config.outlier_weight_penalty)
-                logger.debug(f"Outlier penalty applied to {model}: " f"{weight:.1f}% -> {adjusted[model]:.1f}%")
+                logger.debug(
+                    f"Outlier penalty applied to {model}: "
+                    f"{weight:.1f}% -> {adjusted[model]:.1f}%"
+                )
             else:
                 adjusted[model] = weight
 
@@ -285,12 +301,17 @@ class ModelAgreementScorer:
         if normalize:
             total = sum(adjusted.values())
             if total > 0:
-                adjusted = {model: weight / total * 100 for model, weight in adjusted.items()}
+                adjusted = {
+                    model: weight / total * 100 for model, weight in adjusted.items()
+                }
 
         return adjusted
 
     def get_weighted_fair_value(
-        self, model_fair_values: Dict[str, float], model_weights: Dict[str, float], apply_outlier_penalty: bool = True
+        self,
+        model_fair_values: Dict[str, float],
+        model_weights: Dict[str, float],
+        apply_outlier_penalty: bool = True,
     ) -> Tuple[float, Dict[str, float]]:
         """
         Calculate weighted fair value with optional outlier handling.
@@ -306,7 +327,9 @@ class ModelAgreementScorer:
         if apply_outlier_penalty:
             # Analyze agreement first
             agreement = self.analyze(model_fair_values, "weighted_calc", model_weights)
-            effective_weights = self.apply_outlier_penalty(model_weights, agreement.outlier_models)
+            effective_weights = self.apply_outlier_penalty(
+                model_weights, agreement.outlier_models
+            )
         else:
             effective_weights = model_weights
 

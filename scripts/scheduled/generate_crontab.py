@@ -26,7 +26,6 @@ Usage:
 """
 
 import argparse
-import os
 import subprocess
 import sys
 from datetime import datetime
@@ -51,7 +50,6 @@ JOB_SCRIPTS = {
     "collect_short_interest": "scripts/scheduled/collect_short_interest.py",
     "update_market_regime": "scripts/scheduled/update_market_regime.py",
     "calculate_credit_risk": "scripts/scheduled/calculate_credit_risk.py",
-
     # ML/RL training data collectors
     "collect_analyst_estimates": "scripts/scheduled/collect_analyst_estimates.py",
     "collect_news_sentiment": "scripts/scheduled/collect_news_sentiment.py",
@@ -86,8 +84,8 @@ def generate_crontab(
 
     # Environment variables
     lines.append("# Environment")
-    lines.append(f"SHELL=/bin/bash")
-    lines.append(f"PATH=/usr/local/bin:/usr/bin:/bin")
+    lines.append("SHELL=/bin/bash")
+    lines.append("PATH=/usr/local/bin:/usr/bin:/bin")
     lines.append(f"PYTHONPATH={project_root}/src:{project_root}")
     lines.append("")
 
@@ -122,11 +120,7 @@ def generate_crontab(
             lines.append(f"# {job_name}: {description}")
 
         # Cron entry with logging
-        command = (
-            f"cd {project_root} && "
-            f"{python_path} {script_path} "
-            f">> {log_file} 2>&1"
-        )
+        command = f"cd {project_root} && {python_path} {script_path} >> {log_file} 2>&1"
 
         lines.append(f"{cron_expr} {command}")
         lines.append("")
@@ -217,28 +211,14 @@ def main():
         "--config",
         type=str,
         default=str(PROJECT_ROOT / "config" / "scheduler.yaml"),
-        help="Path to scheduler configuration"
+        help="Path to scheduler configuration",
     )
+    parser.add_argument("--output", type=str, help="Output file path (default: stdout)")
+    parser.add_argument("--show", action="store_true", help="Show generated crontab")
     parser.add_argument(
-        "--output",
-        type=str,
-        help="Output file path (default: stdout)"
+        "--install", action="store_true", help="Install crontab entries"
     )
-    parser.add_argument(
-        "--show",
-        action="store_true",
-        help="Show generated crontab"
-    )
-    parser.add_argument(
-        "--install",
-        action="store_true",
-        help="Install crontab entries"
-    )
-    parser.add_argument(
-        "--python",
-        type=str,
-        help="Path to Python interpreter"
-    )
+    parser.add_argument("--python", type=str, help="Path to Python interpreter")
     args = parser.parse_args()
 
     # Load configuration

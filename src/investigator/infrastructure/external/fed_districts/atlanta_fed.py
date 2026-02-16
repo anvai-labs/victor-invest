@@ -33,7 +33,7 @@ Investment Signals:
 import logging
 import re
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -44,9 +44,7 @@ logger = logging.getLogger(__name__)
 # Atlanta Fed data URLs
 GDPNOW_URL = "https://www.atlantafed.org/cqer/research/gdpnow"
 GDPNOW_DATA_URL = "https://www.atlantafed.org/-/media/documents/cqer/researchcq/gdpnow/GDPNowForecast.xlsx"
-WAGE_TRACKER_URL = (
-    "https://www.atlantafed.org/-/media/documents/datafiles/chcs/wage-growth-tracker/wage-growth-data.xlsx"
-)
+WAGE_TRACKER_URL = "https://www.atlantafed.org/-/media/documents/datafiles/chcs/wage-growth-tracker/wage-growth-data.xlsx"
 BIE_URL = "https://www.atlantafed.org/-/media/documents/research/inflationproject/bie/BIEData.xlsx"
 
 
@@ -206,7 +204,9 @@ class AtlantaFedClient:
     async def _get_session(self) -> aiohttp.ClientSession:
         if self._session is None:
             try:
-                from investigator.infrastructure.external.http_client import create_session
+                from investigator.infrastructure.external.http_client import (
+                    create_session,
+                )
 
                 self._session = await create_session()
             except ImportError:
@@ -266,8 +266,17 @@ class AtlantaFedClient:
             prev = df.iloc[-2] if len(df) > 1 else None
 
             # Column names vary - try common patterns
-            date_col = next((c for c in df.columns if "date" in c.lower()), df.columns[0])
-            gdp_col = next((c for c in df.columns if "gdpnow" in c.lower() or "forecast" in c.lower()), df.columns[1])
+            date_col = next(
+                (c for c in df.columns if "date" in c.lower()), df.columns[0]
+            )
+            gdp_col = next(
+                (
+                    c
+                    for c in df.columns
+                    if "gdpnow" in c.lower() or "forecast" in c.lower()
+                ),
+                df.columns[1],
+            )
 
             estimate_date = pd.to_datetime(latest[date_col]).date()
             gdp_estimate = float(latest[gdp_col])
@@ -282,7 +291,9 @@ class AtlantaFedClient:
                 quarter=quarter,
                 gdp_estimate=gdp_estimate,
                 previous_estimate=prev_estimate,
-                change_from_previous=gdp_estimate - prev_estimate if prev_estimate else None,
+                change_from_previous=gdp_estimate - prev_estimate
+                if prev_estimate
+                else None,
             )
         except Exception as e:
             logger.debug(f"Could not parse GDPNow Excel: {e}")
@@ -357,11 +368,22 @@ class AtlantaFedClient:
             latest = df.iloc[-1]
 
             # Find columns
-            date_col = next((c for c in df.columns if "date" in c.lower()), df.columns[0])
-            overall_col = next((c for c in df.columns if "overall" in c.lower() or "total" in c.lower()), None)
+            date_col = next(
+                (c for c in df.columns if "date" in c.lower()), df.columns[0]
+            )
+            overall_col = next(
+                (
+                    c
+                    for c in df.columns
+                    if "overall" in c.lower() or "total" in c.lower()
+                ),
+                None,
+            )
 
             obs_date = pd.to_datetime(latest[date_col]).date()
-            overall = float(latest[overall_col]) if overall_col else float(latest.iloc[1])
+            overall = (
+                float(latest[overall_col]) if overall_col else float(latest.iloc[1])
+            )
 
             return WageGrowthData(
                 date=obs_date,
@@ -371,7 +393,9 @@ class AtlantaFedClient:
             logger.debug(f"Could not parse wage growth Excel: {e}")
             return None
 
-    async def get_business_inflation_expectations(self) -> Optional[BusinessInflationExpectations]:
+    async def get_business_inflation_expectations(
+        self,
+    ) -> Optional[BusinessInflationExpectations]:
         """Get the latest Business Inflation Expectations survey.
 
         Returns:
@@ -390,7 +414,9 @@ class AtlantaFedClient:
             logger.warning(f"Failed to fetch BIE data: {e}")
             return None
 
-    def _parse_bie_excel(self, content: bytes) -> Optional[BusinessInflationExpectations]:
+    def _parse_bie_excel(
+        self, content: bytes
+    ) -> Optional[BusinessInflationExpectations]:
         """Parse Business Inflation Expectations from Excel."""
         try:
             import io
@@ -407,7 +433,10 @@ class AtlantaFedClient:
             obs_date = pd.to_datetime(latest[date_col]).date()
 
             # Find year-ahead column
-            ya_col = next((c for c in df.columns if "year" in c.lower() and "ahead" in c.lower()), None)
+            ya_col = next(
+                (c for c in df.columns if "year" in c.lower() and "ahead" in c.lower()),
+                None,
+            )
             year_ahead = float(latest[ya_col]) if ya_col else float(latest.iloc[1])
 
             return BusinessInflationExpectations(
@@ -436,7 +465,9 @@ class AtlantaFedClient:
         return {
             "gdpnow": gdpnow if not isinstance(gdpnow, Exception) else None,
             "wage_growth": wages if not isinstance(wages, Exception) else None,
-            "business_inflation_expectations": bie if not isinstance(bie, Exception) else None,
+            "business_inflation_expectations": bie
+            if not isinstance(bie, Exception)
+            else None,
         }
 
 

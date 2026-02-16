@@ -72,8 +72,8 @@ class EntryExitSignalTool(BaseTool):
     def __init__(self, config: Optional[Any] = None):
         """Initialize the entry/exit signal tool."""
         super().__init__(config)
-        self._engine = None
-        self._integrator = None
+        self._engine: Optional[Any] = None
+        self._integrator: Optional[Any] = None
 
     async def initialize(self) -> None:
         """Initialize the signal engine and integrator."""
@@ -93,7 +93,7 @@ class EntryExitSignalTool(BaseTool):
 
     async def execute(
         self,
-        _exec_ctx: Dict[str, Any],
+        _exec_ctx: Optional[Dict[str, Any]] = None,
         action: str = "generate_signals",
         symbol: str = "",
         current_price: float = 0.0,
@@ -177,13 +177,13 @@ class EntryExitSignalTool(BaseTool):
                     llm_analysis=llm_analysis,
                 )
             else:
-                return ToolResult.error_result(
+                return ToolResult.create_failure(
                     f"Unknown action: {action}. Valid actions: generate_signals, "
                     "get_entry_signals, get_exit_signals, get_entry_zone, integrate_signals"
                 )
         except Exception as e:
             logger.error(f"Error in EntryExitSignalTool: {e}")
-            return ToolResult.error_result(str(e))
+            return ToolResult.create_failure(str(e))
 
     async def _generate_all_signals(
         self,
@@ -199,15 +199,21 @@ class EntryExitSignalTool(BaseTool):
     ) -> ToolResult:
         """Generate all entry/exit signals."""
         if not self._engine:
-            return self._fallback_signals(current_price, fair_value, support_levels, resistance_levels)
+            return self._fallback_signals(
+                current_price, fair_value, support_levels, resistance_levels
+            )
 
         # Convert price_data to DataFrame if needed
         df = self._to_dataframe(price_data, current_price)
 
         # Build support/resistance dict
         sr = {
-            "immediate_support": support_levels[0] if support_levels else current_price * 0.95,
-            "immediate_resistance": resistance_levels[0] if resistance_levels else current_price * 1.05,
+            "immediate_support": support_levels[0]
+            if support_levels
+            else current_price * 0.95,
+            "immediate_resistance": resistance_levels[0]
+            if resistance_levels
+            else current_price * 1.05,
             "support_levels": support_levels,
             "resistance_levels": resistance_levels,
         }
@@ -243,8 +249,8 @@ class EntryExitSignalTool(BaseTool):
         exit_signals_data = [self._exit_signal_to_dict(s) for s in exit_signals[:5]]
         entry_zone_data = self._entry_zone_to_dict(entry_zone) if entry_zone else None
 
-        return ToolResult.success_result(
-            data={
+        return ToolResult.create_success(
+            output={
                 "symbol": symbol,
                 "current_price": current_price,
                 "fair_value": fair_value,
@@ -271,12 +277,18 @@ class EntryExitSignalTool(BaseTool):
     ) -> ToolResult:
         """Get entry signals only."""
         if not self._engine:
-            return self._fallback_signals(current_price, fair_value, support_levels, resistance_levels)
+            return self._fallback_signals(
+                current_price, fair_value, support_levels, resistance_levels
+            )
 
         df = self._to_dataframe(price_data, current_price)
         sr = {
-            "immediate_support": support_levels[0] if support_levels else current_price * 0.95,
-            "immediate_resistance": resistance_levels[0] if resistance_levels else current_price * 1.05,
+            "immediate_support": support_levels[0]
+            if support_levels
+            else current_price * 0.95,
+            "immediate_resistance": resistance_levels[0]
+            if resistance_levels
+            else current_price * 1.05,
             "support_levels": support_levels,
             "resistance_levels": resistance_levels,
         }
@@ -288,8 +300,8 @@ class EntryExitSignalTool(BaseTool):
             support_resistance=sr,
         )
 
-        return ToolResult.success_result(
-            data={
+        return ToolResult.create_success(
+            output={
                 "entry_signals": [self._signal_to_dict(s) for s in entry_signals[:5]],
                 "total_count": len(entry_signals),
             }
@@ -303,7 +315,9 @@ class EntryExitSignalTool(BaseTool):
     ) -> ToolResult:
         """Get exit signals only."""
         if not self._engine:
-            return ToolResult.success_result(data={"exit_signals": [], "total_count": 0})
+            return ToolResult.create_success(
+                output={"exit_signals": [], "total_count": 0}
+            )
 
         df = self._to_dataframe(price_data, current_price)
 
@@ -313,9 +327,11 @@ class EntryExitSignalTool(BaseTool):
             position_info=None,
         )
 
-        return ToolResult.success_result(
-            data={
-                "exit_signals": [self._exit_signal_to_dict(s) for s in exit_signals[:5]],
+        return ToolResult.create_success(
+            output={
+                "exit_signals": [
+                    self._exit_signal_to_dict(s) for s in exit_signals[:5]
+                ],
                 "total_count": len(exit_signals),
             }
         )
@@ -334,8 +350,8 @@ class EntryExitSignalTool(BaseTool):
             # Fallback calculation
             lower = current_price * 0.97
             upper = current_price * 1.02
-            return ToolResult.success_result(
-                data={
+            return ToolResult.create_success(
+                output={
                     "lower_bound": round(lower, 2),
                     "upper_bound": round(upper, 2),
                     "ideal_entry": round(current_price * 0.98, 2),
@@ -355,7 +371,9 @@ class EntryExitSignalTool(BaseTool):
             atr=effective_atr,
         )
 
-        return ToolResult.success_result(data=self._entry_zone_to_dict(entry_zone) if entry_zone else {})
+        return ToolResult.create_success(
+            output=self._entry_zone_to_dict(entry_zone) if entry_zone else {}
+        )
 
     async def _integrate_signals(
         self,
@@ -366,11 +384,13 @@ class EntryExitSignalTool(BaseTool):
     ) -> ToolResult:
         """Integrate programmatic and LLM signals."""
         if not self._integrator:
-            return ToolResult.error_result("Signal integrator not available")
+            return ToolResult.create_failure("Signal integrator not available")
 
         df = self._to_dataframe(price_data, 0)
         if df.empty:
-            return ToolResult.error_result("Price data required for signal integration")
+            return ToolResult.create_failure(
+                "Price data required for signal integration"
+            )
 
         integrated = self._integrator.integrate_signals(
             price_data=df,
@@ -383,9 +403,11 @@ class EntryExitSignalTool(BaseTool):
         report_data["signal_agreement_score"] = integrated.signal_agreement_score
         report_data["confidence_boost"] = integrated.confidence_boost
 
-        return ToolResult.success_result(data=report_data)
+        return ToolResult.create_success(output=report_data)
 
-    def _to_dataframe(self, price_data: Optional[Dict], current_price: float) -> pd.DataFrame:
+    def _to_dataframe(
+        self, price_data: Optional[Any], current_price: float
+    ) -> pd.DataFrame:
         """Convert price data to DataFrame."""
         if price_data is None:
             # Create minimal DataFrame with current price
@@ -403,10 +425,14 @@ class EntryExitSignalTool(BaseTool):
         """Convert EntrySignal to dict."""
         return {
             "signal_type": (
-                signal.signal_type.value if hasattr(signal.signal_type, "value") else str(signal.signal_type)
+                signal.signal_type.value
+                if hasattr(signal.signal_type, "value")
+                else str(signal.signal_type)
             ),
             "price_level": round(signal.price_level, 2),
-            "confidence": signal.confidence.value if hasattr(signal.confidence, "value") else str(signal.confidence),
+            "confidence": signal.confidence.value
+            if hasattr(signal.confidence, "value")
+            else str(signal.confidence),
             "rationale": signal.rationale,
             "risk_reward_ratio": round(signal.risk_reward_ratio, 2),
             "stop_loss": round(signal.stop_loss, 2),
@@ -422,10 +448,14 @@ class EntryExitSignalTool(BaseTool):
         """Convert ExitSignal to dict."""
         return {
             "signal_type": (
-                signal.signal_type.value if hasattr(signal.signal_type, "value") else str(signal.signal_type)
+                signal.signal_type.value
+                if hasattr(signal.signal_type, "value")
+                else str(signal.signal_type)
             ),
             "price_level": round(signal.price_level, 2),
-            "confidence": signal.confidence.value if hasattr(signal.confidence, "value") else str(signal.confidence),
+            "confidence": signal.confidence.value
+            if hasattr(signal.confidence, "value")
+            else str(signal.confidence),
             "rationale": signal.rationale,
             "urgency": signal.urgency,
             "partial_exit_pct": round(signal.partial_exit_pct, 1),
@@ -437,11 +467,17 @@ class EntryExitSignalTool(BaseTool):
             "lower_bound": round(zone.lower_bound, 2),
             "upper_bound": round(zone.upper_bound, 2),
             "ideal_entry": round(zone.ideal_entry, 2),
-            "timing": zone.timing.value if hasattr(zone.timing, "value") else str(zone.timing),
+            "timing": zone.timing.value
+            if hasattr(zone.timing, "value")
+            else str(zone.timing),
             "scaling_strategy": (
-                zone.scaling_strategy.value if hasattr(zone.scaling_strategy, "value") else str(zone.scaling_strategy)
+                zone.scaling_strategy.value
+                if hasattr(zone.scaling_strategy, "value")
+                else str(zone.scaling_strategy)
             ),
-            "confidence": zone.confidence.value if hasattr(zone.confidence, "value") else str(zone.confidence),
+            "confidence": zone.confidence.value
+            if hasattr(zone.confidence, "value")
+            else str(zone.confidence),
             "rationale": zone.rationale,
             "recommended_allocation_pct": round(zone.recommended_allocation_pct, 1),
             "max_position_size_pct": round(zone.max_position_size_pct, 1),
@@ -465,7 +501,7 @@ class EntryExitSignalTool(BaseTool):
                     "signal_type": "VALUATION_BASED",
                     "price_level": round(current_price, 2),
                     "confidence": "MEDIUM",
-                    "rationale": f"Trading at {abs(upside)*100:.1f}% discount to fair value",
+                    "rationale": f"Trading at {abs(upside) * 100:.1f}% discount to fair value",
                     "risk_reward_ratio": round(upside / 0.05, 2),  # Assume 5% stop loss
                     "stop_loss": round(current_price * 0.95, 2),
                     "stop_loss_pct": 5.0,
@@ -477,8 +513,8 @@ class EntryExitSignalTool(BaseTool):
                 }
             )
 
-        return ToolResult.success_result(
-            data={
+        return ToolResult.create_success(
+            output={
                 "entry_signals": entry_signals,
                 "exit_signals": [],
                 "optimal_entry_zone": {
@@ -495,7 +531,11 @@ class EntryExitSignalTool(BaseTool):
                 "total_entry_signals": len(entry_signals),
                 "total_exit_signals": 0,
             },
-            warnings=["Using fallback signal generation - full engine not available"],
+            metadata={
+                "warnings": [
+                    "Using fallback signal generation - full engine not available"
+                ]
+            },
         )
 
     def get_schema(self) -> Dict[str, Any]:

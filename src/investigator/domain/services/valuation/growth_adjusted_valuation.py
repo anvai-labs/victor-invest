@@ -323,13 +323,17 @@ def calculate_confidence_interval(
         ConfidenceInterval with low/mid/high estimates
     """
     # 1. Base uncertainty from growth profile
-    base_uncertainty = GROWTH_PROFILE_UNCERTAINTY.get(growth_profile, GROWTH_PROFILE_UNCERTAINTY[GrowthProfile.UNKNOWN])
+    base_uncertainty = GROWTH_PROFILE_UNCERTAINTY.get(
+        growth_profile, GROWTH_PROFILE_UNCERTAINTY[GrowthProfile.UNKNOWN]
+    )
 
     # 2. Calculate dispersion of component valuations
     valid_components = [v for v in component_values if v > 0]
     if len(valid_components) >= 2:
         component_range = max(valid_components) - min(valid_components)
-        dispersion_pct = component_range / blended_fair_value if blended_fair_value > 0 else 0
+        dispersion_pct = (
+            component_range / blended_fair_value if blended_fair_value > 0 else 0
+        )
 
         # If methods agree closely, reduce uncertainty
         if dispersion_pct < 0.15:
@@ -427,7 +431,9 @@ def calculate_rule_of_40(
     # Convert to percentages and add
     rule_of_40 = (revenue_growth * 100) + (margin * 100)
 
-    logger.debug(f"Rule of 40: {revenue_growth*100:.1f}% growth + {margin*100:.1f}% margin = {rule_of_40:.1f}")
+    logger.debug(
+        f"Rule of 40: {revenue_growth * 100:.1f}% growth + {margin * 100:.1f}% margin = {rule_of_40:.1f}"
+    )
 
     return rule_of_40
 
@@ -493,7 +499,9 @@ def calculate_peg_fair_value(
         return 0.0, 0.0, "PEG not applicable: non-positive growth"
 
     # Get growth profile parameters
-    params = GROWTH_PROFILE_PE_MULTIPLES.get(growth_profile, GROWTH_PROFILE_PE_MULTIPLES[GrowthProfile.UNKNOWN])
+    params = GROWTH_PROFILE_PE_MULTIPLES.get(
+        growth_profile, GROWTH_PROFILE_PE_MULTIPLES[GrowthProfile.UNKNOWN]
+    )
     peg_target = params.get("peg_target")
     peg_premium = params.get("peg_premium", 0)
     peg_pe_cap = params.get("peg_pe_cap", 50.0)  # Profile-specific cap
@@ -503,7 +511,9 @@ def calculate_peg_fair_value(
         return 0.0, 0.0, "PEG not applicable for this growth profile"
 
     # Get sector characteristics
-    sector_chars = SECTOR_GROWTH_CHARACTERISTICS.get(sector, DEFAULT_SECTOR_CHARACTERISTICS)
+    sector_chars = SECTOR_GROWTH_CHARACTERISTICS.get(
+        sector, DEFAULT_SECTOR_CHARACTERISTICS
+    )
     peg_ceiling = sector_chars["peg_ceiling"]
     growth_sensitivity = sector_chars["growth_sensitivity"]
 
@@ -561,12 +571,16 @@ def calculate_forward_pe_fair_value(
         return 0.0, 0.0, "Forward P/E not applicable: no positive forward EPS"
 
     # Get base parameters
-    params = GROWTH_PROFILE_PE_MULTIPLES.get(growth_profile, GROWTH_PROFILE_PE_MULTIPLES[GrowthProfile.UNKNOWN])
+    params = GROWTH_PROFILE_PE_MULTIPLES.get(
+        growth_profile, GROWTH_PROFILE_PE_MULTIPLES[GrowthProfile.UNKNOWN]
+    )
     base_pe = params["base_pe"]
     forward_ratio = params["forward_pe_ratio"]
 
     # Get sector adjustment
-    sector_chars = SECTOR_GROWTH_CHARACTERISTICS.get(sector, DEFAULT_SECTOR_CHARACTERISTICS)
+    sector_chars = SECTOR_GROWTH_CHARACTERISTICS.get(
+        sector, DEFAULT_SECTOR_CHARACTERISTICS
+    )
     sector_premium = sector_chars["base_pe_premium"]
     max_pe = sector_chars["max_pe"]
 
@@ -586,7 +600,9 @@ def calculate_forward_pe_fair_value(
             # Multi-year projection with decay
             # Hyper-growth: Project 3 years forward with 30% annual decay
             # This captures the market's pricing of future growth
-            discount_rate = 0.12 if growth_profile == GrowthProfile.HYPER_GROWTH else 0.10
+            discount_rate = (
+                0.12 if growth_profile == GrowthProfile.HYPER_GROWTH else 0.10
+            )
             decay_factor = 0.70  # Growth slows 30% per year
 
             # Project EPS forward 3 years
@@ -600,7 +616,11 @@ def calculate_forward_pe_fair_value(
 
             # Terminal P/E at year 3 (as growth normalizes)
             # Higher terminal for hyper-growth reflecting market premium
-            terminal_pe = max_pe * 0.60 if growth_profile == GrowthProfile.HYPER_GROWTH else max_pe * 0.50
+            terminal_pe = (
+                max_pe * 0.60
+                if growth_profile == GrowthProfile.HYPER_GROWTH
+                else max_pe * 0.50
+            )
 
             # Year 3 price, discounted to present
             y3_price = y3_eps * terminal_pe
@@ -617,10 +637,13 @@ def calculate_forward_pe_fair_value(
                 blend_trajectory = 0.40
 
             if trajectory_fair_value > fair_value:
-                blended_fv = fair_value * blend_immediate + trajectory_fair_value * blend_trajectory
+                blended_fv = (
+                    fair_value * blend_immediate
+                    + trajectory_fair_value * blend_trajectory
+                )
                 trajectory_premium = (blended_fv / fair_value - 1) * 100
                 explanation += (
-                    f" + trajectory ({eps_growth_rate*100:.0f}% EPS growth "
+                    f" + trajectory ({eps_growth_rate * 100:.0f}% EPS growth "
                     f"→ Y3 EPS ${y3_eps:.2f} @ {terminal_pe:.0f}x discounted "
                     f"= +{trajectory_premium:.0f}%)"
                 )
@@ -684,7 +707,7 @@ def calculate_rule_of_40_adjustment(
 
     explanation = (
         f"Rule of 40 = {rule_of_40:.0f}: {quality_tier.value} quality, "
-        f"{(multiplier-1)*100:+.1f}% adjustment (scaled for {growth_profile.value})"
+        f"{(multiplier - 1) * 100:+.1f}% adjustment (scaled for {growth_profile.value})"
     )
 
     logger.info(f"Rule of 40 adjustment: {explanation}")
@@ -761,11 +784,15 @@ def calculate_growth_adjusted_valuation(
     details["quality_tier"] = quality_tier.value
 
     # 3. Get sector characteristics
-    sector_chars = SECTOR_GROWTH_CHARACTERISTICS.get(sector, DEFAULT_SECTOR_CHARACTERISTICS)
+    sector_chars = SECTOR_GROWTH_CHARACTERISTICS.get(
+        sector, DEFAULT_SECTOR_CHARACTERISTICS
+    )
     supports_rule_of_40 = sector_chars.get("supports_rule_of_40", False)
 
     # 4. Calculate base fair value (sector baseline P/E)
-    base_params = GROWTH_PROFILE_PE_MULTIPLES.get(growth_profile, GROWTH_PROFILE_PE_MULTIPLES[GrowthProfile.UNKNOWN])
+    base_params = GROWTH_PROFILE_PE_MULTIPLES.get(
+        growth_profile, GROWTH_PROFILE_PE_MULTIPLES[GrowthProfile.UNKNOWN]
+    )
     base_pe = base_params["base_pe"] * sector_chars["base_pe_premium"]
     base_fair_value = eps * base_pe if eps > 0 else 0
     details["base_pe"] = base_pe
@@ -788,11 +815,15 @@ def calculate_growth_adjusted_valuation(
     # 6. Calculate forward P/E fair value (with trajectory if EPS anomaly detected)
     forward_fair_value = None
     if forward_eps and forward_eps > 0:
-        forward_fair_value, forward_pe, forward_explanation = calculate_forward_pe_fair_value(
-            forward_eps=forward_eps,
-            growth_profile=growth_profile,
-            sector=sector,
-            trailing_eps=eps if eps_anomaly else None,  # Pass trailing for trajectory
+        forward_fair_value, forward_pe, forward_explanation = (
+            calculate_forward_pe_fair_value(
+                forward_eps=forward_eps,
+                growth_profile=growth_profile,
+                sector=sector,
+                trailing_eps=eps
+                if eps_anomaly
+                else None,  # Pass trailing for trajectory
+            )
         )
         details["forward_explanation"] = forward_explanation
         details["forward_fair_value"] = forward_fair_value
@@ -987,10 +1018,18 @@ def _detect_eps_anomaly(
 
     if ratio > 2.0:
         # Severely depressed trailing EPS - heavily weight forward
-        return True, 0.40, f"Forward EPS {ratio:.1f}x higher - severe trailing depression"
+        return (
+            True,
+            0.40,
+            f"Forward EPS {ratio:.1f}x higher - severe trailing depression",
+        )
     elif ratio > 1.5:
         # Significantly depressed - moderate boost to forward
-        return True, 0.25, f"Forward EPS {ratio:.1f}x higher - significant trailing depression"
+        return (
+            True,
+            0.25,
+            f"Forward EPS {ratio:.1f}x higher - significant trailing depression",
+        )
     elif ratio > 1.3:
         # Mildly depressed - slight boost to forward
         return True, 0.15, f"Forward EPS {ratio:.1f}x higher - mild trailing depression"
@@ -1027,27 +1066,99 @@ def _get_blending_weights(
     # Base weights by growth profile
     if has_forward_eps:
         weights_matrix = {
-            GrowthProfile.HYPER_GROWTH: {"base": 0.10, "peg": 0.30, "forward": 0.40, "ev_ebitda": 0.20},
-            GrowthProfile.HIGH_GROWTH: {"base": 0.15, "peg": 0.30, "forward": 0.35, "ev_ebitda": 0.20},
-            GrowthProfile.MODERATE_GROWTH: {"base": 0.25, "peg": 0.25, "forward": 0.30, "ev_ebitda": 0.20},
-            GrowthProfile.LOW_GROWTH: {"base": 0.30, "peg": 0.15, "forward": 0.25, "ev_ebitda": 0.30},
-            GrowthProfile.STABLE: {"base": 0.35, "peg": 0.0, "forward": 0.30, "ev_ebitda": 0.35},
-            GrowthProfile.DECLINING: {"base": 0.30, "peg": 0.0, "forward": 0.30, "ev_ebitda": 0.40},
-            GrowthProfile.UNKNOWN: {"base": 0.30, "peg": 0.20, "forward": 0.25, "ev_ebitda": 0.25},
+            GrowthProfile.HYPER_GROWTH: {
+                "base": 0.10,
+                "peg": 0.30,
+                "forward": 0.40,
+                "ev_ebitda": 0.20,
+            },
+            GrowthProfile.HIGH_GROWTH: {
+                "base": 0.15,
+                "peg": 0.30,
+                "forward": 0.35,
+                "ev_ebitda": 0.20,
+            },
+            GrowthProfile.MODERATE_GROWTH: {
+                "base": 0.25,
+                "peg": 0.25,
+                "forward": 0.30,
+                "ev_ebitda": 0.20,
+            },
+            GrowthProfile.LOW_GROWTH: {
+                "base": 0.30,
+                "peg": 0.15,
+                "forward": 0.25,
+                "ev_ebitda": 0.30,
+            },
+            GrowthProfile.STABLE: {
+                "base": 0.35,
+                "peg": 0.0,
+                "forward": 0.30,
+                "ev_ebitda": 0.35,
+            },
+            GrowthProfile.DECLINING: {
+                "base": 0.30,
+                "peg": 0.0,
+                "forward": 0.30,
+                "ev_ebitda": 0.40,
+            },
+            GrowthProfile.UNKNOWN: {
+                "base": 0.30,
+                "peg": 0.20,
+                "forward": 0.25,
+                "ev_ebitda": 0.25,
+            },
         }
     else:
         # Without forward EPS, redistribute weight
         weights_matrix = {
-            GrowthProfile.HYPER_GROWTH: {"base": 0.15, "peg": 0.55, "forward": 0.0, "ev_ebitda": 0.30},
-            GrowthProfile.HIGH_GROWTH: {"base": 0.20, "peg": 0.50, "forward": 0.0, "ev_ebitda": 0.30},
-            GrowthProfile.MODERATE_GROWTH: {"base": 0.30, "peg": 0.35, "forward": 0.0, "ev_ebitda": 0.35},
-            GrowthProfile.LOW_GROWTH: {"base": 0.40, "peg": 0.15, "forward": 0.0, "ev_ebitda": 0.45},
-            GrowthProfile.STABLE: {"base": 0.45, "peg": 0.0, "forward": 0.0, "ev_ebitda": 0.55},
-            GrowthProfile.DECLINING: {"base": 0.40, "peg": 0.0, "forward": 0.0, "ev_ebitda": 0.60},
-            GrowthProfile.UNKNOWN: {"base": 0.35, "peg": 0.25, "forward": 0.0, "ev_ebitda": 0.40},
+            GrowthProfile.HYPER_GROWTH: {
+                "base": 0.15,
+                "peg": 0.55,
+                "forward": 0.0,
+                "ev_ebitda": 0.30,
+            },
+            GrowthProfile.HIGH_GROWTH: {
+                "base": 0.20,
+                "peg": 0.50,
+                "forward": 0.0,
+                "ev_ebitda": 0.30,
+            },
+            GrowthProfile.MODERATE_GROWTH: {
+                "base": 0.30,
+                "peg": 0.35,
+                "forward": 0.0,
+                "ev_ebitda": 0.35,
+            },
+            GrowthProfile.LOW_GROWTH: {
+                "base": 0.40,
+                "peg": 0.15,
+                "forward": 0.0,
+                "ev_ebitda": 0.45,
+            },
+            GrowthProfile.STABLE: {
+                "base": 0.45,
+                "peg": 0.0,
+                "forward": 0.0,
+                "ev_ebitda": 0.55,
+            },
+            GrowthProfile.DECLINING: {
+                "base": 0.40,
+                "peg": 0.0,
+                "forward": 0.0,
+                "ev_ebitda": 0.60,
+            },
+            GrowthProfile.UNKNOWN: {
+                "base": 0.35,
+                "peg": 0.25,
+                "forward": 0.0,
+                "ev_ebitda": 0.40,
+            },
         }
 
-    weights = weights_matrix.get(growth_profile, weights_matrix[GrowthProfile.UNKNOWN]).copy()
+    weights = weights_matrix.get(
+        growth_profile, weights_matrix[GrowthProfile.UNKNOWN]
+    ).copy()
 
     # Apply EPS anomaly boost - shift weight from base/peg to forward P/E
     if eps_anomaly_boost > 0 and has_forward_eps:
@@ -1061,12 +1172,14 @@ def _get_blending_weights(
 
         weights["base"] = max(0, weights.get("base", 0) - actual_base_reduction)
         weights["peg"] = max(0, weights.get("peg", 0) - actual_peg_reduction)
-        weights["forward"] = weights.get("forward", 0) + actual_base_reduction + actual_peg_reduction
+        weights["forward"] = (
+            weights.get("forward", 0) + actual_base_reduction + actual_peg_reduction
+        )
 
         logger.info(
             f"EPS anomaly detected: boosting forward P/E weight by "
-            f"{(actual_base_reduction + actual_peg_reduction)*100:.0f}% "
-            f"(new forward weight: {weights['forward']*100:.0f}%)"
+            f"{(actual_base_reduction + actual_peg_reduction) * 100:.0f}% "
+            f"(new forward weight: {weights['forward'] * 100:.0f}%)"
         )
 
     return weights
@@ -1081,7 +1194,11 @@ def _determine_confidence(
     score = 0
 
     # Growth profile clarity
-    if growth_profile in [GrowthProfile.MODERATE_GROWTH, GrowthProfile.LOW_GROWTH, GrowthProfile.STABLE]:
+    if growth_profile in [
+        GrowthProfile.MODERATE_GROWTH,
+        GrowthProfile.LOW_GROWTH,
+        GrowthProfile.STABLE,
+    ]:
         score += 2  # Easier to value
     elif growth_profile in [GrowthProfile.HIGH_GROWTH]:
         score += 1

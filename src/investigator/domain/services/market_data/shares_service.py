@@ -80,7 +80,10 @@ class SharesService:
             stock_db_url: Connection string for stock database.
                          If None, builds from environment variables.
         """
-        from investigator.domain.services.market_data import get_sec_db_url, get_stock_db_url
+        from investigator.domain.services.market_data import (
+            get_sec_db_url,
+            get_stock_db_url,
+        )
 
         if sec_db_url is None:
             sec_db_url = get_sec_db_url()
@@ -132,7 +135,9 @@ class SharesService:
                     LIMIT 1
                 """
                 )
-                result = conn.execute(query, {"symbol": symbol, "as_of_date": as_of_date}).fetchone()
+                result = conn.execute(
+                    query, {"symbol": symbol, "as_of_date": as_of_date}
+                ).fetchone()
             else:
                 query = text(
                     """
@@ -162,7 +167,8 @@ class SharesService:
         """
         with self.stock_engine.connect() as conn:
             result = conn.execute(
-                text("SELECT outstandingshares FROM symbol WHERE ticker = :symbol"), {"symbol": symbol}
+                text("SELECT outstandingshares FROM symbol WHERE ticker = :symbol"),
+                {"symbol": symbol},
             ).fetchone()
 
             if result and result[0]:
@@ -251,10 +257,22 @@ class SharesService:
                 )
 
         if not records:
-            return pd.DataFrame(columns=["months_back", "as_of_date", "raw_shares", "split_factor", "adjusted_shares"])
+            return pd.DataFrame(
+                columns=[
+                    "months_back",
+                    "as_of_date",
+                    "raw_shares",
+                    "split_factor",
+                    "adjusted_shares",
+                ]
+            )
 
         # Sort by months_back descending (oldest first, e.g., 36, 33, 30, ...)
-        df = pd.DataFrame(records).sort_values("months_back", ascending=False).reset_index(drop=True)
+        df = (
+            pd.DataFrame(records)
+            .sort_values("months_back", ascending=False)
+            .reset_index(drop=True)
+        )
 
         # Detect splits by comparing each period to the next (more recent) period
         df["split_factor"] = 1.0
@@ -272,19 +290,21 @@ class SharesService:
             if current_shares > 0 and prev_shares > 0:
                 ratio = current_shares / prev_shares  # How much did shares increase?
 
-                if ratio > FORWARD_SPLIT_THRESHOLD:  # Forward split detected (10:1, 4:1, etc.)
+                if (
+                    ratio > FORWARD_SPLIT_THRESHOLD
+                ):  # Forward split detected (10:1, 4:1, etc.)
                     split_mult = round(ratio)
                     cumulative_factor *= split_mult
                     logger.info(
                         f"{symbol}: Detected {split_mult}:1 split between "
-                        f"{df.loc[i-1, 'months_back']}m and {df.loc[i, 'months_back']}m"
+                        f"{df.loc[i - 1, 'months_back']}m and {df.loc[i, 'months_back']}m"
                     )
                 elif ratio < REVERSE_SPLIT_THRESHOLD:  # Reverse split detected
                     split_mult = round(1 / ratio)
                     cumulative_factor /= split_mult
                     logger.info(
                         f"{symbol}: Detected 1:{split_mult} reverse split between "
-                        f"{df.loc[i-1, 'months_back']}m and {df.loc[i, 'months_back']}m"
+                        f"{df.loc[i - 1, 'months_back']}m and {df.loc[i, 'months_back']}m"
                     )
 
             # Apply cumulative factor to the older period
@@ -294,7 +314,15 @@ class SharesService:
         # Pre-split periods get multiplied to match post-split share count
         df["adjusted_shares"] = df["raw_shares"] * df["split_factor"]
 
-        return df[["months_back", "as_of_date", "raw_shares", "split_factor", "adjusted_shares"]]
+        return df[
+            [
+                "months_back",
+                "as_of_date",
+                "raw_shares",
+                "split_factor",
+                "adjusted_shares",
+            ]
+        ]
 
     def get_adjusted_shares(
         self,
@@ -368,8 +396,14 @@ class SharesService:
                         {
                             "type": "forward",
                             "split_ratio": f"{split_mult}:1",
-                            "between_periods": (df.loc[i - 1, "months_back"], df.loc[i, "months_back"]),
-                            "approximate_date_range": (df.loc[i - 1, "as_of_date"], df.loc[i, "as_of_date"]),
+                            "between_periods": (
+                                df.loc[i - 1, "months_back"],
+                                df.loc[i, "months_back"],
+                            ),
+                            "approximate_date_range": (
+                                df.loc[i - 1, "as_of_date"],
+                                df.loc[i, "as_of_date"],
+                            ),
                             "shares_before": prev_shares,
                             "shares_after": current_shares,
                         }
@@ -380,8 +414,14 @@ class SharesService:
                         {
                             "type": "reverse",
                             "split_ratio": f"1:{split_mult}",
-                            "between_periods": (df.loc[i - 1, "months_back"], df.loc[i, "months_back"]),
-                            "approximate_date_range": (df.loc[i - 1, "as_of_date"], df.loc[i, "as_of_date"]),
+                            "between_periods": (
+                                df.loc[i - 1, "months_back"],
+                                df.loc[i, "months_back"],
+                            ),
+                            "approximate_date_range": (
+                                df.loc[i - 1, "as_of_date"],
+                                df.loc[i, "as_of_date"],
+                            ),
                             "shares_before": prev_shares,
                             "shares_after": current_shares,
                         }

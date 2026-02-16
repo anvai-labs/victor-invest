@@ -36,7 +36,7 @@ import logging
 from datetime import date, timedelta
 from typing import Any, Dict, List, Optional
 
-from dateutil.relativedelta import relativedelta
+from dateutil.relativedelta import relativedelta  # type: ignore[import-untyped]
 
 from victor_invest.tools.base import BaseTool, ToolResult
 
@@ -94,23 +94,25 @@ class RLBacktestTool(BaseTool):
     def __init__(self, config: Optional[Any] = None):
         """Initialize the RL backtest tool."""
         super().__init__(config)
-        self._shares_service = None
-        self._price_service = None
-        self._technical_service = None
-        self._metadata_service = None
-        self._valuation_config = None
-        self._sector_multiples = None
-        self._outcome_tracker = None
-        self._reward_calculator = None
-        self._data_source_manager = None
-        self._db = None
+        self._shares_service: Optional[Any] = None
+        self._price_service: Optional[Any] = None
+        self._technical_service: Optional[Any] = None
+        self._metadata_service: Optional[Any] = None
+        self._valuation_config: Optional[Any] = None
+        self._sector_multiples: Optional[Any] = None
+        self._outcome_tracker: Optional[Any] = None
+        self._reward_calculator: Optional[Any] = None
+        self._data_source_manager: Optional[Any] = None
+        self._db: Optional[Any] = None
 
     async def initialize(self) -> None:
         """Initialize shared services."""
         try:
             # Shared market data services
             # Data source manager for consolidated data access
-            from investigator.domain.services.data_sources.manager import DataSourceManager
+            from investigator.domain.services.data_sources.manager import (
+                DataSourceManager,
+            )
             from investigator.domain.services.market_data import (
                 PriceService,
                 SharesService,
@@ -120,7 +122,9 @@ class RLBacktestTool(BaseTool):
 
             # RL infrastructure
             from investigator.domain.services.rl.outcome_tracker import OutcomeTracker
-            from investigator.domain.services.rl.reward_calculator import get_reward_calculator
+            from investigator.domain.services.rl.reward_calculator import (
+                get_reward_calculator,
+            )
 
             # Shared valuation config services
             from investigator.domain.services.valuation_shared import (
@@ -144,14 +148,16 @@ class RLBacktestTool(BaseTool):
             self._data_source_manager = DataSourceManager()
 
             self._initialized = True
-            logger.info("RLBacktestTool initialized with shared services and DataSourceManager")
+            logger.info(
+                "RLBacktestTool initialized with shared services and DataSourceManager"
+            )
         except ImportError as e:
             logger.error(f"Could not import required services: {e}")
             raise
 
     async def execute(
         self,
-        _exec_ctx: Dict[str, Any],
+        _exec_ctx: Optional[Dict[str, Any]] = None,
         action: str = "run_backtest",
         symbol: str = "",
         lookback_months: Optional[List[int]] = None,
@@ -222,14 +228,14 @@ class RLBacktestTool(BaseTool):
                     analysis_date=analysis_date or date.today(),
                 )
             else:
-                return ToolResult.error_result(
+                return ToolResult.create_failure(
                     f"Unknown action: {action}. Valid actions: run_backtest, "
                     "calculate_rewards, record_prediction, get_historical_data, "
                     "get_context_features"
                 )
         except Exception as e:
             logger.error(f"Error in RLBacktestTool: {e}")
-            return ToolResult.error_result(str(e))
+            return ToolResult.create_failure(str(e))
 
     async def _run_backtest(
         self,
@@ -237,10 +243,14 @@ class RLBacktestTool(BaseTool):
         lookback_months: List[int],
     ) -> ToolResult:
         """Run backtest for a symbol at multiple lookback periods."""
-        results = {
+        if self._price_service is None:
+            return ToolResult.create_failure("Price service not initialized")
+
+        errors: list[str] = []
+        results: Dict[str, Any] = {
             "symbol": symbol,
             "predictions": [],
-            "errors": [],
+            "errors": errors,
         }
 
         today = date.today()
@@ -273,8 +283,8 @@ class RLBacktestTool(BaseTool):
             except Exception as e:
                 results["errors"].append(f"{months_back}m: {str(e)}")
 
-        return ToolResult.success_result(
-            data=results,
+        return ToolResult.create_success(
+            output=results,
             metadata={
                 "tool": "rl_backtest",
                 "action": "run_backtest",
@@ -292,10 +302,12 @@ class RLBacktestTool(BaseTool):
         metadata = await self._get_metadata(symbol)
         beta = metadata.get("beta", 1.0)
 
-        multi_period_data = await self._get_multi_period_data(symbol, analysis_date, current_price, beta)
+        multi_period_data = await self._get_multi_period_data(
+            symbol, analysis_date, current_price, beta
+        )
 
-        return ToolResult.success_result(
-            data={
+        return ToolResult.create_success(
+            output={
                 "symbol": symbol,
                 "analysis_date": analysis_date.isoformat(),
                 "current_price": current_price,
@@ -325,22 +337,30 @@ class RLBacktestTool(BaseTool):
         consolidated data and extract RL features automatically.
         """
         if not self._outcome_tracker:
-            return ToolResult.error_result("Outcome tracker not available")
+            return ToolResult.create_failure("Outcome tracker not available")
 
         try:
             # Calculate multi-period data
             metadata = await self._get_metadata(symbol)
             beta = metadata.get("beta", 1.0)
-            multi_period_data = await self._get_multi_period_data(symbol, analysis_date, current_price, beta)
+            multi_period_data = await self._get_multi_period_data(
+                symbol, analysis_date, current_price, beta
+            )
 
             # If context_features not provided, use DataSourceManager
             if not context_features and self._data_source_manager:
                 try:
-                    consolidated = self._data_source_manager.get_data(symbol=symbol, as_of_date=analysis_date)
+                    consolidated = self._data_source_manager.get_data(
+                        symbol=symbol, as_of_date=analysis_date
+                    )
                     context_features = consolidated.get_rl_features()
-                    logger.debug(f"Auto-fetched {len(context_features)} RL features for {symbol}")
+                    logger.debug(
+                        f"Auto-fetched {len(context_features)} RL features for {symbol}"
+                    )
                 except Exception as e:
-                    logger.warning(f"Could not fetch RL features via DataSourceManager: {e}")
+                    logger.warning(
+                        f"Could not fetch RL features via DataSourceManager: {e}"
+                    )
                     context_features = {}
 
             record_ids = []
@@ -360,8 +380,8 @@ class RLBacktestTool(BaseTool):
                 if record_id:
                     record_ids.append(record_id)
 
-            return ToolResult.success_result(
-                data={
+            return ToolResult.create_success(
+                output={
                     "symbol": symbol,
                     "analysis_date": analysis_date.isoformat(),
                     "record_ids": record_ids,
@@ -374,7 +394,7 @@ class RLBacktestTool(BaseTool):
                 },
             )
         except Exception as e:
-            return ToolResult.error_result(f"Failed to record prediction: {e}")
+            return ToolResult.create_failure(f"Failed to record prediction: {e}")
 
     async def _get_historical_data(
         self,
@@ -382,12 +402,14 @@ class RLBacktestTool(BaseTool):
         analysis_date: date,
     ) -> ToolResult:
         """Get historical price and shares data."""
+        if self._price_service is None or self._shares_service is None:
+            return ToolResult.create_failure("Market data services not initialized")
         price = self._price_service.get_price(symbol, analysis_date)
         shares = self._shares_service.get_sec_shares(symbol, analysis_date)
         metadata = await self._get_metadata(symbol)
 
-        return ToolResult.success_result(
-            data={
+        return ToolResult.create_success(
+            output={
                 "symbol": symbol,
                 "analysis_date": analysis_date.isoformat(),
                 "price": price,
@@ -417,15 +439,17 @@ class RLBacktestTool(BaseTool):
         - Sentiment (insider buys/sells, short interest)
         """
         if not self._data_source_manager:
-            return ToolResult.error_result("DataSourceManager not initialized")
+            return ToolResult.create_failure("DataSourceManager not initialized")
 
         try:
-            consolidated = self._data_source_manager.get_data(symbol=symbol, as_of_date=analysis_date)
+            consolidated = self._data_source_manager.get_data(
+                symbol=symbol, as_of_date=analysis_date
+            )
 
             features = consolidated.get_rl_features()
 
-            return ToolResult.success_result(
-                data={
+            return ToolResult.create_success(
+                output={
                     "symbol": symbol,
                     "analysis_date": analysis_date.isoformat(),
                     "features": features,
@@ -440,7 +464,7 @@ class RLBacktestTool(BaseTool):
                 },
             )
         except Exception as e:
-            return ToolResult.error_result(f"Failed to get context features: {e}")
+            return ToolResult.create_failure(f"Failed to get context features: {e}")
 
     async def _get_multi_period_data(
         self,
@@ -450,13 +474,15 @@ class RLBacktestTool(BaseTool):
         beta: float,
     ) -> Dict[str, Any]:
         """Get multi-period prices, exit dates, and rewards."""
-        prices = {}
-        exit_dates = {}
-        long_rewards = {}
-        short_rewards = {}
+        prices: Dict[str, Any] = {}
+        exit_dates: Dict[str, Any] = {}
+        long_rewards: Dict[str, Any] = {}
+        short_rewards: Dict[str, Any] = {}
 
         for period, days in HOLDING_PERIODS.items():
             target_date = analysis_date + timedelta(days=days)
+            if self._price_service is None:
+                continue
             future_price = self._price_service.get_price(symbol, target_date)
 
             if future_price and future_price > 0:
@@ -468,7 +494,7 @@ class RLBacktestTool(BaseTool):
                 # - predicted_fv > price_at_prediction => LONG
                 # - predicted_fv < price_at_prediction => SHORT
                 # We simulate this by setting fake fair values to force the desired direction
-                if current_price > 0:
+                if current_price > 0 and self._reward_calculator is not None:
                     # For LONG: set predicted_fv higher than entry price
                     long_result = self._reward_calculator.calculate(
                         predicted_fv=current_price * 1.10,  # 10% above = LONG signal

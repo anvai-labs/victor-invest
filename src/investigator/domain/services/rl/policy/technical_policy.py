@@ -116,8 +116,12 @@ class TechnicalRLPolicy(RLPolicy):
         # mu: mean of weight vector
         # Lambda: precision matrix (inverse covariance)
         self.mu = np.zeros((self.n_actions, self.n_features))
-        self.Lambda = np.array([np.eye(self.n_features) / prior_variance for _ in range(self.n_actions)])
-        self.Sigma = np.array([np.eye(self.n_features) * prior_variance for _ in range(self.n_actions)])
+        self.Lambda = np.array(
+            [np.eye(self.n_features) / prior_variance for _ in range(self.n_actions)]
+        )
+        self.Sigma = np.array(
+            [np.eye(self.n_features) * prior_variance for _ in range(self.n_actions)]
+        )
 
         # Action statistics
         self.action_counts = np.zeros(self.n_actions)
@@ -235,7 +239,9 @@ class TechnicalRLPolicy(RLPolicy):
 
         # Semiconductor penalty - skip volatile sectors
         is_semiconductor = (
-            "semiconductor" in industry.lower() or "chip" in industry.lower() or sector.lower() == "semiconductors"
+            "semiconductor" in industry.lower()
+            or "chip" in industry.lower()
+            or sector.lower() == "semiconductors"
         )
         if is_semiconductor:
             # Semiconductors have -0.13 avg reward - be very conservative
@@ -307,7 +313,11 @@ class TechnicalRLPolicy(RLPolicy):
 
         # Update mean
         self.Sigma[a] = np.linalg.inv(self.Lambda[a])
-        self.mu[a] = np.dot(self.Sigma[a], np.dot(self.Lambda[a], self.mu[a]) + features * reward / self.noise_variance)
+        self.mu[a] = np.dot(
+            self.Sigma[a],
+            np.dot(self.Lambda[a], self.mu[a])
+            + features * reward / self.noise_variance,
+        )
 
         # Track statistics
         self.action_counts[a] += 1
@@ -332,7 +342,9 @@ class TechnicalRLPolicy(RLPolicy):
     def save(self, path: str) -> bool:
         """Save policy state."""
         try:
-            os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
+            os.makedirs(
+                os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True
+            )
 
             state = {
                 "name": self.name,
@@ -376,8 +388,12 @@ class TechnicalRLPolicy(RLPolicy):
             self.n_actions = state.get("n_actions", self.n_actions)
             self.prior_variance = state.get("prior_variance", self.prior_variance)
             self.noise_variance = state.get("noise_variance", self.noise_variance)
-            self.exploration_weight = state.get("exploration_weight", self.exploration_weight)
-            self.min_gap_for_signal = state.get("min_gap_for_signal", self.min_gap_for_signal)
+            self.exploration_weight = state.get(
+                "exploration_weight", self.exploration_weight
+            )
+            self.min_gap_for_signal = state.get(
+                "min_gap_for_signal", self.min_gap_for_signal
+            )
             self.min_confidence = state.get("min_confidence", self.min_confidence)
             self.mu = state.get("mu", self.mu)
             self.Lambda = state.get("Lambda", self.Lambda)

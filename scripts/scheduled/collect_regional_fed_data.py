@@ -46,7 +46,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from scripts.scheduled.base import (
+from scripts.scheduled.base import (  # noqa: E402
     BaseCollector,
     CollectionMetrics,
     compute_record_hash,
@@ -84,9 +84,12 @@ class RegionalFedCollector(BaseCollector):
             from investigator.infrastructure.external.fed_districts.atlanta_fed import (
                 get_atlanta_fed_client,
             )
+
             client = get_atlanta_fed_client()
             data = await client.get_all_indicators()
-            self.logger.info(f"Atlanta Fed: collected {len([v for v in data.values() if v])} indicators")
+            self.logger.info(
+                f"Atlanta Fed: collected {len([v for v in data.values() if v])} indicators"
+            )
             return {"atlanta": data}
         except Exception as e:
             self.logger.warning(f"Atlanta Fed collection failed: {e}")
@@ -99,9 +102,12 @@ class RegionalFedCollector(BaseCollector):
             from investigator.infrastructure.external.fed_districts.philadelphia_fed import (
                 get_philly_fed_client,
             )
+
             client = get_philly_fed_client()
             data = await client.get_all_indicators()
-            self.logger.info(f"Philadelphia Fed: collected {len([v for v in data.values() if v])} indicators")
+            self.logger.info(
+                f"Philadelphia Fed: collected {len([v for v in data.values() if v])} indicators"
+            )
             return {"philadelphia": data}
         except Exception as e:
             self.logger.warning(f"Philadelphia Fed collection failed: {e}")
@@ -114,9 +120,12 @@ class RegionalFedCollector(BaseCollector):
             from investigator.infrastructure.external.fed_districts.chicago_fed import (
                 get_chicago_fed_client,
             )
+
             client = get_chicago_fed_client()
             data = await client.get_all_indicators()
-            self.logger.info(f"Chicago Fed: collected {len([v for v in data.values() if v])} indicators")
+            self.logger.info(
+                f"Chicago Fed: collected {len([v for v in data.values() if v])} indicators"
+            )
             return {"chicago": data}
         except Exception as e:
             self.logger.warning(f"Chicago Fed collection failed: {e}")
@@ -129,9 +138,12 @@ class RegionalFedCollector(BaseCollector):
             from investigator.infrastructure.external.fed_districts.cleveland_fed import (
                 get_cleveland_fed_client,
             )
+
             client = get_cleveland_fed_client()
             data = await client.get_all_indicators()
-            self.logger.info(f"Cleveland Fed: collected {len([v for v in data.values() if v])} indicators")
+            self.logger.info(
+                f"Cleveland Fed: collected {len([v for v in data.values() if v])} indicators"
+            )
             return {"cleveland": data}
         except Exception as e:
             self.logger.warning(f"Cleveland Fed collection failed: {e}")
@@ -144,9 +156,12 @@ class RegionalFedCollector(BaseCollector):
             from investigator.infrastructure.external.fed_districts.dallas_fed import (
                 get_dallas_fed_client,
             )
+
             client = get_dallas_fed_client()
             data = await client.get_all_indicators()
-            self.logger.info(f"Dallas Fed: collected {len([v for v in data.values() if v])} indicators")
+            self.logger.info(
+                f"Dallas Fed: collected {len([v for v in data.values() if v])} indicators"
+            )
             return {"dallas": data}
         except Exception as e:
             self.logger.warning(f"Dallas Fed collection failed: {e}")
@@ -159,9 +174,12 @@ class RegionalFedCollector(BaseCollector):
             from investigator.infrastructure.external.fed_districts.kansas_city_fed import (
                 get_kc_fed_client,
             )
+
             client = get_kc_fed_client()
             data = await client.get_all_indicators()
-            self.logger.info(f"Kansas City Fed: collected {len([v for v in data.values() if v])} indicators")
+            self.logger.info(
+                f"Kansas City Fed: collected {len([v for v in data.values() if v])} indicators"
+            )
             return {"kansas_city": data}
         except Exception as e:
             self.logger.warning(f"Kansas City Fed collection failed: {e}")
@@ -174,9 +192,12 @@ class RegionalFedCollector(BaseCollector):
             from investigator.infrastructure.external.fed_districts.richmond_fed import (
                 get_richmond_fed_client,
             )
+
             client = get_richmond_fed_client()
             data = await client.get_all_indicators()
-            self.logger.info(f"Richmond Fed: collected {len([v for v in data.values() if v])} indicators")
+            self.logger.info(
+                f"Richmond Fed: collected {len([v for v in data.values() if v])} indicators"
+            )
             return {"richmond": data}
         except Exception as e:
             self.logger.warning(f"Richmond Fed collection failed: {e}")
@@ -189,6 +210,7 @@ class RegionalFedCollector(BaseCollector):
             from investigator.infrastructure.external.nyfed.markets_data import (
                 get_nyfed_client,
             )
+
             client = get_nyfed_client()
 
             recession_prob = await client.get_recession_probability()
@@ -198,7 +220,9 @@ class RegionalFedCollector(BaseCollector):
                 "recession_probability": recession_prob,
                 "gscpi": gscpi,
             }
-            self.logger.info(f"NY Fed: collected {len([v for v in data.values() if v])} indicators")
+            self.logger.info(
+                f"NY Fed: collected {len([v for v in data.values() if v])} indicators"
+            )
             return {"new_york": data}
         except Exception as e:
             self.logger.warning(f"NY Fed collection failed: {e}")
@@ -268,10 +292,13 @@ class RegionalFedCollector(BaseCollector):
                         obs_date = datetime.fromisoformat(obs_date).date()
 
                     # Check existing
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         SELECT source_hash FROM regional_fed_indicators
                         WHERE district = %s AND indicator_name = %s AND observation_date = %s
-                    """, (district, indicator_name, obs_date))
+                    """,
+                        (district, indicator_name, obs_date),
+                    )
                     existing = cursor.fetchone()
 
                     if existing:
@@ -279,33 +306,39 @@ class RegionalFedCollector(BaseCollector):
                             self.metrics.records_skipped += 1
                             continue
                         # Update
-                        cursor.execute("""
+                        cursor.execute(
+                            """
                             UPDATE regional_fed_indicators SET
                                 indicator_data = %s, source_hash = %s,
                                 source_fetch_timestamp = NOW(), updated_at = NOW()
                             WHERE district = %s AND indicator_name = %s AND observation_date = %s
-                        """, (
-                            str(record_dict),
-                            record_hash,
-                            district,
-                            indicator_name,
-                            obs_date,
-                        ))
+                        """,
+                            (
+                                str(record_dict),
+                                record_hash,
+                                district,
+                                indicator_name,
+                                obs_date,
+                            ),
+                        )
                         self.metrics.records_updated += 1
                     else:
                         # Insert
-                        cursor.execute("""
+                        cursor.execute(
+                            """
                             INSERT INTO regional_fed_indicators
                                 (district, indicator_name, observation_date, indicator_data,
                                  source_hash, source_fetch_timestamp)
                             VALUES (%s, %s, %s, %s, %s, NOW())
-                        """, (
-                            district,
-                            indicator_name,
-                            obs_date,
-                            str(record_dict),
-                            record_hash,
-                        ))
+                        """,
+                            (
+                                district,
+                                indicator_name,
+                                obs_date,
+                                str(record_dict),
+                                record_hash,
+                            ),
+                        )
                         self.metrics.records_inserted += 1
 
             conn.commit()
@@ -319,7 +352,9 @@ class RegionalFedCollector(BaseCollector):
     def collect(self) -> CollectionMetrics:
         """Collect all Regional Fed economic data."""
         try:
-            self.logger.info(f"Collecting data from {len(self.districts)} Fed districts")
+            self.logger.info(
+                f"Collecting data from {len(self.districts)} Fed districts"
+            )
 
             # Run async collection
             loop = asyncio.new_event_loop()
@@ -354,19 +389,15 @@ def main():
         description="Collect Regional Federal Reserve economic data"
     )
     parser.add_argument(
-        "--districts",
-        type=str,
-        help="Comma-separated list of districts (default: all)"
+        "--districts", type=str, help="Comma-separated list of districts (default: all)"
     )
     parser.add_argument(
         "--indicator",
         type=str,
-        help="Specific indicator to collect (e.g., gdpnow, cfnai)"
+        help="Specific indicator to collect (e.g., gdpnow, cfnai)",
     )
     parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Collect but don't store to database"
+        "--dry-run", action="store_true", help="Collect but don't store to database"
     )
     args = parser.parse_args()
 

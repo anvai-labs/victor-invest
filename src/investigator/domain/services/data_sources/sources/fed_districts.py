@@ -7,9 +7,16 @@ Each district source follows the same pattern for consistency.
 
 import logging
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
-from ..base import DataCategory, DataFrequency, DataQuality, DataResult, MacroDataSource, SourceMetadata
+from ..base import (
+    DataCategory,
+    DataFrequency,
+    DataQuality,
+    DataResult,
+    MacroDataSource,
+    SourceMetadata,
+)
 from ..registry import register_source
 
 logger = logging.getLogger(__name__)
@@ -26,7 +33,9 @@ class FedDistrictSource(MacroDataSource):
     INDICATORS: List[str] = []
 
     def __init__(self):
-        super().__init__(f"{self.DISTRICT_NAME.lower().replace(' ', '_')}_fed", DataFrequency.DAILY)
+        super().__init__(
+            f"{self.DISTRICT_NAME.lower().replace(' ', '_')}_fed", DataFrequency.DAILY
+        )
         # District names in DB include "_fed" suffix (e.g., "chicago_fed")
         self.district = f"{self.DISTRICT_NAME.lower().replace(' ', '_')}_fed"
 
@@ -123,7 +132,12 @@ class ClevelandFedSource(FedDistrictSource):
     """Cleveland Fed - Inflation Expectations, Yield Curve Model"""
 
     DISTRICT_NAME = "Cleveland"
-    INDICATORS = ["inflation_expectations", "yield_curve_model", "median_cpi", "trimmed_mean_cpi"]
+    INDICATORS = [
+        "inflation_expectations",
+        "yield_curve_model",
+        "median_cpi",
+        "trimmed_mean_cpi",
+    ]
 
 
 @register_source("dallas_fed", DataCategory.MACRO)
@@ -193,7 +207,12 @@ class PhiladelphiaFedSource(FedDistrictSource):
     """Philadelphia Fed - Manufacturing Survey, ADS Index"""
 
     DISTRICT_NAME = "Philadelphia"
-    INDICATORS = ["manufacturing_survey", "ads_index", "leading_index", "coincident_index"]
+    INDICATORS = [
+        "manufacturing_survey",
+        "ads_index",
+        "leading_index",
+        "coincident_index",
+    ]
 
 
 @register_source("richmond_fed", DataCategory.MACRO)

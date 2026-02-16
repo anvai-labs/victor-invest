@@ -27,9 +27,13 @@ from investigator.domain.services.rl.models import (
     TrainingMetrics,
 )
 from investigator.domain.services.rl.policy.base import RLPolicy, UniformPolicy
-from investigator.domain.services.rl.policy.contextual_bandit import ContextualBanditPolicy
+from investigator.domain.services.rl.policy.contextual_bandit import (
+    ContextualBanditPolicy,
+)
 from investigator.domain.services.rl.policy.hybrid import HybridPolicy
-from investigator.domain.services.rl.training.experience_collector import ExperienceCollector
+from investigator.domain.services.rl.training.experience_collector import (
+    ExperienceCollector,
+)
 from investigator.domain.services.rl.training.trainer import RLTrainer
 
 logger = logging.getLogger(__name__)

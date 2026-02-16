@@ -18,7 +18,7 @@ Defines the agent responsible for combining multiple analysis
 streams into actionable investment recommendations.
 """
 
-from victor.agents.spec import (
+from victor.agent.specs.models import (
     AgentCapabilities,
     AgentConstraints,
     AgentSpec,
@@ -32,7 +32,13 @@ SYNTHESIS_AGENT_SPEC = AgentSpec(
     name="synthesis_analyst",
     description="Investment synthesis specialist combining analysis streams into actionable recommendations",
     capabilities=AgentCapabilities(
-        tools={"sec_filing", "valuation", "technical_indicators", "market_data", "cache"},
+        tools={
+            "sec_filing",
+            "valuation",
+            "technical_indicators",
+            "market_data",
+            "cache",
+        },
         can_browse_web=False,
         can_execute_code=True,  # May need to aggregate scores
         can_modify_files=False,

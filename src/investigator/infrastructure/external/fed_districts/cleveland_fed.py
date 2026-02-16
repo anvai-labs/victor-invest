@@ -32,9 +32,9 @@ Investment Signals:
 
 import logging
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import aiohttp
 
@@ -43,7 +43,9 @@ logger = logging.getLogger(__name__)
 # Cleveland Fed data URLs
 INFLATION_EXPECTATIONS_URL = "https://www.clevelandfed.org/-/media/files/charts/inflation-expectations/ie_data.xlsx"
 YIELD_CURVE_URL = "https://www.clevelandfed.org/-/media/files/charts/yield-curve/yield_curve_data.xlsx"
-MEDIAN_CPI_URL = "https://www.clevelandfed.org/-/media/files/charts/median-cpi/median-cpi.xlsx"
+MEDIAN_CPI_URL = (
+    "https://www.clevelandfed.org/-/media/files/charts/median-cpi/median-cpi.xlsx"
+)
 
 
 class InflationOutlook(Enum):
@@ -201,7 +203,9 @@ class ClevelandFedClient:
     async def _get_session(self) -> aiohttp.ClientSession:
         if self._session is None:
             try:
-                from investigator.infrastructure.external.http_client import create_session
+                from investigator.infrastructure.external.http_client import (
+                    create_session,
+                )
 
                 self._session = await create_session()
             except ImportError:
@@ -263,7 +267,9 @@ class ClevelandFedClient:
             five_five = find_col("5y5y") or find_col("5-year, 5-year")
 
             # Use first numeric column as fallback
-            one_year_val = float(latest[one_yr]) if one_yr else float(latest[df.columns[1]])
+            one_year_val = (
+                float(latest[one_yr]) if one_yr else float(latest[df.columns[1]])
+            )
 
             return InflationExpectations(
                 date=obs_date,

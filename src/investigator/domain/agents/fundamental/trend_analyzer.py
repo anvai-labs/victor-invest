@@ -50,9 +50,13 @@ class TrendAnalyzer:
         Args:
             logger: Optional logger instance
         """
-        self.logger = logger or logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self.logger = logger or logging.getLogger(
+            f"{__name__}.{self.__class__.__name__}"
+        )
 
-    def analyze_revenue_trend(self, quarterly_data: List[QuarterlyDataProtocol]) -> Dict:
+    def analyze_revenue_trend(
+        self, quarterly_data: List[QuarterlyDataProtocol]
+    ) -> Dict:
         """
         Analyze revenue trend: accelerating, stable, or decelerating.
 
@@ -85,7 +89,10 @@ class TrendAnalyzer:
         qoq_growth = []
         for i in range(1, len(revenues)):
             if revenues[i - 1] > 0:
-                growth = ((float(revenues[i]) - float(revenues[i - 1])) / float(revenues[i - 1])) * 100
+                growth = (
+                    (float(revenues[i]) - float(revenues[i - 1]))
+                    / float(revenues[i - 1])
+                ) * 100
                 qoq_growth.append(growth)
             else:
                 qoq_growth.append(0.0)
@@ -94,7 +101,10 @@ class TrendAnalyzer:
         yoy_growth = []
         for i in range(4, len(revenues)):
             if revenues[i - 4] > 0:
-                growth = ((float(revenues[i]) - float(revenues[i - 4])) / float(revenues[i - 4])) * 100
+                growth = (
+                    (float(revenues[i]) - float(revenues[i - 4]))
+                    / float(revenues[i - 4])
+                ) * 100
                 yoy_growth.append(growth)
             else:
                 yoy_growth.append(0.0)
@@ -194,8 +204,12 @@ class TrendAnalyzer:
             if len(margins) < 4:
                 return "stable"
 
-            early_avg = sum(float(m) for m in margins[: len(margins) // 2]) / (len(margins) // 2)
-            late_avg = sum(float(m) for m in margins[len(margins) // 2 :]) / (len(margins) - len(margins) // 2)
+            early_avg = sum(float(m) for m in margins[: len(margins) // 2]) / (
+                len(margins) // 2
+            )
+            late_avg = sum(float(m) for m in margins[len(margins) // 2 :]) / (
+                len(margins) - len(margins) // 2
+            )
 
             # Threshold: 1 percentage point
             if late_avg > early_avg + 1.0:
@@ -214,7 +228,9 @@ class TrendAnalyzer:
             "net_margins": [round(m, 2) for m in net_margins],
         }
 
-    def analyze_cash_flow_trend(self, quarterly_data: List[QuarterlyDataProtocol]) -> Dict:
+    def analyze_cash_flow_trend(
+        self, quarterly_data: List[QuarterlyDataProtocol]
+    ) -> Dict:
         """
         Analyze cash flow quality and trend.
 
@@ -256,7 +272,9 @@ class TrendAnalyzer:
         # Determine trend
         if len(ocf_values) >= 4:
             early_avg = sum(ocf_values[: len(ocf_values) // 2]) / (len(ocf_values) // 2)
-            late_avg = sum(ocf_values[len(ocf_values) // 2 :]) / (len(ocf_values) - len(ocf_values) // 2)
+            late_avg = sum(ocf_values[len(ocf_values) // 2 :]) / (
+                len(ocf_values) - len(ocf_values) // 2
+            )
 
             if late_avg > early_avg * 1.1:  # 10% improvement
                 trend = "improving"
@@ -289,7 +307,9 @@ class TrendAnalyzer:
             "quality_of_earnings": round(quality_score, 1),
         }
 
-    def calculate_quarterly_comparisons(self, quarterly_data: List[QuarterlyDataProtocol]) -> Dict:
+    def calculate_quarterly_comparisons(
+        self, quarterly_data: List[QuarterlyDataProtocol]
+    ) -> Dict:
         """
         Calculate quarter-over-quarter and year-over-year comparisons.
 
@@ -314,13 +334,23 @@ class TrendAnalyzer:
 
         for i in range(1, len(revenues)):
             if revenues[i - 1] > 0:
-                qoq_revenue.append(((float(revenues[i]) - float(revenues[i - 1])) / float(revenues[i - 1])) * 100)
+                qoq_revenue.append(
+                    (
+                        (float(revenues[i]) - float(revenues[i - 1]))
+                        / float(revenues[i - 1])
+                    )
+                    * 100
+                )
             else:
                 qoq_revenue.append(0.0)
 
             if net_incomes[i - 1] > 0:
                 qoq_net_income.append(
-                    ((float(net_incomes[i]) - float(net_incomes[i - 1])) / float(net_incomes[i - 1])) * 100
+                    (
+                        (float(net_incomes[i]) - float(net_incomes[i - 1]))
+                        / float(net_incomes[i - 1])
+                    )
+                    * 100
                 )
             else:
                 qoq_net_income.append(0.0)
@@ -331,13 +361,23 @@ class TrendAnalyzer:
 
         for i in range(4, len(revenues)):
             if revenues[i - 4] > 0:
-                yoy_revenue.append(((float(revenues[i]) - float(revenues[i - 4])) / float(revenues[i - 4])) * 100)
+                yoy_revenue.append(
+                    (
+                        (float(revenues[i]) - float(revenues[i - 4]))
+                        / float(revenues[i - 4])
+                    )
+                    * 100
+                )
             else:
                 yoy_revenue.append(0.0)
 
             if net_incomes[i - 4] > 0:
                 yoy_net_income.append(
-                    ((float(net_incomes[i]) - float(net_incomes[i - 4])) / float(net_incomes[i - 4])) * 100
+                    (
+                        (float(net_incomes[i]) - float(net_incomes[i - 4]))
+                        / float(net_incomes[i - 4])
+                    )
+                    * 100
                 )
             else:
                 yoy_net_income.append(0.0)
@@ -355,7 +395,9 @@ class TrendAnalyzer:
             },
         }
 
-    def detect_cyclical_patterns(self, quarterly_data: List[QuarterlyDataProtocol]) -> Dict:
+    def detect_cyclical_patterns(
+        self, quarterly_data: List[QuarterlyDataProtocol]
+    ) -> Dict:
         """
         Detect seasonal/cyclical business patterns.
 
@@ -396,7 +438,11 @@ class TrendAnalyzer:
                 quarter_averages[period] = 0
 
         # Calculate overall average
-        overall_avg = sum(quarter_averages.values()) / len(quarter_averages) if quarter_averages else 0
+        overall_avg = (
+            sum(quarter_averages.values()) / len(quarter_averages)
+            if quarter_averages
+            else 0
+        )
 
         # Calculate strength (% above/below average)
         quarterly_strength = {}

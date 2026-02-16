@@ -6,10 +6,17 @@ Free API with 120 requests/minute limit.
 """
 
 import logging
-from datetime import date, datetime
-from typing import Any, Dict, List, Optional
+from datetime import date
+from typing import Any, Dict, Optional
 
-from ..base import DataCategory, DataFrequency, DataQuality, DataResult, MacroDataSource, SourceMetadata
+from ..base import (
+    DataCategory,
+    DataFrequency,
+    DataQuality,
+    DataResult,
+    MacroDataSource,
+    SourceMetadata,
+)
 from ..registry import register_source
 
 logger = logging.getLogger(__name__)
@@ -205,12 +212,17 @@ class FredMacroSource(MacroDataSource):
         # Real rates
         inflation = data.get("inflation", {})
         if "DGS10" in rates and "T10YIE" in inflation:
-            derived["real_rate_10y"] = rates["DGS10"]["value"] - inflation["T10YIE"]["value"]
+            derived["real_rate_10y"] = (
+                rates["DGS10"]["value"] - inflation["T10YIE"]["value"]
+            )
 
         return derived
 
     def fetch_series(
-        self, series_id: str, start_date: Optional[date] = None, end_date: Optional[date] = None
+        self,
+        series_id: str,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
     ) -> DataResult:
         """Fetch a specific FRED series"""
         try:
@@ -250,7 +262,9 @@ class FredMacroSource(MacroDataSource):
 
             data = {
                 "series_id": series_id,
-                "values": [{"date": r[1].isoformat(), "value": float(r[0])} for r in rows],
+                "values": [
+                    {"date": r[1].isoformat(), "value": float(r[0])} for r in rows
+                ],
                 "count": len(rows),
             }
 

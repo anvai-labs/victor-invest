@@ -13,7 +13,7 @@ Date: 2025-11-10
 """
 
 import logging
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ValuationResult:
     """Result from sector-specific valuation"""
+
     method: str  # e.g., "DCF", "P/BV", "DDM", "ROE_Multiple", "FFO_Multiple"
     fair_value: float
     current_price: float
@@ -37,20 +38,16 @@ class SectorValuationRouter:
     # Sector/industry routing map
     VALUATION_METHODS = {
         # Insurance companies - use P/BV and DDM
-        ('Financials', 'Insurance'): 'insurance',
-
+        ("Financials", "Insurance"): "insurance",
         # Banks - use ROE multiples
-        ('Financials', 'Banks'): 'bank',
-
+        ("Financials", "Banks"): "bank",
         # REITs - use FFO multiples
-        ('Real Estate', 'REITs'): 'reit',
-        ('Real Estate', None): 'reit',  # All Real Estate defaults to REIT
-
+        ("Real Estate", "REITs"): "reit",
+        ("Real Estate", None): "reit",  # All Real Estate defaults to REIT
         # Technology - use DCF with high growth
-        ('Technology', None): 'dcf_growth',
-
+        ("Technology", None): "dcf_growth",
         # Default for other sectors
-        ('default', None): 'dcf_standard',
+        ("default", None): "dcf_standard",
     }
 
     def __init__(self):
@@ -63,7 +60,7 @@ class SectorValuationRouter:
         industry: Optional[str],
         financials: Dict,
         current_price: float,
-        database_url: Optional[str] = None
+        database_url: Optional[str] = None,
     ) -> ValuationResult:
         """
         Route to appropriate valuation method based on sector/industry
@@ -80,19 +77,20 @@ class SectorValuationRouter:
         """
         # Flexible matching for insurance companies
         # Matches: "Insurance", "Property-Casualty Insurers", "Life Insurance", etc.
-        if sector == 'Financials' and industry and 'insur' in industry.lower():
-            valuation_type = 'insurance'
+        if sector == "Financials" and industry and "insur" in industry.lower():
+            valuation_type = "insurance"
         # Flexible matching for banks
         # Matches: "Banks", "Commercial Banks", "Regional Banks", etc.
-        elif sector == 'Financials' and industry and 'bank' in industry.lower():
-            valuation_type = 'bank'
+        elif sector == "Financials" and industry and "bank" in industry.lower():
+            valuation_type = "bank"
         # Use exact dictionary matching for other sectors
         else:
             method_key = (sector, industry)
             valuation_type = self.VALUATION_METHODS.get(
                 method_key,
-                self.VALUATION_METHODS.get((sector, None),
-                                          self.VALUATION_METHODS[('default', None)])
+                self.VALUATION_METHODS.get(
+                    (sector, None), self.VALUATION_METHODS[("default", None)]
+                ),
             )
 
         self.logger.info(
@@ -101,11 +99,13 @@ class SectorValuationRouter:
         )
 
         # Route to appropriate method
-        if valuation_type == 'insurance':
-            return self._value_insurance(symbol, financials, current_price, database_url)
-        elif valuation_type == 'bank':
+        if valuation_type == "insurance":
+            return self._value_insurance(
+                symbol, financials, current_price, database_url
+            )
+        elif valuation_type == "bank":
             return self._value_bank(symbol, financials, current_price)
-        elif valuation_type == 'reit':
+        elif valuation_type == "reit":
             return self._value_reit(symbol, financials, current_price)
         else:
             # For non-special sectors (including dcf_growth, dcf_standard), return None
@@ -117,7 +117,7 @@ class SectorValuationRouter:
         symbol: str,
         financials: Dict,
         current_price: float,
-        database_url: Optional[str] = None
+        database_url: Optional[str] = None,
     ) -> ValuationResult:
         """
         Value insurance company using Price-to-Book (P/BV) method
@@ -130,34 +130,33 @@ class SectorValuationRouter:
         from utils.insurance_valuation import value_insurance_company
 
         try:
-            result = value_insurance_company(symbol, financials, current_price, database_url)
+            result = value_insurance_company(
+                symbol, financials, current_price, database_url
+            )
 
-            upside = ((result['fair_value'] - current_price) / current_price) * 100
+            upside = ((result["fair_value"] - current_price) / current_price) * 100
 
             return ValuationResult(
                 method="P/BV (Insurance)",
-                fair_value=result['fair_value'],
+                fair_value=result["fair_value"],
                 current_price=current_price,
                 upside_percent=upside,
-                confidence=result.get('confidence', 'medium'),
+                confidence=result.get("confidence", "medium"),
                 details={
-                    'book_value_per_share': result.get('book_value_per_share'),
-                    'target_pb_ratio': result.get('target_pb_ratio'),
-                    'current_pb_ratio': result.get('current_pb_ratio'),
-                    'roe': result.get('roe'),
-                    'combined_ratio': result.get('combined_ratio'),
+                    "book_value_per_share": result.get("book_value_per_share"),
+                    "target_pb_ratio": result.get("target_pb_ratio"),
+                    "current_pb_ratio": result.get("current_pb_ratio"),
+                    "roe": result.get("roe"),
+                    "combined_ratio": result.get("combined_ratio"),
                 },
-                warnings=result.get('warnings', [])
+                warnings=result.get("warnings", []),
             )
         except Exception as e:
             self.logger.warning(f"{symbol} - Insurance valuation failed: {e}")
             raise
 
     def _value_bank(
-        self,
-        symbol: str,
-        financials: Dict,
-        current_price: float
+        self, symbol: str, financials: Dict, current_price: float
     ) -> ValuationResult:
         """
         Value bank using ROE multiples method
@@ -171,9 +170,9 @@ class SectorValuationRouter:
 
         try:
             # Extract key metrics
-            stockholders_equity = financials.get('stockholders_equity', 0)
-            net_income = financials.get('net_income', 0)
-            shares_outstanding = financials.get('shares_outstanding', 0)
+            stockholders_equity = financials.get("stockholders_equity", 0)
+            net_income = financials.get("net_income", 0)
+            shares_outstanding = financials.get("shares_outstanding", 0)
 
             if not all([stockholders_equity, net_income, shares_outstanding]):
                 raise ValueError("Missing required metrics for bank valuation")
@@ -213,12 +212,14 @@ class SectorValuationRouter:
                 upside_percent=upside,
                 confidence=confidence,
                 details={
-                    'roe': roe,
-                    'book_value_per_share': book_value_per_share,
-                    'target_pb_ratio': target_pb,
-                    'current_pb_ratio': current_price / book_value_per_share if book_value_per_share > 0 else 0,
+                    "roe": roe,
+                    "book_value_per_share": book_value_per_share,
+                    "target_pb_ratio": target_pb,
+                    "current_pb_ratio": current_price / book_value_per_share
+                    if book_value_per_share > 0
+                    else 0,
                 },
-                warnings=warnings
+                warnings=warnings,
             )
 
         except Exception as e:
@@ -226,10 +227,7 @@ class SectorValuationRouter:
             raise
 
     def _value_reit(
-        self,
-        symbol: str,
-        financials: Dict,
-        current_price: float
+        self, symbol: str, financials: Dict, current_price: float
     ) -> ValuationResult:
         """
         Value REIT using FFO (Funds from Operations) multiples
@@ -243,9 +241,9 @@ class SectorValuationRouter:
 
         try:
             # FFO = Net Income + Depreciation - Gains on Property Sales
-            net_income = financials.get('net_income', 0)
-            depreciation = financials.get('depreciation_amortization', 0)
-            shares_outstanding = financials.get('shares_outstanding', 0)
+            net_income = financials.get("net_income", 0)
+            depreciation = financials.get("depreciation_amortization", 0)
+            shares_outstanding = financials.get("shares_outstanding", 0)
 
             if not all([net_income, shares_outstanding]):
                 raise ValueError("Missing required metrics for REIT valuation")
@@ -280,14 +278,15 @@ class SectorValuationRouter:
                 upside_percent=upside,
                 confidence=confidence,
                 details={
-                    'ffo_per_share': ffo_per_share,
-                    'ffo_multiple': target_ffo_multiple,
-                    'current_ffo_yield': (ffo_per_share / current_price * 100) if current_price > 0 else 0,
+                    "ffo_per_share": ffo_per_share,
+                    "ffo_multiple": target_ffo_multiple,
+                    "current_ffo_yield": (ffo_per_share / current_price * 100)
+                    if current_price > 0
+                    else 0,
                 },
-                warnings=warnings
+                warnings=warnings,
             )
 
         except Exception as e:
             self.logger.warning(f"{symbol} - REIT valuation failed: {e}")
             raise
-

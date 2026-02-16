@@ -103,7 +103,8 @@ class OutputDetailLevel(Enum):
 
 
 def format_analysis_output(
-    analysis_results: Dict[str, Any], detail_level: OutputDetailLevel = OutputDetailLevel.STANDARD
+    analysis_results: Dict[str, Any],
+    detail_level: OutputDetailLevel = OutputDetailLevel.STANDARD,
 ) -> Dict[str, Any]:
     """
     Format analysis results according to specified detail level.
@@ -157,7 +158,9 @@ def _format_minimal(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
     # Log extraction audit for debugging if issues occur
     audit = extractor.get_audit()
     if audit:
-        missing_fields = [name for name, result in audit.extractions.items() if not result.has_value]
+        missing_fields = [
+            name for name, result in audit.extractions.items() if not result.has_value
+        ]
         if missing_fields:
             logger.debug(f"Summary extraction missing fields: {missing_fields}")
             audit.log_summary()
@@ -205,7 +208,14 @@ def _format_standard(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
 
     # Clean each agent section (handle both direct and 'agents' wrapper)
     agents_dict = result.get("agents", result)  # Support both structures
-    for agent_name in ["fundamental", "technical", "synthesis", "market_context", "sec", "symbol_update"]:
+    for agent_name in [
+        "fundamental",
+        "technical",
+        "synthesis",
+        "market_context",
+        "sec",
+        "symbol_update",
+    ]:
         if agent_name in agents_dict:
             _clean_agent_section(agents_dict[agent_name])
 
@@ -320,7 +330,9 @@ def _consolidate_duplicates(result: Dict[str, Any]) -> None:
                 _remove_keys(synth_data, ["company_data", "market_data"])
 
                 # Keep only references in response, not full data
-                if "response" in synth_data and isinstance(synth_data["response"], dict):
+                if "response" in synth_data and isinstance(
+                    synth_data["response"], dict
+                ):
                     synth_response = synth_data["response"]
                     _remove_keys(
                         synth_response,
@@ -365,7 +377,9 @@ def _remove_empty_values(data: Any) -> Any:
             cleaned[k] = _remove_empty_values(v)
         return cleaned
     elif isinstance(data, list):
-        return [_remove_empty_values(item) for item in data if not _is_empty_value(item)]
+        return [
+            _remove_empty_values(item) for item in data if not _is_empty_value(item)
+        ]
     elif isinstance(data, np.ndarray):
         # Convert numpy arrays to lists for JSON serialization
         return data.tolist() if data.size > 0 else []
@@ -373,7 +387,9 @@ def _remove_empty_values(data: Any) -> Any:
         return data
 
 
-def _calculate_expected_return(target_price: Optional[float], current_price: Optional[float]) -> Optional[float]:
+def _calculate_expected_return(
+    target_price: Optional[float], current_price: Optional[float]
+) -> Optional[float]:
     """Calculate expected return percentage."""
     if target_price and current_price and current_price > 0:
         return round((target_price - current_price) / current_price * 100, 2)

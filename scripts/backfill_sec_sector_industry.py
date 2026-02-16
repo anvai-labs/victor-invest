@@ -15,12 +15,14 @@ import json
 import logging
 import os
 import sys
-from typing import Dict, Optional
+from typing import Dict
 
 from sqlalchemy import create_engine, text
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -33,7 +35,9 @@ def get_stock_engine():
     db_user = "stockuser"
     db_password = os.environ.get("STOCK_DB_PASSWORD", "")
 
-    connection_string = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    connection_string = (
+        f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    )
     return create_engine(connection_string)
 
 
@@ -87,9 +91,7 @@ def backfill_from_yahoo(engine, dry_run=False, limit=None):
           AND "Sector" IS NOT NULL
         ORDER BY ticker
         {}
-    """.format(
-            f"LIMIT {limit}" if limit else ""
-        )
+    """.format(f"LIMIT {limit}" if limit else "")
     )
 
     with engine.connect() as conn:
@@ -121,7 +123,9 @@ def backfill_from_yahoo(engine, dry_run=False, limit=None):
     with engine.begin() as conn:
         for row in rows:
             ticker, type_, sector, industry = row
-            conn.execute(update_query, {"ticker": ticker, "sector": sector, "industry": industry})
+            conn.execute(
+                update_query, {"ticker": ticker, "sector": sector, "industry": industry}
+            )
             updated_count += 1
 
             if updated_count % 100 == 0:
@@ -163,9 +167,7 @@ def backfill_from_json(engine, sector_mapping, dry_run=False, limit=None):
           AND sec_sector IS NULL
         ORDER BY ticker
         {}
-    """.format(
-            f"LIMIT {limit}" if limit else ""
-        )
+    """.format(f"LIMIT {limit}" if limit else "")
     )
 
     with engine.connect() as conn:
@@ -173,7 +175,9 @@ def backfill_from_json(engine, sector_mapping, dry_run=False, limit=None):
         rows = result.fetchall()
 
     # Filter to symbols in mapping
-    symbols_to_update = [(row[0], sector_mapping[row[0]]) for row in rows if row[0] in sector_mapping]
+    symbols_to_update = [
+        (row[0], sector_mapping[row[0]]) for row in rows if row[0] in sector_mapping
+    ]
 
     logger.info(f"Found {len(symbols_to_update)} symbols to backfill from JSON")
 
@@ -202,7 +206,9 @@ def backfill_from_json(engine, sector_mapping, dry_run=False, limit=None):
             updated_count += 1
 
             if updated_count % 100 == 0:
-                logger.info(f"  Updated {updated_count}/{len(symbols_to_update)} symbols...")
+                logger.info(
+                    f"  Updated {updated_count}/{len(symbols_to_update)} symbols..."
+                )
 
     logger.info(f"✅ Updated {updated_count} symbols from JSON mapping")
     return updated_count
@@ -266,15 +272,23 @@ def verify_results(engine):
 
     for row in rows:
         symbol, sec_sector, sec_industry, yahoo_sector, yahoo_industry = row
-        logger.info(f"  {symbol:8s} - sec_sector: {sec_sector:30s} | Yahoo Sector: {yahoo_sector or 'NULL'}")
+        logger.info(
+            f"  {symbol:8s} - sec_sector: {sec_sector:30s} | Yahoo Sector: {yahoo_sector or 'NULL'}"
+        )
 
 
 def main():
     import argparse
 
-    parser = argparse.ArgumentParser(description="Backfill sec_sector and sec_industry columns")
-    parser.add_argument("--dry-run", action="store_true", help="Report changes without applying them")
-    parser.add_argument("--limit", type=int, help="Limit number of rows to process (for testing)")
+    parser = argparse.ArgumentParser(
+        description="Backfill sec_sector and sec_industry columns"
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Report changes without applying them"
+    )
+    parser.add_argument(
+        "--limit", type=int, help="Limit number of rows to process (for testing)"
+    )
     args = parser.parse_args()
 
     logger.info("Starting sec_sector/sec_industry backfill")
@@ -291,10 +305,14 @@ def main():
         sector_mapping = load_sector_mapping()
 
         # Step 1: Backfill from Yahoo Finance (Sector/Industry columns)
-        yahoo_count = backfill_from_yahoo(engine, dry_run=args.dry_run, limit=args.limit)
+        yahoo_count = backfill_from_yahoo(
+            engine, dry_run=args.dry_run, limit=args.limit
+        )
 
         # Step 2: Backfill from sector_mapping.json
-        json_count = backfill_from_json(engine, sector_mapping, dry_run=args.dry_run, limit=args.limit)
+        json_count = backfill_from_json(
+            engine, sector_mapping, dry_run=args.dry_run, limit=args.limit
+        )
 
         # Verify results
         if not args.dry_run:

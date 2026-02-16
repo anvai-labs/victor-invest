@@ -247,7 +247,9 @@ class ValuationFrameworkPlanner:
         priority = 1
 
         # Get sector-specific weights
-        sector_weights = self.SECTOR_WEIGHTS.get(self.sector, self.SECTOR_WEIGHTS["default"])
+        sector_weights = self.SECTOR_WEIGHTS.get(
+            self.sector, self.SECTOR_WEIGHTS["default"]
+        )
 
         # 1. DCF Frameworks (always highest priority if cash flow positive)
         if has_positive_fcf:
@@ -363,9 +365,13 @@ class ValuationFrameworkPlanner:
         self.last_plan = frameworks
 
         # Log the plan
-        logger.info(f"{self.symbol} - Framework Plan: {len(frameworks)} frameworks selected")
+        logger.info(
+            f"{self.symbol} - Framework Plan: {len(frameworks)} frameworks selected"
+        )
         for f in frameworks:
-            logger.info(f"  [{f.priority}] {f.type}: {f.weight*100:.1f}% weight | {f.reason}")
+            logger.info(
+                f"  [{f.priority}] {f.type}: {f.weight * 100:.1f}% weight | {f.reason}"
+            )
 
         return frameworks
 
@@ -399,7 +405,10 @@ class ValuationFrameworkPlanner:
         return sum(f.weight for f in self.last_plan)
 
     def calculate_fading_growth_rates(
-        self, historical_fcf_growth: float, company_stage: str, projection_years: Optional[int] = None
+        self,
+        historical_fcf_growth: float,
+        company_stage: str,
+        projection_years: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Calculate fading growth rates using historical growth + YAML guardrails
@@ -435,7 +444,9 @@ class ValuationFrameworkPlanner:
         """
         assumptions = self.GROWTH_ASSUMPTIONS.get(company_stage)
         if not assumptions:
-            logger.warning(f"{self.symbol} - Unknown company stage: {company_stage}, using 'mid_stage_tech'")
+            logger.warning(
+                f"{self.symbol} - Unknown company stage: {company_stage}, using 'mid_stage_tech'"
+            )
             assumptions = self.GROWTH_ASSUMPTIONS["mid_stage_tech"]
 
         # Step 1: Get YAML parameters
@@ -460,13 +471,13 @@ class ValuationFrameworkPlanner:
         # Log the calculation
         if ceiling_applied:
             logger.info(
-                f"{self.symbol} - Fading Growth: {historical_fcf_growth*100:.1f}% (historical) "
-                f"capped at {ceiling*100:.1f}% → fades to {fade_to*100:.1f}% (Y{years})"
+                f"{self.symbol} - Fading Growth: {historical_fcf_growth * 100:.1f}% (historical) "
+                f"capped at {ceiling * 100:.1f}% → fades to {fade_to * 100:.1f}% (Y{years})"
             )
         else:
             logger.info(
-                f"{self.symbol} - Fading Growth: {initial_growth*100:.1f}% (historical) "
-                f"→ fades to {fade_to*100:.1f}% (Y{years}) [no ceiling applied]"
+                f"{self.symbol} - Fading Growth: {initial_growth * 100:.1f}% (historical) "
+                f"→ fades to {fade_to * 100:.1f}% (Y{years}) [no ceiling applied]"
             )
 
         return {
@@ -480,7 +491,9 @@ class ValuationFrameworkPlanner:
             "terminal_growth": assumptions["terminal_growth"],
         }
 
-    def classify_company_stage(self, revenue_growth_pct: float, fcf_margin_pct: float) -> str:
+    def classify_company_stage(
+        self, revenue_growth_pct: float, fcf_margin_pct: float
+    ) -> str:
         """
         Classify company into growth stage for fading DCF assumptions
 
@@ -565,5 +578,5 @@ class ValuationFrameworkPlanner:
             f"sector='{self.sector}', "
             f"industry='{self.industry}', "
             f"market_cap=${self.market_cap_billions:.1f}B, "
-            f"base_rate={self.base_terminal_growth*100:.2f}%)"
+            f"base_rate={self.base_terminal_growth * 100:.2f}%)"
         )

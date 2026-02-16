@@ -5,9 +5,8 @@ Centralized calculation of all technical analysis indicators
 """
 
 import logging
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import datetime
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -45,7 +44,13 @@ class TechnicalIndicatorCalculator:
             column_mapping = {}
             if "open" in enhanced_df.columns and "Open" not in enhanced_df.columns:
                 column_mapping.update(
-                    {"open": "Open", "high": "High", "low": "Low", "close": "Close", "volume": "Volume"}
+                    {
+                        "open": "Open",
+                        "high": "High",
+                        "low": "Low",
+                        "close": "Close",
+                        "volume": "Volume",
+                    }
                 )
                 enhanced_df = enhanced_df.rename(columns=column_mapping)
                 self.logger.debug(f"Mapped lowercase columns to uppercase for {symbol}")
@@ -55,7 +60,9 @@ class TechnicalIndicatorCalculator:
             for col in required_cols:
                 if col not in enhanced_df.columns:
                     enhanced_df[col] = 0.0
-                    self.logger.warning(f"Missing {col} column for {symbol}, filled with 0.0")
+                    self.logger.warning(
+                        f"Missing {col} column for {symbol}, filled with 0.0"
+                    )
 
             # Fill any NaN values
             enhanced_df = enhanced_df.ffill().bfill()
@@ -94,7 +101,9 @@ class TechnicalIndicatorCalculator:
         # Simple Moving Averages
         sma_periods = [5, 10, 12, 20, 26, 50, 100, 200]
         for period in sma_periods:
-            df[f"SMA_{period}"] = df["Close"].rolling(window=period, min_periods=1).mean()
+            df[f"SMA_{period}"] = (
+                df["Close"].rolling(window=period, min_periods=1).mean()
+            )
 
         # Exponential Moving Averages
         # Include Fibonacci-based periods (8, 13, 21) for swing trading
@@ -104,8 +113,12 @@ class TechnicalIndicatorCalculator:
 
         # EMA Trend indicators (for quick reference)
         df["EMA_8_21_Trend"] = np.where(df["EMA_8"] > df["EMA_21"], 1, -1)  # Short-term
-        df["EMA_12_26_Trend"] = np.where(df["EMA_12"] > df["EMA_26"], 1, -1)  # Medium-term (MACD)
-        df["EMA_50_200_Trend"] = np.where(df["EMA_50"] > df["EMA_200"], 1, -1)  # Long-term
+        df["EMA_12_26_Trend"] = np.where(
+            df["EMA_12"] > df["EMA_26"], 1, -1
+        )  # Medium-term (MACD)
+        df["EMA_50_200_Trend"] = np.where(
+            df["EMA_50"] > df["EMA_200"], 1, -1
+        )  # Long-term
 
     def _calculate_momentum_indicators(self, df: pd.DataFrame):
         """Calculate momentum-based indicators"""
@@ -147,8 +160,12 @@ class TechnicalIndicatorCalculator:
             df[f"BB_Upper_{period}"] = sma + (std * 2)
             df[f"BB_Middle_{period}"] = sma
             df[f"BB_Lower_{period}"] = sma - (std * 2)
-            df[f"BB_Width_{period}"] = df[f"BB_Upper_{period}"] - df[f"BB_Lower_{period}"]
-            df[f"BB_Position_{period}"] = (df["Close"] - df[f"BB_Lower_{period}"]) / df[f"BB_Width_{period}"]
+            df[f"BB_Width_{period}"] = (
+                df[f"BB_Upper_{period}"] - df[f"BB_Lower_{period}"]
+            )
+            df[f"BB_Position_{period}"] = (df["Close"] - df[f"BB_Lower_{period}"]) / df[
+                f"BB_Width_{period}"
+            ]
 
         # Simplified column names for backward compatibility
         df["BB_Upper"] = df["BB_Upper_20"]
@@ -182,7 +199,11 @@ class TechnicalIndicatorCalculator:
         df["OBV_Histogram"] = df["OBV"] - df["OBV_Signal"]
 
         # OBV Trend (1 = bullish, -1 = bearish, 0 = neutral)
-        df["OBV_Trend"] = np.where(df["AOBV_20"] > df["AOBV_50"], 1, np.where(df["AOBV_20"] < df["AOBV_50"], -1, 0))
+        df["OBV_Trend"] = np.where(
+            df["AOBV_20"] > df["AOBV_50"],
+            1,
+            np.where(df["AOBV_20"] < df["AOBV_50"], -1, 0),
+        )
 
         # OBV Rate of Change (momentum of OBV)
         df["OBV_ROC_10"] = df["OBV"].pct_change(periods=10) * 100
@@ -204,7 +225,9 @@ class TechnicalIndicatorCalculator:
 
         # Volume trend indicator (1 = increasing, -1 = decreasing)
         df["Volume_Trend"] = np.where(
-            df["Volume_SMA_20"] > df["Volume_SMA_50"], 1, np.where(df["Volume_SMA_20"] < df["Volume_SMA_50"], -1, 0)
+            df["Volume_SMA_20"] > df["Volume_SMA_50"],
+            1,
+            np.where(df["Volume_SMA_20"] < df["Volume_SMA_50"], -1, 0),
         )
 
     def _calculate_rsi(self, prices: pd.Series, period: int = 14) -> pd.Series:
@@ -221,7 +244,9 @@ class TechnicalIndicatorCalculator:
         """Calculate Stochastic Oscillator"""
         low_min = df["Low"].rolling(window=k_period, min_periods=1).min()
         high_max = df["High"].rolling(window=k_period, min_periods=1).max()
-        stoch_k = 100 * (df["Close"] - low_min) / (high_max - low_min).replace(0, np.inf)
+        stoch_k = (
+            100 * (df["Close"] - low_min) / (high_max - low_min).replace(0, np.inf)
+        )
         stoch_d = stoch_k.rolling(window=d_period, min_periods=1).mean()
         return stoch_k, stoch_d
 
@@ -237,13 +262,23 @@ class TechnicalIndicatorCalculator:
         raw_money_flow = typical_price * df["Volume"]
 
         money_flow_diff = typical_price.diff()
-        positive_flow = raw_money_flow.where(money_flow_diff > 0, 0).rolling(window=period, min_periods=1).sum()
-        negative_flow = raw_money_flow.where(money_flow_diff < 0, 0).rolling(window=period, min_periods=1).sum()
+        positive_flow = (
+            raw_money_flow.where(money_flow_diff > 0, 0)
+            .rolling(window=period, min_periods=1)
+            .sum()
+        )
+        negative_flow = (
+            raw_money_flow.where(money_flow_diff < 0, 0)
+            .rolling(window=period, min_periods=1)
+            .sum()
+        )
 
         money_ratio = positive_flow / negative_flow.replace(0, np.inf)
         return 100 - (100 / (1 + money_ratio))
 
-    def _calculate_adx(self, df: pd.DataFrame, period: int = 14) -> Tuple[pd.Series, pd.Series, pd.Series]:
+    def _calculate_adx(
+        self, df: pd.DataFrame, period: int = 14
+    ) -> Tuple[pd.Series, pd.Series, pd.Series]:
         """
         Calculate Average Directional Index (ADX) and Directional Indicators.
 
@@ -323,7 +358,9 @@ class TechnicalIndicatorCalculator:
 
     def _calculate_ad(self, df: pd.DataFrame) -> pd.Series:
         """Calculate Accumulation/Distribution Line"""
-        clv = ((df["Close"] - df["Low"]) - (df["High"] - df["Close"])) / (df["High"] - df["Low"]).replace(0, np.inf)
+        clv = ((df["Close"] - df["Low"]) - (df["High"] - df["Close"])) / (
+            df["High"] - df["Low"]
+        ).replace(0, np.inf)
         ad = (clv * df["Volume"]).cumsum()
         return ad.fillna(0)
 
@@ -338,7 +375,9 @@ class TechnicalIndicatorCalculator:
         periods = [20, 50, 100, 200]
 
         for period in periods:
-            df[f"High_{period}d"] = df["High"].rolling(window=period, min_periods=1).max()
+            df[f"High_{period}d"] = (
+                df["High"].rolling(window=period, min_periods=1).max()
+            )
             df[f"Low_{period}d"] = df["Low"].rolling(window=period, min_periods=1).min()
 
         # Calculate Fibonacci retracement levels based on 52-week high/low
@@ -375,11 +414,21 @@ class TechnicalIndicatorCalculator:
 
         # Simple support/resistance based on recent highs/lows
         df["Support_1"] = recent_data["Low"].min()
-        df["Support_2"] = recent_data["Low"].nsmallest(2).iloc[-1] if len(recent_data) > 1 else df["Support_1"]
+        df["Support_2"] = (
+            recent_data["Low"].nsmallest(2).iloc[-1]
+            if len(recent_data) > 1
+            else df["Support_1"]
+        )
         df["Resistance_1"] = recent_data["High"].max()
-        df["Resistance_2"] = recent_data["High"].nlargest(2).iloc[-1] if len(recent_data) > 1 else df["Resistance_1"]
+        df["Resistance_2"] = (
+            recent_data["High"].nlargest(2).iloc[-1]
+            if len(recent_data) > 1
+            else df["Resistance_1"]
+        )
 
-    def extract_recent_data_for_llm(self, enhanced_df: pd.DataFrame, days: int = 30) -> pd.DataFrame:
+    def extract_recent_data_for_llm(
+        self, enhanced_df: pd.DataFrame, days: int = 30
+    ) -> pd.DataFrame:
         """
         Extract recent N days from enhanced DataFrame for LLM analysis
         All indicators are already calculated on the full dataset

@@ -28,9 +28,15 @@ def mock_synthesizer():
     mock = MagicMock(spec=InvestmentSynthesizer)
 
     # Bind the real methods
-    mock._determine_final_recommendation = InvestmentSynthesizer._determine_final_recommendation.__get__(mock)
-    mock._calculate_price_target = InvestmentSynthesizer._calculate_price_target.__get__(mock)
-    mock._extract_position_size = InvestmentSynthesizer._extract_position_size.__get__(mock)
+    mock._determine_final_recommendation = (
+        InvestmentSynthesizer._determine_final_recommendation.__get__(mock)
+    )
+    mock._calculate_price_target = (
+        InvestmentSynthesizer._calculate_price_target.__get__(mock)
+    )
+    mock._extract_position_size = InvestmentSynthesizer._extract_position_size.__get__(
+        mock
+    )
     mock._extract_catalysts = InvestmentSynthesizer._extract_catalysts.__get__(mock)
 
     # Mock logger
@@ -44,7 +50,12 @@ class TestDetermineFinalRecommendation:
 
     def test_returns_investment_recommendation_format(self, mock_synthesizer):
         """Should extract from investment_recommendation structure."""
-        ai_rec = {"investment_recommendation": {"recommendation": "BUY", "confidence_level": "HIGH"}}
+        ai_rec = {
+            "investment_recommendation": {
+                "recommendation": "BUY",
+                "confidence_level": "HIGH",
+            }
+        }
         result = mock_synthesizer._determine_final_recommendation(7.0, ai_rec, 0.8)
 
         assert result["recommendation"] == "BUY"
@@ -68,7 +79,12 @@ class TestDetermineFinalRecommendation:
 
     def test_downgrades_strong_rec_on_low_data_quality(self, mock_synthesizer):
         """Should downgrade STRONG recommendations on low data quality."""
-        ai_rec = {"investment_recommendation": {"recommendation": "STRONG BUY", "confidence_level": "HIGH"}}
+        ai_rec = {
+            "investment_recommendation": {
+                "recommendation": "STRONG BUY",
+                "confidence_level": "HIGH",
+            }
+        }
         result = mock_synthesizer._determine_final_recommendation(8.0, ai_rec, 0.3)
 
         # Low data quality (<0.5) should downgrade STRONG BUY to BUY
@@ -91,7 +107,12 @@ class TestDetermineFinalRecommendation:
 
     def test_adjusts_to_hold_on_neutral_score(self, mock_synthesizer):
         """Should adjust STRONG to HOLD when score is 4-6."""
-        ai_rec = {"investment_recommendation": {"recommendation": "STRONG BUY", "confidence_level": "HIGH"}}
+        ai_rec = {
+            "investment_recommendation": {
+                "recommendation": "STRONG BUY",
+                "confidence_level": "HIGH",
+            }
+        }
         result = mock_synthesizer._determine_final_recommendation(5.0, ai_rec, 0.8)
 
         assert result["recommendation"] == "HOLD"
@@ -108,7 +129,9 @@ class TestCalculatePriceTarget:
 
     def test_returns_structured_target_price(self, mock_synthesizer):
         """Should return target price from structured recommendation."""
-        ai_rec = {"investment_recommendation": {"target_price": {"12_month_target": 150.0}}}
+        ai_rec = {
+            "investment_recommendation": {"target_price": {"12_month_target": 150.0}}
+        }
         result = mock_synthesizer._calculate_price_target("AAPL", {}, ai_rec, 130.0)
 
         assert result == 150.0
@@ -166,21 +189,33 @@ class TestExtractPositionSize:
 
     def test_returns_large_for_high_weight(self, mock_synthesizer):
         """Should return LARGE for weight >= 5%."""
-        ai_rec = {"investment_recommendation": {"position_sizing": {"recommended_weight": 0.06}}}
+        ai_rec = {
+            "investment_recommendation": {
+                "position_sizing": {"recommended_weight": 0.06}
+            }
+        }
         result = mock_synthesizer._extract_position_size(ai_rec)
 
         assert result == "LARGE"
 
     def test_returns_moderate_for_medium_weight(self, mock_synthesizer):
         """Should return MODERATE for 3-5% weight."""
-        ai_rec = {"investment_recommendation": {"position_sizing": {"recommended_weight": 0.04}}}
+        ai_rec = {
+            "investment_recommendation": {
+                "position_sizing": {"recommended_weight": 0.04}
+            }
+        }
         result = mock_synthesizer._extract_position_size(ai_rec)
 
         assert result == "MODERATE"
 
     def test_returns_small_for_low_weight(self, mock_synthesizer):
         """Should return SMALL for weight < 3%."""
-        ai_rec = {"investment_recommendation": {"position_sizing": {"recommended_weight": 0.02}}}
+        ai_rec = {
+            "investment_recommendation": {
+                "position_sizing": {"recommended_weight": 0.02}
+            }
+        }
         result = mock_synthesizer._extract_position_size(ai_rec)
 
         assert result == "SMALL"

@@ -109,11 +109,11 @@ Signal Integration:
             config: Optional investigator config object.
         """
         super().__init__(config)
-        self._signal_integrator = None
-        self._credit_risk_tool = None
-        self._insider_tool = None
-        self._short_interest_tool = None
-        self._market_regime_tool = None
+        self._signal_integrator: Optional[Any] = None
+        self._credit_risk_tool: Optional[Any] = None
+        self._insider_tool: Optional[Any] = None
+        self._short_interest_tool: Optional[Any] = None
+        self._market_regime_tool: Optional[Any] = None
 
     async def initialize(self) -> None:
         """Initialize valuation signal services."""
@@ -132,7 +132,7 @@ Signal Integration:
 
     async def execute(
         self,
-        _exec_ctx: Dict[str, Any],
+        _exec_ctx: Optional[Dict[str, Any]] = None,
         action: str = "integrate",
         symbol: Optional[str] = None,
         base_fair_value: Optional[float] = None,
@@ -162,7 +162,9 @@ Signal Integration:
             action = action.lower().strip()
 
             if action == "integrate":
-                return await self._integrate_signals(symbol, base_fair_value, current_price, **kwargs)
+                return await self._integrate_signals(
+                    symbol, base_fair_value, current_price, **kwargs
+                )
 
             elif action == "credit_risk":
                 return await self._get_credit_risk_signal(symbol, **kwargs)
@@ -177,33 +179,45 @@ Signal Integration:
                 return await self._get_market_regime_adjustment(**kwargs)
 
             else:
-                return ToolResult.error_result(
+                return ToolResult.create_failure(
                     f"Unknown action: {action}. Valid actions: "
                     "integrate, credit_risk, insider, short_interest, market_regime"
                 )
 
         except Exception as e:
             logger.error(f"ValuationSignalsTool execute error: {e}")
-            return ToolResult.error_result(
-                f"Valuation signal query failed: {str(e)}", metadata={"action": action, "symbol": symbol}
+            return ToolResult.create_failure(
+                f"Valuation signal query failed: {str(e)}",
+                metadata={"action": action, "symbol": symbol},
             )
 
     async def _integrate_signals(
-        self, symbol: Optional[str], base_fair_value: Optional[float], current_price: Optional[float], **kwargs
+        self,
+        symbol: Optional[str],
+        base_fair_value: Optional[float],
+        current_price: Optional[float],
+        **kwargs,
     ) -> ToolResult:
         """Integrate all signals for adjusted fair value."""
         if not symbol:
-            return ToolResult.error_result("Symbol is required for integration")
+            return ToolResult.create_failure("Symbol is required for integration")
         if base_fair_value is None:
-            return ToolResult.error_result("base_fair_value is required for integration")
+            return ToolResult.create_failure(
+                "base_fair_value is required for integration"
+            )
         if current_price is None:
-            return ToolResult.error_result("current_price is required for integration")
+            return ToolResult.create_failure(
+                "current_price is required for integration"
+            )
 
         # Collect data from all sources
         credit_risk_data = await self._fetch_credit_risk_data(symbol)
         insider_data = await self._fetch_insider_data(symbol)
         short_interest_data = await self._fetch_short_interest_data(symbol)
         market_regime_data = await self._fetch_market_regime_data()
+
+        if self._signal_integrator is None:
+            return ToolResult.create_failure("Signal integrator not available")
 
         # Integrate signals
         result = self._signal_integrator.integrate_signals(
@@ -216,20 +230,24 @@ Signal Integration:
             market_regime_data=market_regime_data,
         )
 
-        return ToolResult.success_result(
-            data=result.to_dict(),
-            warnings=result.warnings if result.warnings else None,
+        return ToolResult.create_success(
+            output=result.to_dict(),
             metadata={
                 "source": "valuation_signal_integrator",
                 "symbol": symbol,
                 "adjustment_pct": result.total_adjustment_pct,
+                "warnings": result.warnings if result.warnings else [],
             },
         )
 
-    async def _get_credit_risk_signal(self, symbol: Optional[str], **kwargs) -> ToolResult:
+    async def _get_credit_risk_signal(
+        self, symbol: Optional[str], **kwargs
+    ) -> ToolResult:
         """Get credit risk signal only."""
         if not symbol:
-            return ToolResult.error_result("Symbol is required for credit risk signal")
+            return ToolResult.create_failure(
+                "Symbol is required for credit risk signal"
+            )
 
         # Use provided data or fetch
         altman_zscore = kwargs.get("altman_zscore")
@@ -237,12 +255,19 @@ Signal Integration:
         piotroski_fscore = kwargs.get("piotroski_fscore")
 
         # If no data provided, try to fetch
-        if altman_zscore is None and beneish_mscore is None and piotroski_fscore is None:
+        if (
+            altman_zscore is None
+            and beneish_mscore is None
+            and piotroski_fscore is None
+        ):
             credit_data = await self._fetch_credit_risk_data(symbol)
             if credit_data:
                 altman_zscore = credit_data.get("altman_zscore")
                 beneish_mscore = credit_data.get("beneish_mscore")
                 piotroski_fscore = credit_data.get("piotroski_fscore")
+
+        if self._signal_integrator is None:
+            return ToolResult.create_failure("Signal integrator not available")
 
         signal = self._signal_integrator.calculate_credit_risk_signal(
             altman_zscore=altman_zscore,
@@ -256,20 +281,20 @@ Signal Integration:
         if signal.distress_tier.value in ["distressed", "severe_distress"]:
             warnings.append(f"Company in {signal.distress_tier.value} tier")
 
-        return ToolResult.success_result(
-            data=signal.to_dict(),
-            warnings=warnings if warnings else None,
+        return ToolResult.create_success(
+            output=signal.to_dict(),
             metadata={
                 "source": "credit_risk_signal",
                 "symbol": symbol,
                 "distress_tier": signal.distress_tier.value,
+                "warnings": warnings if warnings else [],
             },
         )
 
     async def _get_insider_signal(self, symbol: Optional[str], **kwargs) -> ToolResult:
         """Get insider sentiment signal only."""
         if not symbol:
-            return ToolResult.error_result("Symbol is required for insider signal")
+            return ToolResult.create_failure("Symbol is required for insider signal")
 
         # Use provided data or fetch
         buy_sell_ratio = kwargs.get("buy_sell_ratio")
@@ -286,6 +311,9 @@ Signal Integration:
                 cluster_detected = insider_data.get("cluster_detected", False)
                 net_shares_change = insider_data.get("net_shares_change")
 
+        if self._signal_integrator is None:
+            return ToolResult.create_failure("Signal integrator not available")
+
         signal = self._signal_integrator.calculate_insider_sentiment_signal(
             buy_sell_ratio=buy_sell_ratio,
             net_shares_change=net_shares_change,
@@ -293,8 +321,8 @@ Signal Integration:
             sentiment_score=sentiment_score,
         )
 
-        return ToolResult.success_result(
-            data=signal.to_dict(),
+        return ToolResult.create_success(
+            output=signal.to_dict(),
             metadata={
                 "source": "insider_sentiment_signal",
                 "symbol": symbol,
@@ -302,10 +330,14 @@ Signal Integration:
             },
         )
 
-    async def _get_short_interest_signal(self, symbol: Optional[str], **kwargs) -> ToolResult:
+    async def _get_short_interest_signal(
+        self, symbol: Optional[str], **kwargs
+    ) -> ToolResult:
         """Get short interest signal only."""
         if not symbol:
-            return ToolResult.error_result("Symbol is required for short interest signal")
+            return ToolResult.create_failure(
+                "Symbol is required for short interest signal"
+            )
 
         # Use provided data or fetch
         short_percent_float = kwargs.get("short_percent_float")
@@ -320,6 +352,9 @@ Signal Integration:
                 days_to_cover = short_data.get("days_to_cover")
                 squeeze_score = short_data.get("squeeze_score")
 
+        if self._signal_integrator is None:
+            return ToolResult.create_failure("Signal integrator not available")
+
         signal = self._signal_integrator.calculate_short_interest_signal(
             short_percent_float=short_percent_float,
             days_to_cover=days_to_cover,
@@ -330,13 +365,13 @@ Signal Integration:
         if signal.warning_flag:
             warnings.append(signal.interpretation)
 
-        return ToolResult.success_result(
-            data=signal.to_dict(),
-            warnings=warnings if warnings else None,
+        return ToolResult.create_success(
+            output=signal.to_dict(),
             metadata={
                 "source": "short_interest_signal",
                 "symbol": symbol,
                 "signal": signal.signal.value,
+                "warnings": warnings if warnings else [],
             },
         )
 
@@ -359,6 +394,9 @@ Signal Integration:
                 volatility_regime = "normal"
                 recession_probability = "low"
 
+        if self._signal_integrator is None:
+            return ToolResult.create_failure("Signal integrator not available")
+
         signal = self._signal_integrator.calculate_market_regime_adjustment(
             credit_cycle_phase=credit_cycle_phase,
             volatility_regime=volatility_regime,
@@ -368,8 +406,8 @@ Signal Integration:
             yield_curve_spread_bps=kwargs.get("yield_curve_spread_bps"),
         )
 
-        return ToolResult.success_result(
-            data=signal.to_dict(),
+        return ToolResult.create_success(
+            output=signal.to_dict(),
             metadata={
                 "source": "market_regime_adjustment",
                 "phase": signal.credit_cycle_phase,
@@ -386,11 +424,13 @@ Signal Integration:
             await tool.initialize()
             result = await tool.execute(action="all", symbol=symbol)
 
-            if result.success and result.data:
+            if result.success and result.output:
                 return {
-                    "altman_zscore": result.data.get("altman_z", {}).get("zscore"),
-                    "beneish_mscore": result.data.get("beneish_m", {}).get("mscore"),
-                    "piotroski_fscore": result.data.get("piotroski_f", {}).get("fscore"),
+                    "altman_zscore": result.output.get("altman_z", {}).get("zscore"),
+                    "beneish_mscore": result.output.get("beneish_m", {}).get("mscore"),
+                    "piotroski_fscore": result.output.get("piotroski_f", {}).get(
+                        "fscore"
+                    ),
                 }
         except Exception as e:
             logger.debug(f"Could not fetch credit risk data for {symbol}: {e}")
@@ -405,8 +445,8 @@ Signal Integration:
             await tool.initialize()
             result = await tool.execute(action="sentiment", symbol=symbol, days=90)
 
-            if result.success and result.data:
-                sentiment = result.data.get("sentiment", {})
+            if result.success and result.output:
+                sentiment = result.output.get("sentiment", {})
                 return {
                     "sentiment_score": sentiment.get("score"),
                     "buy_sell_ratio": sentiment.get("buy_sell_ratio"),
@@ -426,11 +466,11 @@ Signal Integration:
             await tool.initialize()
             result = await tool.execute(action="squeeze", symbol=symbol)
 
-            if result.success and result.data:
+            if result.success and result.output:
                 return {
-                    "short_percent_float": result.data.get("short_percent_float"),
-                    "days_to_cover": result.data.get("days_to_cover"),
-                    "squeeze_score": result.data.get("squeeze_score"),
+                    "short_percent_float": result.output.get("short_percent_float"),
+                    "days_to_cover": result.output.get("days_to_cover"),
+                    "squeeze_score": result.output.get("squeeze_score"),
                 }
         except Exception as e:
             logger.debug(f"Could not fetch short interest data for {symbol}: {e}")
@@ -445,14 +485,22 @@ Signal Integration:
             await tool.initialize()
             result = await tool.execute(action="summary")
 
-            if result.success and result.data:
-                classifications = result.data.get("classifications", {})
-                indicators = result.data.get("indicators", {})
+            if result.success and result.output:
+                classifications = result.output.get("classifications", {})
+                indicators = result.output.get("indicators", {})
                 return {
-                    "credit_cycle_phase": classifications.get("credit_cycle", "mid_cycle"),
-                    "volatility_regime": classifications.get("volatility_regime", "normal"),
-                    "recession_probability": classifications.get("recession_probability", "low"),
-                    "fed_policy_stance": classifications.get("fed_policy_stance", "neutral"),
+                    "credit_cycle_phase": classifications.get(
+                        "credit_cycle", "mid_cycle"
+                    ),
+                    "volatility_regime": classifications.get(
+                        "volatility_regime", "normal"
+                    ),
+                    "recession_probability": classifications.get(
+                        "recession_probability", "low"
+                    ),
+                    "fed_policy_stance": classifications.get(
+                        "fed_policy_stance", "neutral"
+                    ),
                     "yield_curve_spread_bps": indicators.get("yield_10y_2y_spread_bps"),
                 }
         except Exception as e:
@@ -466,13 +514,25 @@ Signal Integration:
             "properties": {
                 "action": {
                     "type": "string",
-                    "enum": ["integrate", "credit_risk", "insider", "short_interest", "market_regime"],
+                    "enum": [
+                        "integrate",
+                        "credit_risk",
+                        "insider",
+                        "short_interest",
+                        "market_regime",
+                    ],
                     "description": "Type of signal query",
                     "default": "integrate",
                 },
                 "symbol": {"type": "string", "description": "Stock symbol"},
-                "base_fair_value": {"type": "number", "description": "Base fair value from valuation models"},
-                "current_price": {"type": "number", "description": "Current stock price"},
+                "base_fair_value": {
+                    "type": "number",
+                    "description": "Base fair value from valuation models",
+                },
+                "current_price": {
+                    "type": "number",
+                    "description": "Current stock price",
+                },
             },
             "required": [],
         }

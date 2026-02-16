@@ -17,11 +17,8 @@ from typing import Any, Callable, Dict, List, Optional, Set, Type
 from .base import (
     CompositeDataSource,
     DataCategory,
-    DataFrequency,
     DataResult,
     DataSource,
-    MacroDataSource,
-    SourceMetadata,
 )
 
 logger = logging.getLogger(__name__)
@@ -114,10 +111,14 @@ class DataSourceRegistry:
         self._initialized = True
         self._sources: Dict[str, DataSource] = {}
         self._configs: Dict[str, SourceConfig] = {}
-        self._category_index: Dict[DataCategory, Set[str]] = {cat: set() for cat in DataCategory}
+        self._category_index: Dict[DataCategory, Set[str]] = {
+            cat: set() for cat in DataCategory
+        }
         self._logger = logging.getLogger("DataSourceRegistry")
 
-    def register(self, name: str, source: DataSource, config: Optional[SourceConfig] = None) -> None:
+    def register(
+        self, name: str, source: DataSource, config: Optional[SourceConfig] = None
+    ) -> None:
         """Register a data source instance"""
         self._sources[name] = source
         self._configs[name] = config or SourceConfig()
@@ -125,7 +126,11 @@ class DataSourceRegistry:
         self._logger.info(f"Registered source: {name} ({source.category.name})")
 
     def register_class(
-        self, name: str, source_class: Type[DataSource], config: Optional[SourceConfig] = None, **kwargs
+        self,
+        name: str,
+        source_class: Type[DataSource],
+        config: Optional[SourceConfig] = None,
+        **kwargs,
     ) -> None:
         """Register a data source class (lazy instantiation)"""
         _SOURCE_REGISTRY[name] = source_class
@@ -159,9 +164,15 @@ class DataSourceRegistry:
 
     def get_enabled(self) -> List[DataSource]:
         """Get all enabled sources"""
-        return [self.get(name) for name, config in self._configs.items() if config.enabled and self.get(name)]
+        return [
+            self.get(name)
+            for name, config in self._configs.items()
+            if config.enabled and self.get(name)
+        ]
 
-    def get_by_priority(self, category: Optional[DataCategory] = None) -> List[DataSource]:
+    def get_by_priority(
+        self, category: Optional[DataCategory] = None
+    ) -> List[DataSource]:
         """Get sources sorted by priority"""
         sources = []
         for name, config in self._configs.items():
@@ -182,14 +193,20 @@ class DataSourceRegistry:
         if not sources:
             raise ValueError(f"No valid sources found: {source_names}")
 
-        composite = CompositeDataSource(name=name, category=sources[0].category, sources=sources, strategy=strategy)
+        composite = CompositeDataSource(
+            name=name, category=sources[0].category, sources=sources, strategy=strategy
+        )
         self.register(name, composite)
         return composite
 
     def list_sources(self) -> List[Dict[str, Any]]:
         """List all registered sources with metadata"""
         result = []
-        all_names = set(self._sources.keys()) | set(_SOURCE_REGISTRY.keys()) | set(_SOURCE_FACTORIES.keys())
+        all_names = (
+            set(self._sources.keys())
+            | set(_SOURCE_REGISTRY.keys())
+            | set(_SOURCE_FACTORIES.keys())
+        )
 
         for name in sorted(all_names):
             source = self.get(name)
@@ -202,7 +219,9 @@ class DataSourceRegistry:
                         "frequency": source.frequency.name,
                         "enabled": config.enabled,
                         "priority": config.priority,
-                        "metadata": source.metadata.__dict__ if hasattr(source, "metadata") else {},
+                        "metadata": source.metadata.__dict__
+                        if hasattr(source, "metadata")
+                        else {},
                     }
                 )
         return result
@@ -229,11 +248,15 @@ def get_source(name: str) -> Optional[DataSource]:
     return get_registry().get(name)
 
 
-def fetch_data(source_name: str, symbol: str, as_of_date: Optional[date] = None) -> DataResult:
+def fetch_data(
+    source_name: str, symbol: str, as_of_date: Optional[date] = None
+) -> DataResult:
     """Convenience function to fetch data from a named source"""
     source = get_source(source_name)
     if not source:
-        return DataResult(success=False, error=f"Source not found: {source_name}", source=source_name)
+        return DataResult(
+            success=False, error=f"Source not found: {source_name}", source=source_name
+        )
     return source.fetch(symbol, as_of_date)
 
 

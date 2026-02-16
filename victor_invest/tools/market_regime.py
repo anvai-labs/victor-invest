@@ -105,9 +105,9 @@ Investment Signals by Regime:
             config: Optional investigator config object.
         """
         super().__init__(config)
-        self._yield_curve_analyzer = None
-        self._credit_cycle_analyzer = None
-        self._recession_indicator = None
+        self._yield_curve_analyzer: Optional[Any] = None
+        self._credit_cycle_analyzer: Optional[Any] = None
+        self._recession_indicator: Optional[Any] = None
 
     async def initialize(self) -> None:
         """Initialize market regime analyzers."""
@@ -129,7 +129,12 @@ Investment Signals by Regime:
             logger.error(f"Failed to initialize MarketRegimeTool: {e}")
             raise
 
-    async def execute(self, _exec_ctx: Dict[str, Any], action: str = "summary", **kwargs) -> ToolResult:
+    async def execute(
+        self,
+        _exec_ctx: Optional[Dict[str, Any]] = None,
+        action: str = "summary",
+        **kwargs,
+    ) -> ToolResult:
         """Execute market regime query.
 
         Args:
@@ -169,21 +174,30 @@ Investment Signals by Regime:
                 return await self._get_recommendations()
 
             else:
-                return ToolResult.error_result(
+                return ToolResult.create_failure(
                     f"Unknown action: {action}. Valid actions: "
                     "summary, yield_curve, credit_cycle, recession, volatility, recommendations"
                 )
 
         except Exception as e:
             logger.error(f"MarketRegimeTool execute error: {e}")
-            return ToolResult.error_result(f"Market regime query failed: {str(e)}", metadata={"action": action})
+            return ToolResult.create_failure(
+                f"Market regime query failed: {str(e)}", metadata={"action": action}
+            )
 
     async def _get_summary(self) -> ToolResult:
         """Get comprehensive market regime summary."""
+        if self._yield_curve_analyzer is None:
+            return ToolResult.create_failure("Yield curve analyzer not available")
+        if self._credit_cycle_analyzer is None:
+            return ToolResult.create_failure("Credit cycle analyzer not available")
+        if self._recession_indicator is None:
+            return ToolResult.create_failure("Recession indicator not available")
+
         # Get all analyses
         yc_analysis = await self._yield_curve_analyzer.analyze()
         cc_analysis = await self._credit_cycle_analyzer.analyze()
-        recession_assessment = await self._recession_indicator.assess()
+        await self._recession_indicator.assess()
 
         # Combine into comprehensive summary
         summary = {
@@ -222,67 +236,77 @@ Investment Signals by Regime:
 
         warnings = yc_analysis.warnings + cc_analysis.warnings
 
-        return ToolResult.success_result(
-            data=summary,
-            warnings=warnings if warnings else None,
+        return ToolResult.create_success(
+            output=summary,
             metadata={
                 "source": "market_regime_services",
                 "credit_cycle": cc_analysis.phase.value,
                 "signal": overall_signal["level"],
+                "warnings": warnings if warnings else [],
             },
         )
 
     async def _get_yield_curve(self) -> ToolResult:
         """Get yield curve analysis."""
+        if self._yield_curve_analyzer is None:
+            return ToolResult.create_failure("Yield curve analyzer not available")
         analysis = await self._yield_curve_analyzer.analyze()
 
-        return ToolResult.success_result(
-            data=analysis.to_dict(),
-            warnings=analysis.warnings if analysis.warnings else None,
+        return ToolResult.create_success(
+            output=analysis.to_dict(),
             metadata={
                 "source": "treasury_yield_curve",
                 "shape": analysis.shape.value,
+                "warnings": analysis.warnings if analysis.warnings else [],
             },
         )
 
     async def _get_credit_cycle(self) -> ToolResult:
         """Get credit cycle analysis."""
+        if self._credit_cycle_analyzer is None:
+            return ToolResult.create_failure("Credit cycle analyzer not available")
         analysis = await self._credit_cycle_analyzer.analyze()
 
-        return ToolResult.success_result(
-            data=analysis.to_dict(),
-            warnings=analysis.warnings if analysis.warnings else None,
+        return ToolResult.create_success(
+            output=analysis.to_dict(),
             metadata={
                 "source": "credit_cycle_analyzer",
                 "phase": analysis.phase.value,
                 "confidence": analysis.confidence,
+                "warnings": analysis.warnings if analysis.warnings else [],
             },
         )
 
     async def _get_recession(self) -> ToolResult:
         """Get recession probability assessment."""
+        if self._recession_indicator is None:
+            return ToolResult.create_failure("Recession indicator not available")
         assessment = await self._recession_indicator.assess()
 
-        return ToolResult.success_result(
-            data=assessment.to_dict(),
-            warnings=assessment.warnings if assessment.warnings else None,
+        return ToolResult.create_success(
+            output=assessment.to_dict(),
             metadata={
                 "source": "recession_indicator",
                 "phase": assessment.phase.value,
                 "probability": assessment.probability_pct,
+                "warnings": assessment.warnings if assessment.warnings else [],
             },
         )
 
     async def _get_volatility(self) -> ToolResult:
         """Get volatility regime analysis."""
+        if self._credit_cycle_analyzer is None:
+            return ToolResult.create_failure("Credit cycle analyzer not available")
         cc_analysis = await self._credit_cycle_analyzer.analyze()
 
-        return ToolResult.success_result(
-            data={
+        return ToolResult.create_success(
+            output={
                 "date": str(cc_analysis.date),
                 "vix_level": cc_analysis.vix_level,
                 "volatility_regime": cc_analysis.volatility_regime.value,
-                "interpretation": self._get_volatility_interpretation(cc_analysis.volatility_regime),
+                "interpretation": self._get_volatility_interpretation(
+                    cc_analysis.volatility_regime
+                ),
             },
             metadata={
                 "source": "vix_analysis",
@@ -292,6 +316,10 @@ Investment Signals by Regime:
 
     async def _get_recommendations(self) -> ToolResult:
         """Get investment recommendations based on regime."""
+        if self._credit_cycle_analyzer is None:
+            return ToolResult.create_failure("Credit cycle analyzer not available")
+        if self._yield_curve_analyzer is None:
+            return ToolResult.create_failure("Yield curve analyzer not available")
         cc_analysis = await self._credit_cycle_analyzer.analyze()
         yc_analysis = await self._yield_curve_analyzer.analyze()
 
@@ -308,8 +336,8 @@ Investment Signals by Regime:
             "interpretation": cc_analysis.interpretation,
         }
 
-        return ToolResult.success_result(
-            data=recommendations,
+        return ToolResult.create_success(
+            output=recommendations,
             metadata={
                 "source": "market_regime_services",
                 "phase": cc_analysis.phase.value,
@@ -377,7 +405,9 @@ Investment Signals by Regime:
 
     def _get_duration_guidance(self, shape) -> str:
         """Get fixed income duration guidance."""
-        from investigator.domain.services.market_regime.yield_curve_analyzer import YieldCurveShape
+        from investigator.domain.services.market_regime.yield_curve_analyzer import (
+            YieldCurveShape,
+        )
 
         guidance = {
             YieldCurveShape.STEEP: "Extend duration - rates likely to fall",
@@ -395,7 +425,14 @@ Investment Signals by Regime:
             "properties": {
                 "action": {
                     "type": "string",
-                    "enum": ["summary", "yield_curve", "credit_cycle", "recession", "volatility", "recommendations"],
+                    "enum": [
+                        "summary",
+                        "yield_curve",
+                        "credit_cycle",
+                        "recession",
+                        "volatility",
+                        "recommendations",
+                    ],
                     "description": "Type of market regime query",
                     "default": "summary",
                 }

@@ -36,7 +36,6 @@ Usage:
 """
 
 import asyncio
-import hashlib
 import io
 import json
 import logging
@@ -46,7 +45,7 @@ import ssl
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 import aiohttp
 import yaml
@@ -114,7 +113,9 @@ class DataSourceRegistry:
                 with open(self.registry_path) as f:
                     self._config = yaml.safe_load(f) or {}
                 self._load_time = datetime.now()
-                logger.info(f"Loaded data sources registry: {len(self._config)} sources")
+                logger.info(
+                    f"Loaded data sources registry: {len(self._config)} sources"
+                )
             else:
                 logger.warning(f"Registry not found: {self.registry_path}")
                 self._config = {}
@@ -218,13 +219,16 @@ class ResilientParser:
             # Find date column
             date_col = (
                 ResilientParser._find_column(
-                    df.columns, hints.get("date_col_patterns", ["date", "month", "period", "time"])
+                    df.columns,
+                    hints.get("date_col_patterns", ["date", "month", "period", "time"]),
                 )
                 or df.columns[0]
             )
 
             # Find value column(s)
-            value_col_patterns = hints.get("value_col_patterns", ["value", "index", "rate"])
+            value_col_patterns = hints.get(
+                "value_col_patterns", ["value", "index", "rate"]
+            )
             value_col = ResilientParser._find_column(df.columns, value_col_patterns)
             if value_col is None and len(df.columns) > 1:
                 value_col = df.columns[1]
@@ -318,12 +322,20 @@ class ResilientParser:
                 if isinstance(latest, list):
                     # Array format: [date, open, high, low, close] (CBOE style)
                     try:
-                        obs_date = datetime.strptime(str(latest[date_idx]), "%Y-%m-%d").date()
+                        obs_date = datetime.strptime(
+                            str(latest[date_idx]), "%Y-%m-%d"
+                        ).date()
                     except Exception:
                         obs_date = date.today()
 
-                    value = float(latest[value_idx]) if value_idx < len(latest) else None
-                    prev_value = float(prev[value_idx]) if prev and value_idx < len(prev) else None
+                    value = (
+                        float(latest[value_idx]) if value_idx < len(latest) else None
+                    )
+                    prev_value = (
+                        float(prev[value_idx])
+                        if prev and value_idx < len(prev)
+                        else None
+                    )
 
                     # Include OHLCV for market data
                     ohlcv = None
@@ -352,7 +364,9 @@ class ResilientParser:
                     obs_date = date.today()
                     if "date" in latest:
                         try:
-                            obs_date = datetime.strptime(str(latest["date"]), "%Y-%m-%d").date()
+                            obs_date = datetime.strptime(
+                                str(latest["date"]), "%Y-%m-%d"
+                            ).date()
                         except Exception:
                             pass
 
@@ -515,7 +529,9 @@ class DataFetcher:
         # Get configuration
         config = self.registry.get_source(source_id, indicator_id)
         if not config:
-            return FetchResult(success=False, error=f"Unknown source: {source_id}/{indicator_id}")
+            return FetchResult(
+                success=False, error=f"Unknown source: {source_id}/{indicator_id}"
+            )
 
         urls = self.registry.get_urls(source_id, indicator_id)
         fred_series = self.registry.get_fred_series(source_id, indicator_id)
@@ -533,10 +549,14 @@ class DataFetcher:
 
         # Try URLs in order
         for idx, url in enumerate(urls):
-            result = await self._fetch_from_url(url, parser_type, hints, source_id, indicator_id, idx)
+            result = await self._fetch_from_url(
+                url, parser_type, hints, source_id, indicator_id, idx
+            )
             if result.success:
                 self._set_cache(source_id, indicator_id, result)
-                self._update_health(source_id, indicator_id, True, using_fallback=(idx > 0))
+                self._update_health(
+                    source_id, indicator_id, True, using_fallback=(idx > 0)
+                )
                 return result
 
         # Try FRED as final fallback
@@ -549,7 +569,10 @@ class DataFetcher:
 
         # All attempts failed
         self._update_health(source_id, indicator_id, False)
-        return FetchResult(success=False, error=f"All fetch attempts failed for {source_id}/{indicator_id}")
+        return FetchResult(
+            success=False,
+            error=f"All fetch attempts failed for {source_id}/{indicator_id}",
+        )
 
     async def _fetch_from_url(
         self,
@@ -566,7 +589,9 @@ class DataFetcher:
 
             async with session.get(url, timeout=30) as response:
                 if response.status != 200:
-                    return FetchResult(success=False, url_used=url, error=f"HTTP {response.status}")
+                    return FetchResult(
+                        success=False, url_used=url, error=f"HTTP {response.status}"
+                    )
 
                 content_type = response.headers.get("Content-Type", "")
 
@@ -589,11 +614,15 @@ class DataFetcher:
                     data = (
                         ResilientParser.parse_excel(content, hints)
                         or ResilientParser.parse_json(content, hints)
-                        or ResilientParser.parse_html(content.decode("utf-8", errors="ignore"), hints)
+                        or ResilientParser.parse_html(
+                            content.decode("utf-8", errors="ignore"), hints
+                        )
                     )
 
                 if data:
-                    source_label = "primary_url" if url_index == 0 else f"fallback_url_{url_index}"
+                    source_label = (
+                        "primary_url" if url_index == 0 else f"fallback_url_{url_index}"
+                    )
                     return FetchResult(
                         success=True,
                         data=data,
@@ -601,7 +630,9 @@ class DataFetcher:
                         url_used=url,
                     )
                 else:
-                    return FetchResult(success=False, url_used=url, error="Parsing failed")
+                    return FetchResult(
+                        success=False, url_used=url, error="Parsing failed"
+                    )
 
         except asyncio.TimeoutError:
             return FetchResult(success=False, url_used=url, error="Timeout")
@@ -627,7 +658,9 @@ class DataFetcher:
                     api_key = os.environ.get("FRED_API_KEY")
 
             if not api_key:
-                return FetchResult(success=False, source="fred", error="FRED API key not available")
+                return FetchResult(
+                    success=False, source="fred", error="FRED API key not available"
+                )
 
             url = (
                 f"https://api.stlouisfed.org/fred/series/observations"
@@ -641,7 +674,11 @@ class DataFetcher:
             session = await self._get_session()
             async with session.get(url, timeout=30) as response:
                 if response.status != 200:
-                    return FetchResult(success=False, source="fred", error=f"FRED HTTP {response.status}")
+                    return FetchResult(
+                        success=False,
+                        source="fred",
+                        error=f"FRED HTTP {response.status}",
+                    )
 
                 data = await response.json()
                 observations = data.get("observations", [])
@@ -663,7 +700,9 @@ class DataFetcher:
                     return FetchResult(
                         success=True,
                         data={
-                            "date": datetime.strptime(latest["date"], "%Y-%m-%d").date(),
+                            "date": datetime.strptime(
+                                latest["date"], "%Y-%m-%d"
+                            ).date(),
                             "value": value,
                             "previous_value": prev_value,
                             "fred_series": series_id,
@@ -672,7 +711,9 @@ class DataFetcher:
                         url_used=f"FRED:{series_id}",
                     )
 
-                return FetchResult(success=False, source="fred", error="No observations")
+                return FetchResult(
+                    success=False, source="fred", error="No observations"
+                )
 
         except Exception as e:
             return FetchResult(success=False, source="fred", error=f"FRED error: {e}")
@@ -722,7 +763,9 @@ class DataFetcher:
         """Generate health report."""
         total = len(self._health_status)
         healthy = sum(1 for s in self._health_status.values() if s.is_healthy)
-        using_fallback = sum(1 for s in self._health_status.values() if s.using_fallback)
+        using_fallback = sum(
+            1 for s in self._health_status.values() if s.using_fallback
+        )
         using_fred = sum(1 for s in self._health_status.values() if s.using_fred)
 
         return {

@@ -19,9 +19,8 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
-import numpy as np
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -269,7 +268,7 @@ class EntryExitEngine:
             if support_resistance
             else self._get_indicator(price_data, "Support_1", indicators)
         )
-        support_2 = (
+        (
             support_resistance.get("support_2")
             if support_resistance
             else self._get_indicator(price_data, "Support_2", indicators)
@@ -281,8 +280,12 @@ class EntryExitEngine:
         )
 
         # Get valuation data
-        fair_value = valuation.get("fair_value", current_price) if valuation else current_price
-        upside_pct = ((fair_value - current_price) / current_price * 100) if fair_value else 0
+        fair_value = (
+            valuation.get("fair_value", current_price) if valuation else current_price
+        )
+        upside_pct = (
+            ((fair_value - current_price) / current_price * 100) if fair_value else 0
+        )
 
         # Default ATR if not available
         if atr is None or atr <= 0:
@@ -302,15 +305,21 @@ class EntryExitEngine:
                     EntrySignal(
                         signal_type=SignalType.OVERSOLD_REVERSAL,
                         price_level=current_price,
-                        confidence=SignalConfidence.HIGH if rsi < 25 else SignalConfidence.MEDIUM,
+                        confidence=SignalConfidence.HIGH
+                        if rsi < 25
+                        else SignalConfidence.MEDIUM,
                         rationale=f"RSI at {rsi:.1f} (oversold) with reversal signal",
-                        risk_reward_ratio=self._calculate_rr(current_price, stop_loss, target),
+                        risk_reward_ratio=self._calculate_rr(
+                            current_price, stop_loss, target
+                        ),
                         stop_loss=stop_loss,
-                        stop_loss_pct=((current_price - stop_loss) / current_price) * 100,
+                        stop_loss_pct=((current_price - stop_loss) / current_price)
+                        * 100,
                         target_price=target,
                         target_pct=((target - current_price) / current_price) * 100,
                         expected_holding_days=20,
-                        volume_confirmation=volume_ratio is not None and volume_ratio > 1.2,
+                        volume_confirmation=volume_ratio is not None
+                        and volume_ratio > 1.2,
                         trend_alignment=trend_bullish,
                     )
                 )
@@ -325,15 +334,21 @@ class EntryExitEngine:
                     EntrySignal(
                         signal_type=SignalType.SUPPORT_BOUNCE,
                         price_level=support_1,
-                        confidence=SignalConfidence.HIGH if distance_to_support < 1.5 else SignalConfidence.MEDIUM,
+                        confidence=SignalConfidence.HIGH
+                        if distance_to_support < 1.5
+                        else SignalConfidence.MEDIUM,
                         rationale=f"Price near support at ${support_1:.2f} ({distance_to_support:.1f}% above)",
-                        risk_reward_ratio=self._calculate_rr(current_price, stop_loss, target),
+                        risk_reward_ratio=self._calculate_rr(
+                            current_price, stop_loss, target
+                        ),
                         stop_loss=stop_loss,
-                        stop_loss_pct=((current_price - stop_loss) / current_price) * 100,
+                        stop_loss_pct=((current_price - stop_loss) / current_price)
+                        * 100,
                         target_price=target,
                         target_pct=((target - current_price) / current_price) * 100,
                         expected_holding_days=30,
-                        volume_confirmation=volume_ratio is not None and volume_ratio > 1.0,
+                        volume_confirmation=volume_ratio is not None
+                        and volume_ratio > 1.0,
                         trend_alignment=trend_bullish,
                     )
                 )
@@ -352,15 +367,21 @@ class EntryExitEngine:
                         EntrySignal(
                             signal_type=SignalType.MOMENTUM,
                             price_level=current_price,
-                            confidence=SignalConfidence.HIGH if macd_hist > 0 else SignalConfidence.MEDIUM,
+                            confidence=SignalConfidence.HIGH
+                            if macd_hist > 0
+                            else SignalConfidence.MEDIUM,
                             rationale=f"MACD bullish crossover (MACD: {macd:.2f}, Signal: {macd_signal:.2f})",
-                            risk_reward_ratio=self._calculate_rr(current_price, stop_loss, target),
+                            risk_reward_ratio=self._calculate_rr(
+                                current_price, stop_loss, target
+                            ),
                             stop_loss=stop_loss,
-                            stop_loss_pct=((current_price - stop_loss) / current_price) * 100,
+                            stop_loss_pct=((current_price - stop_loss) / current_price)
+                            * 100,
                             target_price=target,
                             target_pct=((target - current_price) / current_price) * 100,
                             expected_holding_days=15,
-                            volume_confirmation=volume_ratio is not None and volume_ratio > 1.2,
+                            volume_confirmation=volume_ratio is not None
+                            and volume_ratio > 1.2,
                             trend_alignment=trend_bullish,
                         )
                     )
@@ -380,13 +401,17 @@ class EntryExitEngine:
                             price_level=current_price,
                             confidence=SignalConfidence.HIGH,
                             rationale=f"Golden Cross: 50 SMA (${sma_50:.2f}) crossed above 200 SMA (${sma_200:.2f})",
-                            risk_reward_ratio=self._calculate_rr(current_price, stop_loss, target),
+                            risk_reward_ratio=self._calculate_rr(
+                                current_price, stop_loss, target
+                            ),
                             stop_loss=stop_loss,
-                            stop_loss_pct=((current_price - stop_loss) / current_price) * 100,
+                            stop_loss_pct=((current_price - stop_loss) / current_price)
+                            * 100,
                             target_price=target,
                             target_pct=((target - current_price) / current_price) * 100,
                             expected_holding_days=90,
-                            volume_confirmation=volume_ratio is not None and volume_ratio > 1.0,
+                            volume_confirmation=volume_ratio is not None
+                            and volume_ratio > 1.0,
                             trend_alignment=True,  # Golden cross is bullish by definition
                         )
                     )
@@ -403,31 +428,48 @@ class EntryExitEngine:
                         price_level=current_price,
                         confidence=SignalConfidence.MEDIUM,
                         rationale=f"Price near Bollinger lower band at ${bb_lower:.2f}",
-                        risk_reward_ratio=self._calculate_rr(current_price, stop_loss, target),
+                        risk_reward_ratio=self._calculate_rr(
+                            current_price, stop_loss, target
+                        ),
                         stop_loss=stop_loss,
-                        stop_loss_pct=((current_price - stop_loss) / current_price) * 100,
+                        stop_loss_pct=((current_price - stop_loss) / current_price)
+                        * 100,
                         target_price=target,
                         target_pct=((target - current_price) / current_price) * 100,
                         expected_holding_days=10,
-                        volume_confirmation=volume_ratio is not None and volume_ratio > 1.0,
+                        volume_confirmation=volume_ratio is not None
+                        and volume_ratio > 1.0,
                         trend_alignment=trend_bullish,
                     )
                 )
 
         # 6. Breakout Signal (price breaks above resistance with volume)
         if resistance_1 is not None:
-            if current_price > resistance_1 and volume_ratio is not None and volume_ratio > 1.5:
+            if (
+                current_price > resistance_1
+                and volume_ratio is not None
+                and volume_ratio > 1.5
+            ):
                 stop_loss = resistance_1 * 0.97  # Previous resistance becomes support
-                target = current_price + (resistance_1 - support_1) if support_1 else current_price * 1.10
+                target = (
+                    current_price + (resistance_1 - support_1)
+                    if support_1
+                    else current_price * 1.10
+                )
                 signals.append(
                     EntrySignal(
                         signal_type=SignalType.BREAKOUT,
                         price_level=current_price,
-                        confidence=SignalConfidence.HIGH if volume_ratio > 2.0 else SignalConfidence.MEDIUM,
+                        confidence=SignalConfidence.HIGH
+                        if volume_ratio > 2.0
+                        else SignalConfidence.MEDIUM,
                         rationale=f"Breakout above resistance ${resistance_1:.2f} with {volume_ratio:.1f}x volume",
-                        risk_reward_ratio=self._calculate_rr(current_price, stop_loss, target),
+                        risk_reward_ratio=self._calculate_rr(
+                            current_price, stop_loss, target
+                        ),
                         stop_loss=stop_loss,
-                        stop_loss_pct=((current_price - stop_loss) / current_price) * 100,
+                        stop_loss_pct=((current_price - stop_loss) / current_price)
+                        * 100,
                         target_price=target,
                         target_pct=((target - current_price) / current_price) * 100,
                         expected_holding_days=20,
@@ -444,9 +486,13 @@ class EntryExitEngine:
                 EntrySignal(
                     signal_type=SignalType.MOMENTUM,  # Fundamental momentum
                     price_level=current_price,
-                    confidence=SignalConfidence.HIGH if upside_pct > 25 else SignalConfidence.MEDIUM,
+                    confidence=SignalConfidence.HIGH
+                    if upside_pct > 25
+                    else SignalConfidence.MEDIUM,
                     rationale=f"Trading at ${current_price:.2f} vs fair value ${fair_value:.2f} ({upside_pct:.1f}% upside)",
-                    risk_reward_ratio=self._calculate_rr(current_price, stop_loss, target),
+                    risk_reward_ratio=self._calculate_rr(
+                        current_price, stop_loss, target
+                    ),
                     stop_loss=stop_loss,
                     stop_loss_pct=10.0,
                     target_price=target,
@@ -482,10 +528,13 @@ class EntryExitEngine:
                                 if obv_histogram and obv_histogram > 0
                                 else SignalConfidence.MEDIUM
                             ),
-                            rationale=f"OBV accumulation: AOBV(20) crossed above AOBV(50) - institutional buying",
-                            risk_reward_ratio=self._calculate_rr(current_price, stop_loss, target),
+                            rationale="OBV accumulation: AOBV(20) crossed above AOBV(50) - institutional buying",
+                            risk_reward_ratio=self._calculate_rr(
+                                current_price, stop_loss, target
+                            ),
                             stop_loss=stop_loss,
-                            stop_loss_pct=((current_price - stop_loss) / current_price) * 100,
+                            stop_loss_pct=((current_price - stop_loss) / current_price)
+                            * 100,
                             target_price=target,
                             target_pct=((target - current_price) / current_price) * 100,
                             expected_holding_days=30,
@@ -496,7 +545,9 @@ class EntryExitEngine:
 
         # 9. OBV Bullish Divergence (price down, OBV up - accumulation)
         obv_roc_20 = self._get_indicator(price_data, "OBV_ROC_20", indicators)
-        price_change_10d = self._get_indicator(price_data, "Price_Change_10D", indicators)
+        price_change_10d = self._get_indicator(
+            price_data, "Price_Change_10D", indicators
+        )
 
         if obv_roc_20 is not None and price_change_10d is not None:
             # Bullish divergence: price falling but OBV rising (smart money accumulating)
@@ -507,11 +558,16 @@ class EntryExitEngine:
                     EntrySignal(
                         signal_type=SignalType.OBV_BULLISH_DIVERGENCE,
                         price_level=current_price,
-                        confidence=SignalConfidence.HIGH if obv_roc_20 > 10 else SignalConfidence.MEDIUM,
+                        confidence=SignalConfidence.HIGH
+                        if obv_roc_20 > 10
+                        else SignalConfidence.MEDIUM,
                         rationale=f"Bullish OBV divergence: price down {price_change_10d:.1f}% but OBV up {obv_roc_20:.1f}% - accumulation",
-                        risk_reward_ratio=self._calculate_rr(current_price, stop_loss, target),
+                        risk_reward_ratio=self._calculate_rr(
+                            current_price, stop_loss, target
+                        ),
                         stop_loss=stop_loss,
-                        stop_loss_pct=((current_price - stop_loss) / current_price) * 100,
+                        stop_loss_pct=((current_price - stop_loss) / current_price)
+                        * 100,
                         target_price=target,
                         target_pct=15.0,
                         expected_holding_days=45,
@@ -526,7 +582,12 @@ class EntryExitEngine:
 
         if obv is not None and obv_signal is not None and obv_roc_20 is not None:
             # OBV above signal line with strong momentum confirms breakout
-            if obv > obv_signal and obv_roc_20 > 8 and volume_ratio is not None and volume_ratio > 1.3:
+            if (
+                obv > obv_signal
+                and obv_roc_20 > 8
+                and volume_ratio is not None
+                and volume_ratio > 1.3
+            ):
                 # Check if price is also breaking out
                 if price_change_10d is not None and price_change_10d > 3:
                     stop_loss = current_price - (1.5 * atr)
@@ -537,9 +598,12 @@ class EntryExitEngine:
                             price_level=current_price,
                             confidence=SignalConfidence.HIGH,
                             rationale=f"OBV momentum surge: {obv_roc_20:.1f}% OBV increase with {volume_ratio:.1f}x volume confirms breakout",
-                            risk_reward_ratio=self._calculate_rr(current_price, stop_loss, target),
+                            risk_reward_ratio=self._calculate_rr(
+                                current_price, stop_loss, target
+                            ),
                             stop_loss=stop_loss,
-                            stop_loss_pct=((current_price - stop_loss) / current_price) * 100,
+                            stop_loss_pct=((current_price - stop_loss) / current_price)
+                            * 100,
                             target_price=target,
                             target_pct=12.0,
                             expected_holding_days=20,
@@ -561,18 +625,27 @@ class EntryExitEngine:
             if avg_bb_width is not None and bb_width < avg_bb_width * 0.6:
                 # Squeeze detected - BB Width below 60% of 50-day average
                 # Check for breakout direction
-                if current_price > bb_middle and volume_ratio is not None and volume_ratio > 1.2:
+                if (
+                    current_price > bb_middle
+                    and volume_ratio is not None
+                    and volume_ratio > 1.2
+                ):
                     stop_loss = bb_middle * 0.98  # Just below middle band
                     target = bb_upper if bb_upper else current_price * 1.08
                     signals.append(
                         EntrySignal(
                             signal_type=SignalType.BB_SQUEEZE_BREAKOUT,
                             price_level=current_price,
-                            confidence=SignalConfidence.HIGH if volume_ratio > 1.5 else SignalConfidence.MEDIUM,
-                            rationale=f"BB squeeze breakout: width at {(bb_width/avg_bb_width*100):.0f}% of avg, breaking above middle band with volume",
-                            risk_reward_ratio=self._calculate_rr(current_price, stop_loss, target),
+                            confidence=SignalConfidence.HIGH
+                            if volume_ratio > 1.5
+                            else SignalConfidence.MEDIUM,
+                            rationale=f"BB squeeze breakout: width at {(bb_width / avg_bb_width * 100):.0f}% of avg, breaking above middle band with volume",
+                            risk_reward_ratio=self._calculate_rr(
+                                current_price, stop_loss, target
+                            ),
                             stop_loss=stop_loss,
-                            stop_loss_pct=((current_price - stop_loss) / current_price) * 100,
+                            stop_loss_pct=((current_price - stop_loss) / current_price)
+                            * 100,
                             target_price=target,
                             target_pct=((target - current_price) / current_price) * 100,
                             expected_holding_days=15,
@@ -585,7 +658,9 @@ class EntryExitEngine:
         if bb_lower is not None and bb_middle is not None and bb_position is not None:
             # Price near lower band with momentum turning up
             if bb_position < 0.2:  # In lower 20% of band
-                prev_bb_position = self._get_prev_indicator(price_data, "BB_Position", 1)
+                prev_bb_position = self._get_prev_indicator(
+                    price_data, "BB_Position", 1
+                )
                 if prev_bb_position is not None and bb_position > prev_bb_position:
                     # Bouncing off lower band
                     stop_loss = bb_lower * 0.97
@@ -595,14 +670,18 @@ class EntryExitEngine:
                             signal_type=SignalType.BB_MEAN_REVERSION,
                             price_level=current_price,
                             confidence=SignalConfidence.MEDIUM,
-                            rationale=f"BB mean reversion: price at {bb_position*100:.0f}% of band, reverting to middle (${bb_middle:.2f})",
-                            risk_reward_ratio=self._calculate_rr(current_price, stop_loss, target),
+                            rationale=f"BB mean reversion: price at {bb_position * 100:.0f}% of band, reverting to middle (${bb_middle:.2f})",
+                            risk_reward_ratio=self._calculate_rr(
+                                current_price, stop_loss, target
+                            ),
                             stop_loss=stop_loss,
-                            stop_loss_pct=((current_price - stop_loss) / current_price) * 100,
+                            stop_loss_pct=((current_price - stop_loss) / current_price)
+                            * 100,
                             target_price=target,
                             target_pct=((target - current_price) / current_price) * 100,
                             expected_holding_days=10,
-                            volume_confirmation=volume_ratio is not None and volume_ratio > 0.8,
+                            volume_confirmation=volume_ratio is not None
+                            and volume_ratio > 0.8,
                             trend_alignment=False,  # Mean reversion can be counter-trend
                         )
                     )
@@ -624,15 +703,23 @@ class EntryExitEngine:
                             EntrySignal(
                                 signal_type=SignalType.STOCHASTIC_OVERSOLD,
                                 price_level=current_price,
-                                confidence=SignalConfidence.HIGH if stoch_k < 15 else SignalConfidence.MEDIUM,
+                                confidence=SignalConfidence.HIGH
+                                if stoch_k < 15
+                                else SignalConfidence.MEDIUM,
                                 rationale=f"Stochastic bullish cross in oversold: %K({stoch_k:.1f}) crossed above %D({stoch_d:.1f})",
-                                risk_reward_ratio=self._calculate_rr(current_price, stop_loss, target),
+                                risk_reward_ratio=self._calculate_rr(
+                                    current_price, stop_loss, target
+                                ),
                                 stop_loss=stop_loss,
-                                stop_loss_pct=((current_price - stop_loss) / current_price) * 100,
+                                stop_loss_pct=(
+                                    (current_price - stop_loss) / current_price
+                                )
+                                * 100,
                                 target_price=target,
                                 target_pct=8.0,
                                 expected_holding_days=12,
-                                volume_confirmation=volume_ratio is not None and volume_ratio > 1.0,
+                                volume_confirmation=volume_ratio is not None
+                                and volume_ratio > 1.0,
                                 trend_alignment=trend_bullish,
                             )
                         )
@@ -651,13 +738,17 @@ class EntryExitEngine:
                         price_level=current_price,
                         confidence=SignalConfidence.MEDIUM,
                         rationale=f"Williams %R reversal from oversold: {williams_r:.1f} (turning up)",
-                        risk_reward_ratio=self._calculate_rr(current_price, stop_loss, target),
+                        risk_reward_ratio=self._calculate_rr(
+                            current_price, stop_loss, target
+                        ),
                         stop_loss=stop_loss,
-                        stop_loss_pct=((current_price - stop_loss) / current_price) * 100,
+                        stop_loss_pct=((current_price - stop_loss) / current_price)
+                        * 100,
                         target_price=target,
                         target_pct=6.0,
                         expected_holding_days=10,
-                        volume_confirmation=volume_ratio is not None and volume_ratio > 0.8,
+                        volume_confirmation=volume_ratio is not None
+                        and volume_ratio > 0.8,
                         trend_alignment=trend_bullish,
                     )
                 )
@@ -681,13 +772,17 @@ class EntryExitEngine:
                             price_level=current_price,
                             confidence=SignalConfidence.MEDIUM,
                             rationale=f"EMA 8/21 bullish cross: EMA(8)=${ema_8:.2f} crossed above EMA(21)=${ema_21:.2f}",
-                            risk_reward_ratio=self._calculate_rr(current_price, stop_loss, target),
+                            risk_reward_ratio=self._calculate_rr(
+                                current_price, stop_loss, target
+                            ),
                             stop_loss=stop_loss,
-                            stop_loss_pct=((current_price - stop_loss) / current_price) * 100,
+                            stop_loss_pct=((current_price - stop_loss) / current_price)
+                            * 100,
                             target_price=target,
                             target_pct=8.0,
                             expected_holding_days=10,
-                            volume_confirmation=volume_ratio is not None and volume_ratio > 1.0,
+                            volume_confirmation=volume_ratio is not None
+                            and volume_ratio > 1.0,
                             trend_alignment=trend_bullish,
                         )
                     )
@@ -709,15 +804,21 @@ class EntryExitEngine:
                         EntrySignal(
                             signal_type=SignalType.EMA_CROSS_MEDIUM,
                             price_level=current_price,
-                            confidence=SignalConfidence.HIGH if trend_bullish else SignalConfidence.MEDIUM,
+                            confidence=SignalConfidence.HIGH
+                            if trend_bullish
+                            else SignalConfidence.MEDIUM,
                             rationale=f"EMA 12/26 bullish cross: EMA(12)=${ema_12:.2f} crossed above EMA(26)=${ema_26:.2f}",
-                            risk_reward_ratio=self._calculate_rr(current_price, stop_loss, target),
+                            risk_reward_ratio=self._calculate_rr(
+                                current_price, stop_loss, target
+                            ),
                             stop_loss=stop_loss,
-                            stop_loss_pct=((current_price - stop_loss) / current_price) * 100,
+                            stop_loss_pct=((current_price - stop_loss) / current_price)
+                            * 100,
                             target_price=target,
                             target_pct=12.0,
                             expected_holding_days=25,
-                            volume_confirmation=volume_ratio is not None and volume_ratio > 1.0,
+                            volume_confirmation=volume_ratio is not None
+                            and volume_ratio > 1.0,
                             trend_alignment=trend_bullish,
                         )
                     )
@@ -741,13 +842,17 @@ class EntryExitEngine:
                             price_level=current_price,
                             confidence=SignalConfidence.HIGH,
                             rationale=f"EMA Golden Cross: EMA(50)=${ema_50:.2f} crossed above EMA(200)=${ema_200:.2f}",
-                            risk_reward_ratio=self._calculate_rr(current_price, stop_loss, target),
+                            risk_reward_ratio=self._calculate_rr(
+                                current_price, stop_loss, target
+                            ),
                             stop_loss=stop_loss,
-                            stop_loss_pct=((current_price - stop_loss) / current_price) * 100,
+                            stop_loss_pct=((current_price - stop_loss) / current_price)
+                            * 100,
                             target_price=target,
                             target_pct=20.0,
                             expected_holding_days=90,
-                            volume_confirmation=volume_ratio is not None and volume_ratio > 1.0,
+                            volume_confirmation=volume_ratio is not None
+                            and volume_ratio > 1.0,
                             trend_alignment=True,  # EMA Golden Cross is bullish by definition
                         )
                     )
@@ -769,15 +874,21 @@ class EntryExitEngine:
                         EntrySignal(
                             signal_type=SignalType.ADX_TREND_START,
                             price_level=current_price,
-                            confidence=SignalConfidence.HIGH if adx > 30 else SignalConfidence.MEDIUM,
+                            confidence=SignalConfidence.HIGH
+                            if adx > 30
+                            else SignalConfidence.MEDIUM,
                             rationale=f"ADX trend start: ADX={adx:.1f} (strong trend), +DI={plus_di:.1f} > -DI={minus_di:.1f}",
-                            risk_reward_ratio=self._calculate_rr(current_price, stop_loss, target),
+                            risk_reward_ratio=self._calculate_rr(
+                                current_price, stop_loss, target
+                            ),
                             stop_loss=stop_loss,
-                            stop_loss_pct=((current_price - stop_loss) / current_price) * 100,
+                            stop_loss_pct=((current_price - stop_loss) / current_price)
+                            * 100,
                             target_price=target,
                             target_pct=12.0,
                             expected_holding_days=20,
-                            volume_confirmation=volume_ratio is not None and volume_ratio > 1.0,
+                            volume_confirmation=volume_ratio is not None
+                            and volume_ratio > 1.0,
                             trend_alignment=True,
                         )
                     )
@@ -797,15 +908,23 @@ class EntryExitEngine:
                             EntrySignal(
                                 signal_type=SignalType.DI_CROSS_BULLISH,
                                 price_level=current_price,
-                                confidence=SignalConfidence.HIGH if adx > 25 else SignalConfidence.MEDIUM,
+                                confidence=SignalConfidence.HIGH
+                                if adx > 25
+                                else SignalConfidence.MEDIUM,
                                 rationale=f"Bullish DI cross: +DI={plus_di:.1f} crossed above -DI={minus_di:.1f}, ADX={adx:.1f}",
-                                risk_reward_ratio=self._calculate_rr(current_price, stop_loss, target),
+                                risk_reward_ratio=self._calculate_rr(
+                                    current_price, stop_loss, target
+                                ),
                                 stop_loss=stop_loss,
-                                stop_loss_pct=((current_price - stop_loss) / current_price) * 100,
+                                stop_loss_pct=(
+                                    (current_price - stop_loss) / current_price
+                                )
+                                * 100,
                                 target_price=target,
                                 target_pct=10.0,
                                 expected_holding_days=15,
-                                volume_confirmation=volume_ratio is not None and volume_ratio > 1.0,
+                                volume_confirmation=volume_ratio is not None
+                                and volume_ratio > 1.0,
                                 trend_alignment=True,
                             )
                         )
@@ -823,11 +942,16 @@ class EntryExitEngine:
                     EntrySignal(
                         signal_type=SignalType.MFI_OVERSOLD,
                         price_level=current_price,
-                        confidence=SignalConfidence.HIGH if mfi < 15 else SignalConfidence.MEDIUM,
+                        confidence=SignalConfidence.HIGH
+                        if mfi < 15
+                        else SignalConfidence.MEDIUM,
                         rationale=f"MFI oversold reversal: MFI={mfi:.1f} (volume-weighted) turning up",
-                        risk_reward_ratio=self._calculate_rr(current_price, stop_loss, target),
+                        risk_reward_ratio=self._calculate_rr(
+                            current_price, stop_loss, target
+                        ),
                         stop_loss=stop_loss,
-                        stop_loss_pct=((current_price - stop_loss) / current_price) * 100,
+                        stop_loss_pct=((current_price - stop_loss) / current_price)
+                        * 100,
                         target_price=target,
                         target_pct=8.0,
                         expected_holding_days=12,
@@ -839,7 +963,11 @@ class EntryExitEngine:
         # Sort by confidence (HIGH first) and risk/reward ratio
         signals.sort(
             key=lambda s: (
-                0 if s.confidence == SignalConfidence.HIGH else 1 if s.confidence == SignalConfidence.MEDIUM else 2,
+                0
+                if s.confidence == SignalConfidence.HIGH
+                else 1
+                if s.confidence == SignalConfidence.MEDIUM
+                else 2,
                 -s.risk_reward_ratio,
             )
         )
@@ -878,7 +1006,7 @@ class EntryExitEngine:
         rsi = self._get_indicator(price_data, "RSI_14", indicators)
         macd = self._get_indicator(price_data, "MACD", indicators)
         macd_signal = self._get_indicator(price_data, "MACD_Signal", indicators)
-        sma_20 = self._get_indicator(price_data, "SMA_20", indicators)
+        self._get_indicator(price_data, "SMA_20", indicators)
         sma_50 = self._get_indicator(price_data, "SMA_50", indicators)
         sma_200 = self._get_indicator(price_data, "SMA_200", indicators)
         bb_upper = self._get_indicator(price_data, "BB_Upper", indicators)
@@ -886,7 +1014,11 @@ class EntryExitEngine:
         volume_ratio = self._get_indicator(price_data, "Volume_Ratio", indicators)
 
         # Position info
-        entry_price = position_info.get("entry_price", current_price * 0.9) if position_info else None
+        entry_price = (
+            position_info.get("entry_price", current_price * 0.9)
+            if position_info
+            else None
+        )
         stop_loss = position_info.get("stop_loss") if position_info else None
         target_price = position_info.get("target_price") if position_info else None
 
@@ -896,7 +1028,9 @@ class EntryExitEngine:
                 ExitSignal(
                     signal_type=SignalType.OVERBOUGHT,
                     price_level=current_price,
-                    confidence=SignalConfidence.HIGH if rsi > 80 else SignalConfidence.MEDIUM,
+                    confidence=SignalConfidence.HIGH
+                    if rsi > 80
+                    else SignalConfidence.MEDIUM,
                     rationale=f"RSI at {rsi:.1f} (overbought territory)",
                     urgency="staged" if rsi < 80 else "immediate",
                     partial_exit_pct=50.0 if rsi < 80 else 100.0,
@@ -933,7 +1067,7 @@ class EntryExitEngine:
                             signal_type=SignalType.DEATH_CROSS,
                             price_level=current_price,
                             confidence=SignalConfidence.HIGH,
-                            rationale=f"Death Cross: 50 SMA crossed below 200 SMA",
+                            rationale="Death Cross: 50 SMA crossed below 200 SMA",
                             urgency="immediate",
                             partial_exit_pct=100.0,
                         )
@@ -941,7 +1075,9 @@ class EntryExitEngine:
 
         # 4. Resistance Rejection
         if resistance_1 is not None:
-            distance_to_resistance = (resistance_1 - current_price) / current_price * 100
+            distance_to_resistance = (
+                (resistance_1 - current_price) / current_price * 100
+            )
             if -2 < distance_to_resistance < 2:  # Near resistance
                 # Check for rejection (price failing at resistance)
                 prev_close = self._get_prev_indicator(price_data, "Close", 1)
@@ -1000,7 +1136,9 @@ class EntryExitEngine:
         # 8. Volume Divergence (price up but volume declining)
         if volume_ratio is not None and volume_ratio < 0.7:
             # Check if price is up but volume is weak
-            price_change_5d = self._get_indicator(price_data, "Price_Change_5D", indicators)
+            price_change_5d = self._get_indicator(
+                price_data, "Price_Change_5D", indicators
+            )
             if price_change_5d is not None and price_change_5d > 3:
                 signals.append(
                     ExitSignal(
@@ -1036,7 +1174,7 @@ class EntryExitEngine:
                                 if obv_histogram and obv_histogram < 0
                                 else SignalConfidence.MEDIUM
                             ),
-                            rationale=f"OBV distribution: AOBV(20) crossed below AOBV(50) - institutional selling",
+                            rationale="OBV distribution: AOBV(20) crossed below AOBV(50) - institutional selling",
                             urgency="staged",
                             partial_exit_pct=50.0,
                         )
@@ -1044,7 +1182,9 @@ class EntryExitEngine:
 
         # 10. OBV Bearish Divergence (price up, OBV down - distribution/exhaustion)
         obv_roc_20 = self._get_indicator(price_data, "OBV_ROC_20", indicators)
-        price_change_10d = self._get_indicator(price_data, "Price_Change_10D", indicators)
+        price_change_10d = self._get_indicator(
+            price_data, "Price_Change_10D", indicators
+        )
 
         if obv_roc_20 is not None and price_change_10d is not None:
             # Bearish divergence: price rising but OBV falling (smart money distributing)
@@ -1053,7 +1193,9 @@ class EntryExitEngine:
                     ExitSignal(
                         signal_type=SignalType.OBV_BEARISH_DIVERGENCE,
                         price_level=current_price,
-                        confidence=SignalConfidence.HIGH if obv_roc_20 < -10 else SignalConfidence.MEDIUM,
+                        confidence=SignalConfidence.HIGH
+                        if obv_roc_20 < -10
+                        else SignalConfidence.MEDIUM,
                         rationale=f"Bearish OBV divergence: price up {price_change_10d:.1f}% but OBV down {obv_roc_20:.1f}% - distribution",
                         urgency="staged" if obv_roc_20 > -10 else "immediate",
                         partial_exit_pct=50.0 if obv_roc_20 > -10 else 75.0,
@@ -1076,7 +1218,7 @@ class EntryExitEngine:
                             signal_type=SignalType.MOMENTUM_LOSS,
                             price_level=current_price,
                             confidence=SignalConfidence.MEDIUM,
-                            rationale=f"OBV crossed below signal line - buying momentum fading",
+                            rationale="OBV crossed below signal line - buying momentum fading",
                             urgency="watch",
                             partial_exit_pct=30.0,
                         )
@@ -1090,7 +1232,9 @@ class EntryExitEngine:
         if bb_upper is not None and bb_position is not None:
             # Price in upper 20% of band and turning down
             if bb_position > 0.8:
-                prev_bb_position = self._get_prev_indicator(price_data, "BB_Position", 1)
+                prev_bb_position = self._get_prev_indicator(
+                    price_data, "BB_Position", 1
+                )
                 prev_close = self._get_prev_indicator(price_data, "Close", 1)
 
                 if prev_bb_position is not None and prev_close is not None:
@@ -1101,7 +1245,7 @@ class EntryExitEngine:
                                 signal_type=SignalType.BB_UPPER_REJECTION,
                                 price_level=current_price,
                                 confidence=SignalConfidence.MEDIUM,
-                                rationale=f"BB upper rejection: price at {bb_position*100:.0f}% of band, turning down from ${bb_upper:.2f}",
+                                rationale=f"BB upper rejection: price at {bb_position * 100:.0f}% of band, turning down from ${bb_upper:.2f}",
                                 urgency="staged",
                                 partial_exit_pct=40.0,
                             )
@@ -1139,7 +1283,9 @@ class EntryExitEngine:
                             ExitSignal(
                                 signal_type=SignalType.STOCHASTIC_OVERBOUGHT,
                                 price_level=current_price,
-                                confidence=SignalConfidence.HIGH if stoch_k > 85 else SignalConfidence.MEDIUM,
+                                confidence=SignalConfidence.HIGH
+                                if stoch_k > 85
+                                else SignalConfidence.MEDIUM,
                                 rationale=f"Stochastic bearish cross in overbought: %K({stoch_k:.1f}) crossed below %D({stoch_d:.1f})",
                                 urgency="staged" if stoch_k < 85 else "immediate",
                                 partial_exit_pct=50.0,
@@ -1242,7 +1388,9 @@ class EntryExitEngine:
                             ExitSignal(
                                 signal_type=SignalType.DI_CROSS_BEARISH,
                                 price_level=current_price,
-                                confidence=SignalConfidence.HIGH if adx > 25 else SignalConfidence.MEDIUM,
+                                confidence=SignalConfidence.HIGH
+                                if adx > 25
+                                else SignalConfidence.MEDIUM,
                                 rationale=f"Bearish DI cross: -DI={minus_di:.1f} crossed above +DI={plus_di:.1f}, ADX={adx:.1f}",
                                 urgency="immediate" if adx > 25 else "staged",
                                 partial_exit_pct=60.0 if adx > 25 else 40.0,
@@ -1260,7 +1408,9 @@ class EntryExitEngine:
                     ExitSignal(
                         signal_type=SignalType.MFI_OVERBOUGHT,
                         price_level=current_price,
-                        confidence=SignalConfidence.HIGH if mfi > 85 else SignalConfidence.MEDIUM,
+                        confidence=SignalConfidence.HIGH
+                        if mfi > 85
+                        else SignalConfidence.MEDIUM,
                         rationale=f"MFI overbought reversal: MFI={mfi:.1f} (volume-weighted) turning down",
                         urgency="staged" if mfi < 85 else "immediate",
                         partial_exit_pct=50.0,
@@ -1272,7 +1422,11 @@ class EntryExitEngine:
         signals.sort(
             key=lambda s: (
                 urgency_order.get(s.urgency, 3),
-                0 if s.confidence == SignalConfidence.HIGH else 1 if s.confidence == SignalConfidence.MEDIUM else 2,
+                0
+                if s.confidence == SignalConfidence.HIGH
+                else 1
+                if s.confidence == SignalConfidence.MEDIUM
+                else 2,
             )
         )
 
@@ -1308,7 +1462,9 @@ class EntryExitEngine:
         upside_pct = ((fair_value - current_price) / current_price) * 100
 
         # Find nearest support and resistance
-        supports = sorted([s for s in support_levels if s < current_price], reverse=True)
+        supports = sorted(
+            [s for s in support_levels if s < current_price], reverse=True
+        )
         resistances = sorted([r for r in resistance_levels if r > current_price])
 
         nearest_support = supports[0] if supports else current_price * 0.95
@@ -1364,19 +1520,27 @@ class EntryExitEngine:
         volatility_adjustment = max(0.5, 1.0 - volatility)  # Reduce for high vol
         conviction_adjustment = 1.0 + (upside_pct / 50)  # Increase for high upside
 
-        recommended_allocation = min(5.0, base_allocation * volatility_adjustment * conviction_adjustment)
+        recommended_allocation = min(
+            5.0, base_allocation * volatility_adjustment * conviction_adjustment
+        )
         max_position = min(8.0, recommended_allocation * 1.5)
 
         # Generate rationale
         rationale_parts = []
         if upside_pct > 15:
-            rationale_parts.append(f"{upside_pct:.0f}% upside to fair value ${fair_value:.2f}")
+            rationale_parts.append(
+                f"{upside_pct:.0f}% upside to fair value ${fair_value:.2f}"
+            )
         if nearest_support:
             rationale_parts.append(f"Support at ${nearest_support:.2f}")
         if volatility > 0.35:
-            rationale_parts.append(f"High volatility ({volatility*100:.0f}%)")
+            rationale_parts.append(f"High volatility ({volatility * 100:.0f}%)")
 
-        rationale = "; ".join(rationale_parts) if rationale_parts else "Standard entry conditions"
+        rationale = (
+            "; ".join(rationale_parts)
+            if rationale_parts
+            else "Standard entry conditions"
+        )
 
         return OptimalEntryZone(
             lower_bound=lower_bound,

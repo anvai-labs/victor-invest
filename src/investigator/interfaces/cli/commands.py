@@ -9,11 +9,10 @@ import asyncio
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
 
 import click
 
-from investigator.application import AnalysisMode, AnalysisService
+from investigator.application import AnalysisService
 from investigator.infrastructure.cache.cache_manager import CacheManager
 from investigator.infrastructure.monitoring import MetricsCollector
 
@@ -37,7 +36,10 @@ def create_cli():
         logging.basicConfig(
             level=getattr(logging, log_level.upper()),
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            handlers=[logging.StreamHandler(sys.stdout), *([] if not log_file else [logging.FileHandler(log_file)])],
+            handlers=[
+                logging.StreamHandler(sys.stdout),
+                *([] if not log_file else [logging.FileHandler(log_file)]),
+            ],
         )
 
         # Store config in context
@@ -55,9 +57,17 @@ def create_cli():
         help="Analysis mode",
     )
     @click.option("--output", "-o", help="Output file for results")
-    @click.option("--format", "-f", type=click.Choice(["json", "yaml", "text"]), default="json", help="Output format")
+    @click.option(
+        "--format",
+        "-f",
+        type=click.Choice(["json", "yaml", "text"]),
+        default="json",
+        help="Output format",
+    )
     @click.option("--report", is_flag=True, default=False, help="Generate PDF report")
-    @click.option("--force-refresh", is_flag=True, default=False, help="Force cache refresh")
+    @click.option(
+        "--force-refresh", is_flag=True, default=False, help="Force cache refresh"
+    )
     @click.pass_context
     def analyze(ctx, symbol, mode, output, format, report, force_refresh):
         """
@@ -78,7 +88,9 @@ def create_cli():
                 click.echo(f"Analyzing {symbol} in {mode} mode...")
 
                 try:
-                    results = await service.analyze_stock(symbol=symbol, mode=mode, force_refresh=force_refresh)
+                    results = await service.analyze_stock(
+                        symbol=symbol, mode=mode, force_refresh=force_refresh
+                    )
 
                     # Handle output
                     if output:
@@ -99,12 +111,14 @@ def create_cli():
 
                         click.echo(f"Results saved to {output}")
                     else:
-                        click.echo(f"\nAnalysis complete!")
+                        click.echo("\nAnalysis complete!")
                         click.echo(f"Status: {results.get('status', 'unknown')}")
                         click.echo(f"Duration: {results.get('duration', 0):.2f}s")
 
                     if report:
-                        click.echo("PDF report generation not yet implemented in Clean Architecture")
+                        click.echo(
+                            "PDF report generation not yet implemented in Clean Architecture"
+                        )
 
                 except Exception as e:
                     click.echo(f"Error: {e}", err=True)
@@ -123,7 +137,9 @@ def create_cli():
         help="Analysis mode",
     )
     @click.option("--output-dir", "-o", default="results", help="Output directory")
-    @click.option("--force-refresh", is_flag=True, default=False, help="Force cache refresh")
+    @click.option(
+        "--force-refresh", is_flag=True, default=False, help="Force cache refresh"
+    )
     @click.pass_context
     def batch(ctx, symbols, mode, output_dir, force_refresh):
         """
@@ -141,7 +157,9 @@ def create_cli():
                 click.echo(f"Analyzing {len(symbols)} symbols in {mode} mode...")
 
                 try:
-                    results = await service.batch_analyze(symbols=list(symbols), mode=mode)
+                    results = await service.batch_analyze(
+                        symbols=list(symbols), mode=mode
+                    )
 
                     # Save results
                     output_path = Path(output_dir)

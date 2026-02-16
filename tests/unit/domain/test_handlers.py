@@ -27,9 +27,8 @@ Tests all compute handlers in investigator.domain.handlers:
 """
 
 from dataclasses import dataclass
-from datetime import date, datetime
 from typing import Any, Dict, Optional
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -163,7 +162,9 @@ class TestHandlerBase:
         from investigator.domain.handlers import HandlerBase
 
         handler = HandlerBase()
-        node = MockComputeNode(id="test", input_mapping={"symbol": "$ctx.target_symbol"})
+        node = MockComputeNode(
+            id="test", input_mapping={"symbol": "$ctx.target_symbol"}
+        )
         context = MockWorkflowContext({"target_symbol": "GOOGL"})
 
         result = handler._get_input(node, context, "symbol")
@@ -191,7 +192,10 @@ class TestMetadataFetchHandler:
 
         # Patch both the service and the victor imports
         with (
-            patch("investigator.domain.handlers._get_metadata_service", return_value=mock_metadata_service),
+            patch(
+                "investigator.domain.handlers._get_metadata_service",
+                return_value=mock_metadata_service,
+            ),
             patch.dict(
                 "sys.modules",
                 {
@@ -248,14 +252,25 @@ class TestPriceDataFetchHandler:
     """Test PriceDataFetchHandler."""
 
     @pytest.mark.asyncio
-    async def test_fetch_price_success(self, mock_price_service, mock_shares_service, mock_metadata_service):
+    async def test_fetch_price_success(
+        self, mock_price_service, mock_shares_service, mock_metadata_service
+    ):
         """Test successful price fetch."""
         from investigator.domain.handlers import PriceDataFetchHandler
 
         with (
-            patch("investigator.domain.handlers._get_price_service", return_value=mock_price_service),
-            patch("investigator.domain.handlers._get_shares_service", return_value=mock_shares_service),
-            patch("investigator.domain.handlers._get_metadata_service", return_value=mock_metadata_service),
+            patch(
+                "investigator.domain.handlers._get_price_service",
+                return_value=mock_price_service,
+            ),
+            patch(
+                "investigator.domain.handlers._get_shares_service",
+                return_value=mock_shares_service,
+            ),
+            patch(
+                "investigator.domain.handlers._get_metadata_service",
+                return_value=mock_metadata_service,
+            ),
             patch.dict(
                 "sys.modules",
                 {
@@ -266,7 +281,6 @@ class TestPriceDataFetchHandler:
                 },
             ),
         ):
-
             handler = PriceDataFetchHandler()
             node = MockComputeNode(
                 id="fetch_prices",
@@ -296,7 +310,10 @@ class TestSECDataExtractHandler:
         from investigator.domain.handlers import SECDataExtractHandler
 
         with (
-            patch("investigator.domain.handlers._get_financial_data_service", return_value=mock_financial_service),
+            patch(
+                "investigator.domain.handlers._get_financial_data_service",
+                return_value=mock_financial_service,
+            ),
             patch.dict(
                 "sys.modules",
                 {

@@ -4,8 +4,6 @@ Data source management commands for InvestiGator CLI
 
 import json
 import sys
-from datetime import date
-from typing import Optional
 
 import click
 
@@ -30,7 +28,9 @@ def data(ctx):
 @click.option(
     "--category",
     "-c",
-    type=click.Choice(["market", "fundamental", "macro", "sentiment", "volatility", "fixed_income"]),
+    type=click.Choice(
+        ["market", "fundamental", "macro", "sentiment", "volatility", "fixed_income"]
+    ),
     help="Filter by category",
 )
 @click.option("--json", "json_output", is_flag=True, help="Output as JSON")
@@ -40,8 +40,9 @@ def list_sources(ctx, category, json_output):
 
     Shows registered data sources with their status and metadata.
     """
-    from investigator.domain.services.data_sources.base import DataCategory
-    from investigator.domain.services.data_sources.manager import get_data_source_manager
+    from investigator.domain.services.data_sources.manager import (
+        get_data_source_manager,
+    )
 
     manager = get_data_source_manager()
     sources = manager.list_sources()
@@ -103,7 +104,9 @@ def fetch(ctx, symbol, source, as_of_date, json_output):
     """
     from datetime import datetime
 
-    from investigator.domain.services.data_sources.manager import get_data_source_manager
+    from investigator.domain.services.data_sources.manager import (
+        get_data_source_manager,
+    )
 
     manager = get_data_source_manager()
     data_source = manager.get_source(source)
@@ -153,7 +156,9 @@ def summary(ctx, symbol, as_of_date, json_output):
     """
     from datetime import datetime
 
-    from investigator.domain.services.data_sources.manager import get_data_source_manager
+    from investigator.domain.services.data_sources.manager import (
+        get_data_source_manager,
+    )
 
     manager = get_data_source_manager()
 
@@ -177,7 +182,7 @@ def summary(ctx, symbol, as_of_date, json_output):
     # Price
     if data.price:
         current = data.price.get("current", {})
-        click.echo(f"\nPRICE")
+        click.echo("\nPRICE")
         click.echo(f"  Current: ${current.get('close', 'N/A')}")
         returns = data.price.get("returns", {})
         if returns:
@@ -187,32 +192,32 @@ def summary(ctx, symbol, as_of_date, json_output):
     # Technical
     if data.technical:
         indicators = data.technical.get("indicators", {})
-        click.echo(f"\nTECHNICAL")
+        click.echo("\nTECHNICAL")
         click.echo(f"  RSI: {indicators.get('rsi_14', 'N/A')}")
         click.echo(f"  Above SMA20: {indicators.get('above_sma_20', 'N/A')}")
 
     # Sentiment
     if data.insider:
         summary = data.insider.get("summary", {})
-        click.echo(f"\nINSIDER SENTIMENT")
+        click.echo("\nINSIDER SENTIMENT")
         click.echo(f"  Buys: {summary.get('buys', 0)}")
         click.echo(f"  Sells: {summary.get('sells', 0)}")
         click.echo(f"  Sentiment: {summary.get('sentiment', 'N/A')}")
 
     if data.short_interest:
         current = data.short_interest.get("current", {})
-        click.echo(f"\nSHORT INTEREST")
+        click.echo("\nSHORT INTEREST")
         click.echo(f"  Days to Cover: {current.get('days_to_cover', 'N/A')}")
         click.echo(f"  Short % Float: {current.get('short_pct_float', 'N/A')}%")
 
     # Macro
     if data.volatility:
-        click.echo(f"\nVOLATILITY")
+        click.echo("\nVOLATILITY")
         click.echo(f"  VIX: {data.volatility.get('vix', 'N/A')}")
         click.echo(f"  Regime: {data.volatility.get('volatility_regime', 'N/A')}")
 
     # Sources
-    click.echo(f"\nSOURCES")
+    click.echo("\nSOURCES")
     click.echo(f"  Succeeded: {len(data.sources_succeeded)}")
     click.echo(f"  Failed: {len(data.sources_failed)}")
     if data.sources_failed:
@@ -229,7 +234,9 @@ def health(ctx, json_output):
 
     Tests each source and reports status.
     """
-    from investigator.domain.services.data_sources.manager import get_data_source_manager
+    from investigator.domain.services.data_sources.manager import (
+        get_data_source_manager,
+    )
 
     click.echo("Checking data source health...")
     manager = get_data_source_manager()
@@ -316,7 +323,9 @@ def refresh(ctx, source, symbol, refresh_all):
         investigator data refresh --source price_history --symbol AAPL
         investigator data refresh --all
     """
-    from investigator.domain.services.data_sources.manager import get_data_source_manager
+    from investigator.domain.services.data_sources.manager import (
+        get_data_source_manager,
+    )
 
     manager = get_data_source_manager()
 

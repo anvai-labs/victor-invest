@@ -1,0 +1,126 @@
+import { useState } from "react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
+import type { UIFundamental } from "@/lib/types";
+import { fmtMoney } from "@/lib/utils";
+
+interface FundamentalTabProps {
+  fundamental: UIFundamental;
+}
+
+export function FundamentalTab({ fundamental }: FundamentalTabProps) {
+  const [showRaw, setShowRaw] = useState(false);
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Valuation Models</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Model</TableHead>
+                <TableHead className="text-right">Fair Value</TableHead>
+                <TableHead className="text-right">Weight</TableHead>
+                <TableHead className="text-right">Confidence</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {fundamental.models.map((m) => (
+                <TableRow key={m.name}>
+                  <TableCell className="font-medium">{m.name}</TableCell>
+                  <TableCell className="text-right font-mono">
+                    {fmtMoney(m.fair_value)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {(m.weight * 100).toFixed(0)}%
+                  </TableCell>
+                  <TableCell className="text-right capitalize">
+                    {m.confidence}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {fundamental.forward_guidance && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Forward Guidance</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm space-y-1">
+            <p>
+              <span className="text-slate-500">Period:</span>{" "}
+              {fundamental.forward_guidance.guidance_period}
+            </p>
+            {fundamental.forward_guidance.revenue_growth_pct != null && (
+              <p>
+                <span className="text-slate-500">Revenue Growth:</span>{" "}
+                {fundamental.forward_guidance.revenue_growth_pct.toFixed(1)}%
+              </p>
+            )}
+            {fundamental.forward_guidance.eps_estimate != null && (
+              <p>
+                <span className="text-slate-500">EPS Estimate:</span>{" "}
+                {fmtMoney(fundamental.forward_guidance.eps_estimate)}
+              </p>
+            )}
+            <p>
+              <span className="text-slate-500">Source:</span>{" "}
+              {fundamental.forward_guidance.source}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {fundamental.notes.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Notes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="list-disc pl-5 text-sm text-slate-600 dark:text-slate-300 space-y-1">
+              {fundamental.notes.map((n, i) => (
+                <li key={i}>{n}</li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {fundamental.raw_payload && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Raw Payload</CardTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowRaw((s) => !s)}
+            >
+              {showRaw ? "Hide" : "Show"}
+            </Button>
+          </CardHeader>
+          {showRaw && (
+            <CardContent>
+              <pre className="max-h-96 overflow-auto rounded bg-slate-50 dark:bg-slate-900 p-3 text-xs">
+                {JSON.stringify(fundamental.raw_payload, null, 2)}
+              </pre>
+            </CardContent>
+          )}
+        </Card>
+      )}
+    </div>
+  );
+}

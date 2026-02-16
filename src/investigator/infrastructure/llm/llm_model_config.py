@@ -6,7 +6,7 @@ Handles dynamic model context and parameter configuration
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Dict
 
 logger = logging.getLogger(__name__)
 
@@ -226,11 +226,15 @@ class ModelConfigManager:
                 # Try partial match
                 for spec_model, spec in model_specs.items():
                     if spec_model in model_name or model_name in spec_model:
-                        self.logger.info(f"Using config.json spec for {spec_model} (matched {model_name})")
+                        self.logger.info(
+                            f"Using config.json spec for {spec_model} (matched {model_name})"
+                        )
                         return ModelConfig(
                             name=spec_model,
                             context_window=getattr(spec, "context_window", 4096),
-                            default_num_predict=getattr(spec, "default_num_predict", 2048),
+                            default_num_predict=getattr(
+                                spec, "default_num_predict", 2048
+                            ),
                             max_num_predict=getattr(spec, "max_num_predict", 4096),
                             supports_system_prompt=True,
                             supports_json_mode=True,
@@ -244,7 +248,9 @@ class ModelConfigManager:
         # Try to match partial names
         for known_model, config in self.configs.items():
             if known_model in model_name or model_name in known_model:
-                self.logger.info(f"Using fallback config for {known_model} for model {model_name}")
+                self.logger.info(
+                    f"Using fallback config for {known_model} for model {model_name}"
+                )
                 return config
 
         # PRIORITY 3: Return default config
@@ -271,7 +277,9 @@ class ModelConfigManager:
             # Technical analysis needs more tokens for comprehensive JSON output
             output_tokens = min(desired_output or 4096, config.max_num_predict)
         else:
-            output_tokens = min(desired_output or config.default_num_predict, config.max_num_predict)
+            output_tokens = min(
+                desired_output or config.default_num_predict, config.max_num_predict
+            )
 
         # Calculate total needed context
         total_needed = prompt_tokens + output_tokens + 512  # 512 buffer

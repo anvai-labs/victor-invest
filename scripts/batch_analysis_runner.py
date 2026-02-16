@@ -30,19 +30,21 @@ import argparse
 import asyncio
 import json
 import logging
-import os
 import sys
 import time
 from dataclasses import asdict, dataclass
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
+
+# Shared symbol repository for consistent ticker fetching
+from investigator.infrastructure.database.symbol_repository import SymbolRepository
 
 # Victor-Invest imports - uses BaseYAMLWorkflowProvider pattern
 from victor_invest.workflows import (
@@ -54,7 +56,11 @@ from victor_invest.workflows import (
 # RL Infrastructure imports for tracking predictions
 try:
     from investigator.domain.services.rl.outcome_tracker import OutcomeTracker
-    from investigator.domain.services.rl.models import ValuationContext, GrowthStage, CompanySize
+    from investigator.domain.services.rl.models import (
+        ValuationContext,
+        GrowthStage,
+        CompanySize,
+    )
 
     RL_AVAILABLE = True
 except ImportError:
@@ -68,7 +74,6 @@ from investigator.domain.services.market_data import (
     PriceService,
     DataValidationService,
     SymbolMetadataService,
-    TechnicalAnalysisService,
     get_technical_analysis_service,
 )
 
@@ -102,7 +107,9 @@ console_handler.setFormatter(formatter)
 console_handler.setLevel(logging.INFO)
 
 file_handler = logging.FileHandler(log_filename)
-file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+file_handler.setFormatter(
+    logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+)
 file_handler.setLevel(logging.INFO)
 
 logger.addHandler(console_handler)
@@ -197,28 +204,21 @@ class BatchAnalysisRunner:
         self.error_file = Path("logs/batch_error_symbols.txt")
         self.results_file = self.output_dir / "batch_analysis_results.jsonl"
 
-        # Database connections with proper pool config
-        self.stock_engine = create_engine(
-            "postgresql://stockuser:${STOCK_DB_PASSWORD}@${STOCK_DB_HOST}:5432/stock",
-            pool_size=5,
-            max_overflow=10,
-            pool_pre_ping=True,
-            pool_recycle=3600,
-        )
-        self.sec_engine = create_engine(
-            "postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database",
-            pool_size=5,
-            max_overflow=10,
-            pool_pre_ping=True,
-            pool_recycle=3600,
-        )
+        # Shared symbol repository for consistent ticker fetching
+        self.symbol_repo = SymbolRepository()
+
+        # Keep engine references for methods that need direct DB access
+        self.stock_engine = self.symbol_repo.stock_engine
+        self.sec_engine = self.symbol_repo.sec_engine
 
         # RL Outcome Tracker for recording predictions
         self.outcome_tracker = None
         if RL_AVAILABLE:
             try:
                 self.outcome_tracker = OutcomeTracker()
-                logger.info("RL OutcomeTracker initialized - predictions will be recorded for training")
+                logger.info(
+                    "RL OutcomeTracker initialized - predictions will be recorded for training"
+                )
             except Exception as e:
                 logger.warning(f"Failed to initialize OutcomeTracker: {e}")
 
@@ -229,12 +229,16 @@ class BatchAnalysisRunner:
         self.metadata_service = SymbolMetadataService()
         self.validation_service = DataValidationService()
         self.technical_service = get_technical_analysis_service()
-        logger.info("Shared market data services initialized (including TechnicalAnalysisService)")
+        logger.info(
+            "Shared market data services initialized (including TechnicalAnalysisService)"
+        )
 
         # Initialize shared valuation config services
         # Single source of truth for sector multiples, CAPM, GGM defaults
         self.valuation_config_service = ValuationConfigService()
-        self.sector_multiples_service = SectorMultiplesService(self.valuation_config_service)
+        self.sector_multiples_service = SectorMultiplesService(
+            self.valuation_config_service
+        )
         logger.info("Shared valuation config services initialized")
 
         # Initialize data source facade for economic indicators
@@ -244,7 +248,9 @@ class BatchAnalysisRunner:
         # Initialize InvestmentWorkflowProvider (BaseYAMLWorkflowProvider pattern)
         # This loads YAML workflows and registers handlers for compute nodes
         self.workflow_provider = InvestmentWorkflowProvider()
-        logger.info(f"InvestmentWorkflowProvider initialized with workflows: {self.workflow_provider.get_workflow_names()}")
+        logger.info(
+            f"InvestmentWorkflowProvider initialized with workflows: {self.workflow_provider.get_workflow_names()}"
+        )
 
     def get_symbol_metadata(self, symbol: str) -> Dict[str, Any]:
         """
@@ -288,115 +294,39 @@ class BatchAnalysisRunner:
 
         Returns list of warning messages if issues detected.
         """
-        validation_warnings = self.validation_service.validate_shares(symbol, current_price)
+        validation_warnings = self.validation_service.validate_shares(
+            symbol, current_price
+        )
         return [str(w) for w in validation_warnings]
 
     def get_domestic_filers(self) -> Set[str]:
-        """
-        Get symbols that file 10-K/10-Q (domestic filers).
-        Excludes foreign private issuers who file 20-F/6-K.
-        """
-        with self.sec_engine.connect() as conn:
-            # Check for symbols with quarterly data (Q1, Q2, Q3, Q4)
-            result = conn.execute(
-                text(
-                    """
-                    SELECT DISTINCT symbol
-                    FROM sec_companyfacts_processed
-                    WHERE fiscal_period IN ('Q1', 'Q2', 'Q3', 'Q4')
-                """
-                )
-            )
-            domestic = {row[0] for row in result.fetchall()}
-            logger.info(f"Found {len(domestic)} domestic filers with quarterly data")
-            return domestic
+        """Delegate to shared SymbolRepository."""
+        return self.symbol_repo.get_domestic_filers()
 
     def get_russell1000_symbols(self) -> List[str]:
-        """Get Russell 1000 symbols from stock database."""
-        with self.stock_engine.connect() as conn:
-            result = conn.execute(
-                text(
-                    """
-                    SELECT ticker
-                    FROM symbol
-                    WHERE russell1000 = TRUE
-                      AND islisted = TRUE
-                      AND isstock = TRUE
-                      AND (isetf IS NULL OR isetf = FALSE)
-                    ORDER BY mktcap DESC NULLS LAST
-                """
-                )
-            )
-            symbols = [row[0] for row in result.fetchall()]
-            logger.info(f"Found {len(symbols)} Russell 1000 symbols")
-            return symbols
+        """Delegate to shared SymbolRepository."""
+        return self.symbol_repo.get_russell1000_symbols()
+
+    def get_all_symbols(
+        self, us_only: bool = True, order_by: str = "stockid"
+    ) -> List[str]:
+        """Delegate to shared SymbolRepository."""
+        return self.symbol_repo.get_all_symbols(us_only=us_only, order_by=order_by)
 
     def get_top_n_symbols(self, n: int, us_only: bool = True) -> List[str]:
-        """Get top N stocks by market cap (excludes ETFs/ETNs)."""
-        with self.stock_engine.connect() as conn:
-            if us_only:
-                result = conn.execute(
-                    text(
-                        """
-                        SELECT ticker
-                        FROM symbol
-                        WHERE islisted = TRUE
-                          AND isstock = TRUE
-                          AND (isetf IS NULL OR isetf = FALSE)
-                          AND mktcap IS NOT NULL
-                          AND mktcap > 0
-                          AND cik IS NOT NULL
-                        ORDER BY mktcap DESC
-                        LIMIT :n
-                    """
-                    ),
-                    {"n": n},
-                )
-            else:
-                result = conn.execute(
-                    text(
-                        """
-                        SELECT ticker
-                        FROM symbol
-                        WHERE islisted = TRUE
-                          AND isstock = TRUE
-                          AND (isetf IS NULL OR isetf = FALSE)
-                          AND mktcap IS NOT NULL
-                          AND mktcap > 0
-                        ORDER BY mktcap DESC
-                        LIMIT :n
-                    """
-                    ),
-                    {"n": n},
-                )
-            symbols = [row[0] for row in result.fetchall()]
-            logger.info(f"Found {len(symbols)} top symbols by market cap")
-            return symbols
+        """Delegate to shared SymbolRepository."""
+        return self.symbol_repo.get_top_n_symbols(n, us_only=us_only)
 
     def get_sp500_symbols(self) -> List[str]:
-        """Get S&P 500 symbols (stocks only)."""
-        with self.stock_engine.connect() as conn:
-            result = conn.execute(
-                text(
-                    """
-                    SELECT ticker
-                    FROM symbol
-                    WHERE sp500 = TRUE
-                      AND islisted = TRUE
-                      AND isstock = TRUE
-                      AND (isetf IS NULL OR isetf = FALSE)
-                    ORDER BY mktcap DESC NULLS LAST
-                """
-                )
-            )
-            symbols = [row[0] for row in result.fetchall()]
-            logger.info(f"Found {len(symbols)} S&P 500 symbols")
-            return symbols
+        """Delegate to shared SymbolRepository."""
+        return self.symbol_repo.get_sp500_symbols()
 
     def get_already_processed_symbols(self) -> Set[str]:
         """Get symbols that already have SEC processed data."""
         with self.sec_engine.connect() as conn:
-            result = conn.execute(text("SELECT DISTINCT symbol FROM sec_companyfacts_processed"))
+            result = conn.execute(
+                text("SELECT DISTINCT symbol FROM sec_companyfacts_processed")
+            )
             symbols = {row[0] for row in result.fetchall()}
             logger.info(f"Found {len(symbols)} symbols already in SEC database")
             return symbols
@@ -441,7 +371,11 @@ class BatchAnalysisRunner:
 
             # Extract regional Fed summary
             regional_fed = analysis_data.regional_fed_indicators or {}
-            fed_summary = regional_fed.get("summary", {}) if isinstance(regional_fed, dict) else {}
+            fed_summary = (
+                regional_fed.get("summary", {})
+                if isinstance(regional_fed, dict)
+                else {}
+            )
 
             # Extract CBOE data
             cboe = analysis_data.cboe_data or {}
@@ -450,8 +384,12 @@ class BatchAnalysisRunner:
 
             # Classify volatility regime to int
             regime_map = {
-                "very_low": 0, "low": 1, "normal": 2,
-                "elevated": 3, "high": 4, "extreme": 5,
+                "very_low": 0,
+                "low": 1,
+                "normal": 2,
+                "elevated": 3,
+                "high": 4,
+                "extreme": 5,
             }
             vol_regime = regime_map.get(cboe.get("volatility_regime", "normal"), 2)
 
@@ -466,7 +404,9 @@ class BatchAnalysisRunner:
                 "empire_state_mfg": fed_summary.get("empire_state_mfg"),
                 # CBOE data
                 "vix": vix,
-                "vix_term_structure": (vix3m / vix) if vix and vix3m and vix > 0 else 1.0,
+                "vix_term_structure": (vix3m / vix)
+                if vix and vix3m and vix > 0
+                else 1.0,
                 "skew": cboe.get("skew"),
                 "volatility_regime": vol_regime,
                 "is_backwardation": cboe.get("is_backwardation", False),
@@ -485,10 +425,10 @@ class BatchAnalysisRunner:
 
         # Extract outputs from workflow context
         context_data = {}
-        if hasattr(workflow_result, 'context'):
+        if hasattr(workflow_result, "context"):
             ctx = workflow_result.context
             # Get outputs from context - either dict or WorkflowContext
-            if hasattr(ctx, 'get'):
+            if hasattr(ctx, "get"):
                 context_data = {
                     "symbol": ctx.get("symbol", symbol),
                     "mode": ctx.get("mode", self.mode.value),
@@ -498,7 +438,8 @@ class BatchAnalysisRunner:
                     "technical_analysis": ctx.get("technical_analysis"),
                     "market_context": ctx.get("market_context"),
                     "synthesis": ctx.get("synthesis"),
-                    "recommendation": ctx.get("recommendation") or ctx.get("synthesis", {}).get("recommendation"),
+                    "recommendation": ctx.get("recommendation")
+                    or ctx.get("synthesis", {}).get("recommendation"),
                 }
             elif isinstance(ctx, dict):
                 context_data = ctx
@@ -530,7 +471,11 @@ class BatchAnalysisRunner:
         return state
 
     def _build_valuation_context(
-        self, symbol: str, result: Any, current_price: Optional[float] = None, fair_value: Optional[float] = None
+        self,
+        symbol: str,
+        result: Any,
+        current_price: Optional[float] = None,
+        fair_value: Optional[float] = None,
     ) -> Any:
         """Build ValuationContext from analysis result for RL tracking.
 
@@ -596,7 +541,9 @@ class BatchAnalysisRunner:
             industry=fundamental.get("industry", "Unknown"),
             growth_stage=growth_stage,
             company_size=company_size,
-            profitability_score=min(1.0, max(0, (profitability.get("net_margin", 0) or 0) + 0.1) / 0.3),
+            profitability_score=min(
+                1.0, max(0, (profitability.get("net_margin", 0) or 0) + 0.1) / 0.3
+            ),
             pe_level=min(1.0, (valuation.get("pe_ratio", 20) or 20) / 50),
             revenue_growth=revenue_growth,
             fcf_margin=profitability.get("fcf_margin", 0) or 0,
@@ -655,7 +602,10 @@ class BatchAnalysisRunner:
             logger.info(f"  Starting: {symbol} ({sector})")
 
             # Map mode to workflow name
-            workflow_name = self.workflow_provider.get_workflow_for_task_type(self.mode.value) or self.mode.value
+            workflow_name = (
+                self.workflow_provider.get_workflow_for_task_type(self.mode.value)
+                or self.mode.value
+            )
 
             # Get the workflow definition
             workflow = self.workflow_provider.get_workflow(workflow_name)
@@ -665,7 +615,9 @@ class BatchAnalysisRunner:
                 from victor.workflows.executor import WorkflowExecutor, WorkflowContext
 
                 # Create execution context with symbol
-                context = WorkflowContext({"symbol": symbol.upper(), "mode": self.mode.value})
+                context = WorkflowContext(
+                    {"symbol": symbol.upper(), "mode": self.mode.value}
+                )
 
                 # Create executor (no orchestrator needed for pure compute workflows)
                 # All our handlers have llm_allowed: false
@@ -678,7 +630,9 @@ class BatchAnalysisRunner:
                 result = self._convert_workflow_result(symbol, workflow_result)
             else:
                 # Fallback to Python-based execution if workflow not found
-                logger.debug(f"  Workflow '{workflow_name}' not found, using Python fallback")
+                logger.debug(
+                    f"  Workflow '{workflow_name}' not found, using Python fallback"
+                )
                 result = await run_analysis(symbol.upper(), self.mode)
 
             duration = time.time() - start_time
@@ -711,7 +665,9 @@ class BatchAnalysisRunner:
                             if fv is not None
                         )
                         fair_value = weighted_sum / total_weight
-                        logger.debug(f"  Calculated fair_value from model weights: ${fair_value:.2f}")
+                        logger.debug(
+                            f"  Calculated fair_value from model weights: ${fair_value:.2f}"
+                        )
 
                 if fair_value and current_price and current_price > 0:
                     upside_pct = ((fair_value / current_price) - 1) * 100
@@ -732,7 +688,10 @@ class BatchAnalysisRunner:
                 try:
                     # Build context features from analysis result (includes technical indicators)
                     context = self._build_valuation_context(
-                        symbol, result, current_price=current_price, fair_value=fair_value
+                        symbol,
+                        result,
+                        current_price=current_price,
+                        fair_value=fair_value,
                     )
 
                     rl_record_id = self.outcome_tracker.record_prediction(
@@ -744,19 +703,27 @@ class BatchAnalysisRunner:
                         model_weights=model_weights,
                         tier_classification=tier or "unknown",
                         context_features=context,
-                        fiscal_period=result.synthesis.get("fiscal_period") if result.synthesis else None,
+                        fiscal_period=result.synthesis.get("fiscal_period")
+                        if result.synthesis
+                        else None,
                     )
                     if rl_record_id:
-                        logger.debug(f"  RL prediction recorded: {symbol} -> record_id={rl_record_id}")
+                        logger.debug(
+                            f"  RL prediction recorded: {symbol} -> record_id={rl_record_id}"
+                        )
                 except Exception as e:
-                    logger.warning(f"  Failed to record RL prediction for {symbol}: {e}")
+                    logger.warning(
+                        f"  Failed to record RL prediction for {symbol}: {e}"
+                    )
 
             # Enhanced logging with shares and market cap
             fv_str = f"${fair_value:.2f}" if fair_value else "N/A"
             price_str = f"${current_price:.2f}" if current_price else "N/A"
             upside_str = f"{upside_pct:.1f}%" if upside_pct is not None else "N/A"
-            shares_str = f"{shares_outstanding/1e9:.2f}B" if shares_outstanding else "N/A"
-            mktcap_str = f"${market_cap/1e9:.0f}B" if market_cap else "N/A"
+            shares_str = (
+                f"{shares_outstanding / 1e9:.2f}B" if shares_outstanding else "N/A"
+            )
+            mktcap_str = f"${market_cap / 1e9:.0f}B" if market_cap else "N/A"
 
             logger.info(
                 f"  Done: {symbol} [{tier or 'unknown'}] in {duration:.1f}s | "
@@ -838,30 +805,49 @@ class BatchAnalysisRunner:
         symbols: List[str],
         skip_processed: bool = True,
         resume_from: Optional[str] = None,
+        skip_domestic_filter: bool = False,
     ):
         """Run batch analysis for all symbols."""
+        print(f"  Starting batch run with {len(symbols)} symbols...", flush=True)
         start_time = datetime.now()
 
         # Filter out already processed symbols
         if skip_processed:
+            print("  Checking for already processed symbols...", flush=True)
             already_processed = self.get_already_processed_symbols()
             file_processed = self.load_processed_from_file()
             all_processed = already_processed | file_processed
 
             original_count = len(symbols)
             symbols = [s for s in symbols if s not in all_processed]
+            print(
+                f"  Filtered: {original_count} -> {len(symbols)} symbols "
+                f"(skipping {len(all_processed)} already processed)",
+                flush=True,
+            )
             logger.info(
                 f"Filtered from {original_count} to {len(symbols)} symbols "
                 f"(skipping {len(all_processed)} already processed)"
             )
 
         # Filter out foreign filers (20-F/6-K) - they lack quarterly data for proper valuation
-        domestic_filers = self.get_domestic_filers()
-        foreign_count = len([s for s in symbols if s not in domestic_filers])
-        if foreign_count > 0:
-            symbols = [s for s in symbols if s in domestic_filers]
-            logger.info(
-                f"Filtered out {foreign_count} foreign filers (20-F/6-K) - " f"{len(symbols)} domestic filers remaining"
+        if not skip_domestic_filter:
+            print("  Checking for domestic filers...", flush=True)
+            domestic_filers = self.get_domestic_filers()
+            foreign_count = len([s for s in symbols if s not in domestic_filers])
+            if foreign_count > 0:
+                symbols = [s for s in symbols if s in domestic_filers]
+                print(
+                    f"  Filtered out {foreign_count} foreign filers -> {len(symbols)} remaining",
+                    flush=True,
+                )
+                logger.info(
+                    f"Filtered out {foreign_count} foreign filers (20-F/6-K) - "
+                    f"{len(symbols)} domestic filers remaining"
+                )
+        else:
+            print(
+                "  Skipping domestic filer filter (--skip-domestic-filter)", flush=True
             )
 
         # Resume from specific symbol
@@ -869,16 +855,33 @@ class BatchAnalysisRunner:
             try:
                 idx = symbols.index(resume_from)
                 symbols = symbols[idx:]
-                logger.info(f"Resuming from {resume_from}, {len(symbols)} symbols remaining")
+                print(
+                    f"  Resuming from {resume_from}, {len(symbols)} remaining",
+                    flush=True,
+                )
+                logger.info(
+                    f"Resuming from {resume_from}, {len(symbols)} symbols remaining"
+                )
             except ValueError:
                 logger.warning(f"Resume symbol {resume_from} not found in list")
 
         if not symbols:
+            print("  No symbols to process after filtering!", flush=True)
             logger.info("No symbols to process!")
             return
 
         total_symbols = len(symbols)
         total_batches = (total_symbols + self.batch_size - 1) // self.batch_size
+
+        print("=" * 60, flush=True)
+        print("VICTOR-INVEST BATCH ANALYSIS RUNNER", flush=True)
+        print("=" * 60, flush=True)
+        print(f"  Total symbols: {total_symbols}", flush=True)
+        print(f"  Batch size: {self.batch_size}", flush=True)
+        print(f"  Total batches: {total_batches}", flush=True)
+        print(f"  Analysis mode: {self.mode.value}", flush=True)
+        print("  RL Policy: Using dual policy (technical + fundamental)", flush=True)
+        print("=" * 60, flush=True)
 
         logger.info("=" * 60)
         logger.info("VICTOR-INVEST BATCH ANALYSIS RUNNER")
@@ -900,10 +903,17 @@ class BatchAnalysisRunner:
             batch_end = min(batch_start + self.batch_size, total_symbols)
             batch_symbols = symbols[batch_start:batch_end]
 
-            logger.info(f"\n{'='*40}")
-            logger.info(f"BATCH {batch_num + 1}/{total_batches} " f"({batch_start + 1}-{batch_end} of {total_symbols})")
+            print(
+                f"\nBATCH {batch_num + 1}/{total_batches}: {', '.join(batch_symbols)}",
+                flush=True,
+            )
+            logger.info(f"\n{'=' * 40}")
+            logger.info(
+                f"BATCH {batch_num + 1}/{total_batches} "
+                f"({batch_start + 1}-{batch_end} of {total_symbols})"
+            )
             logger.info(f"Symbols: {', '.join(batch_symbols)}")
-            logger.info(f"{'='*40}")
+            logger.info(f"{'=' * 40}")
 
             # Run batch
             batch_result = await self.run_batch(batch_num + 1, batch_symbols)
@@ -916,9 +926,20 @@ class BatchAnalysisRunner:
                 if result.success:
                     self.save_processed_symbol(result.symbol)
                     success_count += 1
+                    upside_str = (
+                        f"{result.upside_pct:+.1f}%" if result.upside_pct else "N/A"
+                    )
+                    print(
+                        f"  ✓ {result.symbol}: {upside_str} ({result.duration_seconds:.1f}s)",
+                        flush=True,
+                    )
                 else:
                     self.save_error_symbol(result.symbol, result.error or "unknown")
                     error_count += 1
+                    print(
+                        f"  ✗ {result.symbol}: {result.error[:50] if result.error else 'unknown'}",
+                        flush=True,
+                    )
 
             # Progress update
             elapsed = (datetime.now() - start_time).total_seconds()
@@ -927,45 +948,60 @@ class BatchAnalysisRunner:
             remaining = total_symbols - processed
             eta_minutes = remaining / rate if rate > 0 else 0
 
+            print(
+                f"  Progress: {processed}/{total_symbols} ({processed / total_symbols * 100:.1f}%) | "
+                f"Success: {success_count} | Errors: {error_count} | ETA: {eta_minutes:.0f}m",
+                flush=True,
+            )
             logger.info(
-                f"\nProgress: {processed}/{total_symbols} ({processed/total_symbols*100:.1f}%) | "
+                f"\nProgress: {processed}/{total_symbols} ({processed / total_symbols * 100:.1f}%) | "
                 f"Success: {success_count} | Errors: {error_count} | "
                 f"Rate: {rate:.1f}/min | ETA: {eta_minutes:.0f} min"
             )
 
             # Delay before next batch (unless this is the last batch)
             if batch_num < total_batches - 1:
-                logger.info(f"Waiting {self.delay_between_batches}s before next batch...")
+                logger.info(
+                    f"Waiting {self.delay_between_batches}s before next batch..."
+                )
                 await asyncio.sleep(self.delay_between_batches)
 
         # Final summary
         elapsed = (datetime.now() - start_time).total_seconds()
 
         # Calculate summary statistics
-        successful_results = [r for r in all_results if r.success and r.upside_pct is not None]
+        successful_results = [
+            r for r in all_results if r.success and r.upside_pct is not None
+        ]
 
         logger.info("\n" + "=" * 60)
         logger.info("BATCH ANALYSIS COMPLETE")
         logger.info("=" * 60)
-        logger.info(f"Total time: {elapsed/60:.1f} minutes")
+        logger.info(f"Total time: {elapsed / 60:.1f} minutes")
         logger.info(f"Symbols processed: {success_count}")
         logger.info(f"Symbols failed: {error_count}")
         if success_count + error_count > 0:
-            logger.info(f"Success rate: {success_count/(success_count+error_count)*100:.1f}%")
+            logger.info(
+                f"Success rate: {success_count / (success_count + error_count) * 100:.1f}%"
+            )
 
         if successful_results:
-            avg_upside = sum(r.upside_pct for r in successful_results) / len(successful_results)
+            avg_upside = sum(r.upside_pct for r in successful_results) / len(
+                successful_results
+            )
             undervalued = [r for r in successful_results if r.upside_pct > 20]
             overvalued = [r for r in successful_results if r.upside_pct < -20]
 
-            logger.info(f"\nValuation Summary:")
+            logger.info("\nValuation Summary:")
             logger.info(f"  Average upside: {avg_upside:.1f}%")
             logger.info(f"  Undervalued (>20% upside): {len(undervalued)}")
             logger.info(f"  Overvalued (<-20% upside): {len(overvalued)}")
 
             if undervalued:
-                top_5 = sorted(undervalued, key=lambda r: r.upside_pct, reverse=True)[:5]
-                logger.info(f"\n  Top 5 Undervalued:")
+                top_5 = sorted(undervalued, key=lambda r: r.upside_pct, reverse=True)[
+                    :5
+                ]
+                logger.info("\n  Top 5 Undervalued:")
                 for r in top_5:
                     logger.info(
                         f"    {r.symbol}: {r.upside_pct:.1f}% upside (${r.current_price:.2f} -> ${r.fair_value:.2f})"
@@ -974,23 +1010,31 @@ class BatchAnalysisRunner:
         # RL Training Data Summary
         rl_recorded = [r for r in all_results if r.rl_record_id is not None]
         if rl_recorded:
-            logger.info(f"\nRL Training Data:")
+            logger.info("\nRL Training Data:")
             logger.info(f"  Predictions recorded: {len(rl_recorded)}")
-            logger.info(f"  Ready for reward calculation after 30/90/365 days")
-            logger.info(f"  Run 'python3 scripts/rl_update_outcomes.py' to update outcomes")
+            logger.info("  Ready for reward calculation after 30/90/365 days")
+            logger.info(
+                "  Run 'python3 scripts/rl_update_outcomes.py' to update outcomes"
+            )
         elif self.outcome_tracker:
-            logger.info(f"\nRL Training: No predictions recorded (check OutcomeTracker)")
+            logger.info(
+                "\nRL Training: No predictions recorded (check OutcomeTracker)"
+            )
 
         # Data Quality Warnings Summary
         results_with_warnings = [r for r in all_results if r.data_quality_warnings]
         if results_with_warnings:
-            logger.info(f"\nData Quality Warnings ({len(results_with_warnings)} symbols):")
+            logger.info(
+                f"\nData Quality Warnings ({len(results_with_warnings)} symbols):"
+            )
             for r in results_with_warnings[:10]:  # Show top 10
                 for warning in r.data_quality_warnings:
                     logger.info(f"  {r.symbol}: {warning}")
             if len(results_with_warnings) > 10:
-                logger.info(f"  ... and {len(results_with_warnings) - 10} more symbols with warnings")
-            logger.info(f"  Tip: Review these symbols for potential stock split issues")
+                logger.info(
+                    f"  ... and {len(results_with_warnings) - 10} more symbols with warnings"
+                )
+            logger.info("  Tip: Review these symbols for potential stock split issues")
 
         # Sector Distribution
         sector_counts: Dict[str, int] = {}
@@ -998,7 +1042,7 @@ class BatchAnalysisRunner:
             if r.sector:
                 sector_counts[r.sector] = sector_counts.get(r.sector, 0) + 1
         if sector_counts:
-            logger.info(f"\nSector Distribution:")
+            logger.info("\nSector Distribution:")
             for sector, count in sorted(sector_counts.items(), key=lambda x: -x[1])[:8]:
                 logger.info(f"  {sector}: {count}")
 
@@ -1011,63 +1055,134 @@ def main():
 
     # Symbol source options (mutually exclusive)
     source_group = parser.add_mutually_exclusive_group(required=True)
-    source_group.add_argument("--russell1000", action="store_true", help="Process Russell 1000 stocks")
-    source_group.add_argument("--sp500", action="store_true", help="Process S&P 500 stocks")
-    source_group.add_argument("--top", type=int, metavar="N", help="Process top N stocks by market cap")
-    source_group.add_argument("--file", type=str, metavar="FILE", help="Process symbols from file (one per line)")
-    source_group.add_argument("--symbols", type=str, nargs="+", help="Process specific symbols")
+    source_group.add_argument(
+        "--russell1000", action="store_true", help="Process Russell 1000 stocks"
+    )
+    source_group.add_argument(
+        "--sp500", action="store_true", help="Process S&P 500 stocks"
+    )
+    source_group.add_argument(
+        "--all", action="store_true", help="Process ALL stocks from symbol table"
+    )
+    source_group.add_argument(
+        "--top", type=int, metavar="N", help="Process top N stocks by market cap"
+    )
+    source_group.add_argument(
+        "--file",
+        type=str,
+        metavar="FILE",
+        help="Process symbols from file (one per line)",
+    )
+    source_group.add_argument(
+        "--symbols", type=str, nargs="+", help="Process specific symbols"
+    )
 
     # Processing options
-    parser.add_argument("--batch-size", type=int, default=5, help="Number of symbols per batch (default: 5)")
-    parser.add_argument("--delay", type=int, default=10, help="Delay between batches in seconds (default: 10)")
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=5,
+        help="Number of symbols per batch (default: 5)",
+    )
+    parser.add_argument(
+        "--delay",
+        type=int,
+        default=10,
+        help="Delay between batches in seconds (default: 10)",
+    )
     parser.add_argument(
         "--mode",
         choices=["quick", "standard", "comprehensive"],
         default="standard",
         help="Analysis mode (default: standard)",
     )
-    parser.add_argument("--output", type=str, default=None, help="Output directory for results")
-    parser.add_argument("--no-skip", action="store_true", help="Don't skip already processed symbols")
-    parser.add_argument("--resume-from", type=str, metavar="SYMBOL", help="Resume from specific symbol")
+    parser.add_argument(
+        "--output", type=str, default=None, help="Output directory for results"
+    )
+    parser.add_argument(
+        "--no-skip", action="store_true", help="Don't skip already processed symbols"
+    )
+    parser.add_argument(
+        "--resume-from", type=str, metavar="SYMBOL", help="Resume from specific symbol"
+    )
     parser.add_argument(
         "--include-foreign",
         action="store_true",
         help="Include foreign stocks without SEC filings (default: US only with CIK)",
     )
+    parser.add_argument(
+        "--skip-domestic-filter",
+        action="store_true",
+        help="Skip the domestic filer filter (process all stocks even without SEC quarterly data)",
+    )
+    parser.add_argument(
+        "--order-by",
+        choices=["stockid", "mktcap", "ticker"],
+        default="stockid",
+        help="Sort order: stockid (ascending), mktcap (descending), ticker (alphabetical). Default: stockid",
+    )
 
     args = parser.parse_args()
 
-    runner = BatchAnalysisRunner(
-        batch_size=args.batch_size,
-        delay_between_batches=args.delay,
-        mode=args.mode,
-        output_dir=args.output,
+    print("Starting batch analysis runner...", flush=True)
+    print(
+        f"  Mode: {args.mode}, Batch size: {args.batch_size}, Delay: {args.delay}s",
+        flush=True,
     )
+
+    try:
+        runner = BatchAnalysisRunner(
+            batch_size=args.batch_size,
+            delay_between_batches=args.delay,
+            mode=args.mode,
+            output_dir=args.output,
+        )
+        print("  Runner initialized successfully", flush=True)
+    except Exception as e:
+        print(f"ERROR initializing runner: {e}", flush=True)
+        raise
 
     # Get symbols based on source
     us_only = not args.include_foreign
     if args.russell1000:
+        print("  Fetching Russell 1000 symbols...", flush=True)
         symbols = runner.get_russell1000_symbols()
+        print(f"  Found {len(symbols)} symbols", flush=True)
     elif args.sp500:
+        print("  Fetching S&P 500 symbols...", flush=True)
         symbols = runner.get_sp500_symbols()
+        print(f"  Found {len(symbols)} symbols", flush=True)
+    elif getattr(args, "all", False):
+        print(
+            f"  Fetching ALL stocks from symbol table (order: {args.order_by})...",
+            flush=True,
+        )
+        symbols = runner.get_all_symbols(us_only=us_only, order_by=args.order_by)
+        print(f"  Found {len(symbols)} symbols", flush=True)
     elif args.top:
+        print(f"  Fetching top {args.top} stocks by market cap...", flush=True)
         symbols = runner.get_top_n_symbols(args.top, us_only=us_only)
+        print(f"  Found {len(symbols)} symbols", flush=True)
         if us_only:
-            logger.info("Filtering to US stocks with SEC CIK only (use --include-foreign for all)")
+            logger.info(
+                "Filtering to US stocks with SEC CIK only (use --include-foreign for all)"
+            )
     elif args.file:
         with open(args.file) as f:
             symbols = [line.strip() for line in f if line.strip()]
-        logger.info(f"Loaded {len(symbols)} symbols from {args.file}")
+        print(f"  Loaded {len(symbols)} symbols from {args.file}", flush=True)
     elif args.symbols:
         symbols = args.symbols
-        logger.info(f"Processing {len(symbols)} specified symbols")
+        print(f"  Processing {len(symbols)} specified symbols", flush=True)
 
     # Run the batch analysis
+    skip_domestic = getattr(args, "skip_domestic_filter", False)
     asyncio.run(
         runner.run(
             symbols=symbols,
             skip_processed=not args.no_skip,
             resume_from=args.resume_from,
+            skip_domestic_filter=skip_domestic,
         )
     )
 

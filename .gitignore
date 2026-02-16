@@ -79,7 +79,7 @@ tests/__pycache__/
 
 # Archive (old code)
 # archive/ - REMOVED: Now tracking migration archives (archive/legacy-utils/, archive/utils-dead-code/)
-docs/archive/
+# docs/archive/ - tracked: contains historical session docs
 
 # Documentation build
 docs/_build/

@@ -13,7 +13,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from utils.industry_classifier import IndustryClassifier
+from utils.industry_classifier import IndustryClassifier  # noqa: E402
 
 
 def test_russell1000_integration():
@@ -26,7 +26,9 @@ def test_russell1000_integration():
     classifier = IndustryClassifier()
 
     # Check that Russell 1000 overrides were loaded
-    print(f"\n📊 Russell 1000 overrides loaded: {len(classifier.russell1000_overrides)} tickers")
+    print(
+        f"\n📊 Russell 1000 overrides loaded: {len(classifier.russell1000_overrides)} tickers"
+    )
 
     if not classifier.russell1000_overrides:
         print("❌ FAILED: No Russell 1000 overrides loaded!")
@@ -69,18 +71,22 @@ def test_russell1000_integration():
     if sector:
         print(f"⚠️  FAKE → {sector} / {industry} (should be None)")
     else:
-        print(f"✅ FAKE → No classification (expected)")
+        print("✅ FAKE → No classification (expected)")
 
     # Summary
     print("\n" + "=" * 80)
     if all_passed and len(classifier.russell1000_overrides) >= 900:
         print("✅ ALL TESTS PASSED")
-        print(f"   - {len(classifier.russell1000_overrides)} Russell 1000 tickers loaded")
+        print(
+            f"   - {len(classifier.russell1000_overrides)} Russell 1000 tickers loaded"
+        )
         print("   - Sample classifications working correctly")
     else:
         print("❌ SOME TESTS FAILED")
         if len(classifier.russell1000_overrides) < 900:
-            print(f"   - Only {len(classifier.russell1000_overrides)} tickers loaded (expected 924)")
+            print(
+                f"   - Only {len(classifier.russell1000_overrides)} tickers loaded (expected 924)"
+            )
         if not all_passed:
             print("   - Some classifications did not match expected values")
 

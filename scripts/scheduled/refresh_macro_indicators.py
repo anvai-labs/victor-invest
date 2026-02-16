@@ -42,60 +42,59 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from scripts.scheduled.base import (
+from scripts.scheduled.base import (  # noqa: E402
     BaseCollector,
     CollectionMetrics,
     compute_record_hash,
     get_database_connection,
-    retry_with_backoff,
 )
 
 # Key FRED indicators to refresh
 INDICATOR_CATEGORIES = {
     "rates": [
-        "DGS1MO",   # 1-Month Treasury
-        "DGS3MO",   # 3-Month Treasury
-        "DGS2",     # 2-Year Treasury
-        "DGS10",    # 10-Year Treasury
-        "DGS30",    # 30-Year Treasury
-        "FEDFUNDS", # Fed Funds Rate
-        "DPRIME",   # Prime Rate
+        "DGS1MO",  # 1-Month Treasury
+        "DGS3MO",  # 3-Month Treasury
+        "DGS2",  # 2-Year Treasury
+        "DGS10",  # 10-Year Treasury
+        "DGS30",  # 30-Year Treasury
+        "FEDFUNDS",  # Fed Funds Rate
+        "DPRIME",  # Prime Rate
     ],
     "credit": [
-        "BAMLC0A0CM",     # ICE BofA Corporate Index
-        "BAMLH0A0HYM2",   # ICE BofA High Yield
-        "BAA10Y",         # BAA Corporate Bond - 10Y Treasury Spread
-        "AAA10Y",         # AAA Corporate Bond - 10Y Treasury Spread
+        "BAMLC0A0CM",  # ICE BofA Corporate Index
+        "BAMLH0A0HYM2",  # ICE BofA High Yield
+        "BAA10Y",  # BAA Corporate Bond - 10Y Treasury Spread
+        "AAA10Y",  # AAA Corporate Bond - 10Y Treasury Spread
     ],
     "volatility": [
-        "VIXCLS",   # VIX (CBOE Volatility Index)
+        "VIXCLS",  # VIX (CBOE Volatility Index)
     ],
     "economic": [
-        "GDP",       # Gross Domestic Product
-        "GDPC1",     # Real GDP
-        "UNRATE",    # Unemployment Rate
+        "GDP",  # Gross Domestic Product
+        "GDPC1",  # Real GDP
+        "UNRATE",  # Unemployment Rate
         "CPIAUCSL",  # CPI (Consumer Price Index)
-        "PCEPI",     # PCE Price Index
-        "UMCSENT",   # Consumer Sentiment
+        "PCEPI",  # PCE Price Index
+        "UMCSENT",  # Consumer Sentiment
     ],
     "markets": [
-        "SP500",     # S&P 500
-        "DJIA",      # Dow Jones Industrial Average
-        "NASDAQCOM", # NASDAQ Composite
-        "WILL5000PR", # Wilshire 5000
+        "SP500",  # S&P 500
+        "DJIA",  # Dow Jones Industrial Average
+        "NASDAQCOM",  # NASDAQ Composite
+        "WILL5000PR",  # Wilshire 5000
     ],
     "money": [
-        "M2SL",      # M2 Money Supply
-        "WALCL",     # Fed Balance Sheet
+        "M2SL",  # M2 Money Supply
+        "WALCL",  # Fed Balance Sheet
     ],
     "housing": [
-        "MORTGAGE30US", # 30-Year Mortgage Rate
-        "CSUSHPINSA",   # Case-Shiller Home Price Index
+        "MORTGAGE30US",  # 30-Year Mortgage Rate
+        "CSUSHPINSA",  # Case-Shiller Home Price Index
     ],
     "labor": [
-        "PAYEMS",    # Nonfarm Payrolls
-        "ICSA",      # Initial Jobless Claims
-        "CCSA",      # Continued Jobless Claims
+        "PAYEMS",  # Nonfarm Payrolls
+        "ICSA",  # Initial Jobless Claims
+        "CCSA",  # Continued Jobless Claims
     ],
 }
 
@@ -145,13 +144,16 @@ class MacroIndicatorCollector(BaseCollector):
                     self.metrics.records_processed += 1
 
                     # Get indicator ID and last observation date for incremental fetch
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         SELECT mi.id, MAX(mv.date) as last_date
                         FROM macro_indicators mi
                         LEFT JOIN macro_indicator_values mv ON mi.id = mv.indicator_id
                         WHERE mi.series_id = %s
                         GROUP BY mi.id
-                    """, (indicator,))
+                    """,
+                        (indicator,),
+                    )
                     row = cursor.fetchone()
 
                     indicator_id = row[0] if row else None
@@ -168,9 +170,7 @@ class MacroIndicatorCollector(BaseCollector):
                     else:
                         # Full fetch: use configured lookback
                         start_date = end_date - timedelta(days=self.lookback_days)
-                        self.logger.debug(
-                            f"{indicator}: Full fetch from {start_date}"
-                        )
+                        self.logger.debug(f"{indicator}: Full fetch from {start_date}")
 
                     # Skip if no new dates
                     if start_date > end_date:
@@ -191,15 +191,18 @@ class MacroIndicatorCollector(BaseCollector):
                         continue
 
                     # Get or create indicator record with hash
-                    indicator_hash = compute_record_hash({
-                        "series_id": indicator,
-                        "name": data.get("name", indicator),
-                        "category": data.get("category", "unknown"),
-                        "frequency": data.get("frequency", "daily"),
-                        "units": data.get("units", ""),
-                    })
+                    indicator_hash = compute_record_hash(
+                        {
+                            "series_id": indicator,
+                            "name": data.get("name", indicator),
+                            "category": data.get("category", "unknown"),
+                            "frequency": data.get("frequency", "daily"),
+                            "units": data.get("units", ""),
+                        }
+                    )
 
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         INSERT INTO macro_indicators
                             (series_id, name, category, frequency, units, source_hash, source_fetch_timestamp)
                         VALUES (%s, %s, %s, %s, %s, %s, NOW())
@@ -209,14 +212,16 @@ class MacroIndicatorCollector(BaseCollector):
                             source_fetch_timestamp = NOW(),
                             updated_at = NOW()
                         RETURNING id
-                    """, (
-                        indicator,
-                        data.get("name", indicator),
-                        data.get("category", "unknown"),
-                        data.get("frequency", "daily"),
-                        data.get("units", ""),
-                        indicator_hash,
-                    ))
+                    """,
+                        (
+                            indicator,
+                            data.get("name", indicator),
+                            data.get("category", "unknown"),
+                            data.get("frequency", "daily"),
+                            data.get("units", ""),
+                            indicator_hash,
+                        ),
+                    )
                     indicator_id = cursor.fetchone()[0]
 
                     # Insert values with hash-based change detection
@@ -226,17 +231,22 @@ class MacroIndicatorCollector(BaseCollector):
                         value_data = value.get("value")
 
                         # Compute hash for this value
-                        value_hash = compute_record_hash({
-                            "indicator_id": indicator_id,
-                            "date": str(value_date),
-                            "value": str(value_data),
-                        })
+                        value_hash = compute_record_hash(
+                            {
+                                "indicator_id": indicator_id,
+                                "date": str(value_date),
+                                "value": str(value_data),
+                            }
+                        )
 
                         # Check for existing with hash
-                        cursor.execute("""
+                        cursor.execute(
+                            """
                             SELECT source_hash FROM macro_indicator_values
                             WHERE indicator_id = %s AND date = %s
-                        """, (indicator_id, value_date))
+                        """,
+                            (indicator_id, value_date),
+                        )
                         existing = cursor.fetchone()
 
                         if existing:
@@ -244,26 +254,33 @@ class MacroIndicatorCollector(BaseCollector):
                                 self.metrics.records_skipped += 1
                                 continue
                             # Update
-                            cursor.execute("""
+                            cursor.execute(
+                                """
                                 UPDATE macro_indicator_values SET
                                     value = %s, source_hash = %s,
                                     source_fetch_timestamp = NOW(), updated_at = NOW()
                                 WHERE indicator_id = %s AND date = %s
-                            """, (value_data, value_hash, indicator_id, value_date))
+                            """,
+                                (value_data, value_hash, indicator_id, value_date),
+                            )
                             self.metrics.records_updated += 1
                         else:
                             # Insert
-                            cursor.execute("""
+                            cursor.execute(
+                                """
                                 INSERT INTO macro_indicator_values
                                     (indicator_id, date, value, source_hash, source_fetch_timestamp)
                                 VALUES (%s, %s, %s, %s, NOW())
-                            """, (indicator_id, value_date, value_data, value_hash))
+                            """,
+                                (indicator_id, value_date, value_data, value_hash),
+                            )
                             self.metrics.records_inserted += 1
 
                     # Update watermark
                     if values:
                         max_date = max(v.get("date") for v in values)
-                        cursor.execute("""
+                        cursor.execute(
+                            """
                             INSERT INTO macro_indicator_watermarks
                                 (indicator_id, last_observation_date)
                             VALUES (%s, %s)
@@ -274,7 +291,9 @@ class MacroIndicatorCollector(BaseCollector):
                                 ),
                                 last_fetch_timestamp = NOW(),
                                 fetch_count = macro_indicator_watermarks.fetch_count + 1
-                        """, (indicator_id, max_date))
+                        """,
+                            (indicator_id, max_date),
+                        )
 
                     self.logger.debug(f"Updated {indicator}: {len(values)} values")
 
@@ -312,13 +331,10 @@ def main():
         type=str,
         choices=list(INDICATOR_CATEGORIES.keys()) + ["all"],
         default="all",
-        help="Category to refresh (default: all)"
+        help="Category to refresh (default: all)",
     )
     parser.add_argument(
-        "--days",
-        type=int,
-        default=30,
-        help="Number of days to look back (default: 30)"
+        "--days", type=int, default=30, help="Number of days to look back (default: 30)"
     )
     args = parser.parse_args()
 

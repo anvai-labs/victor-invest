@@ -8,19 +8,23 @@ Weekly Report Generation Module for InvestiGator
 Handles creation of weekly portfolio summary reports
 """
 
-import json
 import logging
 from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_RIGHT
 from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
-from reportlab.platypus import Image, KeepTogether, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import (
+    PageBreak,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 from .report_generator import NumberedCanvas, PDFReportGenerator, ReportConfig
 
@@ -35,12 +39,16 @@ class WeeklyReportGenerator(PDFReportGenerator):
         # Update config for weekly reports
         if config is None:
             config = ReportConfig(
-                title="InvestiGator Weekly Portfolio Report", subtitle="AI-Powered Weekly Investment Summary"
+                title="InvestiGator Weekly Portfolio Report",
+                subtitle="AI-Powered Weekly Investment Summary",
             )
         super().__init__(output_dir, config)
 
     def generate_weekly_report(
-        self, portfolio_data: List[Dict], market_summary: Optional[Dict] = None, performance_data: Optional[Dict] = None
+        self,
+        portfolio_data: List[Dict],
+        market_summary: Optional[Dict] = None,
+        performance_data: Optional[Dict] = None,
     ) -> str:
         """
         Generate weekly portfolio report
@@ -112,7 +120,9 @@ class WeeklyReportGenerator(PDFReportGenerator):
         logger.info(f"📊 Generated weekly report: {filepath}")
         return str(filepath)
 
-    def _create_weekly_title_page(self, week_start: datetime, week_end: datetime) -> List:
+    def _create_weekly_title_page(
+        self, week_start: datetime, week_end: datetime
+    ) -> List:
         """Create weekly report title page"""
         elements = []
 
@@ -123,7 +133,9 @@ class WeeklyReportGenerator(PDFReportGenerator):
 
         # Add week period
         elements.append(Spacer(1, 0.5 * inch))
-        period_text = f"Week of {week_start.strftime('%B %d')} - {week_end.strftime('%B %d, %Y')}"
+        period_text = (
+            f"Week of {week_start.strftime('%B %d')} - {week_end.strftime('%B %d, %Y')}"
+        )
         elements.append(Paragraph(period_text, self.styles["Heading2"]))
 
         # Add generation time
@@ -167,7 +179,9 @@ class WeeklyReportGenerator(PDFReportGenerator):
             ],
         ]
 
-        indices_table = Table(indices_data, colWidths=[1.5 * inch, 1.5 * inch, 1.5 * inch, 1.5 * inch])
+        indices_table = Table(
+            indices_data, colWidths=[1.5 * inch, 1.5 * inch, 1.5 * inch, 1.5 * inch]
+        )
         indices_table.setStyle(
             TableStyle(
                 [
@@ -188,8 +202,12 @@ class WeeklyReportGenerator(PDFReportGenerator):
         # Market commentary
         if market_summary.get("commentary"):
             elements.append(Spacer(1, 0.2 * inch))
-            elements.append(Paragraph("<b>Market Commentary</b>", self.styles["Heading3"]))
-            elements.append(Paragraph(market_summary["commentary"], self.styles["AnalysisText"]))
+            elements.append(
+                Paragraph("<b>Market Commentary</b>", self.styles["Heading3"])
+            )
+            elements.append(
+                Paragraph(market_summary["commentary"], self.styles["AnalysisText"])
+            )
 
         return elements
 
@@ -198,17 +216,19 @@ class WeeklyReportGenerator(PDFReportGenerator):
         elements = []
 
         elements.append(Spacer(1, 0.3 * inch))
-        elements.append(Paragraph("Portfolio Performance", self.styles["SectionHeader"]))
+        elements.append(
+            Paragraph("Portfolio Performance", self.styles["SectionHeader"])
+        )
         elements.append(Spacer(1, 0.2 * inch))
 
         # Performance metrics
         perf_text = f"""
-        <b>Week Performance:</b> {performance_data.get('week_return', 'N/A')}<br/>
-        <b>Month Performance:</b> {performance_data.get('month_return', 'N/A')}<br/>
-        <b>YTD Performance:</b> {performance_data.get('ytd_return', 'N/A')}<br/>
-        <b>Win Rate:</b> {performance_data.get('win_rate', 'N/A')}<br/>
-        <b>Best Performer:</b> {performance_data.get('best_performer', 'N/A')}<br/>
-        <b>Worst Performer:</b> {performance_data.get('worst_performer', 'N/A')}<br/>
+        <b>Week Performance:</b> {performance_data.get("week_return", "N/A")}<br/>
+        <b>Month Performance:</b> {performance_data.get("month_return", "N/A")}<br/>
+        <b>YTD Performance:</b> {performance_data.get("ytd_return", "N/A")}<br/>
+        <b>Win Rate:</b> {performance_data.get("win_rate", "N/A")}<br/>
+        <b>Best Performer:</b> {performance_data.get("best_performer", "N/A")}<br/>
+        <b>Worst Performer:</b> {performance_data.get("worst_performer", "N/A")}<br/>
         """
 
         elements.append(Paragraph(perf_text, self.styles["AnalysisText"]))
@@ -230,13 +250,24 @@ class WeeklyReportGenerator(PDFReportGenerator):
             # Get current price from executive_summary if not at top level
             current_price = stock.get("current_price", 0)
             if current_price == 0:
-                current_price = stock.get("executive_summary", {}).get("current_price", 0)
+                current_price = stock.get("executive_summary", {}).get(
+                    "current_price", 0
+                )
             # Get overall score from composite_scores
             overall_score = stock.get("overall_score", 0)
             if overall_score == 0:
-                overall_score = stock.get("composite_scores", {}).get("overall_score", 0)
+                overall_score = stock.get("composite_scores", {}).get(
+                    "overall_score", 0
+                )
 
-            movers.append({"symbol": symbol, "change": week_change, "price": current_price, "score": overall_score})
+            movers.append(
+                {
+                    "symbol": symbol,
+                    "change": week_change,
+                    "price": current_price,
+                    "score": overall_score,
+                }
+            )
 
         # Sort by absolute change
         movers.sort(key=lambda x: abs(x["change"]), reverse=True)
@@ -251,13 +282,21 @@ class WeeklyReportGenerator(PDFReportGenerator):
                 gainers_data.append(
                     [
                         mover["symbol"],
-                        f"${mover['price']:.2f}" if mover["price"] is not None else "$0.00",
-                        f"+{mover['change']:.2f}%" if mover["change"] is not None else "+0.00%",
-                        f"{mover['score']:.1f}" if mover["score"] is not None else "0.0",
+                        f"${mover['price']:.2f}"
+                        if mover["price"] is not None
+                        else "$0.00",
+                        f"+{mover['change']:.2f}%"
+                        if mover["change"] is not None
+                        else "+0.00%",
+                        f"{mover['score']:.1f}"
+                        if mover["score"] is not None
+                        else "0.0",
                     ]
                 )
 
-            gainers_table = Table(gainers_data, colWidths=[1.5 * inch, 1.5 * inch, 1.5 * inch, 1.5 * inch])
+            gainers_table = Table(
+                gainers_data, colWidths=[1.5 * inch, 1.5 * inch, 1.5 * inch, 1.5 * inch]
+            )
             self._apply_table_style(gainers_table, color_positive=True)
             elements.append(gainers_table)
 
@@ -272,13 +311,21 @@ class WeeklyReportGenerator(PDFReportGenerator):
                 losers_data.append(
                     [
                         mover["symbol"],
-                        f"${mover['price']:.2f}" if mover["price"] is not None else "$0.00",
-                        f"{mover['change']:.2f}%" if mover["change"] is not None else "0.00%",
-                        f"{mover['score']:.1f}" if mover["score"] is not None else "0.0",
+                        f"${mover['price']:.2f}"
+                        if mover["price"] is not None
+                        else "$0.00",
+                        f"{mover['change']:.2f}%"
+                        if mover["change"] is not None
+                        else "0.00%",
+                        f"{mover['score']:.1f}"
+                        if mover["score"] is not None
+                        else "0.0",
                     ]
                 )
 
-            losers_table = Table(losers_data, colWidths=[1.5 * inch, 1.5 * inch, 1.5 * inch, 1.5 * inch])
+            losers_table = Table(
+                losers_data, colWidths=[1.5 * inch, 1.5 * inch, 1.5 * inch, 1.5 * inch]
+            )
             self._apply_table_style(losers_table, color_negative=True)
             elements.append(losers_table)
 
@@ -331,7 +378,9 @@ class WeeklyReportGenerator(PDFReportGenerator):
                 ]
             )
 
-        sector_table = Table(sector_data, colWidths=[2.5 * inch, 1.2 * inch, 1.2 * inch, 1.5 * inch])
+        sector_table = Table(
+            sector_data, colWidths=[2.5 * inch, 1.2 * inch, 1.2 * inch, 1.5 * inch]
+        )
         self._apply_table_style(sector_table)
         elements.append(sector_table)
 
@@ -341,7 +390,9 @@ class WeeklyReportGenerator(PDFReportGenerator):
         """Create individual stock summaries"""
         elements = []
 
-        elements.append(Paragraph("Individual Stock Summaries", self.styles["SectionHeader"]))
+        elements.append(
+            Paragraph("Individual Stock Summaries", self.styles["SectionHeader"])
+        )
         elements.append(Spacer(1, 0.2 * inch))
 
         # Sort by overall score
@@ -356,7 +407,9 @@ class WeeklyReportGenerator(PDFReportGenerator):
         for stock in sorted_stocks[:10]:  # Top 10 stocks
             symbol = stock.get("symbol", "N/A")
             score = get_score(stock)
-            recommendation = stock.get("investment_recommendation", {}).get("recommendation", "N/A")
+            recommendation = stock.get("investment_recommendation", {}).get(
+                "recommendation", "N/A"
+            )
             if recommendation == "N/A":
                 recommendation = stock.get("recommendation", "N/A")
 
@@ -368,7 +421,11 @@ class WeeklyReportGenerator(PDFReportGenerator):
             # Get target price safely
             target = stock.get("price_target", 0)
             if target == 0:
-                target = stock.get("investment_recommendation", {}).get("target_price", {}).get("12_month_target", 0)
+                target = (
+                    stock.get("investment_recommendation", {})
+                    .get("target_price", {})
+                    .get("12_month_target", 0)
+                )
 
             week_change = stock.get("price_change_1w", 0)
 
@@ -406,7 +463,9 @@ class WeeklyReportGenerator(PDFReportGenerator):
         sell_stocks = []
 
         for stock in portfolio_data:
-            recommendation = stock.get("investment_recommendation", {}).get("recommendation", "N/A")
+            recommendation = stock.get("investment_recommendation", {}).get(
+                "recommendation", "N/A"
+            )
             if recommendation == "N/A":
                 recommendation = stock.get("recommendation", "N/A")
 
@@ -417,22 +476,32 @@ class WeeklyReportGenerator(PDFReportGenerator):
 
         # Buy recommendations
         if buy_stocks:
-            elements.append(Paragraph("<b>Buy Recommendations</b>", self.styles["Heading3"]))
+            elements.append(
+                Paragraph("<b>Buy Recommendations</b>", self.styles["Heading3"])
+            )
             for stock in buy_stocks[:5]:
                 # Get current price safely
                 current_price = stock.get("current_price", 0)
                 if current_price == 0:
-                    current_price = stock.get("executive_summary", {}).get("current_price", 0)
+                    current_price = stock.get("executive_summary", {}).get(
+                        "current_price", 0
+                    )
 
                 # Get target price safely
                 target_price = stock.get("price_target", 0)
                 if target_price == 0:
                     target_price = (
-                        stock.get("investment_recommendation", {}).get("target_price", {}).get("12_month_target", 0)
+                        stock.get("investment_recommendation", {})
+                        .get("target_price", {})
+                        .get("12_month_target", 0)
                     )
 
-                current_str = f"${current_price:.2f}" if current_price is not None else "$0.00"
-                target_str = f"${target_price:.2f}" if target_price is not None else "$0.00"
+                current_str = (
+                    f"${current_price:.2f}" if current_price is not None else "$0.00"
+                )
+                target_str = (
+                    f"${target_price:.2f}" if target_price is not None else "$0.00"
+                )
 
                 entry_text = f"• <b>{stock['symbol']}</b>: Entry at {current_str}, Target {target_str}"
                 elements.append(Paragraph(entry_text, self.styles["Normal"]))
@@ -440,21 +509,29 @@ class WeeklyReportGenerator(PDFReportGenerator):
         # Sell recommendations
         if sell_stocks:
             elements.append(Spacer(1, 0.1 * inch))
-            elements.append(Paragraph("<b>Sell Recommendations</b>", self.styles["Heading3"]))
+            elements.append(
+                Paragraph("<b>Sell Recommendations</b>", self.styles["Heading3"])
+            )
             for stock in sell_stocks[:5]:
                 # Get current price safely
                 current_price = stock.get("current_price", 0)
                 if current_price == 0:
-                    current_price = stock.get("executive_summary", {}).get("current_price", 0)
+                    current_price = stock.get("executive_summary", {}).get(
+                        "current_price", 0
+                    )
 
                 # Get stop loss safely
                 stop_loss = stock.get("stop_loss", 0)
                 if stop_loss == 0:
                     stop_loss = (
-                        stock.get("technical_assessment", {}).get("risk_management", {}).get("stop_loss_level", 0)
+                        stock.get("technical_assessment", {})
+                        .get("risk_management", {})
+                        .get("stop_loss_level", 0)
                     )
 
-                current_str = f"${current_price:.2f}" if current_price is not None else "$0.00"
+                current_str = (
+                    f"${current_price:.2f}" if current_price is not None else "$0.00"
+                )
                 stop_str = f"${stop_loss:.2f}" if stop_loss is not None else "$0.00"
 
                 exit_text = f"• <b>{stock['symbol']}</b>: Exit at {current_str}, Stop at {stop_str}"
@@ -506,7 +583,9 @@ class WeeklyReportGenerator(PDFReportGenerator):
 
         return elements
 
-    def _apply_table_style(self, table: Table, color_positive: bool = False, color_negative: bool = False):
+    def _apply_table_style(
+        self, table: Table, color_positive: bool = False, color_negative: bool = False
+    ):
         """Apply consistent table styling"""
         base_style = [
             ("BACKGROUND", (0, 0), (-1, 0), colors.grey),

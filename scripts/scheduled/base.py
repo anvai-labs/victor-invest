@@ -51,6 +51,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 @dataclass
 class CollectionMetrics:
     """Metrics for a data collection run."""
+
     job_name: str
     start_time: datetime
     end_time: Optional[datetime] = None
@@ -129,8 +130,7 @@ class LockFile:
         except BlockingIOError:
             self.lock_file.close()
             raise RuntimeError(
-                f"Job '{self.job_name}' is already running. "
-                f"Lock file: {self.lock_path}"
+                f"Job '{self.job_name}' is already running. Lock file: {self.lock_path}"
             )
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -236,12 +236,55 @@ def get_sp500_symbols() -> List[str]:
     except Exception:
         # Fallback to a static list if database query fails
         return [
-            "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "BRK.B",
-            "UNH", "JNJ", "JPM", "V", "PG", "XOM", "HD", "CVX", "MA", "ABBV",
-            "MRK", "LLY", "PEP", "KO", "COST", "AVGO", "WMT", "MCD", "CSCO",
-            "TMO", "ABT", "DHR", "ACN", "VZ", "ADBE", "CRM", "CMCSA", "PFE",
-            "INTC", "NKE", "DIS", "TXN", "WFC", "PM", "NEE", "UPS", "RTX",
-            "BMY", "QCOM", "HON", "LOW",
+            "AAPL",
+            "MSFT",
+            "GOOGL",
+            "AMZN",
+            "NVDA",
+            "META",
+            "TSLA",
+            "BRK.B",
+            "UNH",
+            "JNJ",
+            "JPM",
+            "V",
+            "PG",
+            "XOM",
+            "HD",
+            "CVX",
+            "MA",
+            "ABBV",
+            "MRK",
+            "LLY",
+            "PEP",
+            "KO",
+            "COST",
+            "AVGO",
+            "WMT",
+            "MCD",
+            "CSCO",
+            "TMO",
+            "ABT",
+            "DHR",
+            "ACN",
+            "VZ",
+            "ADBE",
+            "CRM",
+            "CMCSA",
+            "PFE",
+            "INTC",
+            "NKE",
+            "DIS",
+            "TXN",
+            "WFC",
+            "PM",
+            "NEE",
+            "UPS",
+            "RTX",
+            "BMY",
+            "QCOM",
+            "HON",
+            "LOW",
         ]
 
 
@@ -446,9 +489,11 @@ class FibonacciRateLimiter:
 
     def limit(self, func: Callable[..., T]) -> Callable[..., T]:
         """Decorator to rate limit a function."""
+
         def wrapper(*args, **kwargs) -> T:
             self._wait_for_slot()
             return func(*args, **kwargs)
+
         return wrapper
 
     def execute_with_retry(
@@ -470,6 +515,7 @@ class FibonacciRateLimiter:
             Last exception if all retries exhausted
         """
         if is_rate_limit is None:
+
             def is_rate_limit(e: Exception) -> bool:
                 # Check common patterns for 429 errors
                 if hasattr(e, "response") and hasattr(e.response, "status_code"):
@@ -615,10 +661,10 @@ def update_watermark(
     updates = [f"{col} = EXCLUDED.{col}" for col in columns if col != key_column]
 
     sql = f"""
-        INSERT INTO {table_name} ({key_column}, {', '.join(columns)})
-        VALUES (%s, {', '.join(placeholders)})
+        INSERT INTO {table_name} ({key_column}, {", ".join(columns)})
+        VALUES (%s, {", ".join(placeholders)})
         ON CONFLICT ({key_column}) DO UPDATE SET
-            {', '.join(updates)},
+            {", ".join(updates)},
             last_fetch_timestamp = NOW()
     """
 
@@ -796,10 +842,7 @@ def upsert_with_hash(
             return "skipped", False
 
         # Update existing
-        update_cols = [
-            col for col in data.keys()
-            if col not in key_columns
-        ]
+        update_cols = [col for col in data.keys() if col not in key_columns]
         set_clauses = [f"{col} = %s" for col in update_cols]
         set_clauses.append("source_hash = %s")
         set_clauses.append("source_fetch_timestamp = NOW()")
@@ -808,10 +851,14 @@ def upsert_with_hash(
         cursor.execute(
             f"""
             UPDATE {table_name}
-            SET {', '.join(set_clauses)}
+            SET {", ".join(set_clauses)}
             WHERE {where_sql}
             """,
-            tuple([data[col] for col in update_cols] + [new_hash] + list(key_lookup.values())),
+            tuple(
+                [data[col] for col in update_cols]
+                + [new_hash]
+                + list(key_lookup.values())
+            ),
         )
         return "updated", False
 
@@ -821,8 +868,8 @@ def upsert_with_hash(
 
     cursor.execute(
         f"""
-        INSERT INTO {table_name} ({', '.join(all_columns)})
-        VALUES ({', '.join(placeholders)})
+        INSERT INTO {table_name} ({", ".join(all_columns)})
+        VALUES ({", ".join(placeholders)})
         """,
         tuple(list(data.values()) + [new_hash]),
     )
@@ -901,7 +948,8 @@ class BaseCollector(ABC):
             conn = get_database_connection()
             cursor = conn.cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO scheduler_job_runs
                     (job_name, start_time, end_time, duration_seconds,
                      records_processed, records_inserted, records_updated,
@@ -909,22 +957,26 @@ class BaseCollector(ABC):
                      high_watermark_date, high_watermark_value)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT DO NOTHING
-            """, (
-                self.metrics.job_name,
-                self.metrics.start_time,
-                self.metrics.end_time,
-                self.metrics.duration_seconds,
-                self.metrics.records_processed,
-                self.metrics.records_inserted,
-                self.metrics.records_updated,
-                self.metrics.records_failed,
-                self.metrics.records_skipped,
-                self.metrics.success,
-                len(self.metrics.errors),
-                "\n".join(self.metrics.errors[:10]) if self.metrics.errors else None,
-                self.metrics.high_watermark_date,
-                self.metrics.high_watermark_value,
-            ))
+            """,
+                (
+                    self.metrics.job_name,
+                    self.metrics.start_time,
+                    self.metrics.end_time,
+                    self.metrics.duration_seconds,
+                    self.metrics.records_processed,
+                    self.metrics.records_inserted,
+                    self.metrics.records_updated,
+                    self.metrics.records_failed,
+                    self.metrics.records_skipped,
+                    self.metrics.success,
+                    len(self.metrics.errors),
+                    "\n".join(self.metrics.errors[:10])
+                    if self.metrics.errors
+                    else None,
+                    self.metrics.high_watermark_date,
+                    self.metrics.high_watermark_value,
+                ),
+            )
 
             conn.commit()
             cursor.close()

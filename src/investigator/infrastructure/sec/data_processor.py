@@ -21,7 +21,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
 # Import FiscalPeriodService for centralized fiscal period handling
 from investigator.domain.services.fiscal_period_service import get_fiscal_period_service
@@ -30,7 +30,9 @@ from investigator.domain.services.fiscal_period_service import get_fiscal_period
 from investigator.infrastructure.sec.canonical_mapper import get_canonical_mapper
 
 # Import MetricExtractionOrchestrator for SOLID-based metric extraction
-from investigator.infrastructure.sec.metric_extraction import MetricExtractionOrchestrator
+from investigator.infrastructure.sec.metric_extraction import (
+    MetricExtractionOrchestrator,
+)
 from utils.industry_classifier import classify_company
 
 logger = logging.getLogger(__name__)
@@ -91,9 +93,16 @@ class SECDataProcessor:
 
                 lookup = {}
                 for row in result:
-                    lookup[row.adsh] = {"fy": row.fy, "fp": row.fp, "period": str(row.period), "filed": str(row.filed)}
+                    lookup[row.adsh] = {
+                        "fy": row.fy,
+                        "fp": row.fp,
+                        "period": str(row.period),
+                        "filed": str(row.filed),
+                    }
 
-                logger.info(f"Built ADSH lookup from bulk table: {len(lookup)} entries for CIK {cik}")
+                logger.info(
+                    f"Built ADSH lookup from bulk table: {len(lookup)} entries for CIK {cik}"
+                )
                 return lookup
 
         except Exception as e:
@@ -118,7 +127,9 @@ class SECDataProcessor:
         from collections import Counter
 
         # Build bulk table lookup as fallback
-        bulk_lookup = self._build_adsh_fiscal_lookup(cik, self.engine) if self.engine else {}
+        bulk_lookup = (
+            self._build_adsh_fiscal_lookup(cik, self.engine) if self.engine else {}
+        )
 
         for filing_key, filing in filings.items():
             adsh = filing["adsh"]
@@ -132,7 +143,11 @@ class SECDataProcessor:
                 units = tag_data.get("units", {})
                 for unit_type, unit_data in units.items():
                     for entry in unit_data:
-                        if entry.get("accn") == adsh and entry.get("fy") == fy and entry.get("fp") == fp:
+                        if (
+                            entry.get("accn") == adsh
+                            and entry.get("fy") == fy
+                            and entry.get("fp") == fp
+                        ):
                             end_date = entry.get("end")
                             if end_date and end_date not in period_ends:
                                 period_ends.append(end_date)
@@ -168,11 +183,17 @@ class SECDataProcessor:
                 # Find the fiscal year-end month by looking at FY filings
                 fy_period_end = None
                 for other_filing in filings.values():
-                    if other_filing.get("fiscal_period") == "FY" and other_filing.get("fiscal_year") == fy:
+                    if (
+                        other_filing.get("fiscal_period") == "FY"
+                        and other_filing.get("fiscal_year") == fy
+                    ):
                         fy_period_end = other_filing.get("period_end_date")
                         break
                     # Also check prior year FY if current year not found
-                    if other_filing.get("fiscal_period") == "FY" and other_filing.get("fiscal_year") == fy - 1:
+                    if (
+                        other_filing.get("fiscal_period") == "FY"
+                        and other_filing.get("fiscal_year") == fy - 1
+                    ):
                         fy_period_end = other_filing.get("period_end_date")
 
                 if fy_period_end:
@@ -232,7 +253,9 @@ class SECDataProcessor:
         ]
 
         if not fy_periods:
-            logger.warning(f"{symbol}: No FY periods found, cannot compute quarter-end dates")
+            logger.warning(
+                f"{symbol}: No FY periods found, cannot compute quarter-end dates"
+            )
             return
 
         # Use the most recent FY to detect the fiscal year-end month/day
@@ -244,10 +267,14 @@ class SECDataProcessor:
             fy_end_month = fy_end_date.month
             fy_end_day = fy_end_date.day
         except (ValueError, TypeError):
-            logger.warning(f"{symbol}: Invalid FY period_end_date format: {latest_fy_end}")
+            logger.warning(
+                f"{symbol}: Invalid FY period_end_date format: {latest_fy_end}"
+            )
             return
 
-        logger.info(f"{symbol}: Detected fiscal year-end pattern: month={fy_end_month}, day={fy_end_day}")
+        logger.info(
+            f"{symbol}: Detected fiscal year-end pattern: month={fy_end_month}, day={fy_end_day}"
+        )
 
         # Quarters are offset from FY-end by: Q3=-3mo, Q2=-6mo, Q1=-9mo, Q4=0mo
         # FY itself should have period_end = fiscal_year + (month, day)
@@ -283,15 +310,20 @@ class SECDataProcessor:
             # Only correct if different
             if expected_period_end != current_period_end:
                 logger.debug(
-                    f"{symbol} FY{fy} {fp}: Correcting period_end_date " f"{current_period_end} → {expected_period_end}"
+                    f"{symbol} FY{fy} {fp}: Correcting period_end_date "
+                    f"{current_period_end} → {expected_period_end}"
                 )
                 filing["period_end_date"] = expected_period_end
                 corrections_made += 1
 
         if corrections_made > 0:
-            logger.info(f"{symbol}: Corrected period_end_date for {corrections_made} periods (including FY)")
+            logger.info(
+                f"{symbol}: Corrected period_end_date for {corrections_made} periods (including FY)"
+            )
 
-    def _detect_fiscal_year_end(self, company_facts_data: Dict, symbol: str) -> Optional[str]:
+    def _detect_fiscal_year_end(
+        self, company_facts_data: Dict, symbol: str
+    ) -> Optional[str]:
         """
         Detect company's fiscal year end from FY periods only.
 
@@ -310,7 +342,9 @@ class SECDataProcessor:
             fiscal_period_service = get_fiscal_period_service()
             return fiscal_period_service.detect_fiscal_year_end(company_facts_data)
         except Exception as e:
-            logger.error(f"[Fiscal Year End] {symbol}: Error detecting fiscal year end: {e}")
+            logger.error(
+                f"[Fiscal Year End] {symbol}: Error detecting fiscal year end: {e}"
+            )
             return None
 
     def _compute_fiscal_year_start(self, fiscal_year: int, fiscal_year_end: str) -> str:
@@ -335,7 +369,10 @@ class SECDataProcessor:
         # LEAP YEAR HANDLING: Adjust Feb 29 to Feb 28 for non-leap years
         if month == 2 and day == 29:
             if not isleap(fiscal_year):
-                logger.warning(f"[Fiscal Year Start] Adjusted Feb 29 to Feb 28 for " f"non-leap year {fiscal_year}")
+                logger.warning(
+                    f"[Fiscal Year Start] Adjusted Feb 29 to Feb 28 for "
+                    f"non-leap year {fiscal_year}"
+                )
                 day = 28
 
         try:
@@ -343,7 +380,8 @@ class SECDataProcessor:
             fy_end = date(fiscal_year, month, day)
         except ValueError as e:
             logger.error(
-                f"[Fiscal Year Start] Invalid date for FY {fiscal_year} " f"with fiscal_year_end={fiscal_year_end}: {e}"
+                f"[Fiscal Year Start] Invalid date for FY {fiscal_year} "
+                f"with fiscal_year_end={fiscal_year_end}: {e}"
             )
             # Fallback: Use Jan 1 of fiscal year
             return date(fiscal_year, 1, 1).strftime("%Y-%m-%d")
@@ -354,7 +392,9 @@ class SECDataProcessor:
 
         return fy_start.strftime("%Y-%m-%d")
 
-    def _score_period_for_selection(self, entry: Dict, fiscal_year_start: Optional[str], symbol: str) -> int:
+    def _score_period_for_selection(
+        self, entry: Dict, fiscal_year_start: Optional[str], symbol: str
+    ) -> int:
         """
         Score a period entry to prefer quarterly over YTD versions.
 
@@ -402,7 +442,8 @@ class SECDataProcessor:
             # Fallback: Use duration if fiscal_year_start not available
             is_ytd = True
             logger.debug(
-                f"[SCORE] {symbol} {fp} {end_date}: YTD detected by duration " f"({duration_days} days >= 120)"
+                f"[SCORE] {symbol} {fp} {end_date}: YTD detected by duration "
+                f"({duration_days} days >= 120)"
             )
 
         # Scoring
@@ -430,7 +471,9 @@ class SECDataProcessor:
         return score
 
     @staticmethod
-    def _determine_fiscal_year_from_end_date(period_end_date: str, fiscal_period: str) -> Optional[int]:
+    def _determine_fiscal_year_from_end_date(
+        period_end_date: str, fiscal_period: str
+    ) -> Optional[int]:
         """
         DEPRECATED: Use bulk table lookup instead (_build_adsh_fiscal_lookup).
 
@@ -529,7 +572,12 @@ class SECDataProcessor:
         "asset_turnover",
     ]
 
-    def __init__(self, db_engine=None, sector: Optional[str] = None, industry: Optional[str] = None):
+    def __init__(
+        self,
+        db_engine=None,
+        sector: Optional[str] = None,
+        industry: Optional[str] = None,
+    ):
         """
         Initialize processor with database connection and canonical key mapper
 
@@ -579,7 +627,9 @@ class SECDataProcessor:
         sector_specific = mapping.get("sector_specific") or {}
         return any(tags for tags in sector_specific.values())
 
-    def _detect_statement_qtrs(self, us_gaap: Dict, adsh: str, fiscal_year: int, fiscal_period: str) -> Tuple[int, int]:
+    def _detect_statement_qtrs(
+        self, us_gaap: Dict, adsh: str, fiscal_year: int, fiscal_period: str
+    ) -> Tuple[int, int]:
         """
         Detect optimal qtrs values for income statement and cash flow statement.
 
@@ -619,8 +669,12 @@ class SECDataProcessor:
         # Cash Flow Tags
         cashflow_tags = ["NetCashProvidedByUsedInOperatingActivities"]
 
-        income_statement_qtrs = self._find_optimal_qtrs(us_gaap, income_tags, adsh, fiscal_year, fiscal_period)
-        cash_flow_statement_qtrs = self._find_optimal_qtrs(us_gaap, cashflow_tags, adsh, fiscal_year, fiscal_period)
+        income_statement_qtrs = self._find_optimal_qtrs(
+            us_gaap, income_tags, adsh, fiscal_year, fiscal_period
+        )
+        cash_flow_statement_qtrs = self._find_optimal_qtrs(
+            us_gaap, cashflow_tags, adsh, fiscal_year, fiscal_period
+        )
 
         logger.debug(
             f"Detected qtrs for {adsh[:10]}... FY:{fiscal_year} {fiscal_period}: "
@@ -666,26 +720,47 @@ class SECDataProcessor:
         operating_expenses = data.get("operating_expenses")
 
         # If gross profit missing but we know total revenue and cost, compute it.
-        if gross_profit is None and total_revenue is not None and cost_of_revenue is not None:
+        if (
+            gross_profit is None
+            and total_revenue is not None
+            and cost_of_revenue is not None
+        ):
             gross_profit = total_revenue - cost_of_revenue
             data["gross_profit"] = gross_profit
 
         # If cost missing but we have revenue and gross profit, backfill.
-        if cost_of_revenue is None and total_revenue is not None and gross_profit is not None:
+        if (
+            cost_of_revenue is None
+            and total_revenue is not None
+            and gross_profit is not None
+        ):
             cost_of_revenue = total_revenue - gross_profit
             data["cost_of_revenue"] = cost_of_revenue
 
         # Use operating metrics when gross profit still unavailable.
-        if gross_profit is None and operating_income is not None and operating_expenses is not None:
+        if (
+            gross_profit is None
+            and operating_income is not None
+            and operating_expenses is not None
+        ):
             gross_profit = operating_income + operating_expenses
             data["gross_profit"] = gross_profit
 
         # Recompute cost when we derived gross profit above.
-        if cost_of_revenue is None and total_revenue is not None and gross_profit is not None:
+        if (
+            cost_of_revenue is None
+            and total_revenue is not None
+            and gross_profit is not None
+        ):
             data["cost_of_revenue"] = total_revenue - gross_profit
 
     def _find_optimal_qtrs(
-        self, us_gaap: Dict, tags: List[str], adsh: str, fiscal_year: int, fiscal_period: str
+        self,
+        us_gaap: Dict,
+        tags: List[str],
+        adsh: str,
+        fiscal_year: int,
+        fiscal_period: str,
     ) -> int:
         """
         Find optimal qtrs value by checking for individual quarter availability.
@@ -758,7 +833,11 @@ class SECDataProcessor:
         seen_entries = set()  # Track unique (accn, start, end) to avoid duplicates
 
         # Use representative tags that appear in most filings
-        representative_tags = ["NetIncomeLoss", "Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax"]
+        representative_tags = [
+            "NetIncomeLoss",
+            "Revenues",
+            "RevenueFromContractWithCustomerExcludingAssessedTax",
+        ]
 
         for tag_name in representative_tags:
             if tag_name not in us_gaap:
@@ -873,12 +952,20 @@ class SECDataProcessor:
 
             # Compute fiscal year start if not cached
             if fy and fy not in fiscal_year_starts and fiscal_year_end:
-                fiscal_year_starts[fy] = self._compute_fiscal_year_start(fy, fiscal_year_end)
+                fiscal_year_starts[fy] = self._compute_fiscal_year_start(
+                    fy, fiscal_year_end
+                )
 
             fiscal_year_start = fiscal_year_starts.get(fy)
 
             # Score all candidates
-            scored = [(self._score_period_for_selection(entry, fiscal_year_start, symbol), entry) for entry in group]
+            scored = [
+                (
+                    self._score_period_for_selection(entry, fiscal_year_start, symbol),
+                    entry,
+                )
+                for entry in group
+            ]
             scored.sort(key=lambda x: x[0], reverse=True)  # Highest score first
 
             # Filter 3: Validate fiscal year (reject if > 2 years from period_end)
@@ -907,7 +994,9 @@ class SECDataProcessor:
                         if fiscal_year_end:
                             # Extract fiscal_year_end_month from fiscal_year_end (format: '-MM-DD')
                             try:
-                                fiscal_year_end_month = int(fiscal_year_end.split("-")[1])
+                                fiscal_year_end_month = int(
+                                    fiscal_year_end.split("-")[1]
+                                )
                                 period_end_date = datetime.strptime(end_str, "%Y-%m-%d")
                                 period_month = period_end_date.month
 
@@ -1002,7 +1091,11 @@ class SECDataProcessor:
         other_short_borrowings = data.get("financial_other_short_term_borrowings")
 
         # Derive short-term debt from financial components if available
-        short_term_components = [value for value in (repo_borrowings, other_short_borrowings) if value is not None]
+        short_term_components = [
+            value
+            for value in (repo_borrowings, other_short_borrowings)
+            if value is not None
+        ]
         if short_term is None and short_term_components:
             short_term = sum(short_term_components)
             data["short_term_debt"] = short_term
@@ -1106,7 +1199,8 @@ class SECDataProcessor:
 
             # Log orchestrator failure for debugging
             logger.debug(
-                f"[Orchestrator] Failed to extract {canonical_key} for period_end={period_end}: " f"{result.error}"
+                f"[Orchestrator] Failed to extract {canonical_key} for period_end={period_end}: "
+                f"{result.error}"
             )
 
         # ===================================================================
@@ -1117,7 +1211,9 @@ class SECDataProcessor:
         if not mapping:
             return (None, None)
 
-        fallback_tags = self.canonical_mapper.get_tags(canonical_key, sector=self.sector, industry=self.industry)
+        fallback_tags = self.canonical_mapper.get_tags(
+            canonical_key, sector=self.sector, industry=self.industry
+        )
         expected_unit = mapping.get("unit", "USD")
 
         for tag_name in fallback_tags:
@@ -1195,7 +1291,9 @@ class SECDataProcessor:
                     )
                     return (value, tag_name)
 
-        logger.debug(f"Could not extract {canonical_key} for ADSH {adsh[:10]}... (tried {len(fallback_tags)} tags)")
+        logger.debug(
+            f"Could not extract {canonical_key} for ADSH {adsh[:10]}... (tried {len(fallback_tags)} tags)"
+        )
         return (None, None)
 
     def _select_best_entry(
@@ -1291,9 +1389,14 @@ class SECDataProcessor:
                 if period_end:
                     for entry in unknown_entries:
                         if entry.get("end") == period_end:
-                            logger.debug("  → Selected unknown entry matching period_end %s", period_end)
+                            logger.debug(
+                                "  → Selected unknown entry matching period_end %s",
+                                period_end,
+                            )
                             return entry
-                logger.debug("  → Selected entry without duration info (no start/end dates)")
+                logger.debug(
+                    "  → Selected entry without duration info (no start/end dates)"
+                )
                 return unknown_entries[0]
 
             return None
@@ -1338,12 +1441,14 @@ class SECDataProcessor:
         """
         try:
             if "facts" not in raw_data or "us-gaap" not in raw_data["facts"]:
-                logger.error(f"Raw data for {symbol} missing us-gaap structure, cannot process")
+                logger.error(
+                    f"Raw data for {symbol} missing us-gaap structure, cannot process"
+                )
                 return []
 
             us_gaap = raw_data["facts"]["us-gaap"]
             cik = str(raw_data.get("cik", ""))
-            entity_name = raw_data.get("entityName", "")
+            raw_data.get("entityName", "")
 
             # Auto-detect sector/industry if not provided in __init__
             if not self.sector or not self.industry:
@@ -1352,9 +1457,13 @@ class SECDataProcessor:
                 self.industry = self.industry or detected_industry
 
                 if self.sector and self.industry:
-                    logger.info(f"[SEC Processor] Auto-detected {symbol} industry: {self.sector}/{self.industry}")
+                    logger.info(
+                        f"[SEC Processor] Auto-detected {symbol} industry: {self.sector}/{self.industry}"
+                    )
                 elif self.sector:
-                    logger.info(f"[SEC Processor] Auto-detected {symbol} sector: {self.sector} (industry unknown)")
+                    logger.info(
+                        f"[SEC Processor] Auto-detected {symbol} sector: {self.sector} (industry unknown)"
+                    )
                 else:
                     logger.warning(
                         f"[SEC Processor] Could not detect sector/industry for {symbol}, using generic XBRL tags"
@@ -1363,7 +1472,9 @@ class SECDataProcessor:
             # Group all metrics by ADSH (accession number = unique filing identifier)
             filings = {}  # {adsh: {fiscal_year, fiscal_period, data}}
 
-            logger.info(f"Processing raw SEC data for {symbol}: {len(us_gaap)} us-gaap tags")
+            logger.info(
+                f"Processing raw SEC data for {symbol}: {len(us_gaap)} us-gaap tags"
+            )
 
             # PHASE 1: Discover ALL period entries using comprehensive strategy
             # Strategy: Scan representative tags to find all unique (start, end, frame, accn) combinations
@@ -1372,12 +1483,16 @@ class SECDataProcessor:
 
             # PHASE 1.5: Select best entry for each period
             # Applies filtering: individual quarter preference, latest filed date, fy validation
-            best_entries = self._select_best_entries_per_period(all_period_entries, symbol, raw_data)
+            best_entries = self._select_best_entries_per_period(
+                all_period_entries, symbol, raw_data
+            )
 
             # Detect fiscal year end for Q1 fiscal year adjustment
             fiscal_year_end = self._detect_fiscal_year_end(raw_data, symbol)
             if fiscal_year_end:
-                logger.info(f"[Fiscal Year End] {symbol}: Detected fiscal year end: {fiscal_year_end}")
+                logger.info(
+                    f"[Fiscal Year End] {symbol}: Detected fiscal year end: {fiscal_year_end}"
+                )
             else:
                 logger.warning(
                     f"[Fiscal Year End] {symbol}: Could not detect fiscal year end, Q1 fiscal year may be incorrect"
@@ -1438,12 +1553,15 @@ class SECDataProcessor:
                 if fiscal_year_end and actual_fp in ["Q1", "Q2", "Q3", "Q4"]:
                     try:
                         # Extract month and day from fiscal_year_end (format: '-MM-DD')
-                        fy_end_month, fy_end_day = map(int, fiscal_year_end[1:].split("-"))
+                        fy_end_month, fy_end_day = map(
+                            int, fiscal_year_end[1:].split("-")
+                        )
 
                         # Check if period_end is after fiscal_year_end
                         # If so, the quarter belongs to the next fiscal year
                         if (period_end_date.month > fy_end_month) or (
-                            period_end_date.month == fy_end_month and period_end_date.day > fy_end_day
+                            period_end_date.month == fy_end_month
+                            and period_end_date.day > fy_end_day
                         ):
                             original_fy = actual_fiscal_year
                             actual_fiscal_year += 1
@@ -1474,7 +1592,9 @@ class SECDataProcessor:
                     "extraction_version": extraction_version,
                 }
 
-            logger.info(f"✅ Selected {len(filings)} best filings for {symbol} (frame/start/end-based, PIT preferred)")
+            logger.info(
+                f"✅ Selected {len(filings)} best filings for {symbol} (frame/start/end-based, PIT preferred)"
+            )
 
             # PHASE 1b: Deduplicate by (period_start_date, period_end_date)
             # Prevents selecting multiple fiscal_period labels (Q2, Q3) for the same actual period
@@ -1513,7 +1633,9 @@ class SECDataProcessor:
                     f"final count: {len(filings)} unique filings"
                 )
             else:
-                logger.info(f"[ADSH Dedup] {symbol}: No duplicates found, {len(filings)} unique filings")
+                logger.info(
+                    f"[ADSH Dedup] {symbol}: No duplicates found, {len(filings)} unique filings"
+                )
 
             # Populate current_price if provided (enables market cap calculation)
             if current_price is not None:
@@ -1528,7 +1650,11 @@ class SECDataProcessor:
                 adsh = filing["adsh"]  # Extract adsh from filing dict
                 for canonical_key in self.CANONICAL_KEYS_TO_EXTRACT:
                     mapping = self.canonical_mapper.mappings.get(canonical_key)
-                    derived_enabled = mapping.get("derived", {}).get("enabled", False) if mapping else False
+                    derived_enabled = (
+                        mapping.get("derived", {}).get("enabled", False)
+                        if mapping
+                        else False
+                    )
                     has_direct_tags = self._mapping_has_direct_tags(mapping)
 
                     # Skip purely-derived metrics until the derivation pass
@@ -1542,7 +1668,8 @@ class SECDataProcessor:
                         adsh,
                         fiscal_year=filing["fiscal_year"],
                         fiscal_period=filing["fiscal_period"],
-                        period_end=filing.get("period_end_date") or filing.get("period_end"),
+                        period_end=filing.get("period_end_date")
+                        or filing.get("period_end"),
                     )
 
                     if value is not None:
@@ -1583,15 +1710,22 @@ class SECDataProcessor:
                 # Use CanonicalKeyMapper to calculate derived values
                 for canonical_key in self.CANONICAL_KEYS_TO_EXTRACT:
                     mapping = self.canonical_mapper.mappings.get(canonical_key)
-                    if not mapping or not mapping.get("derived", {}).get("enabled", False):
+                    if not mapping or not mapping.get("derived", {}).get(
+                        "enabled", False
+                    ):
                         continue
 
                     # Skip if already extracted directly
-                    if canonical_key in filing["data"] and filing["data"][canonical_key] is not None:
+                    if (
+                        canonical_key in filing["data"]
+                        and filing["data"][canonical_key] is not None
+                    ):
                         continue
 
                     # Calculate derived value
-                    derived_value = self.canonical_mapper.calculate_derived_value(canonical_key, filing["data"])
+                    derived_value = self.canonical_mapper.calculate_derived_value(
+                        canonical_key, filing["data"]
+                    )
 
                     if derived_value is not None:
                         filing["data"][canonical_key] = derived_value
@@ -1601,8 +1735,10 @@ class SECDataProcessor:
                         )
 
                 # PHASE 3.5: Detect statement-specific qtrs values
-                income_statement_qtrs, cash_flow_statement_qtrs = self._detect_statement_qtrs(
-                    us_gaap, adsh, filing["fiscal_year"], filing["fiscal_period"]
+                income_statement_qtrs, cash_flow_statement_qtrs = (
+                    self._detect_statement_qtrs(
+                        us_gaap, adsh, filing["fiscal_year"], filing["fiscal_period"]
+                    )
                 )
                 filing["income_statement_qtrs"] = income_statement_qtrs
                 filing["cash_flow_statement_qtrs"] = cash_flow_statement_qtrs
@@ -1630,14 +1766,16 @@ class SECDataProcessor:
             for filing in processed_filings:
                 # Normalize YTD values to point-in-time BEFORE calculating ratios
                 # Use raw_filings to look up previous periods (not yet normalized)
-                filing["data"], income_normalized, cashflow_normalized = self._normalize_ytd_to_pit(
-                    data=filing["data"],
-                    income_qtrs=filing["income_statement_qtrs"],
-                    cashflow_qtrs=filing["cash_flow_statement_qtrs"],
-                    fiscal_period=filing["fiscal_period"],
-                    fiscal_year=filing["fiscal_year"],
-                    all_filings=raw_filings,  # Use raw (pre-normalization) filings
-                    symbol=symbol,
+                filing["data"], income_normalized, cashflow_normalized = (
+                    self._normalize_ytd_to_pit(
+                        data=filing["data"],
+                        income_qtrs=filing["income_statement_qtrs"],
+                        cashflow_qtrs=filing["cash_flow_statement_qtrs"],
+                        fiscal_period=filing["fiscal_period"],
+                        fiscal_year=filing["fiscal_year"],
+                        all_filings=raw_filings,  # Use raw (pre-normalization) filings
+                        symbol=symbol,
+                    )
                 )
 
                 # Once normalized, mark statements as point-in-time for downstream use
@@ -1650,11 +1788,17 @@ class SECDataProcessor:
                 filing["ratios"] = self._calculate_ratios(filing["data"])
 
                 # Assess data quality
-                filing["quality"] = self._assess_quality(filing["data"], filing["ratios"])
+                filing["quality"] = self._assess_quality(
+                    filing["data"], filing["ratios"]
+                )
 
             # Sort by fiscal year and period (most recent first)
             processed_filings.sort(
-                key=lambda f: (f["fiscal_year"] or 0, self._fiscal_period_to_int(f["fiscal_period"])), reverse=True
+                key=lambda f: (
+                    f["fiscal_year"] or 0,
+                    self._fiscal_period_to_int(f["fiscal_period"]),
+                ),
+                reverse=True,
             )
 
             # Save processed filings to database (skip when explicitly requested)
@@ -1698,20 +1842,26 @@ class SECDataProcessor:
 
         # Current Ratio = Current Assets / Current Liabilities
         if data.get("current_assets") and data.get("current_liabilities"):
-            ratios["current_ratio"] = round(data["current_assets"] / data["current_liabilities"], 4)
+            ratios["current_ratio"] = round(
+                data["current_assets"] / data["current_liabilities"], 4
+            )
         else:
             ratios["current_ratio"] = None
 
         # Quick Ratio = (Current Assets - Inventory) / Current Liabilities
         if data.get("current_assets") and data.get("current_liabilities"):
             inventory = data.get("inventory") or 0
-            ratios["quick_ratio"] = round((data["current_assets"] - inventory) / data["current_liabilities"], 4)
+            ratios["quick_ratio"] = round(
+                (data["current_assets"] - inventory) / data["current_liabilities"], 4
+            )
         else:
             ratios["quick_ratio"] = None
 
         # Debt to Equity = Total Debt / Stockholders Equity
         if data.get("total_debt") and data.get("stockholders_equity"):
-            ratios["debt_to_equity"] = round(data["total_debt"] / data["stockholders_equity"], 4)
+            ratios["debt_to_equity"] = round(
+                data["total_debt"] / data["stockholders_equity"], 4
+            )
         else:
             ratios["debt_to_equity"] = None
 
@@ -1729,13 +1879,17 @@ class SECDataProcessor:
 
         # Gross Margin = Gross Profit / Revenue
         if data.get("gross_profit") and data.get("total_revenue"):
-            ratios["gross_margin"] = round(data["gross_profit"] / data["total_revenue"], 4)
+            ratios["gross_margin"] = round(
+                data["gross_profit"] / data["total_revenue"], 4
+            )
         else:
             ratios["gross_margin"] = None
 
         # Operating Margin = Operating Income / Revenue
         if data.get("operating_income") and data.get("total_revenue"):
-            ratios["operating_margin"] = round(data["operating_income"] / data["total_revenue"], 4)
+            ratios["operating_margin"] = round(
+                data["operating_income"] / data["total_revenue"], 4
+            )
         else:
             ratios["operating_margin"] = None
 
@@ -1791,14 +1945,28 @@ class SECDataProcessor:
         normalized = copy.deepcopy(data)
 
         # Income statement metrics needing normalization
-        income_metrics = ["total_revenue", "net_income", "gross_profit", "operating_income", "cost_of_revenue"]
+        income_metrics = [
+            "total_revenue",
+            "net_income",
+            "gross_profit",
+            "operating_income",
+            "cost_of_revenue",
+        ]
 
         # Cash flow metrics needing normalization
-        cashflow_metrics = ["operating_cash_flow", "capital_expenditures", "free_cash_flow", "dividends_paid"]
+        cashflow_metrics = [
+            "operating_cash_flow",
+            "capital_expenditures",
+            "free_cash_flow",
+            "dividends_paid",
+        ]
 
         # Check if normalization is needed
         needs_income_normalization = income_qtrs > 1 and fiscal_period in ["Q2", "Q3"]
-        needs_cashflow_normalization = cashflow_qtrs > 1 and fiscal_period in ["Q2", "Q3"]
+        needs_cashflow_normalization = cashflow_qtrs > 1 and fiscal_period in [
+            "Q2",
+            "Q3",
+        ]
 
         # DEBUG: Log normalization decision
         logger.info(
@@ -1813,12 +1981,15 @@ class SECDataProcessor:
         if not (needs_income_normalization or needs_cashflow_normalization):
             # No normalization needed - data is already point-in-time
             logger.info(
-                f"[YTD_NORM_DEBUG] {symbol} {fiscal_year}-{fiscal_period}: " f"NO normalization needed (already PIT)"
+                f"[YTD_NORM_DEBUG] {symbol} {fiscal_year}-{fiscal_period}: "
+                f"NO normalization needed (already PIT)"
             )
             return normalized, income_normalized, cashflow_normalized
 
         # Find previous period data
-        prev_period = "Q1" if fiscal_period == "Q2" else "Q2"  # Q2 needs Q1, Q3 needs Q2
+        prev_period = (
+            "Q1" if fiscal_period == "Q2" else "Q2"
+        )  # Q2 needs Q1, Q3 needs Q2
 
         # DEBUG: Log all available filings for troubleshooting
         logger.info(
@@ -1827,11 +1998,17 @@ class SECDataProcessor:
         )
         for idx, f in enumerate(all_filings[:10]):  # Show first 10 for debugging
             logger.debug(
-                f"[YTD_NORM_DEBUG]   Filing[{idx}]: " f"{f.get('fiscal_year', 'N/A')}-{f.get('fiscal_period', 'N/A')}"
+                f"[YTD_NORM_DEBUG]   Filing[{idx}]: "
+                f"{f.get('fiscal_year', 'N/A')}-{f.get('fiscal_period', 'N/A')}"
             )
 
         prev_filing = next(
-            (f for f in all_filings if f["fiscal_year"] == fiscal_year and f["fiscal_period"] == prev_period), None
+            (
+                f
+                for f in all_filings
+                if f["fiscal_year"] == fiscal_year and f["fiscal_period"] == prev_period
+            ),
+            None,
         )
 
         if not prev_filing:
@@ -1857,8 +2034,8 @@ class SECDataProcessor:
 
                         logger.debug(
                             f"[YTD_NORM] {symbol} {fiscal_year}-{fiscal_period} {metric}: "
-                            f"{ytd_value/1e6:.2f}M (YTD) - {prev_value/1e6:.2f}M (prev) = "
-                            f"{normalized[metric]/1e6:.2f}M (PIT)"
+                            f"{ytd_value / 1e6:.2f}M (YTD) - {prev_value / 1e6:.2f}M (prev) = "
+                            f"{normalized[metric] / 1e6:.2f}M (PIT)"
                         )
                         income_normalized = True
 
@@ -1874,8 +2051,8 @@ class SECDataProcessor:
 
                         logger.debug(
                             f"[YTD_NORM] {symbol} {fiscal_year}-{fiscal_period} {metric}: "
-                            f"{ytd_value/1e6:.2f}M (YTD) - {prev_value/1e6:.2f}M (prev) = "
-                            f"{normalized[metric]/1e6:.2f}M (PIT)"
+                            f"{ytd_value / 1e6:.2f}M (YTD) - {prev_value / 1e6:.2f}M (prev) = "
+                            f"{normalized[metric] / 1e6:.2f}M (PIT)"
                         )
                         cashflow_normalized = True
 
@@ -1910,11 +2087,20 @@ class SECDataProcessor:
         core_total = len(core_metrics)
 
         # Count how many ratios are calculable
-        ratios_present = sum(1 for ratio_val in ratios.values() if ratio_val is not None)
+        ratios_present = sum(
+            1 for ratio_val in ratios.values() if ratio_val is not None
+        )
         ratios_total = len(ratios)
 
         # Calculate completeness score
-        completeness_score = round((core_present / core_total) * 0.7 + (ratios_present / ratios_total) * 0.3, 2) * 100
+        completeness_score = (
+            round(
+                (core_present / core_total) * 0.7
+                + (ratios_present / ratios_total) * 0.3,
+                2,
+            )
+            * 100
+        )
 
         # Assign grade
         if completeness_score >= 90:
@@ -1961,7 +2147,9 @@ class SECDataProcessor:
         saved_count = 0
 
         try:
-            delete_query = text("DELETE FROM sec_companyfacts_processed WHERE symbol = :symbol")
+            delete_query = text(
+                "DELETE FROM sec_companyfacts_processed WHERE symbol = :symbol"
+            )
             insert_query = text(
                 """
                 INSERT INTO sec_companyfacts_processed
@@ -2052,7 +2240,11 @@ class SECDataProcessor:
                     if isinstance(fcf_val, (int, float)):
                         fcf_needs_derivation = abs(fcf_val) < 1e-6
 
-                    if fcf_needs_derivation and ocf_val is not None and capex_val is not None:
+                    if (
+                        fcf_needs_derivation
+                        and ocf_val is not None
+                        and capex_val is not None
+                    ):
                         derived_fcf = ocf_val - abs(capex_val)
                         data["free_cash_flow"] = derived_fcf
                         logger.debug(
@@ -2077,15 +2269,21 @@ class SECDataProcessor:
                             "gross_profit": data.get("gross_profit"),
                             "operating_income": data.get("operating_income"),
                             "cost_of_revenue": data.get("cost_of_revenue"),
-                            "research_and_development_expense": data.get("research_and_development_expense"),
+                            "research_and_development_expense": data.get(
+                                "research_and_development_expense"
+                            ),
                             "selling_general_administrative_expense": data.get(
                                 "selling_general_administrative_expense"
                             ),
                             "operating_expenses": data.get("operating_expenses"),
                             "interest_expense": data.get("interest_expense"),
                             "income_tax_expense": data.get("income_tax_expense"),
-                            "depreciation_amortization": data.get("depreciation_amortization"),
-                            "stock_based_compensation": data.get("stock_based_compensation"),
+                            "depreciation_amortization": data.get(
+                                "depreciation_amortization"
+                            ),
+                            "stock_based_compensation": data.get(
+                                "stock_based_compensation"
+                            ),
                             "total_assets": data.get("total_assets"),
                             "total_liabilities": data.get("total_liabilities"),
                             "current_assets": data.get("current_assets"),
@@ -2097,14 +2295,22 @@ class SECDataProcessor:
                             "accrued_liabilities": data.get("accrued_liabilities"),
                             "inventory": data.get("inventory"),
                             "cash_and_equivalents": data.get("cash_and_equivalents"),
-                            "property_plant_equipment": data.get("property_plant_equipment"),
-                            "accumulated_depreciation": data.get("accumulated_depreciation"),
-                            "property_plant_equipment_net": data.get("property_plant_equipment_net"),
+                            "property_plant_equipment": data.get(
+                                "property_plant_equipment"
+                            ),
+                            "accumulated_depreciation": data.get(
+                                "accumulated_depreciation"
+                            ),
+                            "property_plant_equipment_net": data.get(
+                                "property_plant_equipment_net"
+                            ),
                             "goodwill": data.get("goodwill"),
                             "intangible_assets": data.get("intangible_assets"),
                             "deferred_revenue": data.get("deferred_revenue"),
                             "treasury_stock": data.get("treasury_stock"),
-                            "other_comprehensive_income": data.get("other_comprehensive_income"),
+                            "other_comprehensive_income": data.get(
+                                "other_comprehensive_income"
+                            ),
                             "book_value": data.get("book_value"),
                             "book_value_per_share": data.get("book_value_per_share"),
                             "working_capital": data.get("working_capital"),
@@ -2116,8 +2322,12 @@ class SECDataProcessor:
                             "capital_expenditures": data.get("capital_expenditures"),
                             "free_cash_flow": data.get("free_cash_flow"),
                             "dividends_paid": data.get("dividends_paid"),
-                            "preferred_stock_dividends": data.get("preferred_stock_dividends"),
-                            "common_stock_dividends": data.get("common_stock_dividends"),
+                            "preferred_stock_dividends": data.get(
+                                "preferred_stock_dividends"
+                            ),
+                            "common_stock_dividends": data.get(
+                                "common_stock_dividends"
+                            ),
                             "investing_cash_flow": data.get("investing_cash_flow"),
                             "financing_cash_flow": data.get("financing_cash_flow"),
                             "weighted_average_diluted_shares_outstanding": data.get(
@@ -2125,7 +2335,9 @@ class SECDataProcessor:
                             ),
                             "shares_outstanding": data.get("shares_outstanding"),
                             "earnings_per_share": data.get("earnings_per_share"),
-                            "earnings_per_share_diluted": data.get("earnings_per_share_diluted"),
+                            "earnings_per_share_diluted": data.get(
+                                "earnings_per_share_diluted"
+                            ),
                             "market_cap": data.get("market_cap"),
                             "enterprise_value": data.get("enterprise_value"),
                             "current_ratio": prefer_value("current_ratio"),
@@ -2136,13 +2348,19 @@ class SECDataProcessor:
                             "gross_margin": prefer_value("gross_margin"),
                             "operating_margin": prefer_value("operating_margin"),
                             "net_margin": prefer_value("net_margin"),
-                            "dividend_payout_ratio": prefer_value("dividend_payout_ratio"),
+                            "dividend_payout_ratio": prefer_value(
+                                "dividend_payout_ratio"
+                            ),
                             "dividend_yield": prefer_value("dividend_yield"),
                             "effective_tax_rate": prefer_value("effective_tax_rate"),
                             "interest_coverage": prefer_value("interest_coverage"),
                             "asset_turnover": prefer_value("asset_turnover"),
-                            "income_statement_qtrs": filing.get("income_statement_qtrs"),
-                            "cash_flow_statement_qtrs": filing.get("cash_flow_statement_qtrs"),
+                            "income_statement_qtrs": filing.get(
+                                "income_statement_qtrs"
+                            ),
+                            "cash_flow_statement_qtrs": filing.get(
+                                "cash_flow_statement_qtrs"
+                            ),
                             "adsh": filing["adsh"],
                             "form_type": filing["form_type"],
                             "filed_date": filing["filed_date"],
@@ -2155,7 +2373,9 @@ class SECDataProcessor:
                     )
                     saved_count += 1
 
-            logger.info(f"✅ Saved {saved_count} processed filings for {symbol} to sec_companyfacts_processed")
+            logger.info(
+                f"✅ Saved {saved_count} processed filings for {symbol} to sec_companyfacts_processed"
+            )
 
             # Update metadata table
             self._update_metadata(symbol, cik, entity_name, processed_filings)
@@ -2169,7 +2389,9 @@ class SECDataProcessor:
             logger.error(traceback.format_exc())
             return 0
 
-    def _update_metadata(self, symbol: str, cik: str, entity_name: str, processed_filings: List[Dict]):
+    def _update_metadata(
+        self, symbol: str, cik: str, entity_name: str, processed_filings: List[Dict]
+    ):
         """
         Update sec_companyfacts_metadata table with cache control and quality stats
 
@@ -2185,16 +2407,28 @@ class SECDataProcessor:
 
             # Calculate aggregate statistics
             total_filings = len(processed_filings)
-            quarters_available = sum(1 for f in processed_filings if f["fiscal_period"] in ["Q1", "Q2", "Q3", "Q4"])
+            quarters_available = sum(
+                1
+                for f in processed_filings
+                if f["fiscal_period"] in ["Q1", "Q2", "Q3", "Q4"]
+            )
 
             # Get earliest and latest filings
-            filing_dates = [f["filed_date"] for f in processed_filings if f["filed_date"]]
+            filing_dates = [
+                f["filed_date"] for f in processed_filings if f["filed_date"]
+            ]
             earliest_filing = min(filing_dates) if filing_dates else None
             latest_filing = max(filing_dates) if filing_dates else None
 
             # Calculate average data quality
-            quality_scores = [f["quality"]["completeness_score"] for f in processed_filings]
-            avg_quality_score = round(sum(quality_scores) / len(quality_scores), 2) if quality_scores else 0
+            quality_scores = [
+                f["quality"]["completeness_score"] for f in processed_filings
+            ]
+            avg_quality_score = (
+                round(sum(quality_scores) / len(quality_scores), 2)
+                if quality_scores
+                else 0
+            )
 
             # Assign aggregate grade
             if avg_quality_score >= 90:
@@ -2209,8 +2443,16 @@ class SECDataProcessor:
                 grade = "F"
 
             # Calculate average core and ratio metrics
-            avg_core = round(sum(f["quality"]["core_metrics_count"] for f in processed_filings) / total_filings, 0)
-            avg_ratios = round(sum(f["quality"]["ratio_metrics_count"] for f in processed_filings) / total_filings, 0)
+            avg_core = round(
+                sum(f["quality"]["core_metrics_count"] for f in processed_filings)
+                / total_filings,
+                0,
+            )
+            avg_ratios = round(
+                sum(f["quality"]["ratio_metrics_count"] for f in processed_filings)
+                / total_filings,
+                0,
+            )
 
             # Calculate next refresh date (90 days from now)
             from datetime import timedelta

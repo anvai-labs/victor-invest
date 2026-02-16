@@ -1,8 +1,21 @@
 # InvestiGator
 
+[![CI](https://github.com/vjsingh1984/victor-invest/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/vjsingh1984/victor-invest/actions/workflows/ci-cd.yml)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![PyPI](https://img.shields.io/pypi/v/victor-invest.svg)](https://pypi.org/project/victor-invest/)
+
 **AI-Powered Investment Analysis Platform**
 
 InvestiGator is an intelligent investment research platform that combines SEC financial data analysis, technical indicators, and multi-agent AI synthesis to provide comprehensive stock evaluations.
+
+## Why Victor-Invest?
+
+Most investment tools provide data. Victor-Invest provides **analysis**:
+
+- **Context-stuffed pipeline**: Raw SEC filings, technicals, and market data are gathered deterministically, then synthesized into a single investment thesis
+- **No black boxes**: Every score, signal, and recommendation traces back to specific data points
+- **Extensible**: YAML-defined workflows let you add new data sources and analysis steps without touching core code
 
 ## Features
 
@@ -25,7 +38,7 @@ InvestiGator is an intelligent investment research platform that combines SEC fi
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/victor-invest.git
+git clone https://github.com/vjsingh1984/victor-invest.git
 cd victor-invest
 
 # Create virtual environment
@@ -54,44 +67,42 @@ python -m investigator.infrastructure.database.installer --postgres postgresql:/
 
 ```bash
 # Quick analysis (technical + market context)
-investigator analyze single AAPL --mode quick
+victor-invest analyze AAPL --mode quick
 
 # Standard analysis (includes SEC fundamentals)
-investigator analyze single MSFT --mode standard
+victor-invest analyze MSFT --mode standard
 
 # Comprehensive analysis (full synthesis with peer comparison)
-investigator analyze single GOOGL --mode comprehensive
+victor-invest analyze GOOGL --mode comprehensive
+```
+
+### Refreshing Latest SEC Filings (Two-Step)
+
+When a symbol appears to be using older filing periods, run this two-step flow with the active `investigator` CLI:
+
+```bash
+# Step 1: Fetch fresh SEC CompanyFacts and ingest into processed table
+investigator cache warm --symbols STX --process-raw --force-refresh
+
+# Step 2: Run analysis against refreshed SEC data
+investigator analyze single STX --mode comprehensive --force-refresh
+```
+
+Optional pre-step (if symbol cache is suspected stale/corrupt):
+
+```bash
+investigator cache clean --symbol STX --force
 ```
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        CLI / API Layer                          │
-├─────────────────────────────────────────────────────────────────┤
-│                     Workflow Orchestrator                       │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────────┐ │
-│  │   SEC    │  │Technical │  │Fundamental│  │    Synthesis    │ │
-│  │  Agent   │  │  Agent   │  │  Agent    │  │      Agent      │ │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────────────┘ │
-├─────────────────────────────────────────────────────────────────┤
-│                      Domain Services                            │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │  Valuation  │  │  RL Policy  │  │    Data Sources         │  │
-│  │   Models    │  │   Engine    │  │    (SEC, Market, Macro) │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
-├─────────────────────────────────────────────────────────────────┤
-│                    Infrastructure Layer                         │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │  Database   │  │    Cache    │  │    External APIs        │  │
-│  │  (PG/SQLite)│  │   Manager   │  │    (SEC, FRED, Yahoo)   │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-```
+![Standard Workflow](docs/workflows/standard.svg)
 
 ## Documentation
 
+- [Documentation Hub](docs/INDEX.md)
+- [Getting Started](docs/GETTING_STARTED.md)
+- [Deployment Guide](docs/DEPLOYMENT.md)
 - [Architecture Guide](docs/ARCHITECTURE.md)
 - [Developer Guide](docs/DEVELOPER_GUIDE.adoc)
 - [CLI Commands](docs/CLI_DATA_COMMANDS.md)
@@ -102,21 +113,32 @@ investigator analyze single GOOGL --mode comprehensive
 
 ```bash
 # Analysis commands
-investigator analyze single <SYMBOL> [--mode quick|standard|comprehensive]
-investigator analyze batch <SYMBOLS...> [--parallel 4]
+victor-invest analyze <SYMBOL> [--mode quick|standard|comprehensive]
+victor-invest batch <SYMBOLS...> [--parallel 4]
+victor-invest compare <TARGET> <PEERS...>
 
 # Data commands
 investigator data fetch <SYMBOL> --source <SOURCE>
 investigator data status
 
 # Cache management
-investigator cache sizes
-investigator cache clear [--symbol SYMBOL]
+victor-invest cache-sizes
+victor-invest clean-cache [--symbol SYMBOL]
 
 # System status
-investigator system status
-investigator system health
+victor-invest status
+victor-invest metrics --days 7
+victor-invest test-system
+
+# Model management
+victor-invest pull <MODEL>
 ```
+
+## Migration Notes
+
+- `victor-invest` is the primary CLI for analysis workflows.
+- `cli_orchestrator.py` remains available for legacy commands and will forward to Victor by default.
+- To force legacy behavior, set `INVESTIGATOR_LEGACY=1` or pass `--legacy` on the legacy CLI.
 
 ## Configuration
 

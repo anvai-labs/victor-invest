@@ -1,0 +1,32 @@
+api:
+  host: 0.0.0.0
+  port: 8000
+  workers: 4
+cache:
+  file_cache_path: data/cache
+  redis_url: redis://localhost:6379
+  ttl_default: 3600
+monitoring:
+  export_interval: 60
+  metrics_port: 9090
+ollama:
+  base_url: http://192.168.1.20:11434  # Legacy fallback, use servers list below
+  max_retries: 3
+  timeout: 300
+  pool_strategy: prefer_remote  # Use remote servers first, fallback to localhost
+  servers:
+    - url: http://192.168.1.20:11434
+      total_ram_gb: 128
+      usable_ram_gb: 112
+      metal: true
+      max_concurrent: 2
+      priority: 100  # Highest priority - remote M4 Max with more RAM
+    - url: http://localhost:11434
+      total_ram_gb: 64
+      usable_ram_gb: 48
+      metal: true
+      max_concurrent: 1
+      priority: 0  # Fallback - local machine
+orchestrator:
+  max_concurrent_agents: 10
+  max_concurrent_analyses: 5

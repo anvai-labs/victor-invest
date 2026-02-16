@@ -10,7 +10,7 @@ Eliminates duplicate HTTP session management, rate limiting, and retry logic
 
 import logging
 import time
-from abc import ABC, abstractmethod
+from abc import ABC
 from datetime import datetime
 from functools import wraps
 from typing import Any, Callable, Dict, Optional
@@ -72,7 +72,9 @@ def retry_on_failure(max_retries: int = 3, backoff_factor: float = 1.0):
                         raise
 
                     wait_time = backoff_factor * (2**attempt)
-                    logger.warning(f"Attempt {attempt + 1} failed for {func.__name__}: {e}. Retrying in {wait_time}s")
+                    logger.warning(
+                        f"Attempt {attempt + 1} failed for {func.__name__}: {e}. Retrying in {wait_time}s"
+                    )
                     time.sleep(wait_time)
 
         return wrapper
@@ -88,7 +90,13 @@ class BaseAPIClient(ABC):
     # Class-level rate limiting tracker for different hosts
     _rate_limit_tracker: Dict[str, Dict[str, Any]] = {}
 
-    def __init__(self, base_url: str, user_agent: str, rate_limit_delay: float = 0.1, timeout: Optional[int] = None):
+    def __init__(
+        self,
+        base_url: str,
+        user_agent: str,
+        rate_limit_delay: float = 0.1,
+        timeout: Optional[int] = None,
+    ):
         """
         Initialize API client
 
@@ -104,7 +112,9 @@ class BaseAPIClient(ABC):
 
         # Extract host for rate limiting tracking
         parsed_url = urlparse(self.base_url)
-        self.host = parsed_url.netloc or parsed_url.path  # Handle cases like localhost:11434
+        self.host = (
+            parsed_url.netloc or parsed_url.path
+        )  # Handle cases like localhost:11434
 
         # Initialize rate limiting tracker for this host if not exists
         if self.host not in BaseAPIClient._rate_limit_tracker:
@@ -117,7 +127,11 @@ class BaseAPIClient(ABC):
         # Initialize session with common headers
         self.session = requests.Session()
         self.session.headers.update(
-            {"User-Agent": user_agent, "Accept": "application/json", "Accept-Encoding": "gzip, deflate"}
+            {
+                "User-Agent": user_agent,
+                "Accept": "application/json",
+                "Accept-Encoding": "gzip, deflate",
+            }
         )
 
     def _rate_limit(self) -> None:
@@ -165,7 +179,9 @@ class BaseAPIClient(ABC):
             kwargs["timeout"] = self.timeout
 
         try:
-            logger.debug(f"Making {method} request to {url} (timeout: {kwargs['timeout']}s)")
+            logger.debug(
+                f"Making {method} request to {url} (timeout: {kwargs['timeout']}s)"
+            )
             response = self.session.request(method, url, **kwargs)
             response.raise_for_status()
             return response
@@ -179,7 +195,11 @@ class BaseAPIClient(ABC):
         return self._make_request("GET", endpoint, params=params)
 
     def post(
-        self, endpoint: str, data: Optional[Dict] = None, json: Optional[Dict] = None, **kwargs
+        self,
+        endpoint: str,
+        data: Optional[Dict] = None,
+        json: Optional[Dict] = None,
+        **kwargs,
     ) -> requests.Response:
         """Make POST request"""
         return self._make_request("POST", endpoint, data=data, json=json, **kwargs)
@@ -190,7 +210,11 @@ class BaseAPIClient(ABC):
         return response.json()
 
     def post_json(
-        self, endpoint: str, data: Optional[Dict] = None, json: Optional[Dict] = None, **kwargs
+        self,
+        endpoint: str,
+        data: Optional[Dict] = None,
+        json: Optional[Dict] = None,
+        **kwargs,
     ) -> Dict[str, Any]:
         """Make POST request and return JSON response"""
         response = self.post(endpoint, data=data, json=json, **kwargs)
@@ -219,7 +243,9 @@ class BaseAPIClient(ABC):
             stats[host] = {
                 "request_count": tracker.get("request_count", 0),
                 "last_request_time": (
-                    datetime.fromtimestamp(tracker.get("last_request_time", 0)).isoformat()
+                    datetime.fromtimestamp(
+                        tracker.get("last_request_time", 0)
+                    ).isoformat()
                     if tracker.get("last_request_time", 0) > 0
                     else "Never"
                 ),
@@ -256,7 +282,10 @@ class SECAPIClient(BaseAPIClient):
 
         # SEC allows 10 requests per second
         super().__init__(
-            base_url="https://data.sec.gov", user_agent=user_agent, rate_limit_delay=rate_limit_delay, timeout=timeout
+            base_url="https://data.sec.gov",
+            user_agent=user_agent,
+            rate_limit_delay=rate_limit_delay,
+            timeout=timeout,
         )
 
     def get_company_facts(self, cik: str) -> Dict[str, Any]:
@@ -286,14 +315,23 @@ class OllamaAPIClient(BaseAPIClient):
 
         # Get rate limit from config if available
         rate_limit_delay = 0.01  # Default 100 requests/second
-        if config and hasattr(config, "ollama") and hasattr(config.ollama, "rate_limit_delay"):
+        if (
+            config
+            and hasattr(config, "ollama")
+            and hasattr(config.ollama, "rate_limit_delay")
+        ):
             rate_limit_delay = config.ollama.rate_limit_delay
 
         super().__init__(
-            base_url=base_url, user_agent="InvestiGator/1.0", rate_limit_delay=rate_limit_delay, timeout=timeout
+            base_url=base_url,
+            user_agent="InvestiGator/1.0",
+            rate_limit_delay=rate_limit_delay,
+            timeout=timeout,
         )
 
-    def generate(self, model: str, prompt: str, system: Optional[str] = None, **kwargs) -> Dict[str, Any]:
+    def generate(
+        self, model: str, prompt: str, system: Optional[str] = None, **kwargs
+    ) -> Dict[str, Any]:
         """Generate text using Ollama model"""
         payload = {"model": model, "prompt": prompt, "stream": False}
 
@@ -347,7 +385,9 @@ class OllamaAPIClient(BaseAPIClient):
                     num_ctx_match = re.search(r"PARAMETER\s+num_ctx\s+(\d+)", modelfile)
                     if num_ctx_match:
                         context_size = int(num_ctx_match.group(1))
-                        logger.debug(f"Found num_ctx={context_size} in modelfile for {model}")
+                        logger.debug(
+                            f"Found num_ctx={context_size} in modelfile for {model}"
+                        )
 
             # Check modelinfo for context window as backup
             if context_size == 4096 and "modelinfo" in model_info:
@@ -365,15 +405,21 @@ class OllamaAPIClient(BaseAPIClient):
                     ]
 
                     for field in context_fields:
-                        if field in modelinfo and isinstance(modelinfo[field], (int, float)):
+                        if field in modelinfo and isinstance(
+                            modelinfo[field], (int, float)
+                        ):
                             context_size = int(modelinfo[field])
-                            logger.debug(f"Found {field}={context_size} in modelinfo for {model}")
+                            logger.debug(
+                                f"Found {field}={context_size} in modelinfo for {model}"
+                            )
                             break
 
                     # Extract parameter count
                     param_fields = ["num_parameters", "parameter_count", "params"]
                     for field in param_fields:
-                        if field in modelinfo and isinstance(modelinfo[field], (int, float, str)):
+                        if field in modelinfo and isinstance(
+                            modelinfo[field], (int, float, str)
+                        ):
                             parameter_size = modelinfo[field]
                             break
 
@@ -389,7 +435,9 @@ class OllamaAPIClient(BaseAPIClient):
                         detected_context = int(details["context_length"])
                         if detected_context > context_size:  # Use the larger value
                             context_size = detected_context
-                            logger.debug(f"Found context_length={context_size} in details for {model}")
+                            logger.debug(
+                                f"Found context_length={context_size} in details for {model}"
+                            )
 
             # Extract parameter size from modelfile if available
             if parameter_size == 0 and "modelfile" in model_info:
@@ -436,7 +484,9 @@ class OllamaAPIClient(BaseAPIClient):
                 if model in model_specs:
                     spec = model_specs[model]
                     if hasattr(spec, "context_window"):
-                        logger.debug(f"Using config.json context size {spec.context_window} for model {model}")
+                        logger.debug(
+                            f"Using config.json context size {spec.context_window} for model {model}"
+                        )
                         return spec.context_window
                 # Try partial match
                 for spec_model, spec in model_specs.items():
@@ -470,7 +520,9 @@ class OllamaAPIClient(BaseAPIClient):
         }
         for model_key, context_size in model_contexts.items():
             if model_key in model.lower():
-                logger.debug(f"Using fallback context size {context_size} for model {model}")
+                logger.debug(
+                    f"Using fallback context size {context_size} for model {model}"
+                )
                 return context_size
 
         # PRIORITY 3: Default fallback
@@ -508,16 +560,20 @@ class OllamaAPIClient(BaseAPIClient):
             try:
                 import subprocess
 
-                result = subprocess.run(["sysctl", "hw.memsize"], capture_output=True, text=True)
+                result = subprocess.run(
+                    ["sysctl", "hw.memsize"], capture_output=True, text=True
+                )
                 if result.returncode == 0:
                     system_memory_bytes = int(result.stdout.split(": ")[1])
                     system_memory_gb = system_memory_bytes / (1024**3)
                 else:
                     system_memory_gb = 64  # Default assumption
-            except:
+            except Exception:
                 system_memory_gb = 64  # Default assumption
 
-            memory_sufficient = total_estimated_gb <= (system_memory_gb * 0.8)  # Leave 20% buffer
+            memory_sufficient = total_estimated_gb <= (
+                system_memory_gb * 0.8
+            )  # Leave 20% buffer
 
             return {
                 "model_memory_gb": round(model_memory_gb, 1),
@@ -525,7 +581,9 @@ class OllamaAPIClient(BaseAPIClient):
                 "total_estimated_gb": round(total_estimated_gb, 1),
                 "system_memory_gb": round(system_memory_gb, 1),
                 "memory_sufficient": memory_sufficient,
-                "utilization_percent": round((total_estimated_gb / system_memory_gb) * 100, 1),
+                "utilization_percent": round(
+                    (total_estimated_gb / system_memory_gb) * 100, 1
+                ),
             }
 
         except Exception as e:

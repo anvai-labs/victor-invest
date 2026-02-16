@@ -9,5 +9,9 @@ def test_fundamental_fallback_keys_include_debt_metrics():
 
 def test_fundamental_fallback_keys_include_cash_flow_components():
     """Free cash flow should be derivable even when canonical tag is absent."""
-    for required_key in ("operating_cash_flow", "capital_expenditures", "free_cash_flow"):
+    for required_key in (
+        "operating_cash_flow",
+        "capital_expenditures",
+        "free_cash_flow",
+    ):
         assert required_key in FALLBACK_CANONICAL_KEYS

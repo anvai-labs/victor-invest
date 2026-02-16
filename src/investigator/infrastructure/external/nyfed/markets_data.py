@@ -41,7 +41,7 @@ Example:
 import asyncio
 import logging
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -51,7 +51,9 @@ logger = logging.getLogger(__name__)
 
 # NY Fed data URLs
 RECESSION_PROB_URL = "https://www.newyorkfed.org/medialibrary/media/research/capital_markets/Prob_Rec.xlsx"
-GSCPI_URL = "https://www.newyorkfed.org/medialibrary/media/research/policy/gscpi_data.xlsx"
+GSCPI_URL = (
+    "https://www.newyorkfed.org/medialibrary/media/research/policy/gscpi_data.xlsx"
+)
 
 
 class RecessionRiskLevel(Enum):
@@ -182,7 +184,9 @@ class GSCPIData:
             "date": str(self.date),
             "value": round(self.value, 3),
             "level": self.level.value,
-            "one_month_change": round(self.one_month_change, 3) if self.one_month_change else None,
+            "one_month_change": round(self.one_month_change, 3)
+            if self.one_month_change
+            else None,
             "yoy_change": round(self.yoy_change, 3) if self.yoy_change else None,
             "interpretation": self._get_interpretation(),
         }
@@ -265,13 +269,17 @@ class NYFedDataClient:
         FRED series: RECPROUSM156N (Smoothed U.S. Recession Probabilities)
         """
         try:
-            from investigator.infrastructure.external.fred.macro_indicators import get_macro_indicator_service
+            from investigator.infrastructure.external.fred.macro_indicators import (
+                get_macro_indicator_service,
+            )
 
             service = get_macro_indicator_service()
 
             # Get recession probability from FRED
             loop = asyncio.get_event_loop()
-            value = await loop.run_in_executor(None, lambda: service.get_latest_value("RECPROUSM156N"))
+            value = await loop.run_in_executor(
+                None, lambda: service.get_latest_value("RECPROUSM156N")
+            )
 
             if value is not None:
                 return RecessionProbability(
@@ -286,7 +294,9 @@ class NYFedDataClient:
 
         return None
 
-    async def _calculate_recession_prob_from_spread(self) -> Optional[RecessionProbability]:
+    async def _calculate_recession_prob_from_spread(
+        self,
+    ) -> Optional[RecessionProbability]:
         """Calculate recession probability from yield spread.
 
         Uses the NY Fed's probit model approximation:
@@ -297,7 +307,9 @@ class NYFedDataClient:
         try:
             import math
 
-            from investigator.infrastructure.external.treasury import get_treasury_client
+            from investigator.infrastructure.external.treasury import (
+                get_treasury_client,
+            )
 
             treasury = get_treasury_client()
             curve = await treasury.get_yield_curve()
@@ -354,19 +366,25 @@ class NYFedDataClient:
         FRED series: GSCPI (Global Supply Chain Pressure Index)
         """
         try:
-            from investigator.infrastructure.external.fred.macro_indicators import get_macro_indicator_service
+            from investigator.infrastructure.external.fred.macro_indicators import (
+                get_macro_indicator_service,
+            )
 
             service = get_macro_indicator_service()
             loop = asyncio.get_event_loop()
 
             # Get current value
-            value = await loop.run_in_executor(None, lambda: service.get_latest_value("GSCPI"))
+            value = await loop.run_in_executor(
+                None, lambda: service.get_latest_value("GSCPI")
+            )
 
             if value is None:
                 return None
 
             # Try to get historical for change calculations
-            history = await loop.run_in_executor(None, lambda: service.get_time_series("GSCPI", days=400))
+            history = await loop.run_in_executor(
+                None, lambda: service.get_time_series("GSCPI", days=400)
+            )
 
             one_month_change = None
             yoy_change = None
@@ -394,7 +412,9 @@ class NYFedDataClient:
 
         return None
 
-    async def get_recession_probability_history(self, months: int = 24) -> List[Dict[str, Any]]:
+    async def get_recession_probability_history(
+        self, months: int = 24
+    ) -> List[Dict[str, Any]]:
         """Get historical recession probability.
 
         Args:
@@ -404,7 +424,9 @@ class NYFedDataClient:
             List of {date, probability, risk_level} dictionaries
         """
         try:
-            from investigator.infrastructure.external.fred.macro_indicators import get_macro_indicator_service
+            from investigator.infrastructure.external.fred.macro_indicators import (
+                get_macro_indicator_service,
+            )
 
             service = get_macro_indicator_service()
             loop = asyncio.get_event_loop()
@@ -453,7 +475,9 @@ class NYFedDataClient:
             "recession_probability": recession.to_dict() if recession else None,
             "gscpi": gscpi.to_dict() if gscpi else None,
             "summary": {
-                "recession_risk": recession.risk_level.value if recession else "unknown",
+                "recession_risk": recession.risk_level.value
+                if recession
+                else "unknown",
                 "supply_chain_pressure": gscpi.level.value if gscpi else "unknown",
             },
         }

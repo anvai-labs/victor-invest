@@ -1,6 +1,5 @@
 from unittest.mock import Mock
 
-import pytest
 
 from investigator.domain.agents.base import (
     InvestmentAgent,
@@ -40,13 +39,24 @@ class DummyAgent(InvestmentAgent):
 
 
 def test_cache_type_mapping() -> None:
-    assert get_cache_type_for_analysis(AnalysisType.SEC_FUNDAMENTAL) == CacheType.SEC_RESPONSE
-    assert get_cache_type_for_analysis(AnalysisType.TECHNICAL_ANALYSIS) == CacheType.TECHNICAL_DATA
-    assert get_cache_type_for_analysis(AnalysisType.INVESTMENT_SYNTHESIS) == CacheType.LLM_RESPONSE
+    assert (
+        get_cache_type_for_analysis(AnalysisType.SEC_FUNDAMENTAL)
+        == CacheType.SEC_RESPONSE
+    )
+    assert (
+        get_cache_type_for_analysis(AnalysisType.TECHNICAL_ANALYSIS)
+        == CacheType.TECHNICAL_DATA
+    )
+    assert (
+        get_cache_type_for_analysis(AnalysisType.INVESTMENT_SYNTHESIS)
+        == CacheType.LLM_RESPONSE
+    )
 
 
 def test_agent_can_handle_task_with_valid_context():
-    agent = DummyAgent("dummy", ollama_client=Mock(), event_bus=Mock(), cache_manager=Mock())
+    agent = DummyAgent(
+        "dummy", ollama_client=Mock(), event_bus=Mock(), cache_manager=Mock()
+    )
     task = AgentTask(
         task_id="task-1",
         symbol="AAPL",
@@ -61,7 +71,9 @@ def test_agent_can_handle_task_with_valid_context():
 
 
 def test_agent_rejects_task_when_context_incomplete():
-    agent = DummyAgent("dummy", ollama_client=Mock(), event_bus=Mock(), cache_manager=Mock())
+    agent = DummyAgent(
+        "dummy", ollama_client=Mock(), event_bus=Mock(), cache_manager=Mock()
+    )
     task = AgentTask(
         task_id="task-2",
         symbol="AAPL",

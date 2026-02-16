@@ -25,7 +25,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Protocol, Tuple, Union
+from typing import Any, Dict, List, Optional, Protocol, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +141,9 @@ class BaseFieldExtractor(ABC):
                 if self._validate_value(transformed):
                     return ExtractionResult(
                         value=transformed,
-                        confidence=ExtractionConfidence.HIGH if i == 0 else ExtractionConfidence.MEDIUM,
+                        confidence=ExtractionConfidence.HIGH
+                        if i == 0
+                        else ExtractionConfidence.MEDIUM,
                         source_path=path_str,
                         fallback_used=(i > 0),
                     )
@@ -276,7 +278,9 @@ class InvestmentGradeExtractor(BaseFieldExtractor):
             current_price = CurrentPriceExtractor().extract(data)
 
             if price_target.has_value and current_price.has_value:
-                upside = ((price_target.value - current_price.value) / current_price.value) * 100
+                upside = (
+                    (price_target.value - current_price.value) / current_price.value
+                ) * 100
                 source_path = "calculated_from_prices"
 
         if upside is None:
@@ -346,10 +350,39 @@ class KeyStrengthsExtractor(BaseFieldExtractor):
     def _get_paths(self) -> List[Tuple[str, ...]]:
         return [
             # Synthesis paths
-            ("agents", "synthesis", "synthesis", "response", "investment_thesis", "bull_case"),
-            ("agents", "synthesis", "synthesis", "response", "investment_thesis", "value_drivers"),
-            ("agents", "synthesis", "synthesis", "response", "investment_thesis", "strengths"),
-            ("agents", "synthesis", "synthesis", "response", "scenarios", "bull_case", "key_assumptions"),
+            (
+                "agents",
+                "synthesis",
+                "synthesis",
+                "response",
+                "investment_thesis",
+                "bull_case",
+            ),
+            (
+                "agents",
+                "synthesis",
+                "synthesis",
+                "response",
+                "investment_thesis",
+                "value_drivers",
+            ),
+            (
+                "agents",
+                "synthesis",
+                "synthesis",
+                "response",
+                "investment_thesis",
+                "strengths",
+            ),
+            (
+                "agents",
+                "synthesis",
+                "synthesis",
+                "response",
+                "scenarios",
+                "bull_case",
+                "key_assumptions",
+            ),
             # Alternative synthesis structures
             ("agents", "synthesis", "response", "investment_thesis", "bull_case"),
             ("agents", "synthesis", "investment_thesis", "bull_case"),
@@ -376,7 +409,11 @@ class KeyStrengthsExtractor(BaseFieldExtractor):
                     result.append(item.strip())
                 elif isinstance(item, dict):
                     # Extract text from dict items
-                    text = item.get("description") or item.get("text") or item.get("assumption")
+                    text = (
+                        item.get("description")
+                        or item.get("text")
+                        or item.get("assumption")
+                    )
                     if text and isinstance(text, str):
                         result.append(text.strip())
                 if len(result) >= 3:
@@ -386,7 +423,13 @@ class KeyStrengthsExtractor(BaseFieldExtractor):
         # Dict with key_assumptions or similar
         if isinstance(value, dict):
             # Try common list keys
-            for key in ["key_assumptions", "assumptions", "drivers", "factors", "items"]:
+            for key in [
+                "key_assumptions",
+                "assumptions",
+                "drivers",
+                "factors",
+                "items",
+            ]:
                 if key in value and isinstance(value[key], list):
                     return self._transform_value(value[key])
 
@@ -431,10 +474,31 @@ class KeyRisksExtractor(BaseFieldExtractor):
     def _get_paths(self) -> List[Tuple[str, ...]]:
         return [
             # Synthesis paths
-            ("agents", "synthesis", "synthesis", "response", "risk_analysis", "primary_risks"),
-            ("agents", "synthesis", "synthesis", "response", "risk_analysis", "key_risks"),
+            (
+                "agents",
+                "synthesis",
+                "synthesis",
+                "response",
+                "risk_analysis",
+                "primary_risks",
+            ),
+            (
+                "agents",
+                "synthesis",
+                "synthesis",
+                "response",
+                "risk_analysis",
+                "key_risks",
+            ),
             ("agents", "synthesis", "synthesis", "response", "risk_analysis", "risks"),
-            ("agents", "synthesis", "synthesis", "response", "investment_thesis", "bear_case"),
+            (
+                "agents",
+                "synthesis",
+                "synthesis",
+                "response",
+                "investment_thesis",
+                "bear_case",
+            ),
             # Alternative structures
             ("agents", "synthesis", "response", "risk_analysis", "primary_risks"),
             ("agents", "synthesis", "risk_analysis", "primary_risks"),
@@ -456,7 +520,9 @@ class KeyRisksExtractor(BaseFieldExtractor):
                 if isinstance(item, str) and item.strip():
                     result.append(item.strip())
                 elif isinstance(item, dict):
-                    text = item.get("risk") or item.get("description") or item.get("text")
+                    text = (
+                        item.get("risk") or item.get("description") or item.get("text")
+                    )
                     if text and isinstance(text, str):
                         result.append(text.strip())
                 if len(result) >= 3:
@@ -487,13 +553,41 @@ class InvestmentThesisExtractor(BaseFieldExtractor):
 
     def _get_paths(self) -> List[Tuple[str, ...]]:
         return [
-            ("agents", "synthesis", "synthesis", "response", "investment_thesis", "core_thesis"),
-            ("agents", "synthesis", "synthesis", "response", "investment_thesis", "thesis"),
-            ("agents", "synthesis", "synthesis", "response", "investment_thesis", "summary"),
+            (
+                "agents",
+                "synthesis",
+                "synthesis",
+                "response",
+                "investment_thesis",
+                "core_thesis",
+            ),
+            (
+                "agents",
+                "synthesis",
+                "synthesis",
+                "response",
+                "investment_thesis",
+                "thesis",
+            ),
+            (
+                "agents",
+                "synthesis",
+                "synthesis",
+                "response",
+                "investment_thesis",
+                "summary",
+            ),
             ("agents", "synthesis", "response", "investment_thesis", "core_thesis"),
             ("agents", "synthesis", "investment_thesis", "core_thesis"),
             # Fallback to recommendation narrative
-            ("agents", "synthesis", "synthesis", "response", "recommendation_and_action_plan", "rationale"),
+            (
+                "agents",
+                "synthesis",
+                "synthesis",
+                "response",
+                "recommendation_and_action_plan",
+                "rationale",
+            ),
             ("synthesis", "synthesis", "response", "investment_thesis", "core_thesis"),
         ]
 
@@ -524,10 +618,23 @@ class RecommendationExtractor(BaseFieldExtractor):
 
     def _get_paths(self) -> List[Tuple[str, ...]]:
         return [
-            ("agents", "synthesis", "synthesis", "response", "recommendation_and_action_plan", "recommendation"),
+            (
+                "agents",
+                "synthesis",
+                "synthesis",
+                "response",
+                "recommendation_and_action_plan",
+                "recommendation",
+            ),
             ("agents", "synthesis", "synthesis", "response", "recommendation"),
             ("agents", "synthesis", "response", "recommendation"),
-            ("synthesis", "synthesis", "response", "recommendation_and_action_plan", "recommendation"),
+            (
+                "synthesis",
+                "synthesis",
+                "response",
+                "recommendation_and_action_plan",
+                "recommendation",
+            ),
         ]
 
     def _transform_value(self, value: Any) -> str:
@@ -582,9 +689,22 @@ class TimeHorizonExtractor(BaseFieldExtractor):
 
     def _get_paths(self) -> List[Tuple[str, ...]]:
         return [
-            ("agents", "synthesis", "synthesis", "response", "recommendation_and_action_plan", "time_horizon"),
+            (
+                "agents",
+                "synthesis",
+                "synthesis",
+                "response",
+                "recommendation_and_action_plan",
+                "time_horizon",
+            ),
             ("agents", "synthesis", "synthesis", "response", "time_horizon"),
-            ("synthesis", "synthesis", "response", "recommendation_and_action_plan", "time_horizon"),
+            (
+                "synthesis",
+                "synthesis",
+                "response",
+                "recommendation_and_action_plan",
+                "time_horizon",
+            ),
         ]
 
 
@@ -714,7 +834,12 @@ class SummaryDataExtractor:
         expected_return = None
         if price_target.has_value and current_price.has_value:
             if current_price.value > 0:
-                expected_return = round((price_target.value - current_price.value) / current_price.value * 100, 2)
+                expected_return = round(
+                    (price_target.value - current_price.value)
+                    / current_price.value
+                    * 100,
+                    2,
+                )
 
         return {
             "symbol": self.data.get("symbol"),
@@ -726,10 +851,16 @@ class SummaryDataExtractor:
                 "time_horizon": time_horizon.value if time_horizon.has_value else "N/A",
             },
             "valuation": {
-                "current_price": current_price.value if current_price.has_value else None,
-                "price_target_12m": price_target.value if price_target.has_value else None,
+                "current_price": current_price.value
+                if current_price.has_value
+                else None,
+                "price_target_12m": price_target.value
+                if price_target.has_value
+                else None,
                 "expected_return_pct": expected_return,
-                "investment_grade": investment_grade.value if investment_grade.has_value else "N/A",
+                "investment_grade": investment_grade.value
+                if investment_grade.has_value
+                else "N/A",
             },
             "thesis": {
                 "investment_thesis": thesis.value if thesis.has_value else "N/A",

@@ -29,15 +29,22 @@ Example:
 
     provider = InvestmentWorkflowProvider()
 
-    # Standard execution
-    executor = provider.create_executor(orchestrator)
-    workflow = provider.get_workflow("comprehensive")
-    result = await executor.execute(workflow, {"symbol": "AAPL"})
+    # Agentic workflow execution (with LLM support)
+    result = await provider.run_agentic_workflow(
+        "comprehensive",
+        context={"symbol": "AAPL"},
+        provider="ollama",
+        model="gpt-oss:20b",
+    )
+    if result.success:
+        synthesis = result.context.get("synthesis")
+        print(f"Recommendation: {synthesis.get('recommendation')}")
 
-    # Streaming execution
-    async for chunk in provider.astream("comprehensive", orchestrator, {"symbol": "AAPL"}):
-        if chunk.event_type == WorkflowEventType.NODE_COMPLETE:
-            print(f"Completed: {chunk.node_name}")
+    # Compute-only workflow execution (no orchestrator needed)
+    result = await provider.run_workflow_with_handlers(
+        "comprehensive",
+        context={"symbol": "AAPL"},
+    )
 
 Available workflows (all YAML-defined):
 - quick: Technical analysis only (~5 seconds)
@@ -54,8 +61,14 @@ This package follows Victor's architecture:
 
 Handlers are defined in victor_invest.handlers and registered with Victor's
 workflow handler registry. YAML workflows reference handlers by path.
+
+Note on Execution Models:
+- run_agentic_workflow(): Uses WorkflowExecutor with orchestrator for agent nodes
+- run_workflow_with_handlers(): Uses WorkflowExecutor for compute handlers
+- run_compiled_workflow(): Uses UnifiedWorkflowCompiler (LangGraph) for transforms
 """
 
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
@@ -81,6 +94,8 @@ from victor_invest.workflows.rl_backtest import (
 )
 from victor_invest.workflows.state import AnalysisMode, AnalysisWorkflowState
 
+logger = logging.getLogger(__name__)
+
 
 class InvestmentWorkflowProvider(BaseYAMLWorkflowProvider):
     """Provides investment-specific workflows.
@@ -91,8 +106,7 @@ class InvestmentWorkflowProvider(BaseYAMLWorkflowProvider):
     Inherits from BaseYAMLWorkflowProvider which provides:
     - YAML workflow loading and caching
     - Escape hatches registration from victor_invest.escape_hatches
-    - Streaming execution via StreamingWorkflowExecutor
-    - Standard workflow execution
+    - Unified workflow compilation via UnifiedWorkflowCompiler
 
     Example:
         provider = InvestmentWorkflowProvider()
@@ -100,12 +114,23 @@ class InvestmentWorkflowProvider(BaseYAMLWorkflowProvider):
         # List available workflows
         print(provider.get_workflow_names())
 
-        # Direct execution (compute-only workflows)
-        result = await provider.run_workflow("comprehensive", {"symbol": "AAPL"})
+        # Agentic execution (with LLM synthesis via orchestrator)
+        result = await provider.run_agentic_workflow(
+            "comprehensive",
+            context={"symbol": "AAPL"},
+            provider="ollama",
+        )
 
-        # Streaming (requires orchestrator for agent nodes)
-        async for chunk in provider.astream("comprehensive", orchestrator, {"symbol": "AAPL"}):
-            print(f"[{chunk.progress:.0f}%] {chunk.event_type.value}")
+        # Compute-only execution (uses registered handlers)
+        result = await provider.run_workflow_with_handlers(
+            "comprehensive",
+            context={"symbol": "AAPL"},
+        )
+
+    Execution Models:
+        - run_agentic_workflow(): Full orchestrator support for agent nodes
+        - run_workflow_with_handlers(): WorkflowExecutor for compute handlers
+        - run_compiled_workflow(): UnifiedWorkflowCompiler for LangGraph transforms
     """
 
     def _get_escape_hatches_module(self) -> str:
@@ -212,51 +237,20 @@ class InvestmentWorkflowProvider(BaseYAMLWorkflowProvider):
                 synthesis = result.context.get("synthesis")
                 print(f"Recommendation: {synthesis.get('recommendation')}")
         """
-        from victor.core.verticals import VerticalRegistry
-        from victor.framework import Agent
         from victor.workflows.executor import WorkflowExecutor
 
-        from victor_invest.role_provider import register_investment_role_provider
-        from victor_invest.vertical import InvestmentVertical
-
-        # Ensure handlers are registered before workflow execution
-        ensure_handlers_registered()
+        from victor_invest.framework_bootstrap import create_investment_orchestrator
 
         workflow = self.get_workflow(workflow_name)
         if not workflow:
             raise ValueError(f"Unknown workflow: {workflow_name}")
 
-        # Resolve model from config if not specified
-        if model is None and provider == "ollama":
-            try:
-                from investigator.config import get_config
-
-                config = get_config()
-                model = config.ollama.models.get("synthesis", "gpt-oss:20b")
-            except Exception:
-                model = "gpt-oss:20b"
-
-        # Register InvestmentVertical with Victor's registry if not already registered
-        # This enables third-party verticals to work with Agent.create()
-        if not VerticalRegistry.get("investment"):
-            VerticalRegistry.register(InvestmentVertical)
-
-        # Register investment-specific role provider for subagent tool selection
-        # This ensures subagents use investment tools instead of coding tools
-        register_investment_role_provider()
-
-        # Use Victor's public Agent.create() API - the golden path
-        # This properly handles provider setup, vertical integration, and component assembly
-        agent = await Agent.create(
+        orchestrator = await create_investment_orchestrator(
             provider=provider,
             model=model,
-            vertical=InvestmentVertical,
-            temperature=0.3,
-            max_tokens=4096,
+            ensure_handlers=ensure_handlers_registered,
+            warning_callback=logger.warning,
         )
-
-        # Get underlying orchestrator for workflow execution
-        orchestrator = agent.get_orchestrator()
 
         # Create executor with proper orchestrator
         executor = WorkflowExecutor(
@@ -272,8 +266,97 @@ class InvestmentWorkflowProvider(BaseYAMLWorkflowProvider):
             timeout=timeout,
         )
 
-    # run_workflow() is inherited from BaseYAMLWorkflowProvider
-    # It executes compute-only YAML workflows without requiring a full orchestrator
+    async def run_workflow_with_handlers(
+        self,
+        workflow_name: str,
+        context: Optional[Dict[str, Any]] = None,
+        timeout: Optional[float] = None,
+    ) -> "WorkflowResult":
+        """Execute a YAML workflow using registered compute handlers.
+
+        This method executes workflows using WorkflowExecutor with the handlers
+        registered via register_compute_handler(). This is the recommended method
+        for running investment workflows that use the context-stuffing pattern.
+
+        Note: This method uses WorkflowExecutor (handler-based execution) rather
+        than UnifiedWorkflowCompiler (LangGraph-based execution). The handlers
+        in victor_invest.handlers are designed for WorkflowExecutor.
+
+        For workflows with full agent node support (LLM reasoning), use
+        run_agentic_workflow() instead.
+
+        Args:
+            workflow_name: Name of the YAML workflow (e.g., "comprehensive")
+            context: Initial context data (e.g., {"symbol": "AAPL"})
+            timeout: Optional overall timeout in seconds (default: 300)
+
+        Returns:
+            WorkflowResult with execution outcome and outputs
+
+        Raises:
+            ValueError: If workflow_name is not found
+
+        Example:
+            provider = InvestmentWorkflowProvider()
+            result = await provider.run_workflow_with_handlers(
+                "comprehensive",
+                context={"symbol": "AAPL"},
+            )
+            if result.success:
+                synthesis = result.context.get("synthesis")
+                print(f"Recommendation: {synthesis.get('recommendation')}")
+        """
+        from victor.tools.registry import ToolRegistry
+        from victor.workflows.executor import WorkflowExecutor
+
+        # Ensure handlers are registered
+        ensure_handlers_registered()
+
+        workflow = self.get_workflow(workflow_name)
+        if not workflow:
+            raise ValueError(f"Unknown workflow: {workflow_name}")
+
+        # Create minimal mock orchestrator for compute-only workflows
+        # Agent nodes would fail, but compute handlers work fine
+        class _MinimalOrchestrator:
+            pass
+
+        orchestrator = _MinimalOrchestrator()
+
+        # Create tool registry (handlers may need it)
+        tool_registry = ToolRegistry()
+
+        # Register investment tools for compute node tool access
+        try:
+            from victor_invest.tools import register_investment_tools
+
+            stats = register_investment_tools(tool_registry)
+            if stats.get("errors"):
+                logger.warning(
+                    "Some investment tools failed to register: %s", stats["errors"]
+                )
+        except Exception as exc:
+            logger.warning("Investment tool registration failed: %s", exc)
+
+        # Create executor with handler support
+        executor = WorkflowExecutor(
+            orchestrator,
+            tool_registry=tool_registry,
+            max_parallel=4,
+            default_timeout=timeout or 300.0,
+        )
+
+        # Execute workflow with initial context
+        return await executor.execute(
+            workflow,
+            initial_context=context or {},
+            timeout=timeout,
+        )
+
+    # Inherited from BaseYAMLWorkflowProvider:
+    # - run_compiled_workflow(): Uses UnifiedWorkflowCompiler (LangGraph)
+    # - stream_compiled_workflow(): Streams via UnifiedWorkflowCompiler
+    # - compile_workflow(): Returns CachedCompiledGraph for manual execution
 
 
 # Lazy handler registration to prevent circular imports
@@ -293,6 +376,61 @@ def ensure_handlers_registered() -> None:
     from victor_invest.handlers import register_handlers
 
     register_handlers()
+
+    synced = False
+    sync_method_used = None
+    try:
+        from victor.framework.handler_registry import sync_handlers_with_executor
+
+        sync_handlers_with_executor(direction="to_executor")
+        synced = True
+        sync_method_used = "sync_handlers_with_executor"
+    except Exception:
+        pass
+
+    if not synced:
+        # Compatibility path for newer/older Victor variants:
+        # use registry.sync_with_executor() if available.
+        try:
+            from victor.framework.handler_registry import get_handler_registry
+
+            registry = get_handler_registry()
+            sync_method = getattr(registry, "sync_with_executor", None)
+            if callable(sync_method):
+                sync_method(direction="to_executor")
+                synced = True
+                sync_method_used = "registry.sync_with_executor"
+        except Exception:
+            pass
+
+    if not synced:
+        # Last-resort bridge: push handlers from framework registry to
+        # executor registry directly when helper APIs are unavailable.
+        try:
+            from victor.framework.handler_registry import get_handler_registry
+            from victor.workflows.executor import register_compute_handler
+
+            registry = get_handler_registry()
+            entries: list = getattr(registry, "list_entries", lambda: [])()
+            pushed = 0
+            for entry in entries:
+                name = getattr(entry, "name", None)
+                handler = getattr(entry, "handler", None)
+                if name and handler is not None:
+                    register_compute_handler(name, handler)
+                    pushed += 1
+            synced = pushed > 0
+            sync_method_used = "manual_executor_bridge"
+        except Exception:
+            pass
+
+    if not synced:
+        logger.warning(
+            "Handler sync helpers unavailable; relying on decorator-side registration for executor compatibility"
+        )
+    else:
+        logger.debug("Handler sync completed using %s", sync_method_used)
+
     _handlers_registered = True
 
 

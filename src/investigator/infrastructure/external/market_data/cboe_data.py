@@ -35,17 +35,19 @@ Investment Signals:
 """
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import aiohttp
 
 logger = logging.getLogger(__name__)
 
 # CBOE data URLs
-VIX_CURRENT_URL = "https://cdn.cboe.com/api/global/delayed_quotes/charts/historical/_VIX.json"
+VIX_CURRENT_URL = (
+    "https://cdn.cboe.com/api/global/delayed_quotes/charts/historical/_VIX.json"
+)
 VIX_FUTURES_URL = "https://www.cboe.com/us/futures/market_statistics/settlement/csv"
 SKEW_URL = "https://cdn.cboe.com/api/global/delayed_quotes/charts/historical/_SKEW.json"
 
@@ -188,7 +190,10 @@ class VIXTermStructure:
     @property
     def is_backwardation(self) -> bool:
         """Whether term structure is inverted (fear signal)."""
-        return self.structure in (TermStructure.BACKWARDATION, TermStructure.STEEP_BACKWARDATION)
+        return self.structure in (
+            TermStructure.BACKWARDATION,
+            TermStructure.STEEP_BACKWARDATION,
+        )
 
 
 @dataclass
@@ -278,7 +283,9 @@ class CBOEClient:
     async def _get_session(self) -> aiohttp.ClientSession:
         if self._session is None:
             try:
-                from investigator.infrastructure.external.http_client import create_session
+                from investigator.infrastructure.external.http_client import (
+                    create_session,
+                )
 
                 self._session = await create_session()
             except ImportError:
@@ -296,7 +303,9 @@ class CBOEClient:
             session = await self._get_session()
             headers = {"Accept": "application/json"}
 
-            async with session.get(VIX_CURRENT_URL, headers=headers, timeout=30) as response:
+            async with session.get(
+                VIX_CURRENT_URL, headers=headers, timeout=30
+            ) as response:
                 if response.status == 200:
                     data = await response.json()
                     return self._parse_vix_json(data)

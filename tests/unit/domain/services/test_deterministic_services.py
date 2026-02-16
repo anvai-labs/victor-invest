@@ -17,15 +17,10 @@ from investigator.domain.services.deterministic_competitive_analyzer import (
     SECTOR_PROFILES,
     CompetitiveContext,
     DeterministicCompetitiveAnalyzer,
-    MarketPosition,
-    MoatWidth,
     analyze_competitive_position,
 )
 from investigator.domain.services.deterministic_conflict_resolver import (
-    Conflict,
-    ConflictSeverity,
     ConflictType,
-    DataQualityConflictDetector,
     DeterministicConflictResolver,
     RecommendationConflictDetector,
     TimeHorizonConflictDetector,
@@ -34,7 +29,6 @@ from investigator.domain.services.deterministic_conflict_resolver import (
 from investigator.domain.services.deterministic_insight_extractor import (
     DeterministicInsightExtractor,
     FundamentalInsightExtractor,
-    MetricThresholds,
     SECInsightExtractor,
     TechnicalInsightExtractor,
     extract_key_insights,
@@ -52,12 +46,8 @@ from investigator.domain.services.deterministic_valuation_synthesizer import (
     synthesize_valuation,
 )
 from investigator.domain.services.template_thesis_generator import (
-    CoreNarrativeGenerator,
-    InvestmentStance,
     TemplateBasedThesisGenerator,
     ThesisContext,
-    TimeHorizon,
-    ValueDriversGenerator,
     generate_investment_thesis,
 )
 
@@ -78,13 +68,25 @@ def sample_model_contributions() -> List[ModelContribution]:
             assumptions={"growth_rate": 0.08, "discount_rate": 0.10},
         ),
         ModelContribution(
-            model_name="pe", fair_value=145.0, weight=0.30, is_applicable=True, assumptions={"target_pe": 22.5}
+            model_name="pe",
+            fair_value=145.0,
+            weight=0.30,
+            is_applicable=True,
+            assumptions={"target_pe": 22.5},
         ),
         ModelContribution(
-            model_name="ps", fair_value=160.0, weight=0.20, is_applicable=True, assumptions={"target_ps": 5.5}
+            model_name="ps",
+            fair_value=160.0,
+            weight=0.20,
+            is_applicable=True,
+            assumptions={"target_ps": 5.5},
         ),
         ModelContribution(
-            model_name="ggm", fair_value=None, weight=0.0, is_applicable=False, reason="Dividend payout below threshold"
+            model_name="ggm",
+            fair_value=None,
+            weight=0.0,
+            is_applicable=False,
+            reason="Dividend payout below threshold",
         ),
     ]
 
@@ -229,7 +231,10 @@ class TestDeterministicValuationSynthesizer:
         determiner = ThresholdBasedStanceDeterminer()
 
         # Significantly undervalued
-        assert determiner.determine_stance(0.35, 0.8) == ValuationStance.SIGNIFICANTLY_UNDERVALUED
+        assert (
+            determiner.determine_stance(0.35, 0.8)
+            == ValuationStance.SIGNIFICANTLY_UNDERVALUED
+        )
 
         # Undervalued
         assert determiner.determine_stance(0.18, 0.8) == ValuationStance.UNDERVALUED
@@ -269,8 +274,18 @@ class TestDeterministicValuationSynthesizer:
             symbol="AAPL",
             current_price=130.0,
             valuation_results={
-                "dcf": {"fair_value": 150.0, "weight": 0.5, "applicable": True, "assumptions": {}},
-                "pe": {"fair_value": 145.0, "weight": 0.3, "applicable": True, "assumptions": {}},
+                "dcf": {
+                    "fair_value": 150.0,
+                    "weight": 0.5,
+                    "applicable": True,
+                    "assumptions": {},
+                },
+                "pe": {
+                    "fair_value": 145.0,
+                    "weight": 0.3,
+                    "applicable": True,
+                    "assumptions": {},
+                },
             },
             multi_model_summary={
                 "blended_fair_value": 148.0,
@@ -295,7 +310,9 @@ class TestDeterministicValuationSynthesizer:
 class TestDeterministicConflictResolver:
     """Tests for DeterministicConflictResolver."""
 
-    def test_detect_recommendation_conflict(self, sample_fundamental_analysis, sample_technical_analysis):
+    def test_detect_recommendation_conflict(
+        self, sample_fundamental_analysis, sample_technical_analysis
+    ):
         """Test detection of recommendation conflicts."""
         # Create a conflict scenario
         fundamental = sample_fundamental_analysis.copy()
@@ -311,17 +328,25 @@ class TestDeterministicConflictResolver:
         assert len(conflicts) >= 1
         assert any(c.conflict_type == ConflictType.RECOMMENDATION for c in conflicts)
 
-    def test_detect_no_conflict_when_aligned(self, sample_fundamental_analysis, sample_technical_analysis):
+    def test_detect_no_conflict_when_aligned(
+        self, sample_fundamental_analysis, sample_technical_analysis
+    ):
         """Test no conflict detected when analyses align."""
         # Both bullish
         detector = RecommendationConflictDetector()
-        conflicts = detector.detect(sample_fundamental_analysis, sample_technical_analysis, None, None)
+        conflicts = detector.detect(
+            sample_fundamental_analysis, sample_technical_analysis, None, None
+        )
 
         # Should have no high-severity recommendation conflicts
-        rec_conflicts = [c for c in conflicts if c.conflict_type == ConflictType.RECOMMENDATION]
+        rec_conflicts = [
+            c for c in conflicts if c.conflict_type == ConflictType.RECOMMENDATION
+        ]
         assert len(rec_conflicts) == 0
 
-    def test_detect_time_horizon_conflict(self, sample_fundamental_analysis, sample_technical_analysis):
+    def test_detect_time_horizon_conflict(
+        self, sample_fundamental_analysis, sample_technical_analysis
+    ):
         """Test detection of time horizon conflicts."""
         # Fundamentally undervalued but technically bearish
         fundamental = sample_fundamental_analysis.copy()
@@ -336,7 +361,9 @@ class TestDeterministicConflictResolver:
 
         assert any(c.conflict_type == ConflictType.TIME_HORIZON for c in conflicts)
 
-    def test_reconcile_conflicts(self, sample_fundamental_analysis, sample_technical_analysis):
+    def test_reconcile_conflicts(
+        self, sample_fundamental_analysis, sample_technical_analysis
+    ):
         """Test conflict reconciliation."""
         resolver = DeterministicConflictResolver()
 
@@ -423,7 +450,9 @@ class TestTemplateBasedThesisGenerator:
 
     def test_time_horizon_determination(self):
         """Test time horizon determination logic."""
-        from investigator.domain.services.template_thesis_generator import TimeHorizonDeterminer
+        from investigator.domain.services.template_thesis_generator import (
+            TimeHorizonDeterminer,
+        )
 
         determiner = TimeHorizonDeterminer()
 
@@ -456,7 +485,9 @@ class TestTemplateBasedThesisGenerator:
         )
         assert "6-12" in determiner.determine(overvalued_context)
 
-    def test_generate_investment_thesis_convenience_function(self, sample_fundamental_analysis):
+    def test_generate_investment_thesis_convenience_function(
+        self, sample_fundamental_analysis
+    ):
         """Test the drop-in replacement function."""
         result = generate_investment_thesis(
             symbol="AAPL",
@@ -501,7 +532,10 @@ class TestDeterministicInsightExtractor:
 
         assert insight is not None
         assert insight.source == "technical"
-        assert "bullish" in insight.critical_metric.lower() or "trend" in insight.critical_metric.lower()
+        assert (
+            "bullish" in insight.critical_metric.lower()
+            or "trend" in insight.critical_metric.lower()
+        )
 
     def test_extract_sec_insights(self, sample_sec_analysis):
         """Test SEC insight extraction."""
@@ -512,7 +546,12 @@ class TestDeterministicInsightExtractor:
         assert insight.source == "sec"
         assert insight.confidence >= 40  # SEC data is authoritative
 
-    def test_extract_all_insights(self, sample_fundamental_analysis, sample_technical_analysis, sample_sec_analysis):
+    def test_extract_all_insights(
+        self,
+        sample_fundamental_analysis,
+        sample_technical_analysis,
+        sample_sec_analysis,
+    ):
         """Test extracting insights from all sources."""
         extractor = DeterministicInsightExtractor()
         insights = extractor.extract(
@@ -526,7 +565,9 @@ class TestDeterministicInsightExtractor:
         assert insights.sec is not None
         assert "quantitative" in insights.to_dict()
 
-    def test_extract_key_insights_convenience_function(self, sample_fundamental_analysis, sample_technical_analysis):
+    def test_extract_key_insights_convenience_function(
+        self, sample_fundamental_analysis, sample_technical_analysis
+    ):
         """Test the drop-in replacement function."""
         result = extract_key_insights(
             fundamental=sample_fundamental_analysis,
@@ -655,7 +696,12 @@ class TestDeterministicCompetitiveAnalyzer:
 class TestDeterministicServicesIntegration:
     """Integration tests for deterministic services working together."""
 
-    def test_full_synthesis_pipeline(self, sample_fundamental_analysis, sample_technical_analysis, sample_sec_analysis):
+    def test_full_synthesis_pipeline(
+        self,
+        sample_fundamental_analysis,
+        sample_technical_analysis,
+        sample_sec_analysis,
+    ):
         """Test running through a complete synthesis pipeline."""
         # 1. Extract insights
         insights = extract_key_insights(
@@ -713,7 +759,9 @@ class TestDeterministicServicesIntegration:
         assert "fair_value_estimate" in valuation
         assert "valuation_stance" in valuation
 
-    def test_all_services_return_dict(self, sample_fundamental_analysis, sample_technical_analysis):
+    def test_all_services_return_dict(
+        self, sample_fundamental_analysis, sample_technical_analysis
+    ):
         """Ensure all convenience functions return dicts for API compatibility."""
         # All should return dicts
         result1 = extract_key_insights(fundamental=sample_fundamental_analysis)
@@ -729,7 +777,9 @@ class TestDeterministicServicesIntegration:
         )
         assert isinstance(result3, dict)
 
-        result4 = analyze_competitive_position(symbol="X", company_data={"sector": "Technology"})
+        result4 = analyze_competitive_position(
+            symbol="X", company_data={"sector": "Technology"}
+        )
         assert isinstance(result4, dict)
 
         result5 = synthesize_valuation(

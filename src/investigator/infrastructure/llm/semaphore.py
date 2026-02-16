@@ -26,7 +26,9 @@ from enum import Enum
 from typing import Dict, List, Optional
 
 from investigator.config import get_config
-from investigator.infrastructure.llm.vram_calculator import estimate_model_vram_requirement
+from investigator.infrastructure.llm.vram_calculator import (
+    estimate_model_vram_requirement,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -112,10 +114,18 @@ class DynamicLLMSemaphore:
                 raw_specs = getattr(cfg.ollama, "model_specs", {}) or {}
                 # Convert to proper dict if needed
                 if hasattr(raw_specs, "items"):
-                    self.model_specs = dict(raw_specs.items()) if not isinstance(raw_specs, dict) else raw_specs
-                    logger.info(f"Loaded {len(self.model_specs)} model specs: {list(self.model_specs.keys())}")
+                    self.model_specs = (
+                        dict(raw_specs.items())
+                        if not isinstance(raw_specs, dict)
+                        else raw_specs
+                    )
+                    logger.info(
+                        f"Loaded {len(self.model_specs)} model specs: {list(self.model_specs.keys())}"
+                    )
                     for name, spec in self.model_specs.items():
-                        vram = getattr(spec, "weights_vram_gb", None) or getattr(spec, "memory_gb", None)
+                        vram = getattr(spec, "weights_vram_gb", None) or getattr(
+                            spec, "memory_gb", None
+                        )
                         if vram:
                             self.model_vram_requirements[name] = float(vram)
                 else:
@@ -148,13 +158,25 @@ class DynamicLLMSemaphore:
             self.active_tasks_per_model: Dict[str, int] = {}  # Task count per model
 
             # Statistics
-            self._stats = {"total_requests": 0, "concurrent_peak": 0, "vram_peak": 0, "cache_hits": 0, "queue_waits": 0}
+            self._stats = {
+                "total_requests": 0,
+                "concurrent_peak": 0,
+                "vram_peak": 0,
+                "cache_hits": 0,
+                "queue_waits": 0,
+            }
 
             self._initialized = True
-            logger.info(f"Dynamic LLM Semaphore initialized - Available VRAM: {self.available_vram_gb}GB")
+            logger.info(
+                f"Dynamic LLM Semaphore initialized - Available VRAM: {self.available_vram_gb}GB"
+            )
 
     def _estimate_kv_cache_gb(
-        self, model: str, prompt_tokens: Optional[int], response_tokens: Optional[int], context_tokens: Optional[int]
+        self,
+        model: str,
+        prompt_tokens: Optional[int],
+        response_tokens: Optional[int],
+        context_tokens: Optional[int],
     ) -> float:
         """
         Estimate KV cache memory in GB for a model
@@ -166,12 +188,18 @@ class DynamicLLMSemaphore:
             try:
                 # Convert spec object to dict for vram_calculator
                 spec_dict = {
-                    "kv_cache_mb_per_1k_tokens": getattr(spec, "kv_cache_mb_per_1k_tokens", 120.0),
-                    "kv_cache_overhead_pct": getattr(spec, "kv_cache_overhead_pct", 0.15),
+                    "kv_cache_mb_per_1k_tokens": getattr(
+                        spec, "kv_cache_mb_per_1k_tokens", 120.0
+                    ),
+                    "kv_cache_overhead_pct": getattr(
+                        spec, "kv_cache_overhead_pct", 0.15
+                    ),
                     "context_window": getattr(spec, "context_window", 32768),
                     "weights_vram_gb": getattr(spec, "weights_vram_gb", 16.0),
                 }
-                result = estimate_model_vram_requirement(spec_dict, include_kv_cache=True)
+                result = estimate_model_vram_requirement(
+                    spec_dict, include_kv_cache=True
+                )
                 return result["kv_cache_gb"]
             except Exception as exc:
                 logger.debug("KV cache estimate failed for %s: %s", model, exc)
@@ -197,7 +225,9 @@ class DynamicLLMSemaphore:
         # Try exact match first
         if model in self.model_vram_requirements:
             weights = self.model_vram_requirements[model]
-            return weights + self._estimate_kv_cache_gb(model, prompt_tokens, response_tokens, context_tokens)
+            return weights + self._estimate_kv_cache_gb(
+                model, prompt_tokens, response_tokens, context_tokens
+            )
 
         # Try pattern matching for common models
         model_lower = model.lower()
@@ -219,7 +249,9 @@ class DynamicLLMSemaphore:
         # Default to medium model
         logger.warning(f"Unknown model {model}, assuming 16GB VRAM requirement")
         base = 16
-        return base + self._estimate_kv_cache_gb(model, prompt_tokens, response_tokens, context_tokens)
+        return base + self._estimate_kv_cache_gb(
+            model, prompt_tokens, response_tokens, context_tokens
+        )
 
     def _calculate_task_vram(
         self,
@@ -243,7 +275,9 @@ class DynamicLLMSemaphore:
             logger.warning(
                 f"Model spec not found for '{model}', using fallback. Available: {list(self.model_specs.keys())}"
             )
-            base_vram = self._get_model_vram_requirement(model, prompt_tokens, response_tokens, context_tokens)
+            base_vram = self._get_model_vram_requirement(
+                model, prompt_tokens, response_tokens, context_tokens
+            )
         else:
             # Use centralized calculator with model reuse logic
             model_already_loaded = model in self.loaded_models
@@ -251,17 +285,27 @@ class DynamicLLMSemaphore:
             if model_already_loaded:
                 # Model weights already in VRAM - only need KV cache for concurrent task
                 vram_result = estimate_model_vram_requirement(
-                    spec, include_kv_cache=True, prompt_tokens=prompt_tokens, response_tokens=response_tokens
+                    spec,
+                    include_kv_cache=True,
+                    prompt_tokens=prompt_tokens,
+                    response_tokens=response_tokens,
                 )
                 base_vram = vram_result["kv_cache_gb"]  # Just KV cache
-                logger.info(f"Model {model} already loaded, allocating KV cache only: {base_vram:.2f}GB")
+                logger.info(
+                    f"Model {model} already loaded, allocating KV cache only: {base_vram:.2f}GB"
+                )
             else:
                 # First task for this model - need full model (weights + KV cache)
                 vram_result = estimate_model_vram_requirement(
-                    spec, include_kv_cache=True, prompt_tokens=prompt_tokens, response_tokens=response_tokens
+                    spec,
+                    include_kv_cache=True,
+                    prompt_tokens=prompt_tokens,
+                    response_tokens=response_tokens,
                 )
                 base_vram = vram_result["total_gb"]  # Full model
-                logger.info(f"First load of {model}, allocating full model: {base_vram:.2f}GB")
+                logger.info(
+                    f"First load of {model}, allocating full model: {base_vram:.2f}GB"
+                )
 
         # Apply complexity multiplier (currently 1.0 for all tasks)
         complexity_multiplier = self.task_complexity.get(task_type, 1.0)
@@ -329,12 +373,18 @@ class DynamicLLMSemaphore:
 
                 # Track model loading
                 self.loaded_models.add(model)
-                self.active_tasks_per_model[model] = self.active_tasks_per_model.get(model, 0) + 1
+                self.active_tasks_per_model[model] = (
+                    self.active_tasks_per_model.get(model, 0) + 1
+                )
 
                 # Update peak stats
                 current_concurrent = len(self.active_tasks)
-                self._stats["concurrent_peak"] = max(self._stats["concurrent_peak"], current_concurrent)
-                self._stats["vram_peak"] = max(self._stats["vram_peak"], self.used_vram_gb)
+                self._stats["concurrent_peak"] = max(
+                    self._stats["concurrent_peak"], current_concurrent
+                )
+                self._stats["vram_peak"] = max(
+                    self._stats["vram_peak"], self.used_vram_gb
+                )
 
                 if is_cached:
                     self._stats["cache_hits"] += 1
@@ -373,14 +423,22 @@ class DynamicLLMSemaphore:
 
                     # Track model loading
                     self.loaded_models.add(model)
-                    self.active_tasks_per_model[model] = self.active_tasks_per_model.get(model, 0) + 1
+                    self.active_tasks_per_model[model] = (
+                        self.active_tasks_per_model.get(model, 0) + 1
+                    )
 
-                    wait_time = (datetime.now() - task_info["start_time"]).total_seconds()
+                    wait_time = (
+                        datetime.now() - task_info["start_time"]
+                    ).total_seconds()
                     current_concurrent = len(self.active_tasks)
 
                     # Update peak stats
-                    self._stats["concurrent_peak"] = max(self._stats["concurrent_peak"], current_concurrent)
-                    self._stats["vram_peak"] = max(self._stats["vram_peak"], self.used_vram_gb)
+                    self._stats["concurrent_peak"] = max(
+                        self._stats["concurrent_peak"], current_concurrent
+                    )
+                    self._stats["vram_peak"] = max(
+                        self._stats["vram_peak"], self.used_vram_gb
+                    )
 
                     logger.info(
                         f"✅ LLM allocated after wait: {allocation_id} | Wait: {wait_time:.2f}s | "
@@ -433,7 +491,11 @@ class DynamicLLMSemaphore:
 
     def get_stats(self) -> dict:
         """Get comprehensive resource statistics"""
-        avg_vram = self._stats["vram_peak"] / self._stats["total_requests"] if self._stats["total_requests"] > 0 else 0
+        avg_vram = (
+            self._stats["vram_peak"] / self._stats["total_requests"]
+            if self._stats["total_requests"] > 0
+            else 0
+        )
 
         return {
             "total_requests": self._stats["total_requests"],
@@ -461,18 +523,26 @@ class DynamicLLMSemaphore:
         stats = self.get_stats()
 
         if stats["queue_waits"] > stats["total_requests"] * 0.3:
-            suggestions.append("High queue wait rate - consider using smaller models for simple tasks")
+            suggestions.append(
+                "High queue wait rate - consider using smaller models for simple tasks"
+            )
 
         if stats["cache_hit_rate"] < 30:
             suggestions.append("Low cache hit rate - enable more aggressive caching")
 
         if stats["vram_utilization"] > 90:
-            suggestions.append("High VRAM utilization - consider running fewer concurrent tasks")
+            suggestions.append(
+                "High VRAM utilization - consider running fewer concurrent tasks"
+            )
         elif stats["vram_utilization"] < 50:
-            suggestions.append("Low VRAM utilization - can increase concurrency for better throughput")
+            suggestions.append(
+                "Low VRAM utilization - can increase concurrency for better throughput"
+            )
 
         if stats["peak_concurrent"] == 1:
-            suggestions.append("Only running 1 task at a time - check if smaller models can run concurrently")
+            suggestions.append(
+                "Only running 1 task at a time - check if smaller models can run concurrently"
+            )
 
         return suggestions
 
@@ -496,7 +566,9 @@ def get_llm_semaphore() -> DynamicLLMSemaphore:
 
 
 # Dynamic decorator for LLM operations
-def llm_resource_managed(model: str, task_type: str = "summary", is_cached: bool = False):
+def llm_resource_managed(
+    model: str, task_type: str = "summary", is_cached: bool = False
+):
     """
     Decorator for dynamic VRAM-aware LLM resource management
 
@@ -512,10 +584,14 @@ def llm_resource_managed(model: str, task_type: str = "summary", is_cached: bool
             task_id = f"{func.__name__}_{model}_{task_type}"
 
             # Acquire resources
-            allocation_id = await semaphore.acquire(model, task_type, is_cached, task_id)
+            allocation_id = await semaphore.acquire(
+                model, task_type, is_cached, task_id
+            )
 
             try:
-                logger.debug(f"Executing LLM task: {task_id} (allocation: {allocation_id})")
+                logger.debug(
+                    f"Executing LLM task: {task_id} (allocation: {allocation_id})"
+                )
                 result = await func(*args, **kwargs)
                 logger.debug(f"Completed LLM task: {task_id}")
                 return result

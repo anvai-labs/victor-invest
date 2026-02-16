@@ -49,7 +49,7 @@ Example:
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from victor_invest.tools.base import BaseTool, ToolResult
 
@@ -100,15 +100,17 @@ Parameters:
                    will use get_config() on first use.
         """
         super().__init__(config)
-        self._sec_client = None
-        self._xbrl_parser = None
-        self._facts_extractor = None
+        self._sec_client: Optional[Any] = None
+        self._xbrl_parser: Optional[Any] = None
+        self._facts_extractor: Optional[Any] = None
 
     async def initialize(self) -> None:
         """Initialize SEC infrastructure components."""
         try:
             # Lazy import to avoid circular dependencies
-            from investigator.infrastructure.sec.companyfacts_extractor import get_sec_companyfacts_extractor
+            from investigator.infrastructure.sec.companyfacts_extractor import (
+                get_sec_companyfacts_extractor,
+            )
             from investigator.infrastructure.sec.sec_api import SECApiClient
             from investigator.infrastructure.sec.xbrl_parser import XBRLParser
 
@@ -130,7 +132,7 @@ Parameters:
 
     async def execute(
         self,
-        _exec_ctx: Dict[str, Any],
+        _exec_ctx: Optional[Dict[str, Any]] = None,
         symbol: str = "",
         action: str = "get_company_facts",
         form_type: str = "10-K",
@@ -161,7 +163,7 @@ Parameters:
 
             symbol = symbol.upper().strip()
             if not symbol:
-                return ToolResult.error_result("Symbol is required")
+                return ToolResult.create_failure("Symbol is required")
 
             action = action.lower().strip()
 
@@ -177,15 +179,16 @@ Parameters:
                 xbrl_content = kwargs.get("xbrl_content", "")
                 return await self._parse_xbrl(xbrl_content)
             else:
-                return ToolResult.error_result(
+                return ToolResult.create_failure(
                     f"Unknown action: {action}. Valid actions: "
                     "get_filing, get_company_facts, search_filings, extract_metrics, parse_xbrl"
                 )
 
         except Exception as e:
             logger.error(f"SECFilingTool execute error for {symbol}: {e}")
-            return ToolResult.error_result(
-                f"SEC filing operation failed: {str(e)}", metadata={"symbol": symbol, "action": action}
+            return ToolResult.create_failure(
+                f"SEC filing operation failed: {str(e)}",
+                metadata={"symbol": symbol, "action": action},
             )
 
     async def _get_filing(self, symbol: str, form_type: str, period: str) -> ToolResult:
@@ -200,15 +203,20 @@ Parameters:
             ToolResult with filing content and metadata
         """
         try:
-            filing_data = await self._sec_client.get_filing_by_symbol(symbol=symbol, form_type=form_type, period=period)
+            if self._sec_client is None:
+                return ToolResult.create_failure("SEC client not initialized")
+            filing_data = await self._sec_client.get_filing_by_symbol(
+                symbol=symbol, form_type=form_type, period=period
+            )
 
             if not filing_data:
-                return ToolResult.error_result(
-                    f"No {form_type} filing found for {symbol}", metadata={"symbol": symbol, "form_type": form_type}
+                return ToolResult.create_failure(
+                    f"No {form_type} filing found for {symbol}",
+                    metadata={"symbol": symbol, "form_type": form_type},
                 )
 
-            return ToolResult.success_result(
-                data={
+            return ToolResult.create_success(
+                output={
                     "symbol": symbol,
                     "form_type": filing_data.get("filing_type", form_type),
                     "filing_date": filing_data.get("filing_date"),
@@ -216,7 +224,9 @@ Parameters:
                     "form_url": filing_data.get("form_url"),
                     "xbrl_url": filing_data.get("xbrl_url"),
                     "cik": filing_data.get("cik"),
-                    "text": filing_data.get("text", "")[:50000],  # Truncate large filings
+                    "text": filing_data.get("text", "")[
+                        :50000
+                    ],  # Truncate large filings
                 },
                 metadata={
                     "source": "sec_edgar",
@@ -228,7 +238,7 @@ Parameters:
 
         except Exception as e:
             logger.error(f"Error getting filing for {symbol}: {e}")
-            return ToolResult.error_result(f"Failed to get filing: {str(e)}")
+            return ToolResult.create_failure(f"Failed to get filing: {str(e)}")
 
     async def _get_company_facts(self, symbol: str) -> ToolResult:
         """Get company facts from SEC CompanyFacts API.
@@ -240,19 +250,24 @@ Parameters:
             ToolResult with company facts data
         """
         try:
+            if self._facts_extractor is None:
+                return ToolResult.create_failure("SEC facts extractor not initialized")
+
             # Run synchronous method in thread pool
             loop = asyncio.get_event_loop()
-            facts_data = await loop.run_in_executor(None, self._facts_extractor.get_company_facts, symbol)
+            facts_data = await loop.run_in_executor(
+                None, self._facts_extractor.get_company_facts, symbol
+            )
 
             if not facts_data:
-                return ToolResult.error_result(
+                return ToolResult.create_failure(
                     f"No company facts found for {symbol}. "
                     "The symbol may not be in the cache. Consider triggering SEC data fetch.",
                     metadata={"symbol": symbol},
                 )
 
-            return ToolResult.success_result(
-                data={
+            return ToolResult.create_success(
+                output={
                     "symbol": facts_data.get("symbol", symbol),
                     "cik": facts_data.get("cik"),
                     "entity_name": facts_data.get("entityName"),
@@ -268,9 +283,11 @@ Parameters:
 
         except Exception as e:
             logger.error(f"Error getting company facts for {symbol}: {e}")
-            return ToolResult.error_result(f"Failed to get company facts: {str(e)}")
+            return ToolResult.create_failure(f"Failed to get company facts: {str(e)}")
 
-    async def _search_filings(self, symbol: str, form_type: str, limit: int) -> ToolResult:
+    async def _search_filings(
+        self, symbol: str, form_type: str, limit: int
+    ) -> ToolResult:
         """Search for recent filings.
 
         Args:
@@ -282,21 +299,31 @@ Parameters:
             ToolResult with list of filing metadata
         """
         try:
-            filings = await self._sec_client.search_filings(symbol=symbol, form_type=form_type, limit=limit)
+            if self._sec_client is None:
+                return ToolResult.create_failure("SEC client not initialized")
+            filings = await self._sec_client.search_filings(
+                symbol=symbol, form_type=form_type, limit=limit
+            )
 
             if not filings:
-                return ToolResult.error_result(
-                    f"No {form_type} filings found for {symbol}", metadata={"symbol": symbol, "form_type": form_type}
+                return ToolResult.create_failure(
+                    f"No {form_type} filings found for {symbol}",
+                    metadata={"symbol": symbol, "form_type": form_type},
                 )
 
-            return ToolResult.success_result(
-                data={"symbol": symbol, "form_type": form_type, "count": len(filings), "filings": filings},
+            return ToolResult.create_success(
+                output={
+                    "symbol": symbol,
+                    "form_type": form_type,
+                    "count": len(filings),
+                    "filings": filings,
+                },
                 metadata={"source": "sec_edgar", "limit": limit},
             )
 
         except Exception as e:
             logger.error(f"Error searching filings for {symbol}: {e}")
-            return ToolResult.error_result(f"Failed to search filings: {str(e)}")
+            return ToolResult.create_failure(f"Failed to search filings: {str(e)}")
 
     async def _extract_metrics(self, symbol: str) -> ToolResult:
         """Extract financial metrics from company facts.
@@ -308,22 +335,40 @@ Parameters:
             ToolResult with extracted financial metrics
         """
         try:
+            if self._facts_extractor is None:
+                return ToolResult.create_failure("SEC facts extractor not initialized")
+
             # Run synchronous method in thread pool
             loop = asyncio.get_event_loop()
-            metrics = await loop.run_in_executor(None, self._facts_extractor.extract_financial_metrics, symbol)
+            metrics = await loop.run_in_executor(
+                None, self._facts_extractor.extract_financial_metrics, symbol
+            )
 
             if not metrics or all(
                 v is None
                 for k, v in metrics.items()
-                if k not in ["symbol", "cik", "company_name", "data_date", "source", "fiscal_year", "fiscal_period"]
+                if k
+                not in [
+                    "symbol",
+                    "cik",
+                    "company_name",
+                    "data_date",
+                    "source",
+                    "fiscal_year",
+                    "fiscal_period",
+                ]
             ):
-                return ToolResult.error_result(
-                    f"No financial metrics available for {symbol}", metadata={"symbol": symbol}
+                return ToolResult.create_failure(
+                    f"No financial metrics available for {symbol}",
+                    metadata={"symbol": symbol},
                 )
 
             # Calculate financial ratios
             ratios = await loop.run_in_executor(
-                None, self._facts_extractor.calculate_financial_ratios, symbol, None  # current_price
+                None,
+                self._facts_extractor.calculate_financial_ratios,
+                symbol,
+                None,  # current_price
             )
 
             # Get shares outstanding from multiple possible fields
@@ -334,8 +379,8 @@ Parameters:
                 or metrics.get("weighted_average_diluted_shares_outstanding")
             )
 
-            return ToolResult.success_result(
-                data={
+            return ToolResult.create_success(
+                output={
                     "symbol": symbol,
                     "fiscal_year": metrics.get("fiscal_year"),
                     "fiscal_period": metrics.get("fiscal_period"),
@@ -352,7 +397,9 @@ Parameters:
                         "cash_and_equivalents": metrics.get("cash_and_equivalents"),
                         "inventory": metrics.get("inventory"),
                         "accounts_receivable": metrics.get("accounts_receivable"),
-                        "property_plant_equipment": metrics.get("property_plant_equipment"),
+                        "property_plant_equipment": metrics.get(
+                            "property_plant_equipment"
+                        ),
                         "shares_outstanding": shares_outstanding,
                     },
                     "income_statement": {
@@ -365,7 +412,9 @@ Parameters:
                         "operating_income": metrics.get("operating_income"),
                         "cost_of_revenue": metrics.get("cost_of_revenue"),
                         "ebitda": metrics.get("ebitda"),
-                        "depreciation_amortization": metrics.get("depreciation_amortization"),
+                        "depreciation_amortization": metrics.get(
+                            "depreciation_amortization"
+                        ),
                     },
                     "cash_flow": {
                         "operating_cash_flow": metrics.get("operating_cash_flow"),
@@ -390,22 +439,29 @@ Parameters:
                     "insurance_metrics": {
                         "premiums_earned": metrics.get("premiums_earned"),
                         "claims_incurred": metrics.get("claims_incurred"),
-                        "policy_acquisition_costs": metrics.get("policy_acquisition_costs"),
+                        "policy_acquisition_costs": metrics.get(
+                            "policy_acquisition_costs"
+                        ),
                         "combined_ratio": self._calculate_combined_ratio(metrics),
                     },
                     "defense_metrics": {
                         "order_backlog": metrics.get("order_backlog"),
                         "contract_liability": metrics.get("contract_liability"),
-                        "unbilled_contracts_receivable": metrics.get("unbilled_contracts_receivable"),
+                        "unbilled_contracts_receivable": metrics.get(
+                            "unbilled_contracts_receivable"
+                        ),
                         "backlog_to_revenue": self._calculate_backlog_ratio(metrics),
                     },
                 },
-                metadata={"source": metrics.get("source", "unknown"), "data_date": metrics.get("data_date")},
+                metadata={
+                    "source": metrics.get("source", "unknown"),
+                    "data_date": metrics.get("data_date"),
+                },
             )
 
         except Exception as e:
             logger.error(f"Error extracting metrics for {symbol}: {e}")
-            return ToolResult.error_result(f"Failed to extract metrics: {str(e)}")
+            return ToolResult.create_failure(f"Failed to extract metrics: {str(e)}")
 
     def _calculate_combined_ratio(self, metrics: Dict) -> Optional[float]:
         """Calculate insurance combined ratio from XBRL data.
@@ -432,7 +488,8 @@ Parameters:
             return None
 
         combined_ratio = ((claims + expenses) / premiums) * 100
-        return round(combined_ratio, 2)
+        result: float | None = round(combined_ratio, 2)
+        return result
 
     def _calculate_backlog_ratio(self, metrics: Dict) -> Optional[float]:
         """Calculate backlog-to-revenue ratio for defense contractors.
@@ -451,7 +508,8 @@ Parameters:
         if not backlog or not revenue or revenue <= 0:
             return None
 
-        return round(backlog / revenue, 2)
+        result: float | None = round(backlog / revenue, 2)
+        return result
 
     async def _parse_xbrl(self, xbrl_content: str) -> ToolResult:
         """Parse XBRL content from a filing.
@@ -464,18 +522,21 @@ Parameters:
         """
         try:
             if not xbrl_content:
-                return ToolResult.error_result("No XBRL content provided")
+                return ToolResult.create_failure("No XBRL content provided")
+
+            if self._xbrl_parser is None:
+                return ToolResult.create_failure("XBRL parser not initialized")
 
             parsed_data = await self._xbrl_parser.parse_filing(xbrl_content)
 
             if not parsed_data:
-                return ToolResult.error_result("Failed to parse XBRL content")
+                return ToolResult.create_failure("Failed to parse XBRL content")
 
             # Extract metrics from parsed data
             metrics = await self._xbrl_parser.extract_metrics(parsed_data)
 
-            return ToolResult.success_result(
-                data={
+            return ToolResult.create_success(
+                output={
                     "document_info": parsed_data.get("document_info", {}),
                     "financial_data": parsed_data.get("financial_data", {}),
                     "metrics": metrics,
@@ -485,17 +546,26 @@ Parameters:
 
         except Exception as e:
             logger.error(f"Error parsing XBRL: {e}")
-            return ToolResult.error_result(f"Failed to parse XBRL: {str(e)}")
+            return ToolResult.create_failure(f"Failed to parse XBRL: {str(e)}")
 
     def get_schema(self) -> Dict[str, Any]:
         """Get JSON schema for SEC Filing Tool parameters."""
         return {
             "type": "object",
             "properties": {
-                "symbol": {"type": "string", "description": "Stock ticker symbol (e.g., AAPL, MSFT)"},
+                "symbol": {
+                    "type": "string",
+                    "description": "Stock ticker symbol (e.g., AAPL, MSFT)",
+                },
                 "action": {
                     "type": "string",
-                    "enum": ["get_filing", "get_company_facts", "search_filings", "extract_metrics", "parse_xbrl"],
+                    "enum": [
+                        "get_filing",
+                        "get_company_facts",
+                        "search_filings",
+                        "extract_metrics",
+                        "parse_xbrl",
+                    ],
                     "description": "Action to perform",
                     "default": "get_company_facts",
                 },

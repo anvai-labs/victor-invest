@@ -10,8 +10,6 @@ This script:
 """
 
 import json
-import os
-import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -101,7 +99,9 @@ def fetch_classifications_from_db(tickers: List[str]) -> Dict[str, Tuple[str, st
             classifications[ticker] = (sector, industry)
 
     print(f"✅ Found classifications for {len(classifications)} tickers")
-    print(f"⚠️  Missing classifications for {len(tickers) - len(classifications)} tickers")
+    print(
+        f"⚠️  Missing classifications for {len(tickers) - len(classifications)} tickers"
+    )
 
     return classifications
 
@@ -141,8 +141,12 @@ def generate_symbol_overrides_code(classifications: Dict[str, Tuple[str, str]]) 
 
     for ticker, (sector, industry) in sorted(classifications.items()):
         # Escape special characters (single quotes, newlines, etc.)
-        sector_escaped = sector.replace("'", "\\'").replace("\n", " ").replace("\r", " ").strip()
-        industry_escaped = industry.replace("'", "\\'").replace("\n", " ").replace("\r", " ").strip()
+        sector_escaped = (
+            sector.replace("'", "\\'").replace("\n", " ").replace("\r", " ").strip()
+        )
+        industry_escaped = (
+            industry.replace("'", "\\'").replace("\n", " ").replace("\r", " ").strip()
+        )
         lines.append(f"    '{ticker}': ('{sector_escaped}', '{industry_escaped}'),")
 
     lines.append("}")
@@ -180,9 +184,11 @@ def main():
     print("SUMMARY")
     print("=" * 80)
     print(f"Total Russell 1000 tickers: {len(tickers)}")
-    print(f"Tickers with classifications: {len(classifications)} ({len(classifications)/len(tickers)*100:.1f}%)")
+    print(
+        f"Tickers with classifications: {len(classifications)} ({len(classifications) / len(tickers) * 100:.1f}%)"
+    )
     print(f"Tickers missing classifications: {len(tickers) - len(classifications)}")
-    print(f"\nOutput files:")
+    print("\nOutput files:")
     print(f"  - {OUTPUT_JSON}")
     print(f"  - {code_file}")
     print("\nNext steps:")

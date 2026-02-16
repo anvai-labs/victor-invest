@@ -4,7 +4,6 @@ Comprehensive Cache Inspection Report
 Analyzes cache system issues and provides detailed diagnostics
 """
 
-import json
 import logging
 import os
 from pathlib import Path
@@ -46,7 +45,9 @@ def inspect_cache_directories():
 
                 print(f"  Files: {total_files}")
                 print(f"  Directories: {total_dirs}")
-                print(f"  Total size: {total_size:,} bytes ({total_size/1024/1024:.1f} MB)")
+                print(
+                    f"  Total size: {total_size:,} bytes ({total_size / 1024 / 1024:.1f} MB)"
+                )
 
                 # Show recent files
                 if total_files > 0:
@@ -60,14 +61,14 @@ def inspect_cache_directories():
                             except OSError:
                                 recent_files.append(f"    {file} (size unknown)")
 
-                    print(f"  Sample files:")
+                    print("  Sample files:")
                     for rf in recent_files[:3]:
                         print(rf)
 
             except Exception as e:
                 print(f"  Error inspecting directory: {str(e)[:50]}")
         else:
-            print(f"  Directory does not exist")
+            print("  Directory does not exist")
 
 
 def inspect_cache_handlers():
@@ -90,9 +91,9 @@ def inspect_cache_handlers():
             for i, handler in enumerate(handlers):
                 handler_type = handler.get("handler_type", "Unknown")
                 priority = handler.get("priority", "Unknown")
-                print(f"    {i+1}. {handler_type} (priority: {priority})")
+                print(f"    {i + 1}. {handler_type} (priority: {priority})")
 
-        print(f"\nHandler summary:")
+        print("\nHandler summary:")
         handler_summary = stats.get("handler_summary", {})
         for handler_type, count in handler_summary.items():
             print(f"  {handler_type}: {count}")
@@ -111,13 +112,26 @@ def test_cache_write_operations():
         test_cases = [
             (
                 CacheType.LLM_RESPONSE,
-                {"symbol": "TEST_WRITE", "llm_type": "test", "form_type": "10-K", "period": "2024"},
-                {"prompt": "Test prompt", "response": {"test": True}, "metadata": {"test": "write_test"}},
+                {
+                    "symbol": "TEST_WRITE",
+                    "llm_type": "test",
+                    "form_type": "10-K",
+                    "period": "2024",
+                },
+                {
+                    "prompt": "Test prompt",
+                    "response": {"test": True},
+                    "metadata": {"test": "write_test"},
+                },
             ),
             (
                 CacheType.COMPANY_FACTS,
                 {"symbol": "TEST_WRITE", "cik": "0001234567"},
-                {"symbol": "TEST_WRITE", "cik": "0001234567", "companyfacts": {"test": "data"}},
+                {
+                    "symbol": "TEST_WRITE",
+                    "cik": "0001234567",
+                    "companyfacts": {"test": "data"},
+                },
             ),
             (
                 CacheType.SEC_RESPONSE,
@@ -160,7 +174,7 @@ def test_cache_write_operations():
                 results[cache_type.value] = {"error": str(e)[:100]}
 
         # Summary
-        print(f"\n=== WRITE TEST SUMMARY ===")
+        print("\n=== WRITE TEST SUMMARY ===")
         for cache_type, result in results.items():
             if "error" in result:
                 print(f"{cache_type}: ERROR - {result['error']}")
@@ -189,7 +203,12 @@ def identify_cache_issues():
 
         # Test LLM response cache
         try:
-            llm_key = {"symbol": "TEST", "form_type": "10-K", "period": "2024", "llm_type": "test"}
+            llm_key = {
+                "symbol": "TEST",
+                "form_type": "10-K",
+                "period": "2024",
+                "llm_type": "test",
+            }
             cache_manager.get(CacheType.LLM_RESPONSE, llm_key)
             issues.append("✅ LLM response cache working via direct cache manager")
         except Exception as e:
@@ -224,7 +243,9 @@ def identify_cache_issues():
 
     # Check file patterns
     try:
-        from investigator.infrastructure.cache.file_cache_handler import FileCacheStorageHandler
+        from investigator.infrastructure.cache.file_cache_handler import (
+            FileCacheStorageHandler,
+        )
 
         # This will show if there are pattern issues
         handler = FileCacheStorageHandler(CacheType.LLM_RESPONSE, Path("test"), 10)
@@ -257,19 +278,29 @@ def generate_cache_recommendations(issues):
 
     for issue in issues:
         if "get_sec_response method missing" in issue:
-            recommendations.append("🔧 Add get_sec_response method to CacheFacade class")
+            recommendations.append(
+                "🔧 Add get_sec_response method to CacheFacade class"
+            )
 
         if "get_technical_data method missing" in issue:
-            recommendations.append("🔧 Add get_technical_data method to CacheFacade class")
+            recommendations.append(
+                "🔧 Add get_technical_data method to CacheFacade class"
+            )
 
         if "Missing required key" in issue:
-            recommendations.append("🔧 Fix file cache handler key patterns - ensure all required keys are provided")
+            recommendations.append(
+                "🔧 Fix file cache handler key patterns - ensure all required keys are provided"
+            )
 
         if "sec_companyfacts" in issue or "UndefinedTable" in issue:
-            recommendations.append("🔧 Create missing database tables or disable RDBMS cache handlers")
+            recommendations.append(
+                "🔧 Create missing database tables or disable RDBMS cache handlers"
+            )
 
         if "Cache WRITE FAILED" in issue:
-            recommendations.append("🔧 Fix cache write operations - check key formats and handler configurations")
+            recommendations.append(
+                "🔧 Fix cache write operations - check key formats and handler configurations"
+            )
 
     # General recommendations
     recommendations.extend(

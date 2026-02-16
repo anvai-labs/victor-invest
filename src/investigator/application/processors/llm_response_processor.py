@@ -12,7 +12,7 @@ This ensures consistent handling of both cached and direct LLM responses.
 import json
 import logging
 import re
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,9 @@ class LLMResponseProcessor:
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self._last_thinking_content = ""
 
-    def process_response(self, response_data: Any, from_cache: bool = False) -> Tuple[str, Dict[str, Any]]:
+    def process_response(
+        self, response_data: Any, from_cache: bool = False
+    ) -> Tuple[str, Dict[str, Any]]:
         """
         Process LLM response uniformly whether from cache or direct generation.
 
@@ -50,7 +52,9 @@ class LLMResponseProcessor:
 
                 # Check if content is already processed
                 if self._is_already_processed(response_data, content):
-                    self.logger.debug("Content is already processed, skipping processing")
+                    self.logger.debug(
+                        "Content is already processed, skipping processing"
+                    )
                     return content, metadata
 
             else:
@@ -91,7 +95,7 @@ class LLMResponseProcessor:
             # Try to parse as JSON
             try:
                 response_obj = json.loads(response_obj)
-            except:
+            except Exception:
                 # If not JSON, use as is
                 return response_obj, metadata
 
@@ -157,7 +161,9 @@ class LLMResponseProcessor:
         if think_matches:
             thinking_content = "\n\n".join(think_matches)
             content = re.sub(think_pattern, "", content, flags=re.DOTALL).strip()
-            self.logger.debug(f"Removed {len(think_matches)} thinking sections from response")
+            self.logger.debug(
+                f"Removed {len(think_matches)} thinking sections from response"
+            )
 
         # Fix common JSON escape sequence issues from reasoning models
         # This handles cases where LLM outputs invalid escape sequences
@@ -194,16 +200,24 @@ class LLMResponseProcessor:
                 except json.JSONDecodeError:
                     # Still fails, try more aggressive fixes
                     # Replace literal newlines and tabs in JSON strings
-                    fixed_content = re.sub(r'(": "[^"]*?)\\n([^"]*?")', r"\1\\\\n\2", content)
-                    fixed_content = re.sub(r'(": "[^"]*?)\\t([^"]*?")', r"\1\\\\t\2", fixed_content)
+                    fixed_content = re.sub(
+                        r'(": "[^"]*?)\\n([^"]*?")', r"\1\\\\n\2", content
+                    )
+                    fixed_content = re.sub(
+                        r'(": "[^"]*?)\\t([^"]*?")', r"\1\\\\t\2", fixed_content
+                    )
 
                     try:
                         json.loads(fixed_content)
                         content = fixed_content
-                        self.logger.debug("Successfully fixed JSON by escaping newlines/tabs")
+                        self.logger.debug(
+                            "Successfully fixed JSON by escaping newlines/tabs"
+                        )
                     except json.JSONDecodeError:
                         # Last resort: leave as is and let validation handle it
-                        self.logger.warning("Could not fix JSON escape sequences, proceeding with original")
+                        self.logger.warning(
+                            "Could not fix JSON escape sequences, proceeding with original"
+                        )
             except Exception as e:
                 # For any other errors, leave content as is
                 self.logger.debug(f"Error in JSON fixing: {e}")
@@ -253,7 +267,7 @@ class LLMResponseProcessor:
         # Try direct JSON parsing first
         try:
             return json.loads(text)
-        except:
+        except Exception:
             pass
 
         # Look for JSON in markdown code block
@@ -261,7 +275,7 @@ class LLMResponseProcessor:
         if json_match:
             try:
                 return json.loads(json_match.group(1).strip())
-            except:
+            except Exception:
                 pass
 
         # Look for JSON-like content (starts with { and ends with })
@@ -269,7 +283,7 @@ class LLMResponseProcessor:
         if brace_match:
             try:
                 return json.loads(brace_match.group(0))
-            except:
+            except Exception:
                 pass
 
         return None
@@ -301,7 +315,7 @@ class LLMResponseProcessor:
             # Check if content looks like clean JSON (already processed)
             if content.strip().startswith("{") and content.strip().endswith("}"):
                 try:
-                    parsed = json.loads(content)
+                    json.loads(content)
                     # If it parses as JSON and doesn't contain <think> tags or problematic escapes,
                     # it's likely already processed
                     if "<think>" not in content and '\\"' not in content:

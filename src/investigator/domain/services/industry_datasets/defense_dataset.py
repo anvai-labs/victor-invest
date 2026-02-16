@@ -15,7 +15,7 @@ Date: 2025-12-30
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from investigator.domain.services.industry_datasets.base import (
     BaseIndustryDataset,
@@ -180,7 +180,9 @@ class DefenseDataset(BaseIndustryDataset):
             ),
         ]
 
-    def extract_metrics(self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs) -> IndustryMetrics:
+    def extract_metrics(
+        self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs
+    ) -> IndustryMetrics:
         """Extract defense-specific metrics from XBRL data and financials."""
         metrics = IndustryMetrics(
             industry="defense",
@@ -192,7 +194,9 @@ class DefenseDataset(BaseIndustryDataset):
 
         # Extract Order Backlog
         backlog = self._extract_from_xbrl(
-            xbrl_data, "order_backlog", ["OrderBacklog", "ContractBacklog", "RemainingPerformanceObligation"]
+            xbrl_data,
+            "order_backlog",
+            ["OrderBacklog", "ContractBacklog", "RemainingPerformanceObligation"],
         )
         if backlog:
             metrics.metrics["order_backlog"] = backlog
@@ -210,7 +214,9 @@ class DefenseDataset(BaseIndustryDataset):
             warnings.append("Backlog-to-revenue estimated at 2.5x")
 
         # Extract Book-to-Bill
-        btb = self._extract_from_xbrl(xbrl_data, "book_to_bill", ["BookToOrderRatio", "OrdersToRevenue"])
+        btb = self._extract_from_xbrl(
+            xbrl_data, "book_to_bill", ["BookToOrderRatio", "OrdersToRevenue"]
+        )
         if btb:
             metrics.metrics["book_to_bill"] = btb
         else:
@@ -218,7 +224,9 @@ class DefenseDataset(BaseIndustryDataset):
             warnings.append("Book-to-bill estimated at 1.0x")
 
         # Extract Operating Margin
-        op_margin = financials.get("operating_margin") or financials.get("operatingMargin")
+        op_margin = financials.get("operating_margin") or financials.get(
+            "operatingMargin"
+        )
         if op_margin:
             metrics.metrics["operating_margin"] = op_margin
         else:
@@ -233,7 +241,9 @@ class DefenseDataset(BaseIndustryDataset):
 
         # Extract International Revenue %
         intl = self._extract_from_xbrl(
-            xbrl_data, "international_revenue_pct", ["InternationalRevenuePct", "ForeignRevenuePct"]
+            xbrl_data,
+            "international_revenue_pct",
+            ["InternationalRevenuePct", "ForeignRevenuePct"],
         )
         if intl:
             metrics.metrics["international_revenue_pct"] = intl

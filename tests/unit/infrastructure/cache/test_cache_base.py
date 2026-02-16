@@ -67,7 +67,12 @@ def test_dummy_handler_basic_crud_cycle() -> None:
         (
             CacheType.SEC_RESPONSE,
             ("AAPL", "facts", "2024-Q4", "10-K"),
-            {"symbol": "AAPL", "category": "facts", "period": "2024-Q4", "form_type": "10-K"},
+            {
+                "symbol": "AAPL",
+                "category": "facts",
+                "period": "2024-Q4",
+                "form_type": "10-K",
+            },
         ),
         (
             CacheType.LLM_RESPONSE,
@@ -93,7 +98,9 @@ def test_dummy_handler_basic_crud_cycle() -> None:
         ),
     ],
 )
-def test_normalize_key_handles_known_tuple_formats(cache_type, raw_key, expected) -> None:
+def test_normalize_key_handles_known_tuple_formats(
+    cache_type, raw_key, expected
+) -> None:
     handler = DummyHandler(cache_type)
     normalized = handler._normalize_key(raw_key)  # pylint: disable=protected-access
     assert normalized == expected

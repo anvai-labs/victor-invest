@@ -33,7 +33,6 @@ import argparse
 import os
 import sys
 import time
-from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -44,16 +43,13 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from scripts.scheduled.base import (
+from scripts.scheduled.base import (  # noqa: E402
     BaseCollector,
     CollectionMetrics,
     compute_record_hash,
     get_database_connection,
     get_finnhub_rate_limiter,
     get_sp500_symbols,
-    get_watermark,
-    retry_with_backoff,
-    update_watermark,
 )
 
 # Finnhub API configuration
@@ -76,6 +72,7 @@ def _get_finnhub_api_key() -> str:
     # Priority 2: Try victor keyring
     try:
         from victor.config.api_keys import get_service_key
+
         key = get_service_key("finnhub")
         if key:
             return key
@@ -207,10 +204,13 @@ class AnalystEstimatesCollector(BaseCollector):
             record_hash = compute_record_hash(estimate)
 
             # Check existing
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT source_hash FROM analyst_estimates
                 WHERE symbol = %s AND period_type = 'quarterly' AND period_end_date = %s
-            """, (symbol, period))
+            """,
+                (symbol, period),
+            )
             existing = cursor.fetchone()
 
             if existing:
@@ -218,39 +218,45 @@ class AnalystEstimatesCollector(BaseCollector):
                     self.metrics.records_skipped += 1
                     continue
                 # Update
-                cursor.execute("""
+                cursor.execute(
+                    """
                     UPDATE analyst_estimates SET
                         eps_estimate_avg = %s, eps_estimate_high = %s, eps_estimate_low = %s,
                         eps_estimate_count = %s, source_hash = %s,
                         source_fetch_timestamp = NOW(), updated_at = NOW()
                     WHERE symbol = %s AND period_type = 'quarterly' AND period_end_date = %s
-                """, (
-                    estimate.get("epsAvg"),
-                    estimate.get("epsHigh"),
-                    estimate.get("epsLow"),
-                    estimate.get("numberAnalysts"),
-                    record_hash,
-                    symbol,
-                    period,
-                ))
+                """,
+                    (
+                        estimate.get("epsAvg"),
+                        estimate.get("epsHigh"),
+                        estimate.get("epsLow"),
+                        estimate.get("numberAnalysts"),
+                        record_hash,
+                        symbol,
+                        period,
+                    ),
+                )
                 self.metrics.records_updated += 1
             else:
                 # Insert
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO analyst_estimates
                         (symbol, period_type, period_end_date, eps_estimate_avg,
                          eps_estimate_high, eps_estimate_low, eps_estimate_count,
                          source_hash, source_fetch_timestamp)
                     VALUES (%s, 'quarterly', %s, %s, %s, %s, %s, %s, NOW())
-                """, (
-                    symbol,
-                    period,
-                    estimate.get("epsAvg"),
-                    estimate.get("epsHigh"),
-                    estimate.get("epsLow"),
-                    estimate.get("numberAnalysts"),
-                    record_hash,
-                ))
+                """,
+                    (
+                        symbol,
+                        period,
+                        estimate.get("epsAvg"),
+                        estimate.get("epsHigh"),
+                        estimate.get("epsLow"),
+                        estimate.get("numberAnalysts"),
+                        record_hash,
+                    ),
+                )
                 self.metrics.records_inserted += 1
 
     def _collect_price_targets(self, cursor, symbol: str) -> None:
@@ -273,40 +279,46 @@ class AnalystEstimatesCollector(BaseCollector):
                 self.metrics.records_skipped += 1
                 return
             # Update
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE analyst_price_targets SET
                     target_high = %s, target_low = %s, target_mean = %s,
                     target_median = %s, analyst_count = %s, last_updated = %s,
                     source_hash = %s, source_fetch_timestamp = NOW(), updated_at = NOW()
                 WHERE symbol = %s
-            """, (
-                data.get("targetHigh"),
-                data.get("targetLow"),
-                data.get("targetMean"),
-                data.get("targetMedian"),
-                data.get("numberOfAnalysts"),
-                data.get("lastUpdated"),
-                record_hash,
-                symbol,
-            ))
+            """,
+                (
+                    data.get("targetHigh"),
+                    data.get("targetLow"),
+                    data.get("targetMean"),
+                    data.get("targetMedian"),
+                    data.get("numberOfAnalysts"),
+                    data.get("lastUpdated"),
+                    record_hash,
+                    symbol,
+                ),
+            )
             self.metrics.records_updated += 1
         else:
             # Insert
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO analyst_price_targets
                     (symbol, target_high, target_low, target_mean, target_median,
                      analyst_count, last_updated, source_hash, source_fetch_timestamp)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
-            """, (
-                symbol,
-                data.get("targetHigh"),
-                data.get("targetLow"),
-                data.get("targetMean"),
-                data.get("targetMedian"),
-                data.get("numberOfAnalysts"),
-                data.get("lastUpdated"),
-                record_hash,
-            ))
+            """,
+                (
+                    symbol,
+                    data.get("targetHigh"),
+                    data.get("targetLow"),
+                    data.get("targetMean"),
+                    data.get("targetMedian"),
+                    data.get("numberOfAnalysts"),
+                    data.get("lastUpdated"),
+                    record_hash,
+                ),
+            )
             self.metrics.records_inserted += 1
 
     def _collect_recommendations(self, cursor, symbol: str) -> None:
@@ -324,23 +336,31 @@ class AnalystEstimatesCollector(BaseCollector):
 
             # Calculate consensus score (1=strong sell, 5=strong buy)
             total = (
-                rec.get("strongBuy", 0) + rec.get("buy", 0) + rec.get("hold", 0) +
-                rec.get("sell", 0) + rec.get("strongSell", 0)
+                rec.get("strongBuy", 0)
+                + rec.get("buy", 0)
+                + rec.get("hold", 0)
+                + rec.get("sell", 0)
+                + rec.get("strongSell", 0)
             )
             if total > 0:
                 consensus = (
-                    5 * rec.get("strongBuy", 0) + 4 * rec.get("buy", 0) +
-                    3 * rec.get("hold", 0) + 2 * rec.get("sell", 0) +
-                    1 * rec.get("strongSell", 0)
+                    5 * rec.get("strongBuy", 0)
+                    + 4 * rec.get("buy", 0)
+                    + 3 * rec.get("hold", 0)
+                    + 2 * rec.get("sell", 0)
+                    + 1 * rec.get("strongSell", 0)
                 ) / total
             else:
                 consensus = None
 
             # Check existing
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT source_hash FROM analyst_recommendations
                 WHERE symbol = %s AND period_date = %s
-            """, (symbol, period))
+            """,
+                (symbol, period),
+            )
             existing = cursor.fetchone()
 
             if existing:
@@ -348,44 +368,50 @@ class AnalystEstimatesCollector(BaseCollector):
                     self.metrics.records_skipped += 1
                     continue
                 # Update
-                cursor.execute("""
+                cursor.execute(
+                    """
                     UPDATE analyst_recommendations SET
                         strong_buy = %s, buy = %s, hold = %s, sell = %s, strong_sell = %s,
                         consensus_score = %s, total_analysts = %s,
                         source_hash = %s, source_fetch_timestamp = NOW(), updated_at = NOW()
                     WHERE symbol = %s AND period_date = %s
-                """, (
-                    rec.get("strongBuy", 0),
-                    rec.get("buy", 0),
-                    rec.get("hold", 0),
-                    rec.get("sell", 0),
-                    rec.get("strongSell", 0),
-                    consensus,
-                    total,
-                    record_hash,
-                    symbol,
-                    period,
-                ))
+                """,
+                    (
+                        rec.get("strongBuy", 0),
+                        rec.get("buy", 0),
+                        rec.get("hold", 0),
+                        rec.get("sell", 0),
+                        rec.get("strongSell", 0),
+                        consensus,
+                        total,
+                        record_hash,
+                        symbol,
+                        period,
+                    ),
+                )
                 self.metrics.records_updated += 1
             else:
                 # Insert
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO analyst_recommendations
                         (symbol, period_date, strong_buy, buy, hold, sell, strong_sell,
                          consensus_score, total_analysts, source_hash, source_fetch_timestamp)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
-                """, (
-                    symbol,
-                    period,
-                    rec.get("strongBuy", 0),
-                    rec.get("buy", 0),
-                    rec.get("hold", 0),
-                    rec.get("sell", 0),
-                    rec.get("strongSell", 0),
-                    consensus,
-                    total,
-                    record_hash,
-                ))
+                """,
+                    (
+                        symbol,
+                        period,
+                        rec.get("strongBuy", 0),
+                        rec.get("buy", 0),
+                        rec.get("hold", 0),
+                        rec.get("sell", 0),
+                        rec.get("strongSell", 0),
+                        consensus,
+                        total,
+                        record_hash,
+                    ),
+                )
                 self.metrics.records_inserted += 1
 
 
@@ -394,19 +420,13 @@ def main():
         description="Collect analyst estimates and price targets"
     )
     parser.add_argument(
-        "--symbols",
-        type=str,
-        help="Comma-separated list of symbols (default: S&P 500)"
+        "--symbols", type=str, help="Comma-separated list of symbols (default: S&P 500)"
     )
     parser.add_argument(
-        "--no-recommendations",
-        action="store_true",
-        help="Skip analyst recommendations"
+        "--no-recommendations", action="store_true", help="Skip analyst recommendations"
     )
     parser.add_argument(
-        "--no-price-targets",
-        action="store_true",
-        help="Skip price targets"
+        "--no-price-targets", action="store_true", help="Skip price targets"
     )
     args = parser.parse_args()
 

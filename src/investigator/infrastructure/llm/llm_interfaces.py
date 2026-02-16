@@ -8,12 +8,11 @@ LLM Processing Interfaces and Abstract Classes
 Defines contracts for pattern-based LLM operations
 """
 
-import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Dict, List, Optional
 
 # ============================================================================
 # LLM Data Models
@@ -87,12 +86,16 @@ class ILLMStrategy(ABC):
         pass
 
     @abstractmethod
-    def prepare_request(self, task_type: LLMTaskType, data: Dict[str, Any]) -> LLMRequest:
+    def prepare_request(
+        self, task_type: LLMTaskType, data: Dict[str, Any]
+    ) -> LLMRequest:
         """Prepare LLM request for specific task"""
         pass
 
     @abstractmethod
-    def process_response(self, response: LLMResponse, task_type: LLMTaskType) -> Dict[str, Any]:
+    def process_response(
+        self, response: LLMResponse, task_type: LLMTaskType
+    ) -> Dict[str, Any]:
         """Process LLM response into structured data"""
         pass
 
@@ -168,7 +171,9 @@ class ILLMObserver(ABC):
         pass
 
     @abstractmethod
-    def on_processing_completed(self, request: LLMRequest, response: LLMResponse) -> None:
+    def on_processing_completed(
+        self, request: LLMRequest, response: LLMResponse
+    ) -> None:
         """Called when processing completes"""
         pass
 
@@ -220,7 +225,9 @@ class ILLMSubject(ABC):
 class ILLMAnalysisTemplate(ABC):
     """Template method interface for standardized analysis workflows"""
 
-    def analyze(self, symbol: str, data: Dict[str, Any], task_type: LLMTaskType) -> Dict[str, Any]:
+    def analyze(
+        self, symbol: str, data: Dict[str, Any], task_type: LLMTaskType
+    ) -> Dict[str, Any]:
         """Template method for analysis workflow"""
         # Validate input
         if not self.validate_input(symbol, data, task_type):
@@ -236,12 +243,16 @@ class ILLMAnalysisTemplate(ABC):
         return self.process_analysis_results(response, task_type)
 
     @abstractmethod
-    def validate_input(self, symbol: str, data: Dict[str, Any], task_type: LLMTaskType) -> bool:
+    def validate_input(
+        self, symbol: str, data: Dict[str, Any], task_type: LLMTaskType
+    ) -> bool:
         """Validate input parameters"""
         pass
 
     @abstractmethod
-    def prepare_analysis_request(self, symbol: str, data: Dict[str, Any], task_type: LLMTaskType) -> LLMRequest:
+    def prepare_analysis_request(
+        self, symbol: str, data: Dict[str, Any], task_type: LLMTaskType
+    ) -> LLMRequest:
         """Prepare LLM request for analysis"""
         pass
 
@@ -251,7 +262,9 @@ class ILLMAnalysisTemplate(ABC):
         pass
 
     @abstractmethod
-    def process_analysis_results(self, response: LLMResponse, task_type: LLMTaskType) -> Dict[str, Any]:
+    def process_analysis_results(
+        self, response: LLMResponse, task_type: LLMTaskType
+    ) -> Dict[str, Any]:
         """Process and format analysis results"""
         pass
 

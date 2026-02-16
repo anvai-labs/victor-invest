@@ -16,7 +16,7 @@ Author: InvestiGator Team
 Date: 2025-01-05
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, Optional
 from unittest.mock import MagicMock
 
@@ -48,11 +48,24 @@ def mock_agent():
     mock = MagicMock(spec=FundamentalAnalysisAgent)
 
     # Bind the real methods
-    mock._analyze_revenue_trend = FundamentalAnalysisAgent._analyze_revenue_trend.__get__(mock)
-    mock._analyze_margin_trend = FundamentalAnalysisAgent._analyze_margin_trend.__get__(mock)
-    mock._analyze_cash_flow_trend = FundamentalAnalysisAgent._analyze_cash_flow_trend.__get__(mock)
-    mock._calculate_quarterly_comparisons = FundamentalAnalysisAgent._calculate_quarterly_comparisons.__get__(mock)
-    mock._detect_cyclical_patterns = FundamentalAnalysisAgent._detect_cyclical_patterns.__get__(mock)
+    mock._get_trend_analyzer = FundamentalAnalysisAgent._get_trend_analyzer.__get__(
+        mock
+    )
+    mock._analyze_revenue_trend = (
+        FundamentalAnalysisAgent._analyze_revenue_trend.__get__(mock)
+    )
+    mock._analyze_margin_trend = FundamentalAnalysisAgent._analyze_margin_trend.__get__(
+        mock
+    )
+    mock._analyze_cash_flow_trend = (
+        FundamentalAnalysisAgent._analyze_cash_flow_trend.__get__(mock)
+    )
+    mock._calculate_quarterly_comparisons = (
+        FundamentalAnalysisAgent._calculate_quarterly_comparisons.__get__(mock)
+    )
+    mock._detect_cyclical_patterns = (
+        FundamentalAnalysisAgent._detect_cyclical_patterns.__get__(mock)
+    )
 
     return mock
 
@@ -339,10 +352,42 @@ class TestAnalyzeCashFlowTrend:
     def test_improving_trend(self, mock_agent):
         """Should detect improving cash flow trend."""
         quarterly_data = [
-            MockQuarterlyData(2024, "Q1", {"operating_cash_flow": 100, "capital_expenditures": 0, "net_income": 80}),
-            MockQuarterlyData(2024, "Q2", {"operating_cash_flow": 100, "capital_expenditures": 0, "net_income": 80}),
-            MockQuarterlyData(2024, "Q3", {"operating_cash_flow": 120, "capital_expenditures": 0, "net_income": 80}),
-            MockQuarterlyData(2024, "Q4", {"operating_cash_flow": 120, "capital_expenditures": 0, "net_income": 80}),
+            MockQuarterlyData(
+                2024,
+                "Q1",
+                {
+                    "operating_cash_flow": 100,
+                    "capital_expenditures": 0,
+                    "net_income": 80,
+                },
+            ),
+            MockQuarterlyData(
+                2024,
+                "Q2",
+                {
+                    "operating_cash_flow": 100,
+                    "capital_expenditures": 0,
+                    "net_income": 80,
+                },
+            ),
+            MockQuarterlyData(
+                2024,
+                "Q3",
+                {
+                    "operating_cash_flow": 120,
+                    "capital_expenditures": 0,
+                    "net_income": 80,
+                },
+            ),
+            MockQuarterlyData(
+                2024,
+                "Q4",
+                {
+                    "operating_cash_flow": 120,
+                    "capital_expenditures": 0,
+                    "net_income": 80,
+                },
+            ),
         ]
 
         result = mock_agent._analyze_cash_flow_trend(quarterly_data)
@@ -353,10 +398,42 @@ class TestAnalyzeCashFlowTrend:
     def test_deteriorating_trend(self, mock_agent):
         """Should detect deteriorating cash flow trend."""
         quarterly_data = [
-            MockQuarterlyData(2024, "Q1", {"operating_cash_flow": 150, "capital_expenditures": 0, "net_income": 80}),
-            MockQuarterlyData(2024, "Q2", {"operating_cash_flow": 150, "capital_expenditures": 0, "net_income": 80}),
-            MockQuarterlyData(2024, "Q3", {"operating_cash_flow": 100, "capital_expenditures": 0, "net_income": 80}),
-            MockQuarterlyData(2024, "Q4", {"operating_cash_flow": 100, "capital_expenditures": 0, "net_income": 80}),
+            MockQuarterlyData(
+                2024,
+                "Q1",
+                {
+                    "operating_cash_flow": 150,
+                    "capital_expenditures": 0,
+                    "net_income": 80,
+                },
+            ),
+            MockQuarterlyData(
+                2024,
+                "Q2",
+                {
+                    "operating_cash_flow": 150,
+                    "capital_expenditures": 0,
+                    "net_income": 80,
+                },
+            ),
+            MockQuarterlyData(
+                2024,
+                "Q3",
+                {
+                    "operating_cash_flow": 100,
+                    "capital_expenditures": 0,
+                    "net_income": 80,
+                },
+            ),
+            MockQuarterlyData(
+                2024,
+                "Q4",
+                {
+                    "operating_cash_flow": 100,
+                    "capital_expenditures": 0,
+                    "net_income": 80,
+                },
+            ),
         ]
 
         result = mock_agent._analyze_cash_flow_trend(quarterly_data)

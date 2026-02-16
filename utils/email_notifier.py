@@ -3,11 +3,12 @@ Email Notifier Module
 
 Handles email notifications for investment alerts.
 """
+
 import logging
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from typing import List, Dict, Optional
+from typing import List, Dict
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -16,8 +17,9 @@ logger = logging.getLogger(__name__)
 class EmailNotifier:
     """Email notifier for sending alert notifications"""
 
-    def __init__(self, smtp_host: str, smtp_port: int, sender_email: str,
-                 sender_password: str):
+    def __init__(
+        self, smtp_host: str, smtp_port: int, sender_email: str, sender_password: str
+    ):
         """
         Initialize email notifier
 
@@ -32,7 +34,7 @@ class EmailNotifier:
         self.sender_email = sender_email
         self.sender_password = sender_password
 
-    def format_alert_email(self, alerts: List[Dict], format: str = 'html') -> Dict:
+    def format_alert_email(self, alerts: List[Dict], format: str = "html") -> Dict:
         """
         Format alerts into email content
 
@@ -45,17 +47,17 @@ class EmailNotifier:
         """
         if not alerts:
             return {
-                'subject': 'InvestiGator: No New Alerts',
-                'body': 'No alerts to report.'
+                "subject": "InvestiGator: No New Alerts",
+                "body": "No alerts to report.",
             }
 
         # Group alerts by severity
         grouped = self._group_alerts_by_severity(alerts)
 
         # Determine subject based on highest severity
-        high_count = len(grouped.get('high', []))
-        medium_count = len(grouped.get('medium', []))
-        low_count = len(grouped.get('low', []))
+        high_count = len(grouped.get("high", []))
+        medium_count = len(grouped.get("medium", []))
+        low_count = len(grouped.get("low", []))
 
         if high_count > 0:
             subject = f"⚠️ InvestiGator: {high_count} High Priority Alert{'s' if high_count != 1 else ''}"
@@ -65,15 +67,12 @@ class EmailNotifier:
             subject = f"ℹ️ InvestiGator: {low_count} Low Priority Alert{'s' if low_count != 1 else ''}"
 
         # Format body based on format
-        if format == 'html':
+        if format == "html":
             body = self._format_html_body(grouped, alerts)
         else:
             body = self._format_text_body(grouped, alerts)
 
-        return {
-            'subject': subject,
-            'body': body
-        }
+        return {"subject": subject, "body": body}
 
     def _group_alerts_by_severity(self, alerts: List[Dict]) -> Dict[str, List[Dict]]:
         """
@@ -85,16 +84,18 @@ class EmailNotifier:
         Returns:
             Dictionary with severity levels as keys
         """
-        grouped = {'high': [], 'medium': [], 'low': []}
+        grouped = {"high": [], "medium": [], "low": []}
 
         for alert in alerts:
-            severity = alert.get('severity', 'medium')
+            severity = alert.get("severity", "medium")
             if severity in grouped:
                 grouped[severity].append(alert)
 
         return grouped
 
-    def _format_html_body(self, grouped: Dict[str, List[Dict]], all_alerts: List[Dict]) -> str:
+    def _format_html_body(
+        self, grouped: Dict[str, List[Dict]], all_alerts: List[Dict]
+    ) -> str:
         """
         Format email body as HTML
 
@@ -124,26 +125,26 @@ class EmailNotifier:
         """
 
         # Add high severity alerts first
-        if grouped['high']:
+        if grouped["high"]:
             html += "<h3 style='color: #dc3545;'>🔴 High Priority Alerts</h3>"
-            for alert in grouped['high']:
-                html += self._format_alert_html(alert, 'high')
+            for alert in grouped["high"]:
+                html += self._format_alert_html(alert, "high")
 
         # Medium severity
-        if grouped['medium']:
+        if grouped["medium"]:
             html += "<h3 style='color: #ffc107;'>🟡 Medium Priority Alerts</h3>"
-            for alert in grouped['medium']:
-                html += self._format_alert_html(alert, 'medium')
+            for alert in grouped["medium"]:
+                html += self._format_alert_html(alert, "medium")
 
         # Low severity
-        if grouped['low']:
+        if grouped["low"]:
             html += "<h3 style='color: #17a2b8;'>🔵 Low Priority Alerts</h3>"
-            for alert in grouped['low']:
-                html += self._format_alert_html(alert, 'low')
+            for alert in grouped["low"]:
+                html += self._format_alert_html(alert, "low")
 
         html += f"""
             <hr>
-            <p class='timestamp'>Alert generated at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+            <p class='timestamp'>Alert generated at {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
             <p><em>This is an automated notification from InvestiGator Investment Analysis System</em></p>
         </body>
         </html>
@@ -162,20 +163,22 @@ class EmailNotifier:
         Returns:
             HTML snippet for the alert
         """
-        symbol = alert.get('symbol', 'N/A')
-        alert_type = alert.get('type', 'unknown').replace('_', ' ').title()
-        message = alert.get('message', 'No message')
-        timestamp = alert.get('timestamp', datetime.now())
+        symbol = alert.get("symbol", "N/A")
+        alert_type = alert.get("type", "unknown").replace("_", " ").title()
+        message = alert.get("message", "No message")
+        timestamp = alert.get("timestamp", datetime.now())
 
         return f"""
         <div class='alert {severity}'>
             <strong class='symbol'>{symbol}</strong> - {alert_type}<br>
             {message}<br>
-            <span class='timestamp'>{timestamp.strftime('%Y-%m-%d %H:%M')}</span>
+            <span class='timestamp'>{timestamp.strftime("%Y-%m-%d %H:%M")}</span>
         </div>
         """
 
-    def _format_text_body(self, grouped: Dict[str, List[Dict]], all_alerts: List[Dict]) -> str:
+    def _format_text_body(
+        self, grouped: Dict[str, List[Dict]], all_alerts: List[Dict]
+    ) -> str:
         """
         Format email body as plain text
 
@@ -192,26 +195,26 @@ class EmailNotifier:
         lines.append("")
 
         # High severity
-        if grouped['high']:
+        if grouped["high"]:
             lines.append("HIGH PRIORITY ALERTS:")
             lines.append("-" * 50)
-            for alert in grouped['high']:
+            for alert in grouped["high"]:
                 lines.append(self._format_alert_text(alert))
             lines.append("")
 
         # Medium severity
-        if grouped['medium']:
+        if grouped["medium"]:
             lines.append("MEDIUM PRIORITY ALERTS:")
             lines.append("-" * 50)
-            for alert in grouped['medium']:
+            for alert in grouped["medium"]:
                 lines.append(self._format_alert_text(alert))
             lines.append("")
 
         # Low severity
-        if grouped['low']:
+        if grouped["low"]:
             lines.append("LOW PRIORITY ALERTS:")
             lines.append("-" * 50)
-            for alert in grouped['low']:
+            for alert in grouped["low"]:
                 lines.append(self._format_alert_text(alert))
             lines.append("")
 
@@ -231,19 +234,20 @@ class EmailNotifier:
         Returns:
             Text snippet for the alert
         """
-        symbol = alert.get('symbol', 'N/A')
-        alert_type = alert.get('type', 'unknown').replace('_', ' ').title()
-        message = alert.get('message', 'No message')
-        timestamp = alert.get('timestamp', datetime.now())
+        symbol = alert.get("symbol", "N/A")
+        alert_type = alert.get("type", "unknown").replace("_", " ").title()
+        message = alert.get("message", "No message")
+        timestamp = alert.get("timestamp", datetime.now())
 
         return f"""
 [{symbol}] {alert_type}
 {message}
-Time: {timestamp.strftime('%Y-%m-%d %H:%M')}
+Time: {timestamp.strftime("%Y-%m-%d %H:%M")}
 """
 
-    def send_alert_email(self, recipient: str, alerts: List[Dict],
-                        format: str = 'html') -> bool:
+    def send_alert_email(
+        self, recipient: str, alerts: List[Dict], format: str = "html"
+    ) -> bool:
         """
         Send alert email to a recipient
 
@@ -258,16 +262,16 @@ Time: {timestamp.strftime('%Y-%m-%d %H:%M')}
         try:
             email_content = self.format_alert_email(alerts, format=format)
 
-            msg = MIMEMultipart('alternative')
-            msg['Subject'] = email_content['subject']
-            msg['From'] = self.sender_email
-            msg['To'] = recipient
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = email_content["subject"]
+            msg["From"] = self.sender_email
+            msg["To"] = recipient
 
             # Attach body
-            if format == 'html':
-                part = MIMEText(email_content['body'], 'html')
+            if format == "html":
+                part = MIMEText(email_content["body"], "html")
             else:
-                part = MIMEText(email_content['body'], 'plain')
+                part = MIMEText(email_content["body"], "plain")
 
             msg.attach(part)
 
@@ -284,8 +288,9 @@ Time: {timestamp.strftime('%Y-%m-%d %H:%M')}
             logger.error(f"Error sending alert email to {recipient}: {e}")
             return False
 
-    def send_batch_alerts(self, recipients: List[str], alerts: List[Dict],
-                         format: str = 'html') -> Dict[str, bool]:
+    def send_batch_alerts(
+        self, recipients: List[str], alerts: List[Dict], format: str = "html"
+    ) -> Dict[str, bool]:
         """
         Send alerts to multiple recipients
 

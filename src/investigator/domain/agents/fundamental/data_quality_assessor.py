@@ -14,7 +14,7 @@ Date: 2025-01-05
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from investigator.domain.services.data_normalizer import DataNormalizer
 
@@ -65,7 +65,9 @@ class DataQualityAssessor:
         Args:
             logger: Optional logger instance
         """
-        self.logger = logger or logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self.logger = logger or logging.getLogger(
+            f"{__name__}.{self.__class__.__name__}"
+        )
 
     def assess_data_quality(self, company_data: Dict, ratios: Dict) -> Dict:
         """
@@ -107,13 +109,17 @@ class DataQualityAssessor:
         # Step 1: Normalize field names to snake_case for internal consistency
         # Note: DataNormalizer.assess_completeness() internally converts to camelCase
         # for checking against CORE_METRICS, so we normalize to snake_case here first
-        normalized_financials = DataNormalizer.normalize_field_names(financials, to_camel_case=False)
+        normalized_financials = DataNormalizer.normalize_field_names(
+            financials, to_camel_case=False
+        )
 
         # Step 2: Use DataNormalizer's enhanced completeness assessment (includes debt metrics)
-        completeness_assessment = DataNormalizer.assess_completeness(normalized_financials, include_debt_metrics=True)
+        completeness_assessment = DataNormalizer.assess_completeness(
+            normalized_financials, include_debt_metrics=True
+        )
 
         core_populated = completeness_assessment["core_metrics_count"]
-        debt_populated = completeness_assessment["debt_metrics_count"]
+        completeness_assessment["debt_metrics_count"]
 
         # Log warnings for missing debt metrics (explicit upstream gap tracking)
         if completeness_assessment["missing_debt"]:
@@ -127,7 +133,10 @@ class DataQualityAssessor:
         # Market data metrics (check both camelCase and snake_case for compatibility).
         # NOTE: this dual check keeps legacy prompts (marketCap) and new pipeline fields (market_cap)
         # in sync, which prevents false "1/2 populated" warnings in data quality logs.
-        has_price = market_data.get("current_price", 0) != 0 or company_data.get("current_price", 0) != 0
+        has_price = (
+            market_data.get("current_price", 0) != 0
+            or company_data.get("current_price", 0) != 0
+        )
         has_market_cap = (
             market_data.get("market_cap", 0) != 0
             or market_data.get("market_cap", 0) != 0
@@ -141,13 +150,21 @@ class DataQualityAssessor:
 
         # Calculate completeness scores
         # Use DataNormalizer's score for core metrics, then add market/ratio components
-        core_completeness = completeness_assessment["score"]  # Already includes debt metrics
-        market_completeness = (market_populated / 2) * 100  # 2 metrics: price + market_cap
+        core_completeness = completeness_assessment[
+            "score"
+        ]  # Already includes debt metrics
+        market_completeness = (
+            market_populated / 2
+        ) * 100  # 2 metrics: price + market_cap
         ratio_completeness = (ratio_populated / len(self.RATIO_METRICS)) * 100
 
         # Overall completeness (weighted average)
         # Core+Debt: 50%, Market data: 25%, Ratios: 25%
-        completeness_score = core_completeness * 0.50 + market_completeness * 0.25 + ratio_completeness * 0.25
+        completeness_score = (
+            core_completeness * 0.50
+            + market_completeness * 0.25
+            + ratio_completeness * 0.25
+        )
 
         # Check for data consistency (red flags)
         consistency_issues = self._check_consistency(financials, ratios)
@@ -169,7 +186,9 @@ class DataQualityAssessor:
         # FEATURE #3: Enhanced vs Extraction Quality Comparison
         # Calculate "extraction quality" (raw financial data only, before enrichment)
         extraction_completeness = core_completeness  # Only SEC financial data
-        extraction_quality = (extraction_completeness * 0.70) + (consistency_score * 0.30)
+        extraction_quality = (extraction_completeness * 0.70) + (
+            consistency_score * 0.30
+        )
 
         # Calculate enhancement delta
         quality_improvement = data_quality_score - extraction_quality
@@ -178,7 +197,9 @@ class DataQualityAssessor:
         if market_populated > 0:
             improvement_sources.append(f"market data (+{market_populated} metrics)")
         if ratio_populated > 0:
-            improvement_sources.append(f"calculated ratios (+{ratio_populated} metrics)")
+            improvement_sources.append(
+                f"calculated ratios (+{ratio_populated} metrics)"
+            )
 
         # Generate enhancement summary
         if quality_improvement > 0:
@@ -225,12 +246,20 @@ class DataQualityAssessor:
         total_revenue = financials.get("revenues") or 0
         if net_income < 0 and total_revenue > 0:
             if abs(net_income) > total_revenue:
-                consistency_issues.append("Net loss exceeds revenue (possible data error)")
+                consistency_issues.append(
+                    "Net loss exceeds revenue (possible data error)"
+                )
 
         current_liabilities = financials.get("current_liabilities") or 0
         total_assets = financials.get("total_assets") or 0
-        if current_liabilities > 0 and total_assets > 0 and current_liabilities > total_assets:
-            consistency_issues.append("Current liabilities exceed total assets (data warning)")
+        if (
+            current_liabilities > 0
+            and total_assets > 0
+            and current_liabilities > total_assets
+        ):
+            consistency_issues.append(
+                "Current liabilities exceed total assets (data warning)"
+            )
 
         current_ratio = ratios.get("current_ratio") or 0
         if current_ratio > 100:  # Impossibly high current ratio
@@ -285,7 +314,9 @@ class DataQualityAssessor:
         if data_quality_score >= 90:
             confidence_level = "VERY HIGH"
             confidence_score = 95
-            rationale = "Excellent data quality with complete, consistent financial metrics"
+            rationale = (
+                "Excellent data quality with complete, consistent financial metrics"
+            )
         elif data_quality_score >= 75:
             confidence_level = "HIGH"
             confidence_score = 85
@@ -293,7 +324,9 @@ class DataQualityAssessor:
         elif data_quality_score >= 60:
             confidence_level = "MODERATE"
             confidence_score = 70
-            rationale = "Fair data quality with some gaps, exercise caution in decision-making"
+            rationale = (
+                "Fair data quality with some gaps, exercise caution in decision-making"
+            )
         elif data_quality_score >= 40:
             confidence_level = "LOW"
             confidence_score = 50
@@ -330,7 +363,11 @@ class DataQualityAssessor:
                 - issues: List of detected issues
         """
         # Calculate completeness (% of required fields present and non-zero)
-        present_fields = sum(1 for field in self.QUARTER_REQUIRED_FIELDS if financial_data.get(field, 0) != 0)
+        present_fields = sum(
+            1
+            for field in self.QUARTER_REQUIRED_FIELDS
+            if financial_data.get(field, 0) != 0
+        )
         completeness = (present_fields / len(self.QUARTER_REQUIRED_FIELDS)) * 100
 
         # Calculate consistency (basic sanity checks)
@@ -375,7 +412,9 @@ class DataQualityAssessor:
 _assessor_instance: Optional[DataQualityAssessor] = None
 
 
-def get_data_quality_assessor(logger: Optional[logging.Logger] = None) -> DataQualityAssessor:
+def get_data_quality_assessor(
+    logger: Optional[logging.Logger] = None,
+) -> DataQualityAssessor:
     """
     Get singleton DataQualityAssessor instance.
 

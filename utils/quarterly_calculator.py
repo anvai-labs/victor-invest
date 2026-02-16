@@ -24,11 +24,11 @@ from investigator.domain.services.quarterly_processor import (
 )
 
 __all__ = [
-    'compute_missing_quarter',
-    'extract_nested_value',
-    'convert_ytd_to_quarterly',
-    'get_rolling_ttm_periods',
-    'analyze_quarterly_patterns',
-    'validate_computed_quarter',
-    '_find_consecutive_quarters',
+    "compute_missing_quarter",
+    "extract_nested_value",
+    "convert_ytd_to_quarterly",
+    "get_rolling_ttm_periods",
+    "analyze_quarterly_patterns",
+    "validate_computed_quarter",
+    "_find_consecutive_quarters",
 ]

@@ -12,7 +12,6 @@ from investigator.domain.services.valuation.models.base import (
 )
 from investigator.domain.services.valuation.models.company_profile import CompanyProfile
 from investigator.domain.services.valuation.rule_of_40_valuation import (
-    Rule40Benchmarks,
     RuleOf40Valuation,
     calculate_rule_of_40_score,
 )

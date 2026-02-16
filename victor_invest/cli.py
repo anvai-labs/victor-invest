@@ -15,6 +15,7 @@ import asyncio
 import json
 import sys
 from datetime import datetime
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -36,18 +37,59 @@ except ImportError:
     OrchestratorProtocol = None
     WorkflowEventType = None
 
-from victor_invest.vertical import InvestmentVertical
+from victor_invest.framework_bootstrap import create_investment_orchestrator
 from victor_invest.workflows import (
     AnalysisMode,
     AnalysisWorkflowState,
     InvestmentWorkflowProvider,
-    run_analysis,
 )
 
 console = Console()
 
 
-def _convert_workflow_result_to_state(workflow_result, symbol: str, mode: str) -> AnalysisWorkflowState:
+def _get_ollama_base_url() -> str:
+    try:
+        from investigator.config import get_config
+
+        config = get_config()
+        base_url = getattr(config.ollama, "base_url", None)
+        if base_url:
+            return base_url
+    except Exception:
+        pass
+    return (
+        os.getenv("OLLAMA_URL")
+        or os.getenv("OLLAMA_BASE_URL")
+        or "http://localhost:11434"
+    )
+
+
+async def _create_workflow_executor(
+    provider: str, model: Optional[str], timeout: float
+):
+    from victor.workflows.executor import WorkflowExecutor
+
+    from victor_invest.workflows import ensure_handlers_registered
+
+    orchestrator = await create_investment_orchestrator(
+        provider=provider,
+        model=model,
+        ensure_handlers=ensure_handlers_registered,
+        warning_callback=lambda msg: console.print(f"[yellow]{msg}[/yellow]"),
+    )
+
+    executor = WorkflowExecutor(
+        orchestrator,
+        max_parallel=4,
+        default_timeout=timeout,
+    )
+
+    return executor
+
+
+def _convert_workflow_result_to_state(
+    workflow_result, symbol: str, mode: str
+) -> AnalysisWorkflowState:
     """Convert Victor WorkflowResult to AnalysisWorkflowState for CLI compatibility.
 
     Args:
@@ -110,7 +152,6 @@ def _convert_to_investment_recommendation(result, symbol: str):
     synthesis = result.synthesis or {}
     recommendation_data = result.recommendation or {}
     technical = result.technical_analysis or {}
-    fundamental = result.fundamental_analysis or {}
     market_context = result.market_context or {}
 
     # Extract composite score from synthesis (0-100 scale)
@@ -121,7 +162,6 @@ def _convert_to_investment_recommendation(result, symbol: str):
     overall_score = composite_score
     technical_score = individual_scores.get("technical", composite_score)
     fundamental_score = individual_scores.get("fundamental", composite_score)
-    market_context_score = individual_scores.get("market_context", 50.0)
 
     # Sub-scores default to composite if not available
     income_score = fundamental_score
@@ -150,7 +190,6 @@ def _convert_to_investment_recommendation(result, symbol: str):
     price_target = resistance_levels.get("resistance_1")
 
     # Check if LLM synthesis is available (new format with executive_summary, key_catalysts, etc.)
-    synthesis_method = synthesis.get("synthesis_method", "rule_based")
     llm_executive_summary = synthesis.get("executive_summary", "")
     llm_key_catalysts = synthesis.get("key_catalysts", [])
     llm_key_risks = synthesis.get("key_risks", [])
@@ -158,7 +197,6 @@ def _convert_to_investment_recommendation(result, symbol: str):
 
     # Build investment thesis from available data
     trend_signal = trend_data.get("overall_signal", "neutral")
-    signal_counts = trend_data.get("signal_counts", {})
     bullish_pct = trend_data.get("signal_percentages", {}).get("bullish_pct", 0)
     bearish_pct = trend_data.get("signal_percentages", {}).get("bearish_pct", 0)
 
@@ -171,13 +209,17 @@ def _convert_to_investment_recommendation(result, symbol: str):
         # Build meaningful thesis from technical data
         thesis_parts = []
         if current_price:
-            thesis_parts.append(f"{symbol} is currently trading at ${current_price:.2f}")
+            thesis_parts.append(
+                f"{symbol} is currently trading at ${current_price:.2f}"
+            )
         if week_52:
             high_52 = week_52.get("high")
             low_52 = week_52.get("low")
             if high_52 and low_52 and current_price:
                 range_position = (current_price - low_52) / (high_52 - low_52) * 100
-                thesis_parts.append(f"at {range_position:.0f}% of its 52-week range (${low_52:.2f} - ${high_52:.2f})")
+                thesis_parts.append(
+                    f"at {range_position:.0f}% of its 52-week range (${low_52:.2f} - ${high_52:.2f})"
+                )
 
         thesis_parts.append(
             f"The technical outlook is {trend_signal} with {bullish_pct:.0f}% bullish and {bearish_pct:.0f}% bearish signals."
@@ -185,7 +227,9 @@ def _convert_to_investment_recommendation(result, symbol: str):
         thesis_parts.append(f"Composite analysis score: {composite_score:.1f}/100.")
 
         if final_recommendation == "BUY":
-            thesis_parts.append("The analysis suggests accumulating shares at current levels.")
+            thesis_parts.append(
+                "The analysis suggests accumulating shares at current levels."
+            )
         elif final_recommendation == "SELL":
             thesis_parts.append("The analysis suggests reducing exposure.")
         else:
@@ -210,10 +254,14 @@ def _convert_to_investment_recommendation(result, symbol: str):
         key_catalysts = []
         if price_target and current_price:
             upside = ((price_target - current_price) / current_price) * 100
-            key_catalysts.append(f"Near-term resistance at ${price_target:.2f} ({upside:.1f}% upside)")
+            key_catalysts.append(
+                f"Near-term resistance at ${price_target:.2f} ({upside:.1f}% upside)"
+            )
         if week_52.get("high") and current_price:
             upside_52 = ((week_52["high"] - current_price) / current_price) * 100
-            key_catalysts.append(f"52-week high of ${week_52['high']:.2f} ({upside_52:.1f}% from current)")
+            key_catalysts.append(
+                f"52-week high of ${week_52['high']:.2f} ({upside_52:.1f}% from current)"
+            )
 
     if llm_key_risks:
         key_risks = llm_key_risks
@@ -224,7 +272,9 @@ def _convert_to_investment_recommendation(result, symbol: str):
             key_risks.append(f"Support at ${stop_loss:.2f} ({downside:.1f}% downside)")
         if week_52.get("low") and current_price:
             downside_52 = ((current_price - week_52["low"]) / current_price) * 100
-            key_risks.append(f"52-week low of ${week_52['low']:.2f} ({downside_52:.1f}% below current)")
+            key_risks.append(
+                f"52-week low of ${week_52['low']:.2f} ({downside_52:.1f}% below current)"
+            )
 
     # Entry/exit strategies based on levels
     key_levels = trend_data.get("key_levels", {})
@@ -255,7 +305,9 @@ def _convert_to_investment_recommendation(result, symbol: str):
 
     # Data quality - check what analyses were included
     analyses_included = synthesis.get("analyses_included", [])
-    data_completeness = len(analyses_included) / 4.0  # 4 possible: fundamental, technical, market_context, valuation
+    data_completeness = (
+        len(analyses_included) / 4.0
+    )  # 4 possible: fundamental, technical, market_context, valuation
     data_quality_score = min(data_completeness, 1.0)
 
     # Build synthesis details with all available data
@@ -383,15 +435,264 @@ def analyze(
     """
     validate_victor_installed()
 
-    console.print(f"\n[bold blue]Victor Investment Analysis[/bold blue]")
+    console.print("\n[bold blue]Victor Investment Analysis[/bold blue]")
     console.print(f"Symbol: [green]{symbol.upper()}[/green]")
     console.print(f"Mode: [yellow]{mode}[/yellow]")
     console.print(f"Provider: [cyan]{provider}[/cyan]")
     if report:
-        console.print(f"Report: [magenta]PDF generation enabled[/magenta]")
+        console.print("Report: [magenta]PDF generation enabled[/magenta]")
     console.print()
 
     asyncio.run(_run_analysis(symbol, mode, output, provider, model, stream, report))
+
+
+@cli.command()
+@click.argument("symbols", nargs=-1, required=True)
+@click.option(
+    "--mode",
+    "-m",
+    type=click.Choice(["quick", "standard", "comprehensive"]),
+    default="standard",
+    help="Analysis mode for each symbol",
+)
+@click.option(
+    "--output-dir",
+    "-o",
+    type=click.Path(),
+    default="results",
+    help="Output directory for results",
+)
+@click.option(
+    "--provider",
+    "-p",
+    type=str,
+    default="ollama",
+    help="LLM provider (ollama, anthropic, openai)",
+)
+@click.option(
+    "--model",
+    type=str,
+    default=None,
+    help="Model name (default: provider-specific)",
+)
+@click.option(
+    "--parallel",
+    type=int,
+    default=2,
+    help="Max concurrent analyses",
+)
+def batch(
+    symbols: tuple[str, ...],
+    mode: str,
+    output_dir: str,
+    provider: str,
+    model: Optional[str],
+    parallel: int,
+):
+    """Run batch investment analysis across multiple symbols."""
+    validate_victor_installed()
+    asyncio.run(_run_batch(symbols, mode, output_dir, provider, model, parallel))
+
+
+async def _run_batch(
+    symbols: tuple[str, ...],
+    mode: str,
+    output_dir: str,
+    provider: str,
+    model: Optional[str],
+    parallel: int,
+):
+    workflow_provider = InvestmentWorkflowProvider()
+    workflow_name = workflow_provider.get_workflow_for_task_type(mode) or mode
+    workflow = workflow_provider.get_workflow(workflow_name)
+    if not workflow:
+        console.print(f"[red]Unknown workflow: {workflow_name}[/red]")
+        return
+
+    executor = await _create_workflow_executor(provider, model, timeout=300.0)
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    results = {}
+    failures = {}
+
+    semaphore = asyncio.Semaphore(max(1, parallel))
+
+    async def run_one(symbol: str):
+        async with semaphore:
+            try:
+                result = await executor.execute(
+                    workflow,
+                    initial_context={"symbol": symbol},
+                    timeout=300.0,
+                )
+                return symbol, result
+            except Exception as exc:
+                return symbol, exc
+
+    tasks = [asyncio.create_task(run_one(sym.upper())) for sym in symbols]
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Running batch analysis...", total=len(tasks))
+
+        for finished in asyncio.as_completed(tasks):
+            symbol, outcome = await finished
+            if isinstance(outcome, Exception):
+                failures[symbol] = str(outcome)
+                progress.advance(task)
+                continue
+
+            if not outcome.success:
+                failures[symbol] = outcome.error or "Workflow failed"
+                progress.advance(task)
+                continue
+
+            state = _convert_workflow_result_to_state(outcome, symbol, mode)
+            results[symbol] = state
+
+            result_file = (
+                output_path
+                / f"{symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            )
+            with open(result_file, "w") as f:
+                json.dump(
+                    {
+                        "symbol": state.symbol,
+                        "mode": state.mode.value,
+                        "fundamental_analysis": state.fundamental_analysis,
+                        "technical_analysis": state.technical_analysis,
+                        "market_context": state.market_context,
+                        "synthesis": state.synthesis,
+                        "recommendation": state.recommendation,
+                        "errors": state.errors,
+                    },
+                    f,
+                    indent=2,
+                    default=str,
+                )
+
+            progress.advance(task)
+
+    summary_file = (
+        output_path / f"batch_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    )
+    with open(summary_file, "w") as f:
+        json.dump(
+            {
+                "symbols": [s.upper() for s in symbols],
+                "mode": mode,
+                "completed": len(results),
+                "failed": len(failures),
+                "failures": failures,
+                "timestamp": datetime.now().isoformat(),
+            },
+            f,
+            indent=2,
+        )
+
+    console.print(f"\n[green]Completed {len(results)}/{len(symbols)} analyses[/green]")
+    console.print(f"[green]Summary saved to: {summary_file}[/green]")
+
+
+@cli.command()
+@click.argument("target")
+@click.argument("peers", nargs=-1, required=True)
+@click.option(
+    "--output", "-o", type=click.Path(), default=None, help="Output file or directory"
+)
+@click.option(
+    "--provider",
+    "-p",
+    type=str,
+    default="ollama",
+    help="LLM provider (ollama, anthropic, openai)",
+)
+@click.option(
+    "--model",
+    type=str,
+    default=None,
+    help="Model name (default: provider-specific)",
+)
+def compare(
+    target: str,
+    peers: tuple[str, ...],
+    output: Optional[str],
+    provider: str,
+    model: Optional[str],
+):
+    """Compare a target company against peers."""
+    validate_victor_installed()
+    asyncio.run(_run_compare(target, peers, output, provider, model))
+
+
+async def _run_compare(
+    target: str,
+    peers: tuple[str, ...],
+    output: Optional[str],
+    provider: str,
+    model: Optional[str],
+):
+    workflow_provider = InvestmentWorkflowProvider()
+    workflow = workflow_provider.get_workflow("peer_comparison")
+    if not workflow:
+        console.print("[red]Peer comparison workflow not found.[/red]")
+        return
+
+    executor = await _create_workflow_executor(provider, model, timeout=300.0)
+
+    peer_list = [{"symbol": peer.upper()} for peer in peers]
+    context = {
+        "symbol": target.upper(),
+        "analysis_mode": "comprehensive",
+        "has_peers": True,
+        "peer_data": {"peers": peer_list, "peer_metrics": {}},
+    }
+
+    result = await executor.execute(
+        workflow,
+        initial_context=context,
+        timeout=300.0,
+    )
+
+    if not result.success:
+        console.print(f"[red]Workflow failed:[/red] {result.error}")
+        return
+
+    peer_comparison = (
+        result.context.get("peer_comparison") if hasattr(result, "context") else {}
+    )
+    console.print("\n[bold]Peer Comparison Result[/bold]")
+    if peer_comparison:
+        console.print(json.dumps(peer_comparison, indent=2))
+    else:
+        console.print("[yellow]No peer comparison output found in context.[/yellow]")
+
+    if output:
+        output_path = Path(output)
+        if output_path.suffix:
+            file_path = output_path
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            output_path.mkdir(parents=True, exist_ok=True)
+            file_path = output_path / f"{target.upper()}_peer_comparison.json"
+
+        with open(file_path, "w") as f:
+            json.dump(
+                {
+                    "target": target.upper(),
+                    "peers": [p.upper() for p in peers],
+                    "peer_comparison": peer_comparison,
+                    "context": result.context if hasattr(result, "context") else {},
+                },
+                f,
+                indent=2,
+                default=str,
+            )
+        console.print(f"[green]Comparison saved to: {file_path}[/green]")
 
 
 async def _run_analysis(
@@ -488,12 +789,16 @@ async def _run_analysis(
             synthesizer = InvestmentSynthesizer()
 
             # Generate PDF report
-            report_path = synthesizer.generate_report([recommendation], report_type="synthesis")
+            report_path = synthesizer.generate_report(
+                [recommendation], report_type="synthesis"
+            )
 
             console.print(f"[green]✅ PDF report generated: {report_path}[/green]")
 
         except ImportError as e:
-            console.print(f"[red]❌ PDF generation requires investigator package: {e}[/red]")
+            console.print(
+                f"[red]❌ PDF generation requires investigator package: {e}[/red]"
+            )
         except Exception as e:
             console.print(f"[red]❌ Failed to generate PDF report: {e}[/red]")
             import traceback
@@ -558,26 +863,35 @@ def status():
 
     # Check victor-core
     try:
-        from victor.framework import Agent
+        import importlib.util
 
-        table.add_row("victor-core", "✓ Installed", "Framework available")
-    except ImportError:
+        if importlib.util.find_spec("victor.framework") is not None:
+            table.add_row("victor-core", "✓ Installed", "Framework available")
+        else:
+            table.add_row("victor-core", "✗ Missing", "pip install victor wheel")
+    except Exception:
         table.add_row("victor-core", "✗ Missing", "pip install victor wheel")
 
     # Check ollama
     try:
-        import aiohttp
+        import importlib.util
 
-        table.add_row("aiohttp", "✓ Installed", "HTTP client available")
-    except ImportError:
+        if importlib.util.find_spec("aiohttp") is not None:
+            table.add_row("aiohttp", "✓ Installed", "HTTP client available")
+        else:
+            table.add_row("aiohttp", "✗ Missing", "pip install aiohttp")
+    except Exception:
         table.add_row("aiohttp", "✗ Missing", "pip install aiohttp")
 
     # Check yfinance
     try:
-        import yfinance
+        import importlib.util
 
-        table.add_row("yfinance", "✓ Installed", "Market data available")
-    except ImportError:
+        if importlib.util.find_spec("yfinance") is not None:
+            table.add_row("yfinance", "✓ Installed", "Market data available")
+        else:
+            table.add_row("yfinance", "✗ Missing", "pip install yfinance")
+    except Exception:
         table.add_row("yfinance", "✗ Missing", "pip install yfinance")
 
     # Check pandas
@@ -592,6 +906,171 @@ def status():
 
 
 @cli.command()
+@click.option("--days", "-d", default=7, help="Days of history to show")
+def metrics(days: int):
+    """View system metrics and performance."""
+    import glob
+    from datetime import timedelta
+
+    cutoff_date = datetime.now() - timedelta(days=days)
+    metrics_files = glob.glob("metrics/metrics_*.json")
+
+    all_metrics = []
+    for filepath in sorted(metrics_files):
+        try:
+            with open(filepath, "r") as f:
+                data = json.load(f)
+                timestamp = datetime.fromisoformat(data["timestamp"])
+                if timestamp >= cutoff_date:
+                    all_metrics.append(data)
+        except Exception:
+            continue
+
+    if not all_metrics:
+        console.print("[yellow]No metrics data available.[/yellow]")
+        return
+
+    console.print(f"\n[bold]Metrics Summary (Last {days} days)[/bold]")
+    console.print("=" * 50)
+
+    latest = all_metrics[-1]
+
+    sys_metrics = latest.get("system_metrics", {})
+    if sys_metrics:
+        console.print("\n[bold]System Metrics[/bold]")
+        total = sys_metrics.get("total_analyses", 0)
+        success = sys_metrics.get("successful_analyses", 0)
+        cache_hits = sys_metrics.get("cache_hits", 0)
+        cache_misses = sys_metrics.get("cache_misses", 0)
+        success_rate = (success / max(total, 1)) * 100
+        cache_hit_rate = (cache_hits / max(cache_hits + cache_misses, 1)) * 100
+        console.print(f"  Total Analyses: {total}")
+        console.print(f"  Success Rate: {success_rate:.1f}%")
+        console.print(f"  Cache Hit Rate: {cache_hit_rate:.1f}%")
+
+    agent_metrics = latest.get("agent_metrics", {})
+    if agent_metrics:
+        console.print("\n[bold]Agent Performance[/bold]")
+        for agent, metrics in agent_metrics.items():
+            executions = metrics.get("executions", 0)
+            failures = metrics.get("failures", 0)
+            avg_duration = metrics.get("average_duration", 0)
+            success_rate = ((executions - failures) / max(executions, 1)) * 100
+            console.print(f"  {agent}:")
+            console.print(f"    Executions: {executions}")
+            console.print(f"    Avg Duration: {avg_duration:.2f}s")
+            console.print(f"    Success Rate: {success_rate:.1f}%")
+
+
+@cli.command("test-system")
+@click.option("--verbose", "-v", is_flag=True, help="Verbose output")
+def test_system(verbose: bool):
+    """Run system health tests."""
+    console.print("Running system health tests...")
+    console.print("=" * 60)
+
+    def run_test(name, func):
+        try:
+            ok, detail = func()
+            return name, ok, detail
+        except Exception as exc:
+            return name, False, str(exc)
+
+    def check_python():
+        ok = sys.version_info >= (3, 11)
+        return ok, sys.version.split()[0]
+
+    def check_ollama():
+        import urllib.request
+
+        base_url = _get_ollama_base_url()
+        try:
+            with urllib.request.urlopen(f"{base_url}/api/tags", timeout=5) as resp:
+                return resp.status == 200, f"HTTP {resp.status}"
+        except Exception as exc:
+            return False, str(exc)
+
+    def check_database():
+        try:
+            from sqlalchemy import text
+            from investigator.infrastructure.database.db import get_database_engine
+
+            engine = get_database_engine()
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            return True, "OK"
+        except Exception as exc:
+            return False, str(exc)
+
+    def check_cache():
+        try:
+            from investigator.infrastructure.cache import get_cache_manager
+
+            get_cache_manager()
+            return True, "OK"
+        except Exception as exc:
+            return False, str(exc)
+
+    tests = [
+        ("Python version", check_python),
+        ("Ollama connection", check_ollama),
+        ("Database connection", check_database),
+        ("Cache system", check_cache),
+    ]
+
+    results = [run_test(name, func) for name, func in tests]
+
+    console.print("\nTest Results:")
+    console.print("-" * 60)
+    passed = 0
+    for name, ok, detail in results:
+        status = "✅ PASS" if ok else "❌ FAIL"
+        console.print(f"{name:30s}: {status}")
+        if verbose and detail:
+            console.print(f"  {detail}")
+        if ok:
+            passed += 1
+
+    console.print(f"\nPassed: {passed}/{len(results)}")
+    if passed < len(results):
+        raise SystemExit(1)
+
+
+@cli.command()
+@click.argument("model")
+def pull(model: str):
+    """Pull an Ollama model."""
+    try:
+        from investigator.infrastructure.llm import OllamaClient
+    except ImportError as exc:
+        console.print(f"[red]Error:[/red] Ollama client unavailable: {exc}")
+        raise SystemExit(1)
+
+    base_url = _get_ollama_base_url()
+
+    async def pull_model():
+        ollama_client = OllamaClient(base_url)
+
+        async with ollama_client:
+            console.print(f"Pulling model: [cyan]{model}[/cyan]")
+
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                console=console,
+            ) as progress:
+                task = progress.add_task("Downloading...", total=None)
+                async for status in ollama_client.pull_model(model, stream=True):
+                    if status.get("status") == "success":
+                        break
+                progress.update(task, description="Download complete")
+
+            console.print(f"[green]Model {model} pulled successfully[/green]")
+
+    asyncio.run(pull_model())
+
+
+@cli.command()
 @click.option("--port", "-p", default=8000, help="Port to run the API server")
 @click.option("--host", default="0.0.0.0", help="Host to bind to")
 def serve(port: int, host: str):
@@ -601,7 +1080,7 @@ def serve(port: int, host: str):
 
         from victor_invest.api.app import app
 
-        console.print(f"\n[bold blue]Starting Victor Investment API[/bold blue]")
+        console.print("\n[bold blue]Starting Victor Investment API[/bold blue]")
         console.print(f"Server: http://{host}:{port}")
         console.print(f"Docs: http://{host}:{port}/docs\n")
 
@@ -626,8 +1105,12 @@ def clean_cache(clean_all, clean_db, clean_disk, symbol):
     try:
         from investigator.infrastructure.cache import get_cache_manager
         from investigator.infrastructure.cache.cache_types import CacheType
-        from investigator.infrastructure.cache.file_cache_handler import FileCacheStorageHandler
-        from investigator.infrastructure.cache.rdbms_cache_handler import RdbmsCacheStorageHandler
+        from investigator.infrastructure.cache.file_cache_handler import (
+            FileCacheStorageHandler,
+        )
+        from investigator.infrastructure.cache.rdbms_cache_handler import (
+            RdbmsCacheStorageHandler,
+        )
     except ImportError as e:
         console.print(f"[red]Error: Cache infrastructure not available: {e}[/red]")
         return
@@ -655,10 +1138,16 @@ def clean_cache(clean_all, clean_db, clean_disk, symbol):
                                 deleted += handler.delete_by_symbol(symbol)
                             except Exception as exc:
                                 console.print(f"[red]❌ Error: {exc}[/red]")
-                console.print(f"[green]✅ Database cache cleared for {symbol} (entries: {deleted})[/green]")
+                console.print(
+                    f"[green]✅ Database cache cleared for {symbol} (entries: {deleted})[/green]"
+                )
             else:
                 console.print("Cleaning database cache...")
-                for ct in [CacheType.LLM_RESPONSE, CacheType.COMPANY_FACTS, CacheType.SEC_RESPONSE]:
+                for ct in [
+                    CacheType.LLM_RESPONSE,
+                    CacheType.COMPANY_FACTS,
+                    CacheType.SEC_RESPONSE,
+                ]:
                     try:
                         cache_manager.clear(ct, storage_type="rdbms")
                     except Exception:
@@ -676,10 +1165,16 @@ def clean_cache(clean_all, clean_db, clean_disk, symbol):
                                 deleted += handler.delete_by_symbol(symbol)
                             except Exception as exc:
                                 console.print(f"[red]❌ Error: {exc}[/red]")
-                console.print(f"[green]✅ Disk cache cleared for {symbol} (entries: {deleted})[/green]")
+                console.print(
+                    f"[green]✅ Disk cache cleared for {symbol} (entries: {deleted})[/green]"
+                )
             else:
                 console.print("Cleaning disk cache...")
-                for ct in [CacheType.LLM_RESPONSE, CacheType.TECHNICAL_DATA, CacheType.SEC_RESPONSE]:
+                for ct in [
+                    CacheType.LLM_RESPONSE,
+                    CacheType.TECHNICAL_DATA,
+                    CacheType.SEC_RESPONSE,
+                ]:
                     try:
                         cache_manager.clear(ct, storage_type="disk")
                     except Exception:
@@ -690,7 +1185,9 @@ def clean_cache(clean_all, clean_db, clean_disk, symbol):
             console.print(f"Cleaning all caches for {symbol}...")
             result = cache_manager.delete_by_symbol(symbol)
             total_deleted = sum(result.values()) if isinstance(result, dict) else result
-            console.print(f"[green]✅ Cache cleared for {symbol} (entries: {total_deleted})[/green]")
+            console.print(
+                f"[green]✅ Cache cleared for {symbol} (entries: {total_deleted})[/green]"
+            )
 
         else:
             console.print("Cleaning default caches (LLM responses)...")
@@ -737,7 +1234,9 @@ def cache_sizes():
             table.add_row(name, "0.00", "0")
 
     table.add_row("─" * 20, "─" * 10, "─" * 10)
-    table.add_row("[bold]Total[/bold]", f"[bold]{total_size / (1024 * 1024):.2f}[/bold]", "")
+    table.add_row(
+        "[bold]Total[/bold]", f"[bold]{total_size / (1024 * 1024):.2f}[/bold]", ""
+    )
 
     console.print(table)
 
@@ -791,7 +1290,9 @@ def inspect_cache(symbol, verbose):
             for key, value in stats.items():
                 console.print(f"  {key}: {value}")
         else:
-            console.print("  No statistics available (specify --symbol for symbol-specific info)")
+            console.print(
+                "  No statistics available (specify --symbol for symbol-specific info)"
+            )
 
 
 @cli.command("from-batch")
@@ -820,7 +1321,13 @@ def inspect_cache(symbol, verbose):
     default=None,
     help="Only process symbols with this tier classification",
 )
-def from_batch(jsonl_path: str, symbols: Optional[str], output: str, min_upside: Optional[float], tier: Optional[str]):
+def from_batch(
+    jsonl_path: str,
+    symbols: Optional[str],
+    output: str,
+    min_upside: Optional[float],
+    tier: Optional[str],
+):
     """Generate professional reports from batch analysis results.
 
     Reads cached batch results and generates PDF reports without re-running analysis.
@@ -833,7 +1340,7 @@ def from_batch(jsonl_path: str, symbols: Optional[str], output: str, min_upside:
     import json
     from pathlib import Path
 
-    console.print(f"\n[bold blue]Generate Reports from Batch Results[/bold blue]")
+    console.print("\n[bold blue]Generate Reports from Batch Results[/bold blue]")
     console.print(f"Source: [green]{jsonl_path}[/green]")
 
     # Load batch results
@@ -880,7 +1387,9 @@ def from_batch(jsonl_path: str, symbols: Optional[str], output: str, min_upside:
     console.print(f"Filtered: {len(filtered)} symbols for report generation")
 
     if not filtered:
-        console.print("[yellow]No symbols match the criteria. No reports generated.[/yellow]")
+        console.print(
+            "[yellow]No symbols match the criteria. No reports generated.[/yellow]"
+        )
         return
 
     # Generate reports
@@ -888,7 +1397,9 @@ def from_batch(jsonl_path: str, symbols: Optional[str], output: str, min_upside:
     output_path.mkdir(parents=True, exist_ok=True)
 
     try:
-        from investigator.infrastructure.reporting.professional_report import ProfessionalReportGenerator
+        from investigator.infrastructure.reporting.professional_report import (
+            ProfessionalReportGenerator,
+        )
 
         generator = ProfessionalReportGenerator(output_dir=output_path)
 
@@ -906,12 +1417,14 @@ def from_batch(jsonl_path: str, symbols: Optional[str], output: str, min_upside:
                     success_count += 1
                     console.print(f"    [green]✓ {report_path}[/green]")
                 else:
-                    console.print(f"    [yellow]⚠ No report generated[/yellow]")
+                    console.print("    [yellow]⚠ No report generated[/yellow]")
 
             except Exception as e:
                 console.print(f"    [red]✗ Error: {e}[/red]")
 
-        console.print(f"\n[bold green]Reports generated: {success_count}/{len(filtered)}[/bold green]")
+        console.print(
+            f"\n[bold green]Reports generated: {success_count}/{len(filtered)}[/bold green]"
+        )
         console.print(f"Output directory: {output_path}")
 
     except ImportError as e:
@@ -954,8 +1467,12 @@ def _convert_batch_result_to_report_data(batch_result: dict) -> dict:
     else:
         overall_score = max(50 + (upside_pct or 0) * 2, 10)
 
-    fundamental_score = overall_score + 5 if upside_pct and upside_pct > 10 else overall_score
-    technical_score = overall_score - 5 if upside_pct and upside_pct < 0 else overall_score
+    fundamental_score = (
+        overall_score + 5 if upside_pct and upside_pct > 10 else overall_score
+    )
+    technical_score = (
+        overall_score - 5 if upside_pct and upside_pct < 0 else overall_score
+    )
 
     # Calculate stop loss (10% below current)
     stop_loss = current_price * 0.90 if current_price else None
@@ -981,13 +1498,19 @@ def _convert_batch_result_to_report_data(batch_result: dict) -> dict:
                 f"Analysis indicates significant undervaluation with {upside_pct:.1f}% upside to fair value."
             )
         elif upside_pct > 5:
-            thesis_parts.append(f"Moderate upside of {upside_pct:.1f}% to fair value estimate.")
+            thesis_parts.append(
+                f"Moderate upside of {upside_pct:.1f}% to fair value estimate."
+            )
         elif upside_pct > 0:
-            thesis_parts.append(f"Trading near fair value with {upside_pct:.1f}% potential upside.")
+            thesis_parts.append(
+                f"Trading near fair value with {upside_pct:.1f}% potential upside."
+            )
         else:
-            thesis_parts.append(f"Currently trading at {abs(upside_pct):.1f}% premium to fair value.")
+            thesis_parts.append(
+                f"Currently trading at {abs(upside_pct):.1f}% premium to fair value."
+            )
     if market_cap:
-        thesis_parts.append(f"Market cap: ${market_cap/1e9:.1f}B.")
+        thesis_parts.append(f"Market cap: ${market_cap / 1e9:.1f}B.")
 
     # Key catalysts/risks based on tier
     if tier.upper() in ["BUY", "STRONG_BUY"]:
@@ -1020,7 +1543,9 @@ def _convert_batch_result_to_report_data(batch_result: dict) -> dict:
         "key_catalysts": key_catalysts,
         "key_risks": key_risks,
         "time_horizon": "MEDIUM-TERM",
-        "position_size": "MODERATE" if tier.upper() in ["BUY", "STRONG_BUY"] else "SMALL",
+        "position_size": "MODERATE"
+        if tier.upper() in ["BUY", "STRONG_BUY"]
+        else "SMALL",
         "valuation_models": valuation_models,
         "score_breakdown": {
             "value": min(50 + (upside_pct or 0) * 2, 100),

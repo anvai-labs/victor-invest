@@ -97,7 +97,9 @@ class CreditRiskAssessment:
             "scores": {
                 "altman_zscore": self.altman.to_dict() if self.altman else None,
                 "beneish_mscore": self.beneish.to_dict() if self.beneish else None,
-                "piotroski_fscore": self.piotroski.to_dict() if self.piotroski else None,
+                "piotroski_fscore": self.piotroski.to_dict()
+                if self.piotroski
+                else None,
             },
             "composite": self.composite.to_dict() if self.composite else None,
             "summary": self._get_summary(),
@@ -112,7 +114,9 @@ class CreditRiskAssessment:
         if self.composite:
             summary.update(
                 {
-                    "distress_tier": self.composite.distress_tier.name if self.composite.distress_tier else None,
+                    "distress_tier": self.composite.distress_tier.name
+                    if self.composite.distress_tier
+                    else None,
                     "distress_probability": self.composite.distress_probability,
                     "valuation_discount": self.composite.valuation_discount,
                     "risk_factors_count": len(self.composite.risk_factors),
@@ -121,15 +125,21 @@ class CreditRiskAssessment:
             )
 
         if self.altman:
-            summary["altman_zone"] = self.altman.zone.value if self.altman.zone else None
+            summary["altman_zone"] = (
+                self.altman.zone.value if self.altman.zone else None
+            )
             summary["altman_score"] = self.altman.score
 
         if self.beneish:
-            summary["beneish_risk"] = self.beneish.risk_level.value if self.beneish.risk_level else None
+            summary["beneish_risk"] = (
+                self.beneish.risk_level.value if self.beneish.risk_level else None
+            )
             summary["beneish_score"] = self.beneish.score
 
         if self.piotroski:
-            summary["piotroski_strength"] = self.piotroski.strength.value if self.piotroski.strength else None
+            summary["piotroski_strength"] = (
+                self.piotroski.strength.value if self.piotroski.strength else None
+            )
             summary["piotroski_score"] = self.piotroski.score
 
         return summary
@@ -232,7 +242,9 @@ class CreditRiskService:
         all_warnings = []
         all_warnings.extend(assessment.altman.warnings if assessment.altman else [])
         all_warnings.extend(assessment.beneish.warnings if assessment.beneish else [])
-        all_warnings.extend(assessment.piotroski.warnings if assessment.piotroski else [])
+        all_warnings.extend(
+            assessment.piotroski.warnings if assessment.piotroski else []
+        )
         assessment.warnings = list(set(all_warnings))
 
         # Determine data quality rating
@@ -287,13 +299,17 @@ class CreditRiskService:
         """
         try:
             # Lazy import to avoid circular dependencies
-            from investigator.infrastructure.sec.companyfacts_extractor import get_sec_companyfacts_extractor
+            from investigator.infrastructure.sec.companyfacts_extractor import (
+                get_sec_companyfacts_extractor,
+            )
 
             loop = asyncio.get_event_loop()
             extractor = get_sec_companyfacts_extractor()
 
             # Get current period metrics
-            metrics = await loop.run_in_executor(None, extractor.extract_financial_metrics, symbol)
+            metrics = await loop.run_in_executor(
+                None, extractor.extract_financial_metrics, symbol
+            )
 
             if not metrics:
                 logger.warning(f"No SEC metrics found for {symbol}")
@@ -312,7 +328,9 @@ class CreditRiskService:
             logger.error(f"Error fetching financial data for {symbol}: {e}")
             return None
 
-    def _transform_sec_metrics(self, symbol: str, metrics: Dict[str, Any]) -> FinancialData:
+    def _transform_sec_metrics(
+        self, symbol: str, metrics: Dict[str, Any]
+    ) -> FinancialData:
         """Transform SEC extracted metrics to FinancialData format.
 
         Args:
@@ -362,7 +380,9 @@ class CreditRiskService:
             ),
         )
 
-    def _transform_sec_data(self, symbol: str, sec_data: Dict[str, Any]) -> FinancialData:
+    def _transform_sec_data(
+        self, symbol: str, sec_data: Dict[str, Any]
+    ) -> FinancialData:
         """Transform raw SEC tool data to FinancialData format.
 
         Args:
@@ -398,7 +418,9 @@ class CreditRiskService:
             stockholders_equity=bs.get("stockholders_equity"),
             retained_earnings=bs.get("retained_earnings"),
             # Income Statement
-            revenue=is_.get("revenue") or is_.get("revenues") or is_.get("total_revenue"),
+            revenue=is_.get("revenue")
+            or is_.get("revenues")
+            or is_.get("total_revenue"),
             gross_profit=is_.get("gross_profit"),
             operating_income=is_.get("operating_income"),
             net_income=is_.get("net_income") or is_.get("net_income_loss"),
@@ -410,7 +432,8 @@ class CreditRiskService:
             operating_cash_flow=cf.get("operating_cash_flow"),
             capital_expenditures=cf.get("capital_expenditures") or cf.get("capex"),
             # Market Data
-            shares_outstanding=bs.get("shares_outstanding") or ratios.get("shares_outstanding"),
+            shares_outstanding=bs.get("shares_outstanding")
+            or ratios.get("shares_outstanding"),
         )
 
 

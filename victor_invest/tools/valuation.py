@@ -47,7 +47,7 @@ Example:
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 # Shared market data services (used by rl_backtest, batch_analysis_runner, victor_invest)
 from investigator.domain.services.market_data import (
@@ -147,15 +147,15 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             config: Optional investigator config object
         """
         super().__init__(config)
-        self._db_manager = None
+        self._db_manager: Optional[Any] = None
         # Shared services will be initialized lazily
-        self._shares_service = None
-        self._price_service = None
-        self._metadata_service = None
-        self._validation_service = None
+        self._shares_service: Optional[Any] = None
+        self._price_service: Optional[Any] = None
+        self._metadata_service: Optional[Any] = None
+        self._validation_service: Optional[Any] = None
         # Shared valuation config services
-        self._valuation_config_service = None
-        self._sector_multiples_service = None
+        self._valuation_config_service: Optional[Any] = None
+        self._sector_multiples_service: Optional[Any] = None
 
     async def initialize(self) -> None:
         """Initialize valuation infrastructure components."""
@@ -196,7 +196,9 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             # Single source of truth for sector multiples, CAPM, GGM defaults
             try:
                 self._valuation_config_service = ValuationConfigService()
-                self._sector_multiples_service = SectorMultiplesService(self._valuation_config_service)
+                self._sector_multiples_service = SectorMultiplesService(
+                    self._valuation_config_service
+                )
                 logger.debug("Shared valuation config services initialized")
             except Exception as e:
                 logger.warning(f"Could not initialize valuation config services: {e}")
@@ -211,7 +213,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
     async def execute(
         self,
-        _exec_ctx: Dict[str, Any],
+        _exec_ctx: Optional[Dict[str, Any]] = None,
         symbol: str = "",
         model: str = "all",
         quarterly_metrics: Optional[List[Dict]] = None,
@@ -249,7 +251,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
             symbol = symbol.upper().strip()
             if not symbol:
-                return ToolResult.error_result("Symbol is required")
+                return ToolResult.create_failure("Symbol is required")
 
             model = model.lower().strip()
 
@@ -257,8 +259,9 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             if quarterly_metrics is None or multi_year_data is None:
                 data_result = await self._fetch_valuation_data(symbol)
                 if not data_result["success"]:
-                    return ToolResult.error_result(
-                        f"Failed to fetch data for valuation: {data_result.get('error')}", metadata={"symbol": symbol}
+                    return ToolResult.create_failure(
+                        f"Failed to fetch data for valuation: {data_result.get('error')}",
+                        metadata={"symbol": symbol},
                     )
                 if quarterly_metrics is None:
                     quarterly_metrics = data_result.get("quarterly_metrics", [])
@@ -272,34 +275,63 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             # Route to appropriate model(s)
             if model == "all":
                 return await self._run_all_models(
-                    symbol, quarterly_metrics, multi_year_data, current_price, cost_of_equity, terminal_growth_rate
+                    symbol,
+                    quarterly_metrics,
+                    multi_year_data,
+                    current_price,
+                    cost_of_equity,
+                    terminal_growth_rate,
                 )
             elif model == "sector_routed":
-                return await self._run_sector_routed(symbol, quarterly_metrics, multi_year_data, current_price)
+                return await self._run_sector_routed(
+                    symbol, quarterly_metrics, multi_year_data, current_price
+                )
             elif model == "dcf":
                 return await self._run_dcf(
-                    symbol, quarterly_metrics, multi_year_data, current_price, cost_of_equity, terminal_growth_rate
+                    symbol,
+                    quarterly_metrics,
+                    multi_year_data,
+                    current_price,
+                    cost_of_equity,
+                    terminal_growth_rate,
                 )
             elif model == "ggm":
                 return await self._run_ggm(
-                    symbol, quarterly_metrics, multi_year_data, current_price, cost_of_equity, terminal_growth_rate
+                    symbol,
+                    quarterly_metrics,
+                    multi_year_data,
+                    current_price,
+                    cost_of_equity,
+                    terminal_growth_rate,
                 )
             elif model == "pe":
-                return await self._run_pe_multiple(symbol, quarterly_metrics, current_price)
+                return await self._run_pe_multiple(
+                    symbol, quarterly_metrics, current_price
+                )
             elif model == "ps":
-                return await self._run_ps_multiple(symbol, quarterly_metrics, current_price)
+                return await self._run_ps_multiple(
+                    symbol, quarterly_metrics, current_price
+                )
             elif model == "pb":
-                return await self._run_pb_multiple(symbol, quarterly_metrics, current_price)
+                return await self._run_pb_multiple(
+                    symbol, quarterly_metrics, current_price
+                )
             elif model == "ev_ebitda":
-                return await self._run_ev_ebitda(symbol, quarterly_metrics, current_price)
+                return await self._run_ev_ebitda(
+                    symbol, quarterly_metrics, current_price
+                )
             else:
-                return ToolResult.error_result(
-                    f"Unknown model: {model}. Valid models: " "dcf, ggm, pe, ps, pb, ev_ebitda, sector_routed, all"
+                return ToolResult.create_failure(
+                    f"Unknown model: {model}. Valid models: "
+                    "dcf, ggm, pe, ps, pb, ev_ebitda, sector_routed, all"
                 )
 
         except Exception as e:
             logger.error(f"ValuationTool execute error for {symbol}: {e}")
-            return ToolResult.error_result(f"Valuation failed: {str(e)}", metadata={"symbol": symbol, "model": model})
+            return ToolResult.create_failure(
+                f"Valuation failed: {str(e)}",
+                metadata={"symbol": symbol, "model": model},
+            )
 
     async def _fetch_valuation_data(self, symbol: str) -> Dict[str, Any]:
         """Fetch required data for valuation.
@@ -315,26 +347,27 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             Dict with quarterly_metrics, multi_year_data, and success flag
         """
         try:
-            quarterly_metrics = []
-            multi_year_data = []
+            quarterly_metrics: list[Any] = []
+            multi_year_data: list[Any] = []
 
             # Try database manager first
             if self._db_manager:
+                db_manager = self._db_manager
                 loop = asyncio.get_event_loop()
                 try:
                     quarterly_metrics = await loop.run_in_executor(
                         None,
                         lambda: (
-                            self._db_manager.get_quarterly_metrics(symbol)
-                            if hasattr(self._db_manager, "get_quarterly_metrics")
+                            db_manager.get_quarterly_metrics(symbol)
+                            if hasattr(db_manager, "get_quarterly_metrics")
                             else []
                         ),
                     )
                     multi_year_data = await loop.run_in_executor(
                         None,
                         lambda: (
-                            self._db_manager.get_multi_year_data(symbol)
-                            if hasattr(self._db_manager, "get_multi_year_data")
+                            db_manager.get_multi_year_data(symbol)
+                            if hasattr(db_manager, "get_multi_year_data")
                             else []
                         ),
                     )
@@ -351,12 +384,14 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
                     # Get financial metrics from SEC (action is "extract_metrics")
                     metrics_result = await sec_tool.execute(
-                        {}, symbol=symbol, action="extract_metrics"  # _exec_ctx (required)
+                        {},
+                        symbol=symbol,
+                        action="extract_metrics",  # _exec_ctx (required)
                     )
 
-                    if metrics_result.success and metrics_result.data:
+                    if metrics_result.success and metrics_result.output:
                         # SEC data comes in nested format - wrap it in a list
-                        quarterly_metrics = [metrics_result.data]
+                        quarterly_metrics = [metrics_result.output]
                         logger.info(f"Fetched SEC financial metrics for {symbol}")
 
                 except Exception as e:
@@ -370,7 +405,12 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
         except Exception as e:
             logger.error(f"Error fetching valuation data for {symbol}: {e}")
-            return {"success": False, "error": str(e), "quarterly_metrics": [], "multi_year_data": []}
+            return {
+                "success": False,
+                "error": str(e),
+                "quarterly_metrics": [],
+                "multi_year_data": [],
+            }
 
     async def _get_current_price(self, symbol: str) -> Optional[float]:
         """Get current stock price.
@@ -380,14 +420,18 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
         """
         try:
             if self._price_service:
-                return self._price_service.get_current_price(symbol)
+                result: float | None = self._price_service.get_current_price(symbol)
+                return result
 
             # Fallback to legacy method if shared service not available
-            from investigator.infrastructure.database.market_data import get_market_data_fetcher
+            from investigator.infrastructure.database.market_data import (
+                get_market_data_fetcher,
+            )
 
             fetcher = get_market_data_fetcher(self.config)
             info = fetcher.get_stock_info(symbol)
-            return info.get("current_price")
+            price: float | None = info.get("current_price")
+            return price
         except Exception as e:
             logger.warning(f"Could not get current price for {symbol}: {e}")
             return None
@@ -416,7 +460,9 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     }
 
             # Fallback to legacy method if shared service not available
-            from investigator.infrastructure.database.market_data import get_market_data_fetcher
+            from investigator.infrastructure.database.market_data import (
+                get_market_data_fetcher,
+            )
 
             fetcher = get_market_data_fetcher(self.config)
             info = fetcher.get_stock_info(symbol)
@@ -425,7 +471,9 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             logger.warning(f"Could not get stock info for {symbol}: {e}")
             return {}
 
-    def _build_company_profile(self, symbol: str, stock_info: Dict[str, Any], quarterly_metrics: List[Dict]):
+    def _build_company_profile(
+        self, symbol: str, stock_info: Dict[str, Any], quarterly_metrics: List[Dict]
+    ):
         """Build a CompanyProfile from available data.
 
         Handles two formats:
@@ -433,7 +481,9 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
         2. SEC filing tool format: [{"income_statement": {...}, "balance_sheet": {...}}]
         """
         try:
-            from investigator.domain.services.valuation.models.company_profile import CompanyProfile
+            from investigator.domain.services.valuation.models.company_profile import (
+                CompanyProfile,
+            )
 
             sector = stock_info.get("sector", "Unknown")
             industry = stock_info.get("industry")
@@ -452,25 +502,43 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     cash_flow = sec_data.get("cash_flow", {})
 
                     total_fcf = cash_flow.get("free_cash_flow") or 0
-                    total_earnings = income.get("net_income") or income.get("net_income_loss") or 0
-                    total_revenue = income.get("total_revenue") or income.get("revenue") or 0
+                    total_earnings = (
+                        income.get("net_income") or income.get("net_income_loss") or 0
+                    )
+                    total_revenue = (
+                        income.get("total_revenue") or income.get("revenue") or 0
+                    )
 
                     has_positive_fcf = total_fcf > 0 if total_fcf else None
-                    has_positive_earnings = total_earnings > 0 if total_earnings else None
+                    has_positive_earnings = (
+                        total_earnings > 0 if total_earnings else None
+                    )
                     ttm_fcf = total_fcf if total_fcf else None
-                    fcf_margin = total_fcf / total_revenue if total_revenue and total_fcf else None
+                    fcf_margin = (
+                        total_fcf / total_revenue
+                        if total_revenue and total_fcf
+                        else None
+                    )
 
                 elif len(quarterly_metrics) >= 4:
                     # Sum last 4 quarters for TTM values
                     recent_quarters = quarterly_metrics[:4]
-                    total_fcf = sum(q.get("free_cash_flow", 0) or 0 for q in recent_quarters)
-                    total_earnings = sum(q.get("net_income", 0) or 0 for q in recent_quarters)
-                    total_revenue = sum(q.get("revenue", 0) or 0 for q in recent_quarters)
+                    total_fcf = sum(
+                        q.get("free_cash_flow", 0) or 0 for q in recent_quarters
+                    )
+                    total_earnings = sum(
+                        q.get("net_income", 0) or 0 for q in recent_quarters
+                    )
+                    total_revenue = sum(
+                        q.get("revenue", 0) or 0 for q in recent_quarters
+                    )
 
                     has_positive_fcf = total_fcf > 0
                     has_positive_earnings = total_earnings > 0
                     ttm_fcf = total_fcf
-                    fcf_margin = total_fcf / total_revenue if total_revenue > 0 else None
+                    fcf_margin = (
+                        total_fcf / total_revenue if total_revenue > 0 else None
+                    )
                 else:
                     # Single quarter - use as approximation
                     q = quarterly_metrics[0]
@@ -479,9 +547,15 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     total_revenue = q.get("revenue", 0) or 0
 
                     has_positive_fcf = total_fcf > 0 if total_fcf else None
-                    has_positive_earnings = total_earnings > 0 if total_earnings else None
+                    has_positive_earnings = (
+                        total_earnings > 0 if total_earnings else None
+                    )
                     ttm_fcf = total_fcf if total_fcf else None
-                    fcf_margin = total_fcf / total_revenue if total_revenue and total_fcf else None
+                    fcf_margin = (
+                        total_fcf / total_revenue
+                        if total_revenue and total_fcf
+                        else None
+                    )
 
             return CompanyProfile(
                 symbol=symbol,
@@ -506,7 +580,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
         1. Direct quarterly metrics: [{"net_income": x, "revenue": y, ...}]
         2. SEC filing tool format: [{"income_statement": {...}, "balance_sheet": {...}}]
         """
-        result = {
+        result: Dict[str, Optional[float]] = {
             "ttm_eps": None,
             "ttm_revenue": None,
             "ttm_ebitda": None,
@@ -523,21 +597,29 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             sec_data = quarterly_metrics[0]
             income = sec_data.get("income_statement", {})
             balance = sec_data.get("balance_sheet", {})
-            cash_flow = sec_data.get("cash_flow", {})
+            sec_data.get("cash_flow", {})
 
             ttm_net_income = income.get("net_income") or income.get("net_income_loss")
             ttm_revenue = income.get("total_revenue") or income.get("revenue")
             ttm_ebitda = income.get("ebitda")
-            book_value = balance.get("stockholders_equity") or balance.get("total_equity")
+            book_value = balance.get("stockholders_equity") or balance.get(
+                "total_equity"
+            )
 
             result["ttm_revenue"] = ttm_revenue
             result["ttm_ebitda"] = ttm_ebitda
             result["book_value"] = book_value
 
             if shares_outstanding and shares_outstanding > 0:
-                result["ttm_eps"] = ttm_net_income / shares_outstanding if ttm_net_income else None
-                result["revenue_per_share"] = ttm_revenue / shares_outstanding if ttm_revenue else None
-                result["book_value_per_share"] = book_value / shares_outstanding if book_value else None
+                result["ttm_eps"] = (
+                    ttm_net_income / shares_outstanding if ttm_net_income else None
+                )
+                result["revenue_per_share"] = (
+                    ttm_revenue / shares_outstanding if ttm_revenue else None
+                )
+                result["book_value_per_share"] = (
+                    book_value / shares_outstanding if book_value else None
+                )
 
             return result
 
@@ -565,13 +647,21 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
         result["book_value"] = book_value
 
         if shares_outstanding and shares_outstanding > 0:
-            result["ttm_eps"] = ttm_net_income / shares_outstanding if ttm_net_income else None
-            result["revenue_per_share"] = ttm_revenue / shares_outstanding if ttm_revenue else None
-            result["book_value_per_share"] = book_value / shares_outstanding if book_value else None
+            result["ttm_eps"] = (
+                ttm_net_income / shares_outstanding if ttm_net_income else None
+            )
+            result["revenue_per_share"] = (
+                ttm_revenue / shares_outstanding if ttm_revenue else None
+            )
+            result["book_value_per_share"] = (
+                book_value / shares_outstanding if book_value else None
+            )
 
         return result
 
-    def _get_sector_multiples(self, sector: str, industry: str = None) -> Dict[str, float]:
+    def _get_sector_multiples(
+        self, sector: str, industry: str | None = None
+    ) -> Dict[str, float]:
         """Get sector median multiples with industry override.
 
         Uses shared SectorMultiplesService for config-driven lookups.
@@ -587,11 +677,18 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
         """
         # Use shared config service if available (single source of truth)
         if self._sector_multiples_service:
-            return self._sector_multiples_service.get_multiples(sector, industry)
+            result: dict[str, float] = self._sector_multiples_service.get_multiples(
+                sector, industry
+            )
+            return result
 
         # Fallback to hardcoded values if service not initialized
-        logger.debug(f"Using fallback sector multiples for {sector} (service not available)")
-        base = DEFAULT_SECTOR_MULTIPLES.get(sector, DEFAULT_SECTOR_MULTIPLES.get("Industrials", {}))
+        logger.debug(
+            f"Using fallback sector multiples for {sector} (service not available)"
+        )
+        base = DEFAULT_SECTOR_MULTIPLES.get(
+            sector, DEFAULT_SECTOR_MULTIPLES.get("Industrials", {})
+        )
         if industry and industry in INDUSTRY_PE_FALLBACKS:
             base = base.copy()
             base["pe"] = INDUSTRY_PE_FALLBACKS[industry]
@@ -620,55 +717,74 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             ToolResult with all model results
         """
         try:
-            results = {}
-            warnings = []
+            results: Dict[str, Any] = {}
+            warnings: list[str] = []
 
             # Run DCF
             dcf_result = await self._run_dcf(
-                symbol, quarterly_metrics, multi_year_data, current_price, cost_of_equity, terminal_growth_rate
+                symbol,
+                quarterly_metrics,
+                multi_year_data,
+                current_price,
+                cost_of_equity,
+                terminal_growth_rate,
             )
             if dcf_result.success:
-                results["dcf"] = dcf_result.data
+                results["dcf"] = dcf_result.output
             else:
                 warnings.append(f"DCF: {dcf_result.error}")
 
             # Run GGM
             ggm_result = await self._run_ggm(
-                symbol, quarterly_metrics, multi_year_data, current_price, cost_of_equity, terminal_growth_rate
+                symbol,
+                quarterly_metrics,
+                multi_year_data,
+                current_price,
+                cost_of_equity,
+                terminal_growth_rate,
             )
             if ggm_result.success:
-                results["ggm"] = ggm_result.data
+                results["ggm"] = ggm_result.output
             else:
                 warnings.append(f"GGM: {ggm_result.error}")
 
             # Run multiple models
-            pe_result = await self._run_pe_multiple(symbol, quarterly_metrics, current_price)
+            pe_result = await self._run_pe_multiple(
+                symbol, quarterly_metrics, current_price
+            )
             if pe_result.success:
-                results["pe"] = pe_result.data
+                results["pe"] = pe_result.output
             else:
                 warnings.append(f"P/E: {pe_result.error}")
 
-            ps_result = await self._run_ps_multiple(symbol, quarterly_metrics, current_price)
+            ps_result = await self._run_ps_multiple(
+                symbol, quarterly_metrics, current_price
+            )
             if ps_result.success:
-                results["ps"] = ps_result.data
+                results["ps"] = ps_result.output
             else:
                 warnings.append(f"P/S: {ps_result.error}")
 
-            pb_result = await self._run_pb_multiple(symbol, quarterly_metrics, current_price)
+            pb_result = await self._run_pb_multiple(
+                symbol, quarterly_metrics, current_price
+            )
             if pb_result.success:
-                results["pb"] = pb_result.data
+                results["pb"] = pb_result.output
             else:
                 warnings.append(f"P/B: {pb_result.error}")
 
-            ev_ebitda_result = await self._run_ev_ebitda(symbol, quarterly_metrics, current_price)
+            ev_ebitda_result = await self._run_ev_ebitda(
+                symbol, quarterly_metrics, current_price
+            )
             if ev_ebitda_result.success:
-                results["ev_ebitda"] = ev_ebitda_result.data
+                results["ev_ebitda"] = ev_ebitda_result.output
             else:
                 warnings.append(f"EV/EBITDA: {ev_ebitda_result.error}")
 
             if not results:
-                return ToolResult.error_result(
-                    "No valuation models could be applied", warnings=warnings, metadata={"symbol": symbol}
+                return ToolResult.create_failure(
+                    "No valuation models could be applied",
+                    metadata={"symbol": symbol, "warnings": warnings},
                 )
 
             # Calculate consensus fair value
@@ -682,24 +798,25 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             if fair_values:
                 consensus = sum(fair_values) / len(fair_values)
 
-            return ToolResult.success_result(
-                data={
+            return ToolResult.create_success(
+                output={
                     "symbol": symbol,
                     "current_price": current_price,
                     "models": results,
                     "models_applied": list(results.keys()),
                     "consensus_fair_value": consensus,
                     "consensus_upside": (
-                        ((consensus / current_price) - 1) * 100 if consensus and current_price else None
+                        ((consensus / current_price) - 1) * 100
+                        if consensus and current_price
+                        else None
                     ),
                 },
-                warnings=warnings,
-                metadata={"model_count": len(results)},
+                metadata={"model_count": len(results), "warnings": warnings},
             )
 
         except Exception as e:
             logger.error(f"Error running all models for {symbol}: {e}")
-            return ToolResult.error_result(f"Multi-model valuation failed: {str(e)}")
+            return ToolResult.create_failure(f"Multi-model valuation failed: {str(e)}")
 
     async def _run_dcf(
         self,
@@ -727,16 +844,20 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             result = await loop.run_in_executor(None, dcf.calculate_dcf_valuation)
 
             if not result or not result.get("fair_value_per_share"):
-                return ToolResult.error_result(
+                return ToolResult.create_failure(
                     f"DCF not applicable for {symbol}: {result.get('reason', 'Insufficient data')}",
                     metadata={"model": "dcf", "symbol": symbol},
                 )
 
             fair_value = result.get("fair_value_per_share", 0)
-            upside = ((fair_value / current_price) - 1) * 100 if current_price and fair_value else None
+            upside = (
+                ((fair_value / current_price) - 1) * 100
+                if current_price and fair_value
+                else None
+            )
 
-            return ToolResult.success_result(
-                data={
+            return ToolResult.create_success(
+                output={
                     "model": "dcf",
                     "fair_value_per_share": fair_value,
                     "current_price": current_price,
@@ -752,7 +873,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
         except Exception as e:
             logger.error(f"DCF error for {symbol}: {e}")
-            return ToolResult.error_result(f"DCF calculation failed: {str(e)}")
+            return ToolResult.create_failure(f"DCF calculation failed: {str(e)}")
 
     async def _run_ggm(
         self,
@@ -784,19 +905,25 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             else:
                 coe = 0.08  # Fallback to 8% if config service not available
 
-            result = await loop.run_in_executor(None, ggm.calculate_ggm_valuation, coe, terminal_growth_rate)
+            result = await loop.run_in_executor(
+                None, ggm.calculate_ggm_valuation, coe, terminal_growth_rate
+            )
 
             if not result or not result.get("applicable", False):
-                return ToolResult.error_result(
+                return ToolResult.create_failure(
                     f"GGM not applicable for {symbol}: {result.get('reason', 'No dividends')}",
                     metadata={"model": "ggm", "symbol": symbol},
                 )
 
             fair_value = result.get("fair_value_per_share", 0)
-            upside = ((fair_value / current_price) - 1) * 100 if current_price and fair_value else None
+            upside = (
+                ((fair_value / current_price) - 1) * 100
+                if current_price and fair_value
+                else None
+            )
 
-            return ToolResult.success_result(
-                data={
+            return ToolResult.create_success(
+                output={
                     "model": "ggm",
                     "fair_value_per_share": fair_value,
                     "current_price": current_price,
@@ -811,7 +938,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
         except Exception as e:
             logger.error(f"GGM error for {symbol}: {e}")
-            return ToolResult.error_result(f"GGM calculation failed: {str(e)}")
+            return ToolResult.create_failure(f"GGM calculation failed: {str(e)}")
 
     async def _run_pe_multiple(
         self, symbol: str, quarterly_metrics: List[Dict], current_price: Optional[float]
@@ -819,7 +946,9 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
         """Run P/E Multiple valuation."""
         try:
             from investigator.domain.services.valuation.models import PEMultipleModel
-            from investigator.domain.services.valuation.models.base import ModelNotApplicable
+            from investigator.domain.services.valuation.models.base import (
+                ModelNotApplicable,
+            )
 
             loop = asyncio.get_event_loop()
 
@@ -829,14 +958,19 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             sector = stock_info.get("sector", "Unknown")
 
             # Build company profile
-            company_profile = self._build_company_profile(symbol, stock_info, quarterly_metrics)
+            company_profile = self._build_company_profile(
+                symbol, stock_info, quarterly_metrics
+            )
             if company_profile is None:
-                return ToolResult.error_result(
-                    "Could not build company profile", metadata={"model": "pe", "symbol": symbol}
+                return ToolResult.create_failure(
+                    "Could not build company profile",
+                    metadata={"model": "pe", "symbol": symbol},
                 )
 
             # Calculate TTM metrics
-            ttm_metrics = self._calculate_ttm_metrics(quarterly_metrics, shares_outstanding)
+            ttm_metrics = self._calculate_ttm_metrics(
+                quarterly_metrics, shares_outstanding
+            )
             ttm_eps = ttm_metrics.get("ttm_eps")
 
             # Get sector multiples
@@ -854,12 +988,13 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             result = await loop.run_in_executor(None, model.calculate)
 
             if isinstance(result, ModelNotApplicable):
-                return ToolResult.error_result(
-                    f"P/E not applicable: {result.reason}", metadata={"model": "pe", "symbol": symbol}
+                return ToolResult.create_failure(
+                    f"P/E not applicable: {result.reason}",
+                    metadata={"model": "pe", "symbol": symbol},
                 )
 
-            return ToolResult.success_result(
-                data={
+            return ToolResult.create_success(
+                output={
                     "model": "pe",
                     "fair_value_per_share": result.fair_value,
                     "current_price": current_price,
@@ -874,7 +1009,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
         except Exception as e:
             logger.error(f"P/E error for {symbol}: {e}")
-            return ToolResult.error_result(f"P/E calculation failed: {str(e)}")
+            return ToolResult.create_failure(f"P/E calculation failed: {str(e)}")
 
     async def _run_ps_multiple(
         self, symbol: str, quarterly_metrics: List[Dict], current_price: Optional[float]
@@ -882,7 +1017,9 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
         """Run P/S Multiple valuation."""
         try:
             from investigator.domain.services.valuation.models import PSMultipleModel
-            from investigator.domain.services.valuation.models.base import ModelNotApplicable
+            from investigator.domain.services.valuation.models.base import (
+                ModelNotApplicable,
+            )
 
             loop = asyncio.get_event_loop()
 
@@ -892,14 +1029,19 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             sector = stock_info.get("sector", "Unknown")
 
             # Build company profile
-            company_profile = self._build_company_profile(symbol, stock_info, quarterly_metrics)
+            company_profile = self._build_company_profile(
+                symbol, stock_info, quarterly_metrics
+            )
             if company_profile is None:
-                return ToolResult.error_result(
-                    "Could not build company profile", metadata={"model": "ps", "symbol": symbol}
+                return ToolResult.create_failure(
+                    "Could not build company profile",
+                    metadata={"model": "ps", "symbol": symbol},
                 )
 
             # Calculate TTM metrics
-            ttm_metrics = self._calculate_ttm_metrics(quarterly_metrics, shares_outstanding)
+            ttm_metrics = self._calculate_ttm_metrics(
+                quarterly_metrics, shares_outstanding
+            )
             revenue_per_share = ttm_metrics.get("revenue_per_share")
 
             # Get sector multiples
@@ -917,12 +1059,13 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             result = await loop.run_in_executor(None, model.calculate)
 
             if isinstance(result, ModelNotApplicable):
-                return ToolResult.error_result(
-                    f"P/S not applicable: {result.reason}", metadata={"model": "ps", "symbol": symbol}
+                return ToolResult.create_failure(
+                    f"P/S not applicable: {result.reason}",
+                    metadata={"model": "ps", "symbol": symbol},
                 )
 
-            return ToolResult.success_result(
-                data={
+            return ToolResult.create_success(
+                output={
                     "model": "ps",
                     "fair_value_per_share": result.fair_value,
                     "current_price": current_price,
@@ -937,7 +1080,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
         except Exception as e:
             logger.error(f"P/S error for {symbol}: {e}")
-            return ToolResult.error_result(f"P/S calculation failed: {str(e)}")
+            return ToolResult.create_failure(f"P/S calculation failed: {str(e)}")
 
     async def _run_pb_multiple(
         self, symbol: str, quarterly_metrics: List[Dict], current_price: Optional[float]
@@ -945,7 +1088,9 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
         """Run P/B Multiple valuation."""
         try:
             from investigator.domain.services.valuation.models import PBMultipleModel
-            from investigator.domain.services.valuation.models.base import ModelNotApplicable
+            from investigator.domain.services.valuation.models.base import (
+                ModelNotApplicable,
+            )
 
             loop = asyncio.get_event_loop()
 
@@ -955,14 +1100,19 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             sector = stock_info.get("sector", "Unknown")
 
             # Build company profile
-            company_profile = self._build_company_profile(symbol, stock_info, quarterly_metrics)
+            company_profile = self._build_company_profile(
+                symbol, stock_info, quarterly_metrics
+            )
             if company_profile is None:
-                return ToolResult.error_result(
-                    "Could not build company profile", metadata={"model": "pb", "symbol": symbol}
+                return ToolResult.create_failure(
+                    "Could not build company profile",
+                    metadata={"model": "pb", "symbol": symbol},
                 )
 
             # Calculate TTM metrics
-            ttm_metrics = self._calculate_ttm_metrics(quarterly_metrics, shares_outstanding)
+            ttm_metrics = self._calculate_ttm_metrics(
+                quarterly_metrics, shares_outstanding
+            )
             book_value_per_share = ttm_metrics.get("book_value_per_share")
 
             # Get sector multiples
@@ -980,12 +1130,13 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             result = await loop.run_in_executor(None, model.calculate)
 
             if isinstance(result, ModelNotApplicable):
-                return ToolResult.error_result(
-                    f"P/B not applicable: {result.reason}", metadata={"model": "pb", "symbol": symbol}
+                return ToolResult.create_failure(
+                    f"P/B not applicable: {result.reason}",
+                    metadata={"model": "pb", "symbol": symbol},
                 )
 
-            return ToolResult.success_result(
-                data={
+            return ToolResult.create_success(
+                output={
                     "model": "pb",
                     "fair_value_per_share": result.fair_value,
                     "current_price": current_price,
@@ -1000,7 +1151,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
         except Exception as e:
             logger.error(f"P/B error for {symbol}: {e}")
-            return ToolResult.error_result(f"P/B calculation failed: {str(e)}")
+            return ToolResult.create_failure(f"P/B calculation failed: {str(e)}")
 
     async def _run_ev_ebitda(
         self, symbol: str, quarterly_metrics: List[Dict], current_price: Optional[float]
@@ -1008,7 +1159,9 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
         """Run EV/EBITDA Multiple valuation."""
         try:
             from investigator.domain.services.valuation.models import EVEBITDAModel
-            from investigator.domain.services.valuation.models.base import ModelNotApplicable
+            from investigator.domain.services.valuation.models.base import (
+                ModelNotApplicable,
+            )
 
             loop = asyncio.get_event_loop()
 
@@ -1019,14 +1172,19 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             market_cap = stock_info.get("market_cap")
 
             # Build company profile
-            company_profile = self._build_company_profile(symbol, stock_info, quarterly_metrics)
+            company_profile = self._build_company_profile(
+                symbol, stock_info, quarterly_metrics
+            )
             if company_profile is None:
-                return ToolResult.error_result(
-                    "Could not build company profile", metadata={"model": "ev_ebitda", "symbol": symbol}
+                return ToolResult.create_failure(
+                    "Could not build company profile",
+                    metadata={"model": "ev_ebitda", "symbol": symbol},
                 )
 
             # Calculate TTM metrics
-            ttm_metrics = self._calculate_ttm_metrics(quarterly_metrics, shares_outstanding)
+            ttm_metrics = self._calculate_ttm_metrics(
+                quarterly_metrics, shares_outstanding
+            )
             ttm_ebitda = ttm_metrics.get("ttm_ebitda")
 
             # Calculate enterprise value: market_cap + total_debt - cash
@@ -1035,7 +1193,9 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 # Try to get debt and cash from quarterly metrics
                 if quarterly_metrics:
                     latest_q = quarterly_metrics[0]
-                    total_debt = (latest_q.get("long_term_debt") or 0) + (latest_q.get("short_term_debt") or 0)
+                    total_debt = (latest_q.get("long_term_debt") or 0) + (
+                        latest_q.get("short_term_debt") or 0
+                    )
                     cash = latest_q.get("cash_and_equivalents") or 0
                     enterprise_value = market_cap + total_debt - cash
                 else:
@@ -1056,12 +1216,13 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             result = await loop.run_in_executor(None, model.calculate)
 
             if isinstance(result, ModelNotApplicable):
-                return ToolResult.error_result(
-                    f"EV/EBITDA not applicable: {result.reason}", metadata={"model": "ev_ebitda", "symbol": symbol}
+                return ToolResult.create_failure(
+                    f"EV/EBITDA not applicable: {result.reason}",
+                    metadata={"model": "ev_ebitda", "symbol": symbol},
                 )
 
-            return ToolResult.success_result(
-                data={
+            return ToolResult.create_success(
+                output={
                     "model": "ev_ebitda",
                     "fair_value_per_share": result.fair_value,
                     "current_price": current_price,
@@ -1077,10 +1238,14 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
         except Exception as e:
             logger.error(f"EV/EBITDA error for {symbol}: {e}")
-            return ToolResult.error_result(f"EV/EBITDA calculation failed: {str(e)}")
+            return ToolResult.create_failure(f"EV/EBITDA calculation failed: {str(e)}")
 
     async def _run_sector_routed(
-        self, symbol: str, quarterly_metrics: List[Dict], multi_year_data: List[Dict], current_price: Optional[float]
+        self,
+        symbol: str,
+        quarterly_metrics: List[Dict],
+        multi_year_data: List[Dict],
+        current_price: Optional[float],
     ) -> ToolResult:
         """Run sector-appropriate valuation using SectorValuationRouter."""
         try:
@@ -1098,13 +1263,13 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             result = await loop.run_in_executor(None, router.get_valuation)
 
             if not result:
-                return ToolResult.error_result(
+                return ToolResult.create_failure(
                     f"Sector-routed valuation failed for {symbol}",
                     metadata={"model": "sector_routed", "symbol": symbol},
                 )
 
-            return ToolResult.success_result(
-                data={
+            return ToolResult.create_success(
+                output={
                     "model": "sector_routed",
                     "sector": result.get("sector"),
                     "primary_model": result.get("primary_model"),
@@ -1114,12 +1279,18 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     "model_weights": result.get("weights", {}),
                     "all_valuations": result.get("valuations", {}),
                 },
-                metadata={"model": "sector_routed", "symbol": symbol, "sector": result.get("sector")},
+                metadata={
+                    "model": "sector_routed",
+                    "symbol": symbol,
+                    "sector": result.get("sector"),
+                },
             )
 
         except Exception as e:
             logger.error(f"Sector-routed valuation error for {symbol}: {e}")
-            return ToolResult.error_result(f"Sector-routed valuation failed: {str(e)}")
+            return ToolResult.create_failure(
+                f"Sector-routed valuation failed: {str(e)}"
+            )
 
     def get_schema(self) -> Dict[str, Any]:
         """Get JSON schema for Valuation Tool parameters."""
@@ -1129,16 +1300,31 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 "symbol": {"type": "string", "description": "Stock ticker symbol"},
                 "model": {
                     "type": "string",
-                    "enum": ["dcf", "ggm", "pe", "ps", "pb", "ev_ebitda", "sector_routed", "all"],
+                    "enum": [
+                        "dcf",
+                        "ggm",
+                        "pe",
+                        "ps",
+                        "pb",
+                        "ev_ebitda",
+                        "sector_routed",
+                        "all",
+                    ],
                     "description": "Valuation model to use",
                     "default": "all",
                 },
-                "current_price": {"type": "number", "description": "Current stock price for upside calculation"},
+                "current_price": {
+                    "type": "number",
+                    "description": "Current stock price for upside calculation",
+                },
                 "cost_of_equity": {
                     "type": "number",
                     "description": "Required rate of return (decimal, e.g., 0.10 for 10%)",
                 },
-                "terminal_growth_rate": {"type": "number", "description": "Terminal growth rate for DCF (decimal)"},
+                "terminal_growth_rate": {
+                    "type": "number",
+                    "description": "Terminal growth rate for DCF (decimal)",
+                },
             },
             "required": ["symbol"],
         }

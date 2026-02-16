@@ -14,8 +14,7 @@ Run with: pytest tests/test_credentials.py -v
 
 import os
 from datetime import datetime, timedelta
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -239,7 +238,6 @@ class TestMCPCredentials:
         """Test MCP credential resolution."""
         from investigator.infrastructure.mcp_credentials import (
             MCPCredentialResolver,
-            MCPServerCredentials,
         )
 
         with patch.dict(
@@ -389,10 +387,14 @@ class TestCredentialSanitizer:
 
     def test_scan_for_credentials(self):
         """Test scanning text for credentials."""
-        from investigator.infrastructure.credential_sanitizer import scan_for_credentials
+        from investigator.infrastructure.credential_sanitizer import (
+            scan_for_credentials,
+        )
 
         # API key pattern
-        findings = scan_for_credentials('api_key = "sk-test123456789012345678901234567890"')
+        findings = scan_for_credentials(
+            'api_key = "sk-test123456789012345678901234567890"'
+        )
         assert len(findings) > 0
 
         # Clean text

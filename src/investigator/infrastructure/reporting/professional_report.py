@@ -9,19 +9,27 @@ import math
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 try:
-    from reportlab.graphics import renderPDF
-    from reportlab.graphics.charts.barcharts import VerticalBarChart
-    from reportlab.graphics.charts.piecharts import Pie
-    from reportlab.graphics.shapes import Circle, Drawing, Line, Rect, String, Wedge
+    from reportlab.graphics import renderPDF  # noqa: F401
+    from reportlab.graphics.charts.barcharts import VerticalBarChart  # noqa: F401
+    from reportlab.graphics.charts.piecharts import Pie  # noqa: F401
+    from reportlab.graphics.shapes import Circle, Drawing, Line, Rect, String, Wedge  # noqa: F401
     from reportlab.lib import colors
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT  # noqa: F401
     from reportlab.lib.pagesizes import letter
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import inch
-    from reportlab.platypus import HRFlowable, KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    from reportlab.platypus import (
+        HRFlowable,  # noqa: F401
+        KeepTogether,  # noqa: F401
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
+    )
     from reportlab.platypus.flowables import Flowable
 
     REPORTLAB_AVAILABLE = True
@@ -103,11 +111,15 @@ class RecommendationBadge(Flowable):
         # Recommendation text
         self.canv.setFillColor(colors.white)
         self.canv.setFont("Helvetica-Bold", 16)
-        self.canv.drawCentredString(self.width / 2, self.height * 0.55, self.recommendation)
+        self.canv.drawCentredString(
+            self.width / 2, self.height * 0.55, self.recommendation
+        )
 
         # Confidence
         self.canv.setFont("Helvetica", 9)
-        self.canv.drawCentredString(self.width / 2, self.height * 0.2, f"{self.confidence} confidence")
+        self.canv.drawCentredString(
+            self.width / 2, self.height * 0.2, f"{self.confidence} confidence"
+        )
 
 
 class MetricBar(Flowable):
@@ -168,12 +180,24 @@ class PeerComparisonChart(Flowable):
 
     def draw(self):
         # Prepare data - target first, then peers
-        all_data = [{"symbol": self.target_symbol, "upside": self.target_upside, "is_target": True}]
+        all_data = [
+            {
+                "symbol": self.target_symbol,
+                "upside": self.target_upside,
+                "is_target": True,
+            }
+        ]
         for p in self.peers[:4]:  # Max 4 peers
             val = p.get("valuation") or {}
             upside = val.get("upside_pct")
             if upside is not None:
-                all_data.append({"symbol": p.get("symbol", "?"), "upside": upside, "is_target": False})
+                all_data.append(
+                    {
+                        "symbol": p.get("symbol", "?"),
+                        "upside": upside,
+                        "is_target": False,
+                    }
+                )
 
         if len(all_data) < 2:
             return
@@ -204,7 +228,9 @@ class PeerComparisonChart(Flowable):
             is_target = data.get("is_target", False)
 
             # Symbol label
-            self.canv.setFillColor(colors.HexColor("#1f2937" if is_target else "#6b7280"))
+            self.canv.setFillColor(
+                colors.HexColor("#1f2937" if is_target else "#6b7280")
+            )
             self.canv.setFont("Helvetica-Bold" if is_target else "Helvetica", 9)
             self.canv.drawString(label_x, y + 4, data["symbol"][:6])
 
@@ -222,9 +248,13 @@ class PeerComparisonChart(Flowable):
 
             self.canv.setFillColor(color)
             if bar_w >= 0:
-                self.canv.roundRect(bar_start, y, bar_w, bar_height, 3, fill=1, stroke=0)
+                self.canv.roundRect(
+                    bar_start, y, bar_w, bar_height, 3, fill=1, stroke=0
+                )
             else:
-                self.canv.roundRect(bar_start + bar_w, y, -bar_w, bar_height, 3, fill=1, stroke=0)
+                self.canv.roundRect(
+                    bar_start + bar_w, y, -bar_w, bar_height, 3, fill=1, stroke=0
+                )
 
             # Value text
             self.canv.setFillColor(colors.HexColor("#374151"))
@@ -273,7 +303,13 @@ class MarketRegimeIndicator(Flowable):
         # VIX indicator if available
         if self.vix:
             vix_x = 150
-            vix_color = "#22c55e" if self.vix < 15 else "#eab308" if self.vix < 25 else "#ef4444"
+            vix_color = (
+                "#22c55e"
+                if self.vix < 15
+                else "#eab308"
+                if self.vix < 25
+                else "#ef4444"
+            )
             self.canv.setFillColor(colors.HexColor(vix_color))
             self.canv.circle(vix_x, cy, 8, fill=1, stroke=0)
             self.canv.setFillColor(colors.HexColor("#374151"))
@@ -295,7 +331,9 @@ class MarketRegimeIndicator(Flowable):
 class GrowthValueScatterplot(Flowable):
     """Quadrant scatterplot showing growth vs value positioning"""
 
-    def __init__(self, width, height, target_symbol, growth_score, value_score, peers=None):
+    def __init__(
+        self, width, height, target_symbol, growth_score, value_score, peers=None
+    ):
         Flowable.__init__(self)
         self.width = width
         self.height = height
@@ -320,7 +358,9 @@ class GrowthValueScatterplot(Flowable):
         # X axis (Value)
         self.canv.line(chart_left, chart_bottom, chart_left + chart_width, chart_bottom)
         # Y axis (Growth)
-        self.canv.line(chart_left, chart_bottom, chart_left, chart_bottom + chart_height)
+        self.canv.line(
+            chart_left, chart_bottom, chart_left, chart_bottom + chart_height
+        )
 
         # Quadrant lines (at 50)
         self.canv.setStrokeColor(colors.HexColor("#e5e7eb"))
@@ -334,30 +374,49 @@ class GrowthValueScatterplot(Flowable):
         # Quadrant labels
         self.canv.setFillColor(colors.HexColor("#9ca3af"))
         self.canv.setFont("Helvetica", 7)
-        self.canv.drawString(chart_left + 5, chart_bottom + chart_height - 10, "High Growth")
+        self.canv.drawString(
+            chart_left + 5, chart_bottom + chart_height - 10, "High Growth"
+        )
         self.canv.drawString(chart_left + 5, chart_bottom + 5, "Low Growth")
-        self.canv.drawRightString(chart_left + chart_width - 5, chart_bottom + 5, "Deep Value")
+        self.canv.drawRightString(
+            chart_left + chart_width - 5, chart_bottom + 5, "Deep Value"
+        )
         self.canv.drawString(chart_left + 5, chart_bottom + 5, "Growth Trap")
 
         # Quadrant colors (light backgrounds)
         # Top-right: High Growth + Deep Value = Best
         self.canv.setFillColor(colors.HexColor("#dcfce7"))  # Light green
-        self.canv.rect(mid_x, mid_y, chart_width * 0.5, chart_height * 0.5, fill=1, stroke=0)
+        self.canv.rect(
+            mid_x, mid_y, chart_width * 0.5, chart_height * 0.5, fill=1, stroke=0
+        )
         # Top-left: High Growth + Expensive
         self.canv.setFillColor(colors.HexColor("#fef3c7"))  # Light yellow
-        self.canv.rect(chart_left, mid_y, chart_width * 0.5, chart_height * 0.5, fill=1, stroke=0)
+        self.canv.rect(
+            chart_left, mid_y, chart_width * 0.5, chart_height * 0.5, fill=1, stroke=0
+        )
         # Bottom-right: Low Growth + Deep Value = Value Trap
         self.canv.setFillColor(colors.HexColor("#fef3c7"))  # Light yellow
-        self.canv.rect(mid_x, chart_bottom, chart_width * 0.5, chart_height * 0.5, fill=1, stroke=0)
+        self.canv.rect(
+            mid_x, chart_bottom, chart_width * 0.5, chart_height * 0.5, fill=1, stroke=0
+        )
         # Bottom-left: Low Growth + Expensive = Worst
         self.canv.setFillColor(colors.HexColor("#fee2e2"))  # Light red
-        self.canv.rect(chart_left, chart_bottom, chart_width * 0.5, chart_height * 0.5, fill=1, stroke=0)
+        self.canv.rect(
+            chart_left,
+            chart_bottom,
+            chart_width * 0.5,
+            chart_height * 0.5,
+            fill=1,
+            stroke=0,
+        )
 
         # Re-draw axes on top
         self.canv.setStrokeColor(colors.HexColor("#6b7280"))
         self.canv.setLineWidth(1)
         self.canv.line(chart_left, chart_bottom, chart_left + chart_width, chart_bottom)
-        self.canv.line(chart_left, chart_bottom, chart_left, chart_bottom + chart_height)
+        self.canv.line(
+            chart_left, chart_bottom, chart_left, chart_bottom + chart_height
+        )
 
         # Plot peers as small dots
         for peer in self.peers[:5]:
@@ -402,7 +461,6 @@ class ScoreRadarChart(Flowable):
         return (self.width, self.height)
 
     def draw(self):
-        import math
 
         cx = self.width / 2
         cy = self.height / 2 + 5
@@ -437,7 +495,9 @@ class ScoreRadarChart(Flowable):
 
             # Axis line
             self.canv.setStrokeColor(colors.HexColor("#d1d5db"))
-            self.canv.line(cx, cy, cx + radius * math.cos(angle), cy + radius * math.sin(angle))
+            self.canv.line(
+                cx, cy, cx + radius * math.cos(angle), cy + radius * math.sin(angle)
+            )
 
             # Label
             label_r = radius + 15
@@ -523,7 +583,9 @@ class ValuationBarChart(Flowable):
 
         # Draw background
         self.canv.setFillColor(colors.HexColor("#f9fafb"))
-        self.canv.rect(chart_left - 5, 0, chart_width + 50, total_height + 25, fill=1, stroke=0)
+        self.canv.rect(
+            chart_left - 5, 0, chart_width + 50, total_height + 25, fill=1, stroke=0
+        )
 
         # Draw current price line (vertical dashed line)
         current_x = chart_left + (self.current_price / max_price) * chart_width
@@ -536,7 +598,9 @@ class ValuationBarChart(Flowable):
         # Label current price at top
         self.canv.setFillColor(colors.HexColor("#dc2626"))
         self.canv.setFont("Helvetica-Bold", 8)
-        self.canv.drawCentredString(current_x, total_height + 10, f"Current ${self.current_price:.0f}")
+        self.canv.drawCentredString(
+            current_x, total_height + 10, f"Current ${self.current_price:.0f}"
+        )
 
         # Draw bars from top to bottom
         for i, (name, fv) in enumerate(valid_models):
@@ -553,7 +617,9 @@ class ValuationBarChart(Flowable):
             # Bar color: green if fair value > current (undervalued), orange if < current (overvalued)
             bar_color = "#22c55e" if fv > self.current_price else "#f97316"
             self.canv.setFillColor(colors.HexColor(bar_color))
-            self.canv.roundRect(chart_left, y, bar_width, bar_height, 4, fill=1, stroke=0)
+            self.canv.roundRect(
+                chart_left, y, bar_width, bar_height, 4, fill=1, stroke=0
+            )
 
             # Value label at end of bar
             self.canv.setFillColor(colors.HexColor("#1f2937"))
@@ -565,7 +631,16 @@ class ValuationBarChart(Flowable):
 class PriceTargetChart(Flowable):
     """Visual price target with support/resistance"""
 
-    def __init__(self, width, height, current_price, target_price=None, stop_loss=None, support=None, resistance=None):
+    def __init__(
+        self,
+        width,
+        height,
+        current_price,
+        target_price=None,
+        stop_loss=None,
+        support=None,
+        resistance=None,
+    ):
         self.width = width
         self.height = height
         self.current = current_price or 0
@@ -666,7 +741,14 @@ class FinancialMetricsTable(Flowable):
         # Header
         headers = ["Metric", "Company", "Sector", "Status"]
         self.canv.setFillColor(colors.HexColor("#1f2937"))
-        self.canv.rect(x_start, y_start - header_height, sum(col_widths), header_height, fill=1, stroke=0)
+        self.canv.rect(
+            x_start,
+            y_start - header_height,
+            sum(col_widths),
+            header_height,
+            fill=1,
+            stroke=0,
+        )
 
         self.canv.setFillColor(colors.white)
         self.canv.setFont("Helvetica-Bold", 9)
@@ -698,7 +780,9 @@ class FinancialMetricsTable(Flowable):
             row_idx = metric_order.index((key, label, better))
             if row_idx % 2 == 0:
                 self.canv.setFillColor(colors.HexColor("#f9fafb"))
-                self.canv.rect(x_start, y, sum(col_widths), row_height, fill=1, stroke=0)
+                self.canv.rect(
+                    x_start, y, sum(col_widths), row_height, fill=1, stroke=0
+                )
 
             # Metric label
             self.canv.setFillColor(colors.HexColor("#374151"))
@@ -712,7 +796,11 @@ class FinancialMetricsTable(Flowable):
                 if key in ["roe", "fcf_margin", "revenue_growth"]:
                     val_str = f"{company_val:.1f}%"
                 elif key in ["pe_ratio", "ev_ebitda", "debt_to_equity"]:
-                    val_str = f"{company_val:.1f}x" if key != "debt_to_equity" else f"{company_val:.2f}"
+                    val_str = (
+                        f"{company_val:.1f}x"
+                        if key != "debt_to_equity"
+                        else f"{company_val:.2f}"
+                    )
                 else:
                     val_str = f"{company_val:.1f}"
             else:
@@ -727,7 +815,11 @@ class FinancialMetricsTable(Flowable):
                 if key in ["roe", "fcf_margin", "revenue_growth"]:
                     val_str = f"{sector_val:.1f}%"
                 elif key in ["pe_ratio", "ev_ebitda", "debt_to_equity"]:
-                    val_str = f"{sector_val:.1f}x" if key != "debt_to_equity" else f"{sector_val:.2f}"
+                    val_str = (
+                        f"{sector_val:.1f}x"
+                        if key != "debt_to_equity"
+                        else f"{sector_val:.2f}"
+                    )
                 else:
                     val_str = f"{sector_val:.1f}"
             else:
@@ -742,7 +834,11 @@ class FinancialMetricsTable(Flowable):
                 else:
                     is_good = company_val <= sector_val
 
-                indicator_color = colors.HexColor("#22c55e") if is_good else colors.HexColor("#ef4444")
+                indicator_color = (
+                    colors.HexColor("#22c55e")
+                    if is_good
+                    else colors.HexColor("#ef4444")
+                )
                 self.canv.setFillColor(indicator_color)
                 self.canv.circle(x + 15, y + 8, 5, fill=1, stroke=0)
 
@@ -752,7 +848,14 @@ class FinancialMetricsTable(Flowable):
 class TrendChart(Flowable):
     """Simple trend line chart for financial metrics over time"""
 
-    def __init__(self, width, height, data_points: List, label: str, format_type: str = "currency"):
+    def __init__(
+        self,
+        width,
+        height,
+        data_points: List,
+        label: str,
+        format_type: str = "currency",
+    ):
         Flowable.__init__(self)
         self.width = width
         self.height = height
@@ -768,7 +871,9 @@ class TrendChart(Flowable):
             # Not enough data
             self.canv.setFillColor(colors.HexColor("#9ca3af"))
             self.canv.setFont("Helvetica", 8)
-            self.canv.drawCentredString(self.width / 2, self.height / 2, f"{self.label}: Insufficient data")
+            self.canv.drawCentredString(
+                self.width / 2, self.height / 2, f"{self.label}: Insufficient data"
+            )
             return
 
         # Chart area
@@ -781,7 +886,9 @@ class TrendChart(Flowable):
 
         # Background
         self.canv.setFillColor(colors.HexColor("#f9fafb"))
-        self.canv.rect(margin_left, margin_bottom, chart_width, chart_height, fill=1, stroke=0)
+        self.canv.rect(
+            margin_left, margin_bottom, chart_width, chart_height, fill=1, stroke=0
+        )
 
         # Label
         self.canv.setFillColor(colors.HexColor("#374151"))
@@ -832,8 +939,12 @@ class TrendChart(Flowable):
         # Y-axis labels (min/max)
         self.canv.setFont("Helvetica", 7)
         if self.format_type == "currency":
-            min_str = f"${min_val/1e9:.1f}B" if min_val >= 1e9 else f"${min_val/1e6:.0f}M"
-            max_str = f"${max_val/1e9:.1f}B" if max_val >= 1e9 else f"${max_val/1e6:.0f}M"
+            min_str = (
+                f"${min_val / 1e9:.1f}B" if min_val >= 1e9 else f"${min_val / 1e6:.0f}M"
+            )
+            max_str = (
+                f"${max_val / 1e9:.1f}B" if max_val >= 1e9 else f"${max_val / 1e6:.0f}M"
+            )
         elif self.format_type == "percent":
             min_str = f"{min_val:.1f}%"
             max_str = f"{max_val:.1f}%"
@@ -842,7 +953,9 @@ class TrendChart(Flowable):
             max_str = f"{max_val:.1f}"
 
         self.canv.drawRightString(margin_left - 3, margin_bottom, min_str)
-        self.canv.drawRightString(margin_left - 3, margin_bottom + chart_height - 5, max_str)
+        self.canv.drawRightString(
+            margin_left - 3, margin_bottom + chart_height - 5, max_str
+        )
 
 
 class InvestmentActionBox(Flowable):
@@ -886,7 +999,9 @@ class InvestmentActionBox(Flowable):
         self.canv.setFont("Helvetica", 9)
         self.canv.setFillColor(colors.HexColor("#22c55e"))
         if entry_low and entry_high:
-            self.canv.drawString(col1_x + 65, y, f"${entry_low:.2f} - ${entry_high:.2f}")
+            self.canv.drawString(
+                col1_x + 65, y, f"${entry_low:.2f} - ${entry_high:.2f}"
+            )
         elif entry_low:
             self.canv.drawString(col1_x + 65, y, f"Below ${entry_low:.2f}")
 
@@ -919,7 +1034,13 @@ class InvestmentActionBox(Flowable):
         self.canv.drawString(col2_x, y, "Risk/Reward:")
         self.canv.setFont("Helvetica", 9)
         if rr_ratio:
-            rr_color = "#22c55e" if rr_ratio >= 2 else "#eab308" if rr_ratio >= 1 else "#ef4444"
+            rr_color = (
+                "#22c55e"
+                if rr_ratio >= 2
+                else "#eab308"
+                if rr_ratio >= 1
+                else "#ef4444"
+            )
             self.canv.setFillColor(colors.HexColor(rr_color))
             self.canv.drawString(col2_x + 80, y, f"1:{rr_ratio:.1f}")
 
@@ -1018,7 +1139,9 @@ class ProfessionalReportGenerator:
     """
 
     def __init__(self, output_dir: Path = None, config: ReportConfig = None):
-        self.output_dir = Path(output_dir) if output_dir else Path("reports/professional")
+        self.output_dir = (
+            Path(output_dir) if output_dir else Path("reports/professional")
+        )
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.config = config or ReportConfig()
         self.styles = self._create_styles()
@@ -1138,10 +1261,14 @@ class ProfessionalReportGenerator:
         symbol = data.get("symbol", "UNKNOWN")
 
         # Header
-        story.append(Paragraph("Investment Analysis Report", self.styles["ReportTitle"]))
+        story.append(
+            Paragraph("Investment Analysis Report", self.styles["ReportTitle"])
+        )
         story.append(Paragraph(symbol, self.styles["Symbol"]))
         story.append(Spacer(1, 6))
-        story.append(Paragraph(datetime.now().strftime("%B %d, %Y"), self.styles["ReportBody"]))
+        story.append(
+            Paragraph(datetime.now().strftime("%B %d, %Y"), self.styles["ReportBody"])
+        )
         story.append(Spacer(1, 12))
 
         # Recommendation badge
@@ -1187,9 +1314,18 @@ class ProfessionalReportGenerator:
             # Upside/downside calculation
             if target and current:
                 upside = ((target - current) / current) * 100
-                upside_text = f"Upside: {upside:+.1f}%" if upside >= 0 else f"Downside: {upside:.1f}%"
+                upside_text = (
+                    f"Upside: {upside:+.1f}%"
+                    if upside >= 0
+                    else f"Downside: {upside:.1f}%"
+                )
                 color = "#22c55e" if upside >= 0 else "#ef4444"
-                story.append(Paragraph(f'<font color="{color}"><b>{upside_text}</b></font>', self.styles["ReportBody"]))
+                story.append(
+                    Paragraph(
+                        f'<font color="{color}"><b>{upside_text}</b></font>',
+                        self.styles["ReportBody"],
+                    )
+                )
             story.append(Spacer(1, 16))
 
         # Investment Action Plan box
@@ -1203,7 +1339,9 @@ class ProfessionalReportGenerator:
                     rr_ratio = potential_gain / potential_loss
 
             action_data = {
-                "entry_low": stop * 1.02 if stop else current * 0.95,  # Entry zone above stop loss
+                "entry_low": stop * 1.02
+                if stop
+                else current * 0.95,  # Entry zone above stop loss
                 "entry_high": current,
                 "target_price": target,
                 "stop_loss": stop,
@@ -1237,22 +1375,39 @@ class ProfessionalReportGenerator:
             catalyst_content = []
             if catalysts:
                 catalyst_content.append(
-                    Paragraph('<font color="#22c55e"><b>Key Catalysts</b></font>', self.styles["ReportBody"])
+                    Paragraph(
+                        '<font color="#22c55e"><b>Key Catalysts</b></font>',
+                        self.styles["ReportBody"],
+                    )
                 )
                 for c in catalysts[:4]:
-                    catalyst_content.append(Paragraph(f"<bullet>&bull;</bullet> {c}", self.styles["ReportBody"]))
+                    catalyst_content.append(
+                        Paragraph(
+                            f"<bullet>&bull;</bullet> {c}", self.styles["ReportBody"]
+                        )
+                    )
 
             # Risks column
             risk_content = []
             if risks:
                 risk_content.append(
-                    Paragraph('<font color="#ef4444"><b>Key Risks</b></font>', self.styles["ReportBody"])
+                    Paragraph(
+                        '<font color="#ef4444"><b>Key Risks</b></font>',
+                        self.styles["ReportBody"],
+                    )
                 )
                 for r in risks[:4]:
-                    risk_content.append(Paragraph(f"<bullet>&bull;</bullet> {r}", self.styles["ReportBody"]))
+                    risk_content.append(
+                        Paragraph(
+                            f"<bullet>&bull;</bullet> {r}", self.styles["ReportBody"]
+                        )
+                    )
 
             if catalyst_content or risk_content:
-                col_table = Table([[catalyst_content, risk_content]], colWidths=[3.3 * inch, 3.3 * inch])
+                col_table = Table(
+                    [[catalyst_content, risk_content]],
+                    colWidths=[3.3 * inch, 3.3 * inch],
+                )
                 col_table.setStyle(
                     TableStyle(
                         [
@@ -1267,7 +1422,9 @@ class ProfessionalReportGenerator:
         # Score Breakdown Table (detailed component scores)
         score_breakdown = data.get("score_breakdown", {})
         if score_breakdown:
-            story.append(Paragraph("Detailed Score Breakdown", self.styles["SectionHeader"]))
+            story.append(
+                Paragraph("Detailed Score Breakdown", self.styles["SectionHeader"])
+            )
 
             score_rows = [["Component", "Score", "Assessment"]]
             component_order = [
@@ -1299,12 +1456,17 @@ class ProfessionalReportGenerator:
                         [
                             label,
                             f"{score:.0f}",
-                            Paragraph(f'<font color="{color}"><b>{assessment}</b></font>', self.styles["ReportBody"]),
+                            Paragraph(
+                                f'<font color="{color}"><b>{assessment}</b></font>',
+                                self.styles["ReportBody"],
+                            ),
                         ]
                     )
 
             if len(score_rows) > 1:
-                score_table = Table(score_rows, colWidths=[2 * inch, 0.8 * inch, 1.5 * inch])
+                score_table = Table(
+                    score_rows, colWidths=[2 * inch, 0.8 * inch, 1.5 * inch]
+                )
                 score_table.setStyle(
                     TableStyle(
                         [
@@ -1325,10 +1487,18 @@ class ProfessionalReportGenerator:
         # Financial Metrics Dashboard - Company vs Sector comparison
         financial_metrics = data.get("financial_metrics", {})
         if financial_metrics:
-            story.append(Paragraph("Financial Metrics: Company vs Sector", self.styles["SectionHeader"]))
+            story.append(
+                Paragraph(
+                    "Financial Metrics: Company vs Sector", self.styles["SectionHeader"]
+                )
+            )
             # Calculate table height based on number of metrics
             num_metrics = len(
-                [k for k in financial_metrics.keys() if financial_metrics.get(k, {}).get("company") is not None]
+                [
+                    k
+                    for k in financial_metrics.keys()
+                    if financial_metrics.get(k, {}).get("company") is not None
+                ]
             )
             table_height = 30 + min(num_metrics, 6) * 20
             story.append(FinancialMetricsTable(400, table_height, financial_metrics))
@@ -1345,12 +1515,16 @@ class ProfessionalReportGenerator:
             # Revenue trend
             revenue_history = historical_data.get("revenue", [])
             if revenue_history and len(revenue_history) >= 2:
-                trend_charts.append(TrendChart(150, 80, revenue_history, "Revenue", "currency"))
+                trend_charts.append(
+                    TrendChart(150, 80, revenue_history, "Revenue", "currency")
+                )
 
             # Free Cash Flow trend
             fcf_history = historical_data.get("free_cash_flow", [])
             if fcf_history and len(fcf_history) >= 2:
-                trend_charts.append(TrendChart(150, 80, fcf_history, "Free Cash Flow", "currency"))
+                trend_charts.append(
+                    TrendChart(150, 80, fcf_history, "Free Cash Flow", "currency")
+                )
 
             # ROE trend
             roe_history = historical_data.get("roe", [])
@@ -1361,7 +1535,9 @@ class ProfessionalReportGenerator:
                 # Arrange in table (up to 3 per row)
                 while len(trend_charts) < 3:
                     trend_charts.append(Spacer(150, 80))  # Placeholder for empty cells
-                trend_table = Table([trend_charts[:3]], colWidths=[2.2 * inch, 2.2 * inch, 2.2 * inch])
+                trend_table = Table(
+                    [trend_charts[:3]], colWidths=[2.2 * inch, 2.2 * inch, 2.2 * inch]
+                )
                 trend_table.setStyle(
                     TableStyle(
                         [
@@ -1382,7 +1558,9 @@ class ProfessionalReportGenerator:
 
             chart_row = [
                 [
-                    GrowthValueScatterplot(220, 150, symbol, growth_score, value_score, peers),
+                    GrowthValueScatterplot(
+                        220, 150, symbol, growth_score, value_score, peers
+                    ),
                     ScoreRadarChart(220, 150, score_breakdown),
                 ]
             ]
@@ -1395,7 +1573,9 @@ class ProfessionalReportGenerator:
                     ]
                 )
             )
-            story.append(Paragraph("Score Analysis Charts", self.styles["SectionHeader"]))
+            story.append(
+                Paragraph("Score Analysis Charts", self.styles["SectionHeader"])
+            )
             story.append(chart_table)
             story.append(Spacer(1, 16))
 
@@ -1420,7 +1600,8 @@ class ProfessionalReportGenerator:
         if technical_thinking and isinstance(technical_thinking, str):
             story.append(
                 Paragraph(
-                    '<font color="#7c3aed"><b>Technical Analysis Thinking</b></font>', self.styles["SectionHeader"]
+                    '<font color="#7c3aed"><b>Technical Analysis Thinking</b></font>',
+                    self.styles["SectionHeader"],
                 )
             )
             # Split into paragraphs for better readability
@@ -1434,22 +1615,37 @@ class ProfessionalReportGenerator:
         key_signals = data.get("key_technical_signals", [])
         if key_signals and isinstance(key_signals, list):
             story.append(
-                Paragraph('<font color="#7c3aed"><b>Key Technical Signals</b></font>', self.styles["SectionHeader"])
+                Paragraph(
+                    '<font color="#7c3aed"><b>Key Technical Signals</b></font>',
+                    self.styles["SectionHeader"],
+                )
             )
             for signal in key_signals[:5]:
                 if isinstance(signal, str):
-                    story.append(Paragraph(f"<bullet>&bull;</bullet> {signal}", self.styles["ReportBody"]))
+                    story.append(
+                        Paragraph(
+                            f"<bullet>&bull;</bullet> {signal}",
+                            self.styles["ReportBody"],
+                        )
+                    )
             story.append(Spacer(1, 12))
 
         # Detailed Risk Factors
         risk_factors = data.get("risk_factors_detailed", [])
         if risk_factors and isinstance(risk_factors, list):
             story.append(
-                Paragraph('<font color="#dc2626"><b>Detailed Risk Factors</b></font>', self.styles["SectionHeader"])
+                Paragraph(
+                    '<font color="#dc2626"><b>Detailed Risk Factors</b></font>',
+                    self.styles["SectionHeader"],
+                )
             )
             for risk in risk_factors[:5]:
                 if isinstance(risk, str):
-                    story.append(Paragraph(f"<bullet>&bull;</bullet> {risk}", self.styles["ReportBody"]))
+                    story.append(
+                        Paragraph(
+                            f"<bullet>&bull;</bullet> {risk}", self.styles["ReportBody"]
+                        )
+                    )
             story.append(Spacer(1, 12))
 
         # Valuation Models table (if available)
@@ -1473,10 +1669,14 @@ class ProfessionalReportGenerator:
                     if fv:
                         upside_str = f"{upside:+.1f}%" if upside is not None else "N/A"
                         conf_str = f"{conf:.0f}%" if conf else "N/A"
-                        val_rows.append([model_name.upper(), f"${fv:.2f}", upside_str, conf_str])
+                        val_rows.append(
+                            [model_name.upper(), f"${fv:.2f}", upside_str, conf_str]
+                        )
 
             if len(val_rows) > 1:
-                val_table = Table(val_rows, colWidths=[1.5 * inch, 1.2 * inch, 1 * inch, 1 * inch])
+                val_table = Table(
+                    val_rows, colWidths=[1.5 * inch, 1.2 * inch, 1 * inch, 1 * inch]
+                )
                 val_table.setStyle(
                     TableStyle(
                         [
@@ -1498,12 +1698,24 @@ class ProfessionalReportGenerator:
                 current_price = data.get("current_price")
                 if current_price and current_price > 0:
                     valid_model_count = len(
-                        [m for m in valuation_models.values() if isinstance(m, dict) and m.get("fair_value_per_share")]
+                        [
+                            m
+                            for m in valuation_models.values()
+                            if isinstance(m, dict) and m.get("fair_value_per_share")
+                        ]
                     )
                     if valid_model_count > 0:
                         bar_chart_height = 35 + 28 * valid_model_count
-                        story.append(Paragraph("Fair Value Comparison", self.styles["SectionHeader"]))
-                        story.append(ValuationBarChart(450, bar_chart_height, current_price, valuation_models))
+                        story.append(
+                            Paragraph(
+                                "Fair Value Comparison", self.styles["SectionHeader"]
+                            )
+                        )
+                        story.append(
+                            ValuationBarChart(
+                                450, bar_chart_height, current_price, valuation_models
+                            )
+                        )
                         story.append(Spacer(1, 16))
 
             # Valuation Methodology explanation box
@@ -1520,10 +1732,14 @@ class ProfessionalReportGenerator:
                 # Add PE/PS targets if available
                 pe_model = valuation_models.get("pe", {})
                 if pe_model:
-                    methodology["target_pe"] = pe_model.get("target_pe", pe_model.get("pe_ratio"))
+                    methodology["target_pe"] = pe_model.get(
+                        "target_pe", pe_model.get("pe_ratio")
+                    )
                 ps_model = valuation_models.get("ps", {})
                 if ps_model:
-                    methodology["target_ps"] = ps_model.get("target_ps", ps_model.get("ps_ratio"))
+                    methodology["target_ps"] = ps_model.get(
+                        "target_ps", ps_model.get("ps_ratio")
+                    )
 
             if methodology and any(methodology.values()):
                 story.append(ValuationMethodologyBox(400, 60, methodology))
@@ -1538,7 +1754,11 @@ class ProfessionalReportGenerator:
             signal = tech_data.get("overall_signal", "NEUTRAL")
             strength = data.get("technical_strength", "NEUTRAL")
             signal_color = (
-                "#22c55e" if signal.lower() == "bullish" else "#ef4444" if signal.lower() == "bearish" else "#6b7280"
+                "#22c55e"
+                if signal.lower() == "bullish"
+                else "#ef4444"
+                if signal.lower() == "bearish"
+                else "#6b7280"
             )
             tech_content.append(
                 Paragraph(
@@ -1559,11 +1779,14 @@ class ProfessionalReportGenerator:
                         levels_text.append(f"Support: ${support:.2f}")
                     if resistance:
                         levels_text.append(f"Resistance: ${resistance:.2f}")
-                    tech_content.append(Paragraph(" | ".join(levels_text), self.styles["ReportBody"]))
+                    tech_content.append(
+                        Paragraph(" | ".join(levels_text), self.styles["ReportBody"])
+                    )
                 if w52:
                     tech_content.append(
                         Paragraph(
-                            f"52-Week: ${w52.get('low', 0):.2f} - ${w52.get('high', 0):.2f}", self.styles["ReportBody"]
+                            f"52-Week: ${w52.get('low', 0):.2f} - ${w52.get('high', 0):.2f}",
+                            self.styles["ReportBody"],
                         )
                     )
 
@@ -1608,11 +1831,17 @@ class ProfessionalReportGenerator:
             # Calculate target upside from data
             current = data.get("current_price")
             target = data.get("target_price")
-            target_upside = ((target - current) / current * 100) if current and target else 0
+            target_upside = (
+                ((target - current) / current * 100) if current and target else 0
+            )
 
             # Show upside comparison chart
-            chart_height = 20 + 20 * min(len(peers), 4)  # Dynamic height based on peer count
-            story.append(PeerComparisonChart(450, chart_height, symbol, target_upside, peers))
+            chart_height = 20 + 20 * min(
+                len(peers), 4
+            )  # Dynamic height based on peer count
+            story.append(
+                PeerComparisonChart(450, chart_height, symbol, target_upside, peers)
+            )
             story.append(Spacer(1, 12))
 
             # Build peer table
@@ -1622,7 +1851,7 @@ class ProfessionalReportGenerator:
                 sym = peer.get("symbol", "N/A")
                 match_type = peer.get("match_type", "sector").capitalize()
                 mcap = peer.get("market_cap")
-                mcap_str = f"${mcap/1e9:.1f}B" if mcap else "N/A"
+                mcap_str = f"${mcap / 1e9:.1f}B" if mcap else "N/A"
                 val = peer.get("valuation") or {}
                 pe = val.get("pe_ratio")
                 pe_str = f"{pe:.1f}x" if pe else "N/A"
@@ -1631,7 +1860,10 @@ class ProfessionalReportGenerator:
                 peer_rows.append([sym, match_type, mcap_str, pe_str, upside_str])
 
             if len(peer_rows) > 1:
-                peer_table = Table(peer_rows, colWidths=[1 * inch, 0.9 * inch, 1.1 * inch, 0.9 * inch, 1 * inch])
+                peer_table = Table(
+                    peer_rows,
+                    colWidths=[1 * inch, 0.9 * inch, 1.1 * inch, 0.9 * inch, 1 * inch],
+                )
                 peer_table.setStyle(
                     TableStyle(
                         [
@@ -1652,12 +1884,18 @@ class ProfessionalReportGenerator:
             if peer_metrics:
                 median_parts = []
                 if "pe_ratio_median" in peer_metrics:
-                    median_parts.append(f"Peer P/E Median: {peer_metrics['pe_ratio_median']:.1f}x")
+                    median_parts.append(
+                        f"Peer P/E Median: {peer_metrics['pe_ratio_median']:.1f}x"
+                    )
                 if "upside_pct_median" in peer_metrics:
-                    median_parts.append(f"Peer Upside Median: {peer_metrics['upside_pct_median']:+.1f}%")
+                    median_parts.append(
+                        f"Peer Upside Median: {peer_metrics['upside_pct_median']:+.1f}%"
+                    )
                 if median_parts:
                     story.append(Spacer(1, 6))
-                    story.append(Paragraph(" | ".join(median_parts), self.styles["ReportBody"]))
+                    story.append(
+                        Paragraph(" | ".join(median_parts), self.styles["ReportBody"])
+                    )
 
             story.append(Spacer(1, 12))
 
@@ -1685,7 +1923,11 @@ class ProfessionalReportGenerator:
         # Disclaimer footer
         if self.config.include_disclaimer:
             story.append(Spacer(1, 30))
-            story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#e5e7eb")))
+            story.append(
+                HRFlowable(
+                    width="100%", thickness=0.5, color=colors.HexColor("#e5e7eb")
+                )
+            )
             story.append(Spacer(1, 8))
             story.append(
                 Paragraph(

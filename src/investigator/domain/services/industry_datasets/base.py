@@ -213,7 +213,9 @@ class BaseIndustryDataset(ABC):
         return symbol.upper() in self.get_known_symbols()
 
     @abstractmethod
-    def extract_metrics(self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs) -> IndustryMetrics:
+    def extract_metrics(
+        self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs
+    ) -> IndustryMetrics:
         """
         Extract industry-specific metrics from XBRL data and financials.
 
@@ -280,10 +282,14 @@ class BaseIndustryDataset(ABC):
                 continue
 
             if defn.min_value is not None and value < defn.min_value:
-                warnings.append(f"{defn.display_name} ({value}) below minimum ({defn.min_value})")
+                warnings.append(
+                    f"{defn.display_name} ({value}) below minimum ({defn.min_value})"
+                )
 
             if defn.max_value is not None and value > defn.max_value:
-                warnings.append(f"{defn.display_name} ({value}) above maximum ({defn.max_value})")
+                warnings.append(
+                    f"{defn.display_name} ({value}) above maximum ({defn.max_value})"
+                )
 
         return warnings
 
@@ -315,7 +321,11 @@ class BaseIndustryDataset(ABC):
         return aliases
 
     def _extract_from_xbrl(
-        self, xbrl_data: Optional[Dict], metric_name: str, xbrl_tags: List[str], default: Optional[float] = None
+        self,
+        xbrl_data: Optional[Dict],
+        metric_name: str,
+        xbrl_tags: List[str],
+        default: Optional[float] = None,
     ) -> Optional[float]:
         """
         Helper to extract a value from XBRL data.
@@ -347,10 +357,16 @@ class BaseIndustryDataset(ABC):
                 if usd_data:
                     # Get latest value
                     sorted_data = sorted(
-                        [d for d in usd_data if d.get("form") in ["10-K", "10-Q", "20-F"]],
+                        [
+                            d
+                            for d in usd_data
+                            if d.get("form") in ["10-K", "10-Q", "20-F"]
+                        ],
                         key=lambda x: (
                             x.get("fy", 0),
-                            {"FY": 5, "Q4": 4, "Q3": 3, "Q2": 2, "Q1": 1}.get(x.get("fp", ""), 0),
+                            {"FY": 5, "Q4": 4, "Q3": 3, "Q2": 2, "Q1": 1}.get(
+                                x.get("fp", ""), 0
+                            ),
                         ),
                         reverse=True,
                     )
@@ -364,4 +380,6 @@ class BaseIndustryDataset(ABC):
         return default
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(name='{self.name}', version='{self.version}')"
+        return (
+            f"{self.__class__.__name__}(name='{self.name}', version='{self.version}')"
+        )

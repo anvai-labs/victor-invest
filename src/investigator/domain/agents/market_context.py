@@ -5,18 +5,25 @@ Provides market and sector context using ETF data from database
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
 from sqlalchemy import text
 
-from investigator.domain.agents.base import AgentResult, AgentTask, AnalysisType, InvestmentAgent, TaskStatus
-from investigator.infrastructure.database.market_data import get_market_data_fetcher  # Uses singleton pattern
-from investigator.infrastructure.external.fred import (
+from investigator.domain.agents.base import (
+    AgentResult,
+    AgentTask,
+    AnalysisType,
+    InvestmentAgent,
+    TaskStatus,
+)
+from investigator.infrastructure.database.market_data import (
+    get_market_data_fetcher,
+)  # Uses singleton pattern
+from investigator.infrastructure.external.fred import (  # TODO: Move to infrastructure
     MacroIndicatorsFetcher,
-    format_indicator_for_display,
 )
 
 logger = logging.getLogger(__name__)
@@ -49,7 +56,8 @@ class ETFMarketContextAgent(InvestmentAgent):
 
         self.config = get_config()
         self.market_context_model = self.config.ollama.models.get(
-            "market_context", self.config.ollama.models.get("synthesis", "deepseek-r1:32b")
+            "market_context",
+            self.config.ollama.models.get("synthesis", "deepseek-r1:32b"),
         )
 
         super().__init__(agent_id, ollama_client, event_bus, cache_manager)
@@ -82,7 +90,10 @@ class ETFMarketContextAgent(InvestmentAgent):
                 "Financial Select Sector SPDR Fund",
             ),
             "energy": SectorMapping(
-                "energy", "XLE", [], "Energy Select Sector SPDR Fund"  # Removed secondary ETFs - primary is sufficient
+                "energy",
+                "XLE",
+                [],
+                "Energy Select Sector SPDR Fund",  # Removed secondary ETFs - primary is sufficient
             ),
             "industrials": SectorMapping(
                 "industrials",
@@ -214,7 +225,9 @@ class ETFMarketContextAgent(InvestmentAgent):
             data = self.market_data_fetcher.get_stock_data(symbol, days)
 
             if data is None or data.empty:
-                logger.warning(f"No data returned for {symbol} from market data fetcher")
+                logger.warning(
+                    f"No data returned for {symbol} from market data fetcher"
+                )
                 return pd.DataFrame()
 
             return data
@@ -252,7 +265,9 @@ class ETFMarketContextAgent(InvestmentAgent):
                 return cached_data
 
             # Fetch fresh data
-            logger.info("Fetching fresh macro indicators from database (will cache globally)")
+            logger.info(
+                "Fetching fresh macro indicators from database (will cache globally)"
+            )
 
             macro_summary = self.macro_fetcher.get_macro_summary()
             buffett = self.macro_fetcher.calculate_buffett_indicator()
@@ -266,7 +281,9 @@ class ETFMarketContextAgent(InvestmentAgent):
             # Cache with MARKET_CONTEXT type - reusable across all stocks
             self.cache.set(CacheType.MARKET_CONTEXT, cache_key, result)
 
-            logger.info("Macro indicators cached globally (reusable for all stocks today)")
+            logger.info(
+                "Macro indicators cached globally (reusable for all stocks today)"
+            )
 
             return result
 
@@ -301,13 +318,21 @@ class ETFMarketContextAgent(InvestmentAgent):
                 try:
                     # Extract macro data from consolidated data
                     macro_data = getattr(consolidated_data, "macro", None) or (
-                        consolidated_data.get("macro") if isinstance(consolidated_data, dict) else None
+                        consolidated_data.get("macro")
+                        if isinstance(consolidated_data, dict)
+                        else None
                     )
                     fed_data = getattr(consolidated_data, "fed_districts", None) or (
-                        consolidated_data.get("fed_districts") if isinstance(consolidated_data, dict) else None
+                        consolidated_data.get("fed_districts")
+                        if isinstance(consolidated_data, dict)
+                        else None
                     )
-                    volatility_data = getattr(consolidated_data, "volatility", None) or (
-                        consolidated_data.get("volatility") if isinstance(consolidated_data, dict) else None
+                    volatility_data = getattr(
+                        consolidated_data, "volatility", None
+                    ) or (
+                        consolidated_data.get("volatility")
+                        if isinstance(consolidated_data, dict)
+                        else None
                     )
 
                     if macro_data or fed_data or volatility_data:
@@ -318,9 +343,13 @@ class ETFMarketContextAgent(InvestmentAgent):
                             "buffett_indicator": None,  # Will be calculated if needed
                             "fetched_at": datetime.now().isoformat(),
                         }
-                        logger.debug(f"Using pre-fetched macro data for {symbol} from DataSourceManager")
+                        logger.debug(
+                            f"Using pre-fetched macro data for {symbol} from DataSourceManager"
+                        )
                 except Exception as e:
-                    logger.debug(f"Could not use consolidated macro data for {symbol}: {e}")
+                    logger.debug(
+                        f"Could not use consolidated macro data for {symbol}: {e}"
+                    )
 
             # Fallback to legacy macro fetch if no pre-fetched data
             if macro_indicators is None:
@@ -335,11 +364,17 @@ class ETFMarketContextAgent(InvestmentAgent):
                 sector_context = await self._analyze_sector_context(sector)
 
             # Analyze relative performance
-            relative_performance = await self._analyze_relative_performance(symbol, sector)
+            relative_performance = await self._analyze_relative_performance(
+                symbol, sector
+            )
 
             # Generate market sentiment analysis (pass macro_indicators for prompt inclusion)
             market_sentiment = await self._generate_market_sentiment_analysis(
-                symbol, market_context, sector_context, relative_performance, macro_indicators=macro_indicators
+                symbol,
+                market_context,
+                sector_context,
+                relative_performance,
+                macro_indicators=macro_indicators,
             )
 
             # Compile comprehensive context
@@ -362,7 +397,9 @@ class ETFMarketContextAgent(InvestmentAgent):
 
             processing_time = (datetime.now() - start_time).total_seconds()
 
-            logger.info(f"ETF market context analysis completed for {symbol} in {processing_time:.2f}s")
+            logger.info(
+                f"ETF market context analysis completed for {symbol} in {processing_time:.2f}s"
+            )
 
             return AgentResult(
                 task_id=task.task_id,
@@ -371,10 +408,14 @@ class ETFMarketContextAgent(InvestmentAgent):
                 result_data=context_analysis,
                 processing_time=processing_time,
                 metadata={
-                    "etfs_analyzed": len(self._get_analyzed_etfs(market_context, sector_context)),
+                    "etfs_analyzed": len(
+                        self._get_analyzed_etfs(market_context, sector_context)
+                    ),
                     "market_regime": market_sentiment.get("market_regime"),
                     "sector_strength": (
-                        sector_context.get("sector_strength", "neutral") if sector_context else "unknown"
+                        sector_context.get("sector_strength", "neutral")
+                        if sector_context
+                        else "unknown"
                     ),
                 },
             )
@@ -383,7 +424,9 @@ class ETFMarketContextAgent(InvestmentAgent):
             import traceback
 
             processing_time = (datetime.now() - start_time).total_seconds()
-            logger.error(f"ETF market context analysis failed for {symbol}: {e}\n{traceback.format_exc()}")
+            logger.error(
+                f"ETF market context analysis failed for {symbol}: {e}\n{traceback.format_exc()}"
+            )
 
             return AgentResult(
                 task_id=task.task_id,
@@ -413,10 +456,14 @@ class ETFMarketContextAgent(InvestmentAgent):
                 # Map database sector names to our ETF sector keys
                 sector_mapping = self._map_database_sector_to_etf_key(db_sector)
                 if sector_mapping:
-                    logger.info(f"Mapped {symbol} sector '{db_sector}' to '{sector_mapping}'")
+                    logger.info(
+                        f"Mapped {symbol} sector '{db_sector}' to '{sector_mapping}'"
+                    )
                     return sector_mapping
                 else:
-                    logger.warning(f"No ETF mapping found for sector '{db_sector}' for {symbol}")
+                    logger.warning(
+                        f"No ETF mapping found for sector '{db_sector}' for {symbol}"
+                    )
 
         except Exception as e:
             logger.warning(f"Failed to lookup sector for {symbol} in database: {e}")
@@ -464,17 +511,22 @@ class ETFMarketContextAgent(InvestmentAgent):
                         # Normalize column names to lowercase for consistency
                         etf_data_normalized = etf_data.copy()
                         etf_data_normalized.columns = [
-                            col.lower().replace(" ", "_") for col in etf_data_normalized.columns
+                            col.lower().replace(" ", "_")
+                            for col in etf_data_normalized.columns
                         ]
 
                         # Calculate returns
                         returns = self._calculate_returns(etf_data_normalized, days)
 
                         # Calculate volatility
-                        volatility = self._calculate_volatility(etf_data_normalized, days)
+                        volatility = self._calculate_volatility(
+                            etf_data_normalized, days
+                        )
 
                         # Calculate momentum indicators
-                        momentum = self._calculate_momentum_indicators(etf_data_normalized)
+                        momentum = self._calculate_momentum_indicators(
+                            etf_data_normalized
+                        )
 
                         timeframe_data[market_type] = {
                             "symbol": etf_symbol,
@@ -482,21 +534,29 @@ class ETFMarketContextAgent(InvestmentAgent):
                             "annualized_return": returns["annualized_return"],
                             "volatility": volatility,
                             "momentum": momentum,
-                            "current_price": float(etf_data_normalized["close"].iloc[-1]),
+                            "current_price": float(
+                                etf_data_normalized["close"].iloc[-1]
+                            ),
                             "days_analyzed": len(etf_data_normalized),
                         }
 
                     else:
-                        logger.warning(f"Insufficient data for {etf_symbol}: {len(etf_data)} days")
+                        logger.warning(
+                            f"Insufficient data for {etf_symbol}: {len(etf_data)} days"
+                        )
 
                 except Exception as e:
-                    logger.warning(f"Failed to analyze {market_type} ETF {etf_symbol}: {e}")
+                    logger.warning(
+                        f"Failed to analyze {market_type} ETF {etf_symbol}: {e}"
+                    )
                     continue
 
             market_context[timeframe_name] = timeframe_data
 
         # Add market regime analysis (now uses VIX from macro indicators)
-        market_context["market_regime"] = self._determine_market_regime(market_context, macro_indicators)
+        market_context["market_regime"] = self._determine_market_regime(
+            market_context, macro_indicators
+        )
 
         return market_context
 
@@ -527,19 +587,26 @@ class ETFMarketContextAgent(InvestmentAgent):
                         # Normalize column names to lowercase for consistency
                         etf_data_normalized = etf_data.copy()
                         etf_data_normalized.columns = [
-                            col.lower().replace(" ", "_") for col in etf_data_normalized.columns
+                            col.lower().replace(" ", "_")
+                            for col in etf_data_normalized.columns
                         ]
 
                         returns = self._calculate_returns(etf_data_normalized, days)
-                        volatility = self._calculate_volatility(etf_data_normalized, days)
-                        momentum = self._calculate_momentum_indicators(etf_data_normalized)
+                        volatility = self._calculate_volatility(
+                            etf_data_normalized, days
+                        )
+                        momentum = self._calculate_momentum_indicators(
+                            etf_data_normalized
+                        )
 
                         timeframe_data[etf_symbol] = {
                             "return": returns["total_return"],
                             "annualized_return": returns["annualized_return"],
                             "volatility": volatility,
                             "momentum": momentum,
-                            "current_price": float(etf_data_normalized["close"].iloc[-1]),
+                            "current_price": float(
+                                etf_data_normalized["close"].iloc[-1]
+                            ),
                         }
 
                 except Exception as e:
@@ -549,37 +616,55 @@ class ETFMarketContextAgent(InvestmentAgent):
             sector_context[timeframe_name] = timeframe_data
 
         # Add sector strength vs market
-        sector_context["sector_strength"] = self._calculate_sector_strength(sector_context)
+        sector_context["sector_strength"] = self._calculate_sector_strength(
+            sector_context
+        )
 
         return sector_context
 
-    async def _analyze_relative_performance(self, symbol: str, sector: Optional[str]) -> Dict:
+    async def _analyze_relative_performance(
+        self, symbol: str, sector: Optional[str]
+    ) -> Dict:
         """Analyze symbol's performance relative to market and sector"""
         relative_performance = {"symbol": symbol}
 
         try:
             # Get symbol data
-            symbol_data = self._get_stock_data_cached(symbol, max(self.timeframes.values()) + 10)
+            symbol_data = self._get_stock_data_cached(
+                symbol, max(self.timeframes.values()) + 10
+            )
 
             if len(symbol_data) < 20:
-                logger.warning(f"Insufficient data for {symbol}: {len(symbol_data)} days")
+                logger.warning(
+                    f"Insufficient data for {symbol}: {len(symbol_data)} days"
+                )
                 return relative_performance
 
             # Normalize column names for symbol data
-            symbol_data.columns = [col.lower().replace(" ", "_") for col in symbol_data.columns]
+            symbol_data.columns = [
+                col.lower().replace(" ", "_") for col in symbol_data.columns
+            ]
 
             # Compare to SPY (market)
-            spy_data = self._get_stock_data_cached("SPY", max(self.timeframes.values()) + 10)
+            spy_data = self._get_stock_data_cached(
+                "SPY", max(self.timeframes.values()) + 10
+            )
             if len(spy_data) > 0:
-                spy_data.columns = [col.lower().replace(" ", "_") for col in spy_data.columns]
+                spy_data.columns = [
+                    col.lower().replace(" ", "_") for col in spy_data.columns
+                ]
 
             if len(spy_data) >= 20:
                 market_comparison = {}
 
                 for timeframe_name, days in self.timeframes.items():
                     if len(symbol_data) >= days and len(spy_data) >= days:
-                        symbol_return = self._calculate_returns(symbol_data, days)["total_return"]
-                        market_return = self._calculate_returns(spy_data, days)["total_return"]
+                        symbol_return = self._calculate_returns(symbol_data, days)[
+                            "total_return"
+                        ]
+                        market_return = self._calculate_returns(spy_data, days)[
+                            "total_return"
+                        ]
 
                         market_comparison[timeframe_name] = {
                             "symbol_return": symbol_return,
@@ -593,23 +678,33 @@ class ETFMarketContextAgent(InvestmentAgent):
             # Compare to sector if available
             if sector and sector in self.sector_etfs:
                 sector_etf = self.sector_etfs[sector].primary_etf
-                sector_data = self._get_stock_data_cached(sector_etf, max(self.timeframes.values()) + 10)
+                sector_data = self._get_stock_data_cached(
+                    sector_etf, max(self.timeframes.values()) + 10
+                )
 
                 if len(sector_data) >= 20:
                     # Normalize column names for sector data
-                    sector_data.columns = [col.lower().replace(" ", "_") for col in sector_data.columns]
+                    sector_data.columns = [
+                        col.lower().replace(" ", "_") for col in sector_data.columns
+                    ]
                     sector_comparison = {}
 
                     for timeframe_name, days in self.timeframes.items():
                         if len(symbol_data) >= days and len(sector_data) >= days:
-                            symbol_return = self._calculate_returns(symbol_data, days)["total_return"]
-                            sector_return = self._calculate_returns(sector_data, days)["total_return"]
+                            symbol_return = self._calculate_returns(symbol_data, days)[
+                                "total_return"
+                            ]
+                            sector_return = self._calculate_returns(sector_data, days)[
+                                "total_return"
+                            ]
 
                             sector_comparison[timeframe_name] = {
                                 "symbol_return": symbol_return,
                                 "sector_return": sector_return,
                                 "relative_return": symbol_return - sector_return,
-                                "relative_strength": symbol_return / sector_return if sector_return != 0 else 1.0,
+                                "relative_strength": symbol_return / sector_return
+                                if sector_return != 0
+                                else 1.0,
                             }
 
                     relative_performance["vs_sector"] = sector_comparison
@@ -641,7 +736,9 @@ class ETFMarketContextAgent(InvestmentAgent):
         analysis_data = {
             "market_performance": self._extract_key_market_metrics(market_context),
             "sector_performance": self._extract_key_sector_metrics(sector_context),
-            "relative_performance_summary": self._summarize_relative_performance(relative_performance),
+            "relative_performance_summary": self._summarize_relative_performance(
+                relative_performance
+            ),
             "market_regime": market_context.get("market_regime", "neutral"),
             "macro_indicators": macro_indicators,
         }
@@ -770,7 +867,9 @@ class ETFMarketContextAgent(InvestmentAgent):
             )
 
             # Ensure response is a dict
-            response_data = response if isinstance(response, dict) else {"analysis": response}
+            response_data = (
+                response if isinstance(response, dict) else {"analysis": response}
+            )
 
             # DUAL CACHING: First, cache the raw LLM response separately for audit/debugging
             await self._cache_llm_response(
@@ -807,7 +906,9 @@ class ETFMarketContextAgent(InvestmentAgent):
         end_price = float(data["close"].iloc[-1])
 
         total_return = (end_price - start_price) / start_price
-        annualized_return = (1 + total_return) ** (252 / days) - 1  # 252 trading days per year
+        annualized_return = (1 + total_return) ** (
+            252 / days
+        ) - 1  # 252 trading days per year
 
         return {"total_return": total_return, "annualized_return": annualized_return}
 
@@ -832,15 +933,27 @@ class ETFMarketContextAgent(InvestmentAgent):
         rsi = self._calculate_rsi(close_prices, 14)
 
         # Moving averages
-        sma_20 = close_prices.rolling(window=20).mean().iloc[-1] if len(data) >= 20 else close_prices.iloc[-1]
-        sma_50 = close_prices.rolling(window=50).mean().iloc[-1] if len(data) >= 50 else close_prices.iloc[-1]
+        sma_20 = (
+            close_prices.rolling(window=20).mean().iloc[-1]
+            if len(data) >= 20
+            else close_prices.iloc[-1]
+        )
+        sma_50 = (
+            close_prices.rolling(window=50).mean().iloc[-1]
+            if len(data) >= 50
+            else close_prices.iloc[-1]
+        )
 
         current_price = close_prices.iloc[-1]
 
         return {
             "rsi": float(rsi) if not pd.isna(rsi) else 50,
-            "price_vs_sma20": float((current_price - sma_20) / sma_20) if sma_20 > 0 else 0,
-            "price_vs_sma50": float((current_price - sma_50) / sma_50) if sma_50 > 0 else 0,
+            "price_vs_sma20": float((current_price - sma_20) / sma_20)
+            if sma_20 > 0
+            else 0,
+            "price_vs_sma50": float((current_price - sma_50) / sma_50)
+            if sma_50 > 0
+            else 0,
             "sma20_vs_sma50": float((sma_20 - sma_50) / sma_50) if sma_50 > 0 else 0,
         }
 
@@ -855,14 +968,20 @@ class ETFMarketContextAgent(InvestmentAgent):
 
         return rsi.iloc[-1] if len(rsi) > 0 else 50
 
-    def _calculate_beta(self, symbol_data: pd.DataFrame, market_data: pd.DataFrame, days: int) -> float:
+    def _calculate_beta(
+        self, symbol_data: pd.DataFrame, market_data: pd.DataFrame, days: int
+    ) -> float:
         """Calculate beta vs market"""
         if len(symbol_data) < days or len(market_data) < days:
             return 1.0
 
         # Align data by date
-        symbol_recent = symbol_data.tail(days)["close"].pct_change(fill_method=None).dropna()
-        market_recent = market_data.tail(days)["close"].pct_change(fill_method=None).dropna()
+        symbol_recent = (
+            symbol_data.tail(days)["close"].pct_change(fill_method=None).dropna()
+        )
+        market_recent = (
+            market_data.tail(days)["close"].pct_change(fill_method=None).dropna()
+        )
 
         # Ensure same length
         min_length = min(len(symbol_recent), len(market_recent))
@@ -877,7 +996,9 @@ class ETFMarketContextAgent(InvestmentAgent):
 
         return covariance / market_variance if market_variance > 0 else 1.0
 
-    def _determine_market_regime(self, market_context: Dict, macro_indicators: Dict = None) -> str:
+    def _determine_market_regime(
+        self, market_context: Dict, macro_indicators: Dict = None
+    ) -> str:
         """Determine current market regime using multi-factor analysis including commodities and VIX"""
         # Analyze medium-term performance
         medium_term = market_context.get("medium_term", {})
@@ -892,7 +1013,7 @@ class ETFMarketContextAgent(InvestmentAgent):
 
         # Commodity data for inflation/cycle detection
         gold_data = medium_term.get("gold", {})
-        silver_data = medium_term.get("silver", {})
+        medium_term.get("silver", {})
         oil_data = medium_term.get("oil", {})
         commodity_data = medium_term.get("commodities", {})
 
@@ -990,7 +1111,9 @@ class ETFMarketContextAgent(InvestmentAgent):
         else:
             return "very_weak"
 
-    def _get_analyzed_etfs(self, market_context: Dict, sector_context: Dict) -> List[str]:
+    def _get_analyzed_etfs(
+        self, market_context: Dict, sector_context: Dict
+    ) -> List[str]:
         """Get list of all ETFs analyzed"""
         etfs = set()
 
@@ -1005,7 +1128,12 @@ class ETFMarketContextAgent(InvestmentAgent):
         for timeframe_data in sector_context.values():
             if isinstance(timeframe_data, dict):
                 for etf_symbol in timeframe_data.keys():
-                    if etf_symbol not in ["sector", "primary_etf", "description", "sector_strength"]:
+                    if etf_symbol not in [
+                        "sector",
+                        "primary_etf",
+                        "description",
+                        "sector_strength",
+                    ]:
                         etfs.add(etf_symbol)
 
         return list(etfs)
@@ -1018,7 +1146,9 @@ class ETFMarketContextAgent(InvestmentAgent):
             "spy_return": medium_term.get("broad_market", {}).get("return", 0),
             "bonds_return": medium_term.get("bonds", {}).get("return", 0),
             "small_cap_return": medium_term.get("small_cap", {}).get("return", 0),
-            "international_return": medium_term.get("international", {}).get("return", 0),
+            "international_return": medium_term.get("international", {}).get(
+                "return", 0
+            ),
             "gold_return": medium_term.get("gold", {}).get("return", 0),
             "silver_return": medium_term.get("silver", {}).get("return", 0),
             "oil_return": medium_term.get("oil", {}).get("return", 0),
@@ -1070,23 +1200,27 @@ class ETFMarketContextAgent(InvestmentAgent):
         lines = []
 
         market_perf = analysis_data.get("market_performance", {})
-        lines.append(f"Market Performance (1M):")
+        lines.append("Market Performance (1M):")
         lines.append(f"  SPY: {market_perf.get('spy_return', 0):.2%}")
         lines.append(f"  Bonds: {market_perf.get('bonds_return', 0):.2%}")
         lines.append(f"  Small Cap: {market_perf.get('small_cap_return', 0):.2%}")
-        lines.append(f"  International: {market_perf.get('international_return', 0):.2%}")
+        lines.append(
+            f"  International: {market_perf.get('international_return', 0):.2%}"
+        )
         lines.append(f"  Market Regime: {market_perf.get('market_regime', 'neutral')}")
 
         # Add commodity performance section
-        lines.append(f"\nCommodity Performance (1M):")
+        lines.append("\nCommodity Performance (1M):")
         lines.append(f"  Gold (GLD): {market_perf.get('gold_return', 0):.2%}")
         lines.append(f"  Silver (SLV): {market_perf.get('silver_return', 0):.2%}")
         lines.append(f"  Oil (USO): {market_perf.get('oil_return', 0):.2%}")
-        lines.append(f"  Commodities (DBC): {market_perf.get('commodities_return', 0):.2%}")
+        lines.append(
+            f"  Commodities (DBC): {market_perf.get('commodities_return', 0):.2%}"
+        )
 
         sector_perf = analysis_data.get("sector_performance", {})
         if sector_perf:
-            lines.append(f"\nSector Performance:")
+            lines.append("\nSector Performance:")
             lines.append(f"  Sector: {sector_perf.get('sector', 'unknown')}")
             lines.append(f"  Return: {sector_perf.get('sector_return', 0):.2%}")
             lines.append(f"  Strength: {sector_perf.get('sector_strength', 'neutral')}")
@@ -1094,7 +1228,7 @@ class ETFMarketContextAgent(InvestmentAgent):
         # Add macro economic indicators section
         macro_indicators = analysis_data.get("macro_indicators")
         if macro_indicators:
-            lines.append(f"\nMacro Economic Indicators:")
+            lines.append("\nMacro Economic Indicators:")
 
             # Buffett Indicator (Market Cap / GDP ratio) - token-efficient rounding
             buffett = macro_indicators.get("buffett_indicator")
@@ -1122,7 +1256,9 @@ class ETFMarketContextAgent(InvestmentAgent):
             # Household Debt to GDP (1 decimal)
             household_debt = macro_summary.get("HDTGPDUSQ163N")
             if household_debt:
-                lines.append(f"  Household Debt/GDP: {household_debt.get('value', 0):.1f}%")
+                lines.append(
+                    f"  Household Debt/GDP: {household_debt.get('value', 0):.1f}%"
+                )
 
             # Public Debt to GDP (1 decimal)
             public_debt = macro_summary.get("GFDEGDQ188S")

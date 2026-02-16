@@ -27,7 +27,9 @@ from investigator.domain.services.valuation.models.company_profile import (
 )
 
 
-def normalize_model_output(result: ValuationModelResult | ModelNotApplicable) -> Dict[str, Any]:
+def normalize_model_output(
+    result: ValuationModelResult | ModelNotApplicable,
+) -> Dict[str, Any]:
     """
     Convert valuation model results into a JSON-friendly dictionary.
 

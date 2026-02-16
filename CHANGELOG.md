@@ -2,91 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.5.0] - 2026-02-15
 
 ### Added
-- CONTRIBUTING.md with comprehensive contribution guidelines
-- Documentation index at docs/INDEX.md for easier navigation
-- Consolidated fiscal year handling guide (FISCAL_YEAR_HANDLING.md)
-- Clean architecture migration status document (CLEAN_ARCHITECTURE_MIGRATION.md)
+- Victor-first CLI (`victor-invest`) with YAML-driven workflows (quick, standard, comprehensive)
+- React + TypeScript research dashboard with TanStack Query and Recharts
+- Deterministic multi-model valuation: DCF, P/E, P/S, EV/EBITDA, GGM with dynamic weighting
+- SEC EDGAR integration with CompanyFacts extraction and XBRL parsing
+- Reinforcement learning model weighting via contextual bandits
+- Sector-specific valuation models (banks, insurance, REITs, biotech, defense, semiconductors)
+- Credit risk scoring: Altman Z-Score, Beneish M-Score, Piotroski F-Score
+- Market regime detection with yield curve, credit cycle, and recession indicators
+- Multi-tier caching (disk, RDBMS, Parquet) with fiscal-period-aware keys
+- Batch analysis with parallel execution and portfolio rankings
+- Docker Compose stack with PostgreSQL, Redis, Ollama, Prometheus, Grafana
 
 ### Changed
-- Consolidated documentation from 76 files to 14 files (~82% reduction)
-- Removed obsolete analysis documents from analysis/ folder
-- Removed duplicate config.py (kept src/investigator/config/config.py)
-- Removed duplicate .env.template (kept config/.env.example)
-- Updated parquet_cache_handler.py to use new config import path
-
-### Removed
-- 62 obsolete documentation files from docs/:
-  - Session summaries (dated 2025-11-12, 2025-11-13)
-  - Phase-specific migration tracking docs
-  - Fiscal year analysis files (consolidated)
-  - Architecture duplication analysis files
-  - Obsolete integration plans and test result documents
-  - Temporary investigation files
-- 32 obsolete analysis documents from analysis/:
-  - Historical bug analysis documents
-  - Implementation summaries
-  - Dated analysis files
-- Old config/config.py (95KB duplicate)
-- config/.env.template (duplicate of .env.example)
-- config/macos/ folder (user-specific files)
+- Migrated from legacy `investigator` CLI to `victor-invest` as primary entry point
+- Switched workflow engine from custom orchestrator to Victor StateGraph
+- Replaced LLM-dependent analysis with deterministic-first pipeline (LLM synthesis optional)
 
 ### Fixed
-- Updated import in parquet_cache_handler.py from old config path to new clean architecture path
+- Fiscal year assignment for non-calendar fiscal year companies (e.g., MSFT, ORCL)
+- Q1 quarterly calculation regression for companies with January fiscal year end
+- Negative revenue edge cases in DCF valuation bounds checker
 
-## [Previous Releases]
-
-### Phase 5: SRP Extraction
-- Extracted TrendAnalyzer, DataQualityAssessor, DeterministicAnalyzer
-- 183 new tests added
-- All code following Single Responsibility Principle
-
-### Phase 4: Configuration & Critical Fixes
-- Configuration validation with 34 tests
-- Fiscal year handling fixes
-- Data quality improvements
-
-### Phase 3: Database Integration
-- Fiscal period-aware caching
-- Database persistence layer
-- TTL enforcement
-
-### Phase 2: Utils Migration
-- Migrated 17 modules from utils/ to clean architecture
-- Removed 255KB of dead code
-- Created import shims for backward compatibility
-
-### Phase 1: Foundation
-- Data normalization (snake_case, rounding)
-- Fiscal period detection service
-- Cache key standardization
-
----
-
-## Documentation Structure
-
-### Core Documentation
-- README.adoc - Main project overview
-- ARCHITECTURE.md - Comprehensive architecture documentation
-- DEVELOPER_GUIDE.adoc - Development setup and guidelines
-- INDEX.md - Documentation index (NEW)
-
-### Migration & Architecture
-- CLEAN_ARCHITECTURE_MIGRATION.md - Clean architecture status (NEW)
-- MIGRATION_GUIDE.md - How to migrate code
-
-### Specialized Guides
-- FISCAL_YEAR_HANDLING.md - Fiscal year handling guide (NEW)
-- VALUATION_ASSUMPTIONS.md - Valuation methodology
-- VALUATION_CONFIGURATION.md - Valuation configuration
-- CLI_DATA_COMMANDS.md - CLI command reference
-- OPERATIONS_RUNBOOK.md - Operational procedures
-
----
-
-**For detailed documentation, see [docs/INDEX.md](docs/INDEX.md)**
+[0.5.0]: https://github.com/vjsingh1984/victor-invest/releases/tag/v0.5.0

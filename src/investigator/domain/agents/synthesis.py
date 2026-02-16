@@ -3,21 +3,29 @@ Synthesis Agent
 Master agent that synthesizes insights from all specialized agents using Ollama LLMs
 """
 
-import asyncio
 import json
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 
 from investigator.domain.agents.base import InvestmentAgent
 from investigator.domain.models.analysis import AgentResult, AgentTask, TaskStatus
-from investigator.domain.services.deterministic_conflict_resolver import reconcile_conflicts
-from investigator.domain.services.deterministic_insight_extractor import extract_key_insights
-from investigator.domain.services.template_thesis_generator import generate_investment_thesis
-from investigator.domain.services.toon_formatter import TOONFormatter, to_toon_array, to_toon_peers
+from investigator.domain.services.deterministic_conflict_resolver import (
+    reconcile_conflicts,
+)
+from investigator.domain.services.deterministic_insight_extractor import (
+    extract_key_insights,
+)
+from investigator.domain.services.template_thesis_generator import (
+    generate_investment_thesis,
+)
+from investigator.domain.services.toon_formatter import (
+    TOONFormatter,
+    to_toon_peers,
+)
 from investigator.infrastructure.cache import CacheManager
 
 
@@ -51,7 +59,9 @@ class SynthesisAgent(InvestmentAgent):
     to produce comprehensive investment recommendations
     """
 
-    def __init__(self, agent_id: str, ollama_client, event_bus, cache_manager: CacheManager):
+    def __init__(
+        self, agent_id: str, ollama_client, event_bus, cache_manager: CacheManager
+    ):
         from investigator.config import get_config
 
         config = get_config()
@@ -73,7 +83,13 @@ class SynthesisAgent(InvestmentAgent):
         super().__init__(agent_id, ollama_client, event_bus, cache_manager)
 
         # Decision thresholds
-        self.thresholds = {"strong_buy": 80, "buy": 65, "hold": 50, "sell": 35, "strong_sell": 20}
+        self.thresholds = {
+            "strong_buy": 80,
+            "buy": 65,
+            "hold": 50,
+            "sell": 35,
+            "strong_sell": 20,
+        }
 
         # Risk categories
         self.risk_categories = [
@@ -87,14 +103,24 @@ class SynthesisAgent(InvestmentAgent):
 
         # Deterministic processing config (replaces LLM calls with rule-based computation)
         valuation_config = getattr(config, "valuation", None)
-        valuation_config_dict = valuation_config if isinstance(valuation_config, dict) else {}
+        valuation_config_dict = (
+            valuation_config if isinstance(valuation_config, dict) else {}
+        )
         deterministic_config = valuation_config_dict.get("deterministic", {})
         self.use_deterministic = deterministic_config.get("enabled", True)
-        self.deterministic_conflict_resolution = deterministic_config.get("conflict_resolution", True)
-        self.deterministic_insight_extraction = deterministic_config.get("insight_extraction", True)
-        self.deterministic_thesis_generation = deterministic_config.get("thesis_generation", True)
+        self.deterministic_conflict_resolution = deterministic_config.get(
+            "conflict_resolution", True
+        )
+        self.deterministic_insight_extraction = deterministic_config.get(
+            "insight_extraction", True
+        )
+        self.deterministic_thesis_generation = deterministic_config.get(
+            "thesis_generation", True
+        )
 
-    def _build_deterministic_response(self, label: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _build_deterministic_response(
+        self, label: str, payload: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Return a structure consistent with _wrap_llm_response for rule-based analyses."""
         return {
             "response": payload,
@@ -179,15 +205,19 @@ class SynthesisAgent(InvestmentAgent):
             for analysis_type, analysis_data in analyses.items():
                 if analysis_data and isinstance(analysis_data, dict):
                     try:
-                        normalized_analyses[analysis_type] = DataNormalizer.normalize_and_round(
-                            analysis_data, to_camel_case=False
+                        normalized_analyses[analysis_type] = (
+                            DataNormalizer.normalize_and_round(
+                                analysis_data, to_camel_case=False
+                            )
                         )
                         self.logger.debug(
-                            f"Normalized {analysis_type} analysis to snake_case " f"({len(analysis_data)} keys)"
+                            f"Normalized {analysis_type} analysis to snake_case "
+                            f"({len(analysis_data)} keys)"
                         )
                     except Exception as e:
                         self.logger.warning(
-                            f"Failed to normalize {analysis_type} analysis: {e}. " f"Using original data."
+                            f"Failed to normalize {analysis_type} analysis: {e}. "
+                            f"Using original data."
                         )
                         normalized_analyses[analysis_type] = analysis_data
                 else:
@@ -241,16 +271,24 @@ class SynthesisAgent(InvestmentAgent):
             reconciliation = await self._reconcile_conflicts(conflicts, synthesis_input)
 
             # Calculate composite scores
-            composite_scores = await self._calculate_composite_scores(synthesis_input, analysis_scores)
+            composite_scores = await self._calculate_composite_scores(
+                synthesis_input, analysis_scores
+            )
 
             # Generate investment thesis
-            thesis = await self._generate_investment_thesis(synthesis_input, key_insights, composite_scores)
+            thesis = await self._generate_investment_thesis(
+                synthesis_input, key_insights, composite_scores
+            )
 
             # Assess risks comprehensively
-            risk_assessment = await self._comprehensive_risk_assessment(synthesis_input, conflicts)
+            risk_assessment = await self._comprehensive_risk_assessment(
+                synthesis_input, conflicts
+            )
 
             # Generate scenarios
-            scenarios = await self._generate_scenarios(synthesis_input, composite_scores, risk_assessment)
+            scenarios = await self._generate_scenarios(
+                synthesis_input, composite_scores, risk_assessment
+            )
 
             # Make final recommendation
             recommendation = await self._make_recommendation(
@@ -258,7 +296,9 @@ class SynthesisAgent(InvestmentAgent):
             )
 
             # Generate action plan
-            action_plan = await self._generate_action_plan(recommendation, synthesis_input, scenarios)
+            action_plan = await self._generate_action_plan(
+                recommendation, synthesis_input, scenarios
+            )
 
             # Create comprehensive report
             report = await self._create_synthesis_report(
@@ -282,7 +322,9 @@ class SynthesisAgent(InvestmentAgent):
             )
 
             # Generate PDF report with embedded charts (Phase 4 enhancement)
-            pdf_result = self._generate_pdf_report(symbol, report, charts, synthesis_input)
+            pdf_result = self._generate_pdf_report(
+                symbol, report, charts, synthesis_input
+            )
             if pdf_result["pdf_generated"]:
                 self.logger.info(f"PDF report generated: {pdf_result['pdf_path']}")
             else:
@@ -325,28 +367,32 @@ class SynthesisAgent(InvestmentAgent):
         # Score SEC analysis
         if synthesis_input.sec_analysis:
             sec_score = self._evaluate_analysis_quality(
-                synthesis_input.sec_analysis, required_fields=["metrics", "risks", "analysis"]
+                synthesis_input.sec_analysis,
+                required_fields=["metrics", "risks", "analysis"],
             )
             scores["sec"] = sec_score
 
         # Score fundamental analysis
         if synthesis_input.fundamental_analysis:
             fundamental_score = self._evaluate_analysis_quality(
-                synthesis_input.fundamental_analysis, required_fields=["valuation", "quality_score", "analysis"]
+                synthesis_input.fundamental_analysis,
+                required_fields=["valuation", "quality_score", "analysis"],
             )
             scores["fundamental"] = fundamental_score
 
         # Score technical analysis
         if synthesis_input.technical_analysis:
             technical_score = self._evaluate_analysis_quality(
-                synthesis_input.technical_analysis, required_fields=["signals", "levels", "analysis"]
+                synthesis_input.technical_analysis,
+                required_fields=["signals", "levels", "analysis"],
             )
             scores["technical"] = technical_score
 
         # Score sentiment analysis
         if synthesis_input.sentiment_analysis:
             sentiment_score = self._evaluate_analysis_quality(
-                synthesis_input.sentiment_analysis, required_fields=["sentiment_score", "trends"]
+                synthesis_input.sentiment_analysis,
+                required_fields=["sentiment_score", "trends"],
             )
             scores["sentiment"] = sentiment_score
 
@@ -356,7 +402,9 @@ class SynthesisAgent(InvestmentAgent):
         """Extract key insights from each analysis using LLM"""
         # Check if deterministic insight extraction is enabled (saves tokens, faster)
         if self.use_deterministic and self.deterministic_insight_extraction:
-            self.logger.debug(f"{synthesis_input.symbol} - Using deterministic insight extraction (LLM bypass)")
+            self.logger.debug(
+                f"{synthesis_input.symbol} - Using deterministic insight extraction (LLM bypass)"
+            )
 
             response_data = extract_key_insights(
                 fundamental=synthesis_input.fundamental_analysis,
@@ -366,7 +414,9 @@ class SynthesisAgent(InvestmentAgent):
             )
 
             # Add quantitative insights (same as LLM path)
-            response_data["quantitative"] = self._extract_quantitative_insights(synthesis_input)
+            response_data["quantitative"] = self._extract_quantitative_insights(
+                synthesis_input
+            )
 
             return self._build_deterministic_response("key_insights", response_data)
 
@@ -441,21 +491,36 @@ class SynthesisAgent(InvestmentAgent):
         insights["quantitative"] = self._extract_quantitative_insights(synthesis_input)
 
         return self._wrap_llm_response(
-            response=insights, model=self.models["reasoning"], prompt=prompt, temperature=0.3, top_p=0.9, format="json"
+            response=insights,
+            model=self.models["reasoning"],
+            prompt=prompt,
+            temperature=0.3,
+            top_p=0.9,
+            format="json",
         )
 
     def _calculate_smart_price_targets(
-        self, synthesis_input: SynthesisInput, composite_scores: Dict, risk_assessment: Dict
+        self,
+        synthesis_input: SynthesisInput,
+        composite_scores: Dict,
+        risk_assessment: Dict,
     ) -> Dict:
         """Calculate smart price targets with both upward and downward adjustments"""
-        from utils.valuation.valuation_adjustments import SmartValuationAdjuster, ValuationMetrics
+        from utils.valuation.valuation_adjustments import (
+            SmartValuationAdjuster,
+            ValuationMetrics,
+        )
 
         # Extract valuation data
         valuation_data = (
-            synthesis_input.fundamental_analysis.get("valuation", {}) if synthesis_input.fundamental_analysis else {}
+            synthesis_input.fundamental_analysis.get("valuation", {})
+            if synthesis_input.fundamental_analysis
+            else {}
         )
         technical_data = (
-            synthesis_input.technical_analysis.get("signals", {}) if synthesis_input.technical_analysis else {}
+            synthesis_input.technical_analysis.get("signals", {})
+            if synthesis_input.technical_analysis
+            else {}
         )
 
         # Extract multi-model summary for blended fair value
@@ -465,11 +530,15 @@ class SynthesisAgent(InvestmentAgent):
             else {}
         )
         blended_fair_value = multi_model_summary.get("blended_fair_value")
-        model_agreement_score = multi_model_summary.get("model_agreement_score")
-        overall_confidence = multi_model_summary.get("overall_confidence")
+        multi_model_summary.get("model_agreement_score")
+        multi_model_summary.get("overall_confidence")
 
         # Use blended fair value as primary (fallback to regular fair_value if unavailable)
-        final_fair_value = blended_fair_value if blended_fair_value else valuation_data.get("fair_value", 0)
+        final_fair_value = (
+            blended_fair_value
+            if blended_fair_value
+            else valuation_data.get("fair_value", 0)
+        )
 
         # Create valuation metrics
         metrics = ValuationMetrics(
@@ -488,29 +557,49 @@ class SynthesisAgent(InvestmentAgent):
         )
 
         # Get market context if available
-        market_context = synthesis_input.market_context if hasattr(synthesis_input, "market_context") else None
+        market_context = (
+            synthesis_input.market_context
+            if hasattr(synthesis_input, "market_context")
+            else None
+        )
 
         # Prepare analysis context
         analysis_context = {
-            "risk_level": self._map_risk_score_to_level(risk_assessment.get("overall_risk", 50)),
-            "technical_trend": self._extract_technical_trend(synthesis_input.technical_analysis),
-            "market_sentiment": self._assess_market_sentiment(synthesis_input, market_context),
+            "risk_level": self._map_risk_score_to_level(
+                risk_assessment.get("overall_risk", 50)
+            ),
+            "technical_trend": self._extract_technical_trend(
+                synthesis_input.technical_analysis
+            ),
+            "market_sentiment": self._assess_market_sentiment(
+                synthesis_input, market_context
+            ),
             "sector": synthesis_input.context.get("sector", "default"),
-            "quality_factors": self._extract_quality_factors(synthesis_input.fundamental_analysis),
+            "quality_factors": self._extract_quality_factors(
+                synthesis_input.fundamental_analysis
+            ),
             "market_regime": (
-                market_context.get("market_sentiment", {}).get("market_regime") if market_context else "neutral"
+                market_context.get("market_sentiment", {}).get("market_regime")
+                if market_context
+                else "neutral"
             ),
             "sector_strength": (
-                market_context.get("sector_context", {}).get("sector_strength") if market_context else "neutral"
+                market_context.get("sector_context", {}).get("sector_strength")
+                if market_context
+                else "neutral"
             ),
         }
 
         # Calculate smart adjusted target
         adjuster = SmartValuationAdjuster()
-        adjusted_target, adjustment_details = adjuster.calculate_adjusted_target(metrics, analysis_context)
+        adjusted_target, adjustment_details = adjuster.calculate_adjusted_target(
+            metrics, analysis_context
+        )
 
         # Generate valuation summary
-        valuation_summary = adjuster.generate_valuation_summary(metrics, adjusted_target, adjustment_details)
+        valuation_summary = adjuster.generate_valuation_summary(
+            metrics, adjusted_target, adjustment_details
+        )
 
         return {
             "adjusted_target": adjusted_target,
@@ -557,7 +646,9 @@ class SynthesisAgent(InvestmentAgent):
         else:
             return "sideways"
 
-    def _assess_market_sentiment(self, synthesis_input: SynthesisInput, market_context: Optional[Dict] = None) -> str:
+    def _assess_market_sentiment(
+        self, synthesis_input: SynthesisInput, market_context: Optional[Dict] = None
+    ) -> str:
         """Assess overall market sentiment using ETF context data"""
         # If we have ETF market context, use it for better sentiment assessment
         if market_context:
@@ -575,7 +666,9 @@ class SynthesisAgent(InvestmentAgent):
                 return "bearish"
 
             # Fall back to market performance
-            market_perf = market_context.get("market_context", {}).get("medium_term", {})
+            market_perf = market_context.get("market_context", {}).get(
+                "medium_term", {}
+            )
             spy_data = market_perf.get("broad_market", {})
             spy_return = spy_data.get("return", 0)
 
@@ -615,12 +708,20 @@ class SynthesisAgent(InvestmentAgent):
 
         return {
             "quality_score": fundamental_analysis.get("quality_score", 50),
-            "competitive_advantages": fundamental_analysis.get("competitive_advantages", []),
-            "management_quality": fundamental_analysis.get("management_quality", "average"),
-            "financial_strength": fundamental_analysis.get("financial_strength", "average"),
+            "competitive_advantages": fundamental_analysis.get(
+                "competitive_advantages", []
+            ),
+            "management_quality": fundamental_analysis.get(
+                "management_quality", "average"
+            ),
+            "financial_strength": fundamental_analysis.get(
+                "financial_strength", "average"
+            ),
         }
 
-    def _aggregate_to_fiscal_years(self, quarterly_data: List[Dict], metric_name: str) -> List[Dict]:
+    def _aggregate_to_fiscal_years(
+        self, quarterly_data: List[Dict], metric_name: str
+    ) -> List[Dict]:
         """
         Aggregate quarterly financial data into fiscal years
 
@@ -786,11 +887,18 @@ class SynthesisAgent(InvestmentAgent):
                 'data_quality': 'excellent' | 'good' | 'limited' | 'insufficient'
             }
         """
-        metrics = {"revenue": {}, "earnings": {}, "data_quality": "insufficient", "years_analyzed": 0}
+        metrics = {
+            "revenue": {},
+            "earnings": {},
+            "data_quality": "insufficient",
+            "years_analyzed": 0,
+        }
 
         # Check if fundamental analysis is available
         if not synthesis_input.fundamental_analysis:
-            self.logger.debug("No fundamental analysis available for multi-year metrics")
+            self.logger.debug(
+                "No fundamental analysis available for multi-year metrics"
+            )
             return metrics
 
         fundamental_data = synthesis_input.fundamental_analysis
@@ -816,7 +924,10 @@ class SynthesisAgent(InvestmentAgent):
             years_diff = latest_year["fiscal_year"] - oldest_year["fiscal_year"]
 
             if years_diff > 0 and oldest_year["value"] > 0:
-                revenue_cagr = (((latest_year["value"] / oldest_year["value"]) ** (1 / years_diff)) - 1) * 100
+                revenue_cagr = (
+                    ((latest_year["value"] / oldest_year["value"]) ** (1 / years_diff))
+                    - 1
+                ) * 100
                 metrics["revenue"]["cagr"] = round(revenue_cagr, 2)
 
                 # Calculate Revenue Volatility (year-over-year growth rate standard deviation)
@@ -833,14 +944,20 @@ class SynthesisAgent(InvestmentAgent):
                     metrics["revenue"]["volatility"] = round(revenue_volatility, 2)
 
                     # Detect pattern and trend
-                    metrics["revenue"]["pattern"] = self._detect_cyclical_pattern(revenue_cagr, revenue_volatility)
-                    metrics["revenue"]["trend"] = self._detect_trend_direction(revenue_annual)
+                    metrics["revenue"]["pattern"] = self._detect_cyclical_pattern(
+                        revenue_cagr, revenue_volatility
+                    )
+                    metrics["revenue"]["trend"] = self._detect_trend_direction(
+                        revenue_annual
+                    )
 
         # --- EARNINGS METRICS ---
         earnings_annual = self._aggregate_to_fiscal_years(quarterly_data, "net_income")
         if not earnings_annual:
             # Try alternative field names
-            earnings_annual = self._aggregate_to_fiscal_years(quarterly_data, "earnings")
+            earnings_annual = self._aggregate_to_fiscal_years(
+                quarterly_data, "earnings"
+            )
 
         if len(earnings_annual) >= 2:
             # Calculate Earnings CAGR
@@ -849,7 +966,10 @@ class SynthesisAgent(InvestmentAgent):
             years_diff = latest_year["fiscal_year"] - oldest_year["fiscal_year"]
 
             if years_diff > 0 and oldest_year["value"] > 0:
-                earnings_cagr = (((latest_year["value"] / oldest_year["value"]) ** (1 / years_diff)) - 1) * 100
+                earnings_cagr = (
+                    ((latest_year["value"] / oldest_year["value"]) ** (1 / years_diff))
+                    - 1
+                ) * 100
                 metrics["earnings"]["cagr"] = round(earnings_cagr, 2)
 
                 # Calculate Earnings Volatility
@@ -866,8 +986,12 @@ class SynthesisAgent(InvestmentAgent):
                     metrics["earnings"]["volatility"] = round(earnings_volatility, 2)
 
                     # Detect pattern and trend
-                    metrics["earnings"]["pattern"] = self._detect_cyclical_pattern(earnings_cagr, earnings_volatility)
-                    metrics["earnings"]["trend"] = self._detect_trend_direction(earnings_annual)
+                    metrics["earnings"]["pattern"] = self._detect_cyclical_pattern(
+                        earnings_cagr, earnings_volatility
+                    )
+                    metrics["earnings"]["trend"] = self._detect_trend_direction(
+                        earnings_annual
+                    )
 
         # --- DATA QUALITY ASSESSMENT ---
         max_years = max(len(revenue_annual), len(earnings_annual))
@@ -884,7 +1008,9 @@ class SynthesisAgent(InvestmentAgent):
 
         return metrics
 
-    def _generate_charts(self, symbol: str, synthesis_input: SynthesisInput, multi_year_metrics: Dict) -> Dict:
+    def _generate_charts(
+        self, symbol: str, synthesis_input: SynthesisInput, multi_year_metrics: Dict
+    ) -> Dict:
         """
         Generate charts for quarterly revenue trends and multi-year historical analysis
 
@@ -901,7 +1027,11 @@ class SynthesisAgent(InvestmentAgent):
                 'charts_generated': True/False
             }
         """
-        charts = {"quarterly_revenue_chart": "", "multi_year_trends_chart": "", "charts_generated": False}
+        charts = {
+            "quarterly_revenue_chart": "",
+            "multi_year_trends_chart": "",
+            "charts_generated": False,
+        }
 
         try:
             # Import ChartGenerator
@@ -911,7 +1041,9 @@ class SynthesisAgent(InvestmentAgent):
 
             # Check if fundamental analysis data is available
             if not synthesis_input.fundamental_analysis:
-                self.logger.debug("No fundamental analysis available for chart generation")
+                self.logger.debug(
+                    "No fundamental analysis available for chart generation"
+                )
                 return charts
 
             fundamental_data = synthesis_input.fundamental_analysis
@@ -923,7 +1055,9 @@ class SynthesisAgent(InvestmentAgent):
             # Extract quarterly data for revenue trend chart
             quarterly_data = fundamental_data.get("quarterly_metrics", [])
             if not quarterly_data:
-                quarterly_data = fundamental_data.get("financials", {}).get("quarterly", [])
+                quarterly_data = fundamental_data.get("financials", {}).get(
+                    "quarterly", []
+                )
             if not quarterly_data:
                 quarterly_data = fundamental_data.get("quarterly", [])
 
@@ -939,26 +1073,44 @@ class SynthesisAgent(InvestmentAgent):
 
                 if revenue_trend_data:
                     quarterly_trends = {"revenue_trend": revenue_trend_data}
-                    quarterly_chart_path = chart_gen.generate_quarterly_revenue_trend(symbol, quarterly_trends)
+                    quarterly_chart_path = chart_gen.generate_quarterly_revenue_trend(
+                        symbol, quarterly_trends
+                    )
                     if quarterly_chart_path:
                         charts["quarterly_revenue_chart"] = quarterly_chart_path
-                        self.logger.info(f"Generated quarterly revenue chart: {quarterly_chart_path}")
+                        self.logger.info(
+                            f"Generated quarterly revenue chart: {quarterly_chart_path}"
+                        )
 
             # Generate multi-year trends chart
-            if multi_year_metrics.get("data_quality") in ["excellent", "good", "limited"]:
+            if multi_year_metrics.get("data_quality") in [
+                "excellent",
+                "good",
+                "limited",
+            ]:
                 # Prepare yearly data from quarterly data
                 annual_data = []
 
                 # Get revenue and earnings annual data
-                revenue_annual = self._aggregate_to_fiscal_years(quarterly_data, "revenue")
-                earnings_annual = self._aggregate_to_fiscal_years(quarterly_data, "net_income")
+                revenue_annual = self._aggregate_to_fiscal_years(
+                    quarterly_data, "revenue"
+                )
+                earnings_annual = self._aggregate_to_fiscal_years(
+                    quarterly_data, "net_income"
+                )
 
                 # Combine revenue and earnings by fiscal year
-                years_revenue = {item["fiscal_year"]: item["value"] for item in revenue_annual}
-                years_earnings = {item["fiscal_year"]: item["value"] for item in earnings_annual}
+                years_revenue = {
+                    item["fiscal_year"]: item["value"] for item in revenue_annual
+                }
+                years_earnings = {
+                    item["fiscal_year"]: item["value"] for item in earnings_annual
+                }
 
                 # Get all years
-                all_years = sorted(set(years_revenue.keys()) | set(years_earnings.keys()), reverse=True)
+                all_years = sorted(
+                    set(years_revenue.keys()) | set(years_earnings.keys()), reverse=True
+                )
 
                 for year in all_years:
                     annual_data.append(
@@ -972,18 +1124,26 @@ class SynthesisAgent(InvestmentAgent):
                 # Prepare metrics in expected format
                 metrics = {
                     "revenue_cagr": multi_year_metrics.get("revenue", {}).get("cagr"),
-                    "cyclical_pattern": multi_year_metrics.get("revenue", {}).get("pattern"),
+                    "cyclical_pattern": multi_year_metrics.get("revenue", {}).get(
+                        "pattern"
+                    ),
                 }
 
                 if annual_data and len(annual_data) >= 2:
                     multi_year_trends_data = {"data": annual_data, "metrics": metrics}
-                    multi_year_chart_path = chart_gen.generate_multi_year_trends_chart(symbol, multi_year_trends_data)
+                    multi_year_chart_path = chart_gen.generate_multi_year_trends_chart(
+                        symbol, multi_year_trends_data
+                    )
                     if multi_year_chart_path:
                         charts["multi_year_trends_chart"] = multi_year_chart_path
-                        self.logger.info(f"Generated multi-year trends chart: {multi_year_chart_path}")
+                        self.logger.info(
+                            f"Generated multi-year trends chart: {multi_year_chart_path}"
+                        )
 
             # Set charts_generated flag if at least one chart was created
-            charts["charts_generated"] = bool(charts["quarterly_revenue_chart"] or charts["multi_year_trends_chart"])
+            charts["charts_generated"] = bool(
+                charts["quarterly_revenue_chart"] or charts["multi_year_trends_chart"]
+            )
 
         except ImportError as e:
             self.logger.warning(f"Chart generation not available: {e}")
@@ -1185,15 +1345,21 @@ class SynthesisAgent(InvestmentAgent):
             quarterly_data = fundamental_data.get("quarterly", [])
 
         if not quarterly_data or len(quarterly_data) < 4:
-            self.logger.debug("Insufficient quarterly data for comprehensive trend analysis")
+            self.logger.debug(
+                "Insufficient quarterly data for comprehensive trend analysis"
+            )
             return trend_analysis
 
         # Sort by period (most recent first)
-        sorted_data = sorted(quarterly_data, key=lambda x: x.get("period", ""), reverse=True)
+        sorted_data = sorted(
+            quarterly_data, key=lambda x: x.get("period", ""), reverse=True
+        )
 
         # Limit to last 8 quarters (2 years)
         recent_data = sorted_data[:8]
-        trend_analysis["quarterly_insights"]["recent_quarters_analyzed"] = len(recent_data)
+        trend_analysis["quarterly_insights"]["recent_quarters_analyzed"] = len(
+            recent_data
+        )
 
         # Extract revenue data and calculate YoY growth
         revenue_values = []
@@ -1213,7 +1379,9 @@ class SynthesisAgent(InvestmentAgent):
 
         # Analyze revenue trend
         if revenue_growth_rates:
-            trend_analysis["revenue_trend"] = self._classify_revenue_trend(revenue_growth_rates)
+            trend_analysis["revenue_trend"] = self._classify_revenue_trend(
+                revenue_growth_rates
+            )
 
             # Determine revenue momentum
             avg_growth = np.mean(revenue_growth_rates)
@@ -1260,13 +1428,18 @@ class SynthesisAgent(InvestmentAgent):
 
         # Analyze cash flow trend
         if len(cash_flow_values) >= 4:
-            trend_analysis["cash_flow_trend"] = self._classify_cash_flow_trend(cash_flow_values)
+            trend_analysis["cash_flow_trend"] = self._classify_cash_flow_trend(
+                cash_flow_values
+            )
 
             # Determine cash generation quality
             avg_cash_flow = np.mean(cash_flow_values)
             if trend_analysis["cash_flow_trend"] == "improving" and avg_cash_flow > 0:
                 trend_analysis["quarterly_insights"]["cash_generation"] = "strong"
-            elif trend_analysis["cash_flow_trend"] == "deteriorating" or avg_cash_flow < 0:
+            elif (
+                trend_analysis["cash_flow_trend"] == "deteriorating"
+                or avg_cash_flow < 0
+            ):
                 trend_analysis["quarterly_insights"]["cash_generation"] = "weak"
             else:
                 trend_analysis["quarterly_insights"]["cash_generation"] = "adequate"
@@ -1280,7 +1453,11 @@ class SynthesisAgent(InvestmentAgent):
         return trend_analysis
 
     def _generate_pdf_report(
-        self, symbol: str, synthesis_report: Dict, chart_paths: Dict, synthesis_input: "SynthesisInput"
+        self,
+        symbol: str,
+        synthesis_report: Dict,
+        chart_paths: Dict,
+        synthesis_input: "SynthesisInput",
     ) -> Dict:
         """
         Generate professional PDF report with embedded charts
@@ -1320,9 +1497,8 @@ class SynthesisAgent(InvestmentAgent):
 
             # Check if report generator available
             try:
-                from reportlab.lib.pagesizes import letter
+                from reportlab.lib.pagesizes import letter  # noqa: F401
 
-                reportlab_available = True
             except ImportError:
                 self.logger.warning("reportlab not available - PDF generation disabled")
                 result["error"] = "reportlab_not_installed"
@@ -1350,10 +1526,14 @@ class SynthesisAgent(InvestmentAgent):
 
             # Get fundamental and technical data from synthesis input for backfilling
             fundamental_data = (
-                synthesis_input.fundamental_analysis if hasattr(synthesis_input, "fundamental_analysis") else None
+                synthesis_input.fundamental_analysis
+                if hasattr(synthesis_input, "fundamental_analysis")
+                else None
             )
             technical_data = (
-                synthesis_input.technical_analysis if hasattr(synthesis_input, "technical_analysis") else None
+                synthesis_input.technical_analysis
+                if hasattr(synthesis_input, "technical_analysis")
+                else None
             )
 
             # Build normalized recommendation payload
@@ -1366,7 +1546,9 @@ class SynthesisAgent(InvestmentAgent):
             )
 
             # Generate PDF report
-            self.logger.info(f"Generating PDF report for {symbol} with {len(include_charts)} charts")
+            self.logger.info(
+                f"Generating PDF report for {symbol} with {len(include_charts)} charts"
+            )
 
             pdf_path = pdf_gen.generate_report(
                 recommendations=[recommendation],
@@ -1397,7 +1579,9 @@ class SynthesisAgent(InvestmentAgent):
 
         # Check fundamental vs technical conflicts
         if synthesis_input.fundamental_analysis and synthesis_input.technical_analysis:
-            fund_rec = synthesis_input.fundamental_analysis.get("recommendation", "hold")
+            fund_rec = synthesis_input.fundamental_analysis.get(
+                "recommendation", "hold"
+            )
             tech_rec = synthesis_input.technical_analysis.get("recommendation", "hold")
 
             if self._are_recommendations_conflicting(fund_rec, tech_rec):
@@ -1415,9 +1599,15 @@ class SynthesisAgent(InvestmentAgent):
         if synthesis_input.fundamental_analysis:
             valuation = synthesis_input.fundamental_analysis.get("valuation", {})
             # Use multi-model blended fair value if available
-            multi_model_summary = synthesis_input.fundamental_analysis.get("multi_model_summary", {})
+            multi_model_summary = synthesis_input.fundamental_analysis.get(
+                "multi_model_summary", {}
+            )
             blended_fair_value = multi_model_summary.get("blended_fair_value")
-            fair_value = blended_fair_value if blended_fair_value else valuation.get("fair_value", 0)
+            fair_value = (
+                blended_fair_value
+                if blended_fair_value
+                else valuation.get("fair_value", 0)
+            )
             current_price = valuation.get("current_price", 0)
 
             if synthesis_input.technical_analysis:
@@ -1425,7 +1615,11 @@ class SynthesisAgent(InvestmentAgent):
                 tech_target = tech_signals.get("target_price", 0)
 
                 if fair_value and tech_target:
-                    deviation = abs(fair_value - tech_target) / current_price if current_price else 0
+                    deviation = (
+                        abs(fair_value - tech_target) / current_price
+                        if current_price
+                        else 0
+                    )
                     if deviation > 0.20:  # More than 20% difference
                         conflicts.append(
                             {
@@ -1440,9 +1634,13 @@ class SynthesisAgent(InvestmentAgent):
         # Check risk assessment conflicts
         if synthesis_input.sec_analysis and synthesis_input.fundamental_analysis:
             sec_risks = synthesis_input.sec_analysis.get("risks", [])
-            fund_health = synthesis_input.fundamental_analysis.get("analysis", {}).get("health_score", 50)
+            fund_health = synthesis_input.fundamental_analysis.get("analysis", {}).get(
+                "health_score", 50
+            )
 
-            high_risk_count = sum(1 for risk in sec_risks if risk.get("severity") == "high")
+            high_risk_count = sum(
+                1 for risk in sec_risks if risk.get("severity") == "high"
+            )
 
             if high_risk_count > 3 and fund_health > 70:
                 conflicts.append(
@@ -1456,7 +1654,9 @@ class SynthesisAgent(InvestmentAgent):
 
         return conflicts
 
-    async def _reconcile_conflicts(self, conflicts: List[Dict], synthesis_input: SynthesisInput) -> Dict:
+    async def _reconcile_conflicts(
+        self, conflicts: List[Dict], synthesis_input: SynthesisInput
+    ) -> Dict:
         """Reconcile conflicts between analyses using reasoning"""
         symbol = synthesis_input.symbol
 
@@ -1465,7 +1665,9 @@ class SynthesisAgent(InvestmentAgent):
 
         # Check if deterministic conflict resolution is enabled (saves tokens, faster)
         if self.use_deterministic and self.deterministic_conflict_resolution:
-            self.logger.debug(f"{symbol} - Using deterministic conflict resolution (LLM bypass)")
+            self.logger.debug(
+                f"{symbol} - Using deterministic conflict resolution (LLM bypass)"
+            )
 
             response_data = reconcile_conflicts(
                 conflicts=conflicts,
@@ -1476,7 +1678,9 @@ class SynthesisAgent(InvestmentAgent):
                 time_horizon="long_term",
             )
 
-            return self._build_deterministic_response("conflict_resolution", response_data)
+            return self._build_deterministic_response(
+                "conflict_resolution", response_data
+            )
 
         # === LLM Path (fallback when deterministic is disabled) ===
         conflicts_json = json.dumps(conflicts, indent=2)
@@ -1545,7 +1749,9 @@ class SynthesisAgent(InvestmentAgent):
             format="json",
         )
 
-    async def _calculate_composite_scores(self, synthesis_input: SynthesisInput, analysis_scores: Dict) -> Dict:
+    async def _calculate_composite_scores(
+        self, synthesis_input: SynthesisInput, analysis_scores: Dict
+    ) -> Dict:
         """Calculate composite scores from all analyses"""
         composite = {}
 
@@ -1554,7 +1760,9 @@ class SynthesisAgent(InvestmentAgent):
 
         # Extract scores from analyses
         if synthesis_input.fundamental_analysis:
-            scores["fundamental"] = synthesis_input.fundamental_analysis.get("quality_score", 50)
+            scores["fundamental"] = synthesis_input.fundamental_analysis.get(
+                "quality_score", 50
+            )
 
         if synthesis_input.technical_analysis:
             tech_rating = synthesis_input.technical_analysis.get("technical_rating", 5)
@@ -1565,7 +1773,9 @@ class SynthesisAgent(InvestmentAgent):
             scores["sec"] = sec_analysis.get("overall_rating", 5) * 10
 
         if synthesis_input.sentiment_analysis:
-            scores["sentiment"] = synthesis_input.sentiment_analysis.get("sentiment_score", 50)
+            scores["sentiment"] = synthesis_input.sentiment_analysis.get(
+                "sentiment_score", 50
+            )
 
         # Apply quality weights
         weighted_scores = {}
@@ -1574,17 +1784,25 @@ class SynthesisAgent(InvestmentAgent):
             weighted_scores[analysis_type] = score * quality
 
         # Calculate weighted composite
-        weights = {"fundamental": 0.35, "technical": 0.20, "sec": 0.30, "sentiment": 0.15}
+        weights = {
+            "fundamental": 0.35,
+            "technical": 0.20,
+            "sec": 0.30,
+            "sentiment": 0.15,
+        }
 
         total_weight = sum(weights[k] for k in weighted_scores.keys())
         composite["overall_score"] = (
-            sum(weighted_scores[k] * weights[k] for k in weighted_scores.keys()) / total_weight
+            sum(weighted_scores[k] * weights[k] for k in weighted_scores.keys())
+            / total_weight
             if total_weight > 0
             else 50
         )
 
         # Calculate confidence based on analysis completeness and agreement
-        composite["confidence"] = self._calculate_confidence(synthesis_input, analysis_scores, weighted_scores)
+        composite["confidence"] = self._calculate_confidence(
+            synthesis_input, analysis_scores, weighted_scores
+        )
 
         # Component scores
         composite["component_scores"] = weighted_scores
@@ -1593,12 +1811,17 @@ class SynthesisAgent(InvestmentAgent):
         return composite
 
     async def _generate_investment_thesis(
-        self, synthesis_input: SynthesisInput, key_insights: Dict, composite_scores: Dict
+        self,
+        synthesis_input: SynthesisInput,
+        key_insights: Dict,
+        composite_scores: Dict,
     ) -> Dict:
         """Generate comprehensive investment thesis"""
         # Check if deterministic thesis generation is enabled (saves tokens, faster)
         if self.use_deterministic and self.deterministic_thesis_generation:
-            self.logger.debug(f"{synthesis_input.symbol} - Using deterministic thesis generation (LLM bypass)")
+            self.logger.debug(
+                f"{synthesis_input.symbol} - Using deterministic thesis generation (LLM bypass)"
+            )
 
             response_data = generate_investment_thesis(
                 symbol=synthesis_input.symbol,
@@ -1608,7 +1831,9 @@ class SynthesisAgent(InvestmentAgent):
                 company_profile=None,  # Will use data from fundamental_analysis if available
             )
 
-            return self._build_deterministic_response("investment_thesis", response_data)
+            return self._build_deterministic_response(
+                "investment_thesis", response_data
+            )
 
         # === LLM Path (fallback when deterministic is disabled) ===
         insights_json = json.dumps(key_insights, indent=2)[:4000]
@@ -1678,7 +1903,9 @@ class SynthesisAgent(InvestmentAgent):
             format="json",
         )
 
-    async def _comprehensive_risk_assessment(self, synthesis_input: SynthesisInput, conflicts: List[Dict]) -> Dict:
+    async def _comprehensive_risk_assessment(
+        self, synthesis_input: SynthesisInput, conflicts: List[Dict]
+    ) -> Dict:
         """Perform comprehensive risk assessment across all dimensions"""
         risks = {"categories": {}, "overall_risk": 50, "risk_reward_ratio": 1.0}
 
@@ -1696,7 +1923,9 @@ class SynthesisAgent(InvestmentAgent):
                     {
                         "category": "financial",
                         "description": "Financial health concerns",
-                        "severity": self._score_to_severity(100 - fund_analysis.get("health_score", 50)),
+                        "severity": self._score_to_severity(
+                            100 - fund_analysis.get("health_score", 50)
+                        ),
                     }
                 )
 
@@ -1782,11 +2011,19 @@ class SynthesisAgent(InvestmentAgent):
         risks.update(response_dict)
 
         return self._wrap_llm_response(
-            response=risks, model=self.models["reasoning"], prompt=prompt, temperature=0.3, top_p=0.9, format="json"
+            response=risks,
+            model=self.models["reasoning"],
+            prompt=prompt,
+            temperature=0.3,
+            top_p=0.9,
+            format="json",
         )
 
     async def _generate_scenarios(
-        self, synthesis_input: SynthesisInput, composite_scores: Dict, risk_assessment: Dict
+        self,
+        synthesis_input: SynthesisInput,
+        composite_scores: Dict,
+        risk_assessment: Dict,
     ) -> Dict:
         """Generate bull, base, and bear case scenarios with smart valuation adjustments"""
 
@@ -1809,24 +2046,26 @@ class SynthesisAgent(InvestmentAgent):
             }
 
         # Apply smart valuation adjustments
-        smart_targets = self._calculate_smart_price_targets(synthesis_input, composite_scores, risk_assessment)
+        smart_targets = self._calculate_smart_price_targets(
+            synthesis_input, composite_scores, risk_assessment
+        )
 
         prompt = f"""
         Generate investment scenarios for {synthesis_input.symbol}:
         
         Current Assessment:
-        - Overall Score: {composite_scores.get('overall_score', 50):.1f}/100
-        - Risk Score: {risk_assessment.get('overall_risk', 50)}/100
+        - Overall Score: {composite_scores.get("overall_score", 50):.1f}/100
+        - Risk Score: {risk_assessment.get("overall_risk", 50)}/100
 
         Smart Valuation Analysis:
-        - Base Fair Value: ${synthesis_input.fundamental_analysis.get('fair_value', 0):.2f}
-        - Multi-Model Blended: ${synthesis_input.fundamental_analysis.get('multi_model_summary', {}).get('blended_fair_value', 0):.2f}
-        - Model Agreement Score: {synthesis_input.fundamental_analysis.get('multi_model_summary', {}).get('model_agreement_score', 0):.2f}
-        - Technical Target: ${synthesis_input.technical_analysis.get('signals', {}).get('target_price', 0):.2f}
-        - Smart Adjusted Target: ${smart_targets.get('adjusted_target', 0):.2f}
-        - Current Price: ${synthesis_input.fundamental_analysis.get('valuation', {}).get('current_price', 0):.2f}
-        - Valuation Bias: {smart_targets.get('valuation_summary', {}).get('valuation_bias', 'neutral')}
-        - Quality Tier: {smart_targets.get('valuation_summary', {}).get('quality_tier', 'average')}
+        - Base Fair Value: ${synthesis_input.fundamental_analysis.get("fair_value", 0):.2f}
+        - Multi-Model Blended: ${synthesis_input.fundamental_analysis.get("multi_model_summary", {}).get("blended_fair_value", 0):.2f}
+        - Model Agreement Score: {synthesis_input.fundamental_analysis.get("multi_model_summary", {}).get("model_agreement_score", 0):.2f}
+        - Technical Target: ${synthesis_input.technical_analysis.get("signals", {}).get("target_price", 0):.2f}
+        - Smart Adjusted Target: ${smart_targets.get("adjusted_target", 0):.2f}
+        - Current Price: ${synthesis_input.fundamental_analysis.get("valuation", {}).get("current_price", 0):.2f}
+        - Valuation Bias: {smart_targets.get("valuation_summary", {}).get("valuation_bias", "neutral")}
+        - Quality Tier: {smart_targets.get("valuation_summary", {}).get("quality_tier", "average")}
         
         Generate three scenarios:
         
@@ -1906,11 +2145,19 @@ class SynthesisAgent(InvestmentAgent):
                 f"Scenario generation failed for {synthesis_input.symbol}: {e}. Using fallback scenarios."
             )
 
-            current_price = synthesis_input.fundamental_analysis.get("valuation", {}).get("current_price", 100)
-            fair_value = synthesis_input.fundamental_analysis.get("valuation", {}).get("fair_value", current_price)
+            current_price = synthesis_input.fundamental_analysis.get(
+                "valuation", {}
+            ).get("current_price", 100)
+            fair_value = synthesis_input.fundamental_analysis.get("valuation", {}).get(
+                "fair_value", current_price
+            )
 
             # Generate reasonable default scenarios based on fair value and current price
-            upside_to_fair = ((fair_value - current_price) / current_price) if current_price > 0 else 0
+            upside_to_fair = (
+                ((fair_value - current_price) / current_price)
+                if current_price > 0
+                else 0
+            )
 
             fallback_scenarios = {
                 "bull_case": {
@@ -1937,16 +2184,29 @@ class SynthesisAgent(InvestmentAgent):
                         "Valuation normalizes to fair value",
                         "Stable market conditions",
                     ],
-                    "expected_developments": ["Steady financial performance", "Modest growth in line with estimates"],
+                    "expected_developments": [
+                        "Steady financial performance",
+                        "Modest growth in line with estimates",
+                    ],
                 },
                 "bear_case": {
                     "price_target": round(current_price * 0.80, 2),
                     "probability": 20,
                     "downside_potential": -20.0,
-                    "risk_factors": ["Market downturn", "Competitive pressure increases", "Economic headwinds"],
-                    "warning_signs": ["Deteriorating fundamentals", "Market share loss", "Margin compression"],
+                    "risk_factors": [
+                        "Market downturn",
+                        "Competitive pressure increases",
+                        "Economic headwinds",
+                    ],
+                    "warning_signs": [
+                        "Deteriorating fundamentals",
+                        "Market share loss",
+                        "Margin compression",
+                    ],
                 },
-                "expected_return": round((0.3 * 25.0) + (0.5 * upside_to_fair * 100) + (0.2 * -20.0), 1),
+                "expected_return": round(
+                    (0.3 * 25.0) + (0.5 * upside_to_fair * 100) + (0.2 * -20.0), 1
+                ),
                 "methodology": "Fallback scenarios generated due to LLM parsing error",
                 "error": str(e),
             }
@@ -1961,7 +2221,11 @@ class SynthesisAgent(InvestmentAgent):
             )
 
     async def _make_recommendation(
-        self, composite_scores: Dict, risk_assessment: Dict, scenarios: Dict, symbol: str
+        self,
+        composite_scores: Dict,
+        risk_assessment: Dict,
+        scenarios: Dict,
+        symbol: str,
     ) -> Dict:
         """Make final investment recommendation"""
         # Unwrap scenarios if it's a wrapped LLM response
@@ -2090,12 +2354,12 @@ class SynthesisAgent(InvestmentAgent):
         prompt = f"""
         Generate specific action plan for {synthesis_input.symbol}:
         
-        Recommendation: {recommendation.get('final_recommendation')}
-        Conviction: {recommendation.get('conviction_level')}
-        Position Size: {recommendation.get('position_sizing')}%
+        Recommendation: {recommendation.get("final_recommendation")}
+        Conviction: {recommendation.get("conviction_level")}
+        Position Size: {recommendation.get("position_sizing")}%
         
         Technical Levels:
-        {json.dumps(synthesis_input.technical_analysis.get('levels', {}), indent=2) if synthesis_input.technical_analysis else 'N/A'}
+        {json.dumps(synthesis_input.technical_analysis.get("levels", {}), indent=2) if synthesis_input.technical_analysis else "N/A"}
         
         Create actionable plan:
         1. Entry strategy
@@ -2227,9 +2491,7 @@ class SynthesisAgent(InvestmentAgent):
                         remaining_data["peer_comparison"] = peer_comp_copy
 
                     # Build data section with TOON peers + JSON for other data
-                    data_section = (
-                        f"{toon_peers}\n\nAdditional Analysis:\n{json.dumps(remaining_data, indent=2)[:8000]}"
-                    )
+                    data_section = f"{toon_peers}\n\nAdditional Analysis:\n{json.dumps(remaining_data, indent=2)[:8000]}"
                 except Exception as e:
                     self.logger.warning(f"Failed to convert peer data to TOON: {e}")
                     data_section = json.dumps(rounded_data, indent=2)[:10000]
@@ -2241,7 +2503,7 @@ class SynthesisAgent(InvestmentAgent):
             data_section = json.dumps(rounded_data, indent=2)[:10000]
 
         prompt = f"""
-        Create executive investment report for {rounded_data['symbol']}:
+        Create executive investment report for {rounded_data["symbol"]}:
 
         {data_section}
         
@@ -2332,7 +2594,9 @@ class SynthesisAgent(InvestmentAgent):
         """
 
         # Build system prompt with optional TOON explanation
-        system_prompt = "Create professional investment report with clear recommendations."
+        system_prompt = (
+            "Create professional investment report with clear recommendations."
+        )
         if use_toon and peer_data:
             system_prompt += "\n\n" + TOONFormatter.get_format_explanation()
 
@@ -2370,13 +2634,17 @@ class SynthesisAgent(InvestmentAgent):
             format="json",
         )
 
-    def _evaluate_analysis_quality(self, analysis: Dict, required_fields: List[str]) -> float:
+    def _evaluate_analysis_quality(
+        self, analysis: Dict, required_fields: List[str]
+    ) -> float:
         """Evaluate the quality and completeness of an analysis"""
         if not analysis:
             return 0.0
 
         # Check for required fields
-        completeness = sum(1 for field in required_fields if field in analysis) / len(required_fields)
+        completeness = sum(1 for field in required_fields if field in analysis) / len(
+            required_fields
+        )
 
         # Check for errors
         if analysis.get("status") == "error":
@@ -2398,21 +2666,29 @@ class SynthesisAgent(InvestmentAgent):
             summary["sec"] = {
                 "risks": synthesis_input.sec_analysis.get("risks", [])[:5],
                 "metrics": synthesis_input.sec_analysis.get("metrics", {}),
-                "key_points": synthesis_input.sec_analysis.get("analysis", {}).get("executive_summary", ""),
+                "key_points": synthesis_input.sec_analysis.get("analysis", {}).get(
+                    "executive_summary", ""
+                ),
             }
 
         if synthesis_input.fundamental_analysis:
             summary["fundamental"] = {
                 "valuation": synthesis_input.fundamental_analysis.get("valuation", {}),
-                "quality_score": synthesis_input.fundamental_analysis.get("quality_score", 0),
-                "key_points": synthesis_input.fundamental_analysis.get("analysis", {}).get("investment_thesis", ""),
+                "quality_score": synthesis_input.fundamental_analysis.get(
+                    "quality_score", 0
+                ),
+                "key_points": synthesis_input.fundamental_analysis.get(
+                    "analysis", {}
+                ).get("investment_thesis", ""),
             }
 
         if synthesis_input.technical_analysis:
             summary["technical"] = {
                 "signals": synthesis_input.technical_analysis.get("signals", {}),
                 "levels": synthesis_input.technical_analysis.get("levels", {}),
-                "recommendation": synthesis_input.technical_analysis.get("recommendation", ""),
+                "recommendation": synthesis_input.technical_analysis.get(
+                    "recommendation", ""
+                ),
             }
 
         if synthesis_input.sentiment_analysis:
@@ -2431,8 +2707,12 @@ class SynthesisAgent(InvestmentAgent):
             fair_value = valuation.get("fair_value", 0)
 
             if current_price and fair_value:
-                insights["upside_potential"] = ((fair_value - current_price) / current_price) * 100
-                insights["margin_of_safety"] = ((current_price - fair_value) / fair_value) * 100
+                insights["upside_potential"] = (
+                    (fair_value - current_price) / current_price
+                ) * 100
+                insights["margin_of_safety"] = (
+                    (current_price - fair_value) / fair_value
+                ) * 100
 
         # Extract technical metrics
         if synthesis_input.technical_analysis:
@@ -2447,7 +2727,9 @@ class SynthesisAgent(InvestmentAgent):
         bullish = ["strong_buy", "buy"]
         bearish = ["sell", "strong_sell"]
 
-        return (rec1 in bullish and rec2 in bearish) or (rec1 in bearish and rec2 in bullish)
+        return (rec1 in bullish and rec2 in bearish) or (
+            rec1 in bearish and rec2 in bullish
+        )
 
     def _score_to_severity(self, score: float) -> str:
         """Convert numerical score to severity level"""
@@ -2459,7 +2741,10 @@ class SynthesisAgent(InvestmentAgent):
             return "low"
 
     def _calculate_confidence(
-        self, synthesis_input: SynthesisInput, analysis_scores: Dict, weighted_scores: Dict
+        self,
+        synthesis_input: SynthesisInput,
+        analysis_scores: Dict,
+        weighted_scores: Dict,
     ) -> float:
         """Calculate overall confidence in the analysis"""
         confidence_factors = []
@@ -2467,14 +2752,21 @@ class SynthesisAgent(InvestmentAgent):
         # Factor 1: Analysis completeness
         available_analyses = sum(
             1
-            for attr in ["sec_analysis", "fundamental_analysis", "technical_analysis", "sentiment_analysis"]
+            for attr in [
+                "sec_analysis",
+                "fundamental_analysis",
+                "technical_analysis",
+                "sentiment_analysis",
+            ]
             if getattr(synthesis_input, attr) is not None
         )
         completeness = available_analyses / 4
         confidence_factors.append(completeness)
 
         # Factor 2: Analysis quality
-        avg_quality = np.mean(list(analysis_scores.values())) if analysis_scores else 0.5
+        avg_quality = (
+            np.mean(list(analysis_scores.values())) if analysis_scores else 0.5
+        )
         confidence_factors.append(avg_quality)
 
         # Factor 3: Agreement between analyses
@@ -2488,7 +2780,9 @@ class SynthesisAgent(InvestmentAgent):
 
         return min(max(confidence, 0), 100)  # Clamp between 0 and 100
 
-    async def generate_peer_synthesis(self, target: str, peers: List[str], analyses: Dict[str, Dict]) -> Dict:
+    async def generate_peer_synthesis(
+        self, target: str, peers: List[str], analyses: Dict[str, Dict]
+    ) -> Dict:
         """Generate synthesis comparing target to peers"""
         # Round numeric values to reduce token usage
         from investigator.domain.services.data_normalizer import DataNormalizer
@@ -2499,7 +2793,7 @@ class SynthesisAgent(InvestmentAgent):
         Synthesize peer comparison analysis:
 
         Target Company: {target}
-        Peer Companies: {', '.join(peers)}
+        Peer Companies: {", ".join(peers)}
 
         Analyses:
         {json.dumps(rounded_analyses, indent=2)[:8000]}

@@ -10,12 +10,10 @@ Converts between different data formats (SEC API, Internal, LLM)
 
 import logging
 from abc import ABC, abstractmethod
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-from data.models import Filing, FinancialStatementData, QuarterlyData
+from data.models import FinancialStatementData, QuarterlyData
 from investigator.config import get_config
-from investigator.infrastructure.utils.json_utils import safe_json_dumps
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +61,7 @@ class SECToInternalAdapter(IDataFormatAdapter):
         accession_numbers = recent_filings.get("accessionNumber", [])
 
         cik = submissions_data.get("cik", "")
-        entity_name = submissions_data.get("name", "")
+        submissions_data.get("name", "")
         tickers = submissions_data.get("tickers", [])
         symbol = tickers[0] if tickers else ""
 
@@ -81,9 +79,14 @@ class SECToInternalAdapter(IDataFormatAdapter):
                     fiscal_period=fiscal_period,
                     form_type=form_type,
                     filing_date=filing_dates[i] if i < len(filing_dates) else "",
-                    accession_number=accession_numbers[i] if i < len(accession_numbers) else "",
+                    accession_number=accession_numbers[i]
+                    if i < len(accession_numbers)
+                    else "",
                     financial_data=FinancialStatementData(
-                        symbol=symbol, cik=str(cik).zfill(10), fiscal_year=fiscal_year, fiscal_period=fiscal_period
+                        symbol=symbol,
+                        cik=str(cik).zfill(10),
+                        fiscal_year=fiscal_year,
+                        fiscal_period=fiscal_period,
                     ),
                 )
                 quarterly_data.append(qd)
@@ -95,13 +98,16 @@ class SECToInternalAdapter(IDataFormatAdapter):
         quarterly_data = []
 
         cik = str(facts_data.get("cik", "")).zfill(10)
-        entity_name = facts_data.get("entityName", "")
+        facts_data.get("entityName", "")
 
         # Extract from us-gaap facts
         us_gaap = facts_data.get("facts", {}).get("us-gaap", {})
 
         # Use revenue concepts to identify periods
-        revenue_concepts = ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax"]
+        revenue_concepts = [
+            "Revenues",
+            "RevenueFromContractWithCustomerExcludingAssessedTax",
+        ]
 
         periods_seen = set()
 
@@ -157,7 +163,7 @@ class SECToInternalAdapter(IDataFormatAdapter):
                     return year, "Q2"
                 else:
                     return year, "Q3"
-        except:
+        except Exception:
             return 0, ""
 
     def reverse_adapt(self, internal_data: List[QuarterlyData]) -> Dict[str, Any]:
@@ -176,7 +182,13 @@ class SECToInternalAdapter(IDataFormatAdapter):
             accession_numbers.append(qd.accession_number)
 
         return {
-            "filings": {"recent": {"form": forms, "filingDate": filing_dates, "accessionNumber": accession_numbers}}
+            "filings": {
+                "recent": {
+                    "form": forms,
+                    "filingDate": filing_dates,
+                    "accessionNumber": accession_numbers,
+                }
+            }
         }
 
 
@@ -202,23 +214,44 @@ class InternalToLLMAdapter(IDataFormatAdapter):
 
         # Process each quarter
         for qd in quarterly_data:
-            sections.append(f"## {qd.fiscal_year} {qd.fiscal_period} (Filed: {qd.filing_date})")
+            sections.append(
+                f"## {qd.fiscal_year} {qd.fiscal_period} (Filed: {qd.filing_date})"
+            )
 
             if qd.financial_data:
                 # Income Statement
-                if hasattr(qd.financial_data, "income_statement") and qd.financial_data.income_statement:
+                if (
+                    hasattr(qd.financial_data, "income_statement")
+                    and qd.financial_data.income_statement
+                ):
                     sections.append("\n### Income Statement")
-                    sections.extend(self._format_financial_section(qd.financial_data.income_statement))
+                    sections.extend(
+                        self._format_financial_section(
+                            qd.financial_data.income_statement
+                        )
+                    )
 
                 # Balance Sheet
-                if hasattr(qd.financial_data, "balance_sheet") and qd.financial_data.balance_sheet:
+                if (
+                    hasattr(qd.financial_data, "balance_sheet")
+                    and qd.financial_data.balance_sheet
+                ):
                     sections.append("\n### Balance Sheet")
-                    sections.extend(self._format_financial_section(qd.financial_data.balance_sheet))
+                    sections.extend(
+                        self._format_financial_section(qd.financial_data.balance_sheet)
+                    )
 
                 # Cash Flow
-                if hasattr(qd.financial_data, "cash_flow_statement") and qd.financial_data.cash_flow_statement:
+                if (
+                    hasattr(qd.financial_data, "cash_flow_statement")
+                    and qd.financial_data.cash_flow_statement
+                ):
                     sections.append("\n### Cash Flow Statement")
-                    sections.extend(self._format_financial_section(qd.financial_data.cash_flow_statement))
+                    sections.extend(
+                        self._format_financial_section(
+                            qd.financial_data.cash_flow_statement
+                        )
+                    )
 
             sections.append("")
 
@@ -259,13 +292,22 @@ class InternalToLLMAdapter(IDataFormatAdapter):
                                 value = metric_data["value"]
                                 if isinstance(value, (int, float)):
                                     # Special formatting for different metric types
-                                    if "eps" in metric_key.lower() or "book_value_per_share" in metric_key.lower():
+                                    if (
+                                        "eps" in metric_key.lower()
+                                        or "book_value_per_share" in metric_key.lower()
+                                    ):
                                         formatted_value = f"${value:.2f}"
                                     elif "margin" in metric_key.lower():
                                         formatted_value = f"{value:.1f}%"
-                                    elif "ratio" in metric_key.lower() or "debt_to_equity" in metric_key.lower():
+                                    elif (
+                                        "ratio" in metric_key.lower()
+                                        or "debt_to_equity" in metric_key.lower()
+                                    ):
                                         formatted_value = f"{value:.2f}"
-                                    elif "working_capital" in metric_key.lower() or metric_data.get("unit") == "USD":
+                                    elif (
+                                        "working_capital" in metric_key.lower()
+                                        or metric_data.get("unit") == "USD"
+                                    ):
                                         formatted_value = f"${value:,.0f}"
                                     else:
                                         formatted_value = f"{value:.2f}"
@@ -348,8 +390,18 @@ class FilingContentAdapter(IDataFormatAdapter):
                 # Fallback to regex cleaning
                 import re
 
-                text_content = re.sub(r"<script[^>]*>.*?</script>", "", raw_html, flags=re.DOTALL | re.IGNORECASE)
-                text_content = re.sub(r"<style[^>]*>.*?</style>", "", text_content, flags=re.DOTALL | re.IGNORECASE)
+                text_content = re.sub(
+                    r"<script[^>]*>.*?</script>",
+                    "",
+                    raw_html,
+                    flags=re.DOTALL | re.IGNORECASE,
+                )
+                text_content = re.sub(
+                    r"<style[^>]*>.*?</style>",
+                    "",
+                    text_content,
+                    flags=re.DOTALL | re.IGNORECASE,
+                )
                 text_content = re.sub(r"<[^>]+>", " ", text_content)
                 text_content = re.sub(r"\s+", " ", text_content)
 
@@ -403,7 +455,9 @@ class CompanyFactsToDetailedAdapter(IDataFormatAdapter):
 
         return detailed_results
 
-    def _extract_category_data(self, facts: Dict, concept_mappings: Dict) -> Dict[str, Any]:
+    def _extract_category_data(
+        self, facts: Dict, concept_mappings: Dict
+    ) -> Dict[str, Any]:
         """Extract data for a specific category"""
         concepts = {}
         successful = 0
@@ -423,7 +477,9 @@ class CompanyFactsToDetailedAdapter(IDataFormatAdapter):
 
                     for unit_type in ["USD", "shares", "pure"]:
                         if unit_type in units and units[unit_type]:
-                            latest = max(units[unit_type], key=lambda x: x.get("end", ""))
+                            latest = max(
+                                units[unit_type], key=lambda x: x.get("end", "")
+                            )
 
                             concepts[field_name] = {
                                 "value": latest.get("val"),
@@ -451,7 +507,11 @@ class CompanyFactsToDetailedAdapter(IDataFormatAdapter):
 
         return {
             "concepts": concepts,
-            "metadata": {"successful": successful, "failed": failed, "total": successful + failed},
+            "metadata": {
+                "successful": successful,
+                "failed": failed,
+                "total": successful + failed,
+            },
         }
 
     def reverse_adapt(self, detailed_data: Dict[str, Any]) -> Dict[str, Any]:

@@ -1,0 +1,32 @@
+#!/bin/bash
+# Commit message hook for victor-invest
+# Rejects any Co-Authored-By trailers in commit messages
+
+COMMIT_MSG_FILE=$1
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+# Colors for output
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+# Reject any Co-Authored-By trailer (case-insensitive)
+if echo "$COMMIT_MSG" | grep -iqE "^[[:space:]]*co-authored-by:"; then
+    echo -e "${RED}Commit message rejected:${NC}"
+    echo -e "${RED}Contains a Co-Authored-By trailer.${NC}"
+    echo ""
+    echo "Co-Authored-By lines are not allowed in this repository."
+    echo "Remove the trailer and try again."
+    exit 1
+fi
+
+# Reject any Claude/AI attribution references (case-insensitive)
+if echo "$COMMIT_MSG" | grep -iqE "(claude\s*(code|ai|opus|sonnet|haiku)|anthropic|generated\s+with\s+claude)"; then
+    echo -e "${RED}Commit message rejected:${NC}"
+    echo -e "${RED}Contains an AI attribution reference.${NC}"
+    echo ""
+    echo "AI attribution references (Claude, Anthropic, etc.) are not allowed in commit messages."
+    echo "Remove the reference and try again."
+    exit 1
+fi
+
+exit 0

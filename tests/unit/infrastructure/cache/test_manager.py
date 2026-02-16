@@ -2,7 +2,6 @@
 Unit tests for CacheManager infrastructure.
 """
 
-import pytest
 
 from investigator.infrastructure.cache import CacheManager
 
@@ -18,10 +17,18 @@ class TestCacheManager:
 
     def test_cache_manager_has_required_methods(self):
         """Test CacheManager has required cache methods."""
-        required_methods = ["get", "set", "exists", "delete", "clear_all_caches"]  # Actual method name
+        required_methods = [
+            "get",
+            "set",
+            "exists",
+            "delete",
+            "clear_all_caches",
+        ]  # Actual method name
 
         for method in required_methods:
-            assert hasattr(CacheManager, method), f"CacheManager missing method: {method}"
+            assert hasattr(CacheManager, method), (
+                f"CacheManager missing method: {method}"
+            )
 
     def test_cache_manager_singleton_pattern(self):
         """Test CacheManager follows singleton pattern if applicable."""

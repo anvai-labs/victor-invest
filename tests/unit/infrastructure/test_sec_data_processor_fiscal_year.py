@@ -16,7 +16,6 @@ Test Data Sources:
 
 from collections import defaultdict
 from datetime import date, datetime
-from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -52,7 +51,6 @@ class TestCalendarYearEndCompanies:
         ]
 
         # Manually set fiscal year end (in real code, this is detected)
-        fiscal_year_end = "-09-30"
         fye_month = 9
 
         # Q1 adjustment: period_end_month (Dec=12) > fye_month (Sep=9) → fy + 1
@@ -64,7 +62,9 @@ class TestCalendarYearEndCompanies:
         else:
             expected_fy = fy
 
-        assert expected_fy == 2025, "Q1 ending Dec 2023 should be FY 2025 for AAPL (Sep FYE)"
+        assert expected_fy == 2025, (
+            "Q1 ending Dec 2023 should be FY 2025 for AAPL (Sep FYE)"
+        )
 
     def test_msft_calendar_year_aligned(self):
         """
@@ -85,7 +85,6 @@ class TestCalendarYearEndCompanies:
             }
         ]
 
-        fiscal_year_end = "-06-30"
         period_end_month = 9
         fye_month = 6
 
@@ -95,7 +94,9 @@ class TestCalendarYearEndCompanies:
         else:
             expected_fy = 2023
 
-        assert expected_fy == 2024, "Q1 ending Sep 2023 should be FY 2024 for MSFT (Jun FYE)"
+        assert expected_fy == 2024, (
+            "Q1 ending Sep 2023 should be FY 2024 for MSFT (Jun FYE)"
+        )
 
 
 class TestNonCalendarYearEndCompanies:
@@ -134,7 +135,6 @@ class TestNonCalendarYearEndCompanies:
         assert duration_days == 91, "Q1 duration should be ~90 days"
 
         # Q1 ending Oct > Jul FYE → should be FY 2025
-        fiscal_year_end = "-07-31"
         period_end_month = 10
         fye_month = 7
 
@@ -143,7 +143,9 @@ class TestNonCalendarYearEndCompanies:
         else:
             expected_fy = 2024
 
-        assert expected_fy == 2025, "Q1 ending Oct 2024 should be FY 2025 for ZS (Jul FYE)"
+        assert expected_fy == 2025, (
+            "Q1 ending Oct 2024 should be FY 2025 for ZS (Jul FYE)"
+        )
 
     def test_zs_q2_fiscal_year_no_adjustment(self):
         """
@@ -152,21 +154,8 @@ class TestNonCalendarYearEndCompanies:
 
         Example: Q2 ending 2025-01-31 filed with fy=2025 → stays FY 2025
         """
-        entries = [
-            {
-                "start": "2024-11-01",
-                "end": "2025-01-31",
-                "fy": 2025,
-                "fp": "Q2",
-                "filed": "2025-03-10",
-                "form": "10-Q",
-                "val": 1185200000,
-            }
-        ]
 
         # Q2 ending Jan < Jul FYE → fiscal_year stays 2025
-        period_end_month = 1
-        fye_month = 7
 
         # Q2/Q3 don't get adjusted (only Q1 does)
         expected_fy = 2025
@@ -200,7 +189,9 @@ class TestNonCalendarYearEndCompanies:
         else:
             expected_fy = 2023
 
-        assert expected_fy == 2024, "Q1 ending Nov 2023 should be FY 2024 for COST (Aug FYE)"
+        assert expected_fy == 2024, (
+            "Q1 ending Nov 2023 should be FY 2024 for COST (Aug FYE)"
+        )
 
 
 class TestDurationBasedClassification:
@@ -262,16 +253,39 @@ class TestYTDGroupingLogic:
         """
         # Simulate processed quarters with corrected fiscal years
         quarters = [
-            {"fiscal_year": 2025, "fiscal_period": "Q3", "period_end_date": date(2025, 4, 30)},
-            {"fiscal_year": 2025, "fiscal_period": "Q2", "period_end_date": date(2025, 1, 31)},
-            {"fiscal_year": 2025, "fiscal_period": "Q1", "period_end_date": date(2024, 10, 31)},  # Adjusted
-            {"fiscal_year": 2024, "fiscal_period": "Q3", "period_end_date": date(2024, 4, 30)},
-            {"fiscal_year": 2024, "fiscal_period": "Q2", "period_end_date": date(2024, 1, 31)},
-            {"fiscal_year": 2024, "fiscal_period": "Q1", "period_end_date": date(2023, 10, 31)},  # Adjusted
+            {
+                "fiscal_year": 2025,
+                "fiscal_period": "Q3",
+                "period_end_date": date(2025, 4, 30),
+            },
+            {
+                "fiscal_year": 2025,
+                "fiscal_period": "Q2",
+                "period_end_date": date(2025, 1, 31),
+            },
+            {
+                "fiscal_year": 2025,
+                "fiscal_period": "Q1",
+                "period_end_date": date(2024, 10, 31),
+            },  # Adjusted
+            {
+                "fiscal_year": 2024,
+                "fiscal_period": "Q3",
+                "period_end_date": date(2024, 4, 30),
+            },
+            {
+                "fiscal_year": 2024,
+                "fiscal_period": "Q2",
+                "period_end_date": date(2024, 1, 31),
+            },
+            {
+                "fiscal_year": 2024,
+                "fiscal_period": "Q1",
+                "period_end_date": date(2023, 10, 31),
+            },  # Adjusted
         ]
 
         # Group by fiscal_year
-        from collections import defaultdict
 
         groups = defaultdict(list)
         for q in quarters:
@@ -281,8 +295,14 @@ class TestYTDGroupingLogic:
         assert groups[2024] == ["Q3", "Q2", "Q1"], "FY 2024 should have Q3, Q2, Q1"
 
         # Verify Q1 dates are in correct fiscal year
-        q1_2025 = [q for q in quarters if q["fiscal_year"] == 2025 and q["fiscal_period"] == "Q1"][0]
-        assert q1_2025["period_end_date"] == date(2024, 10, 31), "Q1 FY2025 should end 2024-10-31"
+        q1_2025 = [
+            q
+            for q in quarters
+            if q["fiscal_year"] == 2025 and q["fiscal_period"] == "Q1"
+        ][0]
+        assert q1_2025["period_end_date"] == date(2024, 10, 31), (
+            "Q1 FY2025 should end 2024-10-31"
+        )
 
     def test_ytd_grouping_prevents_collisions(self):
         """
@@ -295,7 +315,9 @@ class TestYTDGroupingLogic:
         from collections import defaultdict as dd
 
         old_groups = dd(list)
-        old_groups[2023].extend(["Q3", "Q1"])  # COLLISION: Q3-2023 (Apr) and Q1-2024 (Oct in same calendar year)
+        old_groups[2023].extend(
+            ["Q3", "Q1"]
+        )  # COLLISION: Q3-2023 (Apr) and Q1-2024 (Oct in same calendar year)
 
         # Simulate NEW behavior (grouping by fiscal_year)
         new_groups = dd(list)
@@ -303,7 +325,9 @@ class TestYTDGroupingLogic:
         new_groups[2023] = ["Q3"]  # Q3-2023 (2023-04-30, stays in FY 2023)
 
         assert len(old_groups[2023]) == 2, "Old grouping has collision"
-        assert len(new_groups[2024]) == 1 and len(new_groups[2023]) == 1, "New grouping prevents collision"
+        assert len(new_groups[2024]) == 1 and len(new_groups[2023]) == 1, (
+            "New grouping prevents collision"
+        )
 
 
 class TestSectorSpecificFiscalYearEnds:
@@ -318,7 +342,13 @@ class TestSectorSpecificFiscalYearEnds:
             ("Retail - Walmart", "WMT", "-01-31", 4, True),  # Apr > Jan
             ("Retail - Costco", "COST", "-08-31", 11, True),  # Nov > Aug
             ("Retail - Target", "TGT", "-01-31", 4, True),  # Apr > Jan
-            ("Finance - JPMorgan", "JPM", "-12-31", 3, False),  # Mar < Dec (no adjustment)
+            (
+                "Finance - JPMorgan",
+                "JPM",
+                "-12-31",
+                3,
+                False,
+            ),  # Mar < Dec (no adjustment)
             ("Finance - Bank of America", "BAC", "-12-31", 3, False),  # Mar < Dec
             ("Energy - ExxonMobil", "XOM", "-12-31", 3, False),  # Mar < Dec
             ("Healthcare - UnitedHealth", "UNH", "-12-31", 3, False),  # Mar < Dec
@@ -336,9 +366,9 @@ class TestSectorSpecificFiscalYearEnds:
 
         needs_adjustment = q1_end_month > fye_month
 
-        assert (
-            needs_adjustment == expected_adjustment
-        ), f"{company} ({symbol}): Q1 ending month {q1_end_month} vs FYE month {fye_month} - adjustment should be {expected_adjustment}"
+        assert needs_adjustment == expected_adjustment, (
+            f"{company} ({symbol}): Q1 ending month {q1_end_month} vs FYE month {fye_month} - adjustment should be {expected_adjustment}"
+        )
 
 
 class TestConsecutiveQuarterValidation:
@@ -430,8 +460,12 @@ class TestEdgeCases:
         if len(group) == 1:
             selected_entry = group[0]
 
-        assert selected_entry["duration_days"] == 91, "Duration must be calculated before single-entry return"
-        assert selected_entry["duration_days"] < 330, "91 days should NOT be classified as FY"
+        assert selected_entry["duration_days"] == 91, (
+            "Duration must be calculated before single-entry return"
+        )
+        assert selected_entry["duration_days"] < 330, (
+            "91 days should NOT be classified as FY"
+        )
 
 
 class TestRegressionTests:
@@ -478,7 +512,6 @@ class TestRegressionTests:
         q3_2023 = {"fiscal_year": 2023, "fiscal_period": "Q3", "calendar_year": 2023}
 
         # Group by fiscal_year (NEW)
-        from collections import defaultdict
 
         fiscal_groups = defaultdict(list)
         fiscal_groups[q1_2024["fiscal_year"]].append("Q1")
@@ -486,7 +519,9 @@ class TestRegressionTests:
 
         assert len(fiscal_groups[2024]) == 1, "FY 2024 should only have Q1"
         assert len(fiscal_groups[2023]) == 1, "FY 2023 should only have Q3"
-        assert fiscal_groups[2024] != fiscal_groups[2023], "No collision between fiscal years"
+        assert fiscal_groups[2024] != fiscal_groups[2023], (
+            "No collision between fiscal years"
+        )
 
 
 # Test execution summary

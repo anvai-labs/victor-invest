@@ -25,7 +25,9 @@ try:
     df.columns = series_ids.keys()
 except Exception as e:
     print(f"Error downloading data: {e}")
-    print("Please ensure you have 'pandas_datareader' installed and a stable internet connection.")
+    print(
+        "Please ensure you have 'pandas_datareader' installed and a stable internet connection."
+    )
     # Exit or handle error gracefully
 
 # =================================================================
@@ -90,7 +92,7 @@ for i, col in enumerate(df_ratios.columns):
         color=color,
         linestyle=":",
         linewidth=1.5,
-        label=f'Trendline ({col.split(" / ")[0]})',
+        label=f"Trendline ({col.split(' / ')[0]})",
     )
 
 # Add labels and title

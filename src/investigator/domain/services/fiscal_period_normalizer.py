@@ -42,9 +42,13 @@ class FiscalPeriod:
         if self.fiscal_quarter not in (0, 1, 2, 3, 4):
             raise ValueError(f"fiscal_quarter must be 0-4, got {self.fiscal_quarter}")
         if self.fiscal_year_end_month < 1 or self.fiscal_year_end_month > 12:
-            raise ValueError(f"fiscal_year_end_month must be 1-12, got {self.fiscal_year_end_month}")
+            raise ValueError(
+                f"fiscal_year_end_month must be 1-12, got {self.fiscal_year_end_month}"
+            )
         if self.fiscal_year_end_day < 1 or self.fiscal_year_end_day > 31:
-            raise ValueError(f"fiscal_year_end_day must be 1-31, got {self.fiscal_year_end_day}")
+            raise ValueError(
+                f"fiscal_year_end_day must be 1-31, got {self.fiscal_year_end_day}"
+            )
 
     @property
     def period_label(self) -> str:
@@ -187,7 +191,8 @@ class FiscalPeriodNormalizer:
             quarterly_values["Q2"] = ytd_q2 - ytd_q1
             if quarterly_values["Q2"] < 0:
                 warnings.append(
-                    f"Negative Q2 value: {quarterly_values['Q2']:.2f} " f"(YTD_Q2={ytd_q2:.2f} - YTD_Q1={ytd_q1:.2f})"
+                    f"Negative Q2 value: {quarterly_values['Q2']:.2f} "
+                    f"(YTD_Q2={ytd_q2:.2f} - YTD_Q1={ytd_q1:.2f})"
                 )
         else:
             quarterly_values["Q2"] = None
@@ -198,7 +203,8 @@ class FiscalPeriodNormalizer:
             quarterly_values["Q3"] = ytd_q3 - ytd_q2
             if quarterly_values["Q3"] < 0:
                 warnings.append(
-                    f"Negative Q3 value: {quarterly_values['Q3']:.2f} " f"(YTD_Q3={ytd_q3:.2f} - YTD_Q2={ytd_q2:.2f})"
+                    f"Negative Q3 value: {quarterly_values['Q3']:.2f} "
+                    f"(YTD_Q3={ytd_q3:.2f} - YTD_Q2={ytd_q2:.2f})"
                 )
         else:
             quarterly_values["Q3"] = None
@@ -238,7 +244,9 @@ class FiscalPeriodNormalizer:
             )
         else:
             quarterly_values["Q4"] = None
-            warnings.append(f"Cannot compute Q4 for FY{fiscal_year}: " f"Missing Q3 YTD value.")
+            warnings.append(
+                f"Cannot compute Q4 for FY{fiscal_year}: Missing Q3 YTD value."
+            )
 
         # Determine conversion method description
         if fy_value is not None:
@@ -248,7 +256,8 @@ class FiscalPeriodNormalizer:
             )
         else:
             conversion_method = (
-                "YTD-to-Quarterly (incomplete): " "Q1=YTD_Q1, Q2=YTD_Q2-YTD_Q1, Q3=YTD_Q3-YTD_Q2, Q4=unavailable"
+                "YTD-to-Quarterly (incomplete): "
+                "Q1=YTD_Q1, Q2=YTD_Q2-YTD_Q1, Q3=YTD_Q3-YTD_Q2, Q4=unavailable"
             )
 
         # Log warnings
@@ -292,7 +301,10 @@ class FiscalPeriodNormalizer:
         return normalized
 
     def detect_fiscal_year_end(
-        self, symbol: str, company_facts: Optional[Dict] = None, filing_dates: Optional[List[Tuple[str, str]]] = None
+        self,
+        symbol: str,
+        company_facts: Optional[Dict] = None,
+        filing_dates: Optional[List[Tuple[str, str]]] = None,
     ) -> Tuple[int, int]:
         """
         Detect company's fiscal year end month/day.
@@ -339,7 +351,9 @@ class FiscalPeriodNormalizer:
                     )
                     return fiscal_year_end
             except Exception as e:
-                self.logger.warning(f"Error detecting FYE from CompanyFacts for {symbol}: {e}")
+                self.logger.warning(
+                    f"Error detecting FYE from CompanyFacts for {symbol}: {e}"
+                )
 
         # Strategy 3: Analyze filing date patterns
         if filing_dates:
@@ -353,15 +367,22 @@ class FiscalPeriodNormalizer:
                     )
                     return fiscal_year_end
             except Exception as e:
-                self.logger.warning(f"Error detecting FYE from filing patterns for {symbol}: {e}")
+                self.logger.warning(
+                    f"Error detecting FYE from filing patterns for {symbol}: {e}"
+                )
 
         # Strategy 4: Default to calendar year
         default = (12, 31)
-        self.logger.info(f"Using default calendar year end for {symbol}: " f"month={default[0]}, day={default[1]}")
+        self.logger.info(
+            f"Using default calendar year end for {symbol}: "
+            f"month={default[0]}, day={default[1]}"
+        )
         self._fiscal_year_end_cache[symbol] = default
         return default
 
-    def _detect_from_company_facts(self, company_facts: Dict) -> Optional[Tuple[int, int]]:
+    def _detect_from_company_facts(
+        self, company_facts: Dict
+    ) -> Optional[Tuple[int, int]]:
         """Extract fiscal year end from SEC CompanyFacts data."""
         if not company_facts or "facts" not in company_facts:
             return None
@@ -409,10 +430,16 @@ class FiscalPeriodNormalizer:
         # Return most common pattern
         return max(month_day_counts.items(), key=lambda x: x[1])[0]
 
-    def _detect_from_filing_patterns(self, filing_dates: List[Tuple[str, str]]) -> Optional[Tuple[int, int]]:
+    def _detect_from_filing_patterns(
+        self, filing_dates: List[Tuple[str, str]]
+    ) -> Optional[Tuple[int, int]]:
         """Detect fiscal year end from 10-K filing date patterns."""
         # Filter to 10-K filings only
-        annual_filings = [date_str for form_type, date_str in filing_dates if form_type in ("10-K", "10-K/A", "20-F")]
+        annual_filings = [
+            date_str
+            for form_type, date_str in filing_dates
+            if form_type in ("10-K", "10-K/A", "20-F")
+        ]
 
         if not annual_filings:
             return None
@@ -431,7 +458,9 @@ class FiscalPeriodNormalizer:
                     estimated_fye_month = (filing_month - 2) % 12
                     if estimated_fye_month == 0:
                         estimated_fye_month = 12
-                    month_counts[estimated_fye_month] = month_counts.get(estimated_fye_month, 0) + 1
+                    month_counts[estimated_fye_month] = (
+                        month_counts.get(estimated_fye_month, 0) + 1
+                    )
             except (ValueError, IndexError):
                 continue
 
@@ -442,7 +471,20 @@ class FiscalPeriodNormalizer:
         fye_month = max(month_counts.items(), key=lambda x: x[1])[0]
 
         # Use standard month-end day
-        month_end_days = {1: 31, 2: 28, 3: 31, 4: 30, 5: 31, 6: 30, 7: 31, 8: 31, 9: 30, 10: 31, 11: 30, 12: 31}
+        month_end_days = {
+            1: 31,
+            2: 28,
+            3: 31,
+            4: 30,
+            5: 31,
+            6: 30,
+            7: 31,
+            8: 31,
+            9: 30,
+            10: 31,
+            11: 30,
+            12: 31,
+        }
         fye_day = month_end_days.get(fye_month, 31)
 
         return (fye_month, fye_day)
@@ -475,11 +517,15 @@ class FiscalPeriodNormalizer:
         # Create fiscal year end date for comparison
         # If calendar_date is after fiscal_year_end of current year, it's in next fiscal year
         try:
-            fiscal_year_end_this_year = date(calendar_date.year, fiscal_year_end_month, fiscal_year_end_day)
+            fiscal_year_end_this_year = date(
+                calendar_date.year, fiscal_year_end_month, fiscal_year_end_day
+            )
         except ValueError:
             # Handle Feb 29 edge case
             fiscal_year_end_this_year = date(
-                calendar_date.year, fiscal_year_end_month, 28 if fiscal_year_end_month == 2 else fiscal_year_end_day
+                calendar_date.year,
+                fiscal_year_end_month,
+                28 if fiscal_year_end_month == 2 else fiscal_year_end_day,
             )
 
         # Determine fiscal year
@@ -513,7 +559,12 @@ class FiscalPeriodNormalizer:
         )
 
     def compute_q4_from_annual(
-        self, annual_value: float, q1_value: float, q2_value: float, q3_value: float, validate: bool = True
+        self,
+        annual_value: float,
+        q1_value: float,
+        q2_value: float,
+        q3_value: float,
+        validate: bool = True,
     ) -> Tuple[float, Optional[str]]:
         """
         Compute Q4 value from annual and quarterly values.
@@ -623,7 +674,9 @@ def convert_ytd_to_quarterly(
         Dictionary of quarterly values
     """
     normalizer = get_fiscal_period_normalizer()
-    result = normalizer.normalize_ytd_to_quarterly(ytd_values, fiscal_year, annual_value, strict_mode=False)
+    result = normalizer.normalize_ytd_to_quarterly(
+        ytd_values, fiscal_year, annual_value, strict_mode=False
+    )
     return result.quarterly_values
 
 

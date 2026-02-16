@@ -44,7 +44,7 @@ import logging
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -54,8 +54,7 @@ from victor_invest.tools import MacroDataTool
 
 # Configure logging
 logging.basicConfig(
-    level=logging.WARNING,
-    format="%(asctime)s - %(levelname)s - %(message)s"
+    level=logging.WARNING, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -118,12 +117,18 @@ def print_indicator_table(indicators: Dict, title: str = "Indicators"):
         if data is None:
             continue
 
-        name = (data.get("name", ind_id)[:28] + "..") if len(data.get("name", ind_id)) > 30 else data.get("name", ind_id)
+        name = (
+            (data.get("name", ind_id)[:28] + "..")
+            if len(data.get("name", ind_id)) > 30
+            else data.get("name", ind_id)
+        )
         value_str = format_value(data.get("value"), data.get("units"))
         change_str = format_change(data.get("change"))
         date_str = data.get("date", "N/A")[:10] if data.get("date") else "N/A"
 
-        print(f"{ind_id:<20} {name:<30} {value_str:<15} {change_str:<12} {date_str:<12}")
+        print(
+            f"{ind_id:<20} {name:<30} {value_str:<15} {change_str:<12} {date_str:<12}"
+        )
 
 
 def print_buffett_indicator(data: Dict):
@@ -157,9 +162,17 @@ def print_buffett_indicator(data: Dict):
     print("\n  Components:")
     print(f"    VTI Price: ${components.get('vti_price', 'N/A')}")
     print(f"    VTI Date: {components.get('vti_date', 'N/A')}")
-    print(f"    GDP: ${components.get('gdp_billions', 'N/A'):,.0f}B" if components.get('gdp_billions') else "    GDP: N/A")
+    print(
+        f"    GDP: ${components.get('gdp_billions', 'N/A'):,.0f}B"
+        if components.get("gdp_billions")
+        else "    GDP: N/A"
+    )
     print(f"    GDP Date: {components.get('gdp_date', 'N/A')}")
-    print(f"    Est. Market Cap: ${components.get('estimated_market_cap_billions', 'N/A'):,.0f}B" if components.get('estimated_market_cap_billions') else "    Est. Market Cap: N/A")
+    print(
+        f"    Est. Market Cap: ${components.get('estimated_market_cap_billions', 'N/A'):,.0f}B"
+        if components.get("estimated_market_cap_billions")
+        else "    Est. Market Cap: N/A"
+    )
 
     # Interpretation guide
     print("\n  Interpretation Guide:")
@@ -179,7 +192,9 @@ def print_time_series(data: Dict):
     time_series = data.get("time_series", [])
 
     print(f"\n  Data Points: {data.get('data_points', 0)}")
-    print(f"  Date Range: {date_range.get('start', 'N/A')} to {date_range.get('end', 'N/A')}")
+    print(
+        f"  Date Range: {date_range.get('start', 'N/A')} to {date_range.get('end', 'N/A')}"
+    )
 
     print("\n  Statistics:")
     print(f"    Latest: {format_value(stats.get('latest'))}")
@@ -208,7 +223,9 @@ def print_categories(data: Dict):
 
     categories = data.get("categories", {})
     for cat_name, cat_info in sorted(categories.items()):
-        print(f"\n  {cat_name.upper()} ({cat_info.get('indicator_count', 0)} indicators):")
+        print(
+            f"\n  {cat_name.upper()} ({cat_info.get('indicator_count', 0)} indicators):"
+        )
         for ind in cat_info.get("indicators", []):
             print(f"    - {ind}")
 
@@ -241,12 +258,16 @@ def print_summary(data: Dict):
         for alert in alerts:
             severity = alert.get("severity", "medium")
             severity_color = "\033[91m" if severity == "high" else "\033[93m"
-            print(f"    {severity_color}[{severity.upper()}]{reset} {alert.get('indicator', 'N/A')}: {alert.get('type', 'N/A')}")
+            print(
+                f"    {severity_color}[{severity.upper()}]{reset} {alert.get('indicator', 'N/A')}: {alert.get('type', 'N/A')}"
+            )
 
     # Buffett Indicator if present
     if "buffett_indicator" in data:
         bi = data["buffett_indicator"]
-        print(f"\n  Buffett Indicator: {bi.get('ratio', 'N/A'):.1f}% - {bi.get('interpretation', 'N/A')}")
+        print(
+            f"\n  Buffett Indicator: {bi.get('ratio', 'N/A'):.1f}% - {bi.get('interpretation', 'N/A')}"
+        )
 
     # Categories
     categories = data.get("categories", {})
@@ -267,7 +288,7 @@ Examples:
   python3 scripts/macro_data_cli.py --indicators DGS10 FEDFUNDS VIXCLS
   python3 scripts/macro_data_cli.py --time-series DGS10 --limit 30
   python3 scripts/macro_data_cli.py --list-categories
-        """
+        """,
     )
 
     # Actions (mutually exclusive)
@@ -275,35 +296,35 @@ Examples:
     action_group.add_argument(
         "--summary",
         action="store_true",
-        help="Get comprehensive macro summary with all indicators"
+        help="Get comprehensive macro summary with all indicators",
     )
     action_group.add_argument(
         "--buffett",
         action="store_true",
-        help="Get Buffett Indicator (Market Cap / GDP ratio)"
+        help="Get Buffett Indicator (Market Cap / GDP ratio)",
     )
     action_group.add_argument(
         "--category",
         type=str,
         metavar="NAME",
-        help="Get indicators for category (growth, employment, inflation, rates, credit, debt, market, sentiment, housing, monetary, trade)"
+        help="Get indicators for category (growth, employment, inflation, rates, credit, debt, market, sentiment, housing, monetary, trade)",
     )
     action_group.add_argument(
         "--indicators",
         nargs="+",
         metavar="ID",
-        help="Get specific indicators by FRED series ID"
+        help="Get specific indicators by FRED series ID",
     )
     action_group.add_argument(
         "--time-series",
         type=str,
         metavar="ID",
-        help="Get historical time series for indicator"
+        help="Get historical time series for indicator",
     )
     action_group.add_argument(
         "--list-categories",
         action="store_true",
-        help="List available categories and their indicators"
+        help="List available categories and their indicators",
     )
 
     # Options
@@ -311,23 +332,19 @@ Examples:
         "--lookback-days",
         type=int,
         default=1095,
-        help="Days of historical data for lookback (default: 1095 = 3 years)"
+        help="Days of historical data for lookback (default: 1095 = 3 years)",
     )
     parser.add_argument(
         "--limit",
         type=int,
         default=1000,
-        help="Max data points for time series (default: 1000)"
+        help="Max data points for time series (default: 1000)",
     )
     parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output raw JSON instead of formatted table"
+        "--json", action="store_true", help="Output raw JSON instead of formatted table"
     )
     parser.add_argument(
-        "-v", "--verbose",
-        action="store_true",
-        help="Enable verbose logging"
+        "-v", "--verbose", action="store_true", help="Enable verbose logging"
     )
 
     args = parser.parse_args()
@@ -350,19 +367,17 @@ Examples:
         result = await tool.execute(
             action="get_category",
             category=args.category,
-            lookback_days=args.lookback_days
+            lookback_days=args.lookback_days,
         )
     elif args.indicators:
         result = await tool.execute(
             action="get_indicators",
             indicators=args.indicators,
-            lookback_days=args.lookback_days
+            lookback_days=args.lookback_days,
         )
     elif args.time_series:
         result = await tool.execute(
-            action="get_time_series",
-            indicator_id=args.time_series,
-            limit=args.limit
+            action="get_time_series", indicator_id=args.time_series, limit=args.limit
         )
     elif args.list_categories:
         result = await tool.execute(action="list_categories")
@@ -387,13 +402,11 @@ Examples:
             print_buffett_indicator(result.data)
         elif args.category:
             print_indicator_table(
-                result.data.get("indicators", {}),
-                f"{args.category.upper()} INDICATORS"
+                result.data.get("indicators", {}), f"{args.category.upper()} INDICATORS"
             )
         elif args.indicators:
             print_indicator_table(
-                result.data.get("indicators", {}),
-                "REQUESTED INDICATORS"
+                result.data.get("indicators", {}), "REQUESTED INDICATORS"
             )
             if result.warnings:
                 print(f"\nWarnings: {result.warnings}")

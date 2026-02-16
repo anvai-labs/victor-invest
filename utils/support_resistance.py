@@ -13,10 +13,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def detect_support_resistance_levels(price_data: pd.DataFrame,
-                                     window: int = 20,
-                                     num_levels: int = 5,
-                                     tolerance: float = 0.02) -> Dict:
+def detect_support_resistance_levels(
+    price_data: pd.DataFrame,
+    window: int = 20,
+    num_levels: int = 5,
+    tolerance: float = 0.02,
+) -> Dict:
     """
     Detect support and resistance levels from price data
 
@@ -43,13 +45,15 @@ def detect_support_resistance_levels(price_data: pd.DataFrame,
         from scipy.signal import argrelextrema
 
         if len(price_data) < window * 2:
-            logger.warning(f"Insufficient data for support/resistance detection. Need at least {window * 2} bars, have {len(price_data)}")
+            logger.warning(
+                f"Insufficient data for support/resistance detection. Need at least {window * 2} bars, have {len(price_data)}"
+            )
             return _empty_result(price_data)
 
         # Extract price arrays
-        highs = price_data['high'].values
-        lows = price_data['low'].values
-        closes = price_data['close'].values
+        highs = price_data["high"].values
+        lows = price_data["low"].values
+        closes = price_data["close"].values
         current_price = closes[-1]
 
         # Find local maxima (resistance candidates)
@@ -60,7 +64,9 @@ def detect_support_resistance_levels(price_data: pd.DataFrame,
         min_idx = argrelextrema(lows, np.less, order=window)[0]
         support_prices = lows[min_idx]
 
-        logger.info(f"Found {len(resistance_prices)} resistance candidates and {len(support_prices)} support candidates")
+        logger.info(
+            f"Found {len(resistance_prices)} resistance candidates and {len(support_prices)} support candidates"
+        )
 
         # Cluster nearby levels
         resistance_levels = _cluster_levels(resistance_prices, tolerance)
@@ -69,12 +75,12 @@ def detect_support_resistance_levels(price_data: pd.DataFrame,
         # Filter and sort by proximity to current price
         resistance_levels = sorted(
             [r for r in resistance_levels if r > current_price],
-            key=lambda x: x - current_price
+            key=lambda x: x - current_price,
         )[:num_levels]
 
         support_levels = sorted(
             [s for s in support_levels if s < current_price],
-            key=lambda x: current_price - x
+            key=lambda x: current_price - x,
         )[:num_levels]
 
         # Calculate distances
@@ -82,22 +88,32 @@ def detect_support_resistance_levels(price_data: pd.DataFrame,
         nearest_support = support_levels[0] if support_levels else None
 
         result = {
-            'current_price': float(current_price),
-            'resistance_levels': [float(r) for r in resistance_levels],
-            'support_levels': [float(s) for s in support_levels],
-            'nearest_resistance': float(nearest_resistance) if nearest_resistance else None,
-            'nearest_support': float(nearest_support) if nearest_support else None,
+            "current_price": float(current_price),
+            "resistance_levels": [float(r) for r in resistance_levels],
+            "support_levels": [float(s) for s in support_levels],
+            "nearest_resistance": float(nearest_resistance)
+            if nearest_resistance
+            else None,
+            "nearest_support": float(nearest_support) if nearest_support else None,
         }
 
         if nearest_resistance:
-            result['distance_to_resistance'] = float(((nearest_resistance / current_price) - 1) * 100)
-            result['resistance_pct'] = float(((nearest_resistance / current_price) - 1) * 100)
+            result["distance_to_resistance"] = float(
+                ((nearest_resistance / current_price) - 1) * 100
+            )
+            result["resistance_pct"] = float(
+                ((nearest_resistance / current_price) - 1) * 100
+            )
 
         if nearest_support:
-            result['distance_to_support'] = float((1 - (nearest_support / current_price)) * 100)
-            result['support_pct'] = float((1 - (nearest_support / current_price)) * 100)
+            result["distance_to_support"] = float(
+                (1 - (nearest_support / current_price)) * 100
+            )
+            result["support_pct"] = float((1 - (nearest_support / current_price)) * 100)
 
-        logger.info(f"Detected {len(resistance_levels)} resistance and {len(support_levels)} support levels")
+        logger.info(
+            f"Detected {len(resistance_levels)} resistance and {len(support_levels)} support levels"
+        )
 
         return result
 
@@ -146,18 +162,18 @@ def _cluster_levels(levels: np.ndarray, tolerance: float = 0.02) -> List[float]:
 def _empty_result(price_data: pd.DataFrame) -> Dict:
     """Return empty result structure with current price"""
     try:
-        current_price = float(price_data['close'].iloc[-1])
-    except:
+        current_price = float(price_data["close"].iloc[-1])
+    except Exception:
         current_price = 0.0
 
     return {
-        'current_price': current_price,
-        'resistance_levels': [],
-        'support_levels': [],
-        'nearest_resistance': None,
-        'nearest_support': None,
-        'distance_to_resistance': None,
-        'distance_to_support': None
+        "current_price": current_price,
+        "resistance_levels": [],
+        "support_levels": [],
+        "nearest_resistance": None,
+        "nearest_support": None,
+        "distance_to_resistance": None,
+        "distance_to_support": None,
     }
 
 
@@ -171,30 +187,38 @@ def format_support_resistance_text(sr_levels: Dict) -> str:
     Returns:
         Formatted text description
     """
-    if not sr_levels or not (sr_levels.get('support_levels') or sr_levels.get('resistance_levels')):
+    if not sr_levels or not (
+        sr_levels.get("support_levels") or sr_levels.get("resistance_levels")
+    ):
         return "No significant support/resistance levels detected."
 
     lines = []
-    current_price = sr_levels.get('current_price', 0)
+    current_price = sr_levels.get("current_price", 0)
 
     lines.append(f"Current Price: ${current_price:.2f}")
 
     # Nearest support
-    if nearest_support := sr_levels.get('nearest_support'):
-        distance = sr_levels.get('distance_to_support', 0)
+    if nearest_support := sr_levels.get("nearest_support"):
+        distance = sr_levels.get("distance_to_support", 0)
         lines.append(f"Nearest Support: ${nearest_support:.2f} ({distance:.1f}% below)")
 
     # Nearest resistance
-    if nearest_resistance := sr_levels.get('nearest_resistance'):
-        distance = sr_levels.get('distance_to_resistance', 0)
-        lines.append(f"Nearest Resistance: ${nearest_resistance:.2f} ({distance:.1f}% above)")
+    if nearest_resistance := sr_levels.get("nearest_resistance"):
+        distance = sr_levels.get("distance_to_resistance", 0)
+        lines.append(
+            f"Nearest Resistance: ${nearest_resistance:.2f} ({distance:.1f}% above)"
+        )
 
     # All support levels
-    if support_levels := sr_levels.get('support_levels'):
-        lines.append(f"Support Levels: {', '.join([f'${s:.2f}' for s in support_levels])}")
+    if support_levels := sr_levels.get("support_levels"):
+        lines.append(
+            f"Support Levels: {', '.join([f'${s:.2f}' for s in support_levels])}"
+        )
 
     # All resistance levels
-    if resistance_levels := sr_levels.get('resistance_levels'):
-        lines.append(f"Resistance Levels: {', '.join([f'${r:.2f}' for r in resistance_levels])}")
+    if resistance_levels := sr_levels.get("resistance_levels"):
+        lines.append(
+            f"Resistance Levels: {', '.join([f'${r:.2f}' for r in resistance_levels])}"
+        )
 
     return "\n".join(lines)

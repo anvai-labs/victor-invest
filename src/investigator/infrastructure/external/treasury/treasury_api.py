@@ -39,9 +39,8 @@ Example:
 import asyncio
 import logging
 import ssl
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
-from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
 import aiohttp
@@ -239,7 +238,9 @@ class TreasuryApiClient:
         if self._session is None or self._session.closed:
             # Use TCPConnector with SSL context for proper certificate handling
             connector = aiohttp.TCPConnector(ssl=SSL_CONTEXT)
-            self._session = aiohttp.ClientSession(timeout=self.timeout, connector=connector)
+            self._session = aiohttp.ClientSession(
+                timeout=self.timeout, connector=connector
+            )
         return self._session
 
     async def close(self):
@@ -247,7 +248,9 @@ class TreasuryApiClient:
         if self._session and not self._session.closed:
             await self._session.close()
 
-    async def get_yield_curve(self, as_of_date: Optional[date] = None) -> Optional[YieldCurveData]:
+    async def get_yield_curve(
+        self, as_of_date: Optional[date] = None
+    ) -> Optional[YieldCurveData]:
         """Get yield curve for a specific date.
 
         Args:
@@ -305,7 +308,9 @@ class TreasuryApiClient:
         # Fallback: Try FRED for Treasury yields
         return await self._fetch_from_fred_fallback(target_date)
 
-    def _parse_treasury_csv(self, csv_text: str, target_date: date, days_back: int) -> List[Dict[str, Any]]:
+    def _parse_treasury_csv(
+        self, csv_text: str, target_date: date, days_back: int
+    ) -> List[Dict[str, Any]]:
         """Parse Treasury CSV response.
 
         Args:
@@ -412,7 +417,9 @@ class TreasuryApiClient:
 
         return yields
 
-    async def _fetch_from_fred_fallback(self, target_date: date) -> List[Dict[str, Any]]:
+    async def _fetch_from_fred_fallback(
+        self, target_date: date
+    ) -> List[Dict[str, Any]]:
         """Fallback to FRED for treasury yields if Treasury.gov fails.
 
         Args:
@@ -438,7 +445,9 @@ class TreasuryApiClient:
 
         try:
             # Try to get from local FRED cache if available
-            from investigator.infrastructure.external.fred.macro_indicators import get_macro_indicator_service
+            from investigator.infrastructure.external.fred.macro_indicators import (
+                get_macro_indicator_service,
+            )
 
             service = get_macro_indicator_service()
             yields = {"date": target_date}
@@ -464,7 +473,9 @@ class TreasuryApiClient:
 
         return []
 
-    def _build_yield_curve(self, yields: List[Dict[str, Any]]) -> Optional[YieldCurveData]:
+    def _build_yield_curve(
+        self, yields: List[Dict[str, Any]]
+    ) -> Optional[YieldCurveData]:
         """Build YieldCurveData from parsed yields.
 
         Args:
@@ -496,7 +507,9 @@ class TreasuryApiClient:
             yield_30y=data.get("30y"),
         )
 
-    async def get_yield_history(self, days: int = 365, maturity: str = "10y") -> List[Dict[str, Any]]:
+    async def get_yield_history(
+        self, days: int = 365, maturity: str = "10y"
+    ) -> List[Dict[str, Any]]:
         """Get historical yields for a specific maturity.
 
         Args:
@@ -535,7 +548,10 @@ class TreasuryApiClient:
                     for i, col in enumerate(header):
                         if "date" in col:
                             date_col = i
-                        elif maturity.replace("y", " yr") in col or maturity.replace("m", " mo") in col:
+                        elif (
+                            maturity.replace("y", " yr") in col
+                            or maturity.replace("m", " mo") in col
+                        ):
                             yield_col = i
 
                     if date_col is None or yield_col is None:
@@ -553,13 +569,17 @@ class TreasuryApiClient:
                             continue
 
                         try:
-                            row_date = datetime.strptime(cols[date_col], "%m/%d/%Y").date()
+                            row_date = datetime.strptime(
+                                cols[date_col], "%m/%d/%Y"
+                            ).date()
                             if row_date < cutoff_date:
                                 continue
 
                             yield_val = cols[yield_col]
                             if yield_val and yield_val.lower() != "n/a":
-                                history.append({"date": str(row_date), "yield": float(yield_val)})
+                                history.append(
+                                    {"date": str(row_date), "yield": float(yield_val)}
+                                )
                         except (ValueError, IndexError):
                             continue
 
@@ -571,7 +591,9 @@ class TreasuryApiClient:
             logger.error(f"Error fetching yield history: {e}")
             return []
 
-    async def get_spread_history(self, days: int = 365, spread_type: str = "10y_2y") -> List[Dict[str, Any]]:
+    async def get_spread_history(
+        self, days: int = 365, spread_type: str = "10y_2y"
+    ) -> List[Dict[str, Any]]:
         """Get historical spread data.
 
         Args:
@@ -638,19 +660,31 @@ class TreasuryApiClient:
                             continue
 
                         try:
-                            row_date = datetime.strptime(cols[date_col], "%m/%d/%Y").date()
+                            row_date = datetime.strptime(
+                                cols[date_col], "%m/%d/%Y"
+                            ).date()
                             if row_date < cutoff_date:
                                 continue
 
                             long_val = cols[long_col]
                             short_val = cols[short_col]
 
-                            if long_val and long_val.lower() != "n/a" and short_val and short_val.lower() != "n/a":
-
-                                spread = (float(long_val) - float(short_val)) * 100  # bps
+                            if (
+                                long_val
+                                and long_val.lower() != "n/a"
+                                and short_val
+                                and short_val.lower() != "n/a"
+                            ):
+                                spread = (
+                                    float(long_val) - float(short_val)
+                                ) * 100  # bps
 
                                 history.append(
-                                    {"date": str(row_date), "spread_bps": round(spread, 2), "is_inverted": spread < 0}
+                                    {
+                                        "date": str(row_date),
+                                        "spread_bps": round(spread, 2),
+                                        "is_inverted": spread < 0,
+                                    }
                                 )
                         except (ValueError, IndexError):
                             continue

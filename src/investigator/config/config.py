@@ -74,9 +74,15 @@ class OllamaConfig:
     min_context_size: int
     num_llm_threads: int
     num_predict: Dict[str, int]
-    model_specs: Dict[str, ModelSpec] = field(default_factory=dict)  # Model specifications (single source of truth)
-    context_sizes: Dict[str, int] = field(default_factory=dict)  # Model-specific context sizes (legacy)
-    model_info_cache: Dict[str, Dict[str, int]] = field(default_factory=dict)  # Cache for model info
+    model_specs: Dict[str, ModelSpec] = field(
+        default_factory=dict
+    )  # Model specifications (single source of truth)
+    context_sizes: Dict[str, int] = field(
+        default_factory=dict
+    )  # Model-specific context sizes (legacy)
+    model_info_cache: Dict[str, Dict[str, int]] = field(
+        default_factory=dict
+    )  # Cache for model info
 
     # Multi-server pool configuration
     keep_alive: int = -1  # Keep models loaded (-1 = indefinitely)
@@ -84,7 +90,9 @@ class OllamaConfig:
     pool_strategy: str = "most_capacity"  # Load balancing strategy
 
     # TOON format configuration (Token-Oriented Object Notation for token efficiency)
-    use_toon_format: bool = False  # Enable TOON format for input prompts (30-87% token savings)
+    use_toon_format: bool = (
+        False  # Enable TOON format for input prompts (30-87% token savings)
+    )
     toon_agents: Dict[str, bool] = field(default_factory=dict)  # Per-agent TOON toggles
 
     def get_context_size(self, model_name: str) -> int:
@@ -257,7 +265,11 @@ class CacheTypeConfig:
         default_factory=lambda: CacheHandlerConfig(
             enabled=True,
             priority=10,
-            settings={"table_suffix": "_store", "upsert_on_conflict": True, "connection_pool": "default"},
+            settings={
+                "table_suffix": "_store",
+                "upsert_on_conflict": True,
+                "connection_pool": "default",
+            },
         )
     )
 
@@ -290,7 +302,13 @@ class CacheControlConfig:
                     settings={
                         "base_path": "data/sec_cache",
                         "file_pattern": "{symbol}/{symbol}_quarterly_summary_{fiscal_year}-{fiscal_period}.json.gz",
-                        "natural_key_order": ["symbol", "fiscal_year", "fiscal_period", "form_type", "category"],
+                        "natural_key_order": [
+                            "symbol",
+                            "fiscal_year",
+                            "fiscal_period",
+                            "form_type",
+                            "category",
+                        ],
                         "compression": "gzip",
                         "compression_level": 9,
                         "create_symbol_dirs": True,
@@ -300,7 +318,13 @@ class CacheControlConfig:
                     priority=10,
                     settings={
                         "table_name": "sec_responses",
-                        "natural_key_order": ["symbol", "fiscal_year", "fiscal_period", "form_type", "category"],
+                        "natural_key_order": [
+                            "symbol",
+                            "fiscal_year",
+                            "fiscal_period",
+                            "form_type",
+                            "category",
+                        ],
                         "upsert_on_conflict": True,
                     },
                 ),
@@ -322,7 +346,12 @@ class CacheControlConfig:
                     priority=10,
                     settings={
                         "table_name": "llm_responses",
-                        "natural_key_order": ["symbol", "fiscal_year", "fiscal_period", "llm_type"],
+                        "natural_key_order": [
+                            "symbol",
+                            "fiscal_year",
+                            "fiscal_period",
+                            "llm_type",
+                        ],
                         "upsert_on_conflict": True,
                     },
                 ),
@@ -341,7 +370,9 @@ class CacheControlConfig:
                         "create_symbol_dirs": True,
                     },
                 ),
-                rdbms=CacheHandlerConfig(enabled=False),  # Technical data uses parquet only
+                rdbms=CacheHandlerConfig(
+                    enabled=False
+                ),  # Technical data uses parquet only
             ),
             "submission_data": CacheTypeConfig(
                 ttl_hours=168,  # 7 days - staggered refresh for Russell 1000
@@ -399,7 +430,12 @@ class CacheControlConfig:
                     settings={
                         "base_path": "data/sec_cache",
                         "file_pattern": "{symbol}/{symbol}_quarterly_metrics_{fiscal_year}-{fiscal_period}.json.gz",
-                        "natural_key_order": ["symbol", "fiscal_year", "fiscal_period", "form_type"],
+                        "natural_key_order": [
+                            "symbol",
+                            "fiscal_year",
+                            "fiscal_period",
+                            "form_type",
+                        ],
                         "compression": "gzip",
                         "compression_level": 9,
                         "create_symbol_dirs": True,
@@ -409,7 +445,12 @@ class CacheControlConfig:
                     priority=10,
                     settings={
                         "table_name": "quarterly_metrics",
-                        "natural_key_order": ["symbol", "fiscal_year", "fiscal_period", "form_type"],
+                        "natural_key_order": [
+                            "symbol",
+                            "fiscal_year",
+                            "fiscal_period",
+                            "form_type",
+                        ],
                         "upsert_on_conflict": True,
                     },
                 ),
@@ -427,7 +468,9 @@ class CacheControlConfig:
                         "create_symbol_dirs": False,  # Market context is NOT symbol-specific
                     },
                 ),
-                rdbms=CacheHandlerConfig(enabled=False),  # Market context uses JSON only
+                rdbms=CacheHandlerConfig(
+                    enabled=False
+                ),  # Market context uses JSON only
             ),
         }
     )
@@ -447,7 +490,11 @@ class CacheControlConfig:
     @property
     def types(self) -> Optional[List[str]]:
         """Get list of enabled cache types"""
-        enabled_types = [cache_type for cache_type, config in self.cache_types.items() if config.enabled]
+        enabled_types = [
+            cache_type
+            for cache_type, config in self.cache_types.items()
+            if config.enabled
+        ]
         return enabled_types if enabled_types else None
 
     @property
@@ -530,7 +577,9 @@ class VectorDBConfig:
 
     # Event analysis - driven by submission router
     enable_event_analysis: bool = True
-    event_analysis_forms: List[str] = field(default_factory=lambda: ["8-K", "8-K/A", "DEF 14A", "4", "13D", "13G"])
+    event_analysis_forms: List[str] = field(
+        default_factory=lambda: ["8-K", "8-K/A", "DEF 14A", "4", "13D", "13G"]
+    )
     event_storage_ttl_hours: int = 168  # 7 days for event data
 
     # Submission-driven processing
@@ -574,7 +623,11 @@ class ParquetConfig:
     def get_write_kwargs(self) -> Dict[str, any]:
         """Get kwargs for to_parquet based on engine"""
         if self.engine == "fastparquet":
-            return {"engine": "fastparquet", "compression": self.compression, "index": True}
+            return {
+                "engine": "fastparquet",
+                "compression": self.compression,
+                "index": True,
+            }
         elif self.engine == "pyarrow":
             kwargs = {
                 "engine": "pyarrow",
@@ -840,7 +893,9 @@ class Config:
             "read_from_cache": cache_control_data.get("read_from_cache", True),
             "write_to_cache": cache_control_data.get("write_to_cache", True),
             "force_refresh": cache_control_data.get("force_refresh", False),
-            "force_refresh_symbols": cache_control_data.get("force_refresh_symbols", None),
+            "force_refresh_symbols": cache_control_data.get(
+                "force_refresh_symbols", None
+            ),
         }
         self.cache_control = CacheControlConfig(**new_cache_control)
 
@@ -855,7 +910,9 @@ class Config:
         self.vector_db = VectorDBConfig(**vector_db_config)
 
         # Other settings
-        self.stocks_to_track = config_data.get("stocks_to_track", self._default_stocks())
+        self.stocks_to_track = config_data.get(
+            "stocks_to_track", self._default_stocks()
+        )
         self.data_dir = Path(config_data.get("data_dir", "./data"))
         self.reports_dir = Path(config_data.get("reports_dir", "./reports"))
         self.logs_dir = Path(config_data.get("logs_dir", "./logs"))
@@ -865,7 +922,12 @@ class Config:
         self._raw_config = config_data
 
         # Ensure directories exist
-        for directory in [self.data_dir, self.reports_dir, self.logs_dir, self.sec.cache_dir]:
+        for directory in [
+            self.data_dir,
+            self.reports_dir,
+            self.logs_dir,
+            self.sec.cache_dir,
+        ]:
             Path(directory).mkdir(parents=True, exist_ok=True)
 
     def _override_with_env(self, config_data: Dict) -> Dict:
@@ -1132,7 +1194,11 @@ class Config:
                         "InterestAndDividendIncomeOperating",
                     ],
                     # Tax
-                    "tax_expense": ["IncomeTaxExpenseBenefit", "CurrentIncomeTaxExpenseBenefit", "IncomeTaxes"],
+                    "tax_expense": [
+                        "IncomeTaxExpenseBenefit",
+                        "CurrentIncomeTaxExpenseBenefit",
+                        "IncomeTaxes",
+                    ],
                     # Other Income Statement items
                     "other_income": [
                         "OtherNonoperatingIncomeExpense",
@@ -1156,16 +1222,25 @@ class Config:
                         "CashCashEquivalentsAndShortTermInvestments",
                         "Cash",
                     ],
-                    "short_term_investments": ["ShortTermInvestments", "MarketableSecuritiesCurrent"],
+                    "short_term_investments": [
+                        "ShortTermInvestments",
+                        "MarketableSecuritiesCurrent",
+                    ],
                     "accounts_receivable": [
                         "AccountsReceivableNetCurrent",
                         "AccountsReceivableNet",
                         "AccountsNotesAndLoansReceivableNetCurrent",
                     ],
                     "inventory": ["InventoryNet", "Inventory"],
-                    "prepaid_expenses": ["PrepaidExpenseAndOtherAssetsCurrent", "PrepaidExpenseCurrent"],
+                    "prepaid_expenses": [
+                        "PrepaidExpenseAndOtherAssetsCurrent",
+                        "PrepaidExpenseCurrent",
+                    ],
                     "other_current_assets": ["OtherAssetsCurrent"],
-                    "property_plant_equipment": ["PropertyPlantAndEquipmentNet", "PropertyPlantAndEquipmentGross"],
+                    "property_plant_equipment": [
+                        "PropertyPlantAndEquipmentNet",
+                        "PropertyPlantAndEquipmentGross",
+                    ],
                     "goodwill": ["Goodwill"],
                     "intangible_assets": [
                         "IntangibleAssetsNetExcludingGoodwill",
@@ -1177,10 +1252,19 @@ class Config:
                     ],
                     "other_assets": ["OtherAssetsNoncurrent", "AssetsNoncurrentOther"],
                     # Liabilities
-                    "total_liabilities": ["Liabilities", "LiabilitiesAndStockholdersEquity"],
+                    "total_liabilities": [
+                        "Liabilities",
+                        "LiabilitiesAndStockholdersEquity",
+                    ],
                     "current_liabilities": ["LiabilitiesCurrent"],
-                    "accounts_payable": ["AccountsPayableCurrent", "AccountsPayableAndAccruedLiabilitiesCurrent"],
-                    "accrued_liabilities": ["AccruedLiabilitiesCurrent", "AccruedIncomeTaxesCurrent"],
+                    "accounts_payable": [
+                        "AccountsPayableCurrent",
+                        "AccountsPayableAndAccruedLiabilitiesCurrent",
+                    ],
+                    "accrued_liabilities": [
+                        "AccruedLiabilitiesCurrent",
+                        "AccruedIncomeTaxesCurrent",
+                    ],
                     "short_term_debt": ["ShortTermBorrowings", "LongTermDebtCurrent"],
                     "other_current_liabilities": ["OtherLiabilitiesCurrent"],
                     "long_term_debt": [
@@ -1188,17 +1272,32 @@ class Config:
                         "LongTermDebt",
                         "LongTermDebtAndCapitalLeaseObligations",
                     ],
-                    "deferred_tax": ["DeferredTaxLiabilitiesNoncurrent", "DeferredIncomeTaxLiabilitiesNet"],
+                    "deferred_tax": [
+                        "DeferredTaxLiabilitiesNoncurrent",
+                        "DeferredIncomeTaxLiabilitiesNet",
+                    ],
                     "other_liabilities": ["OtherLiabilitiesNoncurrent"],
                     # Equity
                     "shareholders_equity": [
                         "StockholdersEquity",
                         "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest",
                     ],
-                    "common_stock": ["CommonStockValue", "CommonStockParOrStatedValuePerShareValue"],
-                    "retained_earnings": ["RetainedEarningsAccumulatedDeficit", "RetainedEarnings"],
-                    "additional_paid_in_capital": ["AdditionalPaidInCapitalCommonStock", "AdditionalPaidInCapital"],
-                    "treasury_stock": ["TreasuryStockValue", "TreasuryStockCommonValue"],
+                    "common_stock": [
+                        "CommonStockValue",
+                        "CommonStockParOrStatedValuePerShareValue",
+                    ],
+                    "retained_earnings": [
+                        "RetainedEarningsAccumulatedDeficit",
+                        "RetainedEarnings",
+                    ],
+                    "additional_paid_in_capital": [
+                        "AdditionalPaidInCapitalCommonStock",
+                        "AdditionalPaidInCapital",
+                    ],
+                    "treasury_stock": [
+                        "TreasuryStockValue",
+                        "TreasuryStockCommonValue",
+                    ],
                     "accumulated_other_comprehensive_income": [
                         "AccumulatedOtherComprehensiveIncomeLossNetOfTax",
                         "AccumulatedOtherComprehensiveIncome",
@@ -1219,13 +1318,21 @@ class Config:
                         "Depreciation",
                     ],
                     "amortization": ["AmortizationOfIntangibleAssets", "Amortization"],
-                    "stock_based_compensation": ["ShareBasedCompensation", "StockBasedCompensation"],
-                    "deferred_taxes": ["DeferredIncomeTaxExpenseBenefit", "IncreaseDecreaseInDeferredIncomeTaxes"],
+                    "stock_based_compensation": [
+                        "ShareBasedCompensation",
+                        "StockBasedCompensation",
+                    ],
+                    "deferred_taxes": [
+                        "DeferredIncomeTaxExpenseBenefit",
+                        "IncreaseDecreaseInDeferredIncomeTaxes",
+                    ],
                     "changes_working_capital": [
                         "IncreaseDecreaseInOperatingCapital",
                         "IncreaseDecreaseInOperatingAssetsAndLiabilities",
                     ],
-                    "accounts_receivable_changes": ["IncreaseDecreaseInAccountsReceivable"],
+                    "accounts_receivable_changes": [
+                        "IncreaseDecreaseInAccountsReceivable"
+                    ],
                     "inventory_changes": ["IncreaseDecreaseInInventories"],
                     "accounts_payable_changes": ["IncreaseDecreaseInAccountsPayable"],
                     # Investing Activities
@@ -1240,9 +1347,18 @@ class Config:
                         "CapitalExpendituresIncurredButNotYetPaid",
                         "PaymentsToAcquireProductiveAssets",
                     ],
-                    "acquisitions": ["PaymentsToAcquireBusinessesNetOfCashAcquired", "PaymentsToAcquireBusinesses"],
-                    "asset_sales": ["ProceedsFromSaleOfPropertyPlantAndEquipment", "ProceedsFromSaleOfAssets"],
-                    "investment_purchases": ["PaymentsToAcquireInvestments", "PaymentsToAcquireMarketableSecurities"],
+                    "acquisitions": [
+                        "PaymentsToAcquireBusinessesNetOfCashAcquired",
+                        "PaymentsToAcquireBusinesses",
+                    ],
+                    "asset_sales": [
+                        "ProceedsFromSaleOfPropertyPlantAndEquipment",
+                        "ProceedsFromSaleOfAssets",
+                    ],
+                    "investment_purchases": [
+                        "PaymentsToAcquireInvestments",
+                        "PaymentsToAcquireMarketableSecurities",
+                    ],
                     "investment_sales": [
                         "ProceedsFromSaleOfInvestments",
                         "ProceedsFromSaleAndMaturityOfMarketableSecurities",
@@ -1257,17 +1373,37 @@ class Config:
                         "PaymentsOfDividends",
                         "PaymentsOfOrdinaryDividends",
                     ],
-                    "stock_repurchases": ["PaymentsForRepurchaseOfCommonStock", "PaymentsForRepurchaseOfEquity"],
-                    "stock_issuance": ["ProceedsFromIssuanceOfCommonStock", "ProceedsFromStockOptionsExercised"],
-                    "debt_issuance": ["ProceedsFromIssuanceOfLongTermDebt", "ProceedsFromDebtNetOfIssuanceCosts"],
+                    "stock_repurchases": [
+                        "PaymentsForRepurchaseOfCommonStock",
+                        "PaymentsForRepurchaseOfEquity",
+                    ],
+                    "stock_issuance": [
+                        "ProceedsFromIssuanceOfCommonStock",
+                        "ProceedsFromStockOptionsExercised",
+                    ],
+                    "debt_issuance": [
+                        "ProceedsFromIssuanceOfLongTermDebt",
+                        "ProceedsFromDebtNetOfIssuanceCosts",
+                    ],
                     "debt_repayment": ["RepaymentsOfLongTermDebt", "RepaymentsOfDebt"],
-                    "other_financing": ["PaymentsForOtherFinancingActivities", "ProceedsFromOtherFinancingActivities"],
+                    "other_financing": [
+                        "PaymentsForOtherFinancingActivities",
+                        "ProceedsFromOtherFinancingActivities",
+                    ],
                 },
                 "other": {
                     # Share data
-                    "shares_outstanding": ["CommonStockSharesOutstanding", "SharesOutstanding"],
-                    "shares_basic": ["WeightedAverageNumberOfSharesOutstandingBasic", "CommonStockSharesOutstanding"],
-                    "shares_diluted": ["WeightedAverageNumberOfDilutedSharesOutstanding"],
+                    "shares_outstanding": [
+                        "CommonStockSharesOutstanding",
+                        "SharesOutstanding",
+                    ],
+                    "shares_basic": [
+                        "WeightedAverageNumberOfSharesOutstandingBasic",
+                        "CommonStockSharesOutstanding",
+                    ],
+                    "shares_diluted": [
+                        "WeightedAverageNumberOfDilutedSharesOutstanding"
+                    ],
                     "eps_basic": ["EarningsPerShareBasic"],
                     "eps_diluted": ["EarningsPerShareDiluted"],
                     "dividends_per_share": [
@@ -1300,13 +1436,28 @@ class Config:
                         "EntityRegistrantName",
                         "EntityCentralIndexKey",
                     ],
-                    "mgmt_discussion": ["ManagementDiscussionAndAnalysis", "DisclosureOfRisksAndUncertainties"],
-                    "business_description": ["BusinessDescription", "GeneralBusinessDescription"],
+                    "mgmt_discussion": [
+                        "ManagementDiscussionAndAnalysis",
+                        "DisclosureOfRisksAndUncertainties",
+                    ],
+                    "business_description": [
+                        "BusinessDescription",
+                        "GeneralBusinessDescription",
+                    ],
                     "risk_factors": ["RiskFactors", "RiskManagement"],
-                    "accounting_policies": ["SignificantAccountingPolicies", "AccountingPoliciesAndMethods"],
+                    "accounting_policies": [
+                        "SignificantAccountingPolicies",
+                        "AccountingPoliciesAndMethods",
+                    ],
                     "segment_reporting": ["SegmentReporting", "ReportableSegments"],
-                    "subsequent_events": ["SubsequentEvents", "EventsOccurringAfterBalanceSheetDate"],
-                    "commitments_contingencies": ["CommitmentsAndContingencies", "Contingencies"],
+                    "subsequent_events": [
+                        "SubsequentEvents",
+                        "EventsOccurringAfterBalanceSheetDate",
+                    ],
+                    "commitments_contingencies": [
+                        "CommitmentsAndContingencies",
+                        "Contingencies",
+                    ],
                 },
             },
             "frame_api_details": {
@@ -1317,13 +1468,22 @@ class Config:
                         "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax",
                         "us-gaap:SalesRevenueServicesNet",
                     ],
-                    "product_revenue": ["us-gaap:ProductSalesRevenue", "us-gaap:ProductRevenue"],
-                    "service_revenue": ["us-gaap:ServiceRevenue", "us-gaap:ServiceSalesRevenue"],
+                    "product_revenue": [
+                        "us-gaap:ProductSalesRevenue",
+                        "us-gaap:ProductRevenue",
+                    ],
+                    "service_revenue": [
+                        "us-gaap:ServiceRevenue",
+                        "us-gaap:ServiceSalesRevenue",
+                    ],
                     "subscription_revenue": [
                         "us-gaap:SubscriptionRevenue",
                         "us-gaap:CloudSubscriptionsAndSupportRevenue",
                     ],
-                    "licensing_revenue": ["us-gaap:LicensingRevenue", "us-gaap:LicenseRevenue"],
+                    "licensing_revenue": [
+                        "us-gaap:LicensingRevenue",
+                        "us-gaap:LicenseRevenue",
+                    ],
                     "other_revenue": ["us-gaap:OtherRevenue", "us-gaap:RevenuesOther"],
                 },
                 "income_statement_cost_of_revenue": {
@@ -1332,25 +1492,44 @@ class Config:
                         "us-gaap:CostOfGoodsAndServicesSold",
                         "us-gaap:CostOfGoodsSold",
                     ],
-                    "cost_of_product_revenue": ["us-gaap:CostOfProductRevenue", "us-gaap:CostOfGoodsSold"],
-                    "cost_of_service_revenue": ["us-gaap:CostOfServiceRevenue", "us-gaap:CostOfServices"],
+                    "cost_of_product_revenue": [
+                        "us-gaap:CostOfProductRevenue",
+                        "us-gaap:CostOfGoodsSold",
+                    ],
+                    "cost_of_service_revenue": [
+                        "us-gaap:CostOfServiceRevenue",
+                        "us-gaap:CostOfServices",
+                    ],
                 },
-                "income_statement_gross_profit": {"gross_profit": ["us-gaap:GrossProfit"]},
+                "income_statement_gross_profit": {
+                    "gross_profit": ["us-gaap:GrossProfit"]
+                },
                 "income_statement_operating_expenses": {
-                    "research_and_development_expense": ["us-gaap:ResearchAndDevelopmentExpense"],
-                    "selling_general_and_administrative_expense": ["us-gaap:SellingGeneralAndAdministrativeExpense"],
+                    "research_and_development_expense": [
+                        "us-gaap:ResearchAndDevelopmentExpense"
+                    ],
+                    "selling_general_and_administrative_expense": [
+                        "us-gaap:SellingGeneralAndAdministrativeExpense"
+                    ],
                     "selling_and_marketing_expense": [
                         "us-gaap:SellingAndMarketingExpense",
                         "us-gaap:MarketingAndAdvertisingExpense",
                     ],
-                    "general_and_administrative_expense": ["us-gaap:GeneralAndAdministrativeExpense"],
+                    "general_and_administrative_expense": [
+                        "us-gaap:GeneralAndAdministrativeExpense"
+                    ],
                     "depreciation_expense": ["us-gaap:Depreciation"],
-                    "amortization_of_intangible_assets": ["us-gaap:AmortizationOfIntangibleAssets"],
+                    "amortization_of_intangible_assets": [
+                        "us-gaap:AmortizationOfIntangibleAssets"
+                    ],
                     "depreciation_and_amortization": [
                         "us-gaap:DepreciationAndAmortization",
                         "us-gaap:DepreciationDepletionAndAmortization",
                     ],
-                    "restructuring_charges": ["us-gaap:RestructuringCharges", "us-gaap:RestructuringCostsAndOther"],
+                    "restructuring_charges": [
+                        "us-gaap:RestructuringCharges",
+                        "us-gaap:RestructuringCostsAndOther",
+                    ],
                     "impairment_charges": [
                         "us-gaap:ImpairmentOfLongLivedAssetsHeldForUse",
                         "us-gaap:GoodwillImpairmentLoss",
@@ -1365,10 +1544,18 @@ class Config:
                     ],
                 },
                 "income_statement_non_operating_income_expense": {
-                    "interest_income": ["us-gaap:InvestmentIncomeInterest", "us-gaap:InterestIncomeOther"],
+                    "interest_income": [
+                        "us-gaap:InvestmentIncomeInterest",
+                        "us-gaap:InterestIncomeOther",
+                    ],
                     "interest_expense": ["us-gaap:InterestExpense"],
-                    "investment_income_loss": ["us-gaap:InvestmentIncomeLoss", "us-gaap:GainsLossesOnInvestments"],
-                    "foreign_currency_transaction_gain_loss": ["us-gaap:ForeignCurrencyTransactionGainLossBeforeTax"],
+                    "investment_income_loss": [
+                        "us-gaap:InvestmentIncomeLoss",
+                        "us-gaap:GainsLossesOnInvestments",
+                    ],
+                    "foreign_currency_transaction_gain_loss": [
+                        "us-gaap:ForeignCurrencyTransactionGainLossBeforeTax"
+                    ],
                     "other_nonoperating_income_expense": [
                         "us-gaap:OtherNonoperatingIncomeExpense",
                         "us-gaap:OtherIncomeExpenseNet",
@@ -1382,8 +1569,12 @@ class Config:
                 },
                 "income_statement_income_tax": {
                     "income_tax_expense_benefit": ["us-gaap:IncomeTaxExpenseBenefit"],
-                    "current_income_tax_expense_benefit": ["us-gaap:CurrentIncomeTaxExpenseBenefit"],
-                    "deferred_income_tax_expense_benefit": ["us-gaap:DeferredIncomeTaxExpenseBenefit"],
+                    "current_income_tax_expense_benefit": [
+                        "us-gaap:CurrentIncomeTaxExpenseBenefit"
+                    ],
+                    "deferred_income_tax_expense_benefit": [
+                        "us-gaap:DeferredIncomeTaxExpenseBenefit"
+                    ],
                 },
                 "income_statement_net_income": {
                     "net_income_loss": ["us-gaap:NetIncomeLoss"],
@@ -1406,10 +1597,18 @@ class Config:
                     ],
                 },
                 "balance_sheet_current_assets": {
-                    "cash_and_cash_equivalents": ["us-gaap:CashAndCashEquivalentsAtCarryingValue"],
-                    "short_term_investments": ["us-gaap:MarketableSecuritiesCurrent", "us-gaap:ShortTermInvestments"],
+                    "cash_and_cash_equivalents": [
+                        "us-gaap:CashAndCashEquivalentsAtCarryingValue"
+                    ],
+                    "short_term_investments": [
+                        "us-gaap:MarketableSecuritiesCurrent",
+                        "us-gaap:ShortTermInvestments",
+                    ],
                     "accounts_receivable_net": ["us-gaap:AccountsReceivableNetCurrent"],
-                    "inventories_net": ["us-gaap:InventoryNet", "us-gaap:InventoriesNet"],
+                    "inventories_net": [
+                        "us-gaap:InventoryNet",
+                        "us-gaap:InventoriesNet",
+                    ],
                     "prepaid_expenses_current": [
                         "us-gaap:PrepaidExpenseCurrent",
                         "us-gaap:PrepaidExpensesAndOtherCurrentAssets",
@@ -1417,17 +1616,31 @@ class Config:
                     "other_current_assets": ["us-gaap:OtherCurrentAssets"],
                 },
                 "balance_sheet_non_current_assets": {
-                    "property_plant_and_equipment_net": ["us-gaap:PropertyPlantAndEquipmentNet"],
+                    "property_plant_and_equipment_net": [
+                        "us-gaap:PropertyPlantAndEquipmentNet"
+                    ],
                     "goodwill": ["us-gaap:Goodwill"],
                     "intangible_assets_net_excluding_goodwill": [
                         "us-gaap:IntangibleAssetsNetExcludingGoodwill",
                         "us-gaap:FiniteLivedIntangibleAssetsNet",
                     ],
-                    "long_term_investments": ["us-gaap:LongTermInvestments", "us-gaap:MarketableSecuritiesNoncurrent"],
-                    "operating_lease_right_of_use_asset": ["us-gaap:OperatingLeaseRightOfUseAsset"],
-                    "finance_lease_right_of_use_asset": ["us-gaap:FinanceLeaseRightOfUseAsset"],
-                    "deferred_tax_assets_noncurrent": ["us-gaap:DeferredTaxAssetsNetNoncurrent"],
-                    "other_non_current_assets": ["us-gaap:OtherAssetsNoncurrent", "us-gaap:OtherNoncurrentAssets"],
+                    "long_term_investments": [
+                        "us-gaap:LongTermInvestments",
+                        "us-gaap:MarketableSecuritiesNoncurrent",
+                    ],
+                    "operating_lease_right_of_use_asset": [
+                        "us-gaap:OperatingLeaseRightOfUseAsset"
+                    ],
+                    "finance_lease_right_of_use_asset": [
+                        "us-gaap:FinanceLeaseRightOfUseAsset"
+                    ],
+                    "deferred_tax_assets_noncurrent": [
+                        "us-gaap:DeferredTaxAssetsNetNoncurrent"
+                    ],
+                    "other_non_current_assets": [
+                        "us-gaap:OtherAssetsNoncurrent",
+                        "us-gaap:OtherNoncurrentAssets",
+                    ],
                 },
                 "balance_sheet_current_liabilities": {
                     "accounts_payable_current": [
@@ -1443,21 +1656,38 @@ class Config:
                         "us-gaap:DebtCurrent",
                         "us-gaap:CommercialPaper",
                     ],
-                    "current_portion_of_long_term_debt": ["us-gaap:LongTermDebtCurrentMaturities"],
-                    "operating_lease_liability_current": ["us-gaap:OperatingLeaseLiabilityCurrent"],
-                    "finance_lease_liability_current": ["us-gaap:FinanceLeaseLiabilityCurrent"],
+                    "current_portion_of_long_term_debt": [
+                        "us-gaap:LongTermDebtCurrentMaturities"
+                    ],
+                    "operating_lease_liability_current": [
+                        "us-gaap:OperatingLeaseLiabilityCurrent"
+                    ],
+                    "finance_lease_liability_current": [
+                        "us-gaap:FinanceLeaseLiabilityCurrent"
+                    ],
                     "deferred_revenue_current": [
                         "us-gaap:DeferredRevenueCurrent",
                         "us-gaap:ContractWithCustomerLiabilityCurrent",
                     ],
-                    "income_taxes_payable_current": ["us-gaap:IncomeTaxesPayableCurrent"],
+                    "income_taxes_payable_current": [
+                        "us-gaap:IncomeTaxesPayableCurrent"
+                    ],
                     "other_current_liabilities": ["us-gaap:OtherCurrentLiabilities"],
                 },
                 "balance_sheet_non_current_liabilities": {
-                    "long_term_debt_noncurrent": ["us-gaap:LongTermDebtNoncurrent", "us-gaap:DebtNoncurrent"],
-                    "operating_lease_liability_noncurrent": ["us-gaap:OperatingLeaseLiabilityNoncurrent"],
-                    "finance_lease_liability_noncurrent": ["us-gaap:FinanceLeaseLiabilityNoncurrent"],
-                    "deferred_tax_liabilities_noncurrent": ["us-gaap:DeferredTaxLiabilitiesNoncurrent"],
+                    "long_term_debt_noncurrent": [
+                        "us-gaap:LongTermDebtNoncurrent",
+                        "us-gaap:DebtNoncurrent",
+                    ],
+                    "operating_lease_liability_noncurrent": [
+                        "us-gaap:OperatingLeaseLiabilityNoncurrent"
+                    ],
+                    "finance_lease_liability_noncurrent": [
+                        "us-gaap:FinanceLeaseLiabilityNoncurrent"
+                    ],
+                    "deferred_tax_liabilities_noncurrent": [
+                        "us-gaap:DeferredTaxLiabilitiesNoncurrent"
+                    ],
                     "pension_and_other_postretirement_benefits_noncurrent": [
                         "us-gaap:PensionAndOtherPostretirementDefinedBenefitPlansLiabilitiesNoncurrent"
                     ],
@@ -1473,21 +1703,33 @@ class Config:
                     ],
                     "preferred_stock_value": ["us-gaap:PreferredStockValue"],
                     "additional_paid_in_capital": ["us-gaap:AdditionalPaidInCapital"],
-                    "retained_earnings_accumulated_deficit": ["us-gaap:RetainedEarningsAccumulatedDeficit"],
+                    "retained_earnings_accumulated_deficit": [
+                        "us-gaap:RetainedEarningsAccumulatedDeficit"
+                    ],
                     "accumulated_other_comprehensive_income_loss": [
                         "us-gaap:AccumulatedOtherComprehensiveIncomeLossNetOfTax"
                     ],
                     "treasury_stock_value": ["us-gaap:TreasuryStockValue"],
-                    "noncontrolling_interest_equity": ["us-gaap:MinorityInterest", "us-gaap:NoncontrollingInterest"],
+                    "noncontrolling_interest_equity": [
+                        "us-gaap:MinorityInterest",
+                        "us-gaap:NoncontrollingInterest",
+                    ],
                 },
                 "balance_sheet_totals": {
                     "total_assets": ["us-gaap:Assets"],
                     "total_liabilities": ["us-gaap:Liabilities"],
-                    "total_equity": ["us-gaap:StockholdersEquity", "us-gaap:PartnersCapital"],
-                    "total_liabilities_and_equity": ["us-gaap:LiabilitiesAndStockholdersEquity"],
+                    "total_equity": [
+                        "us-gaap:StockholdersEquity",
+                        "us-gaap:PartnersCapital",
+                    ],
+                    "total_liabilities_and_equity": [
+                        "us-gaap:LiabilitiesAndStockholdersEquity"
+                    ],
                 },
                 "cash_flow_operating": {
-                    "net_cash_provided_by_operating_activities": ["us-gaap:NetCashProvidedByUsedInOperatingActivities"],
+                    "net_cash_provided_by_operating_activities": [
+                        "us-gaap:NetCashProvidedByUsedInOperatingActivities"
+                    ],
                     "adjustments_to_reconcile_net_income_to_cash_from_ops_depreciation_amortization": [
                         "us-gaap:DepreciationDepletionAndAmortization"
                     ],
@@ -1497,37 +1739,72 @@ class Config:
                     "adjustments_to_reconcile_net_income_to_cash_from_ops_deferred_income_tax": [
                         "us-gaap:DeferredIncomeTaxExpenseBenefit"
                     ],
-                    "change_in_accounts_receivable_cf": ["us-gaap:IncreaseDecreaseInAccountsReceivableTrade"],
-                    "change_in_inventories_cf": ["us-gaap:IncreaseDecreaseInInventories"],
-                    "change_in_prepaid_expenses_cf": ["us-gaap:IncreaseDecreaseInPrepaidDeferredExpenseAndOtherAssets"],
-                    "change_in_accounts_payable_cf": ["us-gaap:IncreaseDecreaseInAccountsPayableTrade"],
-                    "change_in_accrued_liabilities_cf": ["us-gaap:IncreaseDecreaseInAccruedLiabilities"],
-                    "change_in_deferred_revenue_cf": ["us-gaap:IncreaseDecreaseInDeferredRevenue"],
+                    "change_in_accounts_receivable_cf": [
+                        "us-gaap:IncreaseDecreaseInAccountsReceivableTrade"
+                    ],
+                    "change_in_inventories_cf": [
+                        "us-gaap:IncreaseDecreaseInInventories"
+                    ],
+                    "change_in_prepaid_expenses_cf": [
+                        "us-gaap:IncreaseDecreaseInPrepaidDeferredExpenseAndOtherAssets"
+                    ],
+                    "change_in_accounts_payable_cf": [
+                        "us-gaap:IncreaseDecreaseInAccountsPayableTrade"
+                    ],
+                    "change_in_accrued_liabilities_cf": [
+                        "us-gaap:IncreaseDecreaseInAccruedLiabilities"
+                    ],
+                    "change_in_deferred_revenue_cf": [
+                        "us-gaap:IncreaseDecreaseInDeferredRevenue"
+                    ],
                 },
                 "cash_flow_investing": {
-                    "net_cash_provided_by_investing_activities": ["us-gaap:NetCashProvidedByUsedInInvestingActivities"],
-                    "capital_expenditures": ["us-gaap:PaymentsToAcquirePropertyPlantAndEquipment"],
-                    "purchases_of_investments": ["us-gaap:PaymentsToAcquireInvestments"],
+                    "net_cash_provided_by_investing_activities": [
+                        "us-gaap:NetCashProvidedByUsedInInvestingActivities"
+                    ],
+                    "capital_expenditures": [
+                        "us-gaap:PaymentsToAcquirePropertyPlantAndEquipment"
+                    ],
+                    "purchases_of_investments": [
+                        "us-gaap:PaymentsToAcquireInvestments"
+                    ],
                     "sales_maturities_of_investments": [
                         "us-gaap:ProceedsFromSaleAndMaturityOfMarketableSecurities",
                         "us-gaap:ProceedsFromSaleOfMarketableSecurities",
                         "us-gaap:ProceedsFromMaturitiesOfMarketableSecurities",
                     ],
-                    "acquisitions_net_of_cash_acquired": ["us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired"],
-                    "divestitures_net_of_cash_sold": ["us-gaap:ProceedsFromDivestitureOfBusinessesNetOfCashDivested"],
+                    "acquisitions_net_of_cash_acquired": [
+                        "us-gaap:PaymentsToAcquireBusinessesNetOfCashAcquired"
+                    ],
+                    "divestitures_net_of_cash_sold": [
+                        "us-gaap:ProceedsFromDivestitureOfBusinessesNetOfCashDivested"
+                    ],
                 },
                 "cash_flow_financing": {
-                    "net_cash_provided_by_financing_activities": ["us-gaap:NetCashProvidedByUsedInFinancingActivities"],
-                    "proceeds_from_debt_issuance": ["us-gaap:ProceedsFromIssuanceOfLongTermDebt"],
+                    "net_cash_provided_by_financing_activities": [
+                        "us-gaap:NetCashProvidedByUsedInFinancingActivities"
+                    ],
+                    "proceeds_from_debt_issuance": [
+                        "us-gaap:ProceedsFromIssuanceOfLongTermDebt"
+                    ],
                     "repayments_of_debt": ["us-gaap:RepaymentsOfLongTermDebt"],
-                    "proceeds_from_equity_issuance": ["us-gaap:ProceedsFromIssuanceOfCommonStock"],
-                    "repurchases_of_equity": ["us-gaap:PaymentsForRepurchaseOfCommonStock"],
-                    "dividends_paid": ["us-gaap:PaymentsOfDividends", "us-gaap:DividendsPaid"],
+                    "proceeds_from_equity_issuance": [
+                        "us-gaap:ProceedsFromIssuanceOfCommonStock"
+                    ],
+                    "repurchases_of_equity": [
+                        "us-gaap:PaymentsForRepurchaseOfCommonStock"
+                    ],
+                    "dividends_paid": [
+                        "us-gaap:PaymentsOfDividends",
+                        "us-gaap:DividendsPaid",
+                    ],
                 },
                 "cash_flow_supplemental_and_other": {
                     "interest_paid_cf": ["us-gaap:InterestPaid"],
                     "income_taxes_paid_cf": ["us-gaap:IncomeTaxesPaid"],
-                    "effect_of_exchange_rate_on_cash": ["us-gaap:EffectOfExchangeRateOnCashAndCashEquivalents"],
+                    "effect_of_exchange_rate_on_cash": [
+                        "us-gaap:EffectOfExchangeRateOnCashAndCashEquivalents"
+                    ],
                     "cash_and_cash_equivalents_period_increase_decrease": [
                         "us-gaap:CashAndCashEquivalentsPeriodIncreaseDecrease"
                     ],
@@ -1548,11 +1825,17 @@ class Config:
                     "long_term_debt_maturities_note": [
                         "us-gaap:LongTermDebtMaturitiesRepaymentsOfPrincipalAfterYearFive"
                     ],
-                    "debt_covenants_compliance_note": ["us-gaap:DebtInstrumentCovenantsCompliance"],
-                    "weighted_average_interest_rate_on_debt_note": ["us-gaap:DebtWeightedAverageInterestRate"],
+                    "debt_covenants_compliance_note": [
+                        "us-gaap:DebtInstrumentCovenantsCompliance"
+                    ],
+                    "weighted_average_interest_rate_on_debt_note": [
+                        "us-gaap:DebtWeightedAverageInterestRate"
+                    ],
                 },
                 "notes_leases_details": {
-                    "operating_lease_cost_note": ["us-gaap:LesseeOperatingLeaseExpense"],
+                    "operating_lease_cost_note": [
+                        "us-gaap:LesseeOperatingLeaseExpense"
+                    ],
                     "finance_lease_cost_note": [
                         "us-gaap:LesseeFinanceLeaseCostInterestComponent",
                         "us-gaap:LesseeFinanceLeaseCostAmortizationOfRightOfUseAsset",
@@ -1560,27 +1843,51 @@ class Config:
                     "future_minimum_lease_payments_operating_note": [
                         "us-gaap:OperatingLeaseLiabilityFutureLeasePayments"
                     ],
-                    "future_minimum_lease_payments_finance_note": ["us-gaap:FinanceLeaseLiabilityFutureLeasePayments"],
-                    "weighted_average_lease_term_operating_note": ["us-gaap:OperatingLeaseWeightedAverageLeaseTerm"],
+                    "future_minimum_lease_payments_finance_note": [
+                        "us-gaap:FinanceLeaseLiabilityFutureLeasePayments"
+                    ],
+                    "weighted_average_lease_term_operating_note": [
+                        "us-gaap:OperatingLeaseWeightedAverageLeaseTerm"
+                    ],
                     "weighted_average_discount_rate_operating_note": [
                         "us-gaap:OperatingLeaseWeightedAverageDiscountRate"
                     ],
                 },
                 "notes_commitments_and_contingencies": {
-                    "purchase_commitments_note": ["us-gaap:UnconditionalPurchaseObligationAmount"],
-                    "legal_contingencies_accrual_note": ["us-gaap:AccrualForEnvironmentalLossContingencies"],
-                    "guarantees_outstanding_note": ["us-gaap:GuaranteesOfIndebtednessOfOthersAmount"],
+                    "purchase_commitments_note": [
+                        "us-gaap:UnconditionalPurchaseObligationAmount"
+                    ],
+                    "legal_contingencies_accrual_note": [
+                        "us-gaap:AccrualForEnvironmentalLossContingencies"
+                    ],
+                    "guarantees_outstanding_note": [
+                        "us-gaap:GuaranteesOfIndebtednessOfOthersAmount"
+                    ],
                 },
                 "notes_fair_value_measurements": {
-                    "fair_value_assets_level_1_note": ["us-gaap:FairValueInputsLevel1Assets"],
-                    "fair_value_assets_level_2_note": ["us-gaap:FairValueInputsLevel2Assets"],
-                    "fair_value_assets_level_3_note": ["us-gaap:FairValueInputsLevel3Assets"],
-                    "fair_value_liabilities_level_1_note": ["us-gaap:FairValueInputsLevel1Liabilities"],
-                    "fair_value_liabilities_level_2_note": ["us-gaap:FairValueInputsLevel2Liabilities"],
-                    "fair_value_liabilities_level_3_note": ["us-gaap:FairValueInputsLevel3Liabilities"],
+                    "fair_value_assets_level_1_note": [
+                        "us-gaap:FairValueInputsLevel1Assets"
+                    ],
+                    "fair_value_assets_level_2_note": [
+                        "us-gaap:FairValueInputsLevel2Assets"
+                    ],
+                    "fair_value_assets_level_3_note": [
+                        "us-gaap:FairValueInputsLevel3Assets"
+                    ],
+                    "fair_value_liabilities_level_1_note": [
+                        "us-gaap:FairValueInputsLevel1Liabilities"
+                    ],
+                    "fair_value_liabilities_level_2_note": [
+                        "us-gaap:FairValueInputsLevel2Liabilities"
+                    ],
+                    "fair_value_liabilities_level_3_note": [
+                        "us-gaap:FairValueInputsLevel3Liabilities"
+                    ],
                 },
                 "notes_derivatives_and_hedging": {
-                    "notional_amount_of_interest_rate_swaps_note": ["us-gaap:InterestRateSwapNotionalAmount"],
+                    "notional_amount_of_interest_rate_swaps_note": [
+                        "us-gaap:InterestRateSwapNotionalAmount"
+                    ],
                     "notional_amount_of_foreign_currency_contracts_note": [
                         "us-gaap:ForeignCurrencyContractNotionalAmount"
                     ],
@@ -1595,8 +1902,12 @@ class Config:
                     "effective_income_tax_rate_reconciliation_note": [
                         "us-gaap:EffectiveIncomeTaxRateReconciliationAtFederalStatutoryIncomeTaxRate"
                     ],
-                    "deferred_tax_assets_by_type_note": ["us-gaap:DeferredTaxAssetsTaxCreditCarryforwards"],
-                    "deferred_tax_liabilities_by_type_note": ["us-gaap:DeferredTaxLiabilitiesIntangibleAssets"],
+                    "deferred_tax_assets_by_type_note": [
+                        "us-gaap:DeferredTaxAssetsTaxCreditCarryforwards"
+                    ],
+                    "deferred_tax_liabilities_by_type_note": [
+                        "us-gaap:DeferredTaxLiabilitiesIntangibleAssets"
+                    ],
                     "valuation_allowance_for_deferred_tax_assets_note": [
                         "us-gaap:ValuationAllowanceOfDeferredTaxAssets"
                     ],
@@ -1611,9 +1922,15 @@ class Config:
                 },
                 "notes_related_party_transactions": {
                     "related_party_revenue_note": ["us-gaap:RevenueFromRelatedParties"],
-                    "related_party_purchases_note": ["us-gaap:PurchasesFromRelatedParties"],
-                    "due_from_related_parties_note": ["us-gaap:DueFromRelatedPartiesCurrent"],
-                    "due_to_related_parties_note": ["us-gaap:DueToRelatedPartiesCurrent"],
+                    "related_party_purchases_note": [
+                        "us-gaap:PurchasesFromRelatedParties"
+                    ],
+                    "due_from_related_parties_note": [
+                        "us-gaap:DueFromRelatedPartiesCurrent"
+                    ],
+                    "due_to_related_parties_note": [
+                        "us-gaap:DueToRelatedPartiesCurrent"
+                    ],
                 },
                 "notes_segment_information": {
                     "segment_revenue_note": ["us-gaap:RevenueFromReportableSegments"],
@@ -1626,16 +1943,30 @@ class Config:
                     "entity_registrant_name_dei": ["dei:EntityRegistrantName"],
                     "cik_dei": ["dei:EntityCentralIndexKey"],
                     "trading_symbol_dei": ["dei:TradingSymbol"],
-                    "outstanding_shares_common_dei": ["dei:EntityCommonStockSharesOutstanding"],
+                    "outstanding_shares_common_dei": [
+                        "dei:EntityCommonStockSharesOutstanding"
+                    ],
                     "public_float_dei": ["dei:EntityPublicFloat"],
                 },
                 "other_disclosures_and_metrics": {
-                    "research_and_development_assets_note": ["us-gaap:ResearchAndDevelopmentAssetNet"],
-                    "environmental_liabilities_note": ["us-gaap:AccrualForEnvironmentalLossContingenciesNoncurrent"],
-                    "restructuring_liability_note": ["us-gaap:RestructuringReserveCurrent"],
-                    "off_balance_sheet_arrangements_note": ["us-gaap:OffBalanceSheetArrangement"],
-                    "asset_retirement_obligation_note": ["us-gaap:AssetRetirementObligation"],
-                    "employee_benefit_plans_note": ["us-gaap:DefinedBenefitPlanNetPeriodicBenefitCost"],
+                    "research_and_development_assets_note": [
+                        "us-gaap:ResearchAndDevelopmentAssetNet"
+                    ],
+                    "environmental_liabilities_note": [
+                        "us-gaap:AccrualForEnvironmentalLossContingenciesNoncurrent"
+                    ],
+                    "restructuring_liability_note": [
+                        "us-gaap:RestructuringReserveCurrent"
+                    ],
+                    "off_balance_sheet_arrangements_note": [
+                        "us-gaap:OffBalanceSheetArrangement"
+                    ],
+                    "asset_retirement_obligation_note": [
+                        "us-gaap:AssetRetirementObligation"
+                    ],
+                    "employee_benefit_plans_note": [
+                        "us-gaap:DefinedBenefitPlanNetPeriodicBenefitCost"
+                    ],
                 },
             },
             "require_submissions": False,
@@ -1682,7 +2013,18 @@ class Config:
 
     def _default_stocks(self) -> List[str]:
         """Default stock list"""
-        return ["AAPL", "GOOGL", "MSFT", "AMZN", "TSLA", "NVDA", "META", "NFLX", "CRM", "SNOW"]
+        return [
+            "AAPL",
+            "GOOGL",
+            "MSFT",
+            "AMZN",
+            "TSLA",
+            "NVDA",
+            "META",
+            "NFLX",
+            "CRM",
+            "SNOW",
+        ]
 
     def _default_parquet(self) -> Dict:
         """Default parquet configuration - uniform gzip compression"""
@@ -1762,7 +2104,9 @@ class Config:
             handlers=[logging.FileHandler(log_file), logging.StreamHandler()],
         )
 
-    def get_raw_section(self, section_name: str, default: Optional[Dict] = None) -> Dict:
+    def get_raw_section(
+        self, section_name: str, default: Optional[Dict] = None
+    ) -> Dict:
         """
         Get raw config section that hasn't been parsed into dataclasses.
 
@@ -1802,7 +2146,9 @@ class Config:
         # Create file handler with rotation
         log_file = self.get_symbol_log_file(symbol)
         file_handler = RotatingFileHandler(
-            log_file, maxBytes=self.logging.symbol_log_max_bytes, backupCount=self.logging.symbol_log_backup_count
+            log_file,
+            maxBytes=self.logging.symbol_log_max_bytes,
+            backupCount=self.logging.symbol_log_backup_count,
         )
 
         # Set formatter (no timestamp as requested)
@@ -1832,7 +2178,9 @@ class Config:
         # Create file handler with rotation
         log_file = self.logs_dir / self.logging.main_log_file
         file_handler = RotatingFileHandler(
-            log_file, maxBytes=self.logging.main_log_max_bytes, backupCount=self.logging.main_log_backup_count
+            log_file,
+            maxBytes=self.logging.main_log_max_bytes,
+            backupCount=self.logging.main_log_backup_count,
         )
 
         # Set formatter with timestamp for main log
@@ -1867,12 +2215,21 @@ class Config:
             errors.append("SEC user agent is required for API access")
 
         # Validate database connection details
-        if not all([self.database.host, self.database.database, self.database.username, self.database.password]):
+        if not all(
+            [
+                self.database.host,
+                self.database.database,
+                self.database.username,
+                self.database.password,
+            ]
+        ):
             errors.append("Database connection details are incomplete")
 
         # Validate email settings if enabled
         if self.email.enabled:
-            if not all([self.email.username, self.email.password, self.email.smtp_server]):
+            if not all(
+                [self.email.username, self.email.password, self.email.smtp_server]
+            ):
                 errors.append("Email settings are incomplete")
 
             if not self.email.recipients:
@@ -1894,10 +2251,20 @@ class Config:
             ]:
                 config = self.caching.get_cache_config(cache_type)
                 if config and config.enabled:
-                    if config.storage_type == CacheStorageType.DISK and not config.disk_path:
-                        errors.append(f"Cache {cache_type}: disk_path required for disk storage")
-                    elif config.storage_type == CacheStorageType.RDBMS and not config.table_name:
-                        errors.append(f"Cache {cache_type}: table_name required for RDBMS storage")
+                    if (
+                        config.storage_type == CacheStorageType.DISK
+                        and not config.disk_path
+                    ):
+                        errors.append(
+                            f"Cache {cache_type}: disk_path required for disk storage"
+                        )
+                    elif (
+                        config.storage_type == CacheStorageType.RDBMS
+                        and not config.table_name
+                    ):
+                        errors.append(
+                            f"Cache {cache_type}: table_name required for RDBMS storage"
+                        )
         except Exception as e:
             errors.append(f"Caching configuration error: {e}")
 

@@ -9,7 +9,6 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import json
-from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
@@ -23,7 +22,7 @@ def analyze_sec_cache_patterns():
     """Analyze cache patterns for SEC data types"""
 
     cache_manager = get_cache_manager()
-    stats_monitor = CacheStatsMonitor()
+    CacheStatsMonitor()
     config = get_config()
 
     print("\n" + "=" * 80)
@@ -124,8 +123,16 @@ def analyze_sec_cache_patterns():
             # Test different key formats
             metrics_keys = [
                 (symbol, quarter),  # Tuple format
-                {"symbol": symbol, "period": quarter, "form_type": "10-Q"},  # Dict with form
-                {"symbol": symbol, "fiscal_year": quarter[:4], "fiscal_period": quarter[4:]},  # Split year/period
+                {
+                    "symbol": symbol,
+                    "period": quarter,
+                    "form_type": "10-Q",
+                },  # Dict with form
+                {
+                    "symbol": symbol,
+                    "fiscal_year": quarter[:4],
+                    "fiscal_period": quarter[4:],
+                },  # Split year/period
             ]
 
             for key in metrics_keys:
@@ -133,7 +140,9 @@ def analyze_sec_cache_patterns():
                     result = cache_manager.get(CacheType.QUARTERLY_METRICS, key)
                     if result:
                         results["quarterly_metrics"]["hits"] += 1
-                        print(f"✅ HIT  - {symbol} {quarter} with key type {type(key).__name__}")
+                        print(
+                            f"✅ HIT  - {symbol} {quarter} with key type {type(key).__name__}"
+                        )
                         break  # Don't test other formats if we got a hit
                     else:
                         results["quarterly_metrics"]["misses"] += 1
@@ -164,7 +173,7 @@ def analyze_sec_cache_patterns():
                         # Don't print each hit to avoid clutter
                     else:
                         results["sec_response"]["misses"] += 1
-                except Exception as e:
+                except Exception:
                     results["sec_response"]["errors"] += 1
 
     # Print Summary Statistics
@@ -185,9 +194,13 @@ def analyze_sec_cache_patterns():
 
             print(f"\n{cache_type.upper()}:")
             print(f"  Total Operations: {total_ops}")
-            print(f"  Hits: {stats['hits']} ({stats['hits']/total_ops*100:.1f}%)")
-            print(f"  Misses: {stats['misses']} ({stats['misses']/total_ops*100:.1f}%)")
-            print(f"  Errors: {stats['errors']} ({stats['errors']/total_ops*100:.1f}%)")
+            print(f"  Hits: {stats['hits']} ({stats['hits'] / total_ops * 100:.1f}%)")
+            print(
+                f"  Misses: {stats['misses']} ({stats['misses'] / total_ops * 100:.1f}%)"
+            )
+            print(
+                f"  Errors: {stats['errors']} ({stats['errors'] / total_ops * 100:.1f}%)"
+            )
             print(f"  Hit Ratio: {hit_ratio:.1f}%")
 
             total_hits += stats["hits"]
@@ -199,11 +212,15 @@ def analyze_sec_cache_patterns():
     print("OVERALL SEC CACHE STATISTICS:")
     total_all = total_hits + total_misses + total_errors
     if total_all > 0:
-        overall_hit_ratio = (total_hits / (total_hits + total_misses)) * 100 if (total_hits + total_misses) > 0 else 0
+        overall_hit_ratio = (
+            (total_hits / (total_hits + total_misses)) * 100
+            if (total_hits + total_misses) > 0
+            else 0
+        )
         print(f"  Total Operations: {total_all}")
-        print(f"  Total Hits: {total_hits} ({total_hits/total_all*100:.1f}%)")
-        print(f"  Total Misses: {total_misses} ({total_misses/total_all*100:.1f}%)")
-        print(f"  Total Errors: {total_errors} ({total_errors/total_all*100:.1f}%)")
+        print(f"  Total Hits: {total_hits} ({total_hits / total_all * 100:.1f}%)")
+        print(f"  Total Misses: {total_misses} ({total_misses / total_all * 100:.1f}%)")
+        print(f"  Total Errors: {total_errors} ({total_errors / total_all * 100:.1f}%)")
         print(f"  Overall Hit Ratio: {overall_hit_ratio:.1f}%")
 
     # Get cache manager statistics
@@ -214,7 +231,12 @@ def analyze_sec_cache_patterns():
     perf_stats = cache_manager.get_performance_stats()
 
     # Print stats for SEC-related cache types
-    sec_types = ["submission_data", "company_facts", "quarterly_metrics", "sec_response"]
+    sec_types = [
+        "submission_data",
+        "company_facts",
+        "quarterly_metrics",
+        "sec_response",
+    ]
 
     for cache_type in sec_types:
         if cache_type in perf_stats:
@@ -233,8 +255,12 @@ def analyze_sec_cache_patterns():
                     print("  Handlers:")
                     for handler, h_stats in stats["handlers"].items():
                         if h_stats["hits"] + h_stats["misses"] > 0:
-                            h_ratio = (h_stats["hits"] / (h_stats["hits"] + h_stats["misses"])) * 100
-                            print(f"    {handler}: {h_ratio:.1f}% hit ratio, {h_stats['total_time_ms']:.1f}ms total")
+                            h_ratio = (
+                                h_stats["hits"] / (h_stats["hits"] + h_stats["misses"])
+                            ) * 100
+                            print(
+                                f"    {handler}: {h_ratio:.1f}% hit ratio, {h_stats['total_time_ms']:.1f}ms total"
+                            )
 
     # Check cache directories
     print("\n" + "=" * 80)
@@ -252,20 +278,26 @@ def analyze_sec_cache_patterns():
         if path.exists():
             # Count files
             files = list(path.rglob("*"))
-            data_files = [f for f in files if f.is_file() and not f.name.startswith(".")]
+            data_files = [
+                f for f in files if f.is_file() and not f.name.startswith(".")
+            ]
             total_size = sum(f.stat().st_size for f in data_files)
 
             print(f"\n{name} ({path}):")
             print(f"  Files: {len(data_files)}")
-            print(f"  Total Size: {total_size/1024/1024:.1f} MB")
+            print(f"  Total Size: {total_size / 1024 / 1024:.1f} MB")
 
             # Sample some files
             if data_files:
-                print(f"  Recent files:")
-                recent_files = sorted(data_files, key=lambda f: f.stat().st_mtime, reverse=True)[:5]
+                print("  Recent files:")
+                recent_files = sorted(
+                    data_files, key=lambda f: f.stat().st_mtime, reverse=True
+                )[:5]
                 for f in recent_files:
                     size_kb = f.stat().st_size / 1024
-                    mod_time = datetime.fromtimestamp(f.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
+                    mod_time = datetime.fromtimestamp(f.stat().st_mtime).strftime(
+                        "%Y-%m-%d %H:%M"
+                    )
                     print(f"    {f.name:<50} {size_kb:>8.1f} KB  {mod_time}")
 
     # Configuration check
@@ -275,17 +307,17 @@ def analyze_sec_cache_patterns():
 
     if hasattr(config, "cache_control"):
         cache_control = config.cache_control
-        print(f"\nCache Control Settings:")
+        print("\nCache Control Settings:")
         print(f"  Cache Enabled: {cache_control.use_cache}")
         print(f"  Read from Cache: {cache_control.read_from_cache}")
         print(f"  Write to Cache: {cache_control.write_to_cache}")
         print(f"  Force Refresh: {cache_control.force_refresh}")
 
-        print(f"\nTTL Settings:")
+        print("\nTTL Settings:")
         for cache_type in sec_types:
             if cache_type in cache_control.cache_types:
                 ttl = cache_control.cache_types[cache_type].ttl_hours
-                print(f"  {cache_type}: {ttl} hours ({ttl/24:.1f} days)")
+                print(f"  {cache_type}: {ttl} hours ({ttl / 24:.1f} days)")
 
     print("\n✅ SEC Cache Analysis Complete!")
 
@@ -298,9 +330,15 @@ def analyze_sec_cache_patterns():
         "test_results": results,
         "performance_stats": perf_stats,
         "config": {
-            "cache_enabled": cache_control.use_cache if hasattr(config, "cache_control") else None,
+            "cache_enabled": cache_control.use_cache
+            if hasattr(config, "cache_control")
+            else None,
             "ttl_settings": (
-                {ct: cache_control.cache_types[ct].ttl_hours for ct in sec_types if ct in cache_control.cache_types}
+                {
+                    ct: cache_control.cache_types[ct].ttl_hours
+                    for ct in sec_types
+                    if ct in cache_control.cache_types
+                }
                 if hasattr(config, "cache_control")
                 else {}
             ),

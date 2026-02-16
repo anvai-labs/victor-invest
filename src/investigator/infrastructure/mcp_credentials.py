@@ -31,7 +31,6 @@ Usage:
 
 import logging
 import os
-import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
@@ -195,7 +194,9 @@ class MCPCredentialResolver:
                 victor_key = self._victor_cred_mgr.get_api_key(name)
                 if victor_key:
                     api_key = victor_key.key
-                    logger.debug(f"Resolved API key '{name}' from Victor CredentialManager")
+                    logger.debug(
+                        f"Resolved API key '{name}' from Victor CredentialManager"
+                    )
             except Exception as e:
                 logger.debug(f"Victor API key resolution failed: {e}")
 
@@ -300,7 +301,9 @@ class MCPCredentialResolver:
                 if password:
                     import base64
 
-                    credentials = base64.b64encode(f"{username}:{password}".encode()).decode()
+                    credentials = base64.b64encode(
+                        f"{username}:{password}".encode()
+                    ).decode()
                     return f"Basic {credentials}"
             return None
 
@@ -340,7 +343,11 @@ class MCPCredentialResolver:
             List of credentials expiring within the window
         """
         threshold = datetime.now() + timedelta(minutes=within_minutes)
-        return [info for info in self._expiration_info.values() if info.expires_at and info.expires_at <= threshold]
+        return [
+            info
+            for info in self._expiration_info.values()
+            if info.expires_at and info.expires_at <= threshold
+        ]
 
     def clear_cache(self) -> None:
         """Clear the credential cache."""
@@ -377,7 +384,9 @@ def inject_mcp_credentials(
     # Update config
     server_config["env"] = merged_env
 
-    logger.info(f"Injected {len(cred_env)} credentials for MCP server '{server_creds.server_name}'")
+    logger.info(
+        f"Injected {len(cred_env)} credentials for MCP server '{server_creds.server_name}'"
+    )
 
     return server_config
 

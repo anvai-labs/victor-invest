@@ -27,7 +27,7 @@ Usage:
 import logging
 import math
 from datetime import date
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 
@@ -138,7 +138,9 @@ class ValuationContextExtractor:
 
         # Extract fundamental metrics
         profitability_score = self._calculate_profitability_score(financials, ratios)
-        pe_level = self._normalize_pe(ratios.get("pe_ratio") or ratios.get("trailing_pe"))
+        pe_level = self._normalize_pe(
+            ratios.get("pe_ratio") or ratios.get("trailing_pe")
+        )
         revenue_growth = self._safe_get_float(ratios, "revenue_growth", 0.0)
         fcf_margin = self._safe_get_float(ratios, "fcf_margin", 0.0)
         rule_of_40 = self._calculate_rule_of_40(financials, ratios)
@@ -174,7 +176,8 @@ class ValuationContextExtractor:
         tech_ind = market_context.get("technical_indicators", {})
         rsi_14 = self._safe_get_float(tech_ind, "rsi_14", 50.0)
         macd_histogram = self._normalize_macd_histogram(
-            self._safe_get_float(tech_ind, "macd_histogram", 0.0), current_price or 100.0
+            self._safe_get_float(tech_ind, "macd_histogram", 0.0),
+            current_price or 100.0,
         )
         obv_trend = self._safe_get_float(tech_ind, "obv_trend", 0.0)  # Already -1 to 1
         adx_14 = self._safe_get_float(tech_ind, "adx_14", 25.0)
@@ -183,8 +186,12 @@ class ValuationContextExtractor:
 
         # Extract entry/exit signals (from market_context.entry_exit_signals)
         entry_exit = market_context.get("entry_exit_signals", {})
-        entry_signal_strength = self._safe_get_float(entry_exit, "entry_signal_strength", 0.0)
-        exit_signal_strength = self._safe_get_float(entry_exit, "exit_signal_strength", 0.0)
+        entry_signal_strength = self._safe_get_float(
+            entry_exit, "entry_signal_strength", 0.0
+        )
+        exit_signal_strength = self._safe_get_float(
+            entry_exit, "exit_signal_strength", 0.0
+        )
         signal_confluence = self._safe_get_float(entry_exit, "signal_confluence", 0.0)
         days_from_support = self._safe_get_float(entry_exit, "days_from_support", 0.5)
         risk_reward_ratio = self._safe_get_float(entry_exit, "risk_reward_ratio", 2.0)
@@ -193,7 +200,9 @@ class ValuationContextExtractor:
         insider_features = self._extract_insider_features(insider_data)
 
         # Determine model applicability
-        model_applicability = self._determine_model_applicability(financials, ratios, growth_stage)
+        model_applicability = self._determine_model_applicability(
+            financials, ratios, growth_stage
+        )
 
         return ValuationContext(
             symbol=symbol,
@@ -532,7 +541,8 @@ class ValuationContextExtractor:
         # Weighted average of margins (normalized)
         score = (
             0.2 * min(1.0, gross_margin)
-            + 0.3 * min(1.0, max(0, operating_margin + 0.2) / 0.4)  # -20% to 20% -> 0 to 1
+            + 0.3
+            * min(1.0, max(0, operating_margin + 0.2) / 0.4)  # -20% to 20% -> 0 to 1
             + 0.2 * min(1.0, max(0, net_margin + 0.1) / 0.3)  # -10% to 20% -> 0 to 1
             + 0.3 * min(1.0, max(0, fcf_margin + 0.1) / 0.4)  # -10% to 30% -> 0 to 1
         )
@@ -785,11 +795,17 @@ class ValuationContextExtractor:
                 defaults["key_exec_activity"] = (key_buy - key_sell) / key_total
         else:
             # Check for aggregated key insider data
-            key_buy_count = self._safe_get_float(insider_data, "key_insider_buy_count", 0)
-            key_sell_count = self._safe_get_float(insider_data, "key_insider_sell_count", 0)
+            key_buy_count = self._safe_get_float(
+                insider_data, "key_insider_buy_count", 0
+            )
+            key_sell_count = self._safe_get_float(
+                insider_data, "key_insider_sell_count", 0
+            )
             key_total = key_buy_count + key_sell_count
             if key_total > 0:
-                defaults["key_exec_activity"] = (key_buy_count - key_sell_count) / key_total
+                defaults["key_exec_activity"] = (
+                    key_buy_count - key_sell_count
+                ) / key_total
 
         return defaults
 
@@ -816,7 +832,10 @@ class ValuationContextExtractor:
 
         # GGM requires dividend payout and stable growth
         payout_ratio = self._safe_get_float(ratios, "payout_ratio", 0)
-        if payout_ratio < 0.40 or growth_stage in [GrowthStage.PRE_PROFIT, GrowthStage.HIGH_GROWTH]:
+        if payout_ratio < 0.40 or growth_stage in [
+            GrowthStage.PRE_PROFIT,
+            GrowthStage.HIGH_GROWTH,
+        ]:
             applicability["ggm"] = False
         else:
             applicability["ggm"] = True

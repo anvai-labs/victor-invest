@@ -20,7 +20,9 @@ from io import StringIO
 from sqlalchemy import create_engine, text
 import requests
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # NASDAQ FTP URLs for symbol directories
@@ -31,7 +33,10 @@ OTHER_LISTED_URL = "ftp://ftp.nasdaqtrader.com/symboldirectory/otherlisted.txt"
 
 def get_stock_engine():
     """Get SQLAlchemy engine for stock database."""
-    return create_engine("postgresql://stockuser:${STOCK_DB_PASSWORD}@${STOCK_DB_HOST}:5432/stock", pool_pre_ping=True)
+    return create_engine(
+        "postgresql://stockuser:${STOCK_DB_PASSWORD}@${STOCK_DB_HOST}:5432/stock",
+        pool_pre_ping=True,
+    )
 
 
 def download_nasdaq_data():
@@ -120,7 +125,9 @@ def download_nasdaq_data():
                     }
                 )
 
-            logger.info(f"  Added {sum(1 for s in all_symbols if s['exchange'] == 'NASDAQ')} NASDAQ symbols")
+            logger.info(
+                f"  Added {sum(1 for s in all_symbols if s['exchange'] == 'NASDAQ')} NASDAQ symbols"
+            )
 
     except Exception as e:
         logger.warning(f"Error downloading nasdaqlisted.txt: {e}")
@@ -161,7 +168,9 @@ def download_nasdaq_data():
                     }
                 )
 
-            logger.info(f"  Added {sum(1 for s in all_symbols if s['exchange'] != 'NASDAQ')} other exchange symbols")
+            logger.info(
+                f"  Added {sum(1 for s in all_symbols if s['exchange'] != 'NASDAQ')} other exchange symbols"
+            )
 
     except Exception as e:
         logger.warning(f"Error downloading otherlisted.txt: {e}")
@@ -173,7 +182,7 @@ def download_nasdaq_data():
     df = pd.DataFrame(all_symbols)
 
     # Filter out test issues
-    df = df[df["test_issue"] == False]
+    df = df[not df["test_issue"]]
     df = df.drop(columns=["test_issue"])
 
     logger.info(f"✅ Total symbols loaded: {len(df)}")
@@ -210,7 +219,9 @@ def populate_from_nasdaq(engine, nasdaq_df, dry_run=False):
     logger.info(f"NASDAQ data has {len(nasdaq_df)} symbols")
 
     # Merge to find matches
-    merged = db_symbols.merge(nasdaq_df, on="ticker", how="inner", suffixes=("_db", "_nasdaq"))
+    merged = db_symbols.merge(
+        nasdaq_df, on="ticker", how="inner", suffixes=("_db", "_nasdaq")
+    )
 
     logger.info(f"Found {len(merged)} matching symbols")
 
@@ -223,7 +234,7 @@ def populate_from_nasdaq(engine, nasdaq_df, dry_run=False):
             if pd.isna(row["description_db"]) or row["description_db"] == "":
                 updates.append(f"description: NULL → {row['security_name'][:30]}...")
             if row["etf"] and not row["isetf"]:
-                updates.append(f"isetf: False → True")
+                updates.append("isetf: False → True")
 
             if updates:
                 logger.info(f"  {row['ticker']:8s}: {', '.join(updates)}")

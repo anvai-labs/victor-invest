@@ -144,7 +144,10 @@ def extract_non_recurring_items(
                     # Only flag if material (>2% of net income)
                     if pct_of_ni >= MATERIALITY_THRESHOLDS["minor"]:
                         # Determine impact direction
-                        if category in ["gain_on_sale_of_assets", "debt_extinguishment"]:
+                        if category in [
+                            "gain_on_sale_of_assets",
+                            "debt_extinguishment",
+                        ]:
                             impact = "positive" if amount > 0 else "negative"
                             adjustment = -amount  # Remove gains, add back losses
                         else:  # impairments, restructuring, litigation
@@ -163,7 +166,8 @@ def extract_non_recurring_items(
                         )
 
                         logger.info(
-                            f"Detected non-recurring: {category} = ${amount/1e6:.1f}M " f"({pct_of_ni:.1%} of NI)"
+                            f"Detected non-recurring: {category} = ${amount / 1e6:.1f}M "
+                            f"({pct_of_ni:.1%} of NI)"
                         )
 
     return items
@@ -210,7 +214,9 @@ def detect_accrual_quality(
     elif cffo_coverage >= 0.5:
         # Some divergence
         score = 0.6
-        explanation = f"Moderate: CFO only {cffo_coverage:.1f}x earnings (accrual-heavy)"
+        explanation = (
+            f"Moderate: CFO only {cffo_coverage:.1f}x earnings (accrual-heavy)"
+        )
     elif cffo_coverage >= 0:
         # Significant divergence
         score = 0.4
@@ -218,7 +224,7 @@ def detect_accrual_quality(
     else:
         # Negative operating cash flow despite positive earnings
         score = 0.2
-        explanation = f"Poor: Negative CFO despite positive earnings"
+        explanation = "Poor: Negative CFO despite positive earnings"
 
     # Additional check: accruals as % of revenue
     if abs(accruals_to_revenue) > 0.15:
@@ -268,9 +274,7 @@ def detect_revenue_quality(
         explanation = "Good: Receivables growth <= revenue growth"
     elif receivables_growth <= revenue_growth + 0.10:
         score = 0.8
-        explanation = (
-            f"Acceptable: Receivables growing slightly faster ({receivables_growth:.1%} vs {revenue_growth:.1%})"
-        )
+        explanation = f"Acceptable: Receivables growing slightly faster ({receivables_growth:.1%} vs {revenue_growth:.1%})"
     elif receivables_growth <= revenue_growth + 0.25:
         score = 0.6
         explanation = f"Caution: Receivables growing faster ({receivables_growth:.1%} vs {revenue_growth:.1%})"
@@ -329,7 +333,8 @@ def assess_earnings_quality(
             total_adjustment += item.adjustment_recommended
             if item.as_pct_of_net_income >= MATERIALITY_THRESHOLDS["significant"]:
                 warnings.append(
-                    f"Significant {item.name}: ${item.amount/1e6:.1f}M " f"({item.as_pct_of_net_income:.1%} of NI)"
+                    f"Significant {item.name}: ${item.amount / 1e6:.1f}M "
+                    f"({item.as_pct_of_net_income:.1%} of NI)"
                 )
 
     # Calculate adjusted net income
@@ -338,7 +343,9 @@ def assess_earnings_quality(
     # 2. Accrual quality
     accrual_score = 0.7
     if net_income > 0 and operating_cf != 0:
-        accrual_score, accrual_explanation = detect_accrual_quality(net_income, operating_cf, revenue)
+        accrual_score, accrual_explanation = detect_accrual_quality(
+            net_income, operating_cf, revenue
+        )
         quality_components.append(("accrual", accrual_score, accrual_explanation))
         if accrual_score < 0.6:
             warnings.append(f"Accrual quality: {accrual_explanation}")
@@ -359,12 +366,18 @@ def assess_earnings_quality(
     # Non-recurring penalty
     non_recurring_score = max(0, 1 - adjustment_pct)
     quality_components.append(
-        ("non_recurring", non_recurring_score, f"Non-recurring items: {adjustment_pct:.1%} of NI")
+        (
+            "non_recurring",
+            non_recurring_score,
+            f"Non-recurring items: {adjustment_pct:.1%} of NI",
+        )
     )
 
     # Weighted quality score
     weights = {"accrual": 0.40, "revenue": 0.25, "non_recurring": 0.35}
-    quality_score = sum(score * weights.get(name, 0.33) for name, score, _ in quality_components)
+    quality_score = sum(
+        score * weights.get(name, 0.33) for name, score, _ in quality_components
+    )
     quality_score = min(100, max(0, quality_score * 100))
 
     # Determine quality tier
@@ -385,7 +398,9 @@ def assess_earnings_quality(
         quality_tier = EarningsQualityTier.UNRELIABLE
         pe_reliability = 0.50
         use_adjusted = True
-        recommendations.append("P/E valuation unreliable - weight other methods more heavily")
+        recommendations.append(
+            "P/E valuation unreliable - weight other methods more heavily"
+        )
         recommendations.append("Consider using normalized or forward earnings")
 
     # Log summary
@@ -426,7 +441,10 @@ def get_quality_adjusted_eps(
         Tuple of (eps_to_use, explanation)
     """
     if not quality_result.use_adjusted_eps:
-        return reported_eps, f"Using reported EPS (quality: {quality_result.quality_tier.value})"
+        return (
+            reported_eps,
+            f"Using reported EPS (quality: {quality_result.quality_tier.value})",
+        )
 
     # Calculate adjusted EPS
     adjusted_eps = quality_result.adjusted_net_income / shares_outstanding

@@ -84,8 +84,12 @@ class BoundsValidationResult:
 
     def summary(self) -> str:
         """Get summary of validation result."""
-        error_count = sum(1 for i in self.issues if i.severity == ValidationSeverity.ERROR)
-        warning_count = sum(1 for i in self.issues if i.severity == ValidationSeverity.WARNING)
+        error_count = sum(
+            1 for i in self.issues if i.severity == ValidationSeverity.ERROR
+        )
+        warning_count = sum(
+            1 for i in self.issues if i.severity == ValidationSeverity.WARNING
+        )
         status = "VALID" if self.is_valid else "INVALID"
         return f"{status}: {error_count} errors, {warning_count} warnings"
 
@@ -216,13 +220,13 @@ class BoundsChecker:
         issues: List[ValidationIssue] = []
         model_bounds = self.input_bounds.get(model_type, {})
 
-        for field, value in inputs.items():
+        for field_name, value in inputs.items():
             if value is None:
                 continue
 
             # Check if we have bounds for this field
-            if field in model_bounds:
-                min_val, max_val = model_bounds[field]
+            if field_name in model_bounds:
+                min_val, max_val = model_bounds[field_name]
 
                 try:
                     num_value = float(value)
@@ -231,11 +235,11 @@ class BoundsChecker:
                     if num_value < min_val or num_value > max_val:
                         issues.append(
                             ValidationIssue(
-                                field=field,
+                                field=field_name,
                                 value=num_value,
                                 severity=ValidationSeverity.ERROR,
                                 message=f"{field}={num_value:.4f} outside bounds [{min_val}, {max_val}]",
-                                suggested_action=f"Clamp to bounds or review data source",
+                                suggested_action="Clamp to bounds or review data source",
                             )
                         )
 
@@ -243,7 +247,11 @@ class BoundsChecker:
                     elif field in self.WARNING_THRESHOLDS:
                         threshold, warning_msg = self.WARNING_THRESHOLDS[field]
                         if abs(num_value) > threshold:
-                            severity = ValidationSeverity.ERROR if self.strict_mode else ValidationSeverity.WARNING
+                            severity = (
+                                ValidationSeverity.ERROR
+                                if self.strict_mode
+                                else ValidationSeverity.WARNING
+                            )
                             issues.append(
                                 ValidationIssue(
                                     field=field,
@@ -254,7 +262,7 @@ class BoundsChecker:
                                 )
                             )
 
-                except (TypeError, ValueError) as e:
+                except (TypeError, ValueError):
                     issues.append(
                         ValidationIssue(
                             field=field,
@@ -279,7 +287,9 @@ class BoundsChecker:
 
         return BoundsValidationResult(is_valid=is_valid, issues=issues)
 
-    def _check_required_fields(self, model_type: str, inputs: Dict[str, Any], issues: List[ValidationIssue]) -> None:
+    def _check_required_fields(
+        self, model_type: str, inputs: Dict[str, Any], issues: List[ValidationIssue]
+    ) -> None:
         """Check for required fields by model type."""
         required_fields = {
             "dcf": ["discount_rate", "shares_outstanding"],
@@ -304,7 +314,11 @@ class BoundsChecker:
                     )
 
     def validate_output(
-        self, fair_value: float, current_price: float, model_type: str = "default", symbol: Optional[str] = None
+        self,
+        fair_value: float,
+        current_price: float,
+        model_type: str = "default",
+        symbol: Optional[str] = None,
     ) -> BoundsValidationResult:
         """
         Validate output fair value against reasonable bounds.
@@ -361,11 +375,17 @@ class BoundsChecker:
         fv_ratio = fair_value / current_price
 
         # Get bounds for this model type
-        bounds = self.fair_value_ratio_bounds.get(model_type, self.fair_value_ratio_bounds["default"])
+        bounds = self.fair_value_ratio_bounds.get(
+            model_type, self.fair_value_ratio_bounds["default"]
+        )
         min_ratio, max_ratio = bounds
 
         if fv_ratio < min_ratio:
-            severity = ValidationSeverity.ERROR if self.strict_mode else ValidationSeverity.WARNING
+            severity = (
+                ValidationSeverity.ERROR
+                if self.strict_mode
+                else ValidationSeverity.WARNING
+            )
             issues.append(
                 ValidationIssue(
                     field="fair_value_ratio",
@@ -378,7 +398,11 @@ class BoundsChecker:
             )
 
         elif fv_ratio > max_ratio:
-            severity = ValidationSeverity.ERROR if self.strict_mode else ValidationSeverity.WARNING
+            severity = (
+                ValidationSeverity.ERROR
+                if self.strict_mode
+                else ValidationSeverity.WARNING
+            )
             issues.append(
                 ValidationIssue(
                     field="fair_value_ratio",
@@ -400,7 +424,9 @@ class BoundsChecker:
 
         return BoundsValidationResult(is_valid=is_valid, issues=issues)
 
-    def clamp_to_bounds(self, model_type: str, field: str, value: float) -> Tuple[float, bool]:
+    def clamp_to_bounds(
+        self, model_type: str, field: str, value: float
+    ) -> Tuple[float, bool]:
         """
         Clamp a value to its defined bounds.
 

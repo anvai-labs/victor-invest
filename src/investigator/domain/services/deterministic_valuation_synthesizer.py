@@ -114,7 +114,11 @@ class MarginOfSafetyCalculator(Protocol):
     """Protocol for calculating margin of safety target."""
 
     def calculate(
-        self, model_agreement: float, data_quality: float, confidence: float, volatility: Optional[float] = None
+        self,
+        model_agreement: float,
+        data_quality: float,
+        confidence: float,
+        volatility: Optional[float] = None,
     ) -> float:
         """Calculate recommended margin of safety target."""
         ...
@@ -123,15 +127,23 @@ class MarginOfSafetyCalculator(Protocol):
 class ExplanationGenerator(Protocol):
     """Protocol for generating text explanations."""
 
-    def generate_model_influence(self, contributions: List[ModelContribution]) -> str: ...
+    def generate_model_influence(
+        self, contributions: List[ModelContribution]
+    ) -> str: ...
 
     def generate_confidence_caution(
-        self, confidence: float, data_quality: float, divergence_flag: bool, quality_grade: str
+        self,
+        confidence: float,
+        data_quality: float,
+        divergence_flag: bool,
+        quality_grade: str,
     ) -> str: ...
 
     def generate_key_drivers(self, contributions: List[ModelContribution]) -> str: ...
 
-    def generate_valuation_risks(self, model_agreement: float, data_quality: float, notes: List[str]) -> str: ...
+    def generate_valuation_risks(
+        self, model_agreement: float, data_quality: float, notes: List[str]
+    ) -> str: ...
 
 
 # ============================================================================
@@ -217,7 +229,11 @@ class RiskBasedMarginOfSafetyCalculator:
     }
 
     def calculate(
-        self, model_agreement: float, data_quality: float, confidence: float, volatility: Optional[float] = None
+        self,
+        model_agreement: float,
+        data_quality: float,
+        confidence: float,
+        volatility: Optional[float] = None,
     ) -> float:
         """
         Calculate recommended margin of safety.
@@ -305,7 +321,8 @@ class TemplateBasedExplanationGenerator:
 
             if len(secondary_names) == 1:
                 parts.append(
-                    f"The {secondary_names[0]} model ({secondary_weights[0]}) " f"provides secondary validation."
+                    f"The {secondary_names[0]} model ({secondary_weights[0]}) "
+                    f"provides secondary validation."
                 )
             else:
                 parts.append(
@@ -320,12 +337,19 @@ class TemplateBasedExplanationGenerator:
             if min_val > 0:
                 spread = (max_val - min_val) / min_val
                 if spread > 0.3:
-                    parts.append(f"Note: Model outputs show {spread:.0%} spread, " f"suggesting valuation uncertainty.")
+                    parts.append(
+                        f"Note: Model outputs show {spread:.0%} spread, "
+                        f"suggesting valuation uncertainty."
+                    )
 
         return " ".join(parts)
 
     def generate_confidence_caution(
-        self, confidence: float, data_quality: float, divergence_flag: bool, quality_grade: str
+        self,
+        confidence: float,
+        data_quality: float,
+        divergence_flag: bool,
+        quality_grade: str,
     ) -> str:
         """Generate confidence assessment and cautionary notes."""
         parts = []
@@ -344,10 +368,14 @@ class TemplateBasedExplanationGenerator:
 
         # Data quality impact
         if data_quality >= 80:
-            parts.append(f"Data quality is {quality_grade} ({data_quality:.0f}/100), " f"supporting reliable analysis.")
+            parts.append(
+                f"Data quality is {quality_grade} ({data_quality:.0f}/100), "
+                f"supporting reliable analysis."
+            )
         elif data_quality >= 60:
             parts.append(
-                f"Data quality is {quality_grade} ({data_quality:.0f}/100). " f"Some metrics may require verification."
+                f"Data quality is {quality_grade} ({data_quality:.0f}/100). "
+                f"Some metrics may require verification."
             )
         else:
             parts.append(
@@ -379,9 +407,13 @@ class TemplateBasedExplanationGenerator:
             if "growth_rate" in assumptions:
                 model_drivers.append(f"growth rate {assumptions['growth_rate']:.1%}")
             if "discount_rate" in assumptions:
-                model_drivers.append(f"discount rate {assumptions['discount_rate']:.1%}")
+                model_drivers.append(
+                    f"discount rate {assumptions['discount_rate']:.1%}"
+                )
             if "terminal_growth" in assumptions:
-                model_drivers.append(f"terminal growth {assumptions['terminal_growth']:.1%}")
+                model_drivers.append(
+                    f"terminal growth {assumptions['terminal_growth']:.1%}"
+                )
 
             # Multiple-based drivers
             if "target_pe" in assumptions:
@@ -389,7 +421,9 @@ class TemplateBasedExplanationGenerator:
             if "target_ps" in assumptions:
                 model_drivers.append(f"target P/S {assumptions['target_ps']:.1f}x")
             if "target_ev_ebitda" in assumptions:
-                model_drivers.append(f"target EV/EBITDA {assumptions['target_ev_ebitda']:.1f}x")
+                model_drivers.append(
+                    f"target EV/EBITDA {assumptions['target_ev_ebitda']:.1f}x"
+                )
 
             if model_drivers:
                 drivers.append(f"{c.model_name.upper()}: {', '.join(model_drivers)}")
@@ -399,7 +433,9 @@ class TemplateBasedExplanationGenerator:
 
         return "Key drivers: " + "; ".join(drivers) + "."
 
-    def generate_valuation_risks(self, model_agreement: float, data_quality: float, notes: List[str]) -> str:
+    def generate_valuation_risks(
+        self, model_agreement: float, data_quality: float, notes: List[str]
+    ) -> str:
         """Generate valuation risks and scenario considerations."""
         risks = []
 
@@ -410,7 +446,9 @@ class TemplateBasedExplanationGenerator:
                 "actual fair value could deviate substantially from estimate"
             )
         elif model_agreement < 0.7:
-            risks.append("Moderate model divergence indicates some valuation uncertainty")
+            risks.append(
+                "Moderate model divergence indicates some valuation uncertainty"
+            )
 
         # Data quality risks
         if data_quality < 60:
@@ -451,8 +489,12 @@ class DeterministicValuationSynthesizer:
         explanation_generator: Optional[ExplanationGenerator] = None,
     ):
         self.stance_determiner = stance_determiner or ThresholdBasedStanceDeterminer()
-        self.margin_calculator = margin_calculator or RiskBasedMarginOfSafetyCalculator()
-        self.explanation_generator = explanation_generator or TemplateBasedExplanationGenerator()
+        self.margin_calculator = (
+            margin_calculator or RiskBasedMarginOfSafetyCalculator()
+        )
+        self.explanation_generator = (
+            explanation_generator or TemplateBasedExplanationGenerator()
+        )
 
     def synthesize(self, context: SynthesisContext) -> ValuationSynthesisResult:
         """
@@ -466,26 +508,39 @@ class DeterministicValuationSynthesizer:
         """
         # Calculate upside/downside
         if context.current_price > 0:
-            upside = (context.blended_fair_value - context.current_price) / context.current_price
+            upside = (
+                context.blended_fair_value - context.current_price
+            ) / context.current_price
         else:
             upside = 0.0
 
         # Determine stance
-        stance = self.stance_determiner.determine_stance(upside, context.overall_confidence)
+        stance = self.stance_determiner.determine_stance(
+            upside, context.overall_confidence
+        )
 
         # Calculate margin of safety target
         margin = self.margin_calculator.calculate(
-            context.model_agreement_score, context.data_quality_score, context.overall_confidence
+            context.model_agreement_score,
+            context.data_quality_score,
+            context.overall_confidence,
         )
 
         # Generate explanations
-        model_influence = self.explanation_generator.generate_model_influence(context.model_contributions)
-
-        confidence_caution = self.explanation_generator.generate_confidence_caution(
-            context.overall_confidence, context.data_quality_score, context.divergence_flag, context.quality_grade
+        model_influence = self.explanation_generator.generate_model_influence(
+            context.model_contributions
         )
 
-        key_drivers = self.explanation_generator.generate_key_drivers(context.model_contributions)
+        confidence_caution = self.explanation_generator.generate_confidence_caution(
+            context.overall_confidence,
+            context.data_quality_score,
+            context.divergence_flag,
+            context.quality_grade,
+        )
+
+        key_drivers = self.explanation_generator.generate_key_drivers(
+            context.model_contributions
+        )
 
         valuation_risks = self.explanation_generator.generate_valuation_risks(
             context.model_agreement_score, context.data_quality_score, context.notes

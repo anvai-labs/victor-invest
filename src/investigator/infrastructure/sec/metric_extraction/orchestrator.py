@@ -15,14 +15,13 @@ SOLID Principles:
 import logging
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from .result import (
     ExtractionAttempt,
     ExtractionAudit,
     ExtractionConfidence,
     ExtractionResult,
-    MatchMethod,
 )
 from .strategies import (
     ByAdshFyFpMatcher,
@@ -31,7 +30,6 @@ from .strategies import (
     ByFrameFieldMatcher,
     ByPeriodEndMatcher,
     MatchContext,
-    MatchResult,
     PeriodMatchStrategy,
 )
 
@@ -106,7 +104,9 @@ class MetricExtractionOrchestrator:
 
         # Initialize canonical mapper
         if canonical_mapper is None:
-            from investigator.infrastructure.sec.canonical_mapper import get_canonical_mapper
+            from investigator.infrastructure.sec.canonical_mapper import (
+                get_canonical_mapper,
+            )
 
             self.canonical_mapper = get_canonical_mapper()
         else:
@@ -175,14 +175,18 @@ class MetricExtractionOrchestrator:
         )
 
         # Get tag fallback chain for this canonical key
-        fallback_tags = self.canonical_mapper.get_tags(canonical_key, sector=self.sector, industry=self.industry)
+        fallback_tags = self.canonical_mapper.get_tags(
+            canonical_key, sector=self.sector, industry=self.industry
+        )
 
         if not fallback_tags:
             logger.warning(f"No XBRL tags found for canonical key '{canonical_key}'")
             if audit:
                 audit.completed_at = datetime.now().isoformat()
             return ExtractionResult.not_found(
-                canonical_key, audit=audit, reason=f"No XBRL tags configured for '{canonical_key}'"
+                canonical_key,
+                audit=audit,
+                reason=f"No XBRL tags configured for '{canonical_key}'",
             )
 
         # Try each matcher strategy
@@ -238,7 +242,9 @@ class MetricExtractionOrchestrator:
                             tag_name=tag_name,
                             matched=match_result.matched,
                             entries_found=len(match_result.entries),
-                            selected_entry=match_result.entries[0] if match_result.entries else None,
+                            selected_entry=match_result.entries[0]
+                            if match_result.entries
+                            else None,
                             reason=match_result.reason,
                             duration_ms=(time.time() - attempt_start) * 1000,
                         )
@@ -246,17 +252,23 @@ class MetricExtractionOrchestrator:
 
                 if match_result.matched and match_result.entries:
                     # Select best entry (prefer individual quarter over YTD)
-                    best_entry = self._select_best_entry(match_result.entries, target_fiscal_period)
+                    best_entry = self._select_best_entry(
+                        match_result.entries, target_fiscal_period
+                    )
 
                     if best_entry and best_entry.get("val") is not None:
                         value = best_entry["val"]
 
                         # Determine confidence based on strategy and tag position
-                        confidence = self._determine_confidence(matcher, tag_position, len(fallback_tags))
+                        confidence = self._determine_confidence(
+                            matcher, tag_position, len(fallback_tags)
+                        )
 
                         # Update statistics
                         self.stats["successes"] += 1
-                        self.stats["by_strategy"][matcher.name] = self.stats["by_strategy"].get(matcher.name, 0) + 1
+                        self.stats["by_strategy"][matcher.name] = (
+                            self.stats["by_strategy"].get(matcher.name, 0) + 1
+                        )
                         self.stats["by_tag_position"][tag_position] = (
                             self.stats["by_tag_position"].get(tag_position, 0) + 1
                         )
@@ -298,10 +310,14 @@ class MetricExtractionOrchestrator:
         )
 
         return ExtractionResult.not_found(
-            canonical_key, audit=audit, reason=f"Exhausted {len(self.matchers)} matchers × {len(fallback_tags)} tags"
+            canonical_key,
+            audit=audit,
+            reason=f"Exhausted {len(self.matchers)} matchers × {len(fallback_tags)} tags",
         )
 
-    def _select_best_entry(self, entries: List[Dict], target_fiscal_period: Optional[str]) -> Optional[Dict]:
+    def _select_best_entry(
+        self, entries: List[Dict], target_fiscal_period: Optional[str]
+    ) -> Optional[Dict]:
         """
         Select best entry from matched entries.
 
@@ -392,7 +408,11 @@ class MetricExtractionOrchestrator:
         """
         # Strategy-based confidence
         high_confidence_matchers = ["ByPeriodEndMatcher"]
-        medium_confidence_matchers = ["ByDateRangeMatcher", "ByFrameFieldMatcher", "ByAdshOnlyMatcher"]
+        medium_confidence_matchers = [
+            "ByDateRangeMatcher",
+            "ByFrameFieldMatcher",
+            "ByAdshOnlyMatcher",
+        ]
         # ByAdshFyFpMatcher is low confidence
 
         if matcher.name in high_confidence_matchers:
@@ -411,7 +431,11 @@ class MetricExtractionOrchestrator:
             return ExtractionConfidence.LOW
 
     def _try_derived_value(
-        self, canonical_key: str, us_gaap: Dict, context: MatchContext, audit: Optional[ExtractionAudit]
+        self,
+        canonical_key: str,
+        us_gaap: Dict,
+        context: MatchContext,
+        audit: Optional[ExtractionAudit],
     ) -> Optional[ExtractionResult]:
         """
         Try to calculate derived value from other metrics.
@@ -457,14 +481,20 @@ class MetricExtractionOrchestrator:
             # Simple formula evaluation (supports +, -, *, /)
             value = self._evaluate_formula(formula, components)
             if value is not None:
-                logger.debug(f"✓ Derived {canonical_key} = {value:,.0f} " f"from formula '{formula}'")
-                return ExtractionResult.derived(value=value, formula=formula, components=components, audit=audit)
+                logger.debug(
+                    f"✓ Derived {canonical_key} = {value:,.0f} from formula '{formula}'"
+                )
+                return ExtractionResult.derived(
+                    value=value, formula=formula, components=components, audit=audit
+                )
         except Exception as e:
             logger.warning(f"Failed to evaluate formula '{formula}': {e}")
 
         return None
 
-    def _evaluate_formula(self, formula: str, components: Dict[str, float]) -> Optional[float]:
+    def _evaluate_formula(
+        self, formula: str, components: Dict[str, float]
+    ) -> Optional[float]:
         """
         Safely evaluate a simple arithmetic formula.
 
@@ -489,5 +519,9 @@ class MetricExtractionOrchestrator:
 
     def get_stats(self) -> Dict:
         """Get extraction statistics."""
-        success_rate = self.stats["successes"] / self.stats["extractions"] * 100 if self.stats["extractions"] > 0 else 0
+        success_rate = (
+            self.stats["successes"] / self.stats["extractions"] * 100
+            if self.stats["extractions"] > 0
+            else 0
+        )
         return {**self.stats, "success_rate": f"{success_rate:.1f}%"}

@@ -40,7 +40,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from scripts.scheduled.base import (
+from scripts.scheduled.base import (  # noqa: E402
     BaseCollector,
     CollectionMetrics,
     get_database_connection,
@@ -83,7 +83,8 @@ class MarketRegimeUpdater(BaseCollector):
             cursor = conn.cursor()
 
             # Store current regime snapshot
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO market_regime_history
                     (snapshot_date, regime, credit_cycle_phase,
                      volatility_regime, recession_probability,
@@ -101,23 +102,30 @@ class MarketRegimeUpdater(BaseCollector):
                     risk_off_signal = EXCLUDED.risk_off_signal,
                     recommendations = EXCLUDED.recommendations,
                     updated_at = NOW()
-            """, (
-                datetime.now().date(),
-                str(regime_data.regime),
-                str(regime_data.credit_cycle_phase.value if hasattr(regime_data.credit_cycle_phase, 'value') else regime_data.credit_cycle_phase),
-                str(regime_data.volatility_regime),
-                float(regime_data.recession_probability or 0),
-                bool(regime_data.yield_curve_inverted),
-                float(regime_data.vix_level or 0),
-                float(regime_data.credit_spread or 0),
-                bool(regime_data.risk_off_signal),
-                str(regime_data.recommendations or ""),
-            ))
+            """,
+                (
+                    datetime.now().date(),
+                    str(regime_data.regime),
+                    str(
+                        regime_data.credit_cycle_phase.value
+                        if hasattr(regime_data.credit_cycle_phase, "value")
+                        else regime_data.credit_cycle_phase
+                    ),
+                    str(regime_data.volatility_regime),
+                    float(regime_data.recession_probability or 0),
+                    bool(regime_data.yield_curve_inverted),
+                    float(regime_data.vix_level or 0),
+                    float(regime_data.credit_spread or 0),
+                    bool(regime_data.risk_off_signal),
+                    str(regime_data.recommendations or ""),
+                ),
+            )
 
             self.metrics.records_inserted += 1
 
             # Update current regime status table
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO current_market_regime
                     (id, regime, credit_cycle_phase, volatility_regime,
                      recession_probability, yield_curve_inverted,
@@ -131,14 +139,20 @@ class MarketRegimeUpdater(BaseCollector):
                     yield_curve_inverted = EXCLUDED.yield_curve_inverted,
                     risk_off_signal = EXCLUDED.risk_off_signal,
                     last_updated = NOW()
-            """, (
-                str(regime_data.regime),
-                str(regime_data.credit_cycle_phase.value if hasattr(regime_data.credit_cycle_phase, 'value') else regime_data.credit_cycle_phase),
-                str(regime_data.volatility_regime),
-                float(regime_data.recession_probability or 0),
-                bool(regime_data.yield_curve_inverted),
-                bool(regime_data.risk_off_signal),
-            ))
+            """,
+                (
+                    str(regime_data.regime),
+                    str(
+                        regime_data.credit_cycle_phase.value
+                        if hasattr(regime_data.credit_cycle_phase, "value")
+                        else regime_data.credit_cycle_phase
+                    ),
+                    str(regime_data.volatility_regime),
+                    float(regime_data.recession_probability or 0),
+                    bool(regime_data.yield_curve_inverted),
+                    bool(regime_data.risk_off_signal),
+                ),
+            )
 
             self.metrics.records_updated += 1
 
@@ -149,9 +163,7 @@ class MarketRegimeUpdater(BaseCollector):
             cursor.close()
             conn.close()
 
-            self.logger.info(
-                f"Market regime updated: {regime_data.regime}"
-            )
+            self.logger.info(f"Market regime updated: {regime_data.regime}")
 
         except ImportError as e:
             self.logger.error(f"Market regime analyzer not available: {e}")
@@ -194,12 +206,15 @@ class MarketRegimeUpdater(BaseCollector):
                 transitions.append(("volatility", prev_vol, curr_vol))
 
             for transition_type, from_state, to_state in transitions:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO regime_transitions
                         (transition_date, transition_type, from_state, to_state)
                     VALUES (CURRENT_DATE, %s, %s, %s)
                     ON CONFLICT DO NOTHING
-                """, (transition_type, from_state, to_state))
+                """,
+                    (transition_type, from_state, to_state),
+                )
 
                 self.logger.info(
                     f"Regime transition: {transition_type} {from_state} -> {to_state}"
@@ -210,14 +225,12 @@ class MarketRegimeUpdater(BaseCollector):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Update market regime classification"
-    )
+    parser = argparse.ArgumentParser(description="Update market regime classification")
     parser.add_argument(
         "--lookback",
         type=int,
         default=30,
-        help="Days to look back for analysis (default: 30)"
+        help="Days to look back for analysis (default: 30)",
     )
     args = parser.parse_args()
 

@@ -45,7 +45,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from scripts.scheduled.base import (
+from scripts.scheduled.base import (  # noqa: E402
     BaseCollector,
     CollectionMetrics,
     compute_record_hash,
@@ -53,7 +53,6 @@ from scripts.scheduled.base import (
     get_finnhub_rate_limiter,
     get_last_date,
     get_sp500_symbols,
-    retry_with_backoff,
 )
 
 # Finnhub API configuration
@@ -76,6 +75,7 @@ def _get_finnhub_api_key() -> str:
     # Priority 2: Try victor keyring
     try:
         from victor.config.api_keys import get_service_key
+
         key = get_service_key("finnhub")
         if key:
             return key
@@ -160,8 +160,7 @@ class NewsSentimentCollector(BaseCollector):
 
                     # Get last sentiment date for incremental fetch
                     last_date = get_last_date(
-                        cursor, "news_sentiment", "sentiment_date",
-                        "symbol", symbol
+                        cursor, "news_sentiment", "sentiment_date", "symbol", symbol
                     )
 
                     if last_date:
@@ -188,20 +187,27 @@ class NewsSentimentCollector(BaseCollector):
                     buzz_score = buzz.get("buzz", 0)
 
                     # Sentiment breakdown isn't in this endpoint, use score
-                    sentiment_score = sentiment.get("bearishPercent", 0) * -1 + sentiment.get("bullishPercent", 0)
+                    sentiment_score = sentiment.get(
+                        "bearishPercent", 0
+                    ) * -1 + sentiment.get("bullishPercent", 0)
 
-                    record_hash = compute_record_hash({
-                        "symbol": symbol,
-                        "date": str(end_date),
-                        "buzz": buzz,
-                        "sentiment": sentiment,
-                    })
+                    record_hash = compute_record_hash(
+                        {
+                            "symbol": symbol,
+                            "date": str(end_date),
+                            "buzz": buzz,
+                            "sentiment": sentiment,
+                        }
+                    )
 
                     # Check existing
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         SELECT source_hash FROM news_sentiment
                         WHERE symbol = %s AND sentiment_date = %s
-                    """, (symbol, end_date))
+                    """,
+                        (symbol, end_date),
+                    )
                     existing = cursor.fetchone()
 
                     if existing:
@@ -209,7 +215,8 @@ class NewsSentimentCollector(BaseCollector):
                             self.metrics.records_skipped += 1
                             continue
                         # Update
-                        cursor.execute("""
+                        cursor.execute(
+                            """
                             UPDATE news_sentiment SET
                                 articles_in_period = %s, sentiment_score = %s,
                                 buzz_score = %s, company_news_score = %s,
@@ -217,41 +224,49 @@ class NewsSentimentCollector(BaseCollector):
                                 source_hash = %s, source_fetch_timestamp = NOW(),
                                 updated_at = NOW()
                             WHERE symbol = %s AND sentiment_date = %s
-                        """, (
-                            articles,
-                            sentiment_score,
-                            buzz_score,
-                            company_news_score,
-                            data.get("sectorAverageBullishPercent", 0) - data.get("sectorAverageBearishPercent", 0),
-                            data.get("sectorAverageNewsScore", 0),
-                            record_hash,
-                            symbol,
-                            end_date,
-                        ))
+                        """,
+                            (
+                                articles,
+                                sentiment_score,
+                                buzz_score,
+                                company_news_score,
+                                data.get("sectorAverageBullishPercent", 0)
+                                - data.get("sectorAverageBearishPercent", 0),
+                                data.get("sectorAverageNewsScore", 0),
+                                record_hash,
+                                symbol,
+                                end_date,
+                            ),
+                        )
                         self.metrics.records_updated += 1
                     else:
                         # Insert
-                        cursor.execute("""
+                        cursor.execute(
+                            """
                             INSERT INTO news_sentiment
                                 (symbol, sentiment_date, articles_in_period, sentiment_score,
                                  buzz_score, company_news_score, sector_avg_sentiment,
                                  sector_avg_news_volume, source_hash, source_fetch_timestamp)
                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
-                        """, (
-                            symbol,
-                            end_date,
-                            articles,
-                            sentiment_score,
-                            buzz_score,
-                            company_news_score,
-                            data.get("sectorAverageBullishPercent", 0) - data.get("sectorAverageBearishPercent", 0),
-                            data.get("sectorAverageNewsScore", 0),
-                            record_hash,
-                        ))
+                        """,
+                            (
+                                symbol,
+                                end_date,
+                                articles,
+                                sentiment_score,
+                                buzz_score,
+                                company_news_score,
+                                data.get("sectorAverageBullishPercent", 0)
+                                - data.get("sectorAverageBearishPercent", 0),
+                                data.get("sectorAverageNewsScore", 0),
+                                record_hash,
+                            ),
+                        )
                         self.metrics.records_inserted += 1
 
                     # Update watermark
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         INSERT INTO news_sentiment_watermarks (symbol, last_sentiment_date)
                         VALUES (%s, %s)
                         ON CONFLICT (symbol) DO UPDATE SET
@@ -260,7 +275,9 @@ class NewsSentimentCollector(BaseCollector):
                                 EXCLUDED.last_sentiment_date
                             ),
                             last_fetch_timestamp = NOW()
-                    """, (symbol, end_date))
+                    """,
+                        (symbol, end_date),
+                    )
 
                     # Commit periodically
                     if self.metrics.records_processed % 10 == 0:
@@ -288,19 +305,12 @@ class NewsSentimentCollector(BaseCollector):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Collect news sentiment data"
+    parser = argparse.ArgumentParser(description="Collect news sentiment data")
+    parser.add_argument(
+        "--symbols", type=str, help="Comma-separated list of symbols (default: S&P 500)"
     )
     parser.add_argument(
-        "--symbols",
-        type=str,
-        help="Comma-separated list of symbols (default: S&P 500)"
-    )
-    parser.add_argument(
-        "--days",
-        type=int,
-        default=7,
-        help="Number of days to look back (default: 7)"
+        "--days", type=int, default=7, help="Number of days to look back (default: 7)"
     )
     args = parser.parse_args()
 

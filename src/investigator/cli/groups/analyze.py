@@ -7,12 +7,10 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import click
 import yaml
 
-from ..utils import MutuallyExclusiveOption, async_command, validate_symbols
 
 
 @click.group()
@@ -41,7 +39,13 @@ def analyze(ctx):
     help="Analysis depth: quick (technical only), standard (tech+fund), comprehensive (full synthesis)",
 )
 @click.option("--output", "-o", type=click.Path(), help="Output file path for results")
-@click.option("--format", "-f", type=click.Choice(["json", "yaml", "text"]), default="json", help="Output format")
+@click.option(
+    "--format",
+    "-f",
+    type=click.Choice(["json", "yaml", "text"]),
+    default="json",
+    help="Output format",
+)
 @click.option(
     "--detail",
     "-d",
@@ -50,7 +54,12 @@ def analyze(ctx):
     help="Output detail level",
 )
 @click.option("--report", is_flag=True, help="Generate PDF investment report")
-@click.option("--force-refresh", "--refresh", is_flag=True, help="Bypass cache and fetch fresh data")
+@click.option(
+    "--force-refresh",
+    "--refresh",
+    is_flag=True,
+    help="Bypass cache and fetch fresh data",
+)
 @click.pass_context
 def single(ctx, symbol, mode, output, format, detail, report, force_refresh):
     """Analyze a single stock symbol
@@ -63,18 +72,25 @@ def single(ctx, symbol, mode, output, format, detail, report, force_refresh):
         investigator analyze single MSFT --mode quick
         investigator analyze single TSLA --mode comprehensive --report
     """
-    config = ctx.obj.get("config", {})
+    ctx.obj.get("config", {})
     symbol = symbol.upper()
 
     async def run_analysis():
-        from investigator.application import AgentOrchestrator, AnalysisMode, OutputDetailLevel, format_analysis_output
+        from investigator.application import (
+            AgentOrchestrator,
+            AnalysisMode,
+            OutputDetailLevel,
+            format_analysis_output,
+        )
         from investigator.config import get_config
         from investigator.infrastructure.cache import get_cache_manager
         from investigator.infrastructure.monitoring import MetricsCollector
 
         cfg = get_config()
         original_force_refresh = getattr(cfg.cache_control, "force_refresh", False)
-        original_force_symbols = getattr(cfg.cache_control, "force_refresh_symbols", None)
+        original_force_symbols = getattr(
+            cfg.cache_control, "force_refresh_symbols", None
+        )
 
         if force_refresh:
             cfg.cache_control.force_refresh = True
@@ -105,7 +121,10 @@ def single(ctx, symbol, mode, output, format, detail, report, force_refresh):
                         bar.update(100 - bar.pos)
                         break
                     elif status["status"] == "processing":
-                        progress = (status.get("agents_completed", 0) / status.get("total_agents", 1)) * 100
+                        progress = (
+                            status.get("agents_completed", 0)
+                            / status.get("total_agents", 1)
+                        ) * 100
                         bar.update(progress - bar.pos)
 
                     await asyncio.sleep(2)
@@ -118,7 +137,9 @@ def single(ctx, symbol, mode, output, format, detail, report, force_refresh):
                 formatted = format_analysis_output(results, detail_level_enum)
 
                 # Show executive summary
-                exec_summary = format_analysis_output(results, OutputDetailLevel.MINIMAL)
+                exec_summary = format_analysis_output(
+                    results, OutputDetailLevel.MINIMAL
+                )
                 _print_executive_summary(exec_summary)
 
                 # Format output
@@ -144,12 +165,13 @@ def single(ctx, symbol, mode, output, format, detail, report, force_refresh):
                 if report:
                     try:
                         from investigator.application import InvestmentSynthesizer
-                        from investigator.domain.models import InvestmentRecommendation
 
                         click.echo("\nGenerating PDF report...")
                         recommendation = _convert_to_recommendation(results, symbol)
                         synthesizer = InvestmentSynthesizer()
-                        report_path = synthesizer.generate_report([recommendation], report_type="synthesis")
+                        report_path = synthesizer.generate_report(
+                            [recommendation], report_type="synthesis"
+                        )
                         click.echo(f"PDF report generated: {report_path}")
                     except Exception as e:
                         click.echo(f"Failed to generate PDF: {e}", err=True)
@@ -175,7 +197,9 @@ def single(ctx, symbol, mode, output, format, detail, report, force_refresh):
     default="standard",
     help="Analysis mode for all symbols",
 )
-@click.option("--output-dir", "-o", default="results", help="Output directory for results")
+@click.option(
+    "--output-dir", "-o", default="results", help="Output directory for results"
+)
 @click.option(
     "--detail",
     "-d",
@@ -184,7 +208,9 @@ def single(ctx, symbol, mode, output, format, detail, report, force_refresh):
     help="Output detail level",
 )
 @click.option("--force-refresh", "--refresh", is_flag=True, help="Bypass cache")
-@click.option("--parallel", "-p", default=3, type=int, help="Number of parallel analyses")
+@click.option(
+    "--parallel", "-p", default=3, type=int, help="Number of parallel analyses"
+)
 @click.pass_context
 def batch(ctx, symbols, mode, output_dir, detail, force_refresh, parallel):
     """Analyze multiple symbols in batch
@@ -195,11 +221,16 @@ def batch(ctx, symbols, mode, output_dir, detail, force_refresh, parallel):
         investigator analyze batch AAPL MSFT GOOGL
         investigator analyze batch $(cat symbols.txt) --parallel 5
     """
-    config = ctx.obj.get("config", {})
+    ctx.obj.get("config", {})
     symbols = [s.upper() for s in symbols]
 
     async def run_batch():
-        from investigator.application import AgentOrchestrator, AnalysisMode, OutputDetailLevel, format_analysis_output
+        from investigator.application import (
+            AgentOrchestrator,
+            AnalysisMode,
+            OutputDetailLevel,
+            format_analysis_output,
+        )
         from investigator.config import get_config
         from investigator.infrastructure.cache import get_cache_manager
         from investigator.infrastructure.monitoring import MetricsCollector
@@ -231,16 +262,24 @@ def batch(ctx, symbols, mode, output_dir, detail, force_refresh, parallel):
 
             with click.progressbar(symbols, label="Processing") as bar:
                 for symbol, task_id in zip(bar, task_ids):
-                    result = await orchestrator.get_results(task_id, wait=True, timeout=300)
+                    result = await orchestrator.get_results(
+                        task_id, wait=True, timeout=300
+                    )
                     if result:
                         results[symbol] = result
                         formatted = format_analysis_output(result, detail_level_enum)
-                        output_file = Path(output_dir) / f"{symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                        output_file = (
+                            Path(output_dir)
+                            / f"{symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                        )
                         with open(output_file, "w") as f:
                             json.dump(formatted, f, indent=2, default=str)
 
             # Save summary
-            summary_file = Path(output_dir) / f"batch_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            summary_file = (
+                Path(output_dir)
+                / f"batch_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            )
             with open(summary_file, "w") as f:
                 json.dump(
                     {
@@ -277,7 +316,7 @@ def compare(ctx, target, peers, output):
     Examples:
         investigator analyze compare AAPL MSFT GOOGL AMZN
     """
-    config = ctx.obj.get("config", {})
+    ctx.obj.get("config", {})
     target = target.upper()
     peers = [p.upper() for p in peers]
 
@@ -341,7 +380,9 @@ def _print_executive_summary(summary: dict):
     curr_price = val.get("current_price", "N/A")
     target = val.get("price_target_12m", "N/A")
     exp_ret = val.get("expected_return_pct", "N/A")
-    exp_ret_str = f"{exp_ret:.1f}%" if exp_ret != "N/A" and exp_ret is not None else "N/A"
+    exp_ret_str = (
+        f"{exp_ret:.1f}%" if exp_ret != "N/A" and exp_ret is not None else "N/A"
+    )
     click.echo(f"Price: ${curr_price} -> Target: ${target} ({exp_ret_str})")
 
     click.echo(f"Investment Grade: {val.get('investment_grade', 'N/A')}")
@@ -353,11 +394,11 @@ def _print_executive_summary(summary: dict):
     else:
         click.echo(f"Data Quality: {dq_assess}")
 
-    click.echo(f"\nKey Strengths:")
+    click.echo("\nKey Strengths:")
     for strength in thesis.get("key_strengths", []):
         click.echo(f"  * {strength}")
 
-    click.echo(f"\nKey Risks:")
+    click.echo("\nKey Risks:")
     for risk in thesis.get("key_risks", []):
         click.echo(f"  * {risk}")
 
@@ -477,13 +518,25 @@ def _convert_to_recommendation(results: dict, symbol: str):
 
     # Map recommendation string to uppercase
     rec_string = recommendation_data.get("final_recommendation", "hold")
-    rec_map = {"strong_buy": "STRONG BUY", "buy": "BUY", "hold": "HOLD", "sell": "SELL", "strong_sell": "STRONG SELL"}
-    recommendation = rec_map.get(rec_string.lower().replace(" ", "_"), "HOLD") if rec_string else "HOLD"
+    rec_map = {
+        "strong_buy": "STRONG BUY",
+        "buy": "BUY",
+        "hold": "HOLD",
+        "sell": "SELL",
+        "strong_sell": "STRONG SELL",
+    }
+    recommendation = (
+        rec_map.get(rec_string.lower().replace(" ", "_"), "HOLD")
+        if rec_string
+        else "HOLD"
+    )
 
     # Map conviction to confidence
     conviction = recommendation_data.get("conviction_level", "medium")
     confidence_map = {"high": "HIGH", "medium": "MEDIUM", "low": "LOW"}
-    confidence = confidence_map.get(conviction.lower(), "MEDIUM") if conviction else "MEDIUM"
+    confidence = (
+        confidence_map.get(conviction.lower(), "MEDIUM") if conviction else "MEDIUM"
+    )
 
     # Map time horizon
     time_horizon_raw = recommendation_data.get("time_horizon", "medium term")
@@ -507,7 +560,9 @@ def _convert_to_recommendation(results: dict, symbol: str):
         position_size = "MODERATE"
 
     # Get key catalysts from thesis or action plan
-    key_catalysts = investment_thesis.get("growth_catalysts", []) or action_plan.get("catalysts", [])
+    key_catalysts = investment_thesis.get("growth_catalysts", []) or action_plan.get(
+        "catalysts", []
+    )
     if not key_catalysts:
         key_catalysts = recommendation_data.get("key_reasons_for_recommendation", [])
 
@@ -525,20 +580,26 @@ def _convert_to_recommendation(results: dict, symbol: str):
     price_target = base_case.get("price_target")
 
     # Get entry/exit from action plan
-    entry_strategy = action_plan.get("entry_strategy", "Market order on pullback to support")
+    entry_strategy = action_plan.get(
+        "entry_strategy", "Market order on pullback to support"
+    )
     exit_strategy = action_plan.get("exit_strategy", "Scale out at price targets")
     if isinstance(exit_strategy, list):
         exit_strategy = "; ".join(exit_strategy[:2])
 
     # Get stop loss from action plan or scenarios
-    stop_loss = action_plan.get("stop_loss") or scenarios.get("bear_case", {}).get("price_target")
+    stop_loss = action_plan.get("stop_loss") or scenarios.get("bear_case", {}).get(
+        "price_target"
+    )
 
     return InvestmentRecommendation(
         symbol=symbol,
         overall_score=composite_scores.get("overall_score", 50.0),
         fundamental_score=component_scores.get("fundamental", 50.0),
         technical_score=component_scores.get("technical", 50.0),
-        income_score=component_scores.get("fundamental", 50.0),  # Use fundamental as proxy
+        income_score=component_scores.get(
+            "fundamental", 50.0
+        ),  # Use fundamental as proxy
         cashflow_score=component_scores.get("fundamental", 50.0),
         balance_score=component_scores.get("sec", 50.0),
         growth_score=component_scores.get("fundamental", 50.0),
@@ -554,8 +615,12 @@ def _convert_to_recommendation(results: dict, symbol: str):
         key_catalysts=key_catalysts if isinstance(key_catalysts, list) else [],
         key_risks=key_risks if isinstance(key_risks, list) else [],
         key_insights=insights_list[:10],  # Limit to 10 insights
-        entry_strategy=entry_strategy if isinstance(entry_strategy, str) else "Market order",
-        exit_strategy=exit_strategy if isinstance(exit_strategy, str) else "Target-based exit",
+        entry_strategy=entry_strategy
+        if isinstance(entry_strategy, str)
+        else "Market order",
+        exit_strategy=exit_strategy
+        if isinstance(exit_strategy, str)
+        else "Target-based exit",
         stop_loss=stop_loss,
         analysis_timestamp=datetime.now(),
         data_quality_score=composite_scores.get("confidence", 80.0) / 100.0,

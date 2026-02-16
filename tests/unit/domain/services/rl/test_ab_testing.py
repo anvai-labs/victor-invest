@@ -87,7 +87,10 @@ class TestABTestingFramework:
         assert symbol in framework._assignment_cache
 
         # Cache should contain assignment
-        assert framework._assignment_cache[symbol] in [ABTestGroup.RL, ABTestGroup.BASELINE]
+        assert framework._assignment_cache[symbol] in [
+            ABTestGroup.RL,
+            ABTestGroup.BASELINE,
+        ]
 
     def test_reset_cache(self, framework):
         """Test cache reset."""
@@ -165,7 +168,10 @@ class TestABTestRecommendations:
         mock_db.get_session.return_value = mock_session
 
         # Patch get_db_manager before creating framework
-        with patch("investigator.domain.services.rl.monitoring.ab_testing.get_db_manager", return_value=mock_db):
+        with patch(
+            "investigator.domain.services.rl.monitoring.ab_testing.get_db_manager",
+            return_value=mock_db,
+        ):
             config = ABTestConfig(min_samples_per_group=10)
             framework = ABTestingFramework(config=config)
             recommendation = framework.recommend_action()

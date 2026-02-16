@@ -9,8 +9,7 @@ Author: Claude Code
 """
 
 import logging
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +31,9 @@ class FCFGrowthCalculator:
         """
         self.symbol = symbol
 
-    def calculate_geometric_mean_fcf_growth(self, quarterly_metrics: List[Dict[str, Any]], years: int = 3) -> float:
+    def calculate_geometric_mean_fcf_growth(
+        self, quarterly_metrics: List[Dict[str, Any]], years: int = 3
+    ) -> float:
         """
         Calculate geometric mean FCF growth over N years using TTM data
 
@@ -84,14 +85,18 @@ class FCFGrowthCalculator:
                 yearly_fcf[year] = sum(quarters[-4:])
 
         if len(yearly_fcf) < 2:
-            logger.warning(f"{self.symbol} - Insufficient years of FCF data (have {len(yearly_fcf)}, need at least 2)")
+            logger.warning(
+                f"{self.symbol} - Insufficient years of FCF data (have {len(yearly_fcf)}, need at least 2)"
+            )
             return 0.0
 
         # Step 3: Get most recent N years
         sorted_years = sorted(yearly_fcf.keys(), reverse=True)[: years + 1]
 
         if len(sorted_years) < 2:
-            logger.warning(f"{self.symbol} - Need at least 2 years for CAGR calculation")
+            logger.warning(
+                f"{self.symbol} - Need at least 2 years for CAGR calculation"
+            )
             return 0.0
 
         # Step 4: Calculate CAGR
@@ -102,7 +107,7 @@ class FCFGrowthCalculator:
         if start_fcf <= 0:
             logger.warning(
                 f"{self.symbol} - Cannot calculate FCF growth from negative/zero starting FCF "
-                f"(FY {sorted_years[-1]}: ${start_fcf/1e6:.1f}M)"
+                f"(FY {sorted_years[-1]}: ${start_fcf / 1e6:.1f}M)"
             )
             return 0.0
 
@@ -114,14 +119,16 @@ class FCFGrowthCalculator:
 
         logger.info(
             f"{self.symbol} - Historical FCF Growth ({num_years}Y CAGR): "
-            f"{final_growth*100:.1f}% | "
-            f"Start FCF (FY {sorted_years[-1]}): ${start_fcf/1e6:.1f}M | "
-            f"End FCF (FY {sorted_years[0]}): ${end_fcf/1e6:.1f}M"
+            f"{final_growth * 100:.1f}% | "
+            f"Start FCF (FY {sorted_years[-1]}): ${start_fcf / 1e6:.1f}M | "
+            f"End FCF (FY {sorted_years[0]}): ${end_fcf / 1e6:.1f}M"
         )
 
         return final_growth
 
-    def calculate_fcf_margin(self, quarterly_metrics: List[Dict[str, Any]], ttm: bool = True) -> float:
+    def calculate_fcf_margin(
+        self, quarterly_metrics: List[Dict[str, Any]], ttm: bool = True
+    ) -> float:
         """
         Calculate Free Cash Flow margin (FCF / Revenue)
 
@@ -139,7 +146,9 @@ class FCFGrowthCalculator:
         if ttm:
             # TTM calculation (sum of last 4 quarters)
             if len(quarterly_metrics) < 4:
-                logger.warning(f"{self.symbol} - Insufficient data for TTM FCF margin (need 4 quarters)")
+                logger.warning(
+                    f"{self.symbol} - Insufficient data for TTM FCF margin (need 4 quarters)"
+                )
                 return 0.0
 
             recent_4q = quarterly_metrics[-4:]
@@ -161,7 +170,9 @@ class FCFGrowthCalculator:
 
             margin_pct = (fcf / revenue) * 100
 
-        logger.debug(f"{self.symbol} - FCF Margin ({'TTM' if ttm else 'Q'}): {margin_pct:.1f}%")
+        logger.debug(
+            f"{self.symbol} - FCF Margin ({'TTM' if ttm else 'Q'}): {margin_pct:.1f}%"
+        )
 
         return margin_pct
 

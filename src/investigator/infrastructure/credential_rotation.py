@@ -104,7 +104,9 @@ class RotationRecord:
     status: RotationStatus
     rotated_by: str = "system"
     notes: str = ""
-    previous_version_hash: str = ""  # Hash of old credential (not the credential itself)
+    previous_version_hash: str = (
+        ""  # Hash of old credential (not the credential itself)
+    )
     new_version_hash: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
@@ -196,7 +198,8 @@ class RotationScheduler:
 
         self._schedules[policy.credential_name] = entry
         logger.info(
-            f"Added rotation policy for {policy.credential_name}: " f"rotate every {policy.rotation_interval_days} days"
+            f"Added rotation policy for {policy.credential_name}: "
+            f"rotate every {policy.rotation_interval_days} days"
         )
 
     def remove_policy(self, credential_name: str) -> None:
@@ -234,7 +237,9 @@ class RotationScheduler:
         if credential_name in self._schedules:
             entry = self._schedules[credential_name]
             entry.last_rotation = now
-            entry.next_rotation = now + timedelta(days=entry.policy.rotation_interval_days)
+            entry.next_rotation = now + timedelta(
+                days=entry.policy.rotation_interval_days
+            )
             entry.status = RotationStatus.SCHEDULED
 
         logger.info(f"Recorded rotation for {credential_name} by {rotated_by}")
@@ -342,8 +347,12 @@ class RotationScheduler:
             "schedules": {
                 name: {
                     "policy": entry.policy.to_dict(),
-                    "last_rotation": entry.last_rotation.isoformat() if entry.last_rotation else None,
-                    "next_rotation": entry.next_rotation.isoformat() if entry.next_rotation else None,
+                    "last_rotation": entry.last_rotation.isoformat()
+                    if entry.last_rotation
+                    else None,
+                    "next_rotation": entry.next_rotation.isoformat()
+                    if entry.next_rotation
+                    else None,
                     "status": entry.status.value,
                 }
                 for name, entry in self._schedules.items()
@@ -370,8 +379,12 @@ class RotationScheduler:
                 entry = RotationScheduleEntry(
                     credential_name=name,
                     policy=policy,
-                    last_rotation=datetime.fromisoformat(data["last_rotation"]) if data.get("last_rotation") else None,
-                    next_rotation=datetime.fromisoformat(data["next_rotation"]) if data.get("next_rotation") else None,
+                    last_rotation=datetime.fromisoformat(data["last_rotation"])
+                    if data.get("last_rotation")
+                    else None,
+                    next_rotation=datetime.fromisoformat(data["next_rotation"])
+                    if data.get("next_rotation")
+                    else None,
                     status=RotationStatus(data.get("status", "scheduled")),
                 )
                 self._schedules[name] = entry

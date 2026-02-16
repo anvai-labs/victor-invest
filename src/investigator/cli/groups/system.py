@@ -34,7 +34,6 @@ def status(ctx, verbose):
 
     Verifies all components are running and accessible.
     """
-    import asyncio
 
     click.echo("InvestiGator System Status")
     click.echo("=" * 60)
@@ -42,7 +41,9 @@ def status(ctx, verbose):
     checks = []
 
     # Check Python
-    py_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    py_version = (
+        f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    )
     checks.append(("Python", True, py_version))
 
     # Check Ollama
@@ -66,7 +67,7 @@ def status(ctx, verbose):
         from investigator.infrastructure.database.db import get_database_engine
 
         engine = get_database_engine()
-        with engine.connect() as conn:
+        with engine.connect():
             pass
         checks.append(("Database", True, "Connected"))
     except Exception as e:
@@ -76,7 +77,7 @@ def status(ctx, verbose):
     try:
         from investigator.infrastructure.cache import get_cache_manager
 
-        cache = get_cache_manager()
+        get_cache_manager()
         checks.append(("Cache", True, "Initialized"))
     except Exception as e:
         checks.append(("Cache", False, str(e)[:30]))
@@ -167,7 +168,9 @@ def setup(ctx, skip_deps, skip_db):
     # 2. Install dependencies
     if not skip_deps:
         click.echo("\n2. Installing dependencies...")
-        result = subprocess.run(["pip", "install", "-r", "requirements.txt"], capture_output=True)
+        result = subprocess.run(
+            ["pip", "install", "-r", "requirements.txt"], capture_output=True
+        )
         if result.returncode == 0:
             click.echo("   Dependencies installed")
             steps.append(("Dependencies", True))
@@ -281,7 +284,9 @@ def info(ctx):
 
     # Resources
     click.echo("\nResources:")
-    click.echo(f"  CPU Cores:    {psutil.cpu_count(logical=False)} physical, {psutil.cpu_count()} logical")
+    click.echo(
+        f"  CPU Cores:    {psutil.cpu_count(logical=False)} physical, {psutil.cpu_count()} logical"
+    )
     click.echo(f"  CPU Usage:    {psutil.cpu_percent()}%")
 
     memory = psutil.virtual_memory()
@@ -290,7 +295,9 @@ def info(ctx):
     )
 
     disk = psutil.disk_usage(".")
-    click.echo(f"  Disk:         {disk.used / (1024**3):.1f}GB / {disk.total / (1024**3):.1f}GB ({disk.percent}%)")
+    click.echo(
+        f"  Disk:         {disk.used / (1024**3):.1f}GB / {disk.total / (1024**3):.1f}GB ({disk.percent}%)"
+    )
 
     # Package versions
     click.echo("\nKey Packages:")
@@ -312,10 +319,10 @@ def info(ctx):
         version = importlib.metadata.version("investigator")
         click.echo(f"  Version:      {version}")
     except Exception:
-        click.echo(f"  Version:      development")
+        click.echo("  Version:      development")
 
     click.echo(f"  Working Dir:  {Path.cwd()}")
-    click.echo(f"  Config:       config.yaml")
+    click.echo("  Config:       config.yaml")
 
 
 @system.command("config")
@@ -373,7 +380,11 @@ def config(ctx, edit, validate):
 @system.command("logs")
 @click.option("--lines", "-n", default=50, type=int, help="Number of lines to show")
 @click.option("--follow", "-f", is_flag=True, help="Follow log output")
-@click.option("--level", type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"]), help="Filter by level")
+@click.option(
+    "--level",
+    type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"]),
+    help="Filter by level",
+)
 @click.pass_context
 def logs(ctx, lines, follow, level):
     """View system logs
@@ -387,7 +398,9 @@ def logs(ctx, lines, follow, level):
         return
 
     # Find latest log file
-    log_files = sorted(log_dir.glob("*.log"), key=lambda p: p.stat().st_mtime, reverse=True)
+    log_files = sorted(
+        log_dir.glob("*.log"), key=lambda p: p.stat().st_mtime, reverse=True
+    )
 
     if not log_files:
         click.echo("No log files found")
@@ -408,7 +421,7 @@ def logs(ctx, lines, follow, level):
         with open(latest) as f:
             all_lines = f.readlines()
             if level:
-                all_lines = [l for l in all_lines if level in l]
+                all_lines = [ln for ln in all_lines if level in ln]
             for line in all_lines[-lines:]:
                 click.echo(line.rstrip())
 
@@ -470,4 +483,6 @@ def metrics(ctx, days):
             fails = metrics.get("failures", 0)
             success_rate = ((execs - fails) / execs * 100) if execs > 0 else 0
             click.echo(f"  {agent}:")
-            click.echo(f"    Executions: {execs}, Avg: {avg_dur:.1f}s, Success: {success_rate:.0f}%")
+            click.echo(
+                f"    Executions: {execs}, Avg: {avg_dur:.1f}s, Success: {success_rate:.0f}%"
+            )

@@ -42,14 +42,14 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date, datetime
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, List
 
 if TYPE_CHECKING:
     from victor.tools.registry import ToolRegistry
     from victor.workflows.definition import ComputeNode
-    from victor.workflows.executor import NodeResult, NodeStatus, WorkflowContext
+    from victor.workflows.executor import NodeResult, WorkflowContext
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +86,10 @@ def _get_financial_data_service():
 
 
 def _get_sector_multiples_service():
-    from investigator.domain.services.valuation_shared import SectorMultiplesService, ValuationConfigService
+    from investigator.domain.services.valuation_shared import (
+        SectorMultiplesService,
+        ValuationConfigService,
+    )
 
     config = ValuationConfigService()
     return SectorMultiplesService(config)
@@ -95,7 +98,13 @@ def _get_sector_multiples_service():
 class HandlerBase:
     """Base class for investment handlers with common input extraction."""
 
-    def _get_input(self, node: "ComputeNode", context: "WorkflowContext", key: str, default: Any = None) -> Any:
+    def _get_input(
+        self,
+        node: "ComputeNode",
+        context: "WorkflowContext",
+        key: str,
+        default: Any = None,
+    ) -> Any:
         """Get input value from node mapping or context."""
         value = node.input_mapping.get(key)
         if isinstance(value, str) and value.startswith("$ctx."):
@@ -136,7 +145,7 @@ class ValuationComputeHandler(HandlerBase):
         symbol = self._get_input(node, context, "symbol")
         financials = self._get_input(node, context, "financials", {})
         ratios = self._get_input(node, context, "ratios", {})
-        as_of_date = self._get_input(node, context, "as_of_date")
+        self._get_input(node, context, "as_of_date")
 
         if not symbol:
             return NodeResult(
@@ -258,14 +267,22 @@ class RLWeightDecisionHandler(HandlerBase):
         # Dual policy paths (preferred)
         use_dual_policy = self._get_input(node, context, "use_dual_policy", True)
         technical_policy_path = self._get_input(
-            node, context, "technical_policy_path", "data/rl_models/active_technical_policy.pkl"
+            node,
+            context,
+            "technical_policy_path",
+            "data/rl_models/active_technical_policy.pkl",
         )
         fundamental_policy_path = self._get_input(
-            node, context, "fundamental_policy_path", "data/rl_models/active_fundamental_policy.pkl"
+            node,
+            context,
+            "fundamental_policy_path",
+            "data/rl_models/active_fundamental_policy.pkl",
         )
 
         # Legacy single policy path (fallback)
-        policy_path = self._get_input(node, context, "policy_path", "data/rl_models/active_policy.pkl")
+        policy_path = self._get_input(
+            node, context, "policy_path", "data/rl_models/active_policy.pkl"
+        )
 
         if not symbol:
             return NodeResult(
@@ -311,14 +328,22 @@ class RLWeightDecisionHandler(HandlerBase):
 
             # Check which policy was used
             dual_active = rl_service.is_dual_policy_active()
-            single_active = hasattr(rl_service, "policy") and rl_service.policy and rl_service.policy.is_ready()
+            single_active = (
+                hasattr(rl_service, "policy")
+                and rl_service.policy
+                and rl_service.policy.is_ready()
+            )
 
             # Extract additional metadata from audit trail
             position = None
             position_confidence = None
             holding_period = None
             industry_category = None
-            if weight_audit and hasattr(weight_audit, "metadata") and weight_audit.metadata:
+            if (
+                weight_audit
+                and hasattr(weight_audit, "metadata")
+                and weight_audit.metadata
+            ):
                 position = weight_audit.metadata.get("position")
                 position_confidence = weight_audit.metadata.get("position_confidence")
                 holding_period = weight_audit.metadata.get("holding_period")
@@ -328,7 +353,13 @@ class RLWeightDecisionHandler(HandlerBase):
                 "symbol": symbol,
                 "weights": weights,
                 "tier": tier,
-                "policy_used": ("dual_rl" if dual_active else "single_rl" if single_active else "fallback_rule_based"),
+                "policy_used": (
+                    "dual_rl"
+                    if dual_active
+                    else "single_rl"
+                    if single_active
+                    else "fallback_rule_based"
+                ),
                 "rl_active": dual_active or single_active,
                 "dual_policy_active": dual_active,
                 "position_signal": position,  # -1=short, 0=skip, 1=long
@@ -512,11 +543,18 @@ class SectorValuationHandler(HandlerBase):
             industry = metadata.industry if metadata else "Unknown"
             shares = financials.get("shares_outstanding", 1) or 1
 
-            result = {"sector": sector, "industry": industry, "model_used": None, "fair_value": None}
+            result = {
+                "sector": sector,
+                "industry": industry,
+                "model_used": None,
+                "fair_value": None,
+            }
 
             # Route to sector-specific valuation
             if sector == "Financials" and "bank" in industry.lower():
-                from investigator.domain.services.valuation.bank_valuation import value_bank
+                from investigator.domain.services.valuation.bank_valuation import (
+                    value_bank,
+                )
 
                 bank_result = value_bank(symbol, financials, current_price, shares)
                 if bank_result and bank_result.fair_value:
@@ -524,7 +562,9 @@ class SectorValuationHandler(HandlerBase):
                     result["fair_value"] = bank_result.fair_value
 
             elif sector == "Real Estate":
-                from investigator.domain.services.valuation.reit_valuation import value_reit
+                from investigator.domain.services.valuation.reit_valuation import (
+                    value_reit,
+                )
 
                 reit_result = value_reit(symbol, financials, current_price, shares)
                 if reit_result and reit_result.fair_value:
@@ -532,17 +572,25 @@ class SectorValuationHandler(HandlerBase):
                     result["fair_value"] = reit_result.fair_value
 
             elif "insurance" in industry.lower():
-                from investigator.domain.services.valuation.insurance_valuation import value_insurance_company
+                from investigator.domain.services.valuation.insurance_valuation import (
+                    value_insurance_company,
+                )
 
-                ins_result = value_insurance_company(symbol, financials, current_price, shares)
+                ins_result = value_insurance_company(
+                    symbol, financials, current_price, shares
+                )
                 if ins_result:
                     result["model_used"] = "insurance_combined_ratio"
                     result["fair_value"] = ins_result.get("fair_value")
 
             elif "semiconductor" in industry.lower():
-                from investigator.domain.services.valuation.semiconductor_valuation import value_semiconductor
+                from investigator.domain.services.valuation.semiconductor_valuation import (
+                    value_semiconductor,
+                )
 
-                semi_result = value_semiconductor(symbol, financials, current_price, shares)
+                semi_result = value_semiconductor(
+                    symbol, financials, current_price, shares
+                )
                 if semi_result and semi_result.fair_value:
                     result["model_used"] = "semiconductor_cycle"
                     result["fair_value"] = semi_result.fair_value
@@ -633,10 +681,14 @@ class PriceDataFetchHandler(HandlerBase):
             from datetime import timedelta
 
             start_date = target_date - timedelta(days=lookback_days)
-            price_history = price_service.get_price_history(symbol, start_date, target_date)
+            price_history = price_service.get_price_history(
+                symbol, start_date, target_date
+            )
 
             # Get volatility
-            volatility = price_service.get_volatility(symbol, days=30, end_date=target_date)
+            volatility = price_service.get_volatility(
+                symbol, days=30, end_date=target_date
+            )
 
             # Get metadata for beta
             metadata = metadata_service.get_metadata(symbol)
@@ -650,7 +702,9 @@ class PriceDataFetchHandler(HandlerBase):
                 "target_date": str(target_date),
                 "current_price": current_price,
                 "shares_outstanding": shares,
-                "market_cap": current_price * shares if current_price and shares else None,
+                "market_cap": current_price * shares
+                if current_price and shares
+                else None,
                 "beta": beta,
                 "volatility": volatility,
                 "price_history_days": len(price_history) if price_history else 0,
@@ -734,7 +788,7 @@ class TechnicalAnalysisHandler(HandlerBase):
             )
 
             # Get entry/exit signals
-            signals = technical_service.get_entry_exit_signals(
+            technical_service.get_entry_exit_signals(
                 symbol=symbol,
                 analysis_date=analysis_date,
                 fair_value=fair_value,
@@ -753,8 +807,12 @@ class TechnicalAnalysisHandler(HandlerBase):
                 "mfi_14": features.mfi_14 if features else None,
                 "volatility": features.volatility if features else None,
                 # Entry/exit signals
-                "entry_signal_strength": features.entry_signal_strength if features else 0,
-                "exit_signal_strength": features.exit_signal_strength if features else 0,
+                "entry_signal_strength": features.entry_signal_strength
+                if features
+                else 0,
+                "exit_signal_strength": features.exit_signal_strength
+                if features
+                else 0,
                 "signal_confluence": features.signal_confluence if features else 0,
                 "risk_reward_ratio": features.risk_reward_ratio if features else 1.0,
                 # Trend context
@@ -914,7 +972,9 @@ class OutcomeTrackingHandler(HandlerBase):
                 "symbol": symbol,
                 "record_id": record_id,
                 "tracked": record_id is not None,
-                "predicted_upside_pct": ((blended_fv / current_price) - 1) * 100 if current_price > 0 else 0,
+                "predicted_upside_pct": ((blended_fv / current_price) - 1) * 100
+                if current_price > 0
+                else 0,
             }
 
             output_key = node.output_key or node.id
@@ -972,7 +1032,9 @@ class BlendedValuationHandler(HandlerBase):
             model_contributions = {}
 
             for model, result in valuation_results.items():
-                fair_value = result.get("fair_value") if isinstance(result, dict) else None
+                fair_value = (
+                    result.get("fair_value") if isinstance(result, dict) else None
+                )
                 weight = weights.get(model, 0.0)
 
                 if fair_value is not None and weight > 0:

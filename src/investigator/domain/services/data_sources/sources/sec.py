@@ -6,10 +6,17 @@ institutional holdings (Form 13F), and quarterly financials.
 """
 
 import logging
-from datetime import date, datetime, timedelta
-from typing import Any, Dict, List, Optional
+from datetime import date, timedelta
+from typing import Optional
 
-from ..base import DataCategory, DataFrequency, DataQuality, DataResult, DataSource, SourceMetadata
+from ..base import (
+    DataCategory,
+    DataFrequency,
+    DataQuality,
+    DataResult,
+    DataSource,
+    SourceMetadata,
+)
 from ..registry import register_source
 
 logger = logging.getLogger(__name__)
@@ -27,7 +34,9 @@ class InsiderTransactionSource(DataSource):
     """
 
     def __init__(self):
-        super().__init__("insider_transactions", DataCategory.SENTIMENT, DataFrequency.DAILY)
+        super().__init__(
+            "insider_transactions", DataCategory.SENTIMENT, DataFrequency.DAILY
+        )
 
     @property
     def metadata(self) -> SourceMetadata:
@@ -77,7 +86,11 @@ class InsiderTransactionSource(DataSource):
                         LIMIT 50
                     """
                     ),
-                    {"symbol": symbol, "start_date": start_date, "target_date": target_date},
+                    {
+                        "symbol": symbol,
+                        "start_date": start_date,
+                        "target_date": target_date,
+                    },
                 )
 
                 transactions = []
@@ -89,7 +102,11 @@ class InsiderTransactionSource(DataSource):
                     tx = {
                         "owner": row[0],
                         "date": row[1].isoformat() if row[1] else None,
-                        "type": "BUY" if tx_code in ("P", "A") else "SELL" if tx_code == "S" else "OTHER",
+                        "type": "BUY"
+                        if tx_code in ("P", "A")
+                        else "SELL"
+                        if tx_code == "S"
+                        else "OTHER",
                         "shares": float(row[3]) if row[3] else None,
                         "price": float(row[4]) if row[4] else None,
                         "total_value": float(row[5]) if row[5] else None,
@@ -199,7 +216,9 @@ class InstitutionalHoldingsSource(DataSource):
     """
 
     def __init__(self):
-        super().__init__("institutional_holdings", DataCategory.SENTIMENT, DataFrequency.QUARTERLY)
+        super().__init__(
+            "institutional_holdings", DataCategory.SENTIMENT, DataFrequency.QUARTERLY
+        )
 
     @property
     def metadata(self) -> SourceMetadata:
@@ -270,7 +289,6 @@ class InstitutionalHoldingsSource(DataSource):
                         total_value += value_dollars or 0
                         holder_count += 1
 
-                ownership = None  # institutional_ownership table may not exist
 
             if not holdings:
                 return DataResult(
@@ -315,7 +333,9 @@ class SECQuarterlySource(DataSource):
     """
 
     def __init__(self):
-        super().__init__("sec_quarterly", DataCategory.FUNDAMENTAL, DataFrequency.QUARTERLY)
+        super().__init__(
+            "sec_quarterly", DataCategory.FUNDAMENTAL, DataFrequency.QUARTERLY
+        )
 
     @property
     def metadata(self) -> SourceMetadata:
@@ -339,7 +359,7 @@ class SECQuarterlySource(DataSource):
             from investigator.infrastructure.database.db import get_db_manager
 
             engine = get_db_manager().engine
-            target_date = as_of_date or date.today()
+            as_of_date or date.today()
 
             with engine.connect() as conn:
                 # quarterly_metrics stores data in JSONB metrics_data column
@@ -367,19 +387,28 @@ class SECQuarterlySource(DataSource):
                         {
                             "fiscal_year": row[0],
                             "fiscal_period": row[1],
-                            "revenue": metrics.get("revenue") or metrics.get("revenues"),
-                            "net_income": metrics.get("net_income") or metrics.get("netIncome"),
-                            "operating_income": metrics.get("operating_income") or metrics.get("operatingIncome"),
-                            "gross_profit": metrics.get("gross_profit") or metrics.get("grossProfit"),
-                            "eps_basic": metrics.get("eps_basic") or metrics.get("basicEPS"),
-                            "eps_diluted": metrics.get("eps_diluted") or metrics.get("dilutedEPS"),
-                            "total_assets": metrics.get("total_assets") or metrics.get("totalAssets"),
-                            "total_liabilities": metrics.get("total_liabilities") or metrics.get("totalLiabilities"),
+                            "revenue": metrics.get("revenue")
+                            or metrics.get("revenues"),
+                            "net_income": metrics.get("net_income")
+                            or metrics.get("netIncome"),
+                            "operating_income": metrics.get("operating_income")
+                            or metrics.get("operatingIncome"),
+                            "gross_profit": metrics.get("gross_profit")
+                            or metrics.get("grossProfit"),
+                            "eps_basic": metrics.get("eps_basic")
+                            or metrics.get("basicEPS"),
+                            "eps_diluted": metrics.get("eps_diluted")
+                            or metrics.get("dilutedEPS"),
+                            "total_assets": metrics.get("total_assets")
+                            or metrics.get("totalAssets"),
+                            "total_liabilities": metrics.get("total_liabilities")
+                            or metrics.get("totalLiabilities"),
                             "stockholders_equity": metrics.get("stockholders_equity")
                             or metrics.get("stockholdersEquity"),
                             "operating_cash_flow": metrics.get("operating_cash_flow")
                             or metrics.get("operatingCashFlow"),
-                            "free_cash_flow": metrics.get("free_cash_flow") or metrics.get("freeCashFlow"),
+                            "free_cash_flow": metrics.get("free_cash_flow")
+                            or metrics.get("freeCashFlow"),
                             "calculated_at": row[3].isoformat() if row[3] else None,
                         }
                     )
@@ -397,11 +426,21 @@ class SECQuarterlySource(DataSource):
 
             growth = {}
             if yoy_quarter and latest.get("revenue") and yoy_quarter.get("revenue"):
-                growth["revenue_yoy"] = (latest["revenue"] - yoy_quarter["revenue"]) / abs(yoy_quarter["revenue"]) * 100
-            if yoy_quarter and latest.get("net_income") and yoy_quarter.get("net_income"):
+                growth["revenue_yoy"] = (
+                    (latest["revenue"] - yoy_quarter["revenue"])
+                    / abs(yoy_quarter["revenue"])
+                    * 100
+                )
+            if (
+                yoy_quarter
+                and latest.get("net_income")
+                and yoy_quarter.get("net_income")
+            ):
                 if yoy_quarter["net_income"] > 0:
                     growth["net_income_yoy"] = (
-                        (latest["net_income"] - yoy_quarter["net_income"]) / yoy_quarter["net_income"] * 100
+                        (latest["net_income"] - yoy_quarter["net_income"])
+                        / yoy_quarter["net_income"]
+                        * 100
                     )
 
             return DataResult(

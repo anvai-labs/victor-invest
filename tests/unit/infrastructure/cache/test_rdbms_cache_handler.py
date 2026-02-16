@@ -1,11 +1,8 @@
-from datetime import datetime
-from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 
 from investigator.infrastructure.cache.cache_types import CacheType
-from investigator.infrastructure.cache.rdbms_cache_handler import RdbmsCacheStorageHandler
 
 
 class FakeLLMDao:
@@ -92,7 +89,9 @@ def patch_database_manager(monkeypatch):
 def test_llm_response_round_trip(patch_database_manager, monkeypatch):
     module = patch_database_manager
     dao = FakeLLMDao()
-    monkeypatch.setattr("investigator.infrastructure.database.db.get_llm_responses_dao", lambda: dao)
+    monkeypatch.setattr(
+        "investigator.infrastructure.database.db.get_llm_responses_dao", lambda: dao
+    )
 
     handler = module.RdbmsCacheStorageHandler(CacheType.LLM_RESPONSE, priority=5)
 
@@ -121,7 +120,9 @@ def test_llm_response_round_trip(patch_database_manager, monkeypatch):
 def test_sec_response_save_and_fetch(patch_database_manager, monkeypatch):
     module = patch_database_manager
     dao = FakeSecDao()
-    monkeypatch.setattr("investigator.infrastructure.database.db.get_sec_responses_dao", lambda: dao)
+    monkeypatch.setattr(
+        "investigator.infrastructure.database.db.get_sec_responses_dao", lambda: dao
+    )
 
     handler = module.RdbmsCacheStorageHandler(CacheType.SEC_RESPONSE, priority=5)
 

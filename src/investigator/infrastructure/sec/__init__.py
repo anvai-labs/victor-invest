@@ -26,7 +26,9 @@ def __getattr__(name):
     - SECCompanyFactsExtractor: companyfacts_extractor -> domain services -> ... -> sec
     """
     if name == "SECQuarterlyProcessor":
-        from investigator.infrastructure.sec.quarterly_processor import SECQuarterlyProcessor
+        from investigator.infrastructure.sec.quarterly_processor import (
+            SECQuarterlyProcessor,
+        )
 
         return SECQuarterlyProcessor
     elif name == "SECDataProcessor":
@@ -34,7 +36,9 @@ def __getattr__(name):
 
         return SECDataProcessor
     elif name == "SECCompanyFactsExtractor":
-        from investigator.infrastructure.sec.companyfacts_extractor import SECCompanyFactsExtractor
+        from investigator.infrastructure.sec.companyfacts_extractor import (
+            SECCompanyFactsExtractor,
+        )
 
         return SECCompanyFactsExtractor
     elif name == "SECApiClient":
@@ -49,13 +53,13 @@ def __getattr__(name):
 
 
 # These imports are safe and don't trigger circular dependencies
-from investigator.infrastructure.sec.canonical_mapper import (
+from investigator.infrastructure.sec.canonical_mapper import (  # noqa: E402
     CanonicalKeyMapper,
     get_canonical_mapper,
 )
-from investigator.infrastructure.sec.data_strategy import SECDataStrategy
-from investigator.infrastructure.sec.sec_frame_api import SECFrameAPI, get_frame_api
-from investigator.infrastructure.sec.xbrl_parser import XBRLParser
+from investigator.infrastructure.sec.data_strategy import SECDataStrategy  # noqa: E402
+from investigator.infrastructure.sec.sec_frame_api import SECFrameAPI, get_frame_api  # noqa: E402
+from investigator.infrastructure.sec.xbrl_parser import XBRLParser  # noqa: E402
 
 __all__ = [
     "CanonicalKeyMapper",

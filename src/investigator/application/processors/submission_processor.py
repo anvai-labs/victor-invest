@@ -9,9 +9,8 @@ Handles SEC submission data parsing, filtering, and processing with support for 
 """
 
 import logging
-from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +90,9 @@ class SubmissionProcessor:
             Structured submission data with parsed filings
         """
         try:
-            self.logger.debug(f"Starting to parse submissions data, size: {len(str(submissions_data))}")
+            self.logger.debug(
+                f"Starting to parse submissions data, size: {len(str(submissions_data))}"
+            )
             # Extract company information
             parsed_data = {
                 "cik": submissions_data.get("cik", ""),
@@ -102,7 +103,9 @@ class SubmissionProcessor:
                 "tickers": submissions_data.get("tickers", []),
                 "exchanges": submissions_data.get("exchanges", []),
                 "fiscal_year_end": submissions_data.get("fiscalYearEnd", ""),
-                "state_of_incorporation": submissions_data.get("stateOfIncorporation", ""),
+                "state_of_incorporation": submissions_data.get(
+                    "stateOfIncorporation", ""
+                ),
                 "website": submissions_data.get("website", ""),
                 "investor_website": submissions_data.get("investorWebsite", ""),
                 "category": submissions_data.get("category", ""),
@@ -114,7 +117,7 @@ class SubmissionProcessor:
                 "filings": self._parse_filings(submissions_data.get("filings", {})),
             }
 
-            self.logger.debug(f"Successfully parsed submissions data")
+            self.logger.debug("Successfully parsed submissions data")
             return parsed_data
 
         except Exception as e:
@@ -124,9 +127,11 @@ class SubmissionProcessor:
     def _parse_filings(self, filings_data: Dict) -> Dict:
         """Parse filings section of submissions data"""
         try:
-            self.logger.debug(f"Parsing filings data, filings count: {len(filings_data)}")
+            self.logger.debug(
+                f"Parsing filings data, filings count: {len(filings_data)}"
+            )
             recent_filings = filings_data.get("recent", {})
-            self.logger.debug(f"Got recent filings, processing arrays")
+            self.logger.debug("Got recent filings, processing arrays")
 
             # Extract filing arrays
             form_types = recent_filings.get("form", [])
@@ -142,8 +147,12 @@ class SubmissionProcessor:
                     filing = Filing(
                         form_type=form_types[i] if i < len(form_types) else "",
                         filing_date=filing_dates[i] if i < len(filing_dates) else "",
-                        accession_number=accession_numbers[i] if i < len(accession_numbers) else "",
-                        primary_document=primary_documents[i] if i < len(primary_documents) else "",
+                        accession_number=accession_numbers[i]
+                        if i < len(accession_numbers)
+                        else "",
+                        primary_document=primary_documents[i]
+                        if i < len(primary_documents)
+                        else "",
                         report_date=report_dates[i] if i < len(report_dates) else None,
                     )
                     all_filings.append(filing)
@@ -177,7 +186,7 @@ class SubmissionProcessor:
             self.logger.debug(f"Total filings available: {len(all_filings)}")
 
             # Filter for earnings filings (10-K, 10-Q and their amendments)
-            self.logger.debug(f"Filtering for earnings filings (10-K, 10-Q)")
+            self.logger.debug("Filtering for earnings filings (10-K, 10-Q)")
             earnings_filings = []
             for filing in all_filings:
                 base_type = filing.base_form_type
@@ -186,16 +195,20 @@ class SubmissionProcessor:
                         earnings_filings.append(filing)
             self.logger.debug(f"Found {len(earnings_filings)} earnings filings")
 
-            self.logger.debug(f"Grouping filings by period and resolving amendments")
+            self.logger.debug("Grouping filings by period and resolving amendments")
 
             # TEMPORARY FIX: Use simpler logic to avoid hanging
             # Just sort by filing date and take the most recent filings
             earnings_filings.sort(key=lambda f: f.filing_date, reverse=True)
             result = earnings_filings[:limit]
 
-            self.logger.info(f"Found {len(result)} recent earnings filings (simplified logic)")
+            self.logger.info(
+                f"Found {len(result)} recent earnings filings (simplified logic)"
+            )
             for filing in result[:5]:  # Log first 5 filings
-                self.logger.debug(f"  - {filing.form_type} {filing.period_key} filed {filing.filing_date}")
+                self.logger.debug(
+                    f"  - {filing.form_type} {filing.period_key} filed {filing.filing_date}"
+                )
 
             return result
 
@@ -278,7 +291,10 @@ class SubmissionProcessor:
 
             # Create cache format
             cache_data = parsed_data.copy()
-            cache_data["filings"] = {"all": serialized_filings, "count": len(serialized_filings)}
+            cache_data["filings"] = {
+                "all": serialized_filings,
+                "count": len(serialized_filings),
+            }
 
             return cache_data
 
@@ -320,7 +336,10 @@ class SubmissionProcessor:
                     )
                     filing_objects.append(filing)
 
-            restored_data["filings"] = {"all": filing_objects, "count": len(filing_objects)}
+            restored_data["filings"] = {
+                "all": filing_objects,
+                "count": len(filing_objects),
+            }
 
             return restored_data
 

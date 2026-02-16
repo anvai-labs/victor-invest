@@ -25,21 +25,21 @@ def test_formatter(input_file: str):
         original_data = json.load(f)
 
     original_size = len(json.dumps(original_data))
-    print(f"\nOriginal size: {original_size:,} bytes ({original_size/1024:.1f} KB)")
+    print(f"\nOriginal size: {original_size:,} bytes ({original_size / 1024:.1f} KB)")
 
     # Test VERBOSE (should be same as original)
     verbose_data = format_analysis_output(original_data, OutputDetailLevel.VERBOSE)
     verbose_size = len(json.dumps(verbose_data))
-    print(f"\nVERBOSE detail level:")
-    print(f"  Size: {verbose_size:,} bytes ({verbose_size/1024:.1f} KB)")
-    print(f"  Reduction: 0% (same as original)")
+    print("\nVERBOSE detail level:")
+    print(f"  Size: {verbose_size:,} bytes ({verbose_size / 1024:.1f} KB)")
+    print("  Reduction: 0% (same as original)")
 
     # Test STANDARD (default - removes duplicates and metadata)
     standard_data = format_analysis_output(original_data, OutputDetailLevel.STANDARD)
     standard_size = len(json.dumps(standard_data))
     reduction_pct = (original_size - standard_size) / original_size * 100
-    print(f"\nSTANDARD detail level (default):")
-    print(f"  Size: {standard_size:,} bytes ({standard_size/1024:.1f} KB)")
+    print("\nSTANDARD detail level (default):")
+    print(f"  Size: {standard_size:,} bytes ({standard_size / 1024:.1f} KB)")
     print(f"  Reduction: {reduction_pct:.1f}%")
     print(f"  Removed: {original_size - standard_size:,} bytes")
 
@@ -47,15 +47,15 @@ def test_formatter(input_file: str):
     minimal_data = format_analysis_output(original_data, OutputDetailLevel.MINIMAL)
     minimal_size = len(json.dumps(minimal_data))
     minimal_reduction_pct = (original_size - minimal_size) / original_size * 100
-    print(f"\nMINIMAL detail level (summary only):")
-    print(f"  Size: {minimal_size:,} bytes ({minimal_size/1024:.1f} KB)")
+    print("\nMINIMAL detail level (summary only):")
+    print(f"  Size: {minimal_size:,} bytes ({minimal_size / 1024:.1f} KB)")
     print(f"  Reduction: {minimal_reduction_pct:.1f}%")
     print(f"  Removed: {original_size - minimal_size:,} bytes")
 
     # Show structure of STANDARD output
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("STANDARD output structure (investor decision-making):")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print("Top-level keys:", list(standard_data.keys()))
 
     if "fundamental" in standard_data:
@@ -68,9 +68,9 @@ def test_formatter(input_file: str):
         print("Synthesis section keys:", list(standard_data["synthesis"].keys()))
 
     # Show structure of MINIMAL output
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("MINIMAL output structure (executive summary):")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(json.dumps(minimal_data, indent=2)[:500] + "...")
 
     # Save formatted outputs for inspection
@@ -86,11 +86,11 @@ def test_formatter(input_file: str):
     with open(minimal_file, "w") as f:
         json.dump(minimal_data, f, indent=2, default=str)
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("Formatted outputs saved:")
     print(f"  STANDARD: {standard_file}")
     print(f"  MINIMAL: {minimal_file}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
 
 if __name__ == "__main__":

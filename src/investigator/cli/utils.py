@@ -8,7 +8,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 import click
 import yaml
@@ -62,8 +62,16 @@ def load_config(config_file: str = "config.yaml") -> dict:
 
     if not config_path.exists():
         default_config = {
-            "ollama": {"base_url": "http://localhost:11434", "timeout": 300, "max_retries": 3},
-            "cache": {"redis_url": "redis://localhost:6379", "file_cache_path": "data/cache", "ttl_default": 3600},
+            "ollama": {
+                "base_url": "http://localhost:11434",
+                "timeout": 300,
+                "max_retries": 3,
+            },
+            "cache": {
+                "redis_url": "redis://localhost:6379",
+                "file_cache_path": "data/cache",
+                "ttl_default": 3600,
+            },
             "orchestrator": {"max_concurrent_analyses": 5, "max_concurrent_agents": 10},
             "api": {"host": "0.0.0.0", "port": 8000, "workers": 4},
             "monitoring": {"export_interval": 60, "metrics_port": 9090},
@@ -132,7 +140,10 @@ class MutuallyExclusiveOption(click.Option):
 def print_table(headers: list, rows: list, widths: Optional[list] = None):
     """Print a formatted table to stdout"""
     if not widths:
-        widths = [max(len(str(h)), max(len(str(r[i])) for r in rows) if rows else 0) + 2 for i, h in enumerate(headers)]
+        widths = [
+            max(len(str(h)), max(len(str(r[i])) for r in rows) if rows else 0) + 2
+            for i, h in enumerate(headers)
+        ]
 
     # Header
     header_line = "".join(str(h).ljust(w) for h, w in zip(headers, widths))
@@ -150,11 +161,11 @@ def format_currency(value: Optional[float], symbol: str = "$") -> str:
     if value is None:
         return "N/A"
     if abs(value) >= 1_000_000_000:
-        return f"{symbol}{value/1_000_000_000:.2f}B"
+        return f"{symbol}{value / 1_000_000_000:.2f}B"
     if abs(value) >= 1_000_000:
-        return f"{symbol}{value/1_000_000:.2f}M"
+        return f"{symbol}{value / 1_000_000:.2f}M"
     if abs(value) >= 1_000:
-        return f"{symbol}{value/1_000:.2f}K"
+        return f"{symbol}{value / 1_000:.2f}K"
     return f"{symbol}{value:.2f}"
 
 

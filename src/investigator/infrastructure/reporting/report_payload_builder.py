@@ -134,7 +134,9 @@ class ReportPayloadBuilder:
         # Extract core fields
         recommendation = self._extract_recommendation(unwrapped)
         scores = self._extract_scores(unwrapped)
-        financials = self._extract_financials(unwrapped, fundamental_data, technical_data)
+        financials = self._extract_financials(
+            unwrapped, fundamental_data, technical_data
+        )
         thesis = self._extract_thesis(unwrapped)
         risks = self._extract_risks(unwrapped)
         scenarios = self._extract_scenarios(unwrapped)
@@ -217,7 +219,9 @@ class ReportPayloadBuilder:
                     return data["report"]
                 return data
             else:
-                self.logger.warning(f"Response is {type(data)}, not dict - returning empty")
+                self.logger.warning(
+                    f"Response is {type(data)}, not dict - returning empty"
+                )
                 return {}
         return synthesis_report
 
@@ -249,22 +253,33 @@ class ReportPayloadBuilder:
 
         return {
             "composite": (
-                composite.get("overall_score") or composite.get("composite") or analysis.get("composite", 50)
+                composite.get("overall_score")
+                or composite.get("composite")
+                or analysis.get("composite", 50)
             ),
             "fundamental": (
                 composite.get("fundamental_score")
                 or analysis.get("fundamental")
                 or assessment.get("financial_health", {}).get("score", 50)
             ),
-            "technical": (composite.get("technical_score") or analysis.get("technical", 50)),
+            "technical": (
+                composite.get("technical_score") or analysis.get("technical", 50)
+            ),
             "value": (composite.get("value_score") or analysis.get("value", 50)),
             "growth": (composite.get("growth_score") or analysis.get("growth", 50)),
             "quality": (
-                composite.get("business_quality_score") or composite.get("quality_score") or analysis.get("quality", 50)
+                composite.get("business_quality_score")
+                or composite.get("quality_score")
+                or analysis.get("quality", 50)
             ),
         }
 
-    def _extract_financials(self, data: Dict, fundamental_data: Optional[Dict], technical_data: Optional[Dict]) -> Dict:
+    def _extract_financials(
+        self,
+        data: Dict,
+        fundamental_data: Optional[Dict],
+        technical_data: Optional[Dict],
+    ) -> Dict:
         """
         Extract financial metrics with comprehensive fallback chain.
 
@@ -306,24 +321,38 @@ class ReportPayloadBuilder:
         # Extract with fallback chain
         financials = {
             "current_price": (
-                valuation.get("current_price", 0) or parse_currency(key_metrics.get("current_price", 0)) or 0
+                valuation.get("current_price", 0)
+                or parse_currency(key_metrics.get("current_price", 0))
+                or 0
             ),
-            "fair_value": (valuation.get("fair_value", 0) or parse_currency(key_metrics.get("fair_value", 0)) or 0),
+            "fair_value": (
+                valuation.get("fair_value", 0)
+                or parse_currency(key_metrics.get("fair_value", 0))
+                or 0
+            ),
             "price_target_12m": (
                 valuation.get("price_target_12m", 0)
                 or valuation.get("price_target", 0)
                 or parse_currency(key_metrics.get("price_target", 0))
                 or 0
             ),
-            "market_cap": (data.get("market_cap", 0) or parse_currency(key_metrics.get("market_cap", 0)) or 0),
+            "market_cap": (
+                data.get("market_cap", 0)
+                or parse_currency(key_metrics.get("market_cap", 0))
+                or 0
+            ),
         }
 
         # Backfill from fundamental if still missing
         if fundamental_data:
             fund_val = fundamental_data.get("valuation", {})
-            fund_analysis_response = fundamental_data.get("analysis", {}).get("response", {})
+            fund_analysis_response = fundamental_data.get("analysis", {}).get(
+                "response", {}
+            )
             fund_ratios = fund_analysis_response.get("ratios", {})
-            fund_company_data = fundamental_data.get("analysis", {}).get("company_data", {})
+            fund_company_data = fundamental_data.get("analysis", {}).get(
+                "company_data", {}
+            )
 
             if financials["current_price"] == 0:
                 financials["current_price"] = (
@@ -393,7 +422,9 @@ class ReportPayloadBuilder:
         risk_data = data.get("risk_assessment", {})
 
         return {
-            "overall_risk": risk_data.get("overall_risk", risk_data.get("risk_score", 50)),
+            "overall_risk": risk_data.get(
+                "overall_risk", risk_data.get("risk_score", 50)
+            ),
             "primary_risks": risk_data.get("primary_risks", risk_data.get("risks", [])),
             "tier": risk_data.get("risk_tier", risk_data.get("tier", "MEDIUM")),
         }
@@ -424,21 +455,33 @@ class ReportPayloadBuilder:
         """Backfill missing financials from fundamental analysis."""
         if financials["current_price"] == 0:
             # Try ratios
-            ratios = fundamental_data.get("analysis", {}).get("response", {}).get("ratios", {})
+            ratios = (
+                fundamental_data.get("analysis", {})
+                .get("response", {})
+                .get("ratios", {})
+            )
             financials["current_price"] = ratios.get("current_price", 0)
 
         if financials["market_cap"] == 0:
             # Try multiple locations including company_data
-            ratios = fundamental_data.get("analysis", {}).get("response", {}).get("ratios", {})
+            ratios = (
+                fundamental_data.get("analysis", {})
+                .get("response", {})
+                .get("ratios", {})
+            )
             company_data = fundamental_data.get("analysis", {}).get("company_data", {})
             financials["market_cap"] = (
                 fundamental_data.get("market_cap", 0)
                 or company_data.get("market_cap", 0)
                 or ratios.get("market_cap", 0)
-                or fundamental_data.get("analysis", {}).get("response", {}).get("market_cap", 0)
+                or fundamental_data.get("analysis", {})
+                .get("response", {})
+                .get("market_cap", 0)
             )
             if financials["market_cap"] > 0:
-                self.logger.info(f"✅ Backfilled market_cap from fundamental agent: ${financials['market_cap']:,.0f}")
+                self.logger.info(
+                    f"✅ Backfilled market_cap from fundamental agent: ${financials['market_cap']:,.0f}"
+                )
 
         return financials
 
@@ -446,7 +489,9 @@ class ReportPayloadBuilder:
         """Backfill scores from fundamental data."""
         # If composite is still default, try to calculate from fundamentals
         if scores["composite"] == 50:
-            quality_score = fundamental_data.get("data_quality", {}).get("data_quality_score", 0)
+            quality_score = fundamental_data.get("data_quality", {}).get(
+                "data_quality_score", 0
+            )
             if quality_score > 0:
                 # Use quality score as a proxy for composite
                 scores["composite"] = quality_score
@@ -466,14 +511,18 @@ class ReportPayloadBuilder:
             current_price = tech_analysis.get("current_price", 0)
             if current_price > 0:
                 financials["current_price"] = current_price
-                self.logger.info(f"✅ Backfilled current_price from technical agent: ${current_price:.2f}")
+                self.logger.info(
+                    f"✅ Backfilled current_price from technical agent: ${current_price:.2f}"
+                )
 
         # Technical analysis might also have market_cap in some cases
         if financials["market_cap"] == 0:
             market_cap = tech_analysis.get("market_cap", 0)
             if market_cap > 0:
                 financials["market_cap"] = market_cap
-                self.logger.info(f"✅ Backfilled market_cap from technical agent: ${market_cap:,.0f}")
+                self.logger.info(
+                    f"✅ Backfilled market_cap from technical agent: ${market_cap:,.0f}"
+                )
 
         return financials
 
@@ -506,4 +555,6 @@ class ReportPayloadBuilder:
             issues.append("composite_score=default(50)")
 
         if issues:
-            self.logger.warning(f"⚠️  Payload validation issues for {symbol}: {', '.join(issues)}")
+            self.logger.warning(
+                f"⚠️  Payload validation issues for {symbol}: {', '.join(issues)}"
+            )

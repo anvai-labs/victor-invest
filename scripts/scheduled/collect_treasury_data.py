@@ -40,13 +40,12 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from scripts.scheduled.base import (
+from scripts.scheduled.base import (  # noqa: E402
     BaseCollector,
     CollectionMetrics,
     compute_record_hash,
     get_database_connection,
     get_last_date,
-    retry_with_backoff,
 )
 
 
@@ -146,7 +145,8 @@ class TreasuryDataCollector(BaseCollector):
                             self.metrics.records_skipped += 1
                             continue
                         # Update existing record
-                        cursor.execute("""
+                        cursor.execute(
+                            """
                             UPDATE treasury_yields SET
                                 yield_1m = %s, yield_3m = %s, yield_6m = %s, yield_1y = %s,
                                 yield_2y = %s, yield_5y = %s, yield_10y = %s, yield_20y = %s,
@@ -154,56 +154,66 @@ class TreasuryDataCollector(BaseCollector):
                                 is_inverted = %s, source_hash = %s,
                                 source_fetch_timestamp = NOW(), updated_at = NOW()
                             WHERE date = %s
-                        """, (
-                            yield_data.get("yield_1m"),
-                            yield_data.get("yield_3m"),
-                            yield_data.get("yield_6m"),
-                            yield_data.get("yield_1y"),
-                            yield_data.get("yield_2y"),
-                            yield_data.get("yield_5y"),
-                            yield_data.get("yield_10y"),
-                            yield_data.get("yield_20y"),
-                            yield_data.get("yield_30y"),
-                            spread_10y_2y,
-                            spread_10y_3m,
-                            is_inverted,
-                            record_hash,
-                            record_date,
-                        ))
+                        """,
+                            (
+                                yield_data.get("yield_1m"),
+                                yield_data.get("yield_3m"),
+                                yield_data.get("yield_6m"),
+                                yield_data.get("yield_1y"),
+                                yield_data.get("yield_2y"),
+                                yield_data.get("yield_5y"),
+                                yield_data.get("yield_10y"),
+                                yield_data.get("yield_20y"),
+                                yield_data.get("yield_30y"),
+                                spread_10y_2y,
+                                spread_10y_3m,
+                                is_inverted,
+                                record_hash,
+                                record_date,
+                            ),
+                        )
                         self.metrics.records_updated += 1
                     else:
                         # Insert new record
-                        cursor.execute("""
+                        cursor.execute(
+                            """
                             INSERT INTO treasury_yields
                                 (date, yield_1m, yield_3m, yield_6m, yield_1y,
                                  yield_2y, yield_5y, yield_10y, yield_20y, yield_30y,
                                  spread_10y_2y, spread_10y_3m, is_inverted,
                                  source_hash, source_fetch_timestamp, updated_at)
                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
-                        """, (
-                            record_date,
-                            yield_data.get("yield_1m"),
-                            yield_data.get("yield_3m"),
-                            yield_data.get("yield_6m"),
-                            yield_data.get("yield_1y"),
-                            yield_data.get("yield_2y"),
-                            yield_data.get("yield_5y"),
-                            yield_data.get("yield_10y"),
-                            yield_data.get("yield_20y"),
-                            yield_data.get("yield_30y"),
-                            spread_10y_2y,
-                            spread_10y_3m,
-                            is_inverted,
-                            record_hash,
-                        ))
+                        """,
+                            (
+                                record_date,
+                                yield_data.get("yield_1m"),
+                                yield_data.get("yield_3m"),
+                                yield_data.get("yield_6m"),
+                                yield_data.get("yield_1y"),
+                                yield_data.get("yield_2y"),
+                                yield_data.get("yield_5y"),
+                                yield_data.get("yield_10y"),
+                                yield_data.get("yield_20y"),
+                                yield_data.get("yield_30y"),
+                                spread_10y_2y,
+                                spread_10y_3m,
+                                is_inverted,
+                                record_hash,
+                            ),
+                        )
                         self.metrics.records_inserted += 1
 
                     # Track high watermark
-                    if self.metrics.high_watermark_date is None or record_date > self.metrics.high_watermark_date:
+                    if (
+                        self.metrics.high_watermark_date is None
+                        or record_date > self.metrics.high_watermark_date
+                    ):
                         self.metrics.high_watermark_date = record_date
 
                 except Exception as e:
-                    self.logger.warning(f"Failed to process yield for {yield_data.get('date')}: {e}")
+                    self.logger.warning(
+                        f"Failed to process yield for {yield_data.get('date')}: {e}"
+                    )
                     self.metrics.records_failed += 1
 
             conn.commit()
@@ -227,14 +237,9 @@ class TreasuryDataCollector(BaseCollector):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Collect Treasury yield curve data"
-    )
+    parser = argparse.ArgumentParser(description="Collect Treasury yield curve data")
     parser.add_argument(
-        "--days",
-        type=int,
-        default=7,
-        help="Number of days to look back (default: 7)"
+        "--days", type=int, default=7, help="Number of days to look back (default: 7)"
     )
     args = parser.parse_args()
 

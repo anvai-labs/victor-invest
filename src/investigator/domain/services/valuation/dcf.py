@@ -13,7 +13,6 @@ Implements professional-grade DCF analysis with:
 import logging
 from typing import Dict, List, Optional
 
-import numpy as np
 
 from investigator.config import get_config
 
@@ -21,7 +20,6 @@ from investigator.config import get_config
 from investigator.domain.services.pre_profitable_config import (
     format_assumptions_log,
     get_growth_assumptions,
-    get_terminal_growth_rate,
     should_use_industry_defaults,
 )
 
@@ -39,7 +37,13 @@ class DCFValuation:
     4. Converting to per-share value
     """
 
-    def __init__(self, symbol: str, quarterly_metrics: List[Dict], multi_year_data: List[Dict], db_manager):
+    def __init__(
+        self,
+        symbol: str,
+        quarterly_metrics: List[Dict],
+        multi_year_data: List[Dict],
+        db_manager,
+    ):
         """
         Initialize DCF valuation
 
@@ -74,11 +78,13 @@ class DCFValuation:
 
         logger.info(
             f"{self.symbol} - Using sector-based DCF parameters: "
-            f"Sector={self.sector}, Terminal Growth={self.sector_params['terminal_growth_rate']*100:.1f}%, "
+            f"Sector={self.sector}, Terminal Growth={self.sector_params['terminal_growth_rate'] * 100:.1f}%, "
             f"Projection Years={self.sector_params['projection_years']}"
         )
 
-    def _get_cached_ttm_periods(self, num_quarters: int = 4, compute_missing: bool = True) -> List[Dict]:
+    def _get_cached_ttm_periods(
+        self, num_quarters: int = 4, compute_missing: bool = True
+    ) -> List[Dict]:
         """
         Get TTM periods with caching to avoid redundant Q4 computations
 
@@ -99,7 +105,9 @@ class DCFValuation:
             from utils.quarterly_calculator import get_rolling_ttm_periods
 
             self._ttm_cache[cache_key] = get_rolling_ttm_periods(
-                self.quarterly_metrics, compute_missing=compute_missing, num_quarters=num_quarters
+                self.quarterly_metrics,
+                compute_missing=compute_missing,
+                num_quarters=num_quarters,
             )
 
         return self._ttm_cache[cache_key]
@@ -146,8 +154,13 @@ class DCFValuation:
             ttm_periods = self._get_cached_ttm_periods(num_quarters=4)
             if ttm_periods and len(ttm_periods) == 4:
                 # Aggregate TTM (sum of 4 quarters)
-                ttm_net_income = sum(q.get("income_statement", {}).get("net_income", 0) for q in ttm_periods)
-                ttm_ebitda = sum(q.get("income_statement", {}).get("ebitda", 0) for q in ttm_periods)
+                ttm_net_income = sum(
+                    q.get("income_statement", {}).get("net_income", 0)
+                    for q in ttm_periods
+                )
+                ttm_ebitda = sum(
+                    q.get("income_statement", {}).get("ebitda", 0) for q in ttm_periods
+                )
 
                 # Use self.sector which is already available (from _get_company_sector())
                 # Industry is not easily accessible, so pass None to use sector-level defaults
@@ -160,7 +173,12 @@ class DCFValuation:
         except Exception as e:
             logger.warning(f"{self.symbol} - Error getting TTM metrics: {e}")
 
-        return {"ttm_net_income": None, "ttm_ebitda": None, "sector": None, "industry": None}
+        return {
+            "ttm_net_income": None,
+            "ttm_ebitda": None,
+            "sector": None,
+            "industry": None,
+        }
 
     def _load_dcf_config(self) -> Dict:
         """Load DCF configuration from config.yaml via Config class."""
@@ -178,7 +196,9 @@ class DCFValuation:
 
     def _get_default_dcf_config(self) -> Dict:
         """Return default DCF configuration when config.yaml is unavailable."""
-        return {"default_parameters": {"terminal_growth_rate": 0.030, "projection_years": 5}}
+        return {
+            "default_parameters": {"terminal_growth_rate": 0.030, "projection_years": 5}
+        }
 
     def _get_company_sector(self) -> str:
         """
@@ -190,12 +210,16 @@ class DCFValuation:
         sector_overrides = self.dcf_config.get("sector_override", {})
         if self.symbol in sector_overrides:
             override_sector = sector_overrides[self.symbol]
-            logger.info(f"{self.symbol} - Sector (OVERRIDE): {override_sector} (correcting database misclassification)")
+            logger.info(
+                f"{self.symbol} - Sector (OVERRIDE): {override_sector} (correcting database misclassification)"
+            )
             return override_sector
 
         try:
             from investigator.config import get_config
-            from investigator.infrastructure.database.market_data import get_market_data_fetcher
+            from investigator.infrastructure.database.market_data import (
+                get_market_data_fetcher,
+            )
 
             config = get_config()
             fetcher = get_market_data_fetcher(config)
@@ -210,7 +234,9 @@ class DCFValuation:
             logger.warning(f"No sector available for {self.symbol}, using Default")
             return "Default"
         except Exception as e:
-            logger.warning(f"Could not fetch sector for {self.symbol}: {e}. Using Default.")
+            logger.warning(
+                f"Could not fetch sector for {self.symbol}: {e}. Using Default."
+            )
             return "Default"
 
     def _get_sector_parameters(self) -> Dict:
@@ -221,15 +247,23 @@ class DCFValuation:
         )
 
         # Get parameters for this sector, or use default
-        params = sector_params.get(self.sector, sector_params.get("Default", default_params))
+        params = sector_params.get(
+            self.sector, sector_params.get("Default", default_params)
+        )
 
         return {
-            "terminal_growth_rate": params.get("terminal_growth_rate", default_params["terminal_growth_rate"]),
-            "projection_years": params.get("projection_years", default_params["projection_years"]),
+            "terminal_growth_rate": params.get(
+                "terminal_growth_rate", default_params["terminal_growth_rate"]
+            ),
+            "projection_years": params.get(
+                "projection_years", default_params["projection_years"]
+            ),
             "rationale": params.get("rationale", "Default assumptions"),
         }
 
-    def calculate_dcf_valuation(self, terminal_growth_rate: Optional[float] = None) -> Dict:
+    def calculate_dcf_valuation(
+        self, terminal_growth_rate: Optional[float] = None
+    ) -> Dict:
         """
         Calculate full DCF valuation with Rule of 40 integration
 
@@ -251,7 +285,9 @@ class DCFValuation:
         try:
             # Step 0: Calculate Rule of 40 to determine valuation strategy
             rule_of_40_result = self._calculate_rule_of_40()
-            self.rule_of_40_result = rule_of_40_result  # Store for later use in _project_fcf()
+            self.rule_of_40_result = (
+                rule_of_40_result  # Store for later use in _project_fcf()
+            )
             logger.info(
                 f"{self.symbol} - Rule of 40: {rule_of_40_result['score']:.1f}% "
                 f"(Revenue Growth: {rule_of_40_result['revenue_growth_pct']:.1f}%, "
@@ -261,22 +297,24 @@ class DCFValuation:
 
             # Step 1: Calculate Free Cash Flow (FCF)
             latest_fcf = self._calculate_latest_fcf()
-            logger.info(f"{self.symbol} - Latest TTM FCF: ${latest_fcf/1e6:.1f}M")
+            logger.info(f"{self.symbol} - Latest TTM FCF: ${latest_fcf / 1e6:.1f}M")
 
             # Step 2: Project FCF for sector-specific number of years
             projection_years = self.sector_params["projection_years"]
             fcf_projections = self._project_fcf(latest_fcf, years=projection_years)
-            logger.info(f"{self.symbol} - Projected Year {projection_years} FCF: ${fcf_projections[-1]/1e6:.1f}M")
+            logger.info(
+                f"{self.symbol} - Projected Year {projection_years} FCF: ${fcf_projections[-1] / 1e6:.1f}M"
+            )
 
             # Step 3: Calculate WACC (Weighted Average Cost of Capital)
             wacc = self._calculate_wacc()
-            logger.info(f"{self.symbol} - WACC: {wacc*100:.2f}%")
+            logger.info(f"{self.symbol} - WACC: {wacc * 100:.2f}%")
 
             # Step 4: Determine terminal growth rate (unified or internal calculation)
             if terminal_growth_rate is not None:
                 # Use pre-calculated unified terminal growth rate (from TerminalGrowthCalculator)
                 logger.info(
-                    f"{self.symbol} - Terminal Growth (unified): {terminal_growth_rate*100:.2f}% "
+                    f"{self.symbol} - Terminal Growth (unified): {terminal_growth_rate * 100:.2f}% "
                     f"[Using pre-calculated rate from TerminalGrowthCalculator]"
                 )
             else:
@@ -289,7 +327,7 @@ class DCFValuation:
                     # Base is already at ceiling, no adjustment allowed
                     terminal_growth_rate = base_terminal_growth
                     logger.info(
-                        f"{self.symbol} - Terminal Growth (internal): {base_terminal_growth*100:.2f}% (base at ceiling, "
+                        f"{self.symbol} - Terminal Growth (internal): {base_terminal_growth * 100:.2f}% (base at ceiling, "
                         f"Rule of 40 adjustment skipped. Rule of 40: {rule_of_40_result['classification']})"
                     )
                 else:
@@ -297,14 +335,18 @@ class DCFValuation:
                     terminal_growth_adjustment = self._get_terminal_growth_adjustment(
                         rule_of_40_result["classification"]
                     )
-                    raw_terminal_growth = base_terminal_growth + terminal_growth_adjustment
+                    raw_terminal_growth = (
+                        base_terminal_growth + terminal_growth_adjustment
+                    )
 
                     # Ensure terminal growth stays within bounds
                     # Allow 3.5% ceiling for companies earning positive quality adjustment
-                    min_terminal = self.dcf_config.get("default_parameters", {}).get("min_terminal_growth_rate", 0.020)
-                    max_terminal_base = self.dcf_config.get("default_parameters", {}).get(
-                        "max_terminal_growth_rate", 0.030
+                    min_terminal = self.dcf_config.get("default_parameters", {}).get(
+                        "min_terminal_growth_rate", 0.020
                     )
+                    max_terminal_base = self.dcf_config.get(
+                        "default_parameters", {}
+                    ).get("max_terminal_growth_rate", 0.030)
 
                     # If company earned positive quality adjustment, allow 3.5% ceiling (vs 3.0% standard)
                     if terminal_growth_adjustment > 0:
@@ -314,34 +356,40 @@ class DCFValuation:
                         max_terminal = max_terminal_base  # Use config ceiling (3.0%)
                         ceiling_reason = "standard"
 
-                    terminal_growth_rate = max(min(raw_terminal_growth, max_terminal), min_terminal)
+                    terminal_growth_rate = max(
+                        min(raw_terminal_growth, max_terminal), min_terminal
+                    )
 
                     # Log with proper math showing calculation and clamping
                     if raw_terminal_growth != terminal_growth_rate:
                         logger.info(
                             f"{self.symbol} - Terminal Growth (internal): "
-                            f"base={base_terminal_growth*100:.2f}% + Rule of 40 adj={terminal_growth_adjustment*100:+.2f}% "
-                            f"({rule_of_40_result['classification']}) = {raw_terminal_growth*100:.2f}% → "
-                            f"clamped to {terminal_growth_rate*100:.2f}% (ceiling: {max_terminal*100:.1f}% - {ceiling_reason})"
+                            f"base={base_terminal_growth * 100:.2f}% + Rule of 40 adj={terminal_growth_adjustment * 100:+.2f}% "
+                            f"({rule_of_40_result['classification']}) = {raw_terminal_growth * 100:.2f}% → "
+                            f"clamped to {terminal_growth_rate * 100:.2f}% (ceiling: {max_terminal * 100:.1f}% - {ceiling_reason})"
                         )
                     else:
                         logger.info(
                             f"{self.symbol} - Terminal Growth (internal): "
-                            f"base={base_terminal_growth*100:.2f}% + Rule of 40 adj={terminal_growth_adjustment*100:+.2f}% "
-                            f"({rule_of_40_result['classification']}) = {terminal_growth_rate*100:.2f}% "
-                            f"(within ceiling: {max_terminal*100:.1f}%)"
+                            f"base={base_terminal_growth * 100:.2f}% + Rule of 40 adj={terminal_growth_adjustment * 100:+.2f}% "
+                            f"({rule_of_40_result['classification']}) = {terminal_growth_rate * 100:.2f}% "
+                            f"(within ceiling: {max_terminal * 100:.1f}%)"
                         )
 
             # Step 5: Calculate terminal value
-            terminal_value = self._calculate_terminal_value(fcf_projections[-1], terminal_growth_rate)
+            terminal_value = self._calculate_terminal_value(
+                fcf_projections[-1], terminal_growth_rate
+            )
             logger.info(
-                f"{self.symbol} - Terminal Value: ${terminal_value/1e9:.2f}B (growth rate: {terminal_growth_rate*100:.1f}%)"
+                f"{self.symbol} - Terminal Value: ${terminal_value / 1e9:.2f}B (growth rate: {terminal_growth_rate * 100:.1f}%)"
             )
 
             # Step 5: Discount cash flows to present value
             pv_fcf = self._discount_cash_flows(fcf_projections, wacc)
             pv_terminal = terminal_value / ((1 + wacc) ** len(fcf_projections))
-            logger.info(f"{self.symbol} - PV of FCF: ${pv_fcf/1e9:.2f}B, PV of Terminal: ${pv_terminal/1e9:.2f}B")
+            logger.info(
+                f"{self.symbol} - PV of FCF: ${pv_fcf / 1e9:.2f}B, PV of Terminal: ${pv_terminal / 1e9:.2f}B"
+            )
             logger.info(
                 "%s - Valuation sum: PV_FCF $%.2fB + PV_Terminal $%.2fB = Enterprise Value $%.2fB",
                 self.symbol,
@@ -354,7 +402,7 @@ class DCFValuation:
             enterprise_value = pv_fcf + pv_terminal
             equity_value = self._calculate_equity_value(enterprise_value)
             logger.info(
-                f"{self.symbol} - Enterprise Value: ${enterprise_value/1e9:.2f}B, Equity Value: ${equity_value/1e9:.2f}B"
+                f"{self.symbol} - Enterprise Value: ${enterprise_value / 1e9:.2f}B, Equity Value: ${equity_value / 1e9:.2f}B"
             )
 
             # Step 7: Get shares outstanding and PROJECT DILUTION (Fix 6)
@@ -381,38 +429,50 @@ class DCFValuation:
                     if annual_dilution_rate > 0.02:
                         # Project shares forward to terminal year (end of projection period)
                         projection_years = self.sector_params["projection_years"]
-                        projected_terminal_shares = basic_shares * ((1 + annual_dilution_rate) ** projection_years)
+                        projected_terminal_shares = basic_shares * (
+                            (1 + annual_dilution_rate) ** projection_years
+                        )
 
-                        dilution_pct = (projected_terminal_shares - basic_shares) / basic_shares * 100
+                        dilution_pct = (
+                            (projected_terminal_shares - basic_shares)
+                            / basic_shares
+                            * 100
+                        )
 
                         logger.info(
                             f"🔍 [SBC_DILUTION] {self.symbol} - Projecting dilution impact\n"
-                            f"  Annual SBC: ${sbc_annual/1e9:.2f}B\n"
-                            f"  Market cap: ${market_cap/1e9:.2f}B\n"
-                            f"  Annual dilution rate: {annual_dilution_rate*100:.2f}%/year\n"
-                            f"  Basic shares today: {basic_shares/1e6:.1f}M\n"
-                            f"  Projected shares (Year {projection_years}): {projected_terminal_shares/1e6:.1f}M\n"
+                            f"  Annual SBC: ${sbc_annual / 1e9:.2f}B\n"
+                            f"  Market cap: ${market_cap / 1e9:.2f}B\n"
+                            f"  Annual dilution rate: {annual_dilution_rate * 100:.2f}%/year\n"
+                            f"  Basic shares today: {basic_shares / 1e6:.1f}M\n"
+                            f"  Projected shares (Year {projection_years}): {projected_terminal_shares / 1e6:.1f}M\n"
                             f"  Total dilution: {dilution_pct:+.1f}% over {projection_years} years\n"
-                            f"  Per-share impact: {-dilution_pct/(1 + dilution_pct/100)*100:.1f}% (value spread over more shares)"
+                            f"  Per-share impact: {-dilution_pct / (1 + dilution_pct / 100) * 100:.1f}% (value spread over more shares)"
                         )
                     else:
                         logger.info(
-                            f"🔍 [SBC_DILUTION] {self.symbol} - Low SBC dilution ({annual_dilution_rate*100:.2f}%/year), "
+                            f"🔍 [SBC_DILUTION] {self.symbol} - Low SBC dilution ({annual_dilution_rate * 100:.2f}%/year), "
                             f"using basic shares without adjustment"
                         )
                 else:
-                    logger.debug(f"{self.symbol} - Insufficient data for SBC dilution projection, using basic shares")
+                    logger.debug(
+                        f"{self.symbol} - Insufficient data for SBC dilution projection, using basic shares"
+                    )
 
             except Exception as e:
                 logger.debug(f"{self.symbol} - Could not calculate SBC dilution: {e}")
 
             # Use projected diluted shares for per-share valuation
-            dcf_fair_value_per_share = equity_value / projected_terminal_shares if projected_terminal_shares > 0 else 0
+            dcf_fair_value_per_share = (
+                equity_value / projected_terminal_shares
+                if projected_terminal_shares > 0
+                else 0
+            )
 
             if projected_terminal_shares != basic_shares:
                 logger.info(
                     f"{self.symbol} - DCF Fair Share Price: ${dcf_fair_value_per_share:.2f} "
-                    f"(Shares: {basic_shares/1e6:.1f}M basic → {projected_terminal_shares/1e6:.1f}M projected terminal)"
+                    f"(Shares: {basic_shares / 1e6:.1f}M basic → {projected_terminal_shares / 1e6:.1f}M projected terminal)"
                 )
             else:
                 logger.info(
@@ -474,14 +534,20 @@ class DCFValuation:
                         "details": {
                             "applied_ps_multiple": ps_valuation["applied_ps_multiple"],
                             "multiple_range": ps_valuation["multiple_range"],
-                            "ttm_revenue_per_share": ps_valuation["ttm_revenue_per_share"],
+                            "ttm_revenue_per_share": ps_valuation[
+                                "ttm_revenue_per_share"
+                            ],
                             "current_ps_multiple": ps_valuation["current_ps_multiple"],
                             "qualification": ps_valuation["qualification"],
                         },
                     }
                 )
 
-            upside_downside = ((final_fair_value / current_price) - 1) * 100 if current_price > 0 else 0
+            upside_downside = (
+                ((final_fair_value / current_price) - 1) * 100
+                if current_price > 0
+                else 0
+            )
 
             logger.info(
                 f"{self.symbol} - Fair Value: ${final_fair_value:.2f}, "
@@ -498,10 +564,18 @@ class DCFValuation:
             ps_payload = None
             if ps_valuation:
                 ps_payload = {
-                    "fair_value_per_share": round(ps_valuation["fair_value_per_share"], 2),
-                    "applied_ps_multiple": round(ps_valuation["applied_ps_multiple"], 2),
-                    "ttm_revenue_per_share": round(ps_valuation["ttm_revenue_per_share"], 2),
-                    "ttm_revenue": round(ps_valuation["ttm_revenue"] / 1e9, 2),  # billions
+                    "fair_value_per_share": round(
+                        ps_valuation["fair_value_per_share"], 2
+                    ),
+                    "applied_ps_multiple": round(
+                        ps_valuation["applied_ps_multiple"], 2
+                    ),
+                    "ttm_revenue_per_share": round(
+                        ps_valuation["ttm_revenue_per_share"], 2
+                    ),
+                    "ttm_revenue": round(
+                        ps_valuation["ttm_revenue"] / 1e9, 2
+                    ),  # billions
                     "current_ps_multiple": (
                         round(ps_valuation["current_ps_multiple"], 2)
                         if ps_valuation["current_ps_multiple"] is not None
@@ -518,10 +592,16 @@ class DCFValuation:
                 "valuation_assessment": self._get_valuation_assessment(upside_downside),
                 "rule_of_40": {
                     "score": round(rule_of_40_result["score"], 1),
-                    "revenue_growth_pct": round(rule_of_40_result["revenue_growth_pct"], 1),
-                    "profit_margin_pct": round(rule_of_40_result["profit_margin_pct"], 1),
+                    "revenue_growth_pct": round(
+                        rule_of_40_result["revenue_growth_pct"], 1
+                    ),
+                    "profit_margin_pct": round(
+                        rule_of_40_result["profit_margin_pct"], 1
+                    ),
                     "classification": rule_of_40_result["classification"],
-                    "terminal_growth_adjustment": round(terminal_growth_adjustment * 100, 2),
+                    "terminal_growth_adjustment": round(
+                        terminal_growth_adjustment * 100, 2
+                    ),
                 },
                 "assumptions": {
                     "wacc": round(wacc * 100, 2),
@@ -531,7 +611,9 @@ class DCFValuation:
                     "sector": self.sector,
                     "sector_rationale": self.sector_params["rationale"],
                     "latest_fcf": round(latest_fcf / 1e6, 1),  # In millions
-                    "dcf_mode": getattr(self, "dcf_mode", "UNKNOWN"),  # FADING_DCF or STANDARD_DCF
+                    "dcf_mode": getattr(
+                        self, "dcf_mode", "UNKNOWN"
+                    ),  # FADING_DCF or STANDARD_DCF
                 },
                 "valuation_breakdown": valuation_breakdown,
                 "ps_valuation": ps_payload,
@@ -573,8 +655,12 @@ class DCFValuation:
             Smoothed annualized free cash flow in dollars
         """
         # DEBUG: Log what data we received
-        logger.info(f"🔍 {self.symbol} - DCF FCF CALCULATION START (with median smoothing)")
-        logger.info(f"🔍 {self.symbol} - quarterly_metrics type: {type(self.quarterly_metrics)}")
+        logger.info(
+            f"🔍 {self.symbol} - DCF FCF CALCULATION START (with median smoothing)"
+        )
+        logger.info(
+            f"🔍 {self.symbol} - quarterly_metrics type: {type(self.quarterly_metrics)}"
+        )
         logger.info(
             f"🔍 {self.symbol} - quarterly_metrics length: {len(self.quarterly_metrics) if self.quarterly_metrics else 0}"
         )
@@ -600,7 +686,9 @@ class DCFValuation:
         )
 
         if is_sec_format:
-            logger.info(f"🔍 {self.symbol} - Detected SEC filing tool format (single FY snapshot)")
+            logger.info(
+                f"🔍 {self.symbol} - Detected SEC filing tool format (single FY snapshot)"
+            )
 
             # Extract FCF directly from SEC data
             cash_flow = first_item.get("cash_flow", {})
@@ -608,9 +696,9 @@ class DCFValuation:
 
             if fcf is not None and fcf != 0:
                 logger.info(
-                    f"🔍 {self.symbol} - Using SEC direct FCF: ${fcf/1e9:.2f}B "
-                    f"(OCF: ${cash_flow.get('operating_cash_flow', 0)/1e9:.2f}B, "
-                    f"CapEx: ${cash_flow.get('capital_expenditures', 0)/1e9:.2f}B)"
+                    f"🔍 {self.symbol} - Using SEC direct FCF: ${fcf / 1e9:.2f}B "
+                    f"(OCF: ${cash_flow.get('operating_cash_flow', 0) / 1e9:.2f}B, "
+                    f"CapEx: ${cash_flow.get('capital_expenditures', 0) / 1e9:.2f}B)"
                 )
                 return fcf
 
@@ -621,12 +709,14 @@ class DCFValuation:
 
             if fcf != 0:
                 logger.info(
-                    f"🔍 {self.symbol} - Calculated SEC FCF: ${fcf/1e9:.2f}B "
-                    f"(OCF: ${ocf/1e9:.2f}B - CapEx: ${capex/1e9:.2f}B)"
+                    f"🔍 {self.symbol} - Calculated SEC FCF: ${fcf / 1e9:.2f}B "
+                    f"(OCF: ${ocf / 1e9:.2f}B - CapEx: ${capex / 1e9:.2f}B)"
                 )
                 return fcf
 
-            logger.warning(f"🔍 {self.symbol} - SEC format detected but no FCF data available")
+            logger.warning(
+                f"🔍 {self.symbol} - SEC format detected but no FCF data available"
+            )
             return 0
 
         # DEBUG: Check what fiscal periods are in quarterly_metrics BEFORE passing to get_cached_ttm_periods
@@ -635,11 +725,17 @@ class DCFValuation:
             f"[DCF_INPUT_DEBUG] {self.symbol} - Fiscal periods in quarterly_metrics BEFORE get_cached_ttm_periods: {fiscal_periods_before}"
         )
         fy_count = fiscal_periods_before.count("FY")
-        q_count = sum(1 for fp in fiscal_periods_before if fp and str(fp).startswith("Q"))
-        logger.info(f"[DCF_INPUT_DEBUG] {self.symbol} - Count: {fy_count} FY periods, {q_count} Q periods")
+        q_count = sum(
+            1 for fp in fiscal_periods_before if fp and str(fp).startswith("Q")
+        )
+        logger.info(
+            f"[DCF_INPUT_DEBUG] {self.symbol} - Count: {fy_count} FY periods, {q_count} Q periods"
+        )
 
         # CRITICAL FIX #5: Try to get 12 quarters for median smoothing
-        quarters_12 = self._get_cached_ttm_periods(num_quarters=12, compute_missing=True)
+        quarters_12 = self._get_cached_ttm_periods(
+            num_quarters=12, compute_missing=True
+        )
 
         if quarters_12 and len(quarters_12) >= 8:  # Need at least 2 years for smoothing
             # Extract quarterly FCF values
@@ -674,9 +770,14 @@ class DCFValuation:
                     fp = period.get("fiscal_period")
                     computed = period.get("computed", False)
                     ytd_converted = (
-                        " (YTD→Q)" if cash_flow.get("is_ytd") and not cash_flow.get("ytd_conversion_failed") else ""
+                        " (YTD→Q)"
+                        if cash_flow.get("is_ytd")
+                        and not cash_flow.get("ytd_conversion_failed")
+                        else ""
                     )
-                    period_labels.append(f"{fp}-{fy}{'*' if computed else ''}{ytd_converted}")
+                    period_labels.append(
+                        f"{fp}-{fy}{'*' if computed else ''}{ytd_converted}"
+                    )
 
             if len(fcf_quarters) >= 8:
                 # Use MEDIAN to smooth (robust to outliers)
@@ -689,18 +790,22 @@ class DCFValuation:
                 ttm_periods = quarters_12[:4]
                 ttm_fcf = sum(
                     (period.get("cash_flow", {}).get("operating_cash_flow", 0) or 0)
-                    - abs(period.get("cash_flow", {}).get("capital_expenditures", 0) or 0)
+                    - abs(
+                        period.get("cash_flow", {}).get("capital_expenditures", 0) or 0
+                    )
                     for period in ttm_periods
-                    if not period.get("cash_flow", {}).get("ytd_conversion_failed")  # Only skip if conversion failed
+                    if not period.get("cash_flow", {}).get(
+                        "ytd_conversion_failed"
+                    )  # Only skip if conversion failed
                 )
 
                 logger.info(
                     f"🔍 [FCF_SMOOTHING] {self.symbol} - Using median of {len(fcf_quarters)} quarters: "
-                    f"${smoothed_quarterly_fcf/1e9:.2f}B/qtr → ${smoothed_annual_fcf/1e9:.2f}B/yr annualized\n"
+                    f"${smoothed_quarterly_fcf / 1e9:.2f}B/qtr → ${smoothed_annual_fcf / 1e9:.2f}B/yr annualized\n"
                     f"  Periods: {period_labels}\n"
-                    f"  Min: ${min(fcf_quarters)/1e9:.2f}B/qtr, Max: ${max(fcf_quarters)/1e9:.2f}B/qtr, "
-                    f"Median: ${smoothed_quarterly_fcf/1e9:.2f}B/qtr\n"
-                    f"  TTM (traditional): ${ttm_fcf/1e9:.2f}B/yr\n"
+                    f"  Min: ${min(fcf_quarters) / 1e9:.2f}B/qtr, Max: ${max(fcf_quarters) / 1e9:.2f}B/qtr, "
+                    f"Median: ${smoothed_quarterly_fcf / 1e9:.2f}B/qtr\n"
+                    f"  TTM (traditional): ${ttm_fcf / 1e9:.2f}B/yr\n"
                     f"  Smoothed vs TTM: {((smoothed_annual_fcf - ttm_fcf) / ttm_fcf * 100) if ttm_fcf != 0 else 0:.1f}% difference"
                 )
 
@@ -713,10 +818,14 @@ class DCFValuation:
 
         ttm_periods = self._get_cached_ttm_periods(num_quarters=4, compute_missing=True)
 
-        logger.info(f"🔍 {self.symbol} - Got {len(ttm_periods) if ttm_periods else 0} TTM periods")
+        logger.info(
+            f"🔍 {self.symbol} - Got {len(ttm_periods) if ttm_periods else 0} TTM periods"
+        )
 
         if not ttm_periods:
-            logger.warning(f"{self.symbol} - No quarterly data available for TTM FCF calculation")
+            logger.warning(
+                f"{self.symbol} - No quarterly data available for TTM FCF calculation"
+            )
             return 0
 
         # Sum FCF across TTM periods
@@ -752,13 +861,15 @@ class DCFValuation:
             period_labels.append(f"{fp}-{fy}{'*' if computed else ''}")
 
             # DEBUG: Show extraction results for each period
-            logger.info(f"🔍 {self.symbol} - {fp}-{fy}: OCF=${ocf/1e6:.1f}M, CapEx=${capex/1e6:.1f}M")
+            logger.info(
+                f"🔍 {self.symbol} - {fp}-{fy}: OCF=${ocf / 1e6:.1f}M, CapEx=${capex / 1e6:.1f}M"
+            )
 
         fcf = ttm_ocf - ttm_capex
 
         logger.info(
             f"{self.symbol} - TTM FCF (fallback) from {len(ttm_periods)} quarters {period_labels}: "
-            f"OCF=${ttm_ocf/1e6:.1f}M, CapEx=${ttm_capex/1e6:.1f}M, FCF=${fcf/1e6:.1f}M "
+            f"OCF=${ttm_ocf / 1e6:.1f}M, CapEx=${ttm_capex / 1e6:.1f}M, FCF=${fcf / 1e6:.1f}M "
             f"(* = computed from FY)"
         )
 
@@ -800,19 +911,27 @@ class DCFValuation:
 
         if use_industry_defaults:
             # PRE-PROFITABLE: Use industry-specific growth assumptions
-            assumptions = get_growth_assumptions(ttm_metrics["sector"], ttm_metrics["industry"])
+            assumptions = get_growth_assumptions(
+                ttm_metrics["sector"], ttm_metrics["industry"]
+            )
             historical_growth = assumptions["default_revenue_growth"]
 
-            logger.info(format_assumptions_log(assumptions, ttm_metrics["sector"], ttm_metrics["industry"]))
+            logger.info(
+                format_assumptions_log(
+                    assumptions, ttm_metrics["sector"], ttm_metrics["industry"]
+                )
+            )
             logger.info(
                 f"🔍 [FCF_GROWTH] {self.symbol} - PRE-PROFITABLE: Using industry default growth: "
-                f"{historical_growth*100:.1f}% (insufficient historical data: {num_quarters} quarters, "
+                f"{historical_growth * 100:.1f}% (insufficient historical data: {num_quarters} quarters, "
                 f"Net Income: ${ttm_metrics['ttm_net_income']:,.0f})"
             )
         else:
             # PROFITABLE or sufficient data: Use historical growth if available
             has_sufficient_annual_data = len(self.multi_year_data) >= 3
-            has_sufficient_quarterly_data = self.quarterly_metrics and len(self.quarterly_metrics) >= 8
+            has_sufficient_quarterly_data = (
+                self.quarterly_metrics and len(self.quarterly_metrics) >= 8
+            )
 
             if has_sufficient_annual_data or has_sufficient_quarterly_data:
                 if has_sufficient_annual_data:
@@ -831,7 +950,7 @@ class DCFValuation:
                     f"🔍 [FCF_GROWTH] {self.symbol} - Insufficient data: "
                     f"multi_year_data={len(self.multi_year_data)} < 3 years, "
                     f"quarterly_metrics={num_quarters} < 8 quarters. "
-                    f"Using fallback growth: {historical_growth*100:.1f}%"
+                    f"Using fallback growth: {historical_growth * 100:.1f}%"
                 )
 
         # REMOVED: Blanket 25% cap that was overriding _calculate_historical_fcf_growth()'s intelligent capping
@@ -842,7 +961,9 @@ class DCFValuation:
         # Floor at -5% for negative growth rates (prevents extreme negative projections)
         historical_growth = max(historical_growth, -0.05)  # Floor at -5%
 
-        logger.info(f"{self.symbol} - Historical FCF growth rate (final): {historical_growth*100:.1f}%")
+        logger.info(
+            f"{self.symbol} - Historical FCF growth rate (final): {historical_growth * 100:.1f}%"
+        )
 
         # Get sector-specific parameters for growth constraints
         sector_caps = self._get_sector_growth_caps()
@@ -897,21 +1018,25 @@ class DCFValuation:
 
         # Also cap fade target at historical growth (can't fade UP)
         # If company growing at 8%, Year 5 shouldn't exceed 8%
-        fade_target_growth = min(fade_target_growth, abs(historical_growth) * 1.1)  # Allow 10% overshoot
+        fade_target_growth = min(
+            fade_target_growth, abs(historical_growth) * 1.1
+        )  # Allow 10% overshoot
 
         # Get industry_median_growth for reference (ceiling check only, not a target)
-        industry_median_growth = sector_caps.get("industry_median_growth", sector_caps.get("max_growth", 0.15))
+        industry_median_growth = sector_caps.get(
+            "industry_median_growth", sector_caps.get("max_growth", 0.15)
+        )
 
         logger.info(
             f"{self.symbol} - Fading Growth Parameters:\n"
-            f"  Terminal Growth (perpetuity): {base_terminal_growth*100:.1f}%\n"
-            f"  Base Fade Target ({fade_target_multiplier:.1f}x terminal): {base_fade_target*100:.1f}%\n"
-            f"  Historical Floor (60% of historical): {historical_floor*100:.1f}%\n"
-            f"  Final Fade Target (Year {sector_params.get('projection_years', 5)}): {fade_target_growth*100:.1f}% "
+            f"  Terminal Growth (perpetuity): {base_terminal_growth * 100:.1f}%\n"
+            f"  Base Fade Target ({fade_target_multiplier:.1f}x terminal): {base_fade_target * 100:.1f}%\n"
+            f"  Historical Floor (60% of historical): {historical_floor * 100:.1f}%\n"
+            f"  Final Fade Target (Year {sector_params.get('projection_years', 5)}): {fade_target_growth * 100:.1f}% "
             f"(max of base target and historical floor, before maturity caps)\n"
-            f"  Historical FCF Growth: {historical_growth*100:.1f}%\n"
-            f"  Industry Median (ceiling only): {industry_median_growth*100:.1f}%\n"
-            f"  Market Cap: ${market_cap/1e9:.1f}B\n"
+            f"  Historical FCF Growth: {historical_growth * 100:.1f}%\n"
+            f"  Industry Median (ceiling only): {industry_median_growth * 100:.1f}%\n"
+            f"  Market Cap: ${market_cap / 1e9:.1f}B\n"
             f"  Rule of 40: {rule_of_40_score:.1f}"
         )
 
@@ -940,7 +1065,9 @@ class DCFValuation:
         # Strategic investors (high CapEx, growing revenue) are NOT penalized
 
         # Get revenue growth from Rule of 40 calculation (already computed)
-        revenue_growth = self.rule_of_40_result.get("revenue_growth_pct", 0) / 100  # Convert to decimal
+        revenue_growth = (
+            self.rule_of_40_result.get("revenue_growth_pct", 0) / 100
+        )  # Convert to decimal
         rule_of_40_score = self.rule_of_40_result.get("score", 0)
 
         # CAPEX INTENSITY & TURNAROUND DETECTION
@@ -957,28 +1084,60 @@ class DCFValuation:
             try:
                 # Calculate TTM CAPEX intensity from last 4 quarters
                 recent_quarters = self.quarterly_metrics[-4:]
-                ttm_opcf = sum(q.get("cash_flow", {}).get("operating_cash_flow", 0) for q in recent_quarters)
-                ttm_capex = sum(q.get("cash_flow", {}).get("capital_expenditures", 0) for q in recent_quarters)
+                ttm_opcf = sum(
+                    q.get("cash_flow", {}).get("operating_cash_flow", 0)
+                    for q in recent_quarters
+                )
+                ttm_capex = sum(
+                    q.get("cash_flow", {}).get("capital_expenditures", 0)
+                    for q in recent_quarters
+                )
 
                 if ttm_opcf > 0:
-                    capex_intensity = abs(ttm_capex) / ttm_opcf  # CapEx is usually negative, take abs
+                    capex_intensity = (
+                        abs(ttm_capex) / ttm_opcf
+                    )  # CapEx is usually negative, take abs
 
                 # DETECTION #1: High-CAPEX growth investment (lowered threshold to 40%)
                 # CAPEX >40% of OpCF AND revenue growing >10%
-                is_high_capex_phase = (capex_intensity > 0.40) and (revenue_growth > 0.10)
+                is_high_capex_phase = (capex_intensity > 0.40) and (
+                    revenue_growth > 0.10
+                )
 
                 # DETECTION #2: Turnaround / Sequential momentum (for negative TTM YoY)
                 # Even if TTM YoY is negative, check if recent quarters show strong acceleration
                 if revenue_growth < 0 and len(self.quarterly_metrics) >= 3:
                     # Calculate sequential (QoQ) growth for last 2 quarters
-                    q1_revenue = recent_quarters[-1].get("income_statement", {}).get("total_revenue", 0)
-                    q2_revenue = recent_quarters[-2].get("income_statement", {}).get("total_revenue", 0)
-                    q3_revenue = recent_quarters[-3].get("income_statement", {}).get("total_revenue", 0)
+                    q1_revenue = (
+                        recent_quarters[-1]
+                        .get("income_statement", {})
+                        .get("total_revenue", 0)
+                    )
+                    q2_revenue = (
+                        recent_quarters[-2]
+                        .get("income_statement", {})
+                        .get("total_revenue", 0)
+                    )
+                    q3_revenue = (
+                        recent_quarters[-3]
+                        .get("income_statement", {})
+                        .get("total_revenue", 0)
+                    )
 
                     if q2_revenue > 0 and q3_revenue > 0:
-                        seq_growth_q1 = ((q1_revenue - q2_revenue) / q2_revenue) if q2_revenue > 0 else 0
-                        seq_growth_q2 = ((q2_revenue - q3_revenue) / q3_revenue) if q3_revenue > 0 else 0
-                        sequential_revenue_growth = (seq_growth_q1 + seq_growth_q2) / 2  # 2-quarter average
+                        seq_growth_q1 = (
+                            ((q1_revenue - q2_revenue) / q2_revenue)
+                            if q2_revenue > 0
+                            else 0
+                        )
+                        seq_growth_q2 = (
+                            ((q2_revenue - q3_revenue) / q3_revenue)
+                            if q3_revenue > 0
+                            else 0
+                        )
+                        sequential_revenue_growth = (
+                            seq_growth_q1 + seq_growth_q2
+                        ) / 2  # 2-quarter average
 
                         # Turnaround = avg sequential growth >15% despite negative TTM YoY
                         is_turnaround = sequential_revenue_growth > 0.15
@@ -986,8 +1145,16 @@ class DCFValuation:
                 # DETECTION #3: Earnings momentum (profitability surge)
                 # If net income surging despite revenue challenges, likely recovering from trough
                 if len(self.quarterly_metrics) >= 2:
-                    latest_ni = recent_quarters[-1].get("income_statement", {}).get("net_income", 0)
-                    prior_ni = recent_quarters[-2].get("income_statement", {}).get("net_income", 0)
+                    latest_ni = (
+                        recent_quarters[-1]
+                        .get("income_statement", {})
+                        .get("net_income", 0)
+                    )
+                    prior_ni = (
+                        recent_quarters[-2]
+                        .get("income_statement", {})
+                        .get("net_income", 0)
+                    )
 
                     # Calculate earnings momentum (avoid div by zero or negative base)
                     if prior_ni > 0:
@@ -999,41 +1166,54 @@ class DCFValuation:
                 # COMBINED LOGIC: Use revenue growth if ANY detection triggers
                 if is_high_capex_phase or is_turnaround or earnings_momentum > 0.50:
                     # Use revenue growth instead of FCF growth for projection
-                    growth_rate_to_use = revenue_growth if revenue_growth > 0 else 0.05  # Minimum 5% for turnarounds
+                    growth_rate_to_use = (
+                        revenue_growth if revenue_growth > 0 else 0.05
+                    )  # Minimum 5% for turnarounds
 
                     detection_reason = []
                     if is_high_capex_phase:
                         detection_reason.append(
-                            f"High CAPEX {capex_intensity*100:.1f}% + Revenue {revenue_growth*100:+.1f}%"
+                            f"High CAPEX {capex_intensity * 100:.1f}% + Revenue {revenue_growth * 100:+.1f}%"
                         )
                     if is_turnaround:
-                        detection_reason.append(f"Turnaround (Sequential {sequential_revenue_growth*100:+.1f}%)")
+                        detection_reason.append(
+                            f"Turnaround (Sequential {sequential_revenue_growth * 100:+.1f}%)"
+                        )
                     if earnings_momentum > 0.50:
-                        detection_reason.append(f"Earnings Surge {earnings_momentum*100:+.1f}%")
+                        detection_reason.append(
+                            f"Earnings Surge {earnings_momentum * 100:+.1f}%"
+                        )
 
                     logger.info(
                         f"🏗️ [GROWTH_INVESTMENT] {self.symbol} - Strategic growth/turnaround detected\n"
                         f"  Detection: {' | '.join(detection_reason)}\n"
-                        f"  CAPEX Intensity: {capex_intensity*100:.1f}%\n"
-                        f"  TTM Revenue Growth: {revenue_growth*100:+.1f}%\n"
-                        f"  Sequential Revenue Growth (2Q avg): {sequential_revenue_growth*100:+.1f}%\n"
-                        f"  Earnings Momentum (QoQ): {earnings_momentum*100:+.1f}%\n"
-                        f"  FCF Growth: {historical_growth*100:+.1f}% (distorted)\n"
-                        f"  🔧 FALLBACK: Using revenue growth ({growth_rate_to_use*100:.1f}%) for projections"
+                        f"  CAPEX Intensity: {capex_intensity * 100:.1f}%\n"
+                        f"  TTM Revenue Growth: {revenue_growth * 100:+.1f}%\n"
+                        f"  Sequential Revenue Growth (2Q avg): {sequential_revenue_growth * 100:+.1f}%\n"
+                        f"  Earnings Momentum (QoQ): {earnings_momentum * 100:+.1f}%\n"
+                        f"  FCF Growth: {historical_growth * 100:+.1f}% (distorted)\n"
+                        f"  🔧 FALLBACK: Using revenue growth ({growth_rate_to_use * 100:.1f}%) for projections"
                     )
             except (KeyError, TypeError, ZeroDivisionError) as e:
-                logger.debug(f"{self.symbol} - Could not calculate CAPEX intensity: {e}")
+                logger.debug(
+                    f"{self.symbol} - Could not calculate CAPEX intensity: {e}"
+                )
 
         # Detect TRUE underperformers (structural decline, not strategic investment)
         is_declining_revenue = revenue_growth < 0
-        is_significantly_lagging = revenue_growth < (industry_median_growth * 0.5)  # <50% of industry median
+        is_significantly_lagging = revenue_growth < (
+            industry_median_growth * 0.5
+        )  # <50% of industry median
         is_poor_fcf_growth = growth_rate_to_use < 0  # Use adjusted growth rate
-        is_weak_efficiency = rule_of_40_score < 20  # Poor combined growth + profitability
+        is_weak_efficiency = (
+            rule_of_40_score < 20
+        )  # Poor combined growth + profitability
 
         # TRUE underperformer = declining revenue OR (lagging peers AND poor FCF AND weak efficiency)
         # BUT NOT if ANY of: high-CAPEX growth, turnaround, or strong earnings momentum
         is_true_underperformer = (
-            is_declining_revenue or (is_significantly_lagging and is_poor_fcf_growth and is_weak_efficiency)
+            is_declining_revenue
+            or (is_significantly_lagging and is_poor_fcf_growth and is_weak_efficiency)
         ) and not (is_high_capex_phase or is_turnaround or earnings_momentum > 0.50)
 
         # DEFAULT to Fading DCF UNLESS company shows clear structural decline
@@ -1061,12 +1241,12 @@ class DCFValuation:
             logger.info(
                 f"📊 [FADING DCF] {self.symbol} - Strategic investor / Healthy company\n"
                 f"  Mode: Fading DCF (realistic deceleration)\n"
-                f"  Revenue Growth: {revenue_growth*100:+.1f}% | FCF Growth: {historical_growth*100:+.1f}% | Rule of 40: {rule_of_40_score:.1f}\n"
-                f"  Year 1: {growth_rate_to_use*100:.1f}% (company-specific, adjusted for turnarounds)\n"
-                f"  Year {years}: {fade_target_growth*100:.1f}% (fading toward terminal, quality & maturity adjusted)\n"
-                f"  Terminal growth (perpetuity): {base_terminal_growth*100:.1f}% (sector-specific + Rule of 40 adjustment)\n"
+                f"  Revenue Growth: {revenue_growth * 100:+.1f}% | FCF Growth: {historical_growth * 100:+.1f}% | Rule of 40: {rule_of_40_score:.1f}\n"
+                f"  Year 1: {growth_rate_to_use * 100:.1f}% (company-specific, adjusted for turnarounds)\n"
+                f"  Year {years}: {fade_target_growth * 100:.1f}% (fading toward terminal, quality & maturity adjusted)\n"
+                f"  Terminal growth (perpetuity): {base_terminal_growth * 100:.1f}% (sector-specific + Rule of 40 adjustment)\n"
                 f"  Method: Linear interpolation from company-specific TOWARD terminal over {years} years\n"
-                f"  Maturity Cap: ${market_cap/1e9:.1f}B market cap → max Year {years} growth = {fade_target_growth*100:.1f}%\n"
+                f"  Maturity Cap: ${market_cap / 1e9:.1f}B market cap → max Year {years} growth = {fade_target_growth * 100:.1f}%\n"
                 f"  Rationale: Realistic deceleration toward sustainable terminal growth rate"
             )
         else:
@@ -1074,15 +1254,15 @@ class DCFValuation:
             declining_reason = (
                 "❌ Declining revenue"
                 if is_declining_revenue
-                else f"❌ Lagging peers (revenue growth {revenue_growth*100:.1f}% < {industry_median_growth*0.5*100:.1f}%) + Poor FCF + Weak efficiency"
+                else f"❌ Lagging peers (revenue growth {revenue_growth * 100:.1f}% < {industry_median_growth * 0.5 * 100:.1f}%) + Poor FCF + Weak efficiency"
             )
             logger.info(
                 f"📊 [STANDARD DCF] {self.symbol} - TRUE underperformer (structural decline detected)\n"
                 f"  Mode: Standard DCF (conservative)\n"
-                f"  Revenue Growth: {revenue_growth*100:+.1f}% | FCF Growth: {historical_growth*100:+.1f}% | Rule of 40: {rule_of_40_score:.1f}\n"
+                f"  Revenue Growth: {revenue_growth * 100:+.1f}% | FCF Growth: {historical_growth * 100:+.1f}% | Rule of 40: {rule_of_40_score:.1f}\n"
                 f"  Reason: {declining_reason}\n"
-                f"  Growth rate: {historical_growth*100:.1f}% (constant across all projection years)\n"
-                f"  Terminal growth (perpetuity): {base_terminal_growth*100:.1f}% (sector-specific + Rule of 40 adjustment)\n"
+                f"  Growth rate: {historical_growth * 100:.1f}% (constant across all projection years)\n"
+                f"  Terminal growth (perpetuity): {base_terminal_growth * 100:.1f}% (sector-specific + Rule of 40 adjustment)\n"
                 f"  Rationale: Structural decline (not strategic investment) - no reward for poor performance"
             )
 
@@ -1095,8 +1275,12 @@ class DCFValuation:
                 # Formula: growth(t) = company_growth × (1 - t/n) + fade_target × (t/n)
                 # where t = current year, n = total projection years
                 # Use growth_rate_to_use (adjusted for turnarounds) instead of historical_growth
-                fade_weight = (year - 1) / (years - 1) if years > 1 else 0  # 0 in Year 1 → 1 in final year
-                growth_rate = (growth_rate_to_use * (1 - fade_weight)) + (fade_target_growth * fade_weight)
+                fade_weight = (
+                    (year - 1) / (years - 1) if years > 1 else 0
+                )  # 0 in Year 1 → 1 in final year
+                growth_rate = (growth_rate_to_use * (1 - fade_weight)) + (
+                    fade_target_growth * fade_weight
+                )
             else:
                 # Standard DCF: Constant historical growth rate (conservative)
                 growth_rate = historical_growth
@@ -1120,16 +1304,21 @@ class DCFValuation:
         # Ensure final year FCF margin is realistic based on sector, size, and stage
         try:
             # Get latest TTM revenue, market cap, and metrics for classification
-            ttm_periods = self._get_cached_ttm_periods(num_quarters=4, compute_missing=True)
+            ttm_periods = self._get_cached_ttm_periods(
+                num_quarters=4, compute_missing=True
+            )
             if ttm_periods and len(projections) > 0:
                 ttm_revenue = sum(
-                    period.get("income_statement", {}).get("total_revenue", 0) or 0 for period in ttm_periods[:4]
+                    period.get("income_statement", {}).get("total_revenue", 0) or 0
+                    for period in ttm_periods[:4]
                 )
 
                 if ttm_revenue > 0:
                     # Get market cap and current FCF margin
                     market_cap = self._get_market_cap()
-                    current_fcf_margin = latest_fcf / ttm_revenue if ttm_revenue > 0 else 0
+                    current_fcf_margin = (
+                        latest_fcf / ttm_revenue if ttm_revenue > 0 else 0
+                    )
 
                     # Get Rule of 40 and revenue growth for stage classification
                     rule_of_40_result = self._calculate_rule_of_40()
@@ -1143,13 +1332,15 @@ class DCFValuation:
 
                         # Get TTM revenue for quarters 5-8 (1 year ago)
                         ttm_1y_ago = sum(
-                            period.get("income_statement", {}).get("total_revenue", 0) or 0
+                            period.get("income_statement", {}).get("total_revenue", 0)
+                            or 0
                             for period in ttm_periods[4:8]
                         )
 
                         # Get TTM revenue for quarters 9-12 (2 years ago)
                         ttm_2y_ago = sum(
-                            period.get("income_statement", {}).get("total_revenue", 0) or 0
+                            period.get("income_statement", {}).get("total_revenue", 0)
+                            or 0
                             for period in ttm_periods[8:12]
                         )
 
@@ -1167,30 +1358,38 @@ class DCFValuation:
                                 revenue_growth = ratio ** (1.0 / 2.0) - 1.0
 
                             # Validate against 1-year YoY for sanity check
-                            yoy_growth = (current_ttm - ttm_1y_ago) / ttm_1y_ago if ttm_1y_ago > 0 else 0
+                            yoy_growth = (
+                                (current_ttm - ttm_1y_ago) / ttm_1y_ago
+                                if ttm_1y_ago > 0
+                                else 0
+                            )
 
                             logger.info(
                                 f"🔍 [REVENUE_GROWTH] {self.symbol} - Calculated over 12 quarters\n"
-                                f"  Current TTM: ${current_ttm/1e9:.2f}B\n"
-                                f"  1Y ago TTM: ${ttm_1y_ago/1e9:.2f}B (YoY: {yoy_growth*100:+.1f}%)\n"
-                                f"  2Y ago TTM: ${ttm_2y_ago/1e9:.2f}B\n"
-                                f"  Geometric mean (2Y CAGR): {revenue_growth*100:+.1f}%"
+                                f"  Current TTM: ${current_ttm / 1e9:.2f}B\n"
+                                f"  1Y ago TTM: ${ttm_1y_ago / 1e9:.2f}B (YoY: {yoy_growth * 100:+.1f}%)\n"
+                                f"  2Y ago TTM: ${ttm_2y_ago / 1e9:.2f}B\n"
+                                f"  Geometric mean (2Y CAGR): {revenue_growth * 100:+.1f}%"
                             )
                         else:
                             revenue_growth = 0.05  # Default if 2Y ago is zero
-                    elif len(ttm_periods) >= 8:  # Fallback to 2-year YoY if <12 quarters
+                    elif (
+                        len(ttm_periods) >= 8
+                    ):  # Fallback to 2-year YoY if <12 quarters
                         current_ttm_revenue = ttm_revenue
                         prior_ttm_revenue = sum(
-                            period.get("income_statement", {}).get("total_revenue", 0) or 0
+                            period.get("income_statement", {}).get("total_revenue", 0)
+                            or 0
                             for period in ttm_periods[4:8]
                         )
                         revenue_growth = (
-                            (current_ttm_revenue - prior_ttm_revenue) / prior_ttm_revenue
+                            (current_ttm_revenue - prior_ttm_revenue)
+                            / prior_ttm_revenue
                             if prior_ttm_revenue > 0
                             else 0
                         )
                         logger.info(
-                            f"🔍 [REVENUE_GROWTH] {self.symbol} - Using 2Y YoY (insufficient data for geometric mean): {revenue_growth*100:+.1f}%"
+                            f"🔍 [REVENUE_GROWTH] {self.symbol} - Using 2Y YoY (insufficient data for geometric mean): {revenue_growth * 100:+.1f}%"
                         )
                     else:
                         revenue_growth = 0.05  # Default 5% if insufficient data
@@ -1202,26 +1401,33 @@ class DCFValuation:
                     # Negative growth companies get classified conservatively anyway
                     if revenue_growth < 0:
                         logger.info(
-                            f"🔍 [REVENUE_GROWTH] {self.symbol} - Negative growth ({revenue_growth*100:.1f}%), "
+                            f"🔍 [REVENUE_GROWTH] {self.symbol} - Negative growth ({revenue_growth * 100:.1f}%), "
                             f"using default 5% for terminal margin classification"
                         )
-                        revenue_growth = 0.05  # Use positive default for stage classification
+                        revenue_growth = (
+                            0.05  # Use positive default for stage classification
+                        )
 
                     # Classify company stage and size
                     if market_cap and market_cap > 0:
                         size_tier = self._classify_company_size(market_cap)
-                        stage = self._classify_company_stage(rule_of_40_score, current_fcf_margin, revenue_growth)
+                        stage = self._classify_company_stage(
+                            rule_of_40_score, current_fcf_margin, revenue_growth
+                        )
 
                         # Get terminal margin from config (granular by sector/size/stage)
                         max_terminal_margin = self._get_terminal_margin_from_config(
-                            sector=self.sector, size_tier=size_tier, stage=stage, current_fcf_margin=current_fcf_margin
+                            sector=self.sector,
+                            size_tier=size_tier,
+                            stage=stage,
+                            current_fcf_margin=current_fcf_margin,
                         )
                     else:
                         # Fallback if no market cap available
                         max_terminal_margin = 0.20  # Conservative default
                         logger.warning(
                             f"{self.symbol} - Market cap not available for terminal margin classification, "
-                            f"using conservative default {max_terminal_margin*100:.1f}%"
+                            f"using conservative default {max_terminal_margin * 100:.1f}%"
                         )
 
                     # Project terminal revenue
@@ -1229,27 +1435,29 @@ class DCFValuation:
 
                     # Calculate implied terminal FCF margin
                     final_fcf = projections[-1]
-                    implied_margin = final_fcf / terminal_revenue if terminal_revenue > 0 else 0
+                    implied_margin = (
+                        final_fcf / terminal_revenue if terminal_revenue > 0 else 0
+                    )
 
                     # Cap final year FCF if margin exceeds realistic threshold
                     if implied_margin > max_terminal_margin:
                         adjusted_final_fcf = terminal_revenue * max_terminal_margin
                         logger.info(
                             f"🔍 [TERMINAL_MARGIN] {self.symbol} - Capping terminal FCF margin\n"
-                            f"  Implied terminal margin: {implied_margin*100:.1f}% (too high)\n"
-                            f"  Max realistic margin: {max_terminal_margin*100:.1f}% ({size_tier}/{stage})\n"
-                            f"  Terminal revenue projection: ${terminal_revenue/1e9:.2f}B\n"
-                            f"  Final year FCF: ${final_fcf/1e9:.2f}B → ${adjusted_final_fcf/1e9:.2f}B\n"
+                            f"  Implied terminal margin: {implied_margin * 100:.1f}% (too high)\n"
+                            f"  Max realistic margin: {max_terminal_margin * 100:.1f}% ({size_tier}/{stage})\n"
+                            f"  Terminal revenue projection: ${terminal_revenue / 1e9:.2f}B\n"
+                            f"  Final year FCF: ${final_fcf / 1e9:.2f}B → ${adjusted_final_fcf / 1e9:.2f}B\n"
                             f"  Impact: {((adjusted_final_fcf - final_fcf) / final_fcf * 100):.1f}% reduction"
                         )
                         projections[-1] = adjusted_final_fcf
                     else:
                         logger.info(
                             f"🔍 [TERMINAL_MARGIN] {self.symbol} - Terminal FCF margin check passed\n"
-                            f"  Implied terminal margin: {implied_margin*100:.1f}%\n"
-                            f"  Max realistic margin: {max_terminal_margin*100:.1f}% ({size_tier}/{stage})\n"
-                            f"  Terminal revenue projection: ${terminal_revenue/1e9:.2f}B\n"
-                            f"  Final year FCF: ${final_fcf/1e9:.2f}B (no adjustment needed)"
+                            f"  Implied terminal margin: {implied_margin * 100:.1f}%\n"
+                            f"  Max realistic margin: {max_terminal_margin * 100:.1f}% ({size_tier}/{stage})\n"
+                            f"  Terminal revenue projection: ${terminal_revenue / 1e9:.2f}B\n"
+                            f"  Final year FCF: ${final_fcf / 1e9:.2f}B (no adjustment needed)"
                         )
         except Exception as e:
             logger.debug(f"{self.symbol} - Could not validate terminal FCF margin: {e}")
@@ -1294,20 +1502,26 @@ class DCFValuation:
         # Log with required format
         logger.info(
             f"[FCF_GROWTH_FINAL] {self.symbol}:\n"
-            f"  TTM Revenue Geometric Growth = {revenue_growth*100:.1f}%"
+            f"  TTM Revenue Geometric Growth = {revenue_growth * 100:.1f}%"
             + (
-                f" (clamped from {revenue_growth*100:.1f}% to {revenue_growth_clamped*100:.1f}%)"
+                f" (clamped from {revenue_growth * 100:.1f}% to {revenue_growth_clamped * 100:.1f}%)"
                 if revenue_growth != revenue_growth_clamped
                 else ""
             )
-            + f"\n  Sector Premium ({self.sector}) = {sector_premium*100:.1f}%\n"
-            f"  → Year 1 FCF Growth = {fcf_growth*100:.1f}%"
-            + (f" (clamped to {fcf_growth_clamped*100:.1f}%)" if fcf_growth != fcf_growth_clamped else "")
+            + f"\n  Sector Premium ({self.sector}) = {sector_premium * 100:.1f}%\n"
+            f"  → Year 1 FCF Growth = {fcf_growth * 100:.1f}%"
+            + (
+                f" (clamped to {fcf_growth_clamped * 100:.1f}%)"
+                if fcf_growth != fcf_growth_clamped
+                else ""
+            )
         )
 
         return fcf_growth_clamped
 
-    def _calculate_terminal_value(self, final_year_fcf: float, terminal_growth_rate: float = 0.03) -> float:
+    def _calculate_terminal_value(
+        self, final_year_fcf: float, terminal_growth_rate: float = 0.03
+    ) -> float:
         """
         Calculate terminal value using perpetuity growth model
 
@@ -1324,7 +1538,9 @@ class DCFValuation:
         wacc = self._calculate_wacc()
 
         # Terminal value formula
-        terminal_value = (final_year_fcf * (1 + terminal_growth_rate)) / (wacc - terminal_growth_rate)
+        terminal_value = (final_year_fcf * (1 + terminal_growth_rate)) / (
+            wacc - terminal_growth_rate
+        )
 
         return terminal_value
 
@@ -1364,7 +1580,11 @@ class DCFValuation:
 
         # Extract debt components (needed for FY fallback logic)
         long_term_debt = balance_sheet.get("long_term_debt", 0) or 0
-        short_term_debt = balance_sheet.get("short_term_debt", 0) or balance_sheet.get("debt_current", 0) or 0
+        short_term_debt = (
+            balance_sheet.get("short_term_debt", 0)
+            or balance_sheet.get("debt_current", 0)
+            or 0
+        )
 
         # Fallback: Calculate from components if total_debt not available
         if not total_debt:
@@ -1389,9 +1609,9 @@ class DCFValuation:
                     total_debt = fy_long_term_debt + short_term_debt
                     logger.info(
                         f"⚠️  {self.symbol} - Q period missing long_term_debt. "
-                        f"Using FY long_term_debt (${fy_long_term_debt/1e9:.2f}B) + "
-                        f"Q short_term_debt (${short_term_debt/1e9:.2f}B) = "
-                        f"Total debt ${total_debt/1e9:.2f}B"
+                        f"Using FY long_term_debt (${fy_long_term_debt / 1e9:.2f}B) + "
+                        f"Q short_term_debt (${short_term_debt / 1e9:.2f}B) = "
+                        f"Total debt ${total_debt / 1e9:.2f}B"
                     )
 
         # Total value
@@ -1405,7 +1625,9 @@ class DCFValuation:
         # Get unlevered beta from market data, then lever it with actual D/E ratio
         beta_unlevered = self._get_unlevered_beta()
         stockholders_equity = balance_sheet.get("stockholders_equity", 0) or 0
-        beta = self._calculate_levered_beta(beta_unlevered, total_debt, stockholders_equity, market_cap)
+        beta = self._calculate_levered_beta(
+            beta_unlevered, total_debt, stockholders_equity, market_cap
+        )
         risk_free_rate = self._get_risk_free_rate()  # 10-year Treasury yield
 
         # Dynamic Equity Risk Premium based on CFA Institute guidance
@@ -1415,13 +1637,10 @@ class DCFValuation:
         # - Rf ≥ 5%: ERP = 6.5% (midpoint of 6.0-7.0%)
         if risk_free_rate < 0.03:
             market_risk_premium = 0.055  # Low rate environment: 5.5%
-            erp_rationale = "Low Rf < 3%: ERP=5.5%"
         elif risk_free_rate < 0.05:
             market_risk_premium = 0.060  # Moderate rate environment: 6.0%
-            erp_rationale = "Moderate 3% ≤ Rf < 5%: ERP=6.0%"
         else:
             market_risk_premium = 0.065  # High rate environment: 6.5%
-            erp_rationale = "High Rf ≥ 5%: ERP=6.5%"
 
         cost_of_equity = risk_free_rate + beta * market_risk_premium
 
@@ -1429,7 +1648,9 @@ class DCFValuation:
         # CRITICAL FIX: Get interest_expense from BOTH nested and flat structures (backward compatible)
         # Try nested structure first (income_statement subdictionary)
         income_statement = latest.get("income_statement", {})
-        interest_expense_nested = income_statement.get("interest_expense", 0) if income_statement else 0
+        interest_expense_nested = (
+            income_statement.get("interest_expense", 0) if income_statement else 0
+        )
         # Fallback to flat structure (sec_companyfacts_processed table)
         interest_expense_flat = latest.get("interest_expense", 0)
         # Use whichever is non-zero (prefer nested if both exist)
@@ -1453,7 +1674,9 @@ class DCFValuation:
         elif total_debt > 0:
             # Has debt but no interest expense reported - use market default
             cost_of_debt = default_cost_of_debt
-            cost_of_debt_source = "market-implied default (interest expense not reported)"
+            cost_of_debt_source = (
+                "market-implied default (interest expense not reported)"
+            )
         else:
             # No debt
             cost_of_debt = default_cost_of_debt
@@ -1461,9 +1684,9 @@ class DCFValuation:
 
         # 🔍 DEBUG TRACE: Log interest expense retrieval with source explanation
         logger.info(
-            f"🔍 [DCF_INTEREST] {self.symbol} - Interest expense: ${interest_expense/1e9:.2f}B "
-            f"(nested: ${interest_expense_nested/1e9:.2f}B, flat: ${interest_expense_flat/1e9:.2f}B), "
-            f"Total debt: ${total_debt/1e9:.2f}B, Cost of debt: {cost_of_debt:.2%} ({cost_of_debt_source})"
+            f"🔍 [DCF_INTEREST] {self.symbol} - Interest expense: ${interest_expense / 1e9:.2f}B "
+            f"(nested: ${interest_expense_nested / 1e9:.2f}B, flat: ${interest_expense_flat / 1e9:.2f}B), "
+            f"Total debt: ${total_debt / 1e9:.2f}B, Cost of debt: {cost_of_debt:.2%} ({cost_of_debt_source})"
         )
 
         # Tax rate
@@ -1493,7 +1716,9 @@ class DCFValuation:
         )
 
         # WACC calculation
-        wacc_raw = (weight_equity * cost_of_equity) + (weight_debt * cost_of_debt * (1 - tax_rate))
+        wacc_raw = (weight_equity * cost_of_equity) + (
+            weight_debt * cost_of_debt * (1 - tax_rate)
+        )
 
         # Ensure reasonable bounds (7% minimum, 20% maximum)
         wacc = max(0.07, min(wacc_raw, 0.20))
@@ -1538,21 +1763,29 @@ class DCFValuation:
         """
         try:
             from investigator.config import get_config
-            from investigator.infrastructure.database.market_data import get_market_data_fetcher
+            from investigator.infrastructure.database.market_data import (
+                get_market_data_fetcher,
+            )
 
             config = get_config()
             fetcher = get_market_data_fetcher(config)
             info = fetcher.get_stock_info(self.symbol)
 
-            beta = info.get("beta")  # Already prioritizes b_12_month > b_24_month > b_36_month > b_60_month
+            beta = info.get(
+                "beta"
+            )  # Already prioritizes b_12_month > b_24_month > b_36_month > b_60_month
             if beta and beta > 0:
-                logger.info(f"{self.symbol} - Using unlevered beta from market data: {beta:.2f}")
+                logger.info(
+                    f"{self.symbol} - Using unlevered beta from market data: {beta:.2f}"
+                )
                 return float(beta)
             else:
                 logger.warning(f"{self.symbol} - Beta not available, using default 1.0")
                 return 1.0
         except Exception as e:
-            logger.warning(f"{self.symbol} - Error fetching beta: {e}, using default 1.0")
+            logger.warning(
+                f"{self.symbol} - Error fetching beta: {e}, using default 1.0"
+            )
             return 1.0
 
     def _get_sector_median_betas(self) -> Dict[str, float]:
@@ -1589,7 +1822,9 @@ class DCFValuation:
         """Get R² for 12-month beta from symbol table"""
         try:
             from investigator.config import get_config
-            from investigator.infrastructure.database.market_data import get_market_data_fetcher
+            from investigator.infrastructure.database.market_data import (
+                get_market_data_fetcher,
+            )
 
             config = get_config()
             fetcher = get_market_data_fetcher(config)
@@ -1605,7 +1840,9 @@ class DCFValuation:
         """Get sector from symbol table"""
         try:
             from investigator.config import get_config
-            from investigator.infrastructure.database.market_data import get_market_data_fetcher
+            from investigator.infrastructure.database.market_data import (
+                get_market_data_fetcher,
+            )
 
             config = get_config()
             fetcher = get_market_data_fetcher(config)
@@ -1679,11 +1916,15 @@ class DCFValuation:
                         )
 
                 # Also check if company is unprofitable (growth-stage, not buyback-stage)
-                if not is_high_sbc_company and net_income is not None and net_income < 0:
+                if (
+                    not is_high_sbc_company
+                    and net_income is not None
+                    and net_income < 0
+                ):
                     is_high_sbc_company = True
                     logger.info(
                         f"🔍 [BETA] {self.symbol} - Low Equity/MarketCap={equity_to_mktcap:.2%} but "
-                        f"negative net income=${net_income/1e9:.2f}B indicates growth-stage company, not buyback company. "
+                        f"negative net income=${net_income / 1e9:.2f}B indicates growth-stage company, not buyback company. "
                         f"Using standard levered beta."
                     )
 
@@ -1697,7 +1938,14 @@ class DCFValuation:
                 # Otherwise, continue to standard levering logic below
 
         # Step 2: Financial sector (debt is inventory, not leverage)
-        financial_sectors = ["Financials", "Financial Services", "Banks", "Insurance", "Real Estate", "REITs"]
+        financial_sectors = [
+            "Financials",
+            "Financial Services",
+            "Banks",
+            "Insurance",
+            "Real Estate",
+            "REITs",
+        ]
         if sector in financial_sectors:
             return (
                 beta_unlevered,
@@ -1721,7 +1969,7 @@ class DCFValuation:
             return (
                 beta_unlevered,
                 "unlevered_negative_equity",
-                f"Negative equity ({equity/1e9:.1f}B), cannot lever beta",
+                f"Negative equity ({equity / 1e9:.1f}B), cannot lever beta",
             )
 
         # Step 5: Check for extreme leverage (distress risk)
@@ -1751,7 +1999,9 @@ class DCFValuation:
         """
         try:
             # Get TTM periods (cached)
-            ttm_periods = self._get_cached_ttm_periods(num_quarters=4, compute_missing=True)
+            ttm_periods = self._get_cached_ttm_periods(
+                num_quarters=4, compute_missing=True
+            )
 
             if not ttm_periods:
                 return None
@@ -1782,7 +2032,9 @@ class DCFValuation:
             logger.debug(f"{self.symbol} - Unable to extract SBC: {e}")
             return None
 
-    def _classify_company_stage(self, rule_of_40_score: float, fcf_margin: float, revenue_growth: float) -> str:
+    def _classify_company_stage(
+        self, rule_of_40_score: float, fcf_margin: float, revenue_growth: float
+    ) -> str:
         """
         Classify company stage based on Rule of 40, FCF margin, and revenue growth
 
@@ -1794,7 +2046,9 @@ class DCFValuation:
         Returns:
             'hyper_growth', 'growth', or 'mature'
         """
-        stage_config = self.dcf_config.get("terminal_fcf_margin", {}).get("stage_classification", {})
+        stage_config = self.dcf_config.get("terminal_fcf_margin", {}).get(
+            "stage_classification", {}
+        )
 
         # Hyper-growth: Rule of 40 >50, FCF margin <15%, revenue growth >30%
         hyper_config = stage_config.get("hyper_growth", {})
@@ -1828,7 +2082,9 @@ class DCFValuation:
         Returns:
             'mega_cap', 'large_cap', 'mid_cap', or 'small_cap'
         """
-        size_thresholds = self.dcf_config.get("terminal_fcf_margin", {}).get("size_thresholds", {})
+        size_thresholds = self.dcf_config.get("terminal_fcf_margin", {}).get(
+            "size_thresholds", {}
+        )
 
         # Convert to billions for comparison
         market_cap_billions = market_cap / 1e9
@@ -1878,21 +2134,27 @@ class DCFValuation:
 
         # CRITICAL: Never force margin contraction
         # If company already has higher margins, allow them to maintain it
-        terminal_margin = max(config_margin, current_fcf_margin * 0.95)  # Allow 5% modest decline
+        terminal_margin = max(
+            config_margin, current_fcf_margin * 0.95
+        )  # Allow 5% modest decline
 
         logger.info(
             f"🔍 [TERMINAL_MARGIN_CONFIG] {self.symbol} - Terminal margin determination\n"
             f"  Sector: {sector}, Size: {size_tier}, Stage: {stage}\n"
-            f"  Current FCF margin: {current_fcf_margin*100:.1f}%\n"
-            f"  Config target margin: {config_margin*100:.1f}%\n"
-            f"  Terminal margin (max): {terminal_margin*100:.1f}%\n"
+            f"  Current FCF margin: {current_fcf_margin * 100:.1f}%\n"
+            f"  Config target margin: {config_margin * 100:.1f}%\n"
+            f"  Terminal margin (max): {terminal_margin * 100:.1f}%\n"
             f"  Rationale: {'Maintaining current margins' if terminal_margin > config_margin else 'Using config target'}"
         )
 
         return terminal_margin
 
     def _calculate_levered_beta(
-        self, beta_unlevered: float, total_debt: float, equity: float, market_cap: float = None
+        self,
+        beta_unlevered: float,
+        total_debt: float,
+        equity: float,
+        market_cap: float = None,
     ) -> float:
         """
         Calculate levered beta using improved beta selection logic
@@ -1923,18 +2185,31 @@ class DCFValuation:
         total_revenue = None
 
         try:
-            latest_ttm = self._get_cached_ttm_periods(num_quarters=4, compute_missing=True)
+            latest_ttm = self._get_cached_ttm_periods(
+                num_quarters=4, compute_missing=True
+            )
             if latest_ttm:
                 latest = latest_ttm[0]
                 income_statement = latest.get("income_statement", {})
                 net_income = income_statement.get("net_income")
-                total_revenue = income_statement.get("total_revenue") or income_statement.get("revenue")
+                total_revenue = income_statement.get(
+                    "total_revenue"
+                ) or income_statement.get("revenue")
         except Exception as e:
-            logger.debug(f"{self.symbol} - Unable to extract net income/revenue for beta treatment: {e}")
+            logger.debug(
+                f"{self.symbol} - Unable to extract net income/revenue for beta treatment: {e}"
+            )
 
         # Use improved beta treatment logic
         beta, treatment, rationale = self._determine_beta_treatment(
-            beta_unlevered, r_squared, total_debt, equity, market_cap or 0, sector, net_income, total_revenue
+            beta_unlevered,
+            r_squared,
+            total_debt,
+            equity,
+            market_cap or 0,
+            sector,
+            net_income,
+            total_revenue,
         )
 
         logger.info(f"{self.symbol} - Beta treatment: {treatment} - {rationale}")
@@ -1955,25 +2230,33 @@ class DCFValuation:
             from investigator.infrastructure.external.fred import MacroIndicatorsFetcher
 
             fetcher = MacroIndicatorsFetcher()
-            indicators = fetcher.get_latest_indicators(["DGS10"])  # 10-Year Treasury Rate
+            indicators = fetcher.get_latest_indicators(
+                ["DGS10"]
+            )  # 10-Year Treasury Rate
 
             if "DGS10" in indicators and indicators["DGS10"]["value"] is not None:
                 # DGS10 is already in percentage (e.g., 4.5), convert to decimal (0.045)
                 treasury_rate = indicators["DGS10"]["value"] / 100
                 logger.info(
-                    f"{self.symbol} - Using 10Y Treasury rate from FRED: {treasury_rate*100:.2f}% "
+                    f"{self.symbol} - Using 10Y Treasury rate from FRED: {treasury_rate * 100:.2f}% "
                     f"(as of {indicators['DGS10']['date']})"
                 )
                 return treasury_rate
             else:
-                logger.warning(f"{self.symbol} - DGS10 not available, using default risk-free rate: 4.5%")
+                logger.warning(
+                    f"{self.symbol} - DGS10 not available, using default risk-free rate: 4.5%"
+                )
                 return 0.045
 
         except Exception as e:
-            logger.warning(f"{self.symbol} - Error fetching Treasury rate: {e}, using default 4.5%")
+            logger.warning(
+                f"{self.symbol} - Error fetching Treasury rate: {e}, using default 4.5%"
+            )
             return 0.045
 
-    def _discount_cash_flows(self, fcf_projections: List[float], wacc: float, log_details: bool = True) -> float:
+    def _discount_cash_flows(
+        self, fcf_projections: List[float], wacc: float, log_details: bool = True
+    ) -> float:
         """
         Discount future cash flows to present value
 
@@ -2025,13 +2308,19 @@ class DCFValuation:
         balance_sheet = latest.get("balance_sheet", {})
         total_debt = balance_sheet.get("total_debt", 0) or 0
         # Cash is typically a top-level metric or in balance sheet
-        cash = latest.get("cash_and_equivalents", 0) or balance_sheet.get("cash_and_equivalents", 0) or 0
+        cash = (
+            latest.get("cash_and_equivalents", 0)
+            or balance_sheet.get("cash_and_equivalents", 0)
+            or 0
+        )
 
         equity_value = enterprise_value - total_debt + cash
 
         return equity_value
 
-    def _run_sensitivity_analysis(self, fcf_projections: List[float], base_wacc: float) -> Dict:
+    def _run_sensitivity_analysis(
+        self, fcf_projections: List[float], base_wacc: float
+    ) -> Dict:
         """
         Run sensitivity analysis varying terminal growth rate only
 
@@ -2057,7 +2346,9 @@ class DCFValuation:
                 # Recalculate with different terminal growth assumptions
                 terminal_value = (fcf_projections[-1] * (1 + tgr)) / (base_wacc - tgr)
                 # Disable logging for sensitivity calculations (log_details=False)
-                pv_fcf = self._discount_cash_flows(fcf_projections, base_wacc, log_details=False)
+                pv_fcf = self._discount_cash_flows(
+                    fcf_projections, base_wacc, log_details=False
+                )
                 pv_terminal = terminal_value / ((1 + base_wacc) ** len(fcf_projections))
 
                 ev = pv_fcf + pv_terminal
@@ -2065,12 +2356,14 @@ class DCFValuation:
                 fair_value = equity_value / shares if shares > 0 else 0
 
                 sensitivity_table.append(round(fair_value, 2))
-            except:
+            except Exception:
                 sensitivity_table.append(0.0)
 
         return {
-            "terminal_growth_rates": [f"{tgr*100:.1f}%" for tgr in terminal_growth_rates],
-            "wacc": f"{base_wacc*100:.2f}%",
+            "terminal_growth_rates": [
+                f"{tgr * 100:.1f}%" for tgr in terminal_growth_rates
+            ],
+            "wacc": f"{base_wacc * 100:.2f}%",
             "fair_values": sensitivity_table,
         }
 
@@ -2089,7 +2382,9 @@ class DCFValuation:
 
         try:
             from investigator.config import get_config
-            from investigator.infrastructure.database.market_data import get_market_data_fetcher
+            from investigator.infrastructure.database.market_data import (
+                get_market_data_fetcher,
+            )
 
             config = get_config()
             fetcher = get_market_data_fetcher(config)
@@ -2131,9 +2426,15 @@ class DCFValuation:
             # Debug: show what values exist at each location
             top_level_value = latest.get("shares_outstanding")
             ratios_dict = latest.get("ratios", {})
-            ratios_value = ratios_dict.get("shares_outstanding") if ratios_dict else None
+            ratios_value = (
+                ratios_dict.get("shares_outstanding") if ratios_dict else None
+            )
             balance_sheet_dict = latest.get("balance_sheet", {})
-            balance_sheet_value = balance_sheet_dict.get("shares_outstanding") if balance_sheet_dict else None
+            balance_sheet_value = (
+                balance_sheet_dict.get("shares_outstanding")
+                if balance_sheet_dict
+                else None
+            )
 
             logger.info(
                 f"🔍 {self.symbol} - shares_outstanding debug: top_level={top_level_value}, ratios={ratios_value}, balance_sheet={balance_sheet_value}"
@@ -2172,7 +2473,9 @@ class DCFValuation:
         # Fallback: Try to get from database/market data
         try:
             from investigator.config import get_config
-            from investigator.infrastructure.database.market_data import get_market_data_fetcher
+            from investigator.infrastructure.database.market_data import (
+                get_market_data_fetcher,
+            )
 
             config = get_config()
             fetcher = get_market_data_fetcher(config)
@@ -2186,10 +2489,14 @@ class DCFValuation:
                 self._shares_outstanding_cache = float(shares_from_db)
                 return self._shares_outstanding_cache
         except Exception as e:
-            logger.warning(f"{self.symbol} - Could not fetch shares outstanding from database: {e}")
+            logger.warning(
+                f"{self.symbol} - Could not fetch shares outstanding from database: {e}"
+            )
 
         # Final fallback with clear warning
-        logger.error(f"{self.symbol} - Using fallback shares outstanding (1B) - THIS IS LIKELY INCORRECT!")
+        logger.error(
+            f"{self.symbol} - Using fallback shares outstanding (1B) - THIS IS LIKELY INCORRECT!"
+        )
         self._shares_outstanding_cache = 1000000000  # Fallback: 1B shares
         return self._shares_outstanding_cache
 
@@ -2211,7 +2518,7 @@ class DCFValuation:
             market_cap = current_price * shares
 
             logger.debug(
-                f"{self.symbol} - Market cap: ${market_cap/1e9:.1f}B (price=${current_price:.2f}, shares={shares:,.0f})"
+                f"{self.symbol} - Market cap: ${market_cap / 1e9:.1f}B (price=${current_price:.2f}, shares={shares:,.0f})"
             )
             return market_cap
         except Exception as e:
@@ -2261,7 +2568,9 @@ class DCFValuation:
             }
 
         except Exception as e:
-            logger.warning(f"{self.symbol} - Error calculating Rule of 40: {e}. Using default.")
+            logger.warning(
+                f"{self.symbol} - Error calculating Rule of 40: {e}. Using default."
+            )
             return {
                 "score": 0.0,
                 "revenue_growth_pct": 0.0,
@@ -2297,17 +2606,24 @@ class DCFValuation:
         if self._is_sec_format():
             sec_data = self._get_sec_data()
             income_stmt = sec_data.get("income_statement", {})
-            revenue = income_stmt.get("total_revenue", 0) or income_stmt.get("revenue", 0) or 0
+            revenue = (
+                income_stmt.get("total_revenue", 0)
+                or income_stmt.get("revenue", 0)
+                or 0
+            )
             return float(revenue)
 
         try:
             # Use cached TTM periods to avoid redundant Q4 computations
-            ttm_periods = self._get_cached_ttm_periods(num_quarters=4, compute_missing=True)
+            ttm_periods = self._get_cached_ttm_periods(
+                num_quarters=4, compute_missing=True
+            )
             if not ttm_periods:
                 return 0.0
 
             ttm_revenue = sum(
-                (period.get("income_statement", {}) or {}).get("total_revenue", 0) or 0 for period in ttm_periods
+                (period.get("income_statement", {}) or {}).get("total_revenue", 0) or 0
+                for period in ttm_periods
             )
             return float(ttm_revenue)
         except Exception as exc:
@@ -2333,12 +2649,16 @@ class DCFValuation:
 
         revenue_per_share = ttm_revenue / shares_outstanding
         market_cap = current_price * shares_outstanding if current_price > 0 else None
-        current_ps_multiple = (market_cap / ttm_revenue) if market_cap and ttm_revenue > 0 else None
+        current_ps_multiple = (
+            (market_cap / ttm_revenue) if market_cap and ttm_revenue > 0 else None
+        )
 
         rule_40_config = self.dcf_config.get("rule_of_40", {})
         multiple_ranges = rule_40_config.get("multiple_ranges", {})
         classification_key = classification.lower()
-        range_config = multiple_ranges.get(classification_key) or multiple_ranges.get("default")
+        range_config = multiple_ranges.get(classification_key) or multiple_ranges.get(
+            "default"
+        )
 
         if not range_config:
             return None
@@ -2403,7 +2723,9 @@ class DCFValuation:
             # Get sector growth defaults from config.yaml
             sec_defaults = self.dcf_config.get("sec_format_defaults", {})
             sector_growth_config = sec_defaults.get("sector_revenue_growth", {})
-            default_growth = sector_growth_config.get(self.sector, sector_growth_config.get("Default", 5.0))
+            default_growth = sector_growth_config.get(
+                self.sector, sector_growth_config.get("Default", 5.0)
+            )
             logger.info(
                 f"🔍 {self.symbol} - SEC format: Using sector-based revenue growth estimate "
                 f"({self.sector}: {default_growth:.1f}%) - single FY snapshot cannot calculate YoY"
@@ -2418,7 +2740,9 @@ class DCFValuation:
 
         try:
             # Use cached TTM periods (12 quarters) to avoid redundant Q4 computations
-            quarters_12 = self._get_cached_ttm_periods(num_quarters=12, compute_missing=True)
+            quarters_12 = self._get_cached_ttm_periods(
+                num_quarters=12, compute_missing=True
+            )
 
             if not quarters_12 or len(quarters_12) < 8:
                 logger.warning(
@@ -2427,7 +2751,11 @@ class DCFValuation:
                 return 0.0
 
             # Filter out FY (full year) periods - only use quarterly data (Q1-Q4)
-            quarterly_only = [q for q in quarters_12 if q.get("fiscal_period") in ["Q1", "Q2", "Q3", "Q4"]]
+            quarterly_only = [
+                q
+                for q in quarters_12
+                if q.get("fiscal_period") in ["Q1", "Q2", "Q3", "Q4"]
+            ]
 
             if len(quarterly_only) < 8:
                 logger.warning(
@@ -2448,8 +2776,12 @@ class DCFValuation:
             prior2_ttm = sum(revenue_values[8:12]) if len(revenue_values) >= 12 else 0
 
             # Calculate growth rates
-            growth_current_vs_prior1 = ((current_ttm / prior1_ttm) - 1) * 100 if prior1_ttm > 0 else 0
-            growth_prior1_vs_prior2 = ((prior1_ttm / prior2_ttm) - 1) * 100 if prior2_ttm > 0 else 0
+            growth_current_vs_prior1 = (
+                ((current_ttm / prior1_ttm) - 1) * 100 if prior1_ttm > 0 else 0
+            )
+            growth_prior1_vs_prior2 = (
+                ((prior1_ttm / prior2_ttm) - 1) * 100 if prior2_ttm > 0 else 0
+            )
 
             # Geometric mean calculation (only if exactly 12 quarters to avoid inflated rates)
             if len(revenue_values) == 12 and prior1_ttm > 0 and prior2_ttm > 0:
@@ -2471,9 +2803,9 @@ class DCFValuation:
 
                 logger.info(
                     f"🔍 [REVENUE_GROWTH] {self.symbol} - TTM Revenue Growth (Geometric Mean - 12 quarters):\n"
-                    f"  Current TTM: ${current_ttm/1e9:.2f}B (growth: {growth_current_vs_prior1:+.1f}%)\n"
-                    f"  Prior1 TTM:  ${prior1_ttm/1e9:.2f}B (growth: {growth_prior1_vs_prior2:+.1f}%)\n"
-                    f"  Prior2 TTM:  ${prior2_ttm/1e9:.2f}B\n"
+                    f"  Current TTM: ${current_ttm / 1e9:.2f}B (growth: {growth_current_vs_prior1:+.1f}%)\n"
+                    f"  Prior1 TTM:  ${prior1_ttm / 1e9:.2f}B (growth: {growth_prior1_vs_prior2:+.1f}%)\n"
+                    f"  Prior2 TTM:  ${prior2_ttm / 1e9:.2f}B\n"
                     f"  Geometric Mean Growth: {yoy_growth_pct:.1f}%"
                 )
             elif len(revenue_values) >= 8 and prior1_ttm > 0:
@@ -2481,8 +2813,8 @@ class DCFValuation:
                 yoy_growth_pct = growth_current_vs_prior1
                 logger.info(
                     f"🔍 [REVENUE_GROWTH] {self.symbol} - TTM Revenue Growth (Simple - {len(revenue_values)} quarters):\n"
-                    f"  Current TTM: ${current_ttm/1e9:.2f}B\n"
-                    f"  Prior1 TTM:  ${prior1_ttm/1e9:.2f}B\n"
+                    f"  Current TTM: ${current_ttm / 1e9:.2f}B\n"
+                    f"  Prior1 TTM:  ${prior1_ttm / 1e9:.2f}B\n"
                     f"  Growth: {yoy_growth_pct:.1f}%"
                 )
                 if len(revenue_values) >= 10:
@@ -2491,7 +2823,9 @@ class DCFValuation:
                         f"Using simple TTM growth to avoid inflated rates from incomplete prior2 period."
                     )
             else:
-                logger.warning(f"{self.symbol} - Insufficient data for revenue growth calculation")
+                logger.warning(
+                    f"{self.symbol} - Insufficient data for revenue growth calculation"
+                )
                 yoy_growth_pct = 0.0
 
             return yoy_growth_pct
@@ -2525,10 +2859,16 @@ class DCFValuation:
                 capex = abs(cash_flow.get("capital_expenditures", 0) or 0)
                 fcf = ocf - capex
 
-            revenue = income_stmt.get("total_revenue", 0) or income_stmt.get("revenue", 0) or 0
+            revenue = (
+                income_stmt.get("total_revenue", 0)
+                or income_stmt.get("revenue", 0)
+                or 0
+            )
 
             if revenue <= 0:
-                logger.warning(f"{self.symbol} - SEC format: revenue is {revenue}, cannot calculate margin")
+                logger.warning(
+                    f"{self.symbol} - SEC format: revenue is {revenue}, cannot calculate margin"
+                )
                 return 0.0
 
             fcf_margin_pct = (fcf / revenue) * 100
@@ -2545,17 +2885,21 @@ class DCFValuation:
 
             logger.info(
                 f"🔍 {self.symbol} - SEC format profit margin (FCF): {fcf_margin_pct:.1f}% "
-                f"(FCF: ${fcf/1e9:.2f}B, Revenue: ${revenue/1e9:.2f}B)"
+                f"(FCF: ${fcf / 1e9:.2f}B, Revenue: ${revenue / 1e9:.2f}B)"
             )
             return fcf_margin_pct
 
         if not self.quarterly_metrics or len(self.quarterly_metrics) < 4:
-            logger.warning(f"{self.symbol} - Insufficient quarterly data for TTM profit margin")
+            logger.warning(
+                f"{self.symbol} - Insufficient quarterly data for TTM profit margin"
+            )
             return 0.0
 
         try:
             # Use cached TTM periods (4 quarters) to avoid redundant Q4 computations
-            ttm_periods = self._get_cached_ttm_periods(num_quarters=4, compute_missing=True)
+            ttm_periods = self._get_cached_ttm_periods(
+                num_quarters=4, compute_missing=True
+            )
 
             if not ttm_periods:
                 return 0.0
@@ -2578,7 +2922,9 @@ class DCFValuation:
                 ttm_revenue += revenue
 
             if ttm_revenue <= 0:
-                logger.warning(f"{self.symbol} - TTM revenue is {ttm_revenue}, cannot calculate margin")
+                logger.warning(
+                    f"{self.symbol} - TTM revenue is {ttm_revenue}, cannot calculate margin"
+                )
                 return 0.0
 
             # Try FCF margin first
@@ -2592,21 +2938,22 @@ class DCFValuation:
 
                 # Calculate operating margin
                 ttm_operating_income = sum(
-                    period.get("income_statement", {}).get("operating_income", 0) or 0 for period in ttm_periods
+                    period.get("income_statement", {}).get("operating_income", 0) or 0
+                    for period in ttm_periods
                 )
 
                 operating_margin_pct = (ttm_operating_income / ttm_revenue) * 100
 
                 logger.info(
                     f"{self.symbol} - Using Operating Margin: {operating_margin_pct:.1f}% "
-                    f"(TTM Operating Income: ${ttm_operating_income/1e9:.2f}B)"
+                    f"(TTM Operating Income: ${ttm_operating_income / 1e9:.2f}B)"
                 )
 
                 return operating_margin_pct
             else:
                 logger.info(
                     f"{self.symbol} - Using FCF Margin: {fcf_margin_pct:.1f}% "
-                    f"(TTM FCF: ${ttm_fcf/1e9:.2f}B, TTM Revenue: ${ttm_revenue/1e9:.2f}B)"
+                    f"(TTM FCF: ${ttm_fcf / 1e9:.2f}B, TTM Revenue: ${ttm_revenue / 1e9:.2f}B)"
                 )
 
                 return fcf_margin_pct
@@ -2633,7 +2980,8 @@ class DCFValuation:
         """
         rule_140_config = self.dcf_config.get("rule_of_40", {})
         thresholds = rule_140_config.get(
-            "thresholds", {"excellent": 50.0, "good": 40.0, "acceptable": 30.0, "poor": 20.0}
+            "thresholds",
+            {"excellent": 50.0, "good": 40.0, "acceptable": 30.0, "poor": 20.0},
         )
 
         if score >= thresholds.get("excellent", 50.0):
@@ -2656,14 +3004,15 @@ class DCFValuation:
         """
         growth_caps = self.dcf_config.get("fcf_growth_caps_by_sector", {})
         default_caps = growth_caps.get(
-            "Default", {"min_growth": -0.10, "max_growth": 0.25, "rationale": "Balanced defaults"}
+            "Default",
+            {"min_growth": -0.10, "max_growth": 0.25, "rationale": "Balanced defaults"},
         )
 
         sector_caps = growth_caps.get(self.sector, default_caps)
 
         logger.info(
             f"{self.symbol} - Using {self.sector} growth caps: "
-            f"min={sector_caps['min_growth']*100:.0f}%, max={sector_caps['max_growth']*100:.0f}%"
+            f"min={sector_caps['min_growth'] * 100:.0f}%, max={sector_caps['max_growth'] * 100:.0f}%"
         )
 
         return sector_caps
@@ -2691,7 +3040,9 @@ class DCFValuation:
             rule_of_40_result = self._calculate_rule_of_40()
             rule_of_40_score = rule_of_40_result.get("score", 0)
             revenue_growth_pct = rule_of_40_result.get("revenue_growth_pct", 0)
-            fcf_margin_pct = rule_of_40_result.get("profit_margin_pct", 0)  # This is FCF margin
+            fcf_margin_pct = rule_of_40_result.get(
+                "profit_margin_pct", 0
+            )  # This is FCF margin
 
             # IMPROVED LOGIC: Reward FCF efficiency for mature companies
             if fcf_margin_pct > 25.0 and revenue_growth_pct > 0:
@@ -2701,20 +3052,24 @@ class DCFValuation:
             elif rule_of_40_score > 40:
                 # High growth company
                 adjustment = 0.010  # 3.0% base + 1.0% = 4.0% terminal growth
-                reason = f"High growth company (Rule of 40: {rule_of_40_score:.1f}% >40)"
+                reason = (
+                    f"High growth company (Rule of 40: {rule_of_40_score:.1f}% >40)"
+                )
             else:
                 # Declining or inefficient company
                 adjustment = 0.0  # 3.0% base (no adjustment)
-                reason = (
-                    f"Declining/inefficient (Rule of 40: {rule_of_40_score:.1f}% <40, FCF margin {fcf_margin_pct:.1f}%)"
-                )
+                reason = f"Declining/inefficient (Rule of 40: {rule_of_40_score:.1f}% <40, FCF margin {fcf_margin_pct:.1f}%)"
 
-            logger.info(f"{self.symbol} - Terminal growth adjustment: {adjustment*100:+.2f}% → {reason}")
+            logger.info(
+                f"{self.symbol} - Terminal growth adjustment: {adjustment * 100:+.2f}% → {reason}"
+            )
 
             return adjustment
 
         except Exception as e:
-            logger.warning(f"{self.symbol} - Error calculating terminal growth adjustment: {e}. Using 0.0%")
+            logger.warning(
+                f"{self.symbol} - Error calculating terminal growth adjustment: {e}. Using 0.0%"
+            )
             return 0.0
 
     def _get_valuation_assessment(self, upside_downside_pct: float) -> str:

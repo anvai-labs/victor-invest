@@ -4,12 +4,18 @@ Configuration Layer
 Application configuration with environment variable support.
 """
 
-from investigator.config.config import DatabaseConfig, ModelSpec, OllamaConfig, SECConfig, get_config
+from investigator.config.config import (
+    DatabaseConfig,
+    ModelSpec,
+    OllamaConfig,
+    SECConfig,
+    get_config,
+)
 from investigator.config.settings import (
     AppSettings,
     CacheControlSettings,
     DatabaseSettings,
-    InvestiGatorConfig,
+    InvestiGatorConfig,  # noqa: F401
     MonitoringSettings,
     OllamaSettings,
     SECSettings,

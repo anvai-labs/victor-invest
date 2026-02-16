@@ -15,13 +15,18 @@ from typing import Optional
 import yfinance as yf
 from sqlalchemy import create_engine, text
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
 def get_stock_engine():
     """Get SQLAlchemy engine for stock database."""
-    return create_engine("postgresql://stockuser:${STOCK_DB_PASSWORD}@${STOCK_DB_HOST}:5432/stock", pool_pre_ping=True)
+    return create_engine(
+        "postgresql://stockuser:${STOCK_DB_PASSWORD}@${STOCK_DB_HOST}:5432/stock",
+        pool_pre_ping=True,
+    )
 
 
 def fetch_exchange_for_ticker(ticker: str) -> Optional[str]:
@@ -90,9 +95,7 @@ def populate_exchanges(engine, dry_run=False, limit=None):
             END,
             ticker
         {}
-    """.format(
-            f"LIMIT {limit}" if limit else ""
-        )
+    """.format(f"LIMIT {limit}" if limit else "")
     )
 
     with engine.connect() as conn:
@@ -123,7 +126,9 @@ def populate_exchanges(engine, dry_run=False, limit=None):
 
     for i, (ticker, isstock, isetf) in enumerate(rows):
         if i > 0 and i % 100 == 0:
-            logger.info(f"Progress: {i}/{len(rows)} ({updated} updated, {failed} failed)")
+            logger.info(
+                f"Progress: {i}/{len(rows)} ({updated} updated, {failed} failed)"
+            )
 
         exchange = fetch_exchange_for_ticker(ticker)
 
@@ -171,7 +176,9 @@ def verify_results(engine):
     logger.info("")
 
     for exchange, count, stocks, etfs in rows[:15]:
-        logger.info(f"  {exchange:15s} - {count:6d} total ({stocks:6d} stocks, {etfs:6d} ETFs)")
+        logger.info(
+            f"  {exchange:15s} - {count:6d} total ({stocks:6d} stocks, {etfs:6d} ETFs)"
+        )
 
 
 def main():

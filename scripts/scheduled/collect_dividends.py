@@ -45,7 +45,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from scripts.scheduled.base import (
+from scripts.scheduled.base import (  # noqa: E402
     BaseCollector,
     CollectionMetrics,
     compute_record_hash,
@@ -53,7 +53,6 @@ from scripts.scheduled.base import (
     get_finnhub_rate_limiter,
     get_last_date,
     get_sp500_symbols,
-    retry_with_backoff,
 )
 
 # Finnhub API configuration
@@ -76,6 +75,7 @@ def _get_finnhub_api_key() -> str:
     # Priority 2: Try victor keyring
     try:
         from victor.config.api_keys import get_service_key
+
         key = get_service_key("finnhub")
         if key:
             return key
@@ -165,8 +165,7 @@ class DividendCollector(BaseCollector):
 
                     # Get last dividend date for incremental fetch
                     last_date = get_last_date(
-                        cursor, "dividend_history", "ex_dividend_date",
-                        "symbol", symbol
+                        cursor, "dividend_history", "ex_dividend_date", "symbol", symbol
                     )
 
                     if last_date:
@@ -175,11 +174,14 @@ class DividendCollector(BaseCollector):
                         start_date = default_start
 
                     # Fetch dividend history
-                    data = self._make_request("stock/dividend", {
-                        "symbol": symbol,
-                        "from": start_date.isoformat(),
-                        "to": end_date.isoformat(),
-                    })
+                    data = self._make_request(
+                        "stock/dividend",
+                        {
+                            "symbol": symbol,
+                            "from": start_date.isoformat(),
+                            "to": end_date.isoformat(),
+                        },
+                    )
 
                     if not data:
                         continue
@@ -192,10 +194,13 @@ class DividendCollector(BaseCollector):
                         record_hash = compute_record_hash(div)
 
                         # Check existing
-                        cursor.execute("""
+                        cursor.execute(
+                            """
                             SELECT source_hash FROM dividend_history
                             WHERE symbol = %s AND ex_dividend_date = %s
-                        """, (symbol, ex_date))
+                        """,
+                            (symbol, ex_date),
+                        )
                         existing = cursor.fetchone()
 
                         if existing:
@@ -203,49 +208,56 @@ class DividendCollector(BaseCollector):
                                 self.metrics.records_skipped += 1
                                 continue
                             # Update
-                            cursor.execute("""
+                            cursor.execute(
+                                """
                                 UPDATE dividend_history SET
                                     payment_date = %s, record_date = %s,
                                     declaration_date = %s, dividend_amount = %s,
                                     adjusted_amount = %s, source_hash = %s,
                                     source_fetch_timestamp = NOW(), updated_at = NOW()
                                 WHERE symbol = %s AND ex_dividend_date = %s
-                            """, (
-                                div.get("payDate"),
-                                div.get("recordDate"),
-                                div.get("declarationDate"),
-                                div.get("amount"),
-                                div.get("adjustedAmount"),
-                                record_hash,
-                                symbol,
-                                ex_date,
-                            ))
+                            """,
+                                (
+                                    div.get("payDate"),
+                                    div.get("recordDate"),
+                                    div.get("declarationDate"),
+                                    div.get("amount"),
+                                    div.get("adjustedAmount"),
+                                    record_hash,
+                                    symbol,
+                                    ex_date,
+                                ),
+                            )
                             self.metrics.records_updated += 1
                         else:
                             # Insert
-                            cursor.execute("""
+                            cursor.execute(
+                                """
                                 INSERT INTO dividend_history
                                     (symbol, ex_dividend_date, payment_date, record_date,
                                      declaration_date, dividend_amount, adjusted_amount,
                                      source_hash, source_fetch_timestamp)
                                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
-                            """, (
-                                symbol,
-                                ex_date,
-                                div.get("payDate"),
-                                div.get("recordDate"),
-                                div.get("declarationDate"),
-                                div.get("amount"),
-                                div.get("adjustedAmount"),
-                                record_hash,
-                            ))
+                            """,
+                                (
+                                    symbol,
+                                    ex_date,
+                                    div.get("payDate"),
+                                    div.get("recordDate"),
+                                    div.get("declarationDate"),
+                                    div.get("amount"),
+                                    div.get("adjustedAmount"),
+                                    record_hash,
+                                ),
+                            )
                             self.metrics.records_inserted += 1
 
                     # Update shareholder yield summary
                     self._update_shareholder_yield(cursor, symbol)
 
                     # Update watermark
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         INSERT INTO dividend_watermarks (symbol, last_ex_date)
                         VALUES (%s, %s)
                         ON CONFLICT (symbol) DO UPDATE SET
@@ -254,7 +266,9 @@ class DividendCollector(BaseCollector):
                                 EXCLUDED.last_ex_date
                             ),
                             last_fetch_timestamp = NOW()
-                    """, (symbol, end_date))
+                    """,
+                        (symbol, end_date),
+                    )
 
                     # Commit periodically
                     if self.metrics.records_processed % 10 == 0:
@@ -284,17 +298,21 @@ class DividendCollector(BaseCollector):
         """Calculate and update shareholder yield summary."""
         try:
             # Calculate TTM dividend
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT SUM(dividend_amount) as ttm_div
                 FROM dividend_history
                 WHERE symbol = %s
                   AND ex_dividend_date >= CURRENT_DATE - INTERVAL '1 year'
-            """, (symbol,))
+            """,
+                (symbol,),
+            )
             row = cursor.fetchone()
             ttm_div = row[0] if row and row[0] else 0
 
             # Count consecutive years with dividends
-            cursor.execute("""
+            cursor.execute(
+                """
                 WITH yearly_divs AS (
                     SELECT EXTRACT(YEAR FROM ex_dividend_date) as year,
                            SUM(dividend_amount) as total
@@ -311,12 +329,15 @@ class DividendCollector(BaseCollector):
                 ) sub
                 WHERE grp = (SELECT MIN(year - ROW_NUMBER() OVER (ORDER BY year DESC))
                              FROM yearly_divs LIMIT 1)
-            """, (symbol,))
+            """,
+                (symbol,),
+            )
             streak_row = cursor.fetchone()
             streak = streak_row[0] if streak_row else 0
 
             # Calculate dividend growth (1Y)
-            cursor.execute("""
+            cursor.execute(
+                """
                 WITH current_year AS (
                     SELECT SUM(dividend_amount) as total
                     FROM dividend_history
@@ -332,19 +353,24 @@ class DividendCollector(BaseCollector):
                 SELECT
                     CASE WHEN p.total > 0 THEN (c.total - p.total) / p.total ELSE NULL END
                 FROM current_year c, prior_year p
-            """, (symbol, symbol))
+            """,
+                (symbol, symbol),
+            )
             growth_row = cursor.fetchone()
             growth_1y = growth_row[0] if growth_row else None
 
-            record_hash = compute_record_hash({
-                "symbol": symbol,
-                "ttm_div": str(ttm_div),
-                "streak": streak,
-                "growth_1y": str(growth_1y),
-            })
+            record_hash = compute_record_hash(
+                {
+                    "symbol": symbol,
+                    "ttm_div": str(ttm_div),
+                    "streak": streak,
+                    "growth_1y": str(growth_1y),
+                }
+            )
 
             # Upsert
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO shareholder_yield
                     (symbol, calculation_date, dividend_yield_ttm,
                      dividend_growth_1y, consecutive_dividend_years,
@@ -359,33 +385,28 @@ class DividendCollector(BaseCollector):
                     source_hash = EXCLUDED.source_hash,
                     source_fetch_timestamp = NOW(),
                     updated_at = NOW()
-            """, (
-                symbol,
-                growth_1y,
-                streak,
-                streak >= 25,  # Dividend Aristocrat
-                streak >= 50,  # Dividend King
-                record_hash,
-            ))
+            """,
+                (
+                    symbol,
+                    growth_1y,
+                    streak,
+                    streak >= 25,  # Dividend Aristocrat
+                    streak >= 50,  # Dividend King
+                    record_hash,
+                ),
+            )
 
         except Exception as e:
             self.logger.debug(f"Could not update shareholder yield for {symbol}: {e}")
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Collect dividend history data"
+    parser = argparse.ArgumentParser(description="Collect dividend history data")
+    parser.add_argument(
+        "--symbols", type=str, help="Comma-separated list of symbols (default: S&P 500)"
     )
     parser.add_argument(
-        "--symbols",
-        type=str,
-        help="Comma-separated list of symbols (default: S&P 500)"
-    )
-    parser.add_argument(
-        "--years",
-        type=int,
-        default=5,
-        help="Number of years to fetch (default: 5)"
+        "--years", type=int, default=5, help="Number of years to fetch (default: 5)"
     )
     args = parser.parse_args()
 

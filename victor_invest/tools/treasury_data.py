@@ -37,7 +37,6 @@ Example:
     result = await tool.execute(action="recession")
 """
 
-import asyncio
 import logging
 from typing import Any, Dict, Optional
 
@@ -92,10 +91,10 @@ and investment recommendations based on current market regime.
             config: Optional investigator config object.
         """
         super().__init__(config)
-        self._treasury_client = None
-        self._nyfed_client = None
-        self._yield_analyzer = None
-        self._recession_indicator = None
+        self._treasury_client: Optional[Any] = None
+        self._nyfed_client: Optional[Any] = None
+        self._yield_analyzer: Optional[Any] = None
+        self._recession_indicator: Optional[Any] = None
 
     async def initialize(self) -> None:
         """Initialize treasury and market regime services."""
@@ -105,7 +104,9 @@ and investment recommendations based on current market regime.
                 get_yield_curve_analyzer,
             )
             from investigator.infrastructure.external.nyfed import get_nyfed_client
-            from investigator.infrastructure.external.treasury import get_treasury_client
+            from investigator.infrastructure.external.treasury import (
+                get_treasury_client,
+            )
 
             self._treasury_client = get_treasury_client()
             self._nyfed_client = get_nyfed_client()
@@ -120,7 +121,12 @@ and investment recommendations based on current market regime.
             raise
 
     async def execute(
-        self, _exec_ctx: Dict[str, Any], action: str = "curve", days: int = 365, maturity: str = "10y", **kwargs
+        self,
+        _exec_ctx: Optional[Dict[str, Any]] = None,
+        action: str = "curve",
+        days: int = 365,
+        maturity: str = "10y",
+        **kwargs,
     ) -> ToolResult:
         """Execute treasury data query.
 
@@ -157,23 +163,28 @@ and investment recommendations based on current market regime.
             elif action == "summary":
                 return await self._get_summary()
             else:
-                return ToolResult.error_result(
-                    f"Unknown action: {action}. Valid actions: " "curve, spread, regime, recession, history, summary"
+                return ToolResult.create_failure(
+                    f"Unknown action: {action}. Valid actions: "
+                    "curve, spread, regime, recession, history, summary"
                 )
 
         except Exception as e:
             logger.error(f"TreasuryDataTool execute error: {e}")
-            return ToolResult.error_result(f"Treasury data query failed: {str(e)}", metadata={"action": action})
+            return ToolResult.create_failure(
+                f"Treasury data query failed: {str(e)}", metadata={"action": action}
+            )
 
     async def _get_yield_curve(self) -> ToolResult:
         """Get current yield curve."""
+        if self._treasury_client is None:
+            return ToolResult.create_failure("Treasury client not available")
         curve = await self._treasury_client.get_yield_curve()
 
         if curve is None:
-            return ToolResult.error_result("Could not retrieve yield curve data")
+            return ToolResult.create_failure("Could not retrieve yield curve data")
 
-        return ToolResult.success_result(
-            data=curve.to_dict(),
+        return ToolResult.create_success(
+            output=curve.to_dict(),
             metadata={
                 "source": "treasury.gov",
                 "curve_shape": curve.curve_shape,
@@ -182,16 +193,20 @@ and investment recommendations based on current market regime.
 
     async def _get_spread_analysis(self) -> ToolResult:
         """Get yield spread analysis."""
+        if self._treasury_client is None:
+            return ToolResult.create_failure("Treasury client not available")
+        if self._yield_analyzer is None:
+            return ToolResult.create_failure("Yield analyzer not available")
         curve = await self._treasury_client.get_yield_curve()
 
         if curve is None:
-            return ToolResult.error_result("Could not retrieve yield curve data")
+            return ToolResult.create_failure("Could not retrieve yield curve data")
 
         # Get yield curve analysis for shape
         analysis = await self._yield_analyzer.analyze()
 
-        return ToolResult.success_result(
-            data={
+        return ToolResult.create_success(
+            output={
                 "date": str(curve.date),
                 "spreads": {
                     "10y_2y_bps": curve.spread_10y_2y,
@@ -203,7 +218,9 @@ and investment recommendations based on current market regime.
                     "days_inverted": analysis.days_inverted if analysis else 0,
                 },
                 "curve_shape": curve.curve_shape,
-                "investment_signal": analysis.investment_signal.value if analysis else "unknown",
+                "investment_signal": analysis.investment_signal.value
+                if analysis
+                else "unknown",
             },
             metadata={
                 "historical_avg_spread_bps": 90,
@@ -212,37 +229,45 @@ and investment recommendations based on current market regime.
 
     async def _get_market_regime(self) -> ToolResult:
         """Get market regime from yield curve analysis."""
+        if self._yield_analyzer is None:
+            return ToolResult.create_failure("Yield analyzer not available")
         analysis = await self._yield_analyzer.analyze()
 
-        return ToolResult.success_result(
-            data=analysis.to_dict(),
-            warnings=analysis.warnings,
+        return ToolResult.create_success(
+            output=analysis.to_dict(),
             metadata={
                 "source": "yield_curve_analyzer",
                 "curve_shape": analysis.shape.value,
+                "warnings": analysis.warnings,
             },
         )
 
     async def _get_recession_assessment(self) -> ToolResult:
         """Get recession probability and economic phase."""
+        if self._recession_indicator is None:
+            return ToolResult.create_failure("Recession indicator not available")
         assessment = await self._recession_indicator.assess()
 
-        return ToolResult.success_result(
-            data=assessment.to_dict(),
-            warnings=assessment.warnings,
+        return ToolResult.create_success(
+            output=assessment.to_dict(),
             metadata={
                 "economic_phase": assessment.phase.value,
                 "investment_posture": assessment.investment_posture.value,
                 "confidence": assessment.confidence,
+                "warnings": assessment.warnings,
             },
         )
 
     async def _get_history(self, days: int, maturity: str) -> ToolResult:
         """Get historical yield data."""
+        if self._treasury_client is None:
+            return ToolResult.create_failure("Treasury client not available")
         history = await self._treasury_client.get_yield_history(days, maturity)
 
         if not history:
-            return ToolResult.error_result(f"Could not retrieve historical data for {maturity}")
+            return ToolResult.create_failure(
+                f"Could not retrieve historical data for {maturity}"
+            )
 
         # Calculate summary statistics
         yields = [h.get("yield") for h in history if h.get("yield") is not None]
@@ -254,8 +279,8 @@ and investment recommendations based on current market regime.
         else:
             avg_yield = min_yield = max_yield = current_yield = None
 
-        return ToolResult.success_result(
-            data={
+        return ToolResult.create_success(
+            output={
                 "maturity": maturity,
                 "period_days": days,
                 "data_points": len(history),
@@ -274,10 +299,12 @@ and investment recommendations based on current market regime.
 
     async def _get_summary(self) -> ToolResult:
         """Get comprehensive market regime summary."""
+        if self._recession_indicator is None:
+            return ToolResult.create_failure("Recession indicator not available")
         summary = await self._recession_indicator.get_market_regime_summary()
 
-        return ToolResult.success_result(
-            data=summary,
+        return ToolResult.create_success(
+            output=summary,
             metadata={
                 "source": "market_regime_services",
                 "includes": ["yield_curve", "recession", "sector_recommendations"],
@@ -291,11 +318,22 @@ and investment recommendations based on current market regime.
             "properties": {
                 "action": {
                     "type": "string",
-                    "enum": ["curve", "spread", "regime", "recession", "history", "summary"],
+                    "enum": [
+                        "curve",
+                        "spread",
+                        "regime",
+                        "recession",
+                        "history",
+                        "summary",
+                    ],
                     "description": "Type of treasury data query",
                     "default": "curve",
                 },
-                "days": {"type": "integer", "description": "Number of days for historical data", "default": 365},
+                "days": {
+                    "type": "integer",
+                    "description": "Number of days for historical data",
+                    "default": 365,
+                },
                 "maturity": {
                     "type": "string",
                     "description": "Maturity for historical data (e.g., '10y', '2y')",
