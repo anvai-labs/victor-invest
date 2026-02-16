@@ -5,15 +5,25 @@ Verifies that the --config flag is properly honored and users can
 point the CLI at alternate configuration files.
 """
 
-
 import pytest
 from click.testing import CliRunner
 
 from investigator.config import get_config
 
 
-def test_get_config_with_custom_path(tmp_path):
+def test_get_config_with_custom_path(tmp_path, monkeypatch):
     """Test that get_config() honors custom config path"""
+    # Clear env vars that would override our custom config
+    for var in (
+        "DB_HOST",
+        "DB_PORT",
+        "DB_NAME",
+        "DB_USER",
+        "DB_PASSWORD",
+        "OLLAMA_URL",
+    ):
+        monkeypatch.delenv(var, raising=False)
+
     # Create custom config file
     custom_config = tmp_path / "custom.yaml"
     custom_config.write_text(
@@ -98,8 +108,19 @@ def test_get_config_default_without_path():
     config_module._config_instance = None
 
 
-def test_get_config_singleton_reload_with_new_path(tmp_path):
+def test_get_config_singleton_reload_with_new_path(tmp_path, monkeypatch):
     """Test that providing new path reloads singleton"""
+    # Clear env vars that would override our custom config
+    for var in (
+        "DB_HOST",
+        "DB_PORT",
+        "DB_NAME",
+        "DB_USER",
+        "DB_PASSWORD",
+        "OLLAMA_URL",
+    ):
+        monkeypatch.delenv(var, raising=False)
+
     # Create two different config files
     config1 = tmp_path / "config1.yaml"
     config1.write_text(
