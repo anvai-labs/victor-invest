@@ -32,6 +32,16 @@ export function searchSymbols(
   return fetchJSON(`${BASE}/search?query=${encodeURIComponent(query)}&limit=${limit}`);
 }
 
+const MODEL_DISPLAY_NAMES: Record<string, string> = {
+  dcf_professional: "DCF",
+  damodaran_dcf: "Damodaran DCF",
+  pe: "P/E",
+  ps: "P/S",
+  pb: "P/B",
+  ev_ebitda: "EV/EBITDA",
+  ggm: "GGM",
+};
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function transformModels(raw: any): ValuationModel[] {
   if (!raw) return [];
@@ -40,7 +50,7 @@ function transformModels(raw: any): ValuationModel[] {
     return Object.entries(raw)
       .filter(([, v]: [string, any]) => v && v.applicable)
       .map(([name, v]: [string, any]) => ({
-        name: name.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()),
+        name: MODEL_DISPLAY_NAMES[name] ?? name.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()),
         fair_value: v.fair_value_per_share ?? null,
         weight: v.weight ?? 0,
         confidence: v.confidence_score != null
