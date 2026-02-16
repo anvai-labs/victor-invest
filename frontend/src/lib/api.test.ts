@@ -151,6 +151,11 @@ describe("getChart", () => {
           macd_hist: [0.4, 0.5, 0.2],
           rsi_14: [55, 58, 55.3],
           obv: [50000000, 95000000, 40000000],
+          sma_20: [178.5, 179.0, 179.5],
+          sma_50: [null, null, 172.8],
+          bb_upper: [190, 191, 191.5],
+          bb_middle: [178.5, 179, 179.5],
+          bb_lower: [167, 167, 167.5],
         },
       },
     }));
@@ -163,6 +168,12 @@ describe("getChart", () => {
     expect(result.indicators.macd[0]).toEqual({ date: "2025-01-13", macd: 1.2, signal: 0.8, histogram: 0.4 });
     expect(result.indicators.rsi).toHaveLength(3);
     expect(result.indicators.rsi[0]).toEqual({ date: "2025-01-13", rsi: 55 });
+    // Overlays
+    expect(result.overlays).toHaveLength(3);
+    expect(result.overlays[0]!.sma_20).toBe(178.5);
+    expect(result.overlays[0]!.bb_upper).toBe(190);
+    expect(result.overlays[1]!.sma_50).toBeNull();
+    expect(result.overlays[2]!.sma_50).toBe(172.8);
   });
 
   it("passes through already-transformed chart data", async () => {
@@ -171,6 +182,7 @@ describe("getChart", () => {
       candles: [{ date: "2025-01-13", open: 180, high: 183, low: 179, close: 182 }],
       volume: [{ date: "2025-01-13", volume: 50000000, obv: 50000000 }],
       indicators: { macd: [], rsi: [] },
+      overlays: [],
     };
     mockFetch.mockResolvedValue(jsonResponse(rowData));
     const result = await getChart("AAPL");

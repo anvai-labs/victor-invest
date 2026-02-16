@@ -110,6 +110,7 @@ export interface ChartPayload {
   candles: Candle[];
   volume: VolumeBar[];
   indicators: ChartIndicators;
+  overlays: PriceOverlay[];
 }
 
 export interface Candle {
@@ -118,6 +119,18 @@ export interface Candle {
   high: number;
   low: number;
   close: number;
+}
+
+export interface PriceOverlay {
+  date: string;
+  sma_20: number | null;
+  sma_50: number | null;
+  sma_200: number | null;
+  ema_20: number | null;
+  ema_50: number | null;
+  bb_upper: number | null;
+  bb_middle: number | null;
+  bb_lower: number | null;
 }
 
 export interface VolumeBar {

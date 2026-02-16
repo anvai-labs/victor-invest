@@ -255,12 +255,25 @@ function transformChartResponse(raw: any): ChartPayload {
     }))
     .filter((r: { rsi: number | null }) => r.rsi != null);
 
+  const overlays = dates.map((date: string, i: number) => ({
+    date,
+    sma_20: indicators.sma_20?.[i] ?? null,
+    sma_50: indicators.sma_50?.[i] ?? null,
+    sma_200: indicators.sma_200?.[i] ?? null,
+    ema_20: indicators.ema_20?.[i] ?? null,
+    ema_50: indicators.ema_50?.[i] ?? null,
+    bb_upper: indicators.bb_upper?.[i] ?? null,
+    bb_middle: indicators.bb_middle?.[i] ?? null,
+    bb_lower: indicators.bb_lower?.[i] ?? null,
+  }));
+
   return {
     symbol: chart.symbol ?? raw.symbol ?? "",
     days: chart.days ?? dates.length,
     candles,
     volume,
     indicators: { macd, rsi },
+    overlays,
   };
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
