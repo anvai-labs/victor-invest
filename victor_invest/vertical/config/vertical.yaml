@@ -1,7 +1,7 @@
 metadata:
   name: investment
   description: Institutional-grade investment research and equity analysis
-  version: "1.0.0"
+  version: "0.5.0"
   tags:
     - investment
     - equity_research

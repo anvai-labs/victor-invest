@@ -46,7 +46,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 import aiohttp
-import requests
+import requests  # type: ignore[import-untyped]
 
 try:
     import certifi
@@ -339,7 +339,8 @@ class InsiderTransactionFetcher:
                 timeout=30,
             )
             response.raise_for_status()
-            return response.text
+            result: str | None = response.text
+            return result
         except Exception as e:
             logger.error(f"Error fetching {url}: {e}")
             return None
@@ -557,7 +558,9 @@ class InsiderTransactionFetcher:
             logger.debug(f"Error parsing transaction: {e}")
             return None
 
-    def _get_xml_text(self, elem: ET.Element, path: str, default: str = "") -> str:
+    def _get_xml_text(
+        self, elem: Optional[ET.Element], path: str, default: str = ""
+    ) -> str:
         """Safely get text from XML element."""
         if elem is None:
             return default

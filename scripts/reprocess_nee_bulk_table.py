@@ -15,21 +15,19 @@ Expected Results:
 - dividends_paid: ~$0.9B-$3.4B (already present)
 """
 
-import sys
-import os
 import logging
+import os
+import sys
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from investigator.infrastructure.sec.data_processor import SECDataProcessor
-from investigator.infrastructure.database.db import get_db_connection
 from investigator.config import get_config
+from investigator.infrastructure.database.db import get_db_connection
+from investigator.infrastructure.sec.data_processor import SECDataProcessor
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -64,9 +62,7 @@ def verify_nee_bulk_table_before():
     logger.info(f"\nFound {len(rows)} NEE quarters (2024+):")
     for row in rows:
         fy, fq, rev, ocf, capex, div, fcf = row
-        logger.info(
-            f"  {fy}-Q{fq}: Revenue={rev}, CapEx={capex}, OCF={ocf}, Div={div}, FCF={fcf}"
-        )
+        logger.info(f"  {fy}-Q{fq}: Revenue={rev}, CapEx={capex}, OCF={ocf}, Div={div}, FCF={fcf}")
 
     # Check for NULL values
     null_count = sum(1 for row in rows if row[2] is None or row[4] is None)
@@ -142,8 +138,7 @@ def verify_nee_bulk_table_after():
     for row in rows:
         fy, fq, rev, ocf, capex, div, fcf = row
         logger.info(
-            f"  {fy}-Q{fq}: Revenue={rev:,.0f}, CapEx={capex:,.0f}, "
-            f"OCF={ocf:,.0f}, Div={div:,.0f}, FCF={fcf:,.0f}"
+            f"  {fy}-Q{fq}: Revenue={rev:,.0f}, CapEx={capex:,.0f}, " f"OCF={ocf:,.0f}, Div={div:,.0f}, FCF={fcf:,.0f}"
         )
 
     # Check for NULL values
@@ -181,9 +176,7 @@ def main():
         logger.info("✅ SUCCESS: NEE bulk table re-processing completed")
         logger.info("=" * 80)
         logger.info("Next steps:")
-        logger.info(
-            "1. Run NEE analysis: python3 cli_orchestrator.py analyze NEE -m standard"
-        )
+        logger.info("1. Run NEE analysis: python3 cli_orchestrator.py analyze NEE -m standard")
         logger.info("2. Verify DCF/GGM valuations are non-zero")
         logger.info("3. Check results/NEE_*.json for fair value estimates")
     else:
@@ -191,9 +184,7 @@ def main():
         logger.error("❌ FAILURE: NEE still has NULL values after re-processing")
         logger.error("=" * 80)
         logger.error("Troubleshooting:")
-        logger.error(
-            "1. Check src/investigator/infrastructure/sec/data_processor.py for canonical key mappings"
-        )
+        logger.error("1. Check src/investigator/infrastructure/sec/data_processor.py for canonical key mappings")
         logger.error("2. Verify NEE uses expected XBRL tags in SEC API response")
         logger.error("3. Check logs for processing messages")
         sys.exit(1)

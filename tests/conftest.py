@@ -83,9 +83,7 @@ def cache_manager(cache_root):
     # Replace handlers with file-based test handlers rooted in tmp dir
     handler_map = {}
     for cache_type in CacheType:
-        handler = FileCacheStorageHandler(
-            cache_type=cache_type, base_path=cache_root / cache_type.value, priority=10
-        )
+        handler = FileCacheStorageHandler(cache_type=cache_type, base_path=cache_root / cache_type.value, priority=10)
         handler_map[cache_type] = [handler]
     manager.handlers = handler_map
     return manager

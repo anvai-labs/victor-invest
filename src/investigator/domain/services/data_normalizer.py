@@ -11,7 +11,7 @@ Date: 2025-11-02
 
 import logging
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -137,9 +137,7 @@ class DataNormalizer:
     ]
 
     @classmethod
-    def normalize_field_names(
-        cls, data: Dict[str, Any], to_camel_case: bool = True
-    ) -> Dict[str, Any]:
+    def normalize_field_names(cls, data: Dict[str, Any], to_camel_case: bool = True) -> Dict[str, Any]:
         """
         Normalize field names between snake_case and camelCase.
 
@@ -240,9 +238,7 @@ class DataNormalizer:
             return None
 
     @classmethod
-    def round_financial_data(
-        cls, data: Dict[str, Any], config: Optional[Dict[str, int]] = None
-    ) -> Dict[str, Any]:
+    def round_financial_data(cls, data: Dict[str, Any], config: Optional[Dict[str, int]] = None) -> Dict[str, Any]:
         """
         Apply judicious rounding to all numerical values in financial data.
 
@@ -269,13 +265,13 @@ class DataNormalizer:
                 decimal_places = 2  # default
 
                 key_lower = key.lower()
-                if any(
-                    pattern in key_lower for pattern in ["price", "eps", "book_value"]
-                ):
+                # Growth/rate-style metrics must retain fractional precision even when they
+                # include tokens like "revenue" (e.g., revenue_growth_guidance=0.04).
+                if any(pattern in key_lower for pattern in ["growth", "cagr", "rate", "pct", "percent"]):
+                    decimal_places = 4
+                elif any(pattern in key_lower for pattern in ["price", "eps", "book_value"]):
                     decimal_places = 2
-                elif any(
-                    pattern in key_lower for pattern in ["margin", "yield", "turnover"]
-                ):
+                elif any(pattern in key_lower for pattern in ["margin", "yield", "turnover"]):
                     decimal_places = 4
                 elif any(pattern in key_lower for pattern in ["ratio", "roe", "roa"]):
                     decimal_places = 2
@@ -300,9 +296,7 @@ class DataNormalizer:
         return rounded
 
     @classmethod
-    def assess_completeness(
-        cls, data: Dict[str, Any], include_debt_metrics: bool = True
-    ) -> Dict[str, Any]:
+    def assess_completeness(cls, data: Dict[str, Any], include_debt_metrics: bool = True) -> Dict[str, Any]:
         """
         Assess data completeness with enhanced debt metrics tracking.
 
@@ -345,19 +339,13 @@ class DataNormalizer:
         present_core = 0
 
         for metric in cls.CORE_METRICS:
-            value = (
-                get_value_flexible(data, metric)
-                if metric.islower() or "_" in metric
-                else data.get(metric)
-            )
+            value = get_value_flexible(data, metric) if metric.islower() or "_" in metric else data.get(metric)
             if value is not None and value != 0:
                 present_core += 1
             else:
                 missing_core.append(metric)
 
-        core_completeness = (
-            (present_core / len(cls.CORE_METRICS)) * 100 if cls.CORE_METRICS else 100
-        )
+        core_completeness = (present_core / len(cls.CORE_METRICS)) * 100 if cls.CORE_METRICS else 100
 
         # Check debt metrics if requested
         debt_completeness = 100  # Default
@@ -372,11 +360,7 @@ class DataNormalizer:
                 else:
                     missing_debt.append(metric)
 
-            debt_completeness = (
-                (present_debt / len(cls.DEBT_METRICS)) * 100
-                if cls.DEBT_METRICS
-                else 100
-            )
+            debt_completeness = (present_debt / len(cls.DEBT_METRICS)) * 100 if cls.DEBT_METRICS else 100
 
         # Calculate overall score (weighted: 70% core, 30% debt)
         overall_score = (core_completeness * 0.7) + (debt_completeness * 0.3)
@@ -408,6 +392,7 @@ class DataNormalizer:
         ratios: Dict[str, Any],
         symbol: str,
         logger_instance: Optional[logging.Logger] = None,
+        skip_ratios: Optional[List[str]] = None,
     ) -> None:
         """
         Validate critical ratios and log explicit warnings when they're zeroed due to missing data.
@@ -419,7 +404,11 @@ class DataNormalizer:
         """
         log = logger_instance or logger
 
+        skip_set = {str(r).strip().lower() for r in (skip_ratios or [])}
+
         for ratio_name in cls.CRITICAL_RATIOS:
+            if ratio_name.lower() in skip_set:
+                continue
             value = ratios.get(ratio_name)
 
             # Check if ratio is zero or None (indicating missing upstream data)
@@ -434,9 +423,7 @@ class DataNormalizer:
                 )
 
     @classmethod
-    def normalize_and_round(
-        cls, data: Dict[str, Any], to_camel_case: bool = True
-    ) -> Dict[str, Any]:
+    def normalize_and_round(cls, data: Dict[str, Any], to_camel_case: bool = True) -> Dict[str, Any]:
         """
         Convenience method: normalize field names AND apply judicious rounding.
 

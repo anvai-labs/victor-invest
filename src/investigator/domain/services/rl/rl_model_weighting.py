@@ -152,9 +152,7 @@ class RLModelWeightingService:
             if self.policy is None:
                 if self.fallback_service:
                     # Use hybrid policy
-                    adjustment_policy = ContextualBanditPolicy(
-                        normalizer=self.normalizer
-                    )
+                    adjustment_policy = ContextualBanditPolicy(normalizer=self.normalizer)
                     self.policy = HybridPolicy(
                         base_weighting_service=self.fallback_service,
                         adjustment_policy=adjustment_policy,
@@ -210,20 +208,14 @@ class RLModelWeightingService:
         use_dual = self.dual_policy is not None
         use_single = self.policy is not None and self.policy.is_ready()
         use_rl = (
-            self.rl_enabled
-            and (use_dual or use_single)
-            and (not self.ab_test_enabled or ab_group == ABTestGroup.RL)
+            self.rl_enabled and (use_dual or use_single) and (not self.ab_test_enabled or ab_group == ABTestGroup.RL)
         )
 
         if use_rl:
-            weights, tier, audit = self._predict_with_rl(
-                symbol, financials, ratios, data_quality, market_context
-            )
+            weights, tier, audit = self._predict_with_rl(symbol, financials, ratios, data_quality, market_context)
             self._rl_predictions += 1
         else:
-            weights, tier, audit = self._predict_with_fallback(
-                symbol, financials, ratios, data_quality, market_context
-            )
+            weights, tier, audit = self._predict_with_fallback(symbol, financials, ratios, data_quality, market_context)
             self._fallback_predictions += 1
 
         # Record prediction for outcome tracking
@@ -292,9 +284,7 @@ class RLModelWeightingService:
 
         except Exception as e:
             logger.warning(f"RL prediction failed for {symbol}, using fallback: {e}")
-            return self._predict_with_fallback(
-                symbol, financials, ratios, data_quality, market_context
-            )
+            return self._predict_with_fallback(symbol, financials, ratios, data_quality, market_context)
 
     def _predict_with_fallback(
         self,
@@ -389,9 +379,7 @@ class RLModelWeightingService:
             )
 
             # Get current price from ratios or financials
-            current_price = (
-                ratios.get("current_price") or financials.get("current_price") or 0.0
-            )
+            current_price = ratios.get("current_price") or financials.get("current_price") or 0.0
 
             # Placeholder for blended fair value (will be updated by caller)
             blended_fair_value = 0.0

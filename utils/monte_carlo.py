@@ -6,10 +6,11 @@ Foundation for portfolio risk analysis and scenario planning.
 """
 
 import logging
-import numpy as np
-from typing import Dict, Optional
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Dict, Optional
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -98,10 +99,7 @@ class MonteCarloSimulator:
         Returns:
             MonteCarloResult with statistics and distribution
         """
-        logger.info(
-            f"Running GBM simulation for {symbol}: "
-            f"{simulations} paths, {time_horizon_days} days"
-        )
+        logger.info(f"Running GBM simulation for {symbol}: " f"{simulations} paths, {time_horizon_days} days")
 
         # Convert annual parameters to daily
         volatility_daily = volatility_annual / np.sqrt(252)
@@ -184,9 +182,7 @@ class MonteCarloSimulator:
         drift_annual = drift_daily * 252
 
         # Randomly sample returns with replacement (bootstrap)
-        sampled_returns = np.random.choice(
-            historical_returns, size=(simulations, time_horizon_days), replace=True
-        )
+        sampled_returns = np.random.choice(historical_returns, size=(simulations, time_horizon_days), replace=True)
 
         # Calculate cumulative returns
         cumulative_returns = np.sum(sampled_returns, axis=1)
@@ -261,19 +257,13 @@ class MonteCarloSimulator:
         # Conditional VaR (CVaR, Expected Shortfall)
         # Average loss in worst 5% of cases
         worst_5_percent = sorted_prices[: int(0.05 * simulations)]
-        cvar_95 = (
-            float(current_price - np.mean(worst_5_percent))
-            if len(worst_5_percent) > 0
-            else var_95
-        )
+        cvar_95 = float(current_price - np.mean(worst_5_percent)) if len(worst_5_percent) > 0 else var_95
 
         # Maximum drawdown (simplified - worst outcome)
         max_drawdown = float((percentile_5 - current_price) / current_price * 100)
 
         # Probabilities
-        probability_above_current = float(
-            np.sum(final_prices > current_price) / simulations
-        )
+        probability_above_current = float(np.sum(final_prices > current_price) / simulations)
         probability_profit = probability_above_current  # Same for now
 
         return MonteCarloResult(
@@ -330,53 +320,41 @@ class MonteCarloSimulator:
                 "scenario": "Black Swan Event",
                 "probability": 5.0,
                 "price_target": result.percentile_5,
-                "return_pct": (result.percentile_5 - current_price)
-                / current_price
-                * 100,
+                "return_pct": (result.percentile_5 - current_price) / current_price * 100,
                 "description": "Worst 5% of outcomes",
             },
             "bear": {
                 "scenario": "Bear Case",
                 "probability": 25.0,
                 "price_target": result.percentile_25,
-                "return_pct": (result.percentile_25 - current_price)
-                / current_price
-                * 100,
+                "return_pct": (result.percentile_25 - current_price) / current_price * 100,
                 "description": "Below-average performance",
             },
             "base": {
                 "scenario": "Base Case",
                 "probability": 50.0,
                 "price_target": result.percentile_50,
-                "return_pct": (result.percentile_50 - current_price)
-                / current_price
-                * 100,
+                "return_pct": (result.percentile_50 - current_price) / current_price * 100,
                 "description": "Most likely outcome",
             },
             "bull": {
                 "scenario": "Bull Case",
                 "probability": 75.0,
                 "price_target": result.percentile_75,
-                "return_pct": (result.percentile_75 - current_price)
-                / current_price
-                * 100,
+                "return_pct": (result.percentile_75 - current_price) / current_price * 100,
                 "description": "Above-average performance",
             },
             "optimistic": {
                 "scenario": "Optimistic Case",
                 "probability": 95.0,
                 "price_target": result.percentile_95,
-                "return_pct": (result.percentile_95 - current_price)
-                / current_price
-                * 100,
+                "return_pct": (result.percentile_95 - current_price) / current_price * 100,
                 "description": "Best 5% of outcomes",
             },
         }
 
 
-def calculate_volatility_from_returns(
-    returns: np.ndarray, annual: bool = True
-) -> float:
+def calculate_volatility_from_returns(returns: np.ndarray, annual: bool = True) -> float:
     """
     Calculate volatility (standard deviation) from returns
 

@@ -26,9 +26,7 @@ def test_russell1000_integration():
     classifier = IndustryClassifier()
 
     # Check that Russell 1000 overrides were loaded
-    print(
-        f"\n📊 Russell 1000 overrides loaded: {len(classifier.russell1000_overrides)} tickers"
-    )
+    print(f"\n📊 Russell 1000 overrides loaded: {len(classifier.russell1000_overrides)} tickers")
 
     if not classifier.russell1000_overrides:
         print("❌ FAILED: No Russell 1000 overrides loaded!")
@@ -77,16 +75,12 @@ def test_russell1000_integration():
     print("\n" + "=" * 80)
     if all_passed and len(classifier.russell1000_overrides) >= 900:
         print("✅ ALL TESTS PASSED")
-        print(
-            f"   - {len(classifier.russell1000_overrides)} Russell 1000 tickers loaded"
-        )
+        print(f"   - {len(classifier.russell1000_overrides)} Russell 1000 tickers loaded")
         print("   - Sample classifications working correctly")
     else:
         print("❌ SOME TESTS FAILED")
         if len(classifier.russell1000_overrides) < 900:
-            print(
-                f"   - Only {len(classifier.russell1000_overrides)} tickers loaded (expected 924)"
-            )
+            print(f"   - Only {len(classifier.russell1000_overrides)} tickers loaded (expected 924)")
         if not all_passed:
             print("   - Some classifications did not match expected values")
 

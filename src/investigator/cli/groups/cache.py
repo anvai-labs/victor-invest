@@ -246,8 +246,19 @@ def sizes(ctx):
     help="File with symbols",
 )
 @click.option("--parallel", "-p", default=5, type=int, help="Parallel fetch workers")
+@click.option(
+    "--process-raw/--raw-only",
+    default=False,
+    show_default=True,
+    help="Also populate sec_companyfacts_processed so analysis can consume latest filings",
+)
+@click.option(
+    "--force-refresh",
+    is_flag=True,
+    help="Bypass 90-day SEC raw cache reuse and fetch fresh CompanyFacts from SEC API",
+)
 @click.pass_context
-def warm(ctx, symbols, symbols_file, parallel):
+def warm(ctx, symbols, symbols_file, parallel, process_raw, force_refresh):
     """Warm up cache for symbols
 
     Pre-fetch data for symbols without running full analysis.
@@ -255,6 +266,7 @@ def warm(ctx, symbols, symbols_file, parallel):
     Examples:
         investigator cache warm --symbols AAPL,MSFT,GOOGL
         investigator cache warm --file sp100.txt --parallel 10
+        investigator cache warm --symbols STX --process-raw --force-refresh
     """
     import asyncio
 
@@ -264,17 +276,18 @@ def warm(ctx, symbols, symbols_file, parallel):
         symbol_list = [s.strip().upper() for s in symbols.split(",")]
     elif symbols_file:
         with open(symbols_file) as f:
-            symbol_list = [
-                line.strip().upper()
-                for line in f
-                if line.strip() and not line.startswith("#")
-            ]
+            symbol_list = [line.strip().upper() for line in f if line.strip() and not line.startswith("#")]
     else:
         click.echo("Provide --symbols or --file", err=True)
         sys.exit(1)
 
     click.echo(f"Warming cache for {len(symbol_list)} symbols...")
     click.echo(f"Parallel workers: {parallel}")
+    click.echo(
+        "Mode: "
+        + ("raw + processed ingestion" if process_raw else "raw-only cache")
+        + (", force-refresh enabled" if force_refresh else "")
+    )
 
     async def warm_cache():
         from investigator.domain.agents.sec import SECAnalysisAgent
@@ -297,10 +310,12 @@ def warm(ctx, symbols, symbols_file, parallel):
             async with sem:
                 try:
                     await sec_agent._fetch_and_cache_companyfacts(
-                        symbol, process_raw=False
+                        symbol,
+                        process_raw=process_raw,
+                        force_refresh=force_refresh,
                     )
                     results.append((symbol, True, ""))
-                    click.echo(f"  Cached: {symbol}")
+                    click.echo(f"  Cached: {symbol}" f"{' (processed)' if process_raw else ' (raw-only)'}")
                 except Exception as e:
                     results.append((symbol, False, str(e)))
                     click.echo(f"  Failed: {symbol} - {e}")

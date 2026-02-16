@@ -20,31 +20,32 @@ The Victor API provides:
 See victor_invest/api/app.py for the new architecture.
 """
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import JSONResponse
-from contextlib import asynccontextmanager
-from pydantic import BaseModel, Field, validator
-from typing import List, Dict, Optional, Any
-from datetime import datetime
 import asyncio
 import logging
 import uuid
+from contextlib import asynccontextmanager
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 # Import agent components
 from agents import (
-    create_agent,
     AGENT_REGISTRY,
     AnalysisType,
     Priority,
+    create_agent,
 )
 from agents.manager import AgentManager
-from core.ollama_client import OllamaClient
-from core.event_bus import EventBus
 from core.cache import IntelligentCacheManager
-from investigator.infrastructure.database.db import DatabaseManager
+from core.event_bus import EventBus
+from core.ollama_client import OllamaClient
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field, validator
+
 from investigator.config import get_config
+from investigator.infrastructure.database.db import DatabaseManager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -96,9 +97,7 @@ async def lifespan(app: FastAPI):
 
     # Start background workers
     app.state.background_tasks = []
-    app.state.background_tasks.append(
-        asyncio.create_task(app.state.agent_manager.process_queue())
-    )
+    app.state.background_tasks.append(asyncio.create_task(app.state.agent_manager.process_queue()))
 
     logger.info("InvestiGator API started successfully")
 
@@ -158,9 +157,7 @@ class AnalysisRequest(BaseModel):
         description="Types of analysis to perform",
     )
     priority: str = Field(default="medium", description="Task priority")
-    options: Dict[str, Any] = Field(
-        default_factory=dict, description="Additional options"
-    )
+    options: Dict[str, Any] = Field(default_factory=dict, description="Additional options")
 
     @validator("symbol")
     def validate_symbol(cls, v):
@@ -200,9 +197,7 @@ class BatchAnalysisRequest(BaseModel):
     """Request for batch analysis"""
 
     symbols: List[str] = Field(..., description="List of symbols to analyze")
-    analysis_types: List[str] = Field(
-        default=["sec_fundamental", "technical_analysis", "investment_synthesis"]
-    )
+    analysis_types: List[str] = Field(default=["sec_fundamental", "technical_analysis", "investment_synthesis"])
     priority: str = Field(default="medium")
     parallel: bool = Field(default=True, description="Process symbols in parallel")
 
@@ -296,9 +291,7 @@ async def health_check(request: Request):
 
 
 @app.post("/analyze", response_model=AnalysisResponse, tags=["Analysis"])
-async def analyze_symbol(
-    request: AnalysisRequest, background_tasks: BackgroundTasks, app_state: Request
-):
+async def analyze_symbol(request: AnalysisRequest, background_tasks: BackgroundTasks, app_state: Request):
     """Submit a symbol for comprehensive analysis"""
     try:
         # Convert analysis types to enums
@@ -307,9 +300,7 @@ async def analyze_symbol(
             try:
                 analysis_enums.append(AnalysisType(analysis_type))
             except ValueError:
-                raise HTTPException(
-                    status_code=400, detail=f"Invalid analysis type: {analysis_type}"
-                )
+                raise HTTPException(status_code=400, detail=f"Invalid analysis type: {analysis_type}")
 
         # Submit to agent manager
         workflow_id = await app_state.app.state.agent_manager.submit_analysis_request(
@@ -343,9 +334,7 @@ async def analyze_symbol(
 async def get_analysis_status(workflow_id: str, app_state: Request):
     """Get status of an analysis workflow"""
     try:
-        status = await app_state.app.state.agent_manager.get_workflow_status(
-            workflow_id
-        )
+        status = await app_state.app.state.agent_manager.get_workflow_status(workflow_id)
 
         if not status:
             raise HTTPException(status_code=404, detail="Workflow not found")
@@ -353,9 +342,7 @@ async def get_analysis_status(workflow_id: str, app_state: Request):
         # Calculate progress
         progress = 0.0
         if status["total_tasks"] > 0:
-            progress = (status["completed_tasks"] + status["failed_tasks"]) / status[
-                "total_tasks"
-            ]
+            progress = (status["completed_tasks"] + status["failed_tasks"]) / status["total_tasks"]
 
         # Determine overall status
         if status["failed_tasks"] > 0:
@@ -387,9 +374,7 @@ async def get_analysis_status(workflow_id: str, app_state: Request):
 
 
 @app.post("/analyze/batch", tags=["Analysis"])
-async def analyze_batch(
-    request: BatchAnalysisRequest, background_tasks: BackgroundTasks, app_state: Request
-):
+async def analyze_batch(request: BatchAnalysisRequest, background_tasks: BackgroundTasks, app_state: Request):
     """Submit multiple symbols for analysis"""
     try:
         workflows = []
@@ -400,18 +385,14 @@ async def analyze_batch(
             try:
                 analysis_enums.append(AnalysisType(analysis_type))
             except ValueError:
-                raise HTTPException(
-                    status_code=400, detail=f"Invalid analysis type: {analysis_type}"
-                )
+                raise HTTPException(status_code=400, detail=f"Invalid analysis type: {analysis_type}")
 
         # Submit each symbol
         for symbol in request.symbols:
-            workflow_id = (
-                await app_state.app.state.agent_manager.submit_analysis_request(
-                    symbol=symbol.upper(),
-                    analysis_types=analysis_enums,
-                    priority=Priority[request.priority.upper()],
-                )
+            workflow_id = await app_state.app.state.agent_manager.submit_analysis_request(
+                symbol=symbol.upper(),
+                analysis_types=analysis_enums,
+                priority=Priority[request.priority.upper()],
             )
             workflows.append({"symbol": symbol.upper(), "workflow_id": workflow_id})
 
@@ -462,25 +443,19 @@ async def analyze_peer_group(request: PeerGroupRequest, app_state: Request):
             options={"peer_symbols": peers},
         )
 
-        workflows.append(
-            {"symbol": request.symbol, "workflow_id": main_workflow, "is_primary": True}
-        )
+        workflows.append({"symbol": request.symbol, "workflow_id": main_workflow, "is_primary": True})
 
         # Submit peer analyses
         for peer in peers:
-            peer_workflow = (
-                await app_state.app.state.agent_manager.submit_analysis_request(
-                    symbol=peer,
-                    analysis_types=[
-                        AnalysisType.SEC_FUNDAMENTAL,
-                        AnalysisType.TECHNICAL_ANALYSIS,
-                    ],
-                    priority=Priority.MEDIUM,
-                )
+            peer_workflow = await app_state.app.state.agent_manager.submit_analysis_request(
+                symbol=peer,
+                analysis_types=[
+                    AnalysisType.SEC_FUNDAMENTAL,
+                    AnalysisType.TECHNICAL_ANALYSIS,
+                ],
+                priority=Priority.MEDIUM,
             )
-            workflows.append(
-                {"symbol": peer, "workflow_id": peer_workflow, "is_primary": False}
-            )
+            workflows.append({"symbol": peer, "workflow_id": peer_workflow, "is_primary": False})
 
         return {
             "peer_group_id": str(uuid.uuid4()),
@@ -572,18 +547,14 @@ from fastapi import WebSocket, WebSocketDisconnect  # noqa: E402
 
 
 @app.websocket("/ws/analysis/{workflow_id}")
-async def websocket_analysis_updates(
-    websocket: WebSocket, workflow_id: str, app_state: Request
-):
+async def websocket_analysis_updates(websocket: WebSocket, workflow_id: str, app_state: Request):
     """WebSocket endpoint for real-time analysis updates"""
     await websocket.accept()
 
     try:
         # Subscribe to workflow events
         async def send_updates():
-            async for event in app_state.app.state.event_bus.subscribe_to_workflow(
-                workflow_id
-            ):
+            async for event in app_state.app.state.event_bus.subscribe_to_workflow(workflow_id):
                 await websocket.send_json(
                     {
                         "type": "update",
@@ -651,6 +622,4 @@ async def general_exception_handler(request, exc):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(
-        "api.main:app", host="0.0.0.0", port=8000, reload=True, log_level="info"
-    )
+    uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True, log_level="info")

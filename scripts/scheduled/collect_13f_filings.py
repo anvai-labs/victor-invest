@@ -211,9 +211,7 @@ class Form13FCollector(BaseCollector):
             cursor.close()
             conn.close()
 
-            self.logger.info(
-                f"Collected {self.metrics.records_inserted} holdings from 13F filings"
-            )
+            self.logger.info(f"Collected {self.metrics.records_inserted} holdings from 13F filings")
 
         except ImportError as e:
             self.logger.error(f"13F fetcher not available: {e}")
@@ -266,9 +264,7 @@ class Form13FCollector(BaseCollector):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Collect SEC Form 13F institutional holdings"
-    )
+    parser = argparse.ArgumentParser(description="Collect SEC Form 13F institutional holdings")
     parser.add_argument(
         "--days",
         type=int,

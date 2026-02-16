@@ -151,9 +151,7 @@ def main():
         print("Next steps:")
         print("  1. Review the changes: git diff agents/fundamental_agent.py")
         print("  2. Run tests to verify nothing broke")
-        print(
-            "  3. Test with NEE: python3 cli_orchestrator.py analyze NEE -m standard --force-refresh"
-        )
+        print("  3. Test with NEE: python3 cli_orchestrator.py analyze NEE -m standard --force-refresh")
     else:
         print()
         print("ℹ️  File already uses snake_case consistently")

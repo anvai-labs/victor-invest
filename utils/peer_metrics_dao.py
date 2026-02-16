@@ -7,8 +7,10 @@ Handles database operations for peer group metrics and comparisons
 import json
 import logging
 from datetime import date
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
+
 from sqlalchemy import text
+
 from investigator.infrastructure.database.db import get_db_manager
 
 logger = logging.getLogger(__name__)
@@ -40,14 +42,13 @@ class PeerMetricsDAO:
             metrics_json = json.dumps(metrics_data)
 
             # Convert peer_symbols list to PostgreSQL array format
-            peer_symbols_array = (
-                "{" + ",".join(peer_symbols) + "}" if peer_symbols else None
-            )
+            peer_symbols_array = "{" + ",".join(peer_symbols) + "}" if peer_symbols else None
 
             # Use current date for calculation_date
             calc_date = date.today()
 
-            query = text("""
+            query = text(
+                """
                 INSERT INTO peer_metrics (
                     peer_group_id, symbol, metric_type, sector, industry,
                     metrics_data, peer_symbols, calculation_date
@@ -63,7 +64,8 @@ class PeerMetricsDAO:
                     peer_symbols = EXCLUDED.peer_symbols,
                     calculation_date = EXCLUDED.calculation_date,
                     updated_at = NOW()
-            """)
+            """
+            )
 
             with conn.begin():
                 conn.execute(
@@ -80,9 +82,7 @@ class PeerMetricsDAO:
                     },
                 )
 
-            self.logger.info(
-                f"Saved peer metrics for {symbol} in group {peer_group_id}"
-            )
+            self.logger.info(f"Saved peer metrics for {symbol} in group {peer_group_id}")
             return True
 
         except Exception as e:
@@ -92,15 +92,14 @@ class PeerMetricsDAO:
             if conn:
                 conn.close()
 
-    def get_peer_metrics(
-        self, peer_group_id: str, symbol: str, metric_type: str
-    ) -> Optional[Dict[str, Any]]:
+    def get_peer_metrics(self, peer_group_id: str, symbol: str, metric_type: str) -> Optional[Dict[str, Any]]:
         """Get peer metrics from database"""
         conn = None
         try:
             conn = self.db_manager.engine.connect()
 
-            query = text("""
+            query = text(
+                """
                 SELECT 
                     peer_group_id, symbol, metric_type, sector, industry,
                     metrics_data, peer_symbols, calculation_date,
@@ -109,7 +108,8 @@ class PeerMetricsDAO:
                 WHERE peer_group_id = :peer_group_id 
                   AND symbol = :symbol 
                   AND metric_type = :metric_type
-            """)
+            """
+            )
 
             result = conn.execute(
                 query,
@@ -129,15 +129,9 @@ class PeerMetricsDAO:
                     "industry": result.industry,
                     "metrics_data": result.metrics_data,
                     "peer_symbols": result.peer_symbols,
-                    "calculation_date": result.calculation_date.isoformat()
-                    if result.calculation_date
-                    else None,
-                    "created_at": result.created_at.isoformat()
-                    if result.created_at
-                    else None,
-                    "updated_at": result.updated_at.isoformat()
-                    if result.updated_at
-                    else None,
+                    "calculation_date": result.calculation_date.isoformat() if result.calculation_date else None,
+                    "created_at": result.created_at.isoformat() if result.created_at else None,
+                    "updated_at": result.updated_at.isoformat() if result.updated_at else None,
                 }
 
             return None
@@ -149,16 +143,15 @@ class PeerMetricsDAO:
             if conn:
                 conn.close()
 
-    def get_peer_group_metrics(
-        self, peer_group_id: str, metric_type: str = None
-    ) -> List[Dict[str, Any]]:
+    def get_peer_group_metrics(self, peer_group_id: str, metric_type: str = None) -> List[Dict[str, Any]]:
         """Get all metrics for a peer group"""
         conn = None
         try:
             conn = self.db_manager.engine.connect()
 
             if metric_type:
-                query = text("""
+                query = text(
+                    """
                     SELECT 
                         peer_group_id, symbol, metric_type, sector, industry,
                         metrics_data, peer_symbols, calculation_date,
@@ -167,10 +160,12 @@ class PeerMetricsDAO:
                     WHERE peer_group_id = :peer_group_id 
                       AND metric_type = :metric_type
                     ORDER BY symbol
-                """)
+                """
+                )
                 params = {"peer_group_id": peer_group_id, "metric_type": metric_type}
             else:
-                query = text("""
+                query = text(
+                    """
                     SELECT 
                         peer_group_id, symbol, metric_type, sector, industry,
                         metrics_data, peer_symbols, calculation_date,
@@ -178,7 +173,8 @@ class PeerMetricsDAO:
                     FROM peer_metrics
                     WHERE peer_group_id = :peer_group_id
                     ORDER BY metric_type, symbol
-                """)
+                """
+                )
                 params = {"peer_group_id": peer_group_id}
 
             results = conn.execute(query, params).fetchall()
@@ -192,15 +188,9 @@ class PeerMetricsDAO:
                     "industry": row.industry,
                     "metrics_data": row.metrics_data,
                     "peer_symbols": row.peer_symbols,
-                    "calculation_date": row.calculation_date.isoformat()
-                    if row.calculation_date
-                    else None,
-                    "created_at": row.created_at.isoformat()
-                    if row.created_at
-                    else None,
-                    "updated_at": row.updated_at.isoformat()
-                    if row.updated_at
-                    else None,
+                    "calculation_date": row.calculation_date.isoformat() if row.calculation_date else None,
+                    "created_at": row.created_at.isoformat() if row.created_at else None,
+                    "updated_at": row.updated_at.isoformat() if row.updated_at else None,
                 }
                 for row in results
             ]
@@ -218,7 +208,8 @@ class PeerMetricsDAO:
         try:
             conn = self.db_manager.engine.connect()
 
-            query = text("""
+            query = text(
+                """
                 SELECT 
                     peer_group_id, symbol, metric_type, sector, industry,
                     metrics_data, peer_symbols, calculation_date,
@@ -226,7 +217,8 @@ class PeerMetricsDAO:
                 FROM peer_metrics
                 WHERE symbol = :symbol
                 ORDER BY peer_group_id, metric_type
-            """)
+            """
+            )
 
             results = conn.execute(query, {"symbol": symbol}).fetchall()
 
@@ -239,15 +231,9 @@ class PeerMetricsDAO:
                     "industry": row.industry,
                     "metrics_data": row.metrics_data,
                     "peer_symbols": row.peer_symbols,
-                    "calculation_date": row.calculation_date.isoformat()
-                    if row.calculation_date
-                    else None,
-                    "created_at": row.created_at.isoformat()
-                    if row.created_at
-                    else None,
-                    "updated_at": row.updated_at.isoformat()
-                    if row.updated_at
-                    else None,
+                    "calculation_date": row.calculation_date.isoformat() if row.calculation_date else None,
+                    "created_at": row.created_at.isoformat() if row.created_at else None,
+                    "updated_at": row.updated_at.isoformat() if row.updated_at else None,
                 }
                 for row in results
             ]
@@ -259,9 +245,7 @@ class PeerMetricsDAO:
             if conn:
                 conn.close()
 
-    def delete_peer_metrics(
-        self, peer_group_id: str = None, symbol: str = None, metric_type: str = None
-    ) -> int:
+    def delete_peer_metrics(self, peer_group_id: str = None, symbol: str = None, metric_type: str = None) -> int:
         """Delete peer metrics based on criteria"""
         conn = None
         try:
@@ -303,9 +287,7 @@ class PeerMetricsDAO:
             if conn:
                 conn.close()
 
-    def get_latest_calculation_date(
-        self, peer_group_id: str = None, symbol: str = None
-    ) -> Optional[date]:
+    def get_latest_calculation_date(self, peer_group_id: str = None, symbol: str = None) -> Optional[date]:
         """Get the latest calculation date for given criteria"""
         conn = None
         try:
@@ -324,11 +306,13 @@ class PeerMetricsDAO:
 
             where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
-            query = text(f"""
+            query = text(
+                f"""
                 SELECT MAX(calculation_date) as latest_date
                 FROM peer_metrics
                 {where_clause}
-            """)
+            """
+            )
 
             result = conn.execute(query, params).fetchone()
 

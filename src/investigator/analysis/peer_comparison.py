@@ -149,9 +149,7 @@ class PeerGroupComparison:
         industry_clean = industry.upper().replace(" ", "_").replace("&", "AND")
         return f"{sector_clean}_{industry_clean}"
 
-    def calculate_financial_ratios(
-        self, symbol: str, force_refresh: bool = False
-    ) -> Optional[FinancialRatios]:
+    def calculate_financial_ratios(self, symbol: str, force_refresh: bool = False) -> Optional[FinancialRatios]:
         """Calculate comprehensive financial ratios for a company"""
         # Get peer group info for this symbol
         peer_info = self.get_peer_group(symbol)
@@ -159,9 +157,7 @@ class PeerGroupComparison:
 
         # Check DAO cache first
         if not force_refresh:
-            cached_data = self.peer_metrics_dao.get_peer_metrics(
-                peer_group_id, symbol, "financial_ratios"
-            )
+            cached_data = self.peer_metrics_dao.get_peer_metrics(peer_group_id, symbol, "financial_ratios")
             if cached_data:
                 logger.info(f"Using cached financial ratios for {symbol}")
                 metrics_data = cached_data.get("metrics_data", {})
@@ -188,38 +184,22 @@ class PeerGroupComparison:
             if market_data and ratios.eps and ratios.eps > 0:
                 ratios.pe_ratio = market_data.get("price", 0) / ratios.eps
 
-            ratios.roe = self._safe_divide(
-                sec_data.get("net_income"), sec_data.get("shareholders_equity")
-            )
-            ratios.roa = self._safe_divide(
-                sec_data.get("net_income"), sec_data.get("total_assets")
-            )
-            ratios.profit_margin = self._safe_divide(
-                sec_data.get("net_income"), sec_data.get("revenue")
-            )
+            ratios.roe = self._safe_divide(sec_data.get("net_income"), sec_data.get("shareholders_equity"))
+            ratios.roa = self._safe_divide(sec_data.get("net_income"), sec_data.get("total_assets"))
+            ratios.profit_margin = self._safe_divide(sec_data.get("net_income"), sec_data.get("revenue"))
 
             # Leverage ratios
-            ratios.debt_to_equity = self._safe_divide(
-                sec_data.get("total_debt"), sec_data.get("shareholders_equity")
-            )
-            ratios.debt_to_assets = self._safe_divide(
-                sec_data.get("total_debt"), sec_data.get("total_assets")
-            )
-            ratios.interest_coverage = self._safe_divide(
-                sec_data.get("ebit"), sec_data.get("interest_expense")
-            )
+            ratios.debt_to_equity = self._safe_divide(sec_data.get("total_debt"), sec_data.get("shareholders_equity"))
+            ratios.debt_to_assets = self._safe_divide(sec_data.get("total_debt"), sec_data.get("total_assets"))
+            ratios.interest_coverage = self._safe_divide(sec_data.get("ebit"), sec_data.get("interest_expense"))
 
             # Valuation ratios
             if market_data:
                 ratios.price_to_book = self._safe_divide(
                     market_data.get("market_cap"), sec_data.get("shareholders_equity")
                 )
-                ratios.price_to_sales = self._safe_divide(
-                    market_data.get("market_cap"), sec_data.get("revenue")
-                )
-                ratios.ev_to_ebitda = self._safe_divide(
-                    market_data.get("enterprise_value"), sec_data.get("ebitda")
-                )
+                ratios.price_to_sales = self._safe_divide(market_data.get("market_cap"), sec_data.get("revenue"))
+                ratios.ev_to_ebitda = self._safe_divide(market_data.get("enterprise_value"), sec_data.get("ebitda"))
 
                 # Market metrics
                 ratios.beta = market_data.get("beta")
@@ -239,12 +219,8 @@ class PeerGroupComparison:
 
             # Calculate volatility and correlation
             if market_data and "price_history" in market_data:
-                ratios.volatility_30d = self._calculate_volatility(
-                    market_data["price_history"], 30
-                )
-                ratios.volatility_90d = self._calculate_volatility(
-                    market_data["price_history"], 90
-                )
+                ratios.volatility_30d = self._calculate_volatility(market_data["price_history"], 30)
+                ratios.volatility_90d = self._calculate_volatility(market_data["price_history"], 90)
                 ratios.correlation_sp500 = self._calculate_sp500_correlation(symbol)
 
             ratios.last_updated = datetime.now().isoformat()
@@ -288,8 +264,7 @@ class PeerGroupComparison:
                 "revenue": latest_quarter.get("revenues"),
                 "net_income": latest_quarter.get("net_income"),
                 "total_assets": latest_quarter.get("total_assets"),
-                "total_debt": latest_quarter.get("long_term_debt", 0)
-                + latest_quarter.get("short_term_debt", 0),
+                "total_debt": latest_quarter.get("long_term_debt", 0) + latest_quarter.get("short_term_debt", 0),
                 "shareholders_equity": latest_quarter.get("stockholders_equity"),
                 "eps": latest_quarter.get("earnings_per_share"),
                 "ebit": latest_quarter.get("operating_income"),
@@ -305,9 +280,7 @@ class PeerGroupComparison:
                         latest_quarter["revenues"] - year_ago_quarter["revenues"]
                     ) / year_ago_quarter["revenues"]
 
-                if year_ago_quarter.get("net_income") and latest_quarter.get(
-                    "net_income"
-                ):
+                if year_ago_quarter.get("net_income") and latest_quarter.get("net_income"):
                     financial_data["earnings_growth_yoy"] = (
                         latest_quarter["net_income"] - year_ago_quarter["net_income"]
                     ) / abs(year_ago_quarter["net_income"])
@@ -332,9 +305,7 @@ class PeerGroupComparison:
                 "market_cap": info.get("marketCap"),
                 "enterprise_value": info.get("enterpriseValue"),
                 "beta": info.get("beta"),
-                "price_history": history["Close"].to_dict()
-                if not history.empty
-                else {},
+                "price_history": history["Close"].to_dict() if not history.empty else {},
             }
 
             return market_data
@@ -387,9 +358,7 @@ class PeerGroupComparison:
             spy_returns = spy_data["Close"].pct_change().dropna()
 
             # Align the data
-            aligned_data = pd.DataFrame(
-                {"stock": stock_returns, "spy": spy_returns}
-            ).dropna()
+            aligned_data = pd.DataFrame({"stock": stock_returns, "spy": spy_returns}).dropna()
 
             if len(aligned_data) < 20:
                 return None
@@ -465,17 +434,13 @@ class PeerGroupComparison:
 
         return statistics.mean(scores) if scores else None
 
-    def _safe_divide(
-        self, numerator: Optional[float], denominator: Optional[float]
-    ) -> Optional[float]:
+    def _safe_divide(self, numerator: Optional[float], denominator: Optional[float]) -> Optional[float]:
         """Safely divide two numbers"""
         if numerator is None or denominator is None or denominator == 0:
             return None
         return numerator / denominator
 
-    def get_peer_comparison(
-        self, symbol: str, force_refresh: bool = False
-    ) -> Dict[str, Any]:
+    def get_peer_comparison(self, symbol: str, force_refresh: bool = False) -> Dict[str, Any]:
         """Get comprehensive peer comparison analysis"""
         logger.info(f"Getting peer comparison for {symbol}")
 
@@ -518,9 +483,7 @@ class PeerGroupComparison:
         peer_statistics = self._calculate_peer_statistics(peer_ratios)
 
         # Calculate relative position
-        relative_position = self._calculate_relative_position(
-            company_ratios, peer_ratios
-        )
+        relative_position = self._calculate_relative_position(company_ratios, peer_ratios)
 
         return {
             "symbol": symbol,
@@ -532,9 +495,7 @@ class PeerGroupComparison:
             "timestamp": datetime.now().isoformat(),
         }
 
-    def _calculate_peer_statistics(
-        self, peer_ratios: List[FinancialRatios]
-    ) -> Dict[str, PeerGroupStats]:
+    def _calculate_peer_statistics(self, peer_ratios: List[FinancialRatios]) -> Dict[str, PeerGroupStats]:
         """Calculate statistical summaries for peer group metrics"""
         if not peer_ratios:
             return {}
@@ -562,11 +523,7 @@ class PeerGroupComparison:
         statistics_dict = {}
 
         for metric in metrics:
-            values = [
-                getattr(r, metric)
-                for r in peer_ratios
-                if getattr(r, metric) is not None
-            ]
+            values = [getattr(r, metric) for r in peer_ratios if getattr(r, metric) is not None]
 
             if values:
                 stats = PeerGroupStats(metric_name=metric)
@@ -617,11 +574,7 @@ class PeerGroupComparison:
         for metric in valuation_metrics + performance_metrics + risk_metrics:
             company_value = getattr(company_ratios, metric)
             if company_value is not None:
-                peer_values = [
-                    getattr(r, metric)
-                    for r in peer_ratios
-                    if getattr(r, metric) is not None
-                ]
+                peer_values = [getattr(r, metric) for r in peer_ratios if getattr(r, metric) is not None]
 
                 if peer_values:
                     all_values = peer_values + [company_value]
@@ -633,35 +586,23 @@ class PeerGroupComparison:
                     elif metric in performance_metrics:
                         attractiveness = percentile  # Higher is better
                     else:
-                        attractiveness = 50 + (
-                            50 - abs(percentile - 50)
-                        )  # Middle is better
+                        attractiveness = 50 + (50 - abs(percentile - 50))  # Middle is better
 
                     relative_position[metric] = {
                         "value": company_value,
                         "percentile": percentile,
                         "attractiveness": attractiveness,
                         "peer_median": statistics.median(peer_values),
-                        "interpretation": self._interpret_percentile(
-                            metric, percentile
-                        ),
+                        "interpretation": self._interpret_percentile(metric, percentile),
                     }
 
         # Overall scores
-        valuation_scores = [
-            relative_position[m]["attractiveness"]
-            for m in valuation_metrics
-            if m in relative_position
-        ]
+        valuation_scores = [relative_position[m]["attractiveness"] for m in valuation_metrics if m in relative_position]
         performance_scores = [
-            relative_position[m]["attractiveness"]
-            for m in performance_metrics
-            if m in relative_position
+            relative_position[m]["attractiveness"] for m in performance_metrics if m in relative_position
         ]
 
-        relative_position["overall_valuation_score"] = (
-            statistics.mean(valuation_scores) if valuation_scores else None
-        )
+        relative_position["overall_valuation_score"] = statistics.mean(valuation_scores) if valuation_scores else None
         relative_position["overall_performance_score"] = (
             statistics.mean(performance_scores) if performance_scores else None
         )

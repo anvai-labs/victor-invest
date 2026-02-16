@@ -213,9 +213,7 @@ class CreditCycleAnalyzer:
         vix_data = await self._get_vix()
         if vix_data:
             analysis.vix_level = vix_data.get("level")
-            analysis.volatility_regime = self._classify_volatility(
-                vix_data.get("level")
-            )
+            analysis.volatility_regime = self._classify_volatility(vix_data.get("level"))
             vix_scores, vix_factors = self._score_vix(vix_data)
             for phase, score in vix_scores.items():
                 scores[phase] += score
@@ -258,9 +256,7 @@ class CreditCycleAnalyzer:
 
         # Set interpretation and recommendations
         analysis.interpretation = self._get_interpretation(analysis.phase)
-        analysis.sector_recommendations = self._get_sector_recommendations(
-            analysis.phase
-        )
+        analysis.sector_recommendations = self._get_sector_recommendations(analysis.phase)
 
         # Derive recession probability from phase
         analysis.recession_probability = self._derive_recession_probability(analysis)
@@ -272,9 +268,7 @@ class CreditCycleAnalyzer:
         try:
             from sqlalchemy import create_engine, text
 
-            engine = create_engine(
-                "postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database"
-            )
+            engine = create_engine("postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database")
 
             # Get BAA10Y spread (BAA corporate bond yield minus 10Y Treasury)
             query = text(
@@ -307,12 +301,8 @@ class CreditCycleAnalyzer:
                         AND series_date >= CURRENT_DATE - INTERVAL '10 years'
                     """
                     )
-                    percentile_result = conn.execute(
-                        percentile_query, {"current": spread_pct}
-                    ).fetchone()
-                    percentile = (
-                        float(percentile_result[0]) if percentile_result else None
-                    )
+                    percentile_result = conn.execute(percentile_query, {"current": spread_pct}).fetchone()
+                    percentile = float(percentile_result[0]) if percentile_result else None
 
                     return {
                         "spread_bps": spread_bps,
@@ -331,9 +321,7 @@ class CreditCycleAnalyzer:
         try:
             from sqlalchemy import create_engine, text
 
-            engine = create_engine(
-                "postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database"
-            )
+            engine = create_engine("postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database")
 
             query = text(
                 """
@@ -365,9 +353,7 @@ class CreditCycleAnalyzer:
         try:
             from sqlalchemy import create_engine, text
 
-            engine = create_engine(
-                "postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database"
-            )
+            engine = create_engine("postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database")
 
             # Get current and historical rates
             query = text(
@@ -402,9 +388,7 @@ class CreditCycleAnalyzer:
 
     def _score_credit_spread(self, data: Dict[str, Any]) -> tuple:
         """Score credit spread indicator."""
-        scores = {
-            phase: 0 for phase in CreditCyclePhase if phase != CreditCyclePhase.UNKNOWN
-        }
+        scores = {phase: 0 for phase in CreditCyclePhase if phase != CreditCyclePhase.UNKNOWN}
         factors = []
 
         spread = data.get("spread_bps", 0)
@@ -413,33 +397,23 @@ class CreditCycleAnalyzer:
         if spread < self.SPREAD_THRESHOLDS["tight"]:
             scores[CreditCyclePhase.EARLY_EXPANSION] += 30
             scores[CreditCyclePhase.MID_CYCLE] += 20
-            factors.append(
-                f"Tight credit spreads ({spread:.0f} bps) - risk appetite healthy"
-            )
+            factors.append(f"Tight credit spreads ({spread:.0f} bps) - risk appetite healthy")
         elif spread < self.SPREAD_THRESHOLDS["normal"]:
             scores[CreditCyclePhase.MID_CYCLE] += 30
             scores[CreditCyclePhase.EARLY_EXPANSION] += 15
-            factors.append(
-                f"Normal credit spreads ({spread:.0f} bps) - stable conditions"
-            )
+            factors.append(f"Normal credit spreads ({spread:.0f} bps) - stable conditions")
         elif spread < self.SPREAD_THRESHOLDS["wide"]:
             scores[CreditCyclePhase.LATE_CYCLE] += 30
             scores[CreditCyclePhase.MID_CYCLE] += 10
-            factors.append(
-                f"Widening credit spreads ({spread:.0f} bps) - late cycle concerns"
-            )
+            factors.append(f"Widening credit spreads ({spread:.0f} bps) - late cycle concerns")
         elif spread < self.SPREAD_THRESHOLDS["stressed"]:
             scores[CreditCyclePhase.CREDIT_STRESS] += 35
             scores[CreditCyclePhase.LATE_CYCLE] += 15
-            factors.append(
-                f"Elevated credit spreads ({spread:.0f} bps) - credit stress"
-            )
+            factors.append(f"Elevated credit spreads ({spread:.0f} bps) - credit stress")
         else:
             scores[CreditCyclePhase.CREDIT_CRISIS] += 40
             scores[CreditCyclePhase.CREDIT_STRESS] += 15
-            factors.append(
-                f"Crisis-level credit spreads ({spread:.0f} bps) - severe stress"
-            )
+            factors.append(f"Crisis-level credit spreads ({spread:.0f} bps) - severe stress")
 
         # Percentile adjustment
         if percentile is not None:
@@ -454,9 +428,7 @@ class CreditCycleAnalyzer:
 
     def _score_vix(self, data: Dict[str, Any]) -> tuple:
         """Score VIX indicator."""
-        scores = {
-            phase: 0 for phase in CreditCyclePhase if phase != CreditCyclePhase.UNKNOWN
-        }
+        scores = {phase: 0 for phase in CreditCyclePhase if phase != CreditCyclePhase.UNKNOWN}
         factors = []
 
         vix = data.get("level", 20)
@@ -490,9 +462,7 @@ class CreditCycleAnalyzer:
 
     def _score_fed_policy(self, data: Dict[str, Any]) -> tuple:
         """Score Fed policy indicator."""
-        scores = {
-            phase: 0 for phase in CreditCyclePhase if phase != CreditCyclePhase.UNKNOWN
-        }
+        scores = {phase: 0 for phase in CreditCyclePhase if phase != CreditCyclePhase.UNKNOWN}
         factors = []
 
         rate = data.get("rate", 0)
@@ -501,9 +471,7 @@ class CreditCycleAnalyzer:
         # Rate level
         if rate < 1:
             scores[CreditCyclePhase.EARLY_EXPANSION] += 15
-            scores[CreditCyclePhase.CREDIT_CRISIS] += (
-                10  # Could also indicate crisis response
-            )
+            scores[CreditCyclePhase.CREDIT_CRISIS] += 10  # Could also indicate crisis response
             factors.append(f"Near-zero Fed funds ({rate:.2f}%) - accommodative")
         elif rate < 3:
             scores[CreditCyclePhase.MID_CYCLE] += 15
@@ -536,9 +504,7 @@ class CreditCycleAnalyzer:
             YieldCurveShape,
         )
 
-        scores = {
-            phase: 0 for phase in CreditCyclePhase if phase != CreditCyclePhase.UNKNOWN
-        }
+        scores = {phase: 0 for phase in CreditCyclePhase if phase != CreditCyclePhase.UNKNOWN}
         factors = []
 
         shape = yc_analysis.shape
@@ -594,9 +560,7 @@ class CreditCycleAnalyzer:
             return FedPolicyStance.DOVISH
         return FedPolicyStance.NEUTRAL
 
-    def _derive_recession_probability(
-        self, analysis: CreditCycleAnalysis
-    ) -> RecessionProbability:
+    def _derive_recession_probability(self, analysis: CreditCycleAnalysis) -> RecessionProbability:
         """Derive recession probability from analysis."""
         phase = analysis.phase
 

@@ -380,14 +380,10 @@ class TestFiscalPeriodService:
 
     def test_detect_fiscal_year_end_missing_facts_key(self, service):
         """Test that missing 'facts' key raises ValueError"""
-        with pytest.raises(
-            ValueError, match="Invalid company facts data: missing 'facts' key"
-        ):
+        with pytest.raises(ValueError, match="Invalid company facts data: missing 'facts' key"):
             service.detect_fiscal_year_end({})
 
-        with pytest.raises(
-            ValueError, match="Invalid company facts data: missing 'facts' key"
-        ):
+        with pytest.raises(ValueError, match="Invalid company facts data: missing 'facts' key"):
             service.detect_fiscal_year_end(None)
 
     def test_detect_fiscal_year_end_no_fy_data(self, service):
@@ -469,30 +465,22 @@ class TestFiscalPeriodService:
     def test_validate_q4_computation_valid_inputs(self, service):
         """Test validation passes for valid Q4 computation inputs"""
         # All individual quarters (qtrs=1) and FY=4
-        result = service.validate_q4_computation_inputs(
-            fy_qtrs=4, q1_qtrs=1, q2_qtrs=1, q3_qtrs=1
-        )
+        result = service.validate_q4_computation_inputs(fy_qtrs=4, q1_qtrs=1, q2_qtrs=1, q3_qtrs=1)
         assert result is True
 
     def test_validate_q4_computation_ytd_data(self, service):
         """Test validation fails when quarters are YTD (qtrs>=2)"""
         # Q2 is YTD (qtrs=2)
-        result = service.validate_q4_computation_inputs(
-            fy_qtrs=4, q1_qtrs=1, q2_qtrs=2, q3_qtrs=1
-        )  # YTD
+        result = service.validate_q4_computation_inputs(fy_qtrs=4, q1_qtrs=1, q2_qtrs=2, q3_qtrs=1)  # YTD
         assert result is False
 
         # Q3 is YTD (qtrs=3)
-        result = service.validate_q4_computation_inputs(
-            fy_qtrs=4, q1_qtrs=1, q2_qtrs=1, q3_qtrs=3
-        )  # YTD
+        result = service.validate_q4_computation_inputs(fy_qtrs=4, q1_qtrs=1, q2_qtrs=1, q3_qtrs=3)  # YTD
         assert result is False
 
     def test_validate_q4_computation_invalid_fy(self, service):
         """Test validation fails when FY qtrs != 4"""
-        result = service.validate_q4_computation_inputs(
-            fy_qtrs=3, q1_qtrs=1, q2_qtrs=1, q3_qtrs=1
-        )  # Should be 4
+        result = service.validate_q4_computation_inputs(fy_qtrs=3, q1_qtrs=1, q2_qtrs=1, q3_qtrs=1)  # Should be 4
         assert result is False
 
     def test_validate_q4_computation_invalid_types(self, service):
@@ -506,21 +494,15 @@ class TestFiscalPeriodService:
             )
 
         with pytest.raises(TypeError, match="q1_qtrs must be int"):
-            service.validate_q4_computation_inputs(
-                fy_qtrs=4, q1_qtrs=1.5, q2_qtrs=1, q3_qtrs=1
-            )  # Float instead of int
+            service.validate_q4_computation_inputs(fy_qtrs=4, q1_qtrs=1.5, q2_qtrs=1, q3_qtrs=1)  # Float instead of int
 
     def test_validate_q4_computation_out_of_range(self, service):
         """Test validation raises ValueError for qtrs outside 1-4"""
         with pytest.raises(ValueError, match="fy_qtrs must be 1-4"):
-            service.validate_q4_computation_inputs(
-                fy_qtrs=5, q1_qtrs=1, q2_qtrs=1, q3_qtrs=1
-            )  # Out of range
+            service.validate_q4_computation_inputs(fy_qtrs=5, q1_qtrs=1, q2_qtrs=1, q3_qtrs=1)  # Out of range
 
         with pytest.raises(ValueError, match="q3_qtrs must be 1-4"):
-            service.validate_q4_computation_inputs(
-                fy_qtrs=4, q1_qtrs=1, q2_qtrs=1, q3_qtrs=0
-            )  # Out of range
+            service.validate_q4_computation_inputs(fy_qtrs=4, q1_qtrs=1, q2_qtrs=1, q3_qtrs=0)  # Out of range
 
     # =============================================================================
     # Singleton Tests

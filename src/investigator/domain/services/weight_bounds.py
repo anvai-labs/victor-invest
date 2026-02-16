@@ -196,12 +196,8 @@ class BoundedMultiplierApplicator:
 
             # Check warning threshold (approaching bounds)
             elif cumulative < self.config.warning_threshold:
-                warnings.append(
-                    f"[{symbol}] {model}: Approaching floor (multiplier: {cumulative:.3f})"
-                )
-                logger.debug(
-                    f"[{symbol}] {model}: Approaching floor (multiplier: {cumulative:.3f})"
-                )
+                warnings.append(f"[{symbol}] {model}: Approaching floor (multiplier: {cumulative:.3f})")
+                logger.debug(f"[{symbol}] {model}: Approaching floor (multiplier: {cumulative:.3f})")
 
             bounded_multipliers[model] = bounded
 
@@ -239,13 +235,9 @@ class BoundedMultiplierApplicator:
                     MultiplierAuditEntry(
                         model=model,
                         group="minimum_weight",
-                        original_multiplier=weight / base_weights[model]
-                        if base_weights[model] > 0
-                        else 0,
+                        original_multiplier=weight / base_weights[model] if base_weights[model] > 0 else 0,
                         applied_multiplier=(
-                            self.config.per_model_minimum / base_weights[model]
-                            if base_weights[model] > 0
-                            else 0
+                            self.config.per_model_minimum / base_weights[model] if base_weights[model] > 0 else 0
                         ),
                         action=BoundAction.MINIMUM_APPLIED,
                         reason=reason,
@@ -256,9 +248,7 @@ class BoundedMultiplierApplicator:
         total = sum(adjusted_weights.values())
         if total > 0 and abs(total - self.config.normalization_target) > 0.1:
             scale = self.config.normalization_target / total
-            adjusted_weights = {
-                model: weight * scale for model, weight in adjusted_weights.items()
-            }
+            adjusted_weights = {model: weight * scale for model, weight in adjusted_weights.items()}
 
         return BoundedMultiplierResult(
             adjusted_weights=adjusted_weights,
@@ -283,16 +273,12 @@ class BoundedMultiplierApplicator:
         # Check per-model minimum
         for model, weight in weights.items():
             if weight < self.config.per_model_minimum:
-                issues.append(
-                    f"{model}: Weight {weight:.2f}% below minimum {self.config.per_model_minimum}%"
-                )
+                issues.append(f"{model}: Weight {weight:.2f}% below minimum {self.config.per_model_minimum}%")
 
         # Check sum is approximately 100%
         total = sum(weights.values())
         if abs(total - self.config.normalization_target) > 1.0:
-            issues.append(
-                f"Total weight {total:.2f}% deviates from target {self.config.normalization_target}%"
-            )
+            issues.append(f"Total weight {total:.2f}% deviates from target {self.config.normalization_target}%")
 
         return (len(issues) == 0, issues)
 

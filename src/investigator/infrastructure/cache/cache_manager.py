@@ -82,9 +82,7 @@ class CacheManager:
 
         # FIX Issue #3: Thread pool for async I/O offloading
         # Prevents blocking the event loop during disk/DB operations
-        self._executor = ThreadPoolExecutor(
-            max_workers=4, thread_name_prefix="cache_io"
-        )
+        self._executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="cache_io")
         logger.debug("Cache manager initialized with 4-thread I/O pool")
 
         # FIX Issue #5: Per-instance cache overrides
@@ -161,9 +159,7 @@ class CacheManager:
             if cache_config.disk.enabled:
                 try:
                     disk_settings = cache_config.disk.settings
-                    base_path = Path(
-                        disk_settings.get("base_path", f"data/{cache_type_name}_cache")
-                    )
+                    base_path = Path(disk_settings.get("base_path", f"data/{cache_type_name}_cache"))
 
                     # Use Parquet for technical data (tabular time-series), file handler for others
                     if cache_type == CacheType.TECHNICAL_DATA:
@@ -186,24 +182,18 @@ class CacheManager:
                         f"Registered disk handler for {cache_type_name} with priority {cache_config.disk.priority}"
                     )
                 except Exception as e:
-                    logger.error(
-                        f"Failed to initialize disk handler for {cache_type_name}: {e}"
-                    )
+                    logger.error(f"Failed to initialize disk handler for {cache_type_name}: {e}")
 
             # Initialize RDBMS handler if enabled
             if cache_config.rdbms.enabled:
                 try:
-                    rdbms_handler = RdbmsCacheStorageHandler(
-                        cache_type, priority=cache_config.rdbms.priority
-                    )
+                    rdbms_handler = RdbmsCacheStorageHandler(cache_type, priority=cache_config.rdbms.priority)
                     self.register_handler(cache_type, rdbms_handler)
                     logger.debug(
                         f"Registered RDBMS handler for {cache_type_name} with priority {cache_config.rdbms.priority}"
                     )
                 except Exception as e:
-                    logger.debug(
-                        f"RDBMS handler not available for {cache_type_name}: {e}"
-                    )
+                    logger.debug(f"RDBMS handler not available for {cache_type_name}: {e}")
 
     def register_handler(self, cache_type: CacheType, handler: CacheStorageHandler):
         """Register a cache handler"""
@@ -213,9 +203,7 @@ class CacheManager:
         # Sort by priority (highest first)
         self.handlers[cache_type].sort(key=lambda h: h.priority, reverse=True)
 
-    def get(
-        self, cache_type: CacheType, key: Union[Tuple, Dict]
-    ) -> Optional[Dict[str, Any]]:
+    def get(self, cache_type: CacheType, key: Union[Tuple, Dict]) -> Optional[Dict[str, Any]]:
         """
         Get data from cache, trying handlers in priority order (highest priority first)
         This ensures disk cache (higher priority) is checked before database (lower priority)
@@ -232,10 +220,7 @@ class CacheManager:
 
         # Check if caching is enabled
         if self.config and hasattr(self.config, "cache_control"):
-            if (
-                not self.config.cache_control.use_cache
-                or not self.config.cache_control.read_from_cache
-            ):
+            if not self.config.cache_control.use_cache or not self.config.cache_control.read_from_cache:
                 logger.debug(f"🚫 Cache READ disabled globally for {cache_type.value}")
                 return None
 
@@ -244,15 +229,9 @@ class CacheManager:
                 return None
 
             # FIX Issue #5: Check force refresh using instance override
-            symbol = (
-                self._extract_symbol_from_key(key)
-                if isinstance(key, (tuple, dict))
-                else None
-            )
+            symbol = self._extract_symbol_from_key(key) if isinstance(key, (tuple, dict)) else None
             if self._should_force_refresh(symbol):
-                logger.debug(
-                    f"🔄 Force refresh enabled for {symbol or 'all'}, skipping cache"
-                )
+                logger.debug(f"🔄 Force refresh enabled for {symbol or 'all'}, skipping cache")
                 return None
 
         handlers = self.handlers.get(cache_type, [])
@@ -294,25 +273,17 @@ class CacheManager:
                         logger.info(
                             f"⏰ Cache EXPIRED [{handler_name}]: {cache_type.value} | Key: {key_str} | Priority: {handler.priority} | Time: {handler_time:.1f}ms"
                         )
-                        self._update_handler_stats(
-                            cache_type, handler_name, "miss", handler_time
-                        )
+                        self._update_handler_stats(cache_type, handler_name, "miss", handler_time)
                         continue  # Try next handler or return None (cache miss)
 
                     # Check for empty LLM response - treat as corrupted cache (cache miss)
-                    if cache_type == CacheType.LLM_RESPONSE and isinstance(
-                        result, dict
-                    ):
+                    if cache_type == CacheType.LLM_RESPONSE and isinstance(result, dict):
                         response_data = result.get("response", result)
-                        if not response_data or (
-                            isinstance(response_data, dict) and not response_data
-                        ):
+                        if not response_data or (isinstance(response_data, dict) and not response_data):
                             logger.warning(
                                 f"⚠️  Cache EMPTY [{handler_name}]: {cache_type.value} | Key: {key_str} | Treating as cache miss"
                             )
-                            self._update_handler_stats(
-                                cache_type, handler_name, "miss", handler_time
-                            )
+                            self._update_handler_stats(cache_type, handler_name, "miss", handler_time)
                             continue  # Try next handler or return None (cache miss)
 
                     # For LLM responses, add the specific type for better visibility
@@ -327,37 +298,27 @@ class CacheManager:
                     )
 
                     # Update statistics
-                    self._update_stats(
-                        cache_type, "hit", total_time, handler_name, handler_time
-                    )
+                    self._update_stats(cache_type, "hit", total_time, handler_name, handler_time)
 
                     # Log operation details
-                    self._log_operation(
-                        cache_type, "GET_HIT", key_str, handler_name, total_time
-                    )
+                    self._log_operation(cache_type, "GET_HIT", key_str, handler_name, total_time)
 
                     # Promote to higher priority if applicable
-                    self._promote_to_higher_priority(
-                        cache_type, key, result, handler.priority
-                    )
+                    self._promote_to_higher_priority(cache_type, key, result, handler.priority)
 
                     return result
                 else:
                     logger.debug(
                         f"❌ Cache MISS [{handler_name}]: {cache_type.value} | Key: {key_str} | Priority: {handler.priority} | Time: {handler_time:.1f}ms"
                     )
-                    self._update_handler_stats(
-                        cache_type, handler_name, "miss", handler_time
-                    )
+                    self._update_handler_stats(cache_type, handler_name, "miss", handler_time)
 
             except Exception as e:
                 handler_time = (time.time() - handler_start) * 1000
                 logger.error(
                     f"💥 Cache ERROR [{handler_name}]: {cache_type.value} | Key: {key_str} | Error: {e} | Time: {handler_time:.1f}ms"
                 )
-                self._update_stats(
-                    cache_type, "error", handler_time, handler_name, handler_time
-                )
+                self._update_stats(cache_type, "error", handler_time, handler_name, handler_time)
                 handler_attempts.append(
                     {
                         "handler": handler_name,
@@ -371,9 +332,7 @@ class CacheManager:
         total_time = (time.time() - operation_start) * 1000
 
         # Comprehensive miss logging
-        handler_summary = " | ".join(
-            [f"{h['handler']}({h['priority']}):{h['result']}" for h in handler_attempts]
-        )
+        handler_summary = " | ".join([f"{h['handler']}({h['priority']}):{h['result']}" for h in handler_attempts])
         logger.info(
             f"❌ Cache MISS ALL: {cache_type.value} | Key: {key_str} | Handlers: {handler_summary} | Total: {total_time:.1f}ms"
         )
@@ -384,9 +343,7 @@ class CacheManager:
 
         return None
 
-    def set(
-        self, cache_type: CacheType, key: Union[Tuple, Dict], value: Dict[str, Any]
-    ) -> bool:
+    def set(self, cache_type: CacheType, key: Union[Tuple, Dict], value: Dict[str, Any]) -> bool:
         """
         Set data in cache handlers based on priority.
 
@@ -407,10 +364,7 @@ class CacheManager:
 
         # Check if caching is enabled
         if self.config and hasattr(self.config, "cache_control"):
-            if (
-                not self.config.cache_control.use_cache
-                or not self.config.cache_control.write_to_cache
-            ):
+            if not self.config.cache_control.use_cache or not self.config.cache_control.write_to_cache:
                 logger.debug(f"🚫 Cache WRITE disabled globally for {cache_type.value}")
                 return False
 
@@ -435,9 +389,7 @@ class CacheManager:
             if handler.exists(key):
                 existing_priority = handler.priority
                 existing_handler = handler.__class__.__name__
-                logger.debug(
-                    f"📁 Cache EXISTS in [{existing_handler}] with priority {handler.priority}"
-                )
+                logger.debug(f"📁 Cache EXISTS in [{existing_handler}] with priority {handler.priority}")
                 break
 
         # Write to handlers based on existence check
@@ -479,23 +431,17 @@ class CacheManager:
                     logger.info(
                         f"✅ Cache WRITE SUCCESS [{handler_name}]: {cache_type.value} | Key: {key_str} | Time: {handler_time:.1f}ms"
                     )
-                    self._update_stats(
-                        cache_type, "write", handler_time, handler_name, handler_time
-                    )
+                    self._update_stats(cache_type, "write", handler_time, handler_name, handler_time)
                 else:
                     # Handler returned False - could be intentional skip (no DataFrame, missing identifiers)
                     # Log as DEBUG instead of WARNING since these are often expected behaviors
                     logger.debug(
                         f"⏭️  Cache WRITE SKIPPED [{handler_name}]: {cache_type.value} | Key: {key_str} | Time: {handler_time:.1f}ms"
                     )
-                    self._update_handler_stats(
-                        cache_type, handler_name, "skip", handler_time
-                    )
+                    self._update_handler_stats(cache_type, handler_name, "skip", handler_time)
 
             except Exception as e:
-                handler_time = (
-                    (time.time() - handler_start) if "handler_start" in locals() else 0
-                )
+                handler_time = (time.time() - handler_start) if "handler_start" in locals() else 0
                 handler_time_ms = handler_time * 1000
                 logger.error(
                     f"💥 Cache WRITE ERROR [{handler_name}]: {cache_type.value} | Key: {key_str} | Error: {e} | Time: {handler_time_ms:.1f}ms"
@@ -510,16 +456,12 @@ class CacheManager:
                     }
                 )
 
-                self._update_stats(
-                    cache_type, "error", handler_time_ms, handler_name, handler_time_ms
-                )
+                self._update_stats(cache_type, "error", handler_time_ms, handler_name, handler_time_ms)
 
         total_time = (time.time() - operation_start) * 1000
 
         # Comprehensive write result logging
-        handler_summary = " | ".join(
-            [f"{a['handler']}({a['priority']}):{a['result']}" for a in write_attempts]
-        )
+        handler_summary = " | ".join([f"{a['handler']}({a['priority']}):{a['result']}" for a in write_attempts])
 
         if success_count > 0:
             logger.info(
@@ -549,9 +491,7 @@ class CacheManager:
     # FIX Issue #3: Async Wrappers for Non-Blocking Cache Operations
     # ========================================================================
 
-    async def get_async(
-        self, cache_type: CacheType, key: Union[Tuple, Dict]
-    ) -> Optional[Dict[str, Any]]:
+    async def get_async(self, cache_type: CacheType, key: Union[Tuple, Dict]) -> Optional[Dict[str, Any]]:
         """
         Async wrapper for get() - offloads blocking I/O to thread pool.
 
@@ -570,13 +510,9 @@ class CacheManager:
             cached = await cache_manager.get_async(CacheType.LLM_RESPONSE, cache_key)
         """
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            self._executor, self.get, cache_type, key
-        )  # Existing sync implementation
+        return await loop.run_in_executor(self._executor, self.get, cache_type, key)  # Existing sync implementation
 
-    async def set_async(
-        self, cache_type: CacheType, key: Union[Tuple, Dict], value: Dict[str, Any]
-    ) -> bool:
+    async def set_async(self, cache_type: CacheType, key: Union[Tuple, Dict], value: Dict[str, Any]) -> bool:
         """
         Async wrapper for set() - offloads blocking I/O to thread pool.
 
@@ -635,9 +571,7 @@ class CacheManager:
     # FIX Issue #5: Cache Override Methods
     # ========================================================================
 
-    def set_force_refresh(
-        self, force_refresh: bool, symbols: Optional[List[str]] = None
-    ):
+    def set_force_refresh(self, force_refresh: bool, symbols: Optional[List[str]] = None):
         """
         Set per-instance force refresh override (Issue #5 fix).
 
@@ -746,9 +680,7 @@ class CacheManager:
                                 f"Cache PROMOTED [{handler.__class__.__name__}]: {cache_type.value} from priority {found_priority} to {handler.priority}"
                             )
                 except Exception as e:
-                    logger.warning(
-                        f"Cache promotion error [{handler.__class__.__name__}]: {e}"
-                    )
+                    logger.warning(f"Cache promotion error [{handler.__class__.__name__}]: {e}")
 
     def exists(self, cache_type: CacheType, key: Union[Tuple, Dict]) -> bool:
         """Check if key exists in any handler"""
@@ -812,10 +744,7 @@ class CacheManager:
 
         # Summary logging
         handler_summary = " | ".join(
-            [
-                f"{c['handler']}({c['priority']}):{'EXISTS' if c['exists'] else 'NOT_EXISTS'}"
-                for c in existence_checks
-            ]
+            [f"{c['handler']}({c['priority']}):{'EXISTS' if c['exists'] else 'NOT_EXISTS'}" for c in existence_checks]
         )
         logger.info(
             f"📂 Cache NOT EXISTS ALL: {cache_type.value} | Key: {key_str} | Handlers: {handler_summary} | Total: {total_time:.1f}ms"
@@ -833,15 +762,11 @@ class CacheManager:
                 if handler.delete(key):
                     any_deleted = True
             except Exception as e:
-                logger.warning(
-                    f"Cache delete error [{handler.__class__.__name__}]: {e}"
-                )
+                logger.warning(f"Cache delete error [{handler.__class__.__name__}]: {e}")
 
         return any_deleted
 
-    def delete_by_symbol(
-        self, symbol: str, cache_types: Optional[List[CacheType]] = None
-    ) -> Dict[str, int]:
+    def delete_by_symbol(self, symbol: str, cache_types: Optional[List[CacheType]] = None) -> Dict[str, int]:
         """
         Delete all cache entries for a specific symbol across specified cache types.
         Optimized for symbol-based cleanup using targeted deletion methods.
@@ -862,9 +787,7 @@ class CacheManager:
         deletion_results = {}
         total_deleted = 0
 
-        logger.info(
-            f"🧹 Starting symbol-based cleanup for {symbol} across {len(target_cache_types)} cache types"
-        )
+        logger.info(f"🧹 Starting symbol-based cleanup for {symbol} across {len(target_cache_types)} cache types")
 
         for cache_type in target_cache_types:
             handlers = self.handlers.get(cache_type, [])
@@ -926,11 +849,7 @@ class CacheManager:
             # Summary logging for this cache type
             if cache_type_deleted > 0:
                 handler_summary = " | ".join(
-                    [
-                        f"{r['handler']}:{r['deleted']}"
-                        for r in handler_results
-                        if r["deleted"] > 0
-                    ]
+                    [f"{r['handler']}:{r['deleted']}" for r in handler_results if r["deleted"] > 0]
                 )
                 logger.info(
                     f"✅ Symbol cleanup COMPLETE: {cache_type.value} | Symbol: {symbol} | Total deleted: {cache_type_deleted} | Handlers: {handler_summary}"
@@ -940,9 +859,7 @@ class CacheManager:
 
         # Final summary
         if total_deleted > 0:
-            cache_summary = " | ".join(
-                [f"{ct}:{count}" for ct, count in deletion_results.items() if count > 0]
-            )
+            cache_summary = " | ".join([f"{ct}:{count}" for ct, count in deletion_results.items() if count > 0])
             logger.info(
                 f"🎯 Symbol cleanup SUCCESS: Symbol: {symbol} | Total deleted: {total_deleted} | Cache types: {cache_summary} | Total time: {total_time:.1f}ms"
             )
@@ -963,13 +880,9 @@ class CacheManager:
                 deleted_count = handler.delete_by_pattern(pattern)
                 total_deleted += deleted_count
             except Exception as e:
-                logger.error(
-                    f"Handler {handler.__class__.__name__} failed to delete by pattern: {e}"
-                )
+                logger.error(f"Handler {handler.__class__.__name__} failed to delete by pattern: {e}")
 
-        logger.info(
-            f"Total deleted by pattern '{pattern}' from {cache_type}: {total_deleted}"
-        )
+        logger.info(f"Total deleted by pattern '{pattern}' from {cache_type}: {total_deleted}")
         return total_deleted
 
     def clear_cache_type(self, cache_type: CacheType) -> bool:
@@ -983,14 +896,10 @@ class CacheManager:
                 if not success:
                     all_success = False
             except Exception as e:
-                logger.error(
-                    f"Handler {handler.__class__.__name__} failed to clear: {e}"
-                )
+                logger.error(f"Handler {handler.__class__.__name__} failed to clear: {e}")
                 all_success = False
 
-        logger.info(
-            f"Cleared cache type {cache_type}: {'success' if all_success else 'partial/failed'}"
-        )
+        logger.info(f"Cleared cache type {cache_type}: {'success' if all_success else 'partial/failed'}")
         return all_success
 
     def clear_all_caches(self) -> bool:
@@ -1002,9 +911,7 @@ class CacheManager:
             if not success:
                 all_success = False
 
-        logger.info(
-            f"Cleared all caches: {'success' if all_success else 'partial/failed'}"
-        )
+        logger.info(f"Cleared all caches: {'success' if all_success else 'partial/failed'}")
         return all_success
 
     def _format_key_for_logging(self, key: Union[Tuple, Dict]) -> str:
@@ -1055,9 +962,7 @@ class CacheManager:
                 stats["avg_time_ms"] = stats["total_time_ms"] / total_ops
 
             if handler_name and handler_time is not None:
-                self._update_handler_stats(
-                    cache_type, handler_name, operation, handler_time
-                )
+                self._update_handler_stats(cache_type, handler_name, operation, handler_time)
 
     def _update_handler_stats(
         self,
@@ -1068,9 +973,7 @@ class CacheManager:
     ):
         """Update per-handler performance statistics"""
         # NOTE: No lock needed here - always called from within _update_stats which already holds the lock
-        handler_stats = self._operation_stats[cache_type.value]["handler_performance"][
-            handler_name
-        ]
+        handler_stats = self._operation_stats[cache_type.value]["handler_performance"][handler_name]
 
         if operation == "hit":
             handler_stats["hits"] += 1
@@ -1131,16 +1034,10 @@ class CacheManager:
                 }
 
                 # Handler-specific stats
-                for handler_name, handler_stats in type_stats[
-                    "handler_performance"
-                ].items():
-                    handler_total_reads = (
-                        handler_stats["hits"] + handler_stats["misses"]
-                    )
+                for handler_name, handler_stats in type_stats["handler_performance"].items():
+                    handler_total_reads = handler_stats["hits"] + handler_stats["misses"]
                     handler_hit_ratio = (
-                        (handler_stats["hits"] / handler_total_reads * 100)
-                        if handler_total_reads > 0
-                        else 0
+                        (handler_stats["hits"] / handler_total_reads * 100) if handler_total_reads > 0 else 0
                     )
 
                     stats[cache_type]["handlers"][handler_name] = {
@@ -1154,9 +1051,7 @@ class CacheManager:
 
             return stats
 
-    def get_recent_operations(
-        self, cache_type: CacheType = None, limit: int = 20
-    ) -> Dict[str, Any]:
+    def get_recent_operations(self, cache_type: CacheType = None, limit: int = 20) -> Dict[str, Any]:
         """Get recent cache operations for debugging"""
         with self._stats_lock:
             if cache_type:
@@ -1234,9 +1129,7 @@ class CacheManager:
             logger.error(f"Cache ping failed: {e}")
             return False
 
-    def _calculate_ttl_remaining(
-        self, cached_data: Any, cache_type: CacheType
-    ) -> Optional[str]:
+    def _calculate_ttl_remaining(self, cached_data: Any, cache_type: CacheType) -> Optional[str]:
         """
         Calculate TTL remaining for cached data based on cache type and metadata.
 
@@ -1295,11 +1188,7 @@ class CacheManager:
                                 break
 
                 # Check nested response structure if not found yet
-                if (
-                    not cached_at_str
-                    and "response" in cached_data
-                    and isinstance(cached_data["response"], dict)
-                ):
+                if not cached_at_str and "response" in cached_data and isinstance(cached_data["response"], dict):
                     response_metadata = cached_data["response"].get("metadata", {})
                     if isinstance(response_metadata, dict):
                         for field_name in timestamp_field_names:
@@ -1321,9 +1210,7 @@ class CacheManager:
             try:
                 # Ensure we have a string
                 if not isinstance(cached_at_str, str):
-                    logger.debug(
-                        f"Timestamp is not a string: {type(cached_at_str)} = {cached_at_str}"
-                    )
+                    logger.debug(f"Timestamp is not a string: {type(cached_at_str)} = {cached_at_str}")
                     return "parse_error"
 
                 # Handle empty string
@@ -1333,9 +1220,7 @@ class CacheManager:
 
                 # Handle both with and without microseconds
                 if "." in cached_at_str:
-                    cached_at = datetime.fromisoformat(
-                        cached_at_str.replace("Z", "+00:00")
-                    )
+                    cached_at = datetime.fromisoformat(cached_at_str.replace("Z", "+00:00"))
                 else:
                     cached_at = datetime.fromisoformat(cached_at_str.replace("Z", ""))
 
@@ -1370,9 +1255,7 @@ class CacheManager:
                     return f"{total_seconds}s"
 
             except (ValueError, TypeError) as e:
-                logger.debug(
-                    f"Error parsing cached_at timestamp '{cached_at_str}': {e}"
-                )
+                logger.debug(f"Error parsing cached_at timestamp '{cached_at_str}': {e}")
                 return "parse_error"
 
         except Exception as e:
@@ -1422,10 +1305,7 @@ class CacheManager:
                         return "technical"
                     elif "market" in task_type.lower():
                         return "market_context"
-                    elif (
-                        "synthesis" in task_type.lower()
-                        or "investment" in task_type.lower()
-                    ):
+                    elif "synthesis" in task_type.lower() or "investment" in task_type.lower():
                         return "synthesis"
 
                     # Check analysis_type
@@ -1449,18 +1329,11 @@ class CacheManager:
                     return "synthesis"
 
                 # Method 4: Heuristic based on content structure
-                if "financial_health_score" in str(
-                    cached_data
-                ) or "quarterly_summary" in str(cached_data):
+                if "financial_health_score" in str(cached_data) or "quarterly_summary" in str(cached_data):
                     return "fundamental"
-                elif (
-                    "technical_score" in str(cached_data)
-                    or "rsi" in str(cached_data).lower()
-                ):
+                elif "technical_score" in str(cached_data) or "rsi" in str(cached_data).lower():
                     return "technical"
-                elif "investment_thesis" in str(cached_data) or "overall_score" in str(
-                    cached_data
-                ):
+                elif "investment_thesis" in str(cached_data) or "overall_score" in str(cached_data):
                     return "synthesis"
 
             return "unknown"
@@ -1585,9 +1458,7 @@ class CacheManager:
         if schema_version:
             min_version = MINIMUM_COMPATIBLE_VERSIONS.get(cache_type, "1.0.0")
             if not self._is_version_compatible(schema_version, min_version):
-                issues.append(
-                    f"Schema version {schema_version} < minimum {min_version}"
-                )
+                issues.append(f"Schema version {schema_version} < minimum {min_version}")
         else:
             # No version = legacy cache, may need migration
             issues.append("Missing schema_version (legacy cache entry)")
@@ -1602,10 +1473,7 @@ class CacheManager:
 
         # Check for required timestamp
         if isinstance(metadata, dict):
-            has_timestamp = any(
-                metadata.get(field)
-                for field in ["cached_at", "fetched_at", "created_at", "timestamp"]
-            )
+            has_timestamp = any(metadata.get(field) for field in ["cached_at", "fetched_at", "created_at", "timestamp"])
             if not has_timestamp:
                 issues.append("Missing timestamp field")
 
@@ -1679,9 +1547,7 @@ class CacheManager:
     # M8: Auto-Invalidation on SEC Updates
     # ========================================================================
 
-    def invalidate_on_sec_update(
-        self, symbol: str, new_filing_date: str, dry_run: bool = False
-    ) -> Dict[str, Any]:
+    def invalidate_on_sec_update(self, symbol: str, new_filing_date: str, dry_run: bool = False) -> Dict[str, Any]:
         """
         Invalidate cache entries when new SEC filing is detected.
 
@@ -1779,9 +1645,7 @@ class CacheManager:
                                 try:
                                     handler.delete(entry_key)
                                 except Exception as del_err:
-                                    result["errors"].append(
-                                        f"Failed to delete {entry_key}: {del_err}"
-                                    )
+                                    result["errors"].append(f"Failed to delete {entry_key}: {del_err}")
                                     continue
 
                             result["entries_invalidated"] += 1
@@ -1796,14 +1660,10 @@ class CacheManager:
                             )
                         else:
                             result["entries_kept"] += 1
-                            result["kept_by_type"][type_name] = (
-                                result["kept_by_type"].get(type_name, 0) + 1
-                            )
+                            result["kept_by_type"][type_name] = result["kept_by_type"].get(type_name, 0) + 1
 
                 except Exception as e:
-                    result["errors"].append(
-                        f"Error processing {handler_name}/{type_name}: {e}"
-                    )
+                    result["errors"].append(f"Error processing {handler_name}/{type_name}: {e}")
                     logger.error(f"SEC invalidation error: {e}")
 
         total_time = (time.time() - operation_start) * 1000
@@ -1842,9 +1702,7 @@ class CacheManager:
     # M8: Corruption Detection and Purge
     # ========================================================================
 
-    def detect_and_purge_corrupted(
-        self, symbol: Optional[str] = None, dry_run: bool = True
-    ) -> Dict[str, Any]:
+    def detect_and_purge_corrupted(self, symbol: Optional[str] = None, dry_run: bool = True) -> Dict[str, Any]:
         """
         Detect and optionally purge corrupted cache entries.
 
@@ -1921,9 +1779,7 @@ class CacheManager:
                         result["entries_scanned"] += 1
 
                         # Validate entry
-                        is_valid, issues = self.validate_cache_entry(
-                            entry_data, cache_type, strict=True
-                        )
+                        is_valid, issues = self.validate_cache_entry(entry_data, cache_type, strict=True)
 
                         if not is_valid:
                             result["corrupted_entries"] += 1
@@ -1945,8 +1801,7 @@ class CacheManager:
                                     corruption_type = "other"
 
                                 result["corruption_types"][corruption_type] = (
-                                    result["corruption_types"].get(corruption_type, 0)
-                                    + 1
+                                    result["corruption_types"].get(corruption_type, 0) + 1
                                 )
 
                             # Record detail
@@ -1962,14 +1817,9 @@ class CacheManager:
                             if not dry_run:
                                 try:
                                     handler.delete(entry_key)
-                                    logger.info(
-                                        f"Purged corrupted entry [{handler_name}] "
-                                        f"{type_name}: {entry_key}"
-                                    )
+                                    logger.info(f"Purged corrupted entry [{handler_name}] " f"{type_name}: {entry_key}")
                                 except Exception as del_err:
-                                    result["errors"].append(
-                                        f"Failed to purge {entry_key}: {del_err}"
-                                    )
+                                    result["errors"].append(f"Failed to purge {entry_key}: {del_err}")
 
                             logger.debug(
                                 f"{'Would purge' if dry_run else 'Purged'} corrupted "
@@ -1979,18 +1829,14 @@ class CacheManager:
                             result["healthy_entries"] += 1
 
                 except Exception as e:
-                    result["errors"].append(
-                        f"Error scanning {handler_name}/{type_name}: {e}"
-                    )
+                    result["errors"].append(f"Error scanning {handler_name}/{type_name}: {e}")
                     logger.error(f"Corruption scan error: {e}")
 
         total_time = (time.time() - operation_start) * 1000
 
         # Summary
         corruption_rate = (
-            (result["corrupted_entries"] / result["entries_scanned"] * 100)
-            if result["entries_scanned"] > 0
-            else 0
+            (result["corrupted_entries"] / result["entries_scanned"] * 100) if result["entries_scanned"] > 0 else 0
         )
 
         logger.info(

@@ -20,9 +20,7 @@ def summarize_company_data(company_data: Dict[str, Any]) -> Dict[str, Any]:
     financials = company_data.get("financials") or {}
     market_data = company_data.get("market_data", {})
 
-    market_cap = (
-        company_data.get("market_cap", 0) or market_data.get("market_cap", 0) or 0
-    )
+    market_cap = company_data.get("market_cap", 0) or market_data.get("market_cap", 0) or 0
 
     return {
         "symbol": company_data["symbol"],
@@ -43,9 +41,7 @@ def extract_latest_financials(quarterly_data: List[Any]) -> Dict[str, Any]:
     if not quarterly_data or len(quarterly_data) == 0:
         return {}
 
-    latest_quarter = (
-        quarterly_data[0] if isinstance(quarterly_data, list) else quarterly_data
-    )
+    latest_quarter = quarterly_data[0] if isinstance(quarterly_data, list) else quarterly_data
 
     if hasattr(latest_quarter, "financial_data"):
         financial_data = latest_quarter.financial_data
@@ -55,33 +51,15 @@ def extract_latest_financials(quarterly_data: List[Any]) -> Dict[str, Any]:
                 return statement_dict.get(key, default)
             return default
 
-        income_stmt = (
-            financial_data.income_statement
-            if hasattr(financial_data, "income_statement")
-            else {}
-        )
-        balance_sheet = (
-            financial_data.balance_sheet
-            if hasattr(financial_data, "balance_sheet")
-            else {}
-        )
-        cash_flow = (
-            financial_data.cash_flow_statement
-            if hasattr(financial_data, "cash_flow_statement")
-            else {}
-        )
-        quarterly = (
-            financial_data.quarterly_data
-            if hasattr(financial_data, "quarterly_data")
-            else {}
-        )
+        income_stmt = financial_data.income_statement if hasattr(financial_data, "income_statement") else {}
+        balance_sheet = financial_data.balance_sheet if hasattr(financial_data, "balance_sheet") else {}
+        cash_flow = financial_data.cash_flow_statement if hasattr(financial_data, "cash_flow_statement") else {}
+        quarterly = financial_data.quarterly_data if hasattr(financial_data, "quarterly_data") else {}
 
-        operating_income = safe_get(income_stmt, "operating_income") or safe_get(
-            quarterly, "operating_income"
+        operating_income = safe_get(income_stmt, "operating_income") or safe_get(quarterly, "operating_income")
+        depreciation_amortization = safe_get(cash_flow, "depreciation_amortization") or safe_get(
+            quarterly, "depreciation_amortization"
         )
-        depreciation_amortization = safe_get(
-            cash_flow, "depreciation_amortization"
-        ) or safe_get(quarterly, "depreciation_amortization")
 
         ebitda = 0
         if operating_income and depreciation_amortization:
@@ -96,8 +74,7 @@ def extract_latest_financials(quarterly_data: List[Any]) -> Dict[str, Any]:
             "net_income": safe_get(income_stmt, "net_income")
             or safe_get(income_stmt, "earnings")
             or safe_get(quarterly, "net_income"),
-            "total_assets": safe_get(balance_sheet, "total_assets")
-            or safe_get(quarterly, "total_assets"),
+            "total_assets": safe_get(balance_sheet, "total_assets") or safe_get(quarterly, "total_assets"),
             "total_liabilities": safe_get(balance_sheet, "total_liabilities")
             or safe_get(quarterly, "total_liabilities"),
             "stockholders_equity": safe_get(balance_sheet, "stockholders_equity")
@@ -109,12 +86,10 @@ def extract_latest_financials(quarterly_data: List[Any]) -> Dict[str, Any]:
             "cash": safe_get(balance_sheet, "cash")
             or safe_get(balance_sheet, "cash_and_equivalents")
             or safe_get(quarterly, "cash"),
-            "current_assets": safe_get(balance_sheet, "current_assets")
-            or safe_get(quarterly, "current_assets"),
+            "current_assets": safe_get(balance_sheet, "current_assets") or safe_get(quarterly, "current_assets"),
             "current_liabilities": safe_get(balance_sheet, "current_liabilities")
             or safe_get(quarterly, "current_liabilities"),
-            "gross_profit": safe_get(income_stmt, "gross_profit")
-            or safe_get(quarterly, "gross_profit"),
+            "gross_profit": safe_get(income_stmt, "gross_profit") or safe_get(quarterly, "gross_profit"),
             "operating_income": operating_income,
             "depreciation_amortization": depreciation_amortization,
             "ebitda": ebitda,
@@ -122,14 +97,10 @@ def extract_latest_financials(quarterly_data: List[Any]) -> Dict[str, Any]:
             or safe_get(quarterly, "operating_cash_flow"),
             "capital_expenditures": safe_get(cash_flow, "capital_expenditures")
             or safe_get(quarterly, "capital_expenditures"),
-            "free_cash_flow": safe_get(cash_flow, "free_cash_flow")
-            or safe_get(quarterly, "free_cash_flow"),
-            "inventory": safe_get(balance_sheet, "inventory")
-            or safe_get(quarterly, "inventory"),
-            "cost_of_revenue": safe_get(income_stmt, "cost_of_revenue")
-            or safe_get(quarterly, "cost_of_revenue"),
-            "dividends": safe_get(cash_flow, "dividends")
-            or safe_get(quarterly, "dividends"),
+            "free_cash_flow": safe_get(cash_flow, "free_cash_flow") or safe_get(quarterly, "free_cash_flow"),
+            "inventory": safe_get(balance_sheet, "inventory") or safe_get(quarterly, "inventory"),
+            "cost_of_revenue": safe_get(income_stmt, "cost_of_revenue") or safe_get(quarterly, "cost_of_revenue"),
+            "dividends": safe_get(cash_flow, "dividends") or safe_get(quarterly, "dividends"),
             "shares_outstanding": safe_get(balance_sheet, "shares_outstanding")
             or safe_get(quarterly, "shares_outstanding"),
         }
@@ -139,12 +110,10 @@ def extract_latest_financials(quarterly_data: List[Any]) -> Dict[str, Any]:
         cash_flow = latest_quarter.get("cash_flow", {})
         balance_sheet = latest_quarter.get("balance_sheet", {})
 
-        operating_income = latest_quarter.get("operating_income", 0) or income_stmt.get(
-            "operating_income", 0
-        )
-        depreciation_amortization = latest_quarter.get(
+        operating_income = latest_quarter.get("operating_income", 0) or income_stmt.get("operating_income", 0)
+        depreciation_amortization = latest_quarter.get("depreciation_amortization", 0) or cash_flow.get(
             "depreciation_amortization", 0
-        ) or cash_flow.get("depreciation_amortization", 0)
+        )
 
         ebitda = 0
         if operating_income and depreciation_amortization:
@@ -159,8 +128,7 @@ def extract_latest_financials(quarterly_data: List[Any]) -> Dict[str, Any]:
             "net_income": latest_quarter.get("net_income", 0)
             or latest_quarter.get("earnings", 0)
             or income_stmt.get("net_income", 0),
-            "total_assets": latest_quarter.get("total_assets", 0)
-            or balance_sheet.get("total_assets", 0),
+            "total_assets": latest_quarter.get("total_assets", 0) or balance_sheet.get("total_assets", 0),
             "total_liabilities": latest_quarter.get("total_liabilities", 0)
             or balance_sheet.get("total_liabilities", 0),
             "stockholders_equity": latest_quarter.get("stockholders_equity", 0)
@@ -172,12 +140,10 @@ def extract_latest_financials(quarterly_data: List[Any]) -> Dict[str, Any]:
             "cash": latest_quarter.get("cash", 0)
             or latest_quarter.get("cash_and_equivalents", 0)
             or balance_sheet.get("cash_and_equivalents", 0),
-            "current_assets": latest_quarter.get("current_assets", 0)
-            or balance_sheet.get("current_assets", 0),
+            "current_assets": latest_quarter.get("current_assets", 0) or balance_sheet.get("current_assets", 0),
             "current_liabilities": latest_quarter.get("current_liabilities", 0)
             or balance_sheet.get("current_liabilities", 0),
-            "gross_profit": latest_quarter.get("gross_profit", 0)
-            or income_stmt.get("gross_profit", 0),
+            "gross_profit": latest_quarter.get("gross_profit", 0) or income_stmt.get("gross_profit", 0),
             "operating_income": operating_income,
             "depreciation_amortization": depreciation_amortization,
             "ebitda": ebitda,
@@ -185,14 +151,10 @@ def extract_latest_financials(quarterly_data: List[Any]) -> Dict[str, Any]:
             or cash_flow.get("operating_cash_flow", 0),
             "capital_expenditures": latest_quarter.get("capital_expenditures", 0)
             or cash_flow.get("capital_expenditures", 0),
-            "free_cash_flow": latest_quarter.get("free_cash_flow", 0)
-            or cash_flow.get("free_cash_flow", 0),
-            "inventory": latest_quarter.get("inventory", 0)
-            or balance_sheet.get("inventory", 0),
-            "cost_of_revenue": latest_quarter.get("cost_of_revenue", 0)
-            or income_stmt.get("cost_of_revenue", 0),
-            "dividends": latest_quarter.get("dividends", 0)
-            or cash_flow.get("dividends_paid", 0),
+            "free_cash_flow": latest_quarter.get("free_cash_flow", 0) or cash_flow.get("free_cash_flow", 0),
+            "inventory": latest_quarter.get("inventory", 0) or balance_sheet.get("inventory", 0),
+            "cost_of_revenue": latest_quarter.get("cost_of_revenue", 0) or income_stmt.get("cost_of_revenue", 0),
+            "dividends": latest_quarter.get("dividends", 0) or cash_flow.get("dividends_paid", 0),
             "shares_outstanding": latest_quarter.get("shares_outstanding", 0)
             or balance_sheet.get("shares_outstanding", 0),
         }

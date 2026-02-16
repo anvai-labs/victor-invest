@@ -24,9 +24,7 @@ class LLMResponseProcessor:
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self._last_thinking_content = ""
 
-    def process_response(
-        self, response_data: Any, from_cache: bool = False
-    ) -> Tuple[str, Dict[str, Any]]:
+    def process_response(self, response_data: Any, from_cache: bool = False) -> Tuple[str, Dict[str, Any]]:
         """
         Process LLM response uniformly whether from cache or direct generation.
 
@@ -52,9 +50,7 @@ class LLMResponseProcessor:
 
                 # Check if content is already processed
                 if self._is_already_processed(response_data, content):
-                    self.logger.debug(
-                        "Content is already processed, skipping processing"
-                    )
+                    self.logger.debug("Content is already processed, skipping processing")
                     return content, metadata
 
             else:
@@ -161,9 +157,7 @@ class LLMResponseProcessor:
         if think_matches:
             thinking_content = "\n\n".join(think_matches)
             content = re.sub(think_pattern, "", content, flags=re.DOTALL).strip()
-            self.logger.debug(
-                f"Removed {len(think_matches)} thinking sections from response"
-            )
+            self.logger.debug(f"Removed {len(think_matches)} thinking sections from response")
 
         # Fix common JSON escape sequence issues from reasoning models
         # This handles cases where LLM outputs invalid escape sequences
@@ -200,24 +194,16 @@ class LLMResponseProcessor:
                 except json.JSONDecodeError:
                     # Still fails, try more aggressive fixes
                     # Replace literal newlines and tabs in JSON strings
-                    fixed_content = re.sub(
-                        r'(": "[^"]*?)\\n([^"]*?")', r"\1\\\\n\2", content
-                    )
-                    fixed_content = re.sub(
-                        r'(": "[^"]*?)\\t([^"]*?")', r"\1\\\\t\2", fixed_content
-                    )
+                    fixed_content = re.sub(r'(": "[^"]*?)\\n([^"]*?")', r"\1\\\\n\2", content)
+                    fixed_content = re.sub(r'(": "[^"]*?)\\t([^"]*?")', r"\1\\\\t\2", fixed_content)
 
                     try:
                         json.loads(fixed_content)
                         content = fixed_content
-                        self.logger.debug(
-                            "Successfully fixed JSON by escaping newlines/tabs"
-                        )
+                        self.logger.debug("Successfully fixed JSON by escaping newlines/tabs")
                     except json.JSONDecodeError:
                         # Last resort: leave as is and let validation handle it
-                        self.logger.warning(
-                            "Could not fix JSON escape sequences, proceeding with original"
-                        )
+                        self.logger.warning("Could not fix JSON escape sequences, proceeding with original")
             except Exception as e:
                 # For any other errors, leave content as is
                 self.logger.debug(f"Error in JSON fixing: {e}")

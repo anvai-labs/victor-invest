@@ -10,9 +10,7 @@ from investigator.domain.agents.fundamental.valuation_orchestrator import (
 
 
 @pytest.mark.asyncio
-@patch(
-    "investigator.domain.agents.fundamental.valuation_orchestrator.synthesize_valuation"
-)
+@patch("investigator.domain.agents.fundamental.valuation_orchestrator.synthesize_valuation")
 async def test_dispatch_valuation_synthesis_uses_deterministic_path(mock_synthesize):
     mock_synthesize.return_value = {"fair_value_estimate": 120.0}
     ollama = MagicMock()
@@ -50,9 +48,7 @@ async def test_dispatch_valuation_synthesis_uses_deterministic_path(mock_synthes
 @pytest.mark.asyncio
 async def test_dispatch_valuation_synthesis_uses_llm_path_and_wraps_response():
     ollama = MagicMock()
-    ollama.generate = AsyncMock(
-        return_value={"response": '{"fair_value_estimate": 130.0}'}
-    )
+    ollama.generate = AsyncMock(return_value={"response": '{"fair_value_estimate": 130.0}'})
     cache_llm_response = AsyncMock()
     wrap_llm_response = MagicMock(return_value={"wrapped": "llm"})
     debug_log_prompt = MagicMock()

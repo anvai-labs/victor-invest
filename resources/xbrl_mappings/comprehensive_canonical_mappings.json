@@ -96,6 +96,7 @@
     "global_fallback": [
       "PaymentsOfDividends",
       "PaymentsOfDividendsCommonStock",
+      "DividendsCommonStockCash",
       "PaymentsOfOrdinaryDividends",
       "DividendsCashOutflow"
     ],
@@ -250,7 +251,9 @@
     "global_fallback": [
       "ShortTermDebt",
       "ShortTermBorrowings",
-      "DebtCurrent"
+      "DebtCurrent",
+      "LongTermDebtAndCapitalLeaseObligationsCurrent",
+      "LongTermDebtMaturitiesRepaymentsOfPrincipalInNextTwelveMonths"
     ],
     "sector_specific": {}
   },
@@ -258,6 +261,9 @@
   "total_debt": {
     "description": "Total Debt",
     "global_fallback": [
+      "DebtLongtermAndShorttermCombinedAmount",
+      "DebtLongTermAndShortTermCombinedAmount",
+      "LongTermDebtAndCapitalLeaseObligations",
       "DebtAndCapitalLeaseObligations",
       "Debt"
     ],
@@ -445,8 +451,18 @@
   "other_comprehensive_income": {
     "description": "Other Comprehensive Income (Loss)",
     "global_fallback": [
+      "OtherComprehensiveIncomeLossNetOfTaxPeriodIncreaseDecrease",
       "OtherComprehensiveIncomeLossNetOfTax",
       "OtherComprehensiveIncomeLossNetOfTaxPortionAttributableToParent"
+    ],
+    "sector_specific": {}
+  },
+
+  "comprehensive_income": {
+    "description": "Comprehensive Income (Net of Tax)",
+    "global_fallback": [
+      "ComprehensiveIncomeNetOfTax",
+      "ComprehensiveIncomeNetOfTaxIncludingPortionAttributableToNoncontrollingInterest"
     ],
     "sector_specific": {}
   },

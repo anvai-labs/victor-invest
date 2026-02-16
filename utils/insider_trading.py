@@ -6,8 +6,8 @@ and calculate insider sentiment scores.
 """
 
 import logging
-from typing import List, Dict, Optional
 from datetime import datetime, timedelta
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -161,12 +161,8 @@ class InsiderTradingAnalyzer:
         sells = [t for t in transactions if t.get("transaction_type") == "Sale"]
 
         # Calculate metrics
-        total_buy_value = sum(
-            t.get("shares", 0) * t.get("price_per_share", 0) for t in buys
-        )
-        total_sell_value = sum(
-            t.get("shares", 0) * t.get("price_per_share", 0) for t in sells
-        )
+        total_buy_value = sum(t.get("shares", 0) * t.get("price_per_share", 0) for t in buys)
+        total_sell_value = sum(t.get("shares", 0) * t.get("price_per_share", 0) for t in sells)
 
         buy_count = len(buys)
         sell_count = len(sells)
@@ -217,20 +213,15 @@ class InsiderTradingAnalyzer:
         recent_buys = [
             t
             for t in transactions
-            if t.get("transaction_type") == "Purchase"
-            and self._is_recent(t.get("transaction_date", ""), days=30)
+            if t.get("transaction_type") == "Purchase" and self._is_recent(t.get("transaction_date", ""), days=30)
         ]
 
         if len(recent_buys) >= 3:
-            patterns.append(
-                f"Cluster of {len(recent_buys)} insider purchases in last 30 days"
-            )
+            patterns.append(f"Cluster of {len(recent_buys)} insider purchases in last 30 days")
 
         # Pattern 2: Unusually large transaction
         if transactions and len(transactions) >= 2:
-            values = [
-                t.get("shares", 0) * t.get("price_per_share", 0) for t in transactions
-            ]
+            values = [t.get("shares", 0) * t.get("price_per_share", 0) for t in transactions]
             if values:
                 # For small samples, use median-based detection to avoid outlier influence
                 if len(values) <= 5:
@@ -242,23 +233,17 @@ class InsiderTradingAnalyzer:
                         value = t.get("shares", 0) * t.get("price_per_share", 0)
                         if value > threshold:
                             trans_type = t.get("transaction_type", "Transaction")
-                            patterns.append(
-                                f"Unusually large {trans_type.lower()}: ${value:,.0f}"
-                            )
+                            patterns.append(f"Unusually large {trans_type.lower()}: ${value:,.0f}")
                 else:
                     # For larger samples, use mean + 2 std dev
                     mean_value = sum(values) / len(values)
-                    std_dev = (
-                        sum((x - mean_value) ** 2 for x in values) / len(values)
-                    ) ** 0.5
+                    std_dev = (sum((x - mean_value) ** 2 for x in values) / len(values)) ** 0.5
 
                     for t in transactions:
                         value = t.get("shares", 0) * t.get("price_per_share", 0)
                         if value > mean_value + 2 * std_dev:
                             trans_type = t.get("transaction_type", "Transaction")
-                            patterns.append(
-                                f"Unusually large {trans_type.lower()}: ${value:,.0f}"
-                            )
+                            patterns.append(f"Unusually large {trans_type.lower()}: ${value:,.0f}")
 
         return patterns
 

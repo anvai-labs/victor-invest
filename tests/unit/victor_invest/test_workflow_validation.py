@@ -1,6 +1,6 @@
 from victor.framework.handler_registry import get_handler_registry
-from victor.workflows.executor import get_compute_handler
 from victor.workflows.definition import ComputeNode
+from victor.workflows.executor import get_compute_handler
 
 from victor_invest.workflows import (
     InvestmentWorkflowProvider,

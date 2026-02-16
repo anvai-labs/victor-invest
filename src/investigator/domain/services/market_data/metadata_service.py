@@ -258,9 +258,7 @@ class SymbolMetadataService:
         """Clear the metadata cache."""
         self._cache.clear()
 
-    def get_symbols_by_sector(
-        self, sector: str, min_market_cap: float = 0
-    ) -> List[str]:
+    def get_symbols_by_sector(self, sector: str, min_market_cap: float = 0) -> List[str]:
         """
         Get all symbols in a sector.
 

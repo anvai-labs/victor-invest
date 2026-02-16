@@ -15,10 +15,14 @@ from typing import Any, Dict, List, Optional
 from investigator.config import get_config
 from investigator.domain.agents.base import InvestmentAgent
 from investigator.domain.models.analysis import AgentResult, AgentTask, TaskStatus
+from investigator.domain.services.filing_guidance_extractor import (
+    extract_forward_guidance,
+    select_best_guidance,
+)
 from investigator.infrastructure.cache import CacheManager
-from investigator.infrastructure.database.market_data import (
+from investigator.infrastructure.database.market_data import (  # Singleton pattern
     get_market_data_fetcher,
-)  # Singleton pattern
+)
 
 # Use direct module imports to avoid circular dependency with sec package __init__.py
 from investigator.infrastructure.sec.sec_api import SECApiClient
@@ -46,13 +50,9 @@ class SECAnalysisAgent(InvestmentAgent):
     Agent specialized in SEC filing analysis and financial data extraction
     """
 
-    def __init__(
-        self, agent_id: str, ollama_client, event_bus, cache_manager: CacheManager
-    ):
+    def __init__(self, agent_id: str, ollama_client, event_bus, cache_manager: CacheManager):
         config = get_config()
-        self.primary_model = config.ollama.models.get(
-            "fundamental_analysis", "deepseek-r1:32b"
-        )
+        self.primary_model = config.ollama.models.get("fundamental_analysis", "deepseek-r1:32b")
         self.summary_model = config.ollama.models.get("synthesis", self.primary_model)
 
         # Specialized models for different tasks (set before base __init__ so capabilities use them)
@@ -146,14 +146,10 @@ class SECAnalysisAgent(InvestmentAgent):
 
                     cache_dir = Path("data/sec_cache") / symbol
                     if cache_dir.exists():
-                        self.logger.info(
-                            f"[SEC Agent] Removing cache directory: {cache_dir}"
-                        )
+                        self.logger.info(f"[SEC Agent] Removing cache directory: {cache_dir}")
                         shutil.rmtree(cache_dir)
                 except Exception as e:
-                    self.logger.error(
-                        f"[SEC Agent] Failed to clear cache for {symbol}: {e}"
-                    )
+                    self.logger.error(f"[SEC Agent] Failed to clear cache for {symbol}: {e}")
 
         return await super().pre_process(task)
 
@@ -168,12 +164,13 @@ class SECAnalysisAgent(InvestmentAgent):
         symbol = task.context.get("symbol")
         filing_type = task.context.get("filing_type", "10-K")
         period = task.context.get("period", "latest")
+        force_refresh = self._resolve_force_refresh(symbol, task)
 
         self.logger.info(f"[SEC Agent] Fetching raw CompanyFacts data for {symbol}")
 
         try:
             # PRIMARY TASK: Fetch and cache RAW SEC CompanyFacts data
-            raw_companyfacts = await self._fetch_and_cache_companyfacts(symbol)
+            raw_companyfacts = await self._fetch_and_cache_companyfacts(symbol, force_refresh=force_refresh)
 
             # SECONDARY TASK: Analyze filing sections (MD&A, Risk Factors, etc.)
             # This is optional and can be skipped for faster execution
@@ -184,9 +181,7 @@ class SECAnalysisAgent(InvestmentAgent):
                 sections = await self._extract_sections(filing_data)
 
                 # Analyze risk factors
-                risks = await self._analyze_risks(
-                    sections.get("risk_factors", ""), symbol
-                )
+                risks = await self._analyze_risks(sections.get("risk_factors", ""), symbol)
 
                 # Analyze MD&A
                 mda_analysis = await self._analyze_mda(sections.get("mda", ""), symbol)
@@ -197,6 +192,30 @@ class SECAnalysisAgent(InvestmentAgent):
                     "filing_url": filing_data.form_url,
                     "filing_date": filing_data.filing_date.isoformat(),
                 }
+
+            # Forward guidance extraction for forward valuation basis.
+            forward_guidance = {}
+            if self._should_extract_forward_guidance(task):
+                forward_guidance = await self._extract_forward_guidance(
+                    symbol,
+                    force_refresh=force_refresh,
+                )
+                if forward_guidance:
+                    self.logger.info(
+                        "[SEC Agent] Extracted forward guidance for %s from %s (confidence=%.2f, rev_range=%s, eps_range=%s, rev_growth=%s, earn_growth=%s)",
+                        symbol,
+                        forward_guidance.get("source_form", "unknown"),
+                        float(forward_guidance.get("confidence_score", 0.0) or 0.0),
+                        bool(forward_guidance.get("revenue_guidance")),
+                        bool(forward_guidance.get("eps_guidance")),
+                        forward_guidance.get("revenue_growth_guidance"),
+                        forward_guidance.get("earnings_growth_guidance"),
+                    )
+                else:
+                    self.logger.info(
+                        "[SEC Agent] No deterministic forward guidance found for %s",
+                        symbol,
+                    )
 
             # Extract summary info from raw_companyfacts instead of including all 4MB of data
             companyfacts_summary = {}
@@ -227,6 +246,7 @@ class SECAnalysisAgent(InvestmentAgent):
                     "symbol": symbol,
                     "companyfacts_summary": companyfacts_summary,  # Summary instead of full 4MB data
                     "filing_analysis": filing_analysis,  # Optional LLM analysis
+                    "forward_guidance": forward_guidance,
                     "data_cached": True,  # Indicates data is in cache
                 },
                 processing_time=0,  # Will be calculated by base class
@@ -243,8 +263,444 @@ class SECAnalysisAgent(InvestmentAgent):
                 error=str(e),
             )
 
+    def _should_extract_forward_guidance(self, task: AgentTask) -> bool:
+        """Return True when the downstream valuation path requests forward denominators."""
+        valuation_basis = str(task.context.get("valuation_basis", "ttm")).strip().lower()
+        if valuation_basis == "forward":
+            return True
+        return bool(task.context.get("extract_guidance", False))
+
+    async def _extract_forward_guidance(self, symbol: str, *, force_refresh: bool = False) -> Dict[str, Any]:
+        """
+        Fetch latest filings and deterministically extract guidance signals.
+
+        Uses SEC_RESPONSE cache to avoid repeated text fetch/parsing per symbol.
+        Extraction order:
+        1) Deterministic regex extractor (cheap/stable)
+        2) LLM JSON fallback when deterministic extractor misses or yields weak partial output
+        """
+        from investigator.infrastructure.cache.cache_types import CacheType
+
+        cache_key = {
+            "symbol": symbol,
+            "category": "forward_guidance",
+            "version": "v4",
+        }
+        if not force_refresh:
+            cached = self.cache.get(CacheType.SEC_RESPONSE, cache_key) if self.cache else None
+            if isinstance(cached, dict) and cached:
+                return cached
+
+        candidates: List[Dict[str, Any]] = []
+        for form_type in ("8-K", "10-Q", "10-K"):
+            try:
+                filing = await self.sec_client.get_filing_by_symbol(
+                    symbol=symbol,
+                    form_type=form_type,
+                    period="latest",
+                )
+            except Exception as exc:
+                self.logger.debug(
+                    "[SEC Agent] Guidance fetch skipped for %s %s: %s",
+                    symbol,
+                    form_type,
+                    exc,
+                )
+                continue
+
+            text = filing.get("text") or ""
+            if not text:
+                continue
+
+            extracted = extract_forward_guidance(
+                text=text[:250_000],
+                form_type=form_type,
+                filing_date=filing.get("filing_date"),
+            )
+            regex_extracted = extracted if isinstance(extracted, dict) else {}
+            llm_needed = self._is_weak_guidance_payload(regex_extracted)
+            if llm_needed:
+                llm_extracted = await self._extract_forward_guidance_with_llm(
+                    symbol=symbol,
+                    form_type=form_type,
+                    filing_date=filing.get("filing_date"),
+                    filing_url=filing.get("form_url"),
+                    filing_text=text,
+                )
+                if llm_extracted and regex_extracted:
+                    extracted = select_best_guidance([regex_extracted, llm_extracted])
+                elif llm_extracted:
+                    extracted = llm_extracted
+                else:
+                    extracted = regex_extracted
+            if not extracted:
+                continue
+
+            extracted["symbol"] = symbol
+            extracted["filing_url"] = filing.get("form_url")
+            candidates.append(extracted)
+            confidence = float(extracted.get("confidence_score", 0.0) or 0.0)
+            # Priority order is already 8-K -> 10-Q -> 10-K, so early-exit once quality is strong.
+            if confidence >= 0.55:
+                break
+
+        selected = select_best_guidance(candidates)
+        if selected and self.cache:
+            try:
+                self.cache.set(CacheType.SEC_RESPONSE, cache_key, selected)
+            except Exception as exc:
+                self.logger.debug(
+                    "[SEC Agent] Failed to cache forward guidance for %s: %s",
+                    symbol,
+                    exc,
+                )
+        return selected
+
+    @staticmethod
+    def _is_weak_guidance_payload(payload: Dict[str, Any]) -> bool:
+        """
+        Determine whether deterministic guidance output is too weak to trust on its own.
+
+        Weak payloads are still kept, but should trigger LLM enrichment.
+        """
+        if not isinstance(payload, dict) or not payload:
+            return True
+
+        has_revenue_range = bool(payload.get("revenue_guidance"))
+        has_eps_range = bool(payload.get("eps_guidance"))
+        has_any_range = has_revenue_range or has_eps_range
+        if has_any_range:
+            return False
+
+        confidence_raw = payload.get("confidence_score")
+        try:
+            confidence = float(confidence_raw) if confidence_raw is not None else 0.0
+        except (TypeError, ValueError):
+            confidence = 0.0
+
+        growth_values: List[float] = []
+        for key in ("revenue_growth_guidance", "earnings_growth_guidance"):
+            value = payload.get(key)
+            if value is None:
+                continue
+            try:
+                growth_values.append(float(value))
+            except (TypeError, ValueError):
+                continue
+
+        if not growth_values:
+            return True
+
+        has_only_zero_growth = all(abs(v) < 1e-9 for v in growth_values)
+        return confidence < 0.35 or has_only_zero_growth
+
+    async def _extract_forward_guidance_with_llm(
+        self,
+        *,
+        symbol: str,
+        form_type: str,
+        filing_date: Optional[str],
+        filing_url: Optional[str],
+        filing_text: str,
+    ) -> Dict[str, Any]:
+        """
+        LLM fallback for extracting forward guidance from filing text.
+
+        Returns normalized payload compatible with deterministic extractor output.
+        """
+        if not filing_text or not getattr(self, "ollama", None):
+            return {}
+
+        focus_text = self._prepare_guidance_focus_text(filing_text, form_type=form_type)
+        if not focus_text or len(focus_text) < 200:
+            return {}
+
+        prompt = f"""
+Extract ONLY explicit management forward-looking guidance from this SEC filing text.
+
+Return strict JSON with this schema:
+{{
+  "is_explicit_guidance": true|false,
+  "revenue_guidance": {{
+    "low": number|null,
+    "high": number|null,
+    "mid": number|null,
+    "horizon": "1q"|"2q"|"3q"|"1y"|null
+  }},
+  "eps_guidance": {{
+    "low": number|null,
+    "high": number|null,
+    "mid": number|null,
+    "horizon": "1q"|"2q"|"3q"|"1y"|null
+  }},
+  "revenue_growth_guidance": number|null,
+  "earnings_growth_guidance": number|null,
+  "evidence_snippets": ["short quote 1", "short quote 2"]
+}}
+
+Rules:
+- Use only explicit company guidance/outlook/forecast/expectation, not analyst estimates.
+- Convert percentages to decimal ratio (e.g., 12% -> 0.12).
+- Keep revenue/EPS range values in numeric form from the text.
+- If guidance is absent or vague, set is_explicit_guidance=false and fields null.
+- Output JSON only.
+
+FILING TYPE: {form_type}
+FILING DATE: {filing_date}
+TEXT:
+{focus_text[:24000]}
+"""
+
+        try:
+            response = await self.ollama.generate(
+                model=self.models["analysis"],
+                prompt=prompt,
+                system="You extract explicit forward guidance from SEC filings with strict JSON output.",
+                format="json",
+                prompt_name="_extract_forward_guidance_llm_prompt",
+            )
+            await self._cache_llm_response(
+                response=response,
+                model=self.models["analysis"],
+                symbol=symbol,
+                llm_type="sec_forward_guidance_extraction",
+                prompt=prompt,
+                temperature=0.1,
+                top_p=0.9,
+                format="json",
+                period=filing_date,
+                form_type=form_type,
+            )
+        except Exception as exc:
+            self.logger.debug(
+                "[SEC Agent] LLM guidance fallback failed for %s %s: %s",
+                symbol,
+                form_type,
+                exc,
+            )
+            return {}
+
+        normalized = self._normalize_llm_guidance_payload(
+            response=response,
+            form_type=form_type,
+            filing_date=filing_date,
+            filing_url=filing_url,
+        )
+        if normalized:
+            self.logger.info(
+                "[SEC Agent] LLM guidance fallback extracted signal for %s %s (confidence=%.2f)",
+                symbol,
+                form_type,
+                float(normalized.get("confidence_score", 0.0) or 0.0),
+            )
+        else:
+            self.logger.debug(
+                "[SEC Agent] LLM guidance fallback produced no explicit guidance for %s %s",
+                symbol,
+                form_type,
+            )
+        return normalized
+
+    def _prepare_guidance_focus_text(self, filing_text: str, *, form_type: str) -> str:
+        """
+        Reduce filing text to guidance-relevant regions to improve extraction precision.
+        """
+        text = (filing_text or "").strip()
+        if not text:
+            return ""
+
+        # Normalize whitespace to avoid huge prompt bloat.
+        normalized = re.sub(r"\s+", " ", text)
+
+        # For 10-Q/10-K, prioritize MD&A region (Item 2 for 10-Q, Item 7 for 10-K).
+        form_norm = str(form_type or "").upper()
+        if form_norm in {"10-Q", "10-K"}:
+            item_pattern = r"Item\s+2\." if form_norm == "10-Q" else r"Item\s+7\."
+            match = re.search(item_pattern, normalized, flags=re.IGNORECASE)
+            if match:
+                start = match.start()
+                tail = normalized[start : start + 35000]
+                if tail:
+                    return tail
+
+        # Generic fallback: windows around guidance-related keywords.
+        windows: List[str] = []
+        for m in re.finditer(
+            r"(guidance|outlook|forecast|expects|expectation|raise[d]?|reaffirm|provided?)",
+            normalized,
+            flags=re.IGNORECASE,
+        ):
+            left = max(0, m.start() - 900)
+            right = min(len(normalized), m.end() + 900)
+            windows.append(normalized[left:right])
+            if len(windows) >= 8:
+                break
+
+        if windows:
+            return "\n".join(windows)
+        return normalized[:25000]
+
+    @staticmethod
+    def _to_float_or_none(value: Any) -> Optional[float]:
+        if value is None:
+            return None
+        try:
+            parsed = float(str(value).replace(",", "").strip())
+            if parsed != parsed:  # NaN
+                return None
+            return parsed
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _normalize_horizon(value: Any) -> Optional[str]:
+        if value is None:
+            return None
+        raw = str(value).strip().lower()
+        if raw in {"1q", "2q", "3q", "1y"}:
+            return raw
+        if "quarter" in raw or raw in {"q1", "q2", "q3", "q4"}:
+            return "1q"
+        if "year" in raw or "fy" in raw or "annual" in raw:
+            return "1y"
+        return None
+
+    def _normalize_guidance_range(self, payload: Any) -> Optional[Dict[str, Any]]:
+        if not isinstance(payload, dict):
+            return None
+
+        low = self._to_float_or_none(payload.get("low"))
+        high = self._to_float_or_none(payload.get("high"))
+        mid = self._to_float_or_none(payload.get("mid"))
+        if mid is None and low is not None and high is not None:
+            mid = (low + high) / 2.0
+        if low is not None and high is not None and low > high:
+            low, high = high, low
+
+        if low is None and high is None and mid is None:
+            return None
+
+        normalized: Dict[str, Any] = {
+            "low": low,
+            "high": high,
+            "mid": mid,
+            "horizon": self._normalize_horizon(payload.get("horizon")) or "1y",
+        }
+        evidence = payload.get("evidence")
+        if evidence:
+            normalized["snippet"] = str(evidence)[:280]
+        return normalized
+
+    def _normalize_llm_guidance_payload(
+        self,
+        *,
+        response: Any,
+        form_type: str,
+        filing_date: Optional[str],
+        filing_url: Optional[str],
+    ) -> Dict[str, Any]:
+        """
+        Normalize LLM JSON output to canonical guidance payload.
+        """
+        payload = response
+        if isinstance(payload, dict) and isinstance(payload.get("response"), dict):
+            payload = payload.get("response")
+        if not isinstance(payload, dict):
+            return {}
+
+        explicit = payload.get("is_explicit_guidance")
+        if explicit is False:
+            return {}
+
+        revenue_guidance = self._normalize_guidance_range(payload.get("revenue_guidance"))
+        eps_guidance = self._normalize_guidance_range(payload.get("eps_guidance"))
+        revenue_growth = self._to_float_or_none(payload.get("revenue_growth_guidance"))
+        earnings_growth = self._to_float_or_none(payload.get("earnings_growth_guidance"))
+
+        # Convert percentage-like values to ratio.
+        if revenue_growth is not None and abs(revenue_growth) > 2.0:
+            revenue_growth /= 100.0
+        if earnings_growth is not None and abs(earnings_growth) > 2.0:
+            earnings_growth /= 100.0
+
+        if not any([revenue_guidance, eps_guidance, revenue_growth is not None, earnings_growth is not None]):
+            return {}
+
+        confidence = 0.0
+        if revenue_guidance:
+            confidence += 0.40
+        if eps_guidance:
+            confidence += 0.35
+        if revenue_growth is not None:
+            confidence += 0.15
+        if earnings_growth is not None:
+            confidence += 0.10
+
+        normalized: Dict[str, Any] = {
+            "source": "sec_filing_llm",
+            "source_form": str(form_type or "").upper(),
+            "filing_date": filing_date,
+            "filing_url": filing_url,
+            "confidence_score": round(min(confidence, 1.0), 2),
+        }
+        if revenue_guidance:
+            normalized["revenue_guidance"] = revenue_guidance
+        if eps_guidance:
+            normalized["eps_guidance"] = eps_guidance
+        if revenue_growth is not None:
+            normalized["revenue_growth_guidance"] = revenue_growth
+        if earnings_growth is not None:
+            normalized["earnings_growth_guidance"] = earnings_growth
+
+        snippets = payload.get("evidence_snippets")
+        if isinstance(snippets, list):
+            normalized["evidence_snippets"] = [str(s)[:220] for s in snippets[:3]]
+
+        return normalized
+
+    def _resolve_force_refresh(self, symbol: Optional[str], task: AgentTask) -> bool:
+        """Resolve whether this SEC task should bypass raw cache reuse."""
+        # Task-level override (used by tests/legacy task submitters)
+        if bool(task.context.get("force_refresh", False)):
+            return True
+
+        symbol_upper = (symbol or "").upper()
+
+        # Instance-level override from CacheManager (set by cli_orchestrator --force-refresh).
+        cache_manager = getattr(self, "cache", None)
+        if cache_manager is not None:
+            should_force_refresh = getattr(cache_manager, "_should_force_refresh", None)
+            if callable(should_force_refresh):
+                try:
+                    if bool(should_force_refresh(symbol)):
+                        return True
+                except Exception:
+                    # Fall through to direct override attribute checks.
+                    pass
+
+            override_enabled = bool(getattr(cache_manager, "_force_refresh_override", False))
+            if override_enabled:
+                override_symbols = getattr(cache_manager, "_force_refresh_symbols_override", None)
+                if not override_symbols:
+                    return True
+                normalized_symbols = {str(s).upper() for s in override_symbols}
+                if symbol_upper in normalized_symbols:
+                    return True
+
+        # Global CLI-configured override (set by analyze --force-refresh)
+        cfg = get_config()
+        cache_control = getattr(cfg, "cache_control", None)
+        if not cache_control or not getattr(cache_control, "force_refresh", False):
+            return False
+
+        forced_symbols = getattr(cache_control, "force_refresh_symbols", None) or []
+        if not forced_symbols:
+            return True
+
+        return symbol_upper in {str(s).upper() for s in forced_symbols}
+
     async def _fetch_and_cache_companyfacts(
-        self, symbol: str, *, process_raw: bool = True
+        self, symbol: str, *, process_raw: bool = True, force_refresh: bool = False
     ) -> Dict:
         """
         Fetch RAW SEC CompanyFacts API data and cache in sec_companyfacts_raw table (3-table architecture)
@@ -255,6 +711,7 @@ class SECAnalysisAgent(InvestmentAgent):
         Args:
             symbol: Stock ticker symbol
             process_raw: When False, skip SECDataProcessor step (raw cache only)
+            force_refresh: When True, bypass 90-day raw cache reuse and call SEC API
 
         FLOW:
         1. Check sec_companyfacts_raw table for cached data
@@ -292,17 +749,21 @@ class SECAnalysisAgent(InvestmentAgent):
                 {"symbol": symbol},
             ).fetchone()
 
-            # If we have data and it's fresh (< 90 days), use it
+            # If we have data and it's fresh (< 90 days), use it unless force_refresh is set.
             if result:
                 from datetime import datetime
 
                 fetched_at = result.fetched_at
                 age_days = (datetime.now() - fetched_at).days if fetched_at else 999
 
-                if age_days < 90:
+                if force_refresh:
                     self.logger.info(
-                        f"[SEC Agent] Using cached raw data for {symbol} ({age_days} days old)"
+                        "[SEC Agent] Force refresh enabled for %s - bypassing %s-day cached raw data",
+                        symbol,
+                        age_days,
                     )
+                elif age_days < 90:
+                    self.logger.info(f"[SEC Agent] Using cached raw data for {symbol} ({age_days} days old)")
 
                     # Check if processed data exists, if not trigger processing
                     proc_result = conn.execute(
@@ -317,9 +778,7 @@ class SECAnalysisAgent(InvestmentAgent):
                     ).fetchone()
 
                     if proc_result.count == 0 and process_raw:
-                        self.logger.info(
-                            f"[SEC Agent] Processed data missing, triggering processing for {symbol}"
-                        )
+                        self.logger.info(f"[SEC Agent] Processed data missing, triggering processing for {symbol}")
                         processor = SECDataProcessor(db_engine=db_manager.engine)
                         processor.process_raw_data(
                             symbol=symbol,
@@ -355,14 +814,11 @@ class SECAnalysisAgent(InvestmentAgent):
                 f"[SEC Agent] SEC API response for {symbol} missing us-gaap structure! "
                 f"Keys: {list(api_data.get('facts', {}).keys())}"
             )
-            raise ValueError(
-                f"Invalid SEC API response for {symbol}: missing us-gaap structure"
-            )
+            raise ValueError(f"Invalid SEC API response for {symbol}: missing us-gaap structure")
 
         us_gaap_tag_count = len(api_data["facts"]["us-gaap"])
         self.logger.info(
-            f"[SEC Agent] ✅ Fetched raw CompanyFacts from SEC API: "
-            f"{symbol} has {us_gaap_tag_count} us-gaap tags"
+            f"[SEC Agent] ✅ Fetched raw CompanyFacts from SEC API: " f"{symbol} has {us_gaap_tag_count} us-gaap tags"
         )
 
         # Step 3: Save to sec_companyfacts_raw (with hash-based deduplication)
@@ -386,7 +842,8 @@ class SECAnalysisAgent(InvestmentAgent):
         )
         self.logger.debug("[SEC Agent] Raw SEC payload cached at %s", raw_snapshot_path)
 
-        data_changed = False  # Track if we need to reprocess
+        data_changed = False  # Track if raw payload changed
+        should_reprocess = bool(force_refresh)  # Force refresh should rebuild processed rows
 
         with db_manager.engine.connect() as conn:
             # Check if existing data has same hash
@@ -412,10 +869,15 @@ class SECAnalysisAgent(InvestmentAgent):
                 if existing_hash == new_data_hash:
                     self.logger.info(
                         f"[SEC Agent] ℹ️  Data unchanged for {symbol} (hash: {new_data_hash[:8]}...), "
-                        f"skipping database update and reprocessing"
+                        f"skipping database update"
                     )
                     raw_id = existing.id
                     data_changed = False
+                    if force_refresh:
+                        self.logger.info(
+                            "[SEC Agent] 🔄 Force refresh enabled for %s - reprocessing unchanged raw payload",
+                            symbol,
+                        )
                 else:
                     self.logger.info(
                         f"[SEC Agent] 🔄 Data changed for {symbol} "
@@ -435,9 +897,8 @@ class SECAnalysisAgent(InvestmentAgent):
                     conn.commit()
                     raw_id = result.fetchone().id
                     data_changed = True
-                    self.logger.info(
-                        f"[SEC Agent] ✅ Updated raw data in sec_companyfacts_raw (id={raw_id})"
-                    )
+                    should_reprocess = True
+                    self.logger.info(f"[SEC Agent] ✅ Updated raw data in sec_companyfacts_raw (id={raw_id})")
             else:
                 # No existing data, insert new
                 result = conn.execute(
@@ -457,15 +918,18 @@ class SECAnalysisAgent(InvestmentAgent):
                 conn.commit()
                 raw_id = result.fetchone().id
                 data_changed = True
-                self.logger.info(
-                    f"[SEC Agent] ✅ Inserted raw data into sec_companyfacts_raw (id={raw_id})"
-                )
+                should_reprocess = True
+                self.logger.info(f"[SEC Agent] ✅ Inserted raw data into sec_companyfacts_raw (id={raw_id})")
 
-        # Step 4: Process raw data into sec_companyfacts_processed (only if data changed)
-        if data_changed and process_raw:
-            self.logger.info(
-                f"[SEC Agent] Processing raw data with SECDataProcessor for {symbol}"
-            )
+        # Step 4: Process raw data into sec_companyfacts_processed when changed OR force-refresh requested
+        if process_raw and should_reprocess:
+            if force_refresh and not data_changed:
+                self.logger.info(
+                    "[SEC Agent] Processing raw data with SECDataProcessor for %s (force-refresh rebuild)",
+                    symbol,
+                )
+            else:
+                self.logger.info(f"[SEC Agent] Processing raw data with SECDataProcessor for {symbol}")
             processor = SECDataProcessor(db_engine=db_manager.engine)
 
             processed_filings = processor.process_raw_data(
@@ -480,9 +944,7 @@ class SECAnalysisAgent(InvestmentAgent):
                 f"[SEC Agent] ✅ Processed {len(processed_filings)} filings into sec_companyfacts_processed"
             )
         elif process_raw:
-            self.logger.info(
-                f"[SEC Agent] ⏭️  Skipping reprocessing for {symbol} (data unchanged)"
-            )
+            self.logger.info(f"[SEC Agent] ⏭️  Skipping reprocessing for {symbol} (data unchanged)")
         else:
             self.logger.info(
                 "[SEC Agent] Raw caching only for %s complete (processed data step skipped)",
@@ -508,14 +970,10 @@ class SECAnalysisAgent(InvestmentAgent):
             return file_path
 
         try:
-            with gzip.open(
-                file_path, "wt", encoding="utf-8", compresslevel=9
-            ) as handle:
+            with gzip.open(file_path, "wt", encoding="utf-8", compresslevel=9) as handle:
                 json.dump(payload, handle, default=str, separators=(",", ":"))
         except Exception as exc:
-            self.logger.warning(
-                "Failed to persist raw SEC payload for %s: %s", symbol, exc
-            )
+            self.logger.warning("Failed to persist raw SEC payload for %s: %s", symbol, exc)
         return file_path
 
     async def _fetch_current_price(self, symbol: str) -> Optional[float]:
@@ -529,9 +987,7 @@ class SECAnalysisAgent(InvestmentAgent):
             if price is not None:
                 return float(price)
         except Exception as exc:
-            self.logger.warning(
-                "⚠️  Unable to fetch current price for %s: %s", symbol, exc
-            )
+            self.logger.warning("⚠️  Unable to fetch current price for %s: %s", symbol, exc)
         return None
 
     async def _extract_from_filing(self, filing: Dict, symbol: str) -> Dict:
@@ -544,9 +1000,7 @@ class SECAnalysisAgent(InvestmentAgent):
         try:
             # Try XBRL parsing if available
             if filing.get("xbrl_url"):
-                self.logger.info(
-                    f"Attempting to fetch and parse XBRL data from {filing.get('xbrl_url')}"
-                )
+                self.logger.info(f"Attempting to fetch and parse XBRL data from {filing.get('xbrl_url')}")
 
                 # Download XBRL content
                 import ssl
@@ -569,53 +1023,36 @@ class SECAnalysisAgent(InvestmentAgent):
                 }
 
                 connector = aiohttp.TCPConnector(ssl=ssl_context)
-                async with aiohttp.ClientSession(
-                    connector=connector, headers=headers
-                ) as session:
+                async with aiohttp.ClientSession(connector=connector, headers=headers) as session:
                     async with session.get(filing["xbrl_url"], timeout=30) as response:
                         if response.status == 200:
                             xbrl_content = await response.text()
 
                             # Parse XBRL
-                            parsed_xbrl = await self.xbrl_parser.parse_filing(
-                                xbrl_content
-                            )
+                            parsed_xbrl = await self.xbrl_parser.parse_filing(xbrl_content)
 
                             if parsed_xbrl and parsed_xbrl.get("financial_data"):
                                 # Extract metrics from parsed XBRL
-                                metrics = await self.xbrl_parser.extract_metrics(
-                                    parsed_xbrl
-                                )
+                                metrics = await self.xbrl_parser.extract_metrics(parsed_xbrl)
 
                                 if metrics:
                                     # Convert XBRL metrics to our standard format
                                     financial_data = {
                                         "metrics": {
                                             "assets": metrics.get("Assets", 0),
-                                            "current_assets": metrics.get(
-                                                "AssetsCurrent", 0
-                                            ),
-                                            "liabilities": metrics.get(
-                                                "Liabilities", 0
-                                            ),
-                                            "current_liabilities": metrics.get(
-                                                "LiabilitiesCurrent", 0
-                                            ),
-                                            "equity": metrics.get("StockholdersEquity")
-                                            or metrics.get("Equity", 0),
+                                            "current_assets": metrics.get("AssetsCurrent", 0),
+                                            "liabilities": metrics.get("Liabilities", 0),
+                                            "current_liabilities": metrics.get("LiabilitiesCurrent", 0),
+                                            "equity": metrics.get("StockholdersEquity") or metrics.get("Equity", 0),
                                             "revenues": metrics.get("Revenues", 0),
-                                            "net_income": metrics.get(
-                                                "NetIncomeLoss", 0
-                                            ),
+                                            "net_income": metrics.get("NetIncomeLoss", 0),
                                             "cash": metrics.get(
                                                 "CashAndCashEquivalentsAtCarryingValue",
                                                 0,
                                             ),
                                         },
                                         "ratios": {
-                                            "current_ratio": metrics.get(
-                                                "CurrentRatio", 0
-                                            ),
+                                            "current_ratio": metrics.get("CurrentRatio", 0),
                                             "quick_ratio": 0,  # Need to calculate
                                             "debt_to_equity": 0,  # Need to calculate
                                             "debt_to_assets": 0,  # Need to calculate
@@ -633,21 +1070,15 @@ class SECAnalysisAgent(InvestmentAgent):
                                     # Calculate additional ratios
                                     self._calculate_ratios(financial_data)
 
-                                    self.logger.info(
-                                        f"Successfully extracted financial data from XBRL for {symbol}"
-                                    )
+                                    self.logger.info(f"Successfully extracted financial data from XBRL for {symbol}")
                                     return financial_data
 
             # Fallback: Try to extract from filing text using regex patterns
-            self.logger.info(
-                f"XBRL not available or failed, attempting text-based extraction for {symbol}"
-            )
+            self.logger.info(f"XBRL not available or failed, attempting text-based extraction for {symbol}")
             financial_data = await self._extract_from_text(filing, symbol)
 
             if financial_data and financial_data.get("metrics"):
-                self.logger.info(
-                    f"Successfully extracted financial data from filing text for {symbol}"
-                )
+                self.logger.info(f"Successfully extracted financial data from filing text for {symbol}")
                 return financial_data
 
             # If we got here, extraction failed
@@ -681,12 +1112,7 @@ class SECAnalysisAgent(InvestmentAgent):
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
                 try:
-                    value_str = (
-                        match.group(1)
-                        .replace(",", "")
-                        .replace("(", "-")
-                        .replace(")", "")
-                    )
+                    value_str = match.group(1).replace(",", "").replace("(", "-").replace(")", "")
                     extracted[key] = float(value_str)
                 except (ValueError, AttributeError):
                     pass
@@ -722,21 +1148,15 @@ class SECAnalysisAgent(InvestmentAgent):
 
         # Current ratio
         if "current_assets" in metrics and "current_liabilities" in metrics:
-            ratios["current_ratio"] = safe_div(
-                metrics["current_assets"], metrics["current_liabilities"]
-            )
+            ratios["current_ratio"] = safe_div(metrics["current_assets"], metrics["current_liabilities"])
 
         # Debt to equity
         if "liabilities" in metrics and "equity" in metrics:
-            ratios["debt_to_equity"] = safe_div(
-                metrics["liabilities"], metrics["equity"]
-            )
+            ratios["debt_to_equity"] = safe_div(metrics["liabilities"], metrics["equity"])
 
         # Debt to assets
         if "liabilities" in metrics and "assets" in metrics:
-            ratios["debt_to_assets"] = safe_div(
-                metrics["liabilities"], metrics["assets"]
-            )
+            ratios["debt_to_assets"] = safe_div(metrics["liabilities"], metrics["assets"])
 
         # ROE
         if "net_income" in metrics and "equity" in metrics:
@@ -748,13 +1168,9 @@ class SECAnalysisAgent(InvestmentAgent):
 
         # Net margin
         if "net_income" in metrics and "revenues" in metrics:
-            ratios["net_margin"] = (
-                safe_div(metrics["net_income"], metrics["revenues"]) * 100
-            )
+            ratios["net_margin"] = safe_div(metrics["net_income"], metrics["revenues"]) * 100
 
-    async def _fetch_filing(
-        self, symbol: str, filing_type: str, period: str
-    ) -> SECFilingData:
+    async def _fetch_filing(self, symbol: str, filing_type: str, period: str) -> SECFilingData:
         """Fetch SEC filing from EDGAR with hybrid data extraction"""
         cache_key = {
             "symbol": symbol,
@@ -767,9 +1183,7 @@ class SECAnalysisAgent(InvestmentAgent):
         # Check cache
         from investigator.infrastructure.cache.cache_types import CacheType
 
-        cached = (
-            self.cache.get(CacheType.SEC_RESPONSE, cache_key) if self.cache else None
-        )
+        cached = self.cache.get(CacheType.SEC_RESPONSE, cache_key) if self.cache else None
         if cached:
             return SECFilingData(**cached)
 
@@ -789,9 +1203,7 @@ class SECAnalysisAgent(InvestmentAgent):
             "note": "Financial data is available via Fundamental Agent from sec_companyfacts_processed table",
             "source": "clean_architecture",
         }
-        self.logger.info(
-            "[SEC Agent] Filing fetched for section analysis only - financial data via Fundamental Agent"
-        )
+        self.logger.info("[SEC Agent] Filing fetched for section analysis only - financial data via Fundamental Agent")
 
         filing_data = SECFilingData(
             cik=filing["cik"],
@@ -838,17 +1250,13 @@ class SECAnalysisAgent(InvestmentAgent):
                             re.IGNORECASE | re.MULTILINE,
                         )
                         if next_match:
-                            next_section_idx = min(
-                                next_section_idx, start_idx + next_match.start()
-                            )
+                            next_section_idx = min(next_section_idx, start_idx + next_match.start())
 
                 sections[section_name] = text[start_idx:next_section_idx].strip()
 
         return sections
 
-    async def _analyze_financials(
-        self, filing_data: SECFilingData, sections: Dict[str, str]
-    ) -> Dict:
+    async def _analyze_financials(self, filing_data: SECFilingData, sections: Dict[str, str]) -> Dict:
         """Analyze financial statements and data"""
         prompt = f"""
         Analyze the following financial data and provide insights:
@@ -991,19 +1399,13 @@ class SECAnalysisAgent(InvestmentAgent):
 
         # Calculate derived metrics
         if "revenue" in metrics and "net_income" in metrics:
-            metrics["net_margin"] = (
-                metrics["net_income"] / metrics["revenue"] if metrics["revenue"] else 0
-            )
+            metrics["net_margin"] = metrics["net_income"] / metrics["revenue"] if metrics["revenue"] else 0
 
         if "total_assets" in metrics and "total_liabilities" in metrics:
-            metrics["book_value"] = (
-                metrics["total_assets"] - metrics["total_liabilities"]
-            )
+            metrics["book_value"] = metrics["total_assets"] - metrics["total_liabilities"]
 
         if "debt" in metrics and "equity" in metrics:
-            metrics["debt_to_equity"] = (
-                metrics["debt"] / metrics["equity"] if metrics["equity"] else 0
-            )
+            metrics["debt_to_equity"] = metrics["debt"] / metrics["equity"] if metrics["equity"] else 0
 
         return metrics
 
@@ -1244,9 +1646,7 @@ class SECAnalysisAgent(InvestmentAgent):
             format="json",
         )
 
-    async def analyze_peer_comparison(
-        self, symbol: str, peers: List[str], filing_type: str = "10-K"
-    ) -> Dict:
+    async def analyze_peer_comparison(self, symbol: str, peers: List[str], filing_type: str = "10-K") -> Dict:
         """Compare SEC filings across peer companies"""
         analyses = {}
 

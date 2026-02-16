@@ -223,9 +223,7 @@ class RatioCalculator:
 
         return {
             "gross_margin": gross_profit / revenue if gross_profit else None,
-            "operating_margin": operating_income / revenue
-            if operating_income
-            else None,
+            "operating_margin": operating_income / revenue if operating_income else None,
             "net_margin": net_income / revenue if net_income else None,
             "fcf_margin": free_cash_flow / revenue if free_cash_flow else None,
         }
@@ -250,11 +248,7 @@ class RatioCalculator:
         Returns:
             Rule of 40 score
         """
-        margin = (
-            fcf_margin_pct
-            if fcf_margin_pct is not None
-            else (operating_margin_pct or 0)
-        )
+        margin = fcf_margin_pct if fcf_margin_pct is not None else (operating_margin_pct or 0)
         return revenue_growth_pct + margin
 
     def calculate_roe(
@@ -349,9 +343,7 @@ class RatioCalculator:
             cash = balance.get("cash_and_equivalents", 0) or 0
         else:
             # Flat structure
-            revenue = (
-                financials.get("total_revenue", 0) or financials.get("revenue", 0) or 0
-            )
+            revenue = financials.get("total_revenue", 0) or financials.get("revenue", 0) or 0
             net_income = financials.get("net_income", 0) or 0
             gross_profit = financials.get("gross_profit", 0) or 0
             operating_income = financials.get("operating_income", 0) or 0
@@ -395,9 +387,7 @@ class RatioCalculator:
             # Valuation ratios
             "pe_ratio": self.calculate_pe_ratio(current_price, eps=eps),
             "ps_ratio": self.calculate_ps_ratio(market_cap=market_cap, revenue=revenue),
-            "pb_ratio": self.calculate_pb_ratio(
-                current_price, book_value_per_share=bvps
-            ),
+            "pb_ratio": self.calculate_pb_ratio(current_price, book_value_per_share=bvps),
             "ev_ebitda": self.calculate_ev_ebitda(
                 market_cap=market_cap,
                 ebitda=ebitda,

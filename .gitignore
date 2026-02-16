@@ -43,9 +43,13 @@ artifacts/results/*.json
 artifacts/metrics/*.json
 artifacts/logs/*.log
 artifacts/cache/
+artifacts/ui_cache/
 !artifacts/results/.gitkeep
 !artifacts/metrics/.gitkeep
 !artifacts/logs/.gitkeep
+
+# nohup output
+nohup.out
 
 # Reports
 reports/

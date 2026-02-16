@@ -153,9 +153,7 @@ class ScoreCalculator:
             # Handle file format with headers
             json_content = content
             if "=== AI RESPONSE ===" in content:
-                json_start = content.find("=== AI RESPONSE ===") + len(
-                    "=== AI RESPONSE ==="
-                )
+                json_start = content.find("=== AI RESPONSE ===") + len("=== AI RESPONSE ===")
                 json_content = content[json_start:].strip()
 
             try:
@@ -219,9 +217,7 @@ class ScoreCalculator:
         norm_fund_weight = fund_weight / total_weight
         norm_tech_weight = tech_weight / total_weight
 
-        overall_score = (
-            fundamental_score * norm_fund_weight + technical_score * norm_tech_weight
-        )
+        overall_score = fundamental_score * norm_fund_weight + technical_score * norm_tech_weight
 
         return round(overall_score, 1)
 
@@ -255,12 +251,8 @@ class ScoreCalculator:
         """Extract indicators from structured dict response."""
         return {
             "technical_score": content.get("technical_score", {}).get("score", 0.0),
-            "trend_direction": content.get("trend_analysis", {}).get(
-                "primary_trend", "NEUTRAL"
-            ),
-            "trend_strength": content.get("trend_analysis", {}).get(
-                "trend_strength", "WEAK"
-            ),
+            "trend_direction": content.get("trend_analysis", {}).get("primary_trend", "NEUTRAL"),
+            "trend_strength": content.get("trend_analysis", {}).get("trend_strength", "WEAK"),
             "support_levels": [
                 content.get("support_resistance", {}).get("immediate_support", 0.0),
                 content.get("support_resistance", {}).get("major_support", 0.0),
@@ -269,23 +261,15 @@ class ScoreCalculator:
                 content.get("support_resistance", {}).get("immediate_resistance", 0.0),
                 content.get("support_resistance", {}).get("major_resistance", 0.0),
             ],
-            "fibonacci_levels": content.get("support_resistance", {}).get(
-                "fibonacci_levels", {}
-            ),
+            "fibonacci_levels": content.get("support_resistance", {}).get("fibonacci_levels", {}),
             "momentum_signals": self.extract_momentum_signals(content),
             "risk_factors": content.get("risk_factors", []),
             "key_insights": content.get("key_insights", []),
             "catalysts": content.get("catalysts", []),
-            "time_horizon": content.get("recommendation", {}).get(
-                "time_horizon", "MEDIUM"
-            ),
-            "recommendation": content.get("recommendation", {}).get(
-                "technical_rating", "HOLD"
-            ),
+            "time_horizon": content.get("recommendation", {}).get("time_horizon", "MEDIUM"),
+            "recommendation": content.get("recommendation", {}).get("technical_rating", "HOLD"),
             "confidence": content.get("recommendation", {}).get("confidence", "MEDIUM"),
-            "position_sizing": content.get("recommendation", {}).get(
-                "position_sizing", "MODERATE"
-            ),
+            "position_sizing": content.get("recommendation", {}).get("position_sizing", "MODERATE"),
             "entry_strategy": content.get("entry_exit_strategy", {}),
             "volume_analysis": content.get("volume_analysis", {}),
             "volatility_analysis": content.get("volatility_analysis", {}),
@@ -298,9 +282,7 @@ class ScoreCalculator:
             # Handle file format with headers
             json_content = content
             if "=== AI RESPONSE ===" in content:
-                json_start = content.find("=== AI RESPONSE ===") + len(
-                    "=== AI RESPONSE ==="
-                )
+                json_start = content.find("=== AI RESPONSE ===") + len("=== AI RESPONSE ===")
                 json_content = content[json_start:].strip()
 
             # Handle responses with <think> prefix
@@ -334,9 +316,7 @@ class ScoreCalculator:
                 "trend_strength": parsed.get("trend_strength", "WEAK"),
                 "support_levels": parsed.get("support_levels", []),
                 "resistance_levels": parsed.get("resistance_levels", []),
-                "fibonacci_levels": parsed.get("support_resistance", {}).get(
-                    "fibonacci_levels", {}
-                ),
+                "fibonacci_levels": parsed.get("support_resistance", {}).get("fibonacci_levels", {}),
                 "momentum_signals": parsed.get("momentum_signals", []),
                 "risk_factors": parsed.get("risk_factors", []),
                 "key_insights": parsed.get("key_insights", []),
@@ -373,9 +353,7 @@ class ScoreCalculator:
             rsi = momentum.get("rsi_14", 0)
             rsi_assessment = momentum.get("rsi_assessment", "")
             if rsi and rsi_assessment:
-                signals.append(
-                    f"RSI ({rsi:.1f}) indicates {rsi_assessment.lower()} conditions"
-                )
+                signals.append(f"RSI ({rsi:.1f}) indicates {rsi_assessment.lower()} conditions")
 
             # MACD signals
             macd = momentum.get("macd", {})
@@ -385,9 +363,7 @@ class ScoreCalculator:
             # Stochastic signals
             stoch = momentum.get("stochastic", {})
             if stoch.get("signal"):
-                signals.append(
-                    f"Stochastic indicates {stoch['signal'].lower()} conditions"
-                )
+                signals.append(f"Stochastic indicates {stoch['signal'].lower()} conditions")
 
         # Volume signals
         volume = content.get("volume_analysis", {})

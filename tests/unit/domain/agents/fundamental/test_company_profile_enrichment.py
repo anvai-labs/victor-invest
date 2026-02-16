@@ -78,9 +78,7 @@ def test_enrich_company_profile_calculates_revenue_growth_from_quarters():
 
 
 def test_enrich_company_profile_sets_quality_flags_and_financial_archetype():
-    profile = CompanyProfile(
-        symbol="JPM", sector="Financial Services", industry="Banks"
-    )
+    profile = CompanyProfile(symbol="JPM", sector="Financial Services", industry="Banks")
     company_data = {
         "quarterly_data": [{} for _ in range(4)],
         "rule_of_40_score": 10.0,

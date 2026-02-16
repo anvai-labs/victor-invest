@@ -158,9 +158,7 @@ class ConsolidatedData:
             if skew is not None:
                 features["skew"] = float(skew)
                 # Normalize SKEW: 100=0, 130=50, 160=100
-                features["skew_normalized"] = max(
-                    0.0, min(100.0, (float(skew) - 100) / 0.6)
-                )
+                features["skew_normalized"] = max(0.0, min(100.0, (float(skew) - 100) / 0.6))
 
             # Fear/greed score (already 0-100)
             fear_greed = self.volatility.get("fear_greed_score")
@@ -232,9 +230,7 @@ class ConsolidatedData:
             if days_to_cover is not None:
                 features["days_to_cover"] = float(days_to_cover)
                 # Normalize: cap at 20 days, scale to 0-100
-                features["days_to_cover_normalized"] = min(
-                    100.0, float(days_to_cover) * 5
-                )
+                features["days_to_cover_normalized"] = min(100.0, float(days_to_cover) * 5)
 
             # Short percent of float (typically 1-50%)
             short_pct = current.get("short_pct_float")
@@ -299,9 +295,7 @@ class ConsolidatedData:
             features["insider_buys"] = float(summary.get("buys", 0))
             features["insider_sells"] = float(summary.get("sells", 0))
             # Net insider activity (positive = more buying)
-            features["insider_net"] = features.get("insider_buys", 0) - features.get(
-                "insider_sells", 0
-            )
+            features["insider_net"] = features.get("insider_buys", 0) - features.get("insider_sells", 0)
 
         return features
 
@@ -373,9 +367,7 @@ class DataSourceManager:
         """Initialize and register all data sources"""
         # Import sources to trigger registration
 
-        self._logger.info(
-            f"Initialized {len(self._registry.list_sources())} data sources"
-        )
+        self._logger.info(f"Initialized {len(self._registry.list_sources())} data sources")
 
     def get_data(
         self,
@@ -413,9 +405,7 @@ class DataSourceManager:
 
         # Filter by categories if specified
         if categories:
-            source_mapping = {
-                k: v for k, v in source_mapping.items() if v[1] in categories
-            }
+            source_mapping = {k: v for k, v in source_mapping.items() if v[1] in categories}
 
         # Fetch data from each source
         for source_name, (attr_name, category) in source_mapping.items():
@@ -471,9 +461,7 @@ class DataSourceManager:
 
         return data
 
-    def get_sentiment_data(
-        self, symbol: str, as_of_date: Optional[date] = None
-    ) -> Dict[str, Any]:
+    def get_sentiment_data(self, symbol: str, as_of_date: Optional[date] = None) -> Dict[str, Any]:
         """Get sentiment data for a symbol"""
         target_date = as_of_date or date.today()
         data = {}
@@ -514,10 +502,7 @@ class DataSourceManager:
 
         if parallel:
             # Parallel fetch using thread pool
-            futures = {
-                symbol: self._executor.submit(self.get_data, symbol, target_date)
-                for symbol in symbols
-            }
+            futures = {symbol: self._executor.submit(self.get_data, symbol, target_date) for symbol in symbols}
             results = {symbol: future.result() for symbol, future in futures.items()}
         else:
             # Sequential fetch
@@ -525,9 +510,7 @@ class DataSourceManager:
 
         return results
 
-    def get_rl_context(
-        self, symbol: str, as_of_date: Optional[date] = None
-    ) -> Dict[str, float]:
+    def get_rl_context(self, symbol: str, as_of_date: Optional[date] = None) -> Dict[str, float]:
         """
         Get features for RL model.
 
@@ -577,9 +560,7 @@ def get_data_source_manager() -> DataSourceManager:
     return _manager
 
 
-def get_consolidated_data(
-    symbol: str, as_of_date: Optional[date] = None
-) -> ConsolidatedData:
+def get_consolidated_data(symbol: str, as_of_date: Optional[date] = None) -> ConsolidatedData:
     """Convenience function to get consolidated data"""
     return get_data_source_manager().get_data(symbol, as_of_date)
 

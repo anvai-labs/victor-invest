@@ -3,25 +3,26 @@ Database Models for InvestiGator
 SQLAlchemy models for the agentic architecture
 """
 
-from sqlalchemy import (
-    Column,
-    String,
-    Integer,
-    Float,
-    DateTime,
-    Boolean,
-    Text,
-    JSON,
-    ForeignKey,
-    Index,
-    UniqueConstraint,
-    CheckConstraint,
-)
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, backref
-from sqlalchemy.sql import func
 from datetime import datetime
 from enum import Enum as PyEnum
+
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    CheckConstraint,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import backref, relationship
+from sqlalchemy.sql import func
 
 Base = declarative_base()
 

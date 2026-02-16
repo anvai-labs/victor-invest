@@ -42,25 +42,15 @@ def test_company_facts_cycle(cache_manager, sample_company_facts):
     assert cache_manager.delete(CacheType.COMPANY_FACTS, key)
 
 
-def test_submission_and_quarterly_metrics(
-    cache_manager, sample_submission_data, sample_quarterly_metrics
-):
+def test_submission_and_quarterly_metrics(cache_manager, sample_submission_data, sample_quarterly_metrics):
     submission_key = ("TEST", "recent_10")
     metrics_key = {"symbol": "TEST", "fiscal_year": "2024", "fiscal_period": "Q1"}
 
-    assert cache_manager.set(
-        CacheType.SUBMISSION_DATA, submission_key, sample_submission_data
-    )
-    assert (
-        cache_manager.get(CacheType.SUBMISSION_DATA, submission_key)["symbol"] == "TEST"
-    )
+    assert cache_manager.set(CacheType.SUBMISSION_DATA, submission_key, sample_submission_data)
+    assert cache_manager.get(CacheType.SUBMISSION_DATA, submission_key)["symbol"] == "TEST"
 
-    assert cache_manager.set(
-        CacheType.QUARTERLY_METRICS, metrics_key, sample_quarterly_metrics
-    )
-    assert (
-        cache_manager.get(CacheType.QUARTERLY_METRICS, metrics_key)["symbol"] == "TEST"
-    )
+    assert cache_manager.set(CacheType.QUARTERLY_METRICS, metrics_key, sample_quarterly_metrics)
+    assert cache_manager.get(CacheType.QUARTERLY_METRICS, metrics_key)["symbol"] == "TEST"
 
     cache_manager.delete(CacheType.SUBMISSION_DATA, submission_key)
     cache_manager.delete(CacheType.QUARTERLY_METRICS, metrics_key)
@@ -80,12 +70,7 @@ def test_delete_by_pattern_and_clear(cache_manager, sample_llm_response):
     assert deleted >= 0
 
     assert cache_manager.clear_cache_type(CacheType.LLM_RESPONSE)
-    assert (
-        cache_manager.get(
-            CacheType.LLM_RESPONSE, {"symbol": "PATTERN", "llm_type": "pattern_0"}
-        )
-        is None
-    )
+    assert cache_manager.get(CacheType.LLM_RESPONSE, {"symbol": "PATTERN", "llm_type": "pattern_0"}) is None
 
 
 def test_performance_stats_and_recent_operations(cache_manager, sample_llm_response):

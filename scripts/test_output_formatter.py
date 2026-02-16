@@ -6,8 +6,8 @@ Usage:
     python3 test_output_formatter.py results/CL_20251108_203055.json
 """
 
-import sys
 import json
+import sys
 from pathlib import Path
 
 # Add src to path

@@ -124,9 +124,7 @@ class FiscalPeriodService:
         if period_upper in self.PERIOD_MAPPINGS:
             normalized = self.PERIOD_MAPPINGS[period_upper]
             if period_upper != normalized:
-                self.logger.debug(
-                    f"Normalized period '{fiscal_period}' → '{normalized}'"
-                )
+                self.logger.debug(f"Normalized period '{fiscal_period}' → '{normalized}'")
             return normalized
 
         # If not in mapping, raise error
@@ -164,8 +162,7 @@ class FiscalPeriodService:
 
         if not match:
             raise ValueError(
-                f"Invalid period string format: '{period_str}'. "
-                f"Expected format: 'YYYY-QN' or 'YYYY-FY' or 'YYYY'"
+                f"Invalid period string format: '{period_str}'. " f"Expected format: 'YYYY-QN' or 'YYYY-FY' or 'YYYY'"
             )
 
         fiscal_year_str, period_part = match.groups()
@@ -178,9 +175,7 @@ class FiscalPeriodService:
             # Normalize the period part
             period = self.normalize_period(period_part)
 
-        return FiscalPeriod(
-            fiscal_year=fiscal_year, period=period, period_str=period_str
-        )
+        return FiscalPeriod(fiscal_year=fiscal_year, period=period, period_str=period_str)
 
     def is_ytd(self, qtrs: int) -> bool:
         """
@@ -286,10 +281,7 @@ class FiscalPeriodService:
         # Return most common suffix
         fiscal_year_end = max(suffixes, key=suffixes.get)
 
-        self.logger.info(
-            f"Detected fiscal year end: {fiscal_year_end} "
-            f"(from {len(fy_period_ends)} FY filings)"
-        )
+        self.logger.info(f"Detected fiscal year end: {fiscal_year_end} " f"(from {len(fy_period_ends)} FY filings)")
 
         return fiscal_year_end
 
@@ -415,9 +407,7 @@ class FiscalPeriodService:
             return period_year
 
         except (ValueError, TypeError) as e:
-            self.logger.warning(
-                f"Error calculating fiscal year from date {period_end_date}: {e}"
-            )
+            self.logger.warning(f"Error calculating fiscal year from date {period_end_date}: {e}")
             # Fallback: extract year from date
             try:
                 return int(period_end_date[:4])
@@ -499,9 +489,7 @@ class FiscalPeriodService:
         }
         return (month, month_end_days.get(month, 31))
 
-    def validate_q4_computation_inputs(
-        self, fy_qtrs: int, q1_qtrs: int, q2_qtrs: int, q3_qtrs: int
-    ) -> bool:
+    def validate_q4_computation_inputs(self, fy_qtrs: int, q1_qtrs: int, q2_qtrs: int, q3_qtrs: int) -> bool:
         """
         Validate that Q4 can be computed as FY - (Q1+Q2+Q3).
 
@@ -540,9 +528,7 @@ class FiscalPeriodService:
 
         # FY must be 4 quarters
         if fy_qtrs != 4:
-            self.logger.warning(
-                f"FY has qtrs={fy_qtrs}, expected 4. Cannot compute Q4."
-            )
+            self.logger.warning(f"FY has qtrs={fy_qtrs}, expected 4. Cannot compute Q4.")
             return False
 
         # All quarters must be individual (qtrs=1)

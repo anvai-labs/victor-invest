@@ -54,6 +54,7 @@ JOB_SCRIPTS = {
     "collect_analyst_estimates": "scripts/scheduled/collect_analyst_estimates.py",
     "collect_news_sentiment": "scripts/scheduled/collect_news_sentiment.py",
     "collect_fama_french_factors": "scripts/scheduled/collect_fama_french_factors.py",
+    "calculate_beta_models": "scripts/scheduled/calculate_beta_models.py",
     "collect_dividends": "scripts/scheduled/collect_dividends.py",
     "calculate_earnings_quality": "scripts/scheduled/calculate_earnings_quality.py",
 }
@@ -204,9 +205,7 @@ def install_crontab(crontab_content: str) -> bool:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Generate crontab entries for scheduled jobs"
-    )
+    parser = argparse.ArgumentParser(description="Generate crontab entries for scheduled jobs")
     parser.add_argument(
         "--config",
         type=str,
@@ -215,9 +214,7 @@ def main():
     )
     parser.add_argument("--output", type=str, help="Output file path (default: stdout)")
     parser.add_argument("--show", action="store_true", help="Show generated crontab")
-    parser.add_argument(
-        "--install", action="store_true", help="Install crontab entries"
-    )
+    parser.add_argument("--install", action="store_true", help="Install crontab entries")
     parser.add_argument("--python", type=str, help="Path to Python interpreter")
     args = parser.parse_args()
 

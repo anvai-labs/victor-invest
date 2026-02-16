@@ -13,7 +13,7 @@ Updated: 2025-12-29 (added auto manufacturing valuation tier P1-A)
 """
 
 import logging
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from investigator.domain.models.market_context import MarketContext
 from investigator.domain.services.company_metadata_service import CompanyMetadataService
@@ -71,6 +71,35 @@ KNOWN_DIVIDEND_ARISTOCRATS = {
 }
 
 
+def _to_float(value: Any) -> float:
+    try:
+        if value is None:
+            return 0.0
+        return float(value)
+    except Exception:
+        return 0.0
+
+
+def _to_ratio(value: Any) -> Optional[float]:
+    numeric = _to_float(value)
+    if numeric <= 0:
+        return None
+    ratio = numeric / 100.0 if numeric > 1.5 else numeric
+    if ratio <= 0 or ratio > 5.0:
+        return None
+    return ratio
+
+
+def _to_yield_ratio(value: Any) -> Optional[float]:
+    numeric = _to_float(value)
+    if numeric <= 0:
+        return None
+    yld = numeric / 100.0 if numeric > 1.0 else numeric
+    if yld <= 0 or yld >= 1.0:
+        return None
+    return yld
+
+
 class DynamicModelWeightingService:
     """
     Service for determining dynamic model weights based on company characteristics.
@@ -98,11 +127,26 @@ class DynamicModelWeightingService:
         self.tier_thresholds = valuation_config.get("tier_thresholds", {})
         self.tier_base_weights = valuation_config.get("tier_base_weights", {})
         self.industry_specific = valuation_config.get("industry_specific_weights", {})
-        self.data_quality_thresholds = valuation_config.get(
-            "data_quality_thresholds", {}
-        )
-        self.market_context_multipliers = valuation_config.get(
-            "market_context_multipliers", {}
+        self.data_quality_thresholds = valuation_config.get("data_quality_thresholds", {})
+        self.market_context_multipliers = valuation_config.get("market_context_multipliers", {})
+        self.fee_based_insurance_symbols = {
+            str(symbol).upper() for symbol in valuation_config.get("fee_based_insurance_symbols", []) if symbol
+        }
+        self.fee_based_insurance_industry_keywords = tuple(
+            str(keyword).lower()
+            for keyword in valuation_config.get(
+                "fee_based_insurance_industry_keywords",
+                [
+                    "insurance broker",
+                    "insurance brokers",
+                    "insurance agency",
+                    "insurance service",
+                    "insurance services",
+                    "insurance administration",
+                    "third-party administrator",
+                ],
+            )
+            if keyword
         )
 
         # Initialize shared services
@@ -121,9 +165,7 @@ class DynamicModelWeightingService:
                 config=BoundConfig(
                     cumulative_floor=bounds_config.get("cumulative_floor", 0.50),
                     cumulative_ceiling=bounds_config.get("cumulative_ceiling", 1.50),
-                    per_model_minimum=bounds_config.get("per_model_floors", {}).get(
-                        "dcf", 5
-                    ),
+                    per_model_minimum=bounds_config.get("per_model_floors", {}).get("dcf", 5),
                     warning_threshold=bounds_config.get("warning_threshold", 0.70),
                 )
             )
@@ -176,10 +218,20 @@ class DynamicModelWeightingService:
         # 1. Get sector/industry using metadata service
         sector, industry = self.metadata_service.get_sector_industry(symbol)
 
+        # Ensure applicability filters have normalized classification context.
+        if sector and not financials.get("sector"):
+            financials["sector"] = sector
+        if industry and not financials.get("industry"):
+            financials["industry"] = industry
+
         # 2. Extract metrics (with None-safety: default to 0 if None or missing)
         net_income = financials.get("net_income") or 0
         revenue = financials.get("revenue") or 0
-        payout_ratio = ratios.get("payout_ratio") or 0
+        payout_ratio = self._resolve_payout_ratio_ratio(financials=financials, ratios=ratios)
+        financials["payout_ratio"] = payout_ratio
+        ratios["payout_ratio"] = payout_ratio
+        if ratios.get("dividend_payout_ratio") in (None, 0):
+            ratios["dividend_payout_ratio"] = payout_ratio
         rule_of_40 = ratios.get("rule_of_40_score") or 0
         revenue_growth = ratios.get("revenue_growth_pct") or 0
         fcf_margin = ratios.get("fcf_margin_pct") or 0
@@ -187,12 +239,8 @@ class DynamicModelWeightingService:
         market_cap = financials.get("market_cap") or 0
         current_price = financials.get("current_price") or 0
         ttm_eps = ratios.get("ttm_eps") or 0
-        operating_income = financials.get(
-            "operating_income"
-        )  # None if missing (for multi-indicator)
-        free_cash_flow = financials.get(
-            "free_cash_flow"
-        )  # None if missing (for multi-indicator)
+        operating_income = financials.get("operating_income")  # None if missing (for multi-indicator)
+        free_cash_flow = financials.get("free_cash_flow")  # None if missing (for multi-indicator)
 
         # 3. Classify company characteristics
         company_size = self._classify_company_size(market_cap)
@@ -213,7 +261,7 @@ class DynamicModelWeightingService:
         # For insurance/managed care companies, fetch stockholders_equity from DB if missing
         # and update financials dict so applicability filters can use it
         # Note: Managed care companies are in Health Care sector, not Financials!
-        is_insurance_like = self._is_insurance_or_managed_care(sector, industry)
+        is_insurance_like = self._is_insurance_or_managed_care(sector, industry, symbol)
         if is_insurance_like:
             if stockholders_equity <= 0:
                 try:
@@ -232,16 +280,12 @@ class DynamicModelWeightingService:
                         financials["shares_outstanding"] = db_shares
                         # Also calculate book_value_per_share for P/B applicability
                         if stockholders_equity and db_shares:
-                            financials["book_value_per_share"] = (
-                                stockholders_equity / db_shares
-                            )
+                            financials["book_value_per_share"] = stockholders_equity / db_shares
                             logger.info(
                                 f"{symbol} - Insurance: Calculated BV/share: ${financials['book_value_per_share']:.2f}"
                             )
                 except Exception as e:
-                    logger.warning(
-                        f"{symbol} - Insurance: Could not fetch from database: {e}"
-                    )
+                    logger.warning(f"{symbol} - Insurance: Could not fetch from database: {e}")
 
         # 4. Classify tier
         tier, sub_tier = self._classify_tier(
@@ -260,9 +304,7 @@ class DynamicModelWeightingService:
 
         # 5. Get base weights for tier
         base_weights = self._get_tier_base_weights(sub_tier)
-        logger.info(
-            f"{symbol} - Tier '{sub_tier}' base weights from config: {base_weights}"
-        )
+        logger.info(f"{symbol} - Tier '{sub_tier}' base weights from config: {base_weights}")
 
         # Audit: Capture base weights
         if audit_trail:
@@ -296,8 +338,7 @@ class DynamicModelWeightingService:
                         reason=f"Industry: {industry}",
                     )
                     for model in base_weights
-                    if base_weights.get(model, 0)
-                    != weights_before_industry.get(model, 0)
+                    if base_weights.get(model, 0) != weights_before_industry.get(model, 0)
                 ]
                 audit_trail.capture(
                     step_number=step_number,
@@ -353,9 +394,7 @@ class DynamicModelWeightingService:
         # 7b. Apply market context adjustments with bounds enforcement
         if market_context:
             weights_before_market = base_weights.copy()
-            base_weights = self.apply_market_context_adjustments(
-                base_weights, market_context, symbol
-            )
+            base_weights = self.apply_market_context_adjustments(base_weights, market_context, symbol)
 
             # Audit: Capture market context adjustments
             if audit_trail and weights_before_market != base_weights:
@@ -399,8 +438,7 @@ class DynamicModelWeightingService:
                     reason="Model not applicable",
                 )
                 for model in weights_before_filter
-                if weights_before_filter.get(model, 0) > 0
-                and weights.get(model, 0) == 0
+                if weights_before_filter.get(model, 0) > 0 and weights.get(model, 0) == 0
             ]
             audit_trail.capture(
                 step_number=step_number,
@@ -527,6 +565,55 @@ class DynamicModelWeightingService:
         # This prevents duplicate logging when the caller also logs the summary
         return weights, sub_tier, audit_trail
 
+    def _resolve_payout_ratio_ratio(self, financials: Dict[str, Any], ratios: Dict[str, Any]) -> float:
+        """
+        Normalize payout ratio to ratio format (0.40 = 40%) using multiple signals.
+
+        Preference:
+        1. Explicit payout ratio tags (financials/ratios), normalized
+        2. Dividends-to-earnings implied payout
+        3. Dividend-yield + market-cap implied payout
+        """
+        candidates: List[float] = []
+
+        for value in (
+            financials.get("payout_ratio"),
+            financials.get("dividend_payout_ratio"),
+            ratios.get("payout_ratio"),
+            ratios.get("dividend_payout_ratio"),
+        ):
+            ratio = _to_ratio(value)
+            if ratio is not None:
+                candidates.append(ratio)
+
+        net_income = abs(_to_float(financials.get("net_income", 0) or 0))
+        common_divs = abs(_to_float(financials.get("dividends_paid", 0) or 0))
+        preferred_divs = abs(_to_float(financials.get("preferred_stock_dividends", 0) or 0))
+        total_divs = common_divs + preferred_divs
+
+        cashflow_ratio = (total_divs / net_income) if (net_income > 0 and total_divs > 0) else None
+        if cashflow_ratio is not None:
+            candidates.append(min(cashflow_ratio, 5.0))
+
+        market_cap = _to_float(financials.get("market_cap")) or _to_float(ratios.get("market_cap"))
+        dividend_yield = _to_yield_ratio(financials.get("dividend_yield")) or _to_yield_ratio(
+            ratios.get("dividend_yield")
+        )
+        yield_ratio = (
+            (market_cap * dividend_yield / net_income)
+            if (market_cap > 0 and net_income > 0 and dividend_yield)
+            else None
+        )
+        if yield_ratio is not None:
+            candidates.append(min(yield_ratio, 5.0))
+
+        if not candidates:
+            return 0.0
+
+        strong_candidates = [ratio for ratio in candidates if ratio >= 0.20]
+        selected = max(strong_candidates) if strong_candidates else max(candidates)
+        return min(max(selected, 0.0), 5.0)
+
     def _classify_tier(
         self,
         net_income: float,
@@ -563,7 +650,7 @@ class DynamicModelWeightingService:
         # TIER 0: INSURANCE & MANAGED CARE COMPANIES - Special handling (check FIRST)
         # Insurance and managed care companies should use P/BV valuation, not DCF or P/S
         # Note: Managed care (CNC, UNH, HUM, CI) are in Health Care sector, not Financials!
-        if self._is_insurance_or_managed_care(sector, industry):
+        if self._is_insurance_or_managed_care(sector, industry, symbol):
             # If stockholders_equity is missing, try to fetch from database
             if stockholders_equity <= 0 and symbol:
                 try:
@@ -571,18 +658,14 @@ class DynamicModelWeightingService:
                         _fetch_from_database,
                     )
 
-                    db_equity, _, _ = _fetch_from_database(
-                        symbol, None
-                    )  # Will use config
+                    db_equity, _, _ = _fetch_from_database(symbol, None)  # Will use config
                     if db_equity:
                         stockholders_equity = db_equity
                         logger.info(
                             f"{symbol} - Insurance tier: Fetched stockholders_equity from database: ${stockholders_equity / 1e9:.2f}B"
                         )
                 except Exception as e:
-                    logger.warning(
-                        f"{symbol} - Insurance tier: Could not fetch equity from database: {e}"
-                    )
+                    logger.warning(f"{symbol} - Insurance tier: Could not fetch equity from database: {e}")
 
             # Calculate ROE if we have the data
             if net_income > 0 and stockholders_equity > 0:
@@ -649,10 +732,7 @@ class DynamicModelWeightingService:
         )
         if industry and revenue > 0:
             industry_lower = industry.lower()
-            is_saas = any(
-                ind.lower() in industry_lower or industry_lower in ind.lower()
-                for ind in saas_industries
-            )
+            is_saas = any(ind.lower() in industry_lower or industry_lower in ind.lower() for ind in saas_industries)
             if is_saas:
                 # Calculate Rule of 40 for SaaS classification
                 saas_rule_of_40 = revenue_growth + fcf_margin
@@ -681,9 +761,7 @@ class DynamicModelWeightingService:
         # TIER 0.65: Semiconductor Cyclical (P0-2)
         # Must check BEFORE high-growth to ensure proper industry classification
         # even for high-growth semis like NVDA
-        semiconductor_industries = self.tier_thresholds.get(
-            "semiconductor_cyclical", {}
-        ).get(
+        semiconductor_industries = self.tier_thresholds.get("semiconductor_cyclical", {}).get(
             "industries",
             [
                 "Semiconductors",
@@ -699,9 +777,7 @@ class DynamicModelWeightingService:
                 for semi_ind in semiconductor_industries
             )
             if is_semiconductor:
-                logger.info(
-                    f"{symbol or 'UNKNOWN'} - Semiconductor cyclical tier (industry={industry})"
-                )
+                logger.info(f"{symbol or 'UNKNOWN'} - Semiconductor cyclical tier (industry={industry})")
                 return ("semiconductor_cyclical", "semiconductor_cyclical")
 
         # TIER 0.7: REITs (P1-C)
@@ -713,11 +789,7 @@ class DynamicModelWeightingService:
         # CRITICAL FIX: Use FCF as fallback when EBITDA is missing
         # Many profitable companies don't report EBITDA (or it's not extracted correctly)
         # Use FCF margin > 0 as proxy for profitability
-        profitability_indicator = (
-            ebitda
-            if ebitda != 0
-            else (fcf_margin * revenue / 100 if fcf_margin > 0 else 0)
-        )
+        profitability_indicator = ebitda if ebitda != 0 else (fcf_margin * revenue / 100 if fcf_margin > 0 else 0)
 
         # Log tier classification inputs for debugging
         logger.debug(
@@ -775,32 +847,32 @@ class DynamicModelWeightingService:
         # True Dividend Aristocrats: 25+ years of consecutive dividend increases (KNOWN_DIVIDEND_ARISTOCRATS)
         # High Dividend Payers: 40%+ payout ratio but <25 years of consecutive increases
         # payout_ratio is in ratio format (0.0-1.0), thresholds are also in ratio format
-        dividend_threshold = self.tier_thresholds.get("dividend_aristocrat", {}).get(
-            "min_payout_ratio", 0.40
+        dividend_threshold = self.tier_thresholds.get("dividend_aristocrat", {}).get("min_payout_ratio", 0.40)
+        max_non_aristocrat_payout = self.tier_thresholds.get("dividend_aristocrat", {}).get(
+            "max_non_aristocrat_payout_ratio",
+            0.90,
         )
         if payout_ratio >= dividend_threshold:
-            pure_growth_cutoff = self.tier_thresholds.get(
-                "dividend_aristocrat", {}
-            ).get("sub_tier_growth_cutoff", 5)
+            pure_growth_cutoff = self.tier_thresholds.get("dividend_aristocrat", {}).get("sub_tier_growth_cutoff", 5)
             pure_payout_threshold = 0.60  # Pure aristocrat/payer threshold (60%)
 
             # Check if this is a KNOWN Dividend Aristocrat (25+ years verified)
             # Only these get the "dividend_aristocrat" tier with heavy GGM weighting
             if symbol and symbol.upper() in KNOWN_DIVIDEND_ARISTOCRATS:
-                if (
-                    payout_ratio >= pure_payout_threshold
-                    and revenue_growth < pure_growth_cutoff
-                ):
+                if payout_ratio >= pure_payout_threshold and revenue_growth < pure_growth_cutoff:
                     return ("dividend_aristocrat", "dividend_aristocrat_pure")
                 else:
                     return ("dividend_aristocrat", "dividend_aristocrat_growth")
+            elif payout_ratio > max_non_aristocrat_payout:
+                logger.info(
+                    f"{symbol or 'UNKNOWN'} - Payout ratio {payout_ratio * 100:.1f}% exceeds "
+                    f"non-aristocrat threshold {max_non_aristocrat_payout * 100:.0f}%; "
+                    "skipping high_dividend_payer tier as potentially unsustainable"
+                )
             else:
                 # High dividend payer but NOT a verified aristocrat (e.g., ORCL with 11 years)
                 # Use more balanced weights with less GGM emphasis
-                if (
-                    payout_ratio >= pure_payout_threshold
-                    and revenue_growth < pure_growth_cutoff
-                ):
+                if payout_ratio >= pure_payout_threshold and revenue_growth < pure_growth_cutoff:
                     logger.info(
                         f"{symbol or 'UNKNOWN'} - High dividend payer (payout={payout_ratio * 100:.1f}%) "
                         f"but not in KNOWN_DIVIDEND_ARISTOCRATS list → high_dividend_payer_mature"
@@ -814,33 +886,23 @@ class DynamicModelWeightingService:
                     return ("high_dividend_payer", "high_dividend_payer_growth")
 
         # TIER 3: High-Growth
-        high_growth_r40 = self.tier_thresholds.get("high_growth", {}).get(
-            "min_rule_of_40", 40
-        )
-        high_growth_revenue = self.tier_thresholds.get("high_growth", {}).get(
-            "min_revenue_growth_pct", 15
-        )
+        high_growth_r40 = self.tier_thresholds.get("high_growth", {}).get("min_rule_of_40", 40)
+        high_growth_revenue = self.tier_thresholds.get("high_growth", {}).get("min_revenue_growth_pct", 15)
         if rule_of_40 > high_growth_r40 or revenue_growth > high_growth_revenue:
-            hyper_growth_r40 = self.tier_thresholds.get("high_growth", {}).get(
-                "hyper_growth_rule_of_40", 60
-            )
+            hyper_growth_r40 = self.tier_thresholds.get("high_growth", {}).get("hyper_growth_rule_of_40", 60)
             if rule_of_40 > hyper_growth_r40:
                 return ("high_growth", "high_growth_hyper")
             else:
                 return ("high_growth", "high_growth_strong")
 
         # TIER 4: Financial Services
-        financial_sectors = self.tier_thresholds.get("financial_services", {}).get(
-            "sectors", []
-        )
+        financial_sectors = self.tier_thresholds.get("financial_services", {}).get("sectors", [])
         if sector in financial_sectors:
             # V1 FIX: Check INDUSTRY for bank keywords (not sector)
             # Banks are in "Financials" sector with industry like "Banks", "Regional Banks", "Major Banks"
             bank_keywords = ["bank", "banking"]
             if industry and any(kw in industry.lower() for kw in bank_keywords):
-                logger.info(
-                    f"{symbol or 'UNKNOWN'} - Traditional bank tier (industry={industry})"
-                )
+                logger.info(f"{symbol or 'UNKNOWN'} - Traditional bank tier (industry={industry})")
                 return ("financial", "financial_traditional_bank")
             else:
                 return ("financial", "financial_asset_manager")
@@ -860,18 +922,10 @@ class DynamicModelWeightingService:
                 return ("cyclical", "cyclical_commodity")
 
         # TIER 6: Growth Hybrid
-        hybrid_min_payout = self.tier_thresholds.get("growth_hybrid", {}).get(
-            "min_payout_ratio", 20
-        )
-        hybrid_max_payout = self.tier_thresholds.get("growth_hybrid", {}).get(
-            "max_payout_ratio", 40
-        )
-        hybrid_min_r40 = self.tier_thresholds.get("growth_hybrid", {}).get(
-            "min_rule_of_40", 25
-        )
-        hybrid_min_rev_growth = self.tier_thresholds.get("growth_hybrid", {}).get(
-            "min_revenue_growth_pct", 8
-        )
+        hybrid_min_payout = self.tier_thresholds.get("growth_hybrid", {}).get("min_payout_ratio", 0.20)
+        hybrid_max_payout = self.tier_thresholds.get("growth_hybrid", {}).get("max_payout_ratio", 0.40)
+        hybrid_min_r40 = self.tier_thresholds.get("growth_hybrid", {}).get("min_rule_of_40", 25)
+        hybrid_min_rev_growth = self.tier_thresholds.get("growth_hybrid", {}).get("min_revenue_growth_pct", 8)
 
         if (hybrid_min_payout <= payout_ratio < hybrid_max_payout) and (
             rule_of_40 > hybrid_min_r40 or revenue_growth > hybrid_min_rev_growth
@@ -882,21 +936,11 @@ class DynamicModelWeightingService:
                 return ("growth_hybrid", "growth_hybrid_industrial")
 
         # TIER 7: Mature FCF Machine
-        fcf_min_margin = self.tier_thresholds.get("mature_fcf_machine", {}).get(
-            "min_fcf_margin_pct", 20
-        )
-        fcf_max_rev_growth = self.tier_thresholds.get("mature_fcf_machine", {}).get(
-            "max_revenue_growth_pct", 8
-        )
-        fcf_max_payout = self.tier_thresholds.get("mature_fcf_machine", {}).get(
-            "max_payout_ratio", 20
-        )
+        fcf_min_margin = self.tier_thresholds.get("mature_fcf_machine", {}).get("min_fcf_margin_pct", 20)
+        fcf_max_rev_growth = self.tier_thresholds.get("mature_fcf_machine", {}).get("max_revenue_growth_pct", 8)
+        fcf_max_payout = self.tier_thresholds.get("mature_fcf_machine", {}).get("max_payout_ratio", 0.20)
 
-        if (
-            fcf_margin > fcf_min_margin
-            and revenue_growth < fcf_max_rev_growth
-            and payout_ratio < fcf_max_payout
-        ):
+        if fcf_margin > fcf_min_margin and revenue_growth < fcf_max_rev_growth and payout_ratio < fcf_max_payout:
             if sector == "Technology":
                 return ("mature_fcf", "mature_fcf_tech")
             else:
@@ -918,9 +962,7 @@ class DynamicModelWeightingService:
         weights = self.tier_base_weights.get(sub_tier)
 
         if not weights:
-            logger.warning(
-                f"No base weights found for sub_tier '{sub_tier}', using balanced_default"
-            )
+            logger.warning(f"No base weights found for sub_tier '{sub_tier}', using balanced_default")
             weights = self.tier_base_weights.get(
                 "balanced_default",
                 {"dcf": 30, "pe": 25, "ev_ebitda": 20, "ps": 15, "pb": 10, "ggm": 0},
@@ -928,9 +970,7 @@ class DynamicModelWeightingService:
 
         return weights.copy()
 
-    def _apply_industry_overrides(
-        self, base_weights: Dict[str, float], industry: str
-    ) -> Dict[str, float]:
+    def _apply_industry_overrides(self, base_weights: Dict[str, float], industry: str) -> Dict[str, float]:
         """
         Apply industry-specific weight adjustments from config.
 
@@ -972,9 +1012,7 @@ class DynamicModelWeightingService:
                     pct_change = float(adj_str) / 100.0
                     adjusted_weights[model] *= 1.0 + pct_change
 
-        logger.info(
-            f"Applied industry override for {industry}: {industry_config.get('reason', 'No reason provided')}"
-        )
+        logger.info(f"Applied industry override for {industry}: {industry_config.get('reason', 'No reason provided')}")
 
         return adjusted_weights
 
@@ -1007,9 +1045,7 @@ class DynamicModelWeightingService:
             Result: {"dcf": 37.0, "pe": 27.0, "ps": 11.0, "pb": 14.0, ...}
         """
         if not self.market_context_multipliers:
-            logger.warning(
-                f"{symbol} - market_context_multipliers not configured, skipping market context adjustments"
-            )
+            logger.warning(f"{symbol} - market_context_multipliers not configured, skipping market context adjustments")
             return base_weights
 
         adjusted_weights = base_weights.copy()
@@ -1065,8 +1101,7 @@ class DynamicModelWeightingService:
 
         # Log market context adjustments
         logger.info(
-            f"{symbol} - Market context adjustments applied: {market_context}. "
-            f"Multipliers: {multipliers_applied}"
+            f"{symbol} - Market context adjustments applied: {market_context}. " f"Multipliers: {multipliers_applied}"
         )
         logger.debug(
             f"{symbol} - Weight changes: "
@@ -1098,23 +1133,17 @@ class DynamicModelWeightingService:
         filtered = weights.copy()
 
         # Debug: Log financials keys for troubleshooting
-        logger.debug(
-            f"Applicability filter inputs - financials keys: {list(financials.keys())}"
-        )
+        logger.debug(f"Applicability filter inputs - financials keys: {list(financials.keys())}")
 
         # Check each model with non-zero weight
         for model, weight in weights.items():
             if weight > 0:
-                is_applicable, reason = self.applicability_rules.is_applicable(
-                    model, financials
-                )
+                is_applicable, reason = self.applicability_rules.is_applicable(model, financials)
                 if not is_applicable:
                     filtered[model] = 0
                     logger.info(f"{model.upper()} filtered out: {reason}")
                 else:
-                    logger.debug(
-                        f"{model.upper()} passed applicability filter: {reason}"
-                    )
+                    logger.debug(f"{model.upper()} passed applicability filter: {reason}")
 
         return filtered
 
@@ -1256,9 +1285,7 @@ class DynamicModelWeightingService:
 
         return stage
 
-    def _calculate_market_pe(
-        self, current_price: float, ttm_eps: float
-    ) -> Optional[float]:
+    def _calculate_market_pe(self, current_price: float, ttm_eps: float) -> Optional[float]:
         """
         Calculate market's implied P/E ratio.
 
@@ -1322,9 +1349,7 @@ class DynamicModelWeightingService:
                     adjusted_weights["pe"] = 10.0
                     # Redistribute to DCF
                     weight_reduction = old_pe_weight - 10.0
-                    adjusted_weights["dcf"] = (
-                        adjusted_weights.get("dcf", 0) + weight_reduction
-                    )
+                    adjusted_weights["dcf"] = adjusted_weights.get("dcf", 0) + weight_reduction
                     adjustments_made.append(
                         f"Extreme market P/E ({market_pe:.0f}x > {pe_thresholds.extreme_high}x for {sector or 'default'}) "
                         f"→ Reduced PE weight to 10%, boosted DCF"
@@ -1337,9 +1362,7 @@ class DynamicModelWeightingService:
                     adjusted_weights["pe"] = old_pe_weight * 0.5
                     # Redistribute to DCF
                     weight_reduction = old_pe_weight * 0.5
-                    adjusted_weights["dcf"] = (
-                        adjusted_weights.get("dcf", 0) + weight_reduction
-                    )
+                    adjusted_weights["dcf"] = adjusted_weights.get("dcf", 0) + weight_reduction
                     adjustments_made.append(
                         f"High market P/E ({market_pe:.0f}x > {pe_thresholds.high}x for {sector or 'default'}) "
                         f"→ Reduced PE weight by 50%, boosted DCF"
@@ -1352,9 +1375,7 @@ class DynamicModelWeightingService:
                     adjusted_weights["pe"] = old_pe_weight * 0.75
                     # Redistribute to DCF
                     weight_reduction = old_pe_weight * 0.25
-                    adjusted_weights["dcf"] = (
-                        adjusted_weights.get("dcf", 0) + weight_reduction
-                    )
+                    adjusted_weights["dcf"] = adjusted_weights.get("dcf", 0) + weight_reduction
                     adjustments_made.append(
                         f"Moderate-high market P/E ({market_pe:.0f}x > {pe_thresholds.moderate}x for {sector or 'default'}) "
                         f"→ Reduced PE weight by 25%, boosted DCF"
@@ -1369,9 +1390,7 @@ class DynamicModelWeightingService:
                 adjusted_weights["pe"] = 30.0
                 # Redistribute to DCF
                 weight_reduction = old_pe_weight - 30.0
-                adjusted_weights["dcf"] = (
-                    adjusted_weights.get("dcf", 0) + weight_reduction
-                )
+                adjusted_weights["dcf"] = adjusted_weights.get("dcf", 0) + weight_reduction
                 adjustments_made.append(
                     f"Early profitable + high growth ({revenue_growth:.1f}%) → Capped PE at 30%, boosted DCF"
                 )
@@ -1390,12 +1409,8 @@ class DynamicModelWeightingService:
 
             if total_reduction > 0:
                 # Redistribute to DCF
-                adjusted_weights["dcf"] = (
-                    adjusted_weights.get("dcf", 0) + total_reduction
-                )
-                adjustments_made.append(
-                    "Small-cap → Reduced multiple-based models by 20%, boosted DCF"
-                )
+                adjusted_weights["dcf"] = adjusted_weights.get("dcf", 0) + total_reduction
+                adjustments_made.append("Small-cap → Reduced multiple-based models by 20%, boosted DCF")
 
         # ADJUSTMENT 4: Mega-Cap Stability - More Balanced
         # Mega-caps have reliable data across models, can use more balanced approach
@@ -1406,20 +1421,12 @@ class DynamicModelWeightingService:
                     excess = adjusted_weights[model] - 50.0
                     adjusted_weights[model] = 50.0
                     # Distribute excess evenly to other non-zero models
-                    other_models = [
-                        m
-                        for m in adjusted_weights
-                        if m != model and adjusted_weights.get(m, 0) > 0
-                    ]
+                    other_models = [m for m in adjusted_weights if m != model and adjusted_weights.get(m, 0) > 0]
                     if other_models:
                         per_model_boost = excess / len(other_models)
                         for other_model in other_models:
-                            adjusted_weights[other_model] = (
-                                adjusted_weights.get(other_model, 0) + per_model_boost
-                            )
-                        adjustments_made.append(
-                            f"Mega-cap → Capped {model.upper()} at 50% for balanced approach"
-                        )
+                            adjusted_weights[other_model] = adjusted_weights.get(other_model, 0) + per_model_boost
+                        adjustments_made.append(f"Mega-cap → Capped {model.upper()} at 50% for balanced approach")
 
         # ADJUSTMENT 5: Pre-Profit High Growth - Favor Price/Sales
         # Pre-profit companies: P/E doesn't work, favor PS ratio and DCF
@@ -1467,12 +1474,7 @@ class DynamicModelWeightingService:
         """
         # Format weights for logging
         non_zero_weights = {k: v for k, v in weights.items() if v > 0}
-        weights_str = ", ".join(
-            [
-                f"{model.upper()}={weight:.0f}%"
-                for model, weight in non_zero_weights.items()
-            ]
-        )
+        weights_str = ", ".join([f"{model.upper()}={weight:.0f}%" for model, weight in non_zero_weights.items()])
 
         # Build enhanced context string
         context_parts = [f"Tier={sub_tier}", f"Sector={sector}"]
@@ -1491,16 +1493,25 @@ class DynamicModelWeightingService:
 
         context_str = " | ".join(context_parts)
 
-        logger.info(
-            f"🎯 {symbol} - Dynamic Weighting: {context_str} | Weights: {weights_str}"
-        )
+        logger.info(f"🎯 {symbol} - Dynamic Weighting: {context_str} | Weights: {weights_str}")
 
     # =========================================================================
     # INSURANCE & MANAGED CARE DETECTION
     # =========================================================================
 
+    def _is_fee_based_insurance(self, symbol: Optional[str], industry: Optional[str]) -> bool:
+        """Return True for fee-based insurance service models (broker/agency/admin)."""
+        if symbol and symbol.upper() in self.fee_based_insurance_symbols:
+            return True
+
+        if not industry:
+            return False
+
+        industry_lower = industry.lower()
+        return any(keyword in industry_lower for keyword in self.fee_based_insurance_industry_keywords)
+
     def _is_insurance_or_managed_care(
-        self, sector: Optional[str], industry: Optional[str]
+        self, sector: Optional[str], industry: Optional[str], symbol: Optional[str] = None
     ) -> bool:
         """
         Check if the company is an insurance or managed care company.
@@ -1523,6 +1534,9 @@ class DynamicModelWeightingService:
             True if company should use insurance valuation
         """
         if not industry:
+            return False
+
+        if self._is_fee_based_insurance(symbol, industry):
             return False
 
         industry_lower = industry.lower()
@@ -1559,9 +1573,7 @@ class DynamicModelWeightingService:
 
         return False
 
-    def _is_low_margin_industry(
-        self, sector: Optional[str], industry: Optional[str]
-    ) -> bool:
+    def _is_low_margin_industry(self, sector: Optional[str], industry: Optional[str]) -> bool:
         """
         Check if industry is known to have structurally low margins (<5%).
 
@@ -1659,28 +1671,22 @@ class DynamicModelWeightingService:
         # Insurance and managed care: PS=0 (fundamentally inappropriate)
         # These are not low-margin in the traditional sense - they process
         # premiums/claims where revenue = premiums collected, not sales
-        if self._is_insurance_or_managed_care(sector, industry):
+        if self._is_insurance_or_managed_care(sector, industry, symbol):
             if symbol:
-                logger.info(
-                    f"{symbol} - PS adjustment: 0% (insurance/managed care - PS fundamentally inappropriate)"
-                )
+                logger.info(f"{symbol} - PS adjustment: 0% (insurance/managed care - PS fundamentally inappropriate)")
             return 0.0
 
         # For other low-margin industries, only apply soft hint
         # Let RL learn the optimal adjustment from margin features
         if self._is_low_margin_industry(sector, industry):
             if symbol:
-                logger.info(
-                    f"{symbol} - PS soft hint: 75% (low-margin industry: {industry}, RL has margin features)"
-                )
+                logger.info(f"{symbol} - PS soft hint: 75% (low-margin industry: {industry}, RL has margin features)")
             return 0.75  # Soft reduction, RL can learn to adjust further
 
         # Only suppress for extreme cases where margin data confirms very low margin
         if net_margin is not None and net_margin < 0.01:  # <1% margin (extreme)
             if symbol:
-                logger.info(
-                    f"{symbol} - PS adjustment: 50% (extreme low margin={net_margin * 100:.1f}%)"
-                )
+                logger.info(f"{symbol} - PS adjustment: 50% (extreme low margin={net_margin * 100:.1f}%)")
             return 0.5
 
         # Normal business - let RL decide based on margin features
@@ -1794,9 +1800,7 @@ class DynamicModelWeightingService:
 
         return ("auto_manufacturing", sub_tier)
 
-    def _get_ev_revenue_percentage(
-        self, symbol: Optional[str], xbrl_data: Optional[Dict] = None
-    ) -> float:
+    def _get_ev_revenue_percentage(self, symbol: Optional[str], xbrl_data: Optional[Dict] = None) -> float:
         """
         Get EV revenue percentage for an auto manufacturer.
 
@@ -1819,9 +1823,7 @@ class DynamicModelWeightingService:
                 from utils.xbrl_tag_aliases import XBRLTagAliasMapper
 
                 mapper = XBRLTagAliasMapper()
-                ev_pct = mapper.extract_value_with_fallbacks(
-                    xbrl_data, "ev_sales_mix_pct"
-                )
+                ev_pct = mapper.extract_value_with_fallbacks(xbrl_data, "ev_sales_mix_pct")
                 if ev_pct is not None and 0 <= ev_pct <= 1:
                     logger.info(f"{symbol} - EV mix from XBRL: {ev_pct:.1%}")
                     return ev_pct
@@ -1851,9 +1853,7 @@ class DynamicModelWeightingService:
             # Most other manufacturers default to this tier
         }
 
-        return EV_REVENUE_ESTIMATES.get(
-            symbol.upper(), 0.05
-        )  # Default to 5% for legacy
+        return EV_REVENUE_ESTIMATES.get(symbol.upper(), 0.05)  # Default to 5% for legacy
 
     def calculate_ev_transition_premium(
         self,
@@ -1937,9 +1937,7 @@ class DynamicModelWeightingService:
             severity: "normal", "high", or "warning"
         """
         if depreciation <= 0:
-            logger.warning(
-                f"{symbol} - Cannot calculate capex burden: depreciation <= 0"
-            )
+            logger.warning(f"{symbol} - Cannot calculate capex burden: depreciation <= 0")
             return False, 0.0, "unknown"
 
         # Ensure capex is positive (sometimes reported as negative in statements)
@@ -1969,9 +1967,7 @@ class DynamicModelWeightingService:
         else:
             severity = "normal"
             is_high = False
-            logger.debug(
-                f"{symbol} - Normal capex intensity: Capex/Depreciation = {ratio:.2f}x"
-            )
+            logger.debug(f"{symbol} - Normal capex intensity: Capex/Depreciation = {ratio:.2f}x")
 
         return is_high, ratio, severity
 
@@ -1996,9 +1992,7 @@ class DynamicModelWeightingService:
         auto_config = self.tier_thresholds.get("auto_manufacturing", {})
 
         terminal_growth = auto_config.get("terminal_growth", 0.02)
-        margin_range = auto_config.get(
-            "terminal_margin_range", {"min": 0.06, "max": 0.08}
-        )
+        margin_range = auto_config.get("terminal_margin_range", {"min": 0.06, "max": 0.08})
 
         # Adjust parameters based on EV status
         ev_pct = self._get_ev_revenue_percentage(symbol)
@@ -2028,9 +2022,7 @@ class DynamicModelWeightingService:
     # DEFENSE CONTRACTOR TIER METHODS (P2-B)
     # =========================================================================
 
-    def _is_defense_contractor(
-        self, industry: Optional[str], symbol: Optional[str]
-    ) -> bool:
+    def _is_defense_contractor(self, industry: Optional[str], symbol: Optional[str]) -> bool:
         """Check if company is a defense contractor."""
         from investigator.domain.services.valuation.defense_valuation import (
             DEFENSE_INDUSTRIES,
@@ -2043,10 +2035,7 @@ class DynamicModelWeightingService:
         if industry:
             industry_lower = industry.lower()
             for defense_ind in DEFENSE_INDUSTRIES:
-                if (
-                    defense_ind.lower() in industry_lower
-                    or industry_lower in defense_ind.lower()
-                ):
+                if defense_ind.lower() in industry_lower or industry_lower in defense_ind.lower():
                     return True
 
         return False
@@ -2056,18 +2045,14 @@ class DynamicModelWeightingService:
     ) -> Tuple[str, str]:
         """Classify defense contractor tier based on backlog visibility."""
         # Use defense_contractor tier with backlog-adjusted weights
-        logger.info(
-            f"{symbol or 'UNKNOWN'} - Defense contractor tier (industry={industry})"
-        )
+        logger.info(f"{symbol or 'UNKNOWN'} - Defense contractor tier (industry={industry})")
         return ("defense_contractor", "defense_contractor")
 
     # =========================================================================
     # REIT TIER CLASSIFICATION (P1-C)
     # =========================================================================
 
-    def _is_reit(
-        self, sector: Optional[str], industry: Optional[str], symbol: Optional[str]
-    ) -> bool:
+    def _is_reit(self, sector: Optional[str], industry: Optional[str], symbol: Optional[str]) -> bool:
         """
         Check if company is a REIT (Real Estate Investment Trust).
 
@@ -2133,9 +2118,7 @@ class DynamicModelWeightingService:
             else:
                 # Try to detect from company name/industry
                 property_result = detect_reit_property_type(symbol or "", industry)
-                property_type = (
-                    property_result.property_type
-                )  # Extract enum from result
+                property_type = property_result.property_type  # Extract enum from result
                 logger.info(
                     f"{symbol or 'UNKNOWN'} - REIT tier (property_type={property_type.value}, "
                     f"detected from industry={industry})"

@@ -10,18 +10,17 @@ from typing import Any, Dict, List
 
 import numpy as np
 import pandas as pd
+import yaml
 
 from investigator.domain.agents.base import InvestmentAgent
 from investigator.domain.models.analysis import AgentResult, AgentTask, TaskStatus
 from investigator.domain.services.toon_formatter import TOONFormatter, to_toon_array
 from investigator.infrastructure.cache import CacheManager
 from investigator.infrastructure.cache.cache_types import CacheType
-from investigator.infrastructure.database.market_data import (
+from investigator.infrastructure.database.market_data import (  # Uses singleton pattern
     get_market_data_fetcher,
-)  # Uses singleton pattern
-from investigator.infrastructure.indicators import (
-    TechnicalIndicatorCalculator as TechnicalIndicators,
 )
+from investigator.infrastructure.indicators import TechnicalIndicatorCalculator as TechnicalIndicators
 
 
 class TechnicalAnalysisAgent(InvestmentAgent):
@@ -36,17 +35,22 @@ class TechnicalAnalysisAgent(InvestmentAgent):
               └──── caches reuse DataFrames for future runs
     """
 
-    def __init__(
-        self, agent_id: str, ollama_client, event_bus, cache_manager: CacheManager
-    ):
+    def __init__(self, agent_id: str, ollama_client, event_bus, cache_manager: CacheManager):
         # Load config for MarketDataFetcher
         from investigator.config import get_config
 
         config = get_config()
         self.config = config  # Store config for TOON format access
-        self.technical_model = config.ollama.models.get(
-            "technical_analysis", "deepseek-r1:32b"
-        )
+        self.technical_model = config.ollama.models.get("technical_analysis", "deepseek-r1:32b")
+
+        config_file = getattr(config, "config_file", "config.yaml")
+        with open(config_file, "r") as f:
+            raw_config = yaml.safe_load(f) or {}
+        deterministic_config = raw_config.get("valuation", {}).get("deterministic", {})
+        self.use_deterministic = deterministic_config.get("enabled", True)
+        self.deterministic_signal_generation = deterministic_config.get("technical_signal_generation", True)
+        self.deterministic_pattern_recognition = deterministic_config.get("technical_pattern_recognition", True)
+        self.deterministic_technical_report_generation = deterministic_config.get("technical_report_generation", True)
 
         # Specialized models for different analysis types (must exist before super().__init__)
         self.models = {
@@ -86,9 +90,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
     def _debug_log_prompt(self, label: str, prompt: str) -> None:
         if self.logger.isEnabledFor(logging.DEBUG):
-            trimmed = (
-                prompt if len(prompt) <= 6000 else f"{prompt[:6000]}\n...[truncated]"
-            )
+            trimmed = prompt if len(prompt) <= 6000 else f"{prompt[:6000]}\n...[truncated]"
             self.logger.debug("📤 %s PROMPT:\n%s", label, trimmed)
 
     def _debug_log_response(self, label: str, response: Any) -> None:
@@ -122,8 +124,21 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         if default is None:
             default = {}
 
-        # If already a dict, return as-is
+        # If already a dict, unwrap common LLM wrapper shape first.
         if isinstance(response, dict):
+            payload = response.get("response")
+            if isinstance(payload, dict):
+                return payload
+            if isinstance(payload, str):
+                payload = payload.strip()
+                if not payload:
+                    return default
+                try:
+                    return json.loads(payload)
+                except json.JSONDecodeError:
+                    return default
+            if payload is None and {"response", "model_info", "metadata"} <= set(response.keys()):
+                return default
             return response
 
         # If None or empty, return default
@@ -174,19 +189,13 @@ class TechnicalAnalysisAgent(InvestmentAgent):
                 # Try to use pre-fetched technical/price data
                 try:
                     price_info = getattr(consolidated_data, "price", None) or (
-                        consolidated_data.get("price")
-                        if isinstance(consolidated_data, dict)
-                        else None
+                        consolidated_data.get("price") if isinstance(consolidated_data, dict) else None
                     )
                     if price_info and "dataframe" in price_info:
                         price_data = pd.DataFrame(price_info["dataframe"])
-                        self.logger.debug(
-                            f"Using pre-fetched price data for {symbol} from DataSourceManager"
-                        )
+                        self.logger.debug(f"Using pre-fetched price data for {symbol} from DataSourceManager")
                 except Exception as e:
-                    self.logger.debug(
-                        f"Could not use consolidated data for {symbol}: {e}"
-                    )
+                    self.logger.debug(f"Could not use consolidated data for {symbol}: {e}")
 
             # Fallback to legacy fetch if no pre-fetched data
             if price_data is None or price_data.empty:
@@ -208,14 +217,10 @@ class TechnicalAnalysisAgent(InvestmentAgent):
             momentum = await self._analyze_momentum(indicators)
 
             # Generate trading signals
-            signals = await self._generate_signals(
-                price_data, indicators, patterns, momentum, symbol
-            )
+            signals = await self._generate_signals(price_data, indicators, patterns, momentum, symbol)
 
             # Market sentiment analysis
-            sentiment = await self._analyze_market_sentiment(
-                price_data, volume_analysis
-            )
+            sentiment = await self._analyze_market_sentiment(price_data, volume_analysis)
 
             # Handle both uppercase and lowercase columns for current_price
             close_col = "close" if "close" in price_data.columns else "Close"
@@ -270,9 +275,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
         # Check cache (1 hour TTL for price data)
         cache_key = {"symbol": symbol, "timeframe": timeframe}
-        cached = (
-            self.cache.get(CacheType.TECHNICAL_DATA, cache_key) if self.cache else None
-        )
+        cached = self.cache.get(CacheType.TECHNICAL_DATA, cache_key) if self.cache else None
         if cached is not None:
             if isinstance(cached, pd.DataFrame):
                 if not cached.empty:
@@ -300,16 +303,10 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         data = await self.market_data.get_historical_data(symbol, period)
 
         if data is None or data.empty:
-            fallback = (
-                Path("data")
-                / "technical_cache"
-                / symbol.upper()
-                / f"technical_data_{symbol.upper()}.csv"
-            )
+            fallback = Path("data") / "technical_cache" / symbol.upper() / f"technical_data_{symbol.upper()}.csv"
             if fallback.exists():
                 self.logger.warning(
-                    "Primary market data fetch returned no rows for %s; "
-                    "loading fallback dataset %s",
+                    "Primary market data fetch returned no rows for %s; " "loading fallback dataset %s",
                     symbol,
                     fallback,
                 )
@@ -333,9 +330,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
         return data
 
-    async def _calculate_indicators(
-        self, price_data: pd.DataFrame, symbol: str = "unknown"
-    ) -> Dict:
+    async def _calculate_indicators(self, price_data: pd.DataFrame, symbol: str = "unknown") -> Dict:
         """Calculate comprehensive technical indicators"""
         # Standardize column names to match expected format (lowercase)
         price_data_standardized = price_data.copy()
@@ -351,9 +346,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         price_data_standardized = price_data_standardized.rename(columns=column_mapping)
 
         # Use the centralized indicator calculator
-        enhanced_df = self.indicators.calculate_all_indicators(
-            price_data_standardized, symbol
-        )
+        enhanced_df = self.indicators.calculate_all_indicators(price_data_standardized, symbol)
 
         # Extract the latest indicator values as a dict
         latest_values = enhanced_df.iloc[-1].to_dict()
@@ -394,11 +387,13 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
         return indicators
 
-    async def _detect_patterns(
-        self, price_data: pd.DataFrame, symbol: str
-    ) -> List[Dict]:
+    async def _detect_patterns(self, price_data: pd.DataFrame, symbol: str) -> List[Dict]:
         """Detect chart patterns using pattern recognition"""
         detected_patterns = []
+
+        if self.use_deterministic and self.deterministic_pattern_recognition:
+            self.logger.debug("%s - Using deterministic pattern recognition (LLM bypass)", symbol)
+            return self._build_fallback_patterns(price_data)
 
         # Handle both uppercase and lowercase columns
         columns_to_use = []
@@ -478,8 +473,23 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         )
 
         # Parse response safely
-        response_dict = self._parse_llm_response(response)
-        patterns = response_dict.get("patterns", [])
+        response_dict = self._parse_llm_response(response, default={})
+        if isinstance(response_dict, list):
+            patterns = response_dict
+        elif isinstance(response_dict, dict):
+            patterns = response_dict.get("patterns", [])
+            # Some models return a single object instead of array.
+            if not patterns and response_dict.get("pattern_name"):
+                patterns = [response_dict]
+        else:
+            patterns = []
+
+        if not patterns:
+            self.logger.warning(
+                "Pattern recognition returned empty/invalid payload for %s. Using deterministic fallback.",
+                symbol,
+            )
+            return self._build_fallback_patterns(price_data)
 
         # Validate and enhance patterns with calculations
         for pattern in patterns:
@@ -509,17 +519,14 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         # Analyze volume trends
         volume_trend = (
             "increasing"
-            if price_data[volume_col].iloc[-20:].mean()
-            > price_data[volume_col].iloc[-40:-20].mean()
+            if price_data[volume_col].iloc[-20:].mean() > price_data[volume_col].iloc[-40:-20].mean()
             else "decreasing"
         )
 
         # Price-volume correlation
         close_col = "close" if "close" in price_data.columns else "Close"
         price_volume_corr = (
-            price_data[close_col]
-            .pct_change(fill_method=None)
-            .corr(price_data[volume_col].pct_change(fill_method=None))
+            price_data[close_col].pct_change(fill_method=None).corr(price_data[volume_col].pct_change(fill_method=None))
         )
 
         volume_analysis = {
@@ -529,9 +536,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
             "recent_spikes": len(volume_spikes[-20:]),
             "price_volume_correlation": float(price_volume_corr),
             "volume_profile": self._calculate_volume_profile(price_data),
-            "accumulation_distribution": self._calculate_accumulation_distribution(
-                price_data
-            ),
+            "accumulation_distribution": self._calculate_accumulation_distribution(price_data),
         }
 
         return volume_analysis
@@ -576,13 +581,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
         # RSI analysis
         current_rsi = indicators.get("rsi", 50)  # These are already scalar values
-        momentum["rsi_signal"] = (
-            "overbought"
-            if current_rsi > 70
-            else "oversold"
-            if current_rsi < 30
-            else "neutral"
-        )
+        momentum["rsi_signal"] = "overbought" if current_rsi > 70 else "oversold" if current_rsi < 30 else "neutral"
 
         # MACD analysis
         if "macd" in indicators and "macd_signal" in indicators:
@@ -593,13 +592,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         # Stochastic analysis
         if "stoch_k" in indicators:
             stoch_k = indicators["stoch_k"]
-            momentum["stochastic_signal"] = (
-                "overbought"
-                if stoch_k > 80
-                else "oversold"
-                if stoch_k < 20
-                else "neutral"
-            )
+            momentum["stochastic_signal"] = "overbought" if stoch_k > 80 else "oversold" if stoch_k < 20 else "neutral"
 
         # Moving average analysis
         if "sma_50" in indicators and "sma_200" in indicators:
@@ -622,11 +615,22 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         """Generate trading signals based on technical analysis"""
         # Handle both uppercase and lowercase columns
         close_col = "close" if "close" in price_data.columns else "Close"
+        current_price = float(price_data[close_col].iloc[-1])
+        momentum_score = float(momentum.get("overall_score", 0))
+        pattern_count = len(patterns or [])
+
+        if self.use_deterministic and self.deterministic_signal_generation:
+            self.logger.debug("%s - Using deterministic signal generation (LLM bypass)", symbol)
+            return self._build_fallback_signals(
+                current_price=current_price,
+                momentum_score=momentum_score,
+                pattern_count=pattern_count,
+            )
 
         prompt = f"""
         Generate trading signals based on the following technical analysis:
         
-        Current Price: {price_data[close_col].iloc[-1]}
+        Current Price: {current_price}
         Price Change (5 days): {((price_data[close_col].iloc[-1] / price_data[close_col].iloc[-5]) - 1) * 100:.2f}%
         
         Key Indicators:
@@ -695,19 +699,21 @@ class TechnicalAnalysisAgent(InvestmentAgent):
             format="json",
         )
 
-        # Wrap with metadata for caching
-        return self._wrap_llm_response(
-            response=response,
-            model=self.models["signal_generation"],
-            prompt=prompt,
-            temperature=0.3,
-            top_p=0.9,
-            format="json",
-        )
+        parsed_response = self._parse_llm_response(response, default={})
+        if not isinstance(parsed_response, dict) or not parsed_response.get("entry_signal"):
+            self.logger.warning(
+                "Signal generation returned empty/invalid payload for %s. Using deterministic fallback.",
+                symbol,
+            )
+            return self._build_fallback_signals(
+                current_price=current_price,
+                momentum_score=momentum_score,
+                pattern_count=pattern_count,
+            )
 
-    async def _analyze_market_sentiment(
-        self, price_data: pd.DataFrame, volume_analysis: Dict
-    ) -> Dict:
+        return parsed_response
+
+    async def _analyze_market_sentiment(self, price_data: pd.DataFrame, volume_analysis: Dict) -> Dict:
         """Analyze overall market sentiment"""
         sentiment = {}
 
@@ -715,22 +721,14 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         close_col = "close" if "close" in price_data.columns else "Close"
 
         # Price action sentiment
-        recent_trend = (
-            "bullish"
-            if price_data[close_col].iloc[-1] > price_data[close_col].iloc[-20]
-            else "bearish"
-        )
+        recent_trend = "bullish" if price_data[close_col].iloc[-1] > price_data[close_col].iloc[-20] else "bearish"
 
         # Volatility analysis
         returns = price_data[close_col].pct_change(fill_method=None)
         volatility = returns.std() * np.sqrt(252)  # Annualized volatility
 
         # Volume sentiment
-        volume_sentiment = (
-            "accumulation"
-            if volume_analysis.get("accumulation_distribution", 0) > 0
-            else "distribution"
-        )
+        volume_sentiment = "accumulation" if volume_analysis.get("accumulation_distribution", 0) > 0 else "distribution"
 
         sentiment = {
             "price_trend": recent_trend,
@@ -738,9 +736,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
             "volume_sentiment": volume_sentiment,
             "market_phase": self._identify_market_phase(price_data),
             "trend_strength": self._calculate_trend_strength(price_data),
-            "sentiment_score": self._calculate_sentiment_score(
-                price_data, volume_analysis
-            ),
+            "sentiment_score": self._calculate_sentiment_score(price_data, volume_analysis),
         }
 
         return sentiment
@@ -751,6 +747,11 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         from investigator.domain.services.data_normalizer import DataNormalizer
 
         rounded_data = DataNormalizer.round_financial_data(analysis_data)
+        symbol = analysis_data.get("symbol", "UNKNOWN")
+
+        if self.use_deterministic and self.deterministic_technical_report_generation:
+            self.logger.debug("%s - Using deterministic technical synthesis (LLM bypass)", symbol)
+            return self._build_fallback_technical_report(rounded_data)
 
         # Check if TOON format is enabled
         use_toon = getattr(self.config.ollama, "use_toon_format", False) and getattr(
@@ -776,9 +777,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
                 try:
                     weekly_list = rounded_data["weekly_data"]
                     if isinstance(weekly_list, list) and len(weekly_list) > 0:
-                        toon_weekly = to_toon_array(
-                            weekly_list, name="weekly_price_data"
-                        )
+                        toon_weekly = to_toon_array(weekly_list, name="weekly_price_data")
                         data_sections.append(toon_weekly)
                 except Exception as e:
                     self.logger.warning(f"Failed to convert weekly_data to TOON: {e}")
@@ -788,15 +787,9 @@ class TechnicalAnalysisAgent(InvestmentAgent):
                 data_section = "\n\n".join(data_sections)
 
                 # Add remaining non-tabular data as JSON
-                non_tabular = {
-                    k: v
-                    for k, v in rounded_data.items()
-                    if k not in ["daily_data", "weekly_data"]
-                }
+                non_tabular = {k: v for k, v in rounded_data.items() if k not in ["daily_data", "weekly_data"]}
                 if non_tabular:
-                    data_section += (
-                        f"\n\nAdditional context:\n{json.dumps(non_tabular, indent=2)}"
-                    )
+                    data_section += f"\n\nAdditional context:\n{json.dumps(non_tabular, indent=2)}"
             else:
                 # No tabular data found, fall back to JSON
                 data_section = json.dumps(rounded_data, indent=2)[:8000]
@@ -881,7 +874,6 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         self._debug_log_response(prompt_name, response)
 
         # DUAL CACHING: Cache LLM response separately
-        symbol = analysis_data.get("symbol", "UNKNOWN")
         await self._cache_llm_response(
             response=response,
             model=self.models["trend_analysis"],
@@ -893,15 +885,183 @@ class TechnicalAnalysisAgent(InvestmentAgent):
             format="json",
         )
 
-        # Wrap with metadata for caching
-        return self._wrap_llm_response(
-            response=response,
-            model=self.models["trend_analysis"],
-            prompt=prompt,
-            temperature=0.3,
-            top_p=0.9,
-            format="json",
-        )
+        parsed_report = self._parse_llm_response(response, default={})
+        if not isinstance(parsed_report, dict) or not parsed_report:
+            self.logger.warning(
+                "Technical synthesis returned empty/invalid payload for %s. Using deterministic fallback.",
+                symbol,
+            )
+            return self._build_fallback_technical_report(analysis_data)
+
+        return parsed_report
+
+    def _build_fallback_patterns(self, price_data: pd.DataFrame) -> List[Dict[str, Any]]:
+        """Create deterministic chart-pattern signals when LLM output is empty."""
+        close_col = "close" if "close" in price_data.columns else "Close"
+        high_col = "high" if "high" in price_data.columns else "High"
+        low_col = "low" if "low" in price_data.columns else "Low"
+
+        if close_col not in price_data.columns or len(price_data) < 20:
+            return []
+
+        closes = price_data[close_col].astype(float)
+        current_price = float(closes.iloc[-1])
+        short_window = min(21, max(len(closes) - 1, 1))
+        long_window = min(63, max(len(closes) - 1, 1))
+
+        short_return = float((closes.iloc[-1] / closes.iloc[-short_window]) - 1) if short_window > 1 else 0.0
+        long_return = float((closes.iloc[-1] / closes.iloc[-long_window]) - 1) if long_window > 1 else short_return
+        volatility = float(closes.pct_change(fill_method=None).tail(short_window).std() * np.sqrt(252))
+
+        if high_col in price_data.columns:
+            recent_high = float(price_data[high_col].tail(short_window).max())
+        else:
+            recent_high = float(closes.tail(short_window).max())
+
+        if low_col in price_data.columns:
+            recent_low = float(price_data[low_col].tail(short_window).min())
+        else:
+            recent_low = float(closes.tail(short_window).min())
+
+        range_width = (recent_high - recent_low) / recent_low if recent_low and recent_low > 0 else 0.0
+
+        patterns: List[Dict[str, Any]] = []
+        end_index = max(len(price_data) - 1, 0)
+        start_index = max(end_index - short_window, 0)
+
+        if short_return >= 0.08 and long_return >= 0.12:
+            target_multiplier = 1 + min(0.25, max(0.08, volatility * 0.5))
+            patterns.append(
+                {
+                    "pattern_name": "trend_channel_bullish",
+                    "confidence": min(92, int(55 + (short_return * 220))),
+                    "start_index": start_index,
+                    "end_index": end_index,
+                    "breakout_level": round(recent_high, 2),
+                    "target_price": round(current_price * target_multiplier, 2),
+                    "pattern_description": "Price action shows a sustained bullish trend channel with higher highs.",
+                    "fallback_used": True,
+                }
+            )
+        elif short_return <= -0.08 and long_return <= -0.12:
+            target_multiplier = 1 - min(0.25, max(0.08, volatility * 0.5))
+            patterns.append(
+                {
+                    "pattern_name": "trend_channel_bearish",
+                    "confidence": min(92, int(55 + (abs(short_return) * 220))),
+                    "start_index": start_index,
+                    "end_index": end_index,
+                    "breakout_level": round(recent_low, 2),
+                    "target_price": round(current_price * target_multiplier, 2),
+                    "pattern_description": "Price action shows a sustained bearish trend channel with lower lows.",
+                    "fallback_used": True,
+                }
+            )
+
+        if range_width < 0.08 and abs(short_return) < 0.04:
+            patterns.append(
+                {
+                    "pattern_name": "consolidation_rectangle",
+                    "confidence": 68,
+                    "start_index": start_index,
+                    "end_index": end_index,
+                    "breakout_level": round(recent_high, 2),
+                    "target_price": round(recent_high * 1.05, 2),
+                    "pattern_description": "Price is consolidating in a tight range, suggesting potential breakout setup.",
+                    "fallback_used": True,
+                }
+            )
+
+        if not patterns:
+            is_bullish = short_return >= 0
+            patterns.append(
+                {
+                    "pattern_name": "momentum_continuation_bullish" if is_bullish else "momentum_continuation_bearish",
+                    "confidence": min(75, int(50 + (abs(short_return) * 300))),
+                    "start_index": start_index,
+                    "end_index": end_index,
+                    "breakout_level": round(current_price, 2),
+                    "target_price": round(current_price * (1.06 if is_bullish else 0.94), 2),
+                    "pattern_description": "Deterministic fallback momentum read based on recent return trajectory.",
+                    "fallback_used": True,
+                }
+            )
+
+        return patterns[:3]
+
+    def _build_fallback_signals(
+        self, current_price: float, momentum_score: float, pattern_count: int
+    ) -> Dict[str, Any]:
+        """Create deterministic trading signals when LLM output is empty."""
+        if momentum_score > 20:
+            entry_signal = "buy"
+        elif momentum_score < -20:
+            entry_signal = "sell"
+        else:
+            entry_signal = "hold"
+
+        confidence = min(90, max(45, int(abs(momentum_score) + 45)))
+        stop_loss = round(current_price * 0.95, 2)
+        tp1 = round(current_price * 1.08, 2)
+        tp2 = round(current_price * 1.15, 2)
+        rr = round((tp1 - current_price) / max(current_price - stop_loss, 0.01), 2)
+
+        return {
+            "entry_signal": entry_signal,
+            "entry_price": round(current_price, 2),
+            "stop_loss": stop_loss,
+            "take_profit_1": tp1,
+            "take_profit_2": tp2,
+            "position_size_recommendation": "moderate",
+            "confidence_level": confidence,
+            "time_horizon": "medium",
+            "risk_reward_ratio": rr,
+            "signal_strength": ("strong" if abs(momentum_score) >= 40 else "moderate"),
+            "reasoning": (
+                f"Fallback signal based on momentum score ({momentum_score:.1f}) "
+                f"and detected patterns ({pattern_count})."
+            ),
+            "fallback_used": True,
+        }
+
+    def _build_fallback_technical_report(self, analysis_data: Dict) -> Dict[str, Any]:
+        """Create deterministic technical report when LLM synthesis output is empty."""
+        signals = analysis_data.get("signals", {}) if isinstance(analysis_data, dict) else {}
+        sentiment = analysis_data.get("sentiment", {}) if isinstance(analysis_data, dict) else {}
+        levels = analysis_data.get("support_resistance", {}) if isinstance(analysis_data, dict) else {}
+        momentum = analysis_data.get("momentum", {}) if isinstance(analysis_data, dict) else {}
+
+        entry_signal = signals.get("entry_signal", "hold")
+        momentum_score = float(momentum.get("overall_score", 0))
+        technical_rating = max(1.0, min(10.0, round(5 + (momentum_score / 25), 1)))
+
+        return {
+            "executive_summary": (
+                "Deterministic fallback summary generated because LLM technical synthesis returned empty output."
+            ),
+            "trend_analysis": {
+                "market_phase": sentiment.get("market_phase", "consolidation"),
+                "trend_strength": sentiment.get("trend_strength", 0),
+            },
+            "key_support_and_resistance_levels": {
+                "support": levels.get("historical_support", []),
+                "resistance": levels.get("historical_resistance", []),
+            },
+            "technical_indicators_summary": analysis_data.get("indicators", {}),
+            "pattern_recognition_results": analysis_data.get("patterns", []),
+            "volume_analysis_insights": analysis_data.get("volume_analysis", {}),
+            "momentum_and_strength_assessment": momentum,
+            "risk_assessment": "Use stop-loss discipline due to fallback mode.",
+            "trading_recommendations": entry_signal,
+            "technical_rating": technical_rating,
+            "recommendation": entry_signal if entry_signal in {"buy", "sell"} else "neutral",
+            "time_horizon_recommendations": signals.get("time_horizon", "medium"),
+            "key_watch_levels": {
+                "support": levels.get("support_1"),
+                "resistance": levels.get("resistance_1"),
+            },
+            "fallback_used": True,
+        }
 
     def _validate_pattern(self, pattern: Dict, price_data: pd.DataFrame) -> bool:
         """Validate detected pattern with price data"""
@@ -946,9 +1106,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         volume_col = "volume" if "volume" in price_data.columns else "Volume"
 
         price_bins = pd.qcut(price_data[close_col], q=10)
-        volume_profile = price_data.groupby(price_bins, observed=False)[
-            volume_col
-        ].sum()
+        volume_profile = price_data.groupby(price_bins, observed=False)[volume_col].sum()
 
         return {
             "high_volume_node": float(volume_profile.idxmax().mid),
@@ -964,10 +1122,9 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         low_col = "low" if "low" in price_data.columns else "Low"
         volume_col = "volume" if "volume" in price_data.columns else "Volume"
 
-        mfm = (
-            (price_data[close_col] - price_data[low_col])
-            - (price_data[high_col] - price_data[close_col])
-        ) / (price_data[high_col] - price_data[low_col])
+        mfm = ((price_data[close_col] - price_data[low_col]) - (price_data[high_col] - price_data[close_col])) / (
+            price_data[high_col] - price_data[low_col]
+        )
         mfm = mfm.fillna(0)
 
         ad = (mfm * price_data[volume_col]).cumsum()
@@ -984,21 +1141,15 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         local_max = price_data[high_col].rolling(window=window, center=True).max()
         local_min = price_data[low_col].rolling(window=window, center=True).min()
 
-        resistance_levels = price_data[price_data[high_col] == local_max][
-            high_col
-        ].unique()
+        resistance_levels = price_data[price_data[high_col] == local_max][high_col].unique()
         support_levels = price_data[price_data[low_col] == local_min][low_col].unique()
 
         resistance_levels = sorted(resistance_levels)
         support_levels = sorted(support_levels)
 
         return {
-            "resistance": [round(float(x), 2) for x in resistance_levels[-3:]]
-            if resistance_levels
-            else [],
-            "support": [round(float(x), 2) for x in support_levels[:3]]
-            if support_levels
-            else [],
+            "resistance": [round(float(x), 2) for x in resistance_levels[-3:]] if resistance_levels else [],
+            "support": [round(float(x), 2) for x in support_levels[:3]] if support_levels else [],
         }
 
     def _calculate_fibonacci_levels(self, price_data: pd.DataFrame) -> Dict:
@@ -1043,9 +1194,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
         # Moving average contribution
         if "sma_50" in indicators and "sma_200" in indicators:
-            ma_ratio = (
-                indicators["sma_50"] / indicators["sma_200"]
-            )  # Already scalar values
+            ma_ratio = indicators["sma_50"] / indicators["sma_200"]  # Already scalar values
             ma_score = (ma_ratio - 1) * 100
             score += np.clip(ma_score, -100, 100) * 0.4
             weight_sum += 0.4
@@ -1076,15 +1225,11 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
         # ADX-like calculation
         returns = price_data[close_col].pct_change(fill_method=None)
-        trend_strength = (
-            abs(returns.rolling(window=14).mean()) / returns.rolling(window=14).std()
-        )
+        trend_strength = abs(returns.rolling(window=14).mean()) / returns.rolling(window=14).std()
 
         return float(np.clip(trend_strength.iloc[-1] * 25, 0, 100))
 
-    def _calculate_sentiment_score(
-        self, price_data: pd.DataFrame, volume_analysis: Dict
-    ) -> float:
+    def _calculate_sentiment_score(self, price_data: pd.DataFrame, volume_analysis: Dict) -> float:
         """Calculate overall sentiment score (-100 to 100)"""
         score = 0
 
@@ -1092,9 +1237,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         close_col = "close" if "close" in price_data.columns else "Close"
 
         # Price trend contribution
-        price_change = (
-            (price_data[close_col].iloc[-1] / price_data[close_col].iloc[-20]) - 1
-        ) * 100
+        price_change = ((price_data[close_col].iloc[-1] / price_data[close_col].iloc[-20]) - 1) * 100
         score += np.clip(price_change * 2, -50, 50)
 
         # Volume sentiment contribution

@@ -10,7 +10,7 @@ Enhanced to include full content without truncation
 
 import json
 import logging
-from typing import Dict, Any
+from typing import Any, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +38,7 @@ def format_fundamental_data_for_synthesis(
                 if "quarterly_analyses" in content:
                     section += "\n\nQUARTERLY ANALYSES:\n"
                     for qa in content["quarterly_analyses"]:
-                        period = qa.get("quarterly_summary", {}).get(
-                            "fiscal_period", "Unknown"
-                        )
+                        period = qa.get("quarterly_summary", {}).get("fiscal_period", "Unknown")
                         section += f"\n--- {period} ---\n"
                         section += json.dumps(qa, indent=2)
 
@@ -98,25 +96,19 @@ def format_fundamental_data_for_synthesis(
                         health_data = parsed_content["financial_health_score"]
                         section += f"- Financial Health Score: {health_data.get('score', 'N/A')}/10\n"
                         if "rationale" in health_data:
-                            section += (
-                                f"  Rationale: {health_data.get('rationale', 'N/A')}\n"
-                            )
+                            section += f"  Rationale: {health_data.get('rationale', 'N/A')}\n"
 
                     if "business_quality_score" in parsed_content:
                         quality_data = parsed_content["business_quality_score"]
                         section += f"- Business Quality Score: {quality_data.get('score', 'N/A')}/10\n"
                         if "rationale" in quality_data:
-                            section += (
-                                f"  Rationale: {quality_data.get('rationale', 'N/A')}\n"
-                            )
+                            section += f"  Rationale: {quality_data.get('rationale', 'N/A')}\n"
 
                     if "growth_prospects_score" in parsed_content:
                         growth_data = parsed_content["growth_prospects_score"]
                         section += f"- Growth Prospects Score: {growth_data.get('score', 'N/A')}/10\n"
                         if "rationale" in growth_data:
-                            section += (
-                                f"  Rationale: {growth_data.get('rationale', 'N/A')}\n"
-                            )
+                            section += f"  Rationale: {growth_data.get('rationale', 'N/A')}\n"
 
                     # Include all insights
                     if "key_insights" in parsed_content:
@@ -191,15 +183,11 @@ def format_technical_data_for_synthesis(technical_response: Dict[str, Any]) -> s
                 section += f"  Primary Trend: {trend_data.get('primary_trend')}\n"
                 section += f"  Trend Strength: {trend_data.get('trend_strength')}\n"
                 if "momentum_signals" in trend_data:
-                    section += (
-                        f"  Momentum Signals: {trend_data.get('momentum_signals')}\n"
-                    )
+                    section += f"  Momentum Signals: {trend_data.get('momentum_signals')}\n"
             elif "trend_direction" in parsed_content:
                 # New flat structure
                 section += "\n- Trend Analysis:\n"
-                section += (
-                    f"  Trend Direction: {parsed_content.get('trend_direction')}\n"
-                )
+                section += f"  Trend Direction: {parsed_content.get('trend_direction')}\n"
                 section += f"  Trend Strength: {parsed_content.get('trend_strength')}\n"
                 if "momentum_signals" in parsed_content:
                     signals = parsed_content.get("momentum_signals", [])
@@ -211,33 +199,20 @@ def format_technical_data_for_synthesis(technical_response: Dict[str, Any]) -> s
                 section += "\n- Support/Resistance Levels:\n"
                 section += f"  Immediate Support: ${sr_data.get('immediate_support')}\n"
                 section += f"  Major Support: ${sr_data.get('major_support')}\n"
-                section += (
-                    f"  Immediate Resistance: ${sr_data.get('immediate_resistance')}\n"
-                )
+                section += f"  Immediate Resistance: ${sr_data.get('immediate_resistance')}\n"
                 section += f"  Major Resistance: ${sr_data.get('major_resistance')}\n"
-            elif (
-                "support_levels" in parsed_content
-                or "resistance_levels" in parsed_content
-            ):
+            elif "support_levels" in parsed_content or "resistance_levels" in parsed_content:
                 # New flat structure
                 section += "\n- Support/Resistance Levels:\n"
                 support_levels = parsed_content.get("support_levels", [])
                 resistance_levels = parsed_content.get("resistance_levels", [])
 
-                if (
-                    support_levels
-                    and isinstance(support_levels, list)
-                    and len(support_levels) > 0
-                ):
+                if support_levels and isinstance(support_levels, list) and len(support_levels) > 0:
                     section += f"  Primary Support: ${support_levels[0]}\n"
                     if len(support_levels) > 1:
                         section += f"  Secondary Support: ${support_levels[1]}\n"
 
-                if (
-                    resistance_levels
-                    and isinstance(resistance_levels, list)
-                    and len(resistance_levels) > 0
-                ):
+                if resistance_levels and isinstance(resistance_levels, list) and len(resistance_levels) > 0:
                     section += f"  Primary Resistance: ${resistance_levels[0]}\n"
                     if len(resistance_levels) > 1:
                         section += f"  Secondary Resistance: ${resistance_levels[1]}\n"
@@ -263,9 +238,7 @@ def format_technical_data_for_synthesis(technical_response: Dict[str, Any]) -> s
                     # Flat structure
                     section += f"\n- Technical Recommendation: {rec_data}\n"
                     if "time_horizon" in parsed_content:
-                        section += (
-                            f"  Time Horizon: {parsed_content.get('time_horizon')}\n"
-                        )
+                        section += f"  Time Horizon: {parsed_content.get('time_horizon')}\n"
 
             # Include key patterns
             if "chart_patterns" in parsed_content:

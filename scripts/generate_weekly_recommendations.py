@@ -16,18 +16,20 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from sqlalchemy import text
+
 from investigator.infrastructure.database.db import get_database_engine
 
 
 def get_predictions(engine, days: int = 7) -> List[Dict[str, Any]]:
     """Fetch recent predictions from database."""
-    query = text("""
+    query = text(
+        """
     SELECT
         symbol,
         analysis_date,
@@ -46,7 +48,8 @@ def get_predictions(engine, days: int = 7) -> List[Dict[str, Any]]:
       AND blended_fair_value IS NOT NULL
       AND current_price IS NOT NULL
     ORDER BY analysis_date DESC, predicted_upside_pct DESC
-    """)
+    """
+    )
 
     with engine.connect() as conn:
         result = conn.execute(query, {"days": f"{days} days"})
@@ -85,7 +88,8 @@ def categorize_predictions(predictions: List[Dict]) -> Dict[str, List[Dict]]:
 
 def get_tier_performance(engine) -> Dict[str, Dict]:
     """Get historical performance by tier."""
-    query = text("""
+    query = text(
+        """
     SELECT
         tier_classification,
         COUNT(*) as total_predictions,
@@ -96,7 +100,8 @@ def get_tier_performance(engine) -> Dict[str, Dict]:
     GROUP BY tier_classification
     HAVING COUNT(*) >= 10
     ORDER BY avg_reward_90d DESC
-    """)
+    """
+    )
 
     with engine.connect() as conn:
         result = conn.execute(query)
@@ -160,12 +165,8 @@ def generate_report(
             "short_opportunities": len(categorized["shorts"]),
             "skipped": len(categorized["skips"]),
         },
-        "top_longs": [
-            format_recommendation(p, tier_perf) for p in categorized["longs"][:top_n]
-        ],
-        "top_shorts": [
-            format_recommendation(p, tier_perf) for p in categorized["shorts"][:top_n]
-        ],
+        "top_longs": [format_recommendation(p, tier_perf) for p in categorized["longs"][:top_n]],
+        "top_shorts": [format_recommendation(p, tier_perf) for p in categorized["shorts"][:top_n]],
         "best_tiers": [
             {
                 "tier": tier,
@@ -173,9 +174,7 @@ def generate_report(
                 "avg_reward": round(info["avg_reward"], 4),
                 "win_rate": round(info["win_rate"], 1),
             }
-            for tier, info in sorted(
-                tier_perf.items(), key=lambda x: x[1]["avg_reward"], reverse=True
-            )[:5]
+            for tier, info in sorted(tier_perf.items(), key=lambda x: x[1]["avg_reward"], reverse=True)[:5]
         ],
     }
 
@@ -219,18 +218,13 @@ def print_report(report: Dict) -> None:
         print("BEST PERFORMING TIERS")
         print("-" * 40)
         for tier in report["best_tiers"]:
-            print(
-                f"  {tier['tier']}: {tier['avg_reward']:+.4f} reward, "
-                f"{tier['win_rate']:.0f}% win rate"
-            )
+            print(f"  {tier['tier']}: {tier['avg_reward']:+.4f} reward, " f"{tier['win_rate']:.0f}% win rate")
 
     print("\n" + "=" * 60)
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Generate weekly stock recommendations from RL predictions"
-    )
+    parser = argparse.ArgumentParser(description="Generate weekly stock recommendations from RL predictions")
     parser.add_argument(
         "--days",
         type=int,

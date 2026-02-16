@@ -64,9 +64,7 @@ class MarketRegimeUpdater(BaseCollector):
 
             analyzer = get_market_regime_analyzer()
 
-            self.logger.info(
-                f"Updating market regime classification (lookback: {self.lookback_days} days)"
-            )
+            self.logger.info(f"Updating market regime classification (lookback: {self.lookback_days} days)")
 
             # Get comprehensive regime analysis
             regime_data = analyzer.get_comprehensive_regime()
@@ -179,13 +177,15 @@ class MarketRegimeUpdater(BaseCollector):
         """Check and record regime transitions."""
         try:
             # Get previous regime
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT regime, credit_cycle_phase, volatility_regime
                 FROM market_regime_history
                 WHERE snapshot_date < CURRENT_DATE
                 ORDER BY snapshot_date DESC
                 LIMIT 1
-            """)
+            """
+            )
 
             prev = cursor.fetchone()
             if not prev:
@@ -216,9 +216,7 @@ class MarketRegimeUpdater(BaseCollector):
                     (transition_type, from_state, to_state),
                 )
 
-                self.logger.info(
-                    f"Regime transition: {transition_type} {from_state} -> {to_state}"
-                )
+                self.logger.info(f"Regime transition: {transition_type} {from_state} -> {to_state}")
 
         except Exception as e:
             self.logger.debug(f"Could not check regime transition: {e}")

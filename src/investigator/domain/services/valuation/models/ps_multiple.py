@@ -203,9 +203,25 @@ class PSMultipleModel(BaseValuationModel):
 
         # Try industry-specific lookup first
         if self.company_profile.industry:
-            base_ps = INDUSTRY_BASE_PS.get(self.company_profile.industry)
-            if base_ps:
-                logger.debug(f"PS_GRANULAR - Industry base P/S: {base_ps} (industry: {self.company_profile.industry})")
+            sector_key = (
+                self.company_profile.sector.split("/")[0].strip()
+                if self.company_profile.sector
+                else None
+            )
+            industry_candidates = []
+            if sector_key:
+                industry_candidates.append(f"{sector_key}/{self.company_profile.industry}")
+            industry_candidates.append(self.company_profile.industry)
+
+            for industry_key in industry_candidates:
+                base_ps = INDUSTRY_BASE_PS.get(industry_key)
+                if base_ps:
+                    logger.debug(
+                        "PS_GRANULAR - Industry base P/S: %s (industry key: %s)",
+                        base_ps,
+                        industry_key,
+                    )
+                    break
 
         # Fallback to sector-level lookup
         if base_ps is None and self.company_profile.sector:

@@ -1,7 +1,7 @@
 """Unit tests for valuation orchestration helpers."""
 
-from unittest.mock import MagicMock
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 from investigator.domain.agents.fundamental.valuation_orchestrator import (
     log_multi_model_summary,

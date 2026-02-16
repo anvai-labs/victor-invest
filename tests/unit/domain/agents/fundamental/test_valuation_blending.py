@@ -77,9 +77,36 @@ def test_hydrate_financials_for_blending_populates_required_fields():
     assert financials["revenue"] == 2_000_000
     assert financials["fcf_quarters_count"] == 4
     assert financials["ebitda"] == 200_000
-    assert financials["payout_ratio"] == 22.0
+    assert financials["payout_ratio"] == 0.22
     assert financials["net_income"] == 150_000
     assert summary["free_cash_flow"] == 100_000
+
+
+def test_hydrate_financials_for_blending_inferrs_payout_from_dividend_yield():
+    financials = {"net_income": 10_000, "revenues": 120_000}
+    company_data = {"ttm_metrics": {}}
+    company_profile = SimpleNamespace(
+        quarterly_metrics=[],
+        free_cash_flow=0,
+        dividends_paid=0,
+        ebitda=5_000,
+        dividend_payout_ratio=None,
+        dividend_yield=None,
+        net_income=10_000,
+    )
+    ratios = {"market_cap": 100_000, "dividend_yield": 3.0}
+
+    summary = hydrate_financials_for_blending(
+        financials=financials,
+        company_data=company_data,
+        company_profile=company_profile,
+        ratios=ratios,
+    )
+
+    assert financials["payout_ratio"] == 0.3
+    assert financials["dividends_paid"] == 3_000
+    assert ratios["payout_ratio"] == 0.3
+    assert summary["dividends_paid"] == 3_000
 
 
 def test_apply_weight_lookup_backfills_model_weights():

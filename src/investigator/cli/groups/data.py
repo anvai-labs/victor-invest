@@ -28,9 +28,7 @@ def data(ctx):
 @click.option(
     "--category",
     "-c",
-    type=click.Choice(
-        ["market", "fundamental", "macro", "sentiment", "volatility", "fixed_income"]
-    ),
+    type=click.Choice(["market", "fundamental", "macro", "sentiment", "volatility", "fixed_income"]),
     help="Filter by category",
 )
 @click.option("--json", "json_output", is_flag=True, help="Output as JSON")

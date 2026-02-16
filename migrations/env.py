@@ -2,12 +2,13 @@
 Alembic environment configuration for database migrations
 """
 
-from logging.config import fileConfig
-from sqlalchemy import engine_from_config, pool
-from alembic import context
 import os
 import sys
+from logging.config import fileConfig
 from pathlib import Path
+
+from alembic import context
+from sqlalchemy import engine_from_config, pool
 
 # Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent))

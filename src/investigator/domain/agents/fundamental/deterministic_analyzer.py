@@ -36,9 +36,7 @@ class DeterministicAnalyzer:
     - Profitability: Margin trends, returns on capital, cost structure
     """
 
-    def __init__(
-        self, agent_id: str = "deterministic", logger: Optional[logging.Logger] = None
-    ):
+    def __init__(self, agent_id: str = "deterministic", logger: Optional[logging.Logger] = None):
         """
         Initialize deterministic analyzer.
 
@@ -47,13 +45,9 @@ class DeterministicAnalyzer:
             logger: Optional logger instance
         """
         self.agent_id = agent_id
-        self.logger = logger or logging.getLogger(
-            f"{__name__}.{self.__class__.__name__}"
-        )
+        self.logger = logger or logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-    def _build_deterministic_response(
-        self, label: str, payload: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _build_deterministic_response(self, label: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Return a structure consistent with LLM response format for rule-based analyses.
 
@@ -78,9 +72,7 @@ class DeterministicAnalyzer:
         """
         return company_data.get("financials") or {}
 
-    async def analyze_financial_health(
-        self, company_data: Dict, ratios: Dict, symbol: str
-    ) -> Dict:
+    async def analyze_financial_health(self, company_data: Dict, ratios: Dict, symbol: str) -> Dict:
         """
         Evaluate liquidity, solvency, and working-capital resilience without LLM calls.
 
@@ -110,9 +102,7 @@ class DeterministicAnalyzer:
             else:
                 label, score = "Weak", 45.0
             if quick_ratio:
-                commentary = (
-                    f"Current ratio {current_ratio:.2f}; quick ratio {quick_ratio:.2f}."
-                )
+                commentary = f"Current ratio {current_ratio:.2f}; quick ratio {quick_ratio:.2f}."
             else:
                 commentary = f"Current ratio {current_ratio:.2f}."
             return label, commentary, score
@@ -148,9 +138,7 @@ class DeterministicAnalyzer:
             return label, commentary, score
 
         def assess_capital_structure(sol_label: str, sol_score: float) -> tuple:
-            net_debt = (financials.get("total_debt") or 0) - (
-                financials.get("cash") or 0
-            )
+            net_debt = (financials.get("total_debt") or 0) - (financials.get("cash") or 0)
             if net_debt <= 0:
                 return (
                     "Net Cash",
@@ -175,9 +163,7 @@ class DeterministicAnalyzer:
             return label, commentary, score
 
         def assess_debt_serviceability() -> tuple:
-            interest_coverage = ratios.get("interest_coverage") or company_data.get(
-                "interest_coverage"
-            )
+            interest_coverage = ratios.get("interest_coverage") or company_data.get("interest_coverage")
             total_debt = financials.get("total_debt") or 0
             if total_debt == 0:
                 return "Not Applicable", "No debt outstanding.", 90.0
@@ -194,9 +180,7 @@ class DeterministicAnalyzer:
             total_debt = financials.get("total_debt") or 0
             if total_debt == 0:
                 return "High", "Balance sheet unlevered with cash cushion.", 90.0
-            liquidity_ratio = (
-                cash + (financials.get("short_term_investments") or 0)
-            ) / total_debt
+            liquidity_ratio = (cash + (financials.get("short_term_investments") or 0)) / total_debt
             if liquidity_ratio >= 0.75:
                 return (
                     "High",
@@ -238,9 +222,7 @@ class DeterministicAnalyzer:
         if solvency[0] == "Leveraged":
             risk_factors.append({"risk": "High leverage", "commentary": solvency[1]})
         if debt_serviceability[0] == "Stressed":
-            risk_factors.append(
-                {"risk": "Debt service pressure", "commentary": debt_serviceability[1]}
-            )
+            risk_factors.append({"risk": "Debt service pressure", "commentary": debt_serviceability[1]})
 
         payload = {
             "liquidity_position": {
@@ -344,9 +326,7 @@ class DeterministicAnalyzer:
             "stable": ("Stable", 70.0),
             "contracting": ("Weak", 55.0),
         }
-        earnings_label, earnings_score = margin_map.get(
-            margin_direction, ("Stable", 70.0)
-        )
+        earnings_label, earnings_score = margin_map.get(margin_direction, ("Stable", 70.0))
 
         market_share_trend = revenue_trend.get("trend", "stable")
         market_map = {
@@ -354,9 +334,7 @@ class DeterministicAnalyzer:
             "stable": ("Holding", 70.0),
             "decelerating": ("Losing", 55.0),
         }
-        market_label, market_score = market_map.get(
-            market_share_trend, ("Holding", 70.0)
-        )
+        market_label, market_score = market_map.get(market_share_trend, ("Holding", 70.0))
 
         growth_drivers: List[str] = []
         growth_risks: List[str] = []
@@ -386,9 +364,7 @@ class DeterministicAnalyzer:
             "revenue_growth_sustainability": {
                 "assessment": yoy_label,
                 "commentary": (
-                    f"Average Y/Y growth {yoy_growth:.1f}%"
-                    if yoy_growth is not None
-                    else "Insufficient data"
+                    f"Average Y/Y growth {yoy_growth:.1f}%" if yoy_growth is not None else "Insufficient data"
                 ),
             },
             "earnings_growth_quality": {
@@ -409,9 +385,7 @@ class DeterministicAnalyzer:
             },
             "growth_drivers_and_catalysts": growth_drivers,
             "future_growth_potential": {
-                "assessment": "High"
-                if yoy_label in {"High", "Moderate"}
-                else "Balanced",
+                "assessment": "High" if yoy_label in {"High", "Moderate"} else "Balanced",
                 "commentary": (
                     "Pipeline supported by demand indicators."
                     if yoy_label in {"High", "Moderate"}
@@ -428,9 +402,7 @@ class DeterministicAnalyzer:
 
         return self._build_deterministic_response("growth_analysis", payload)
 
-    async def analyze_profitability(
-        self, company_data: Dict, ratios: Dict, symbol: str
-    ) -> Dict:
+    async def analyze_profitability(self, company_data: Dict, ratios: Dict, symbol: str) -> Dict:
         """
         Deterministic profitability assessment using core ratios.
 
@@ -535,9 +507,7 @@ class DeterministicAnalyzer:
         profitability_drivers: List[str] = []
         if gross_history:
             try:
-                profitability_drivers.append(
-                    f"Median gross margin {statistics.median(gross_history):.1f}%"
-                )
+                profitability_drivers.append(f"Median gross margin {statistics.median(gross_history):.1f}%")
             except statistics.StatisticsError:
                 pass
         if net_history:

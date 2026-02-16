@@ -1,7 +1,7 @@
-import pandas_datareader.data as fred
-import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import pandas_datareader.data as fred
 from sklearn.linear_model import LinearRegression
 
 # =================================================================
@@ -25,9 +25,7 @@ try:
     df.columns = series_ids.keys()
 except Exception as e:
     print(f"Error downloading data: {e}")
-    print(
-        "Please ensure you have 'pandas_datareader' installed and a stable internet connection."
-    )
+    print("Please ensure you have 'pandas_datareader' installed and a stable internet connection.")
     # Exit or handle error gracefully
 
 # =================================================================

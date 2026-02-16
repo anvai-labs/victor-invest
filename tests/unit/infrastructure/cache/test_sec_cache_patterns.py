@@ -4,9 +4,7 @@ from datetime import datetime
 from investigator.infrastructure.cache.cache_types import CacheType
 
 
-def test_submission_cache_accepts_multiple_key_shapes(
-    cache_manager, sample_submission_data
-):
+def test_submission_cache_accepts_multiple_key_shapes(cache_manager, sample_submission_data):
     payload = deepcopy(sample_submission_data)
     payload.update({"symbol": "AAPL", "cik": "0000320193"})
     dict_key = {"symbol": "AAPL", "cik": "0000320193"}
@@ -32,9 +30,7 @@ def test_company_facts_cache_uses_cik(cache_manager, sample_company_facts):
     assert "facts" in stored
 
 
-def test_quarterly_metrics_cache_accepts_tuple_and_dict(
-    cache_manager, sample_quarterly_metrics
-):
+def test_quarterly_metrics_cache_accepts_tuple_and_dict(cache_manager, sample_quarterly_metrics):
     payload = deepcopy(sample_quarterly_metrics)
     payload.update({"symbol": "NVDA", "fiscal_year": "2024", "fiscal_period": "Q1"})
 

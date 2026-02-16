@@ -69,9 +69,50 @@
 |---|---|---|---|---|
 | Before this iteration | Spec imports pointed at old `victor.agents.spec`; tool registration failed against current registry | Incompatible with Victor `BaseTool` contract | Existing but unverified by passing tests | Victor test collection/execution failures |
 | After this iteration | Agent spec imports aligned to `victor.agent.specs.models` | Added protocol adapter in registration path | Existing handler wiring preserved | `tests/unit/victor_invest` passing (`14 passed`) |
+| After current continuation | API and runtime defaults now use YAML/WorkflowExecutor path (`run_yaml_analysis`) | Victor-native registration path retained | Added framework-first runtime tests + tool action-contract gates | Victor runtime contract coverage expanded; stale action regressions now CI-detectable |
 | Target architecture | Victor CLI primary, legacy CLI optional/isolated | Native Victor tool classes or stable adapter layer | Single registration bootstrap path | Clean vertical model, lower drift, stronger CI guarantees |
 
 ## Progress Update (Continuation)
+- Made `run_analysis(...)` framework-first in `victor_invest/workflows/graphs.py`:
+  - Primary path uses `run_yaml_analysis(...)` (Victor `WorkflowExecutor` + handlers).
+  - Automatic fallback to `run_stategraph_analysis(...)` for resilience.
+- Mapped `AnalysisMode.CUSTOM` to comprehensive YAML workflow for consistent mode behavior.
+- Switched API runtime alias to YAML workflow path (`victor_invest/api/app.py` now imports `run_yaml_analysis as run_workflow_analysis`).
+- Aligned peer analysis to framework execution (`AnalyzePeersHandler` now calls `run_yaml_analysis(...)`).
+- Fixed fundamental handler contract drift (`RunFundamentalAnalysisHandler` now passes `model="all"` to `ValuationTool` instead of unsupported `action=...`).
+- Added broad static action-contract guard:
+  - `tests/unit/victor_invest/test_tool_action_contracts.py` validates runtime `execute(action="...")` literals against tool schema enums.
+  - Also blocks passing `action=...` to tools that do not support action contracts (e.g., `ValuationTool`).
+- Extended runtime conformance tests:
+  - `tests/unit/victor_invest/test_workflow_runtime_paths.py` now verifies framework-first execution + fallback behavior.
+  - `tests/unit/victor_invest/test_api_runtime.py` asserts API alias points to YAML path.
+  - `tests/unit/victor_invest/test_handler_runtime_contracts.py` adds peer-analysis runner + valuation-model contract checks.
+- Added API YAML execution integration coverage:
+  - `tests/unit/victor_invest/test_api_yaml_integration.py` validates `/analyze` invokes YAML provider path for quick/standard/comprehensive modes.
+- Expanded action-contract scan coverage to additional runtime paths:
+  - `victor_invest/workflows/rl_backtest.py`
+  - `victor_invest/tools/valuation.py`
+  - `victor_invest/tools/valuation_signals.py`
+- Added Victor framework API compatibility layer for handler registration:
+  - `victor_invest/compat/handlers.py` now supports both legacy `handler_decorator`/`BaseHandler` and newer explicit `register_handler` APIs.
+  - `victor_invest/handlers.py` now imports compatibility shims to remain compatible with `../codingagent` framework updates.
+- Hardened handler registration bootstrap for cross-version sync APIs:
+  - `ensure_handlers_registered()` now tries `sync_handlers_with_executor(...)`, then registry `sync_with_executor(...)`, then a direct executor-registration fallback.
+  - Added coverage in `tests/unit/victor_invest/test_handler_registration_sync.py` for all fallback branches.
+- Added explicit no-sync observability:
+  - `ensure_handlers_registered()` now logs a warning when no sync path succeeds and relies on decorator-side registration.
+  - Added test coverage for this warning path in `tests/unit/victor_invest/test_handler_registration_sync.py`.
+- Added compatibility-layer unit coverage:
+  - `tests/unit/victor_invest/test_handler_compat_layer.py` validates fallback `BaseHandler` callable contract and `handler_decorator` registration behavior.
+- Added handler API conformance guard:
+  - `tests/unit/victor_invest/test_handler_api_compat_conformance.py` prevents direct legacy handler API imports outside `victor_invest/compat/`.
+- Fixed RL backtest runtime recursion hazard and aligned execution paths:
+  - `run_rl_backtest(...)` now uses `InvestmentWorkflowProvider.run_workflow_with_handlers(...)` for YAML path.
+  - `ProcessBacktestBatchHandler` forces `use_yaml_workflow=False` for its nested run to avoid recursive YAML self-invocation.
+  - Added runtime-path coverage in `tests/unit/victor_invest/test_rl_backtest_runtime_paths.py`.
+- Updated `InvestmentVertical` compatibility with updated `VerticalBase` API:
+  - Added YAML-backed loaders for tools, system prompt, stages, provider hints, and evaluation criteria.
+  - Added backward-compatible `get_config(use_yaml=...)` wrapper and YAML cache invalidation.
 - Added shared bootstrap module: `victor_invest/framework_bootstrap.py`.
 - Consolidated duplicated CLI/provider setup paths to use shared bootstrap:
 - `victor_invest/cli.py` now uses `create_investment_orchestrator(...)`.
@@ -106,6 +147,25 @@
 - Added CI workflow performance gate using deterministic stub execution:
   - `.github/workflows/ci-cd.yml` (`performance-benchmark` job)
   - `tests/unit/victor_invest/test_ci_quality_gates.py`
+- Hardened API mode handling and batch failure semantics in `victor_invest/api/app.py`:
+  - Added shared mode normalization/validation for `/analyze` and `/batch`.
+  - Added path/body symbol consistency validation for `/analyze/{symbol}` to fail fast on mismatched payloads.
+  - Added batch symbol normalization (trim/uppercase/deduplicate) before job submission.
+  - `/batch` now rejects invalid modes up front instead of accepting bad jobs.
+  - Added lazy initialization for in-memory batch job store to avoid runtime failures when lifespan init is absent.
+  - Added bounded parallel batch execution (`BATCH_ANALYSIS_MAX_PARALLEL`) to improve throughput and scalability.
+  - Added environment override support for batch parallelism (`VICTOR_BATCH_MAX_PARALLEL`) with safe fallback.
+  - Added explicit batch aggregate outcomes (`success_count`, `error_count`) with terminal `completed_with_errors` status on partial failures.
+  - Background batch runner now marks jobs as `failed` with terminal timestamps/errors for invalid mode values.
+  - Added regression coverage in:
+    `tests/unit/victor_invest/test_api_endpoints.py` and
+    `tests/unit/victor_invest/test_api_runtime.py`.
+- Reduced Victor vertical import side effects in Victor-invest bootstrap path:
+  - Switched to `victor.core.verticals.base` imports for `VerticalBase`/`VerticalRegistry` to avoid package-level external vertical discovery on import.
+  - Added conformance guard `tests/unit/victor_invest/test_vertical_import_conformance.py` to block reintroduction of package-level `victor.core.verticals` imports.
+- Reduced external-vertical warning noise in legacy `investigator` CLI startup:
+  - Added targeted warning filter in `src/investigator/cli/main.py` to suppress known benign external-vertical conflict/missing-module messages.
+  - Added coverage in `tests/unit/victor_invest/test_investigator_cli_noise_filter.py`.
 - Started native Victor `BaseTool` migration:
   - Updated `register_investment_tools(...)` to register Victor-native tool instances (removed inline adapter path in `victor_invest/tools/__init__.py`)
   - Promoted local tool base abstraction to inherit Victor `BaseTool` directly (`victor_invest/tools/base.py`), enabling direct registry registration for local tools

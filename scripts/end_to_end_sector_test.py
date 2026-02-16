@@ -11,6 +11,7 @@ import logging
 import sys
 from datetime import datetime
 from decimal import Decimal
+
 from dao.sec_bulk_dao import SECBulkDAO
 
 # Configure detailed logging
@@ -18,9 +19,7 @@ logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler(
-            f"end_to_end_test_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-        ),
+        logging.FileHandler(f"end_to_end_test_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"),
         logging.StreamHandler(sys.stdout),
     ],
 )
@@ -75,12 +74,7 @@ def test_company(dao, symbol, sector, results):
 
         # Count extracted metrics
         metric_count = len(
-            [
-                k
-                for k in metrics.keys()
-                if k not in ["symbol", "fiscal_year", "fiscal_period"]
-                and not k.startswith("_")
-            ]
+            [k for k in metrics.keys() if k not in ["symbol", "fiscal_year", "fiscal_period"] and not k.startswith("_")]
         )
 
         # Check critical metrics
@@ -141,26 +135,18 @@ def test_company(dao, symbol, sector, results):
             diff_pct = abs(assets - calc_assets) / assets * 100
 
             if diff_pct > 15:
-                logger.warning(
-                    f"  Balance sheet identity check: FAIL ({diff_pct:.1f}% difference)"
-                )
-                logger.warning(
-                    f"    Assets={assets:,.0f}, Liab+Equity={calc_assets:,.0f}"
-                )
+                logger.warning(f"  Balance sheet identity check: FAIL ({diff_pct:.1f}% difference)")
+                logger.warning(f"    Assets={assets:,.0f}, Liab+Equity={calc_assets:,.0f}")
                 logger.warning(
                     "    Note: >15% difference may indicate data quality issues or unsupported equity structures"
                 )
             elif diff_pct > 2:
-                logger.info(
-                    f"  Balance sheet identity: ACCEPTABLE ({diff_pct:.2f}% difference)"
-                )
+                logger.info(f"  Balance sheet identity: ACCEPTABLE ({diff_pct:.2f}% difference)")
                 logger.info(
                     "    Note: Utilities/REITs often have temporary equity/NCI not captured in simple stockholders_equity tag"
                 )
             else:
-                logger.info(
-                    f"  Balance sheet identity: OK ({diff_pct:.2f}% difference)"
-                )
+                logger.info(f"  Balance sheet identity: OK ({diff_pct:.2f}% difference)")
 
         results[symbol] = {
             "status": "SUCCESS",
@@ -217,30 +203,16 @@ def main():
     logger.info("")
 
     if success:
-        avg_metrics = sum(
-            r["metric_count"] for s, r in results.items() if r["status"] == "SUCCESS"
-        ) / len(success)
-        avg_critical = sum(
-            r["critical_count"] for s, r in results.items() if r["status"] == "SUCCESS"
-        ) / len(success)
+        avg_metrics = sum(r["metric_count"] for s, r in results.items() if r["status"] == "SUCCESS") / len(success)
+        avg_critical = sum(r["critical_count"] for s, r in results.items() if r["status"] == "SUCCESS") / len(success)
         logger.info(f"Average metrics per company: {avg_metrics:.1f}")
         logger.info(f"Average critical metrics: {avg_critical:.1f}/4")
         logger.info("")
 
         # Count calculated metrics usage
-        calc_revenue = sum(
-            1 for r in results.values() if "revenue" in r.get("calculated_metrics", [])
-        )
-        calc_income = sum(
-            1
-            for r in results.values()
-            if "net_income" in r.get("calculated_metrics", [])
-        )
-        calc_liab = sum(
-            1
-            for r in results.values()
-            if "liabilities" in r.get("calculated_metrics", [])
-        )
+        calc_revenue = sum(1 for r in results.values() if "revenue" in r.get("calculated_metrics", []))
+        calc_income = sum(1 for r in results.values() if "net_income" in r.get("calculated_metrics", []))
+        calc_liab = sum(1 for r in results.values() if "liabilities" in r.get("calculated_metrics", []))
 
         logger.info("Financial Calculator Usage:")
         logger.info(f"  Revenue calculated: {calc_revenue} companies")
@@ -252,9 +224,7 @@ def main():
         logger.warning("FAILED COMPANIES:")
         for symbol in errors + exceptions:
             r = results[symbol]
-            logger.warning(
-                f"  {symbol} ({r['sector']}): {r.get('error', r.get('exception_type'))}"
-            )
+            logger.warning(f"  {symbol} ({r['sector']}): {r.get('error', r.get('exception_type'))}")
         logger.warning("")
 
     # Sector breakdown

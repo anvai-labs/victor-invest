@@ -11,11 +11,11 @@ from investigator.config.config import (
     SECConfig,
     get_config,
 )
+from investigator.config.settings import InvestiGatorConfig  # noqa: F401
 from investigator.config.settings import (
     AppSettings,
     CacheControlSettings,
     DatabaseSettings,
-    InvestiGatorConfig,  # noqa: F401
     MonitoringSettings,
     OllamaSettings,
     SECSettings,

@@ -1,11 +1,14 @@
 import asyncio
 
 from victor_invest.handlers import (
+    AnalyzePeersHandler,
     FetchMarketDataHandler,
+    RunFundamentalAnalysisHandler,
     RunSynthesisHandler,
     RunTechnicalAnalysisHandler,
 )
 from victor_invest.tools.base import ToolResult
+from victor_invest.workflows.state import AnalysisMode, AnalysisWorkflowState
 
 
 class _Context:
@@ -81,6 +84,33 @@ def test_run_technical_analysis_uses_supported_action(monkeypatch):
     assert tool_calls == 0
 
 
+def test_run_fundamental_analysis_uses_model_all(monkeypatch):
+    import victor_invest.tools.valuation as valuation_module
+
+    calls = {}
+
+    class FakeValuationTool:
+        async def execute(self, _exec_ctx=None, **kwargs):
+            calls.update(kwargs)
+            return ToolResult.create_success(output={"ok": True})
+
+    monkeypatch.setattr(valuation_module, "ValuationTool", FakeValuationTool)
+
+    handler = RunFundamentalAnalysisHandler()
+    output, tool_calls = asyncio.run(
+        handler.execute(
+            _Node("run_fundamental_analysis", "fundamental_analysis"),
+            _Context({"symbol": "AAPL", "sec_data": {"status": "success"}}),
+            None,
+        )
+    )
+
+    assert calls["model"] == "all"
+    assert "action" not in calls
+    assert output["status"] == "success"
+    assert tool_calls == 0
+
+
 def test_run_synthesis_skips_llm_when_constraints_disallow(monkeypatch):
     handler = RunSynthesisHandler()
     called = {"value": False}
@@ -139,3 +169,38 @@ def test_run_synthesis_uses_llm_when_constraints_allow(monkeypatch):
     assert called["value"] is True
     assert output["synthesis_method"] == "llm"
     assert tool_calls == 1
+
+
+def test_analyze_peers_uses_yaml_workflow_runner(monkeypatch):
+    import victor_invest.workflows as workflows_pkg
+
+    calls = []
+
+    async def fake_run_yaml_analysis(symbol, mode):
+        calls.append((symbol, mode))
+        return AnalysisWorkflowState(
+            symbol=symbol,
+            mode=mode,
+            synthesis={"composite_score": 77},
+        )
+
+    monkeypatch.setattr(workflows_pkg, "run_yaml_analysis", fake_run_yaml_analysis)
+
+    handler = AnalyzePeersHandler()
+    output, tool_calls = asyncio.run(
+        handler.execute(
+            _Node("analyze_peers", "peer_analyses"),
+            _Context({"peer_list": ["MSFT", {"symbol": "NVDA"}]}),
+            None,
+        )
+    )
+
+    assert calls == [
+        ("MSFT", AnalysisMode.QUICK),
+        ("NVDA", AnalysisMode.QUICK),
+    ]
+    assert output[0]["status"] == "success"
+    assert output[0]["composite_score"] == 77
+    assert output[1]["status"] == "success"
+    assert output[1]["composite_score"] == 77
+    assert tool_calls == 0

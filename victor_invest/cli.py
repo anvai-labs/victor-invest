@@ -13,9 +13,10 @@ Usage:
 
 import asyncio
 import json
+import os
+import subprocess
 import sys
 from datetime import datetime
-import os
 from pathlib import Path
 from typing import Optional
 
@@ -37,6 +38,7 @@ except ImportError:
     OrchestratorProtocol = None
     WorkflowEventType = None
 
+from victor_invest import __version__ as VICTOR_INVEST_VERSION
 from victor_invest.framework_bootstrap import create_investment_orchestrator
 from victor_invest.workflows import (
     AnalysisMode,
@@ -362,17 +364,17 @@ def _convert_to_investment_recommendation(result, symbol: str):
 
 
 def validate_victor_installed():
-    """Check if victor-core is installed."""
+    """Check if Victor AI framework is installed."""
     if Agent is None:
         console.print(
-            "[red]Error: victor-core not installed.[/red]\n"
-            "Install with: pip install ../codingagent/dist/victor-0.2.0-py3-none-any.whl"
+            "[red]Error: victor-ai is not installed.[/red]\n"
+            "Install with: pip install 'victor-ai>=0.5.0,<0.6.0'"
         )
         sys.exit(1)
 
 
 @click.group()
-@click.version_option(version="0.1.0", prog_name="victor-invest")
+@click.version_option(version=VICTOR_INVEST_VERSION, prog_name="victor-invest")
 def cli():
     """Victor Investment Analysis CLI - Institutional-grade equity research."""
     pass
@@ -418,6 +420,20 @@ def cli():
     default=False,
     help="Generate PDF investment report using LLM synthesis",
 )
+@click.option(
+    "--beta-source",
+    type=click.Choice(["market", "ff6", "fundamental", "blended", "auto"]),
+    default="market",
+    show_default=True,
+    help="Beta source for cost-of-equity/WACC",
+)
+@click.option(
+    "--beta-horizon-months",
+    type=int,
+    default=12,
+    show_default=True,
+    help="Lookback horizon in months for beta source selection",
+)
 def analyze(
     symbol: str,
     mode: str,
@@ -426,6 +442,8 @@ def analyze(
     model: Optional[str],
     stream: bool,
     report: bool,
+    beta_source: str,
+    beta_horizon_months: int,
 ):
     """Run investment analysis on a stock symbol.
 
@@ -443,7 +461,26 @@ def analyze(
         console.print("Report: [magenta]PDF generation enabled[/magenta]")
     console.print()
 
-    asyncio.run(_run_analysis(symbol, mode, output, provider, model, stream, report))
+    prev_beta_source = os.environ.get("INVESTIGATOR_BETA_SOURCE")
+    prev_beta_horizon = os.environ.get("INVESTIGATOR_BETA_HORIZON_MONTHS")
+    os.environ["INVESTIGATOR_BETA_SOURCE"] = beta_source
+    os.environ["INVESTIGATOR_BETA_HORIZON_MONTHS"] = str(
+        max(1, int(beta_horizon_months))
+    )
+    try:
+        asyncio.run(
+            _run_analysis(symbol, mode, output, provider, model, stream, report)
+        )
+    finally:
+        if prev_beta_source is None:
+            os.environ.pop("INVESTIGATOR_BETA_SOURCE", None)
+        else:
+            os.environ["INVESTIGATOR_BETA_SOURCE"] = prev_beta_source
+
+        if prev_beta_horizon is None:
+            os.environ.pop("INVESTIGATOR_BETA_HORIZON_MONTHS", None)
+        else:
+            os.environ["INVESTIGATOR_BETA_HORIZON_MONTHS"] = prev_beta_horizon
 
 
 @cli.command()
@@ -627,6 +664,124 @@ def compare(
     """Compare a target company against peers."""
     validate_victor_installed()
     asyncio.run(_run_compare(target, peers, output, provider, model))
+
+
+@cli.command("beta-refresh")
+@click.option("--symbols", type=str, help="Comma-separated list of symbols")
+@click.option(
+    "--universe",
+    type=click.Choice(["sp500", "russell1000", "all_listed"]),
+    default="sp500",
+    show_default=True,
+    help="Universe to process when --symbols is not specified",
+)
+@click.option(
+    "--models",
+    type=str,
+    default="all",
+    show_default=True,
+    help="Comma-separated models: market,ff6,fundamental,blended,all",
+)
+@click.option(
+    "--benchmark",
+    type=str,
+    default="SPY",
+    show_default=True,
+    help="Benchmark ticker for market beta",
+)
+@click.option(
+    "--windows",
+    type=str,
+    default="12,24,36,60",
+    show_default=True,
+    help="Lookback windows in months",
+)
+@click.option(
+    "--frequency",
+    type=click.Choice(["daily", "weekly"]),
+    default="daily",
+    show_default=True,
+    help="Return aggregation frequency for market beta",
+)
+@click.option(
+    "--min-obs",
+    type=int,
+    default=126,
+    show_default=True,
+    help="Minimum observations per regression",
+)
+@click.option(
+    "--winsorize-pct",
+    type=float,
+    default=0.01,
+    show_default=True,
+    help="Tail winsorization percent",
+)
+@click.option(
+    "--max-abs-beta",
+    type=float,
+    default=20.0,
+    show_default=True,
+    help="Reject estimates with |beta| above this threshold",
+)
+@click.option(
+    "--no-fred-rf",
+    is_flag=True,
+    default=False,
+    help="Disable FRED DFF fallback risk-free series",
+)
+@click.option(
+    "--dry-run", is_flag=True, default=False, help="Compute but do not write results"
+)
+def beta_refresh(
+    symbols: Optional[str],
+    universe: str,
+    models: str,
+    benchmark: str,
+    windows: str,
+    frequency: str,
+    min_obs: int,
+    winsorize_pct: float,
+    max_abs_beta: float,
+    no_fred_rf: bool,
+    dry_run: bool,
+):
+    """Refresh beta models (market/FF6/fundamental/blended) for symbols."""
+    project_root = Path(__file__).resolve().parent.parent
+    script_path = project_root / "scripts" / "scheduled" / "calculate_beta_models.py"
+
+    cmd = [
+        sys.executable,
+        str(script_path),
+        "--universe",
+        universe,
+        "--models",
+        models,
+        "--benchmark",
+        benchmark,
+        "--windows",
+        windows,
+        "--frequency",
+        frequency,
+        "--min-obs",
+        str(min_obs),
+        "--winsorize-pct",
+        str(winsorize_pct),
+        "--max-abs-beta",
+        str(max_abs_beta),
+    ]
+    if symbols:
+        cmd += ["--symbols", symbols]
+    if no_fred_rf:
+        cmd.append("--no-fred-rf")
+    if dry_run:
+        cmd.append("--dry-run")
+
+    console.print("[bold blue]Running beta refresh job...[/bold blue]")
+    console.print(" ".join(cmd))
+    result = subprocess.run(cmd, cwd=str(project_root))
+    if result.returncode != 0:
+        raise SystemExit(result.returncode)
 
 
 async def _run_compare(
@@ -861,16 +1016,18 @@ def status():
     table.add_column("Status", style="green")
     table.add_column("Details", style="white")
 
-    # Check victor-core
+    # Check victor-ai framework
     try:
         import importlib.util
 
         if importlib.util.find_spec("victor.framework") is not None:
-            table.add_row("victor-core", "✓ Installed", "Framework available")
+            table.add_row("victor-ai", "✓ Installed", "Framework available")
         else:
-            table.add_row("victor-core", "✗ Missing", "pip install victor wheel")
+            table.add_row(
+                "victor-ai", "✗ Missing", "pip install 'victor-ai>=0.5.0,<0.6.0'"
+            )
     except Exception:
-        table.add_row("victor-core", "✗ Missing", "pip install victor wheel")
+        table.add_row("victor-ai", "✗ Missing", "pip install 'victor-ai>=0.5.0,<0.6.0'")
 
     # Check ollama
     try:
@@ -993,6 +1150,7 @@ def test_system(verbose: bool):
     def check_database():
         try:
             from sqlalchemy import text
+
             from investigator.infrastructure.database.db import get_database_engine
 
             engine = get_database_engine()

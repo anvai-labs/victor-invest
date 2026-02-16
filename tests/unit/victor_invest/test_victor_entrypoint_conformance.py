@@ -17,17 +17,39 @@ def test_makefile_primary_targets_use_victor_cli():
         assert expected in makefile
 
 
+def test_version_is_consistent_across_package_and_vertical_metadata():
+    import tomllib
+
+    import victor_invest
+    from victor_invest.vertical import InvestmentVertical
+
+    pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+    project_version = pyproject["project"]["version"]
+
+    assert project_version == "0.5.0"
+    assert victor_invest.__version__ == project_version
+    assert InvestmentVertical.version == project_version
+
+
 def test_pyproject_pins_supported_victor_version_range():
     pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
     assert "victor-ai>=0.5.0,<0.6.0" in pyproject
 
 
+def test_pyproject_registers_investment_vertical_entrypoint():
+    pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
+    assert '[project.entry-points."victor.verticals"]' in pyproject
+    assert 'investment = "victor_invest.vertical:InvestmentVertical"' in pyproject
+
+
+def test_makefile_run_dev_uses_victor_api():
+    makefile = Path("Makefile").read_text(encoding="utf-8")
+    assert "uvicorn victor_invest.api.app:app --reload --port 8000" in makefile
+
+
 def test_legacy_cli_declares_deprecated_forwarding_mode():
     legacy_cli = Path("cli_orchestrator.py").read_text(encoding="utf-8")
 
-    assert (
-        "DEPRECATED: This CLI is maintained for backwards compatibility only."
-        in legacy_cli
-    )
+    assert "DEPRECATED: This CLI is maintained for backwards compatibility only." in legacy_cli
     assert "python -m victor_invest.cli analyze AAPL --mode standard" in legacy_cli
     assert '[sys.executable, "-m", "victor_invest.cli"] + args' in legacy_cli

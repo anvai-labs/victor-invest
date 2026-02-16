@@ -5,10 +5,11 @@ Support and Resistance Level Detection
 Detects key price levels using local extrema analysis and clustering.
 """
 
-import pandas as pd
-import numpy as np
-from typing import Dict, List
 import logging
+from typing import Dict, List
+
+import numpy as np
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -91,29 +92,19 @@ def detect_support_resistance_levels(
             "current_price": float(current_price),
             "resistance_levels": [float(r) for r in resistance_levels],
             "support_levels": [float(s) for s in support_levels],
-            "nearest_resistance": float(nearest_resistance)
-            if nearest_resistance
-            else None,
+            "nearest_resistance": float(nearest_resistance) if nearest_resistance else None,
             "nearest_support": float(nearest_support) if nearest_support else None,
         }
 
         if nearest_resistance:
-            result["distance_to_resistance"] = float(
-                ((nearest_resistance / current_price) - 1) * 100
-            )
-            result["resistance_pct"] = float(
-                ((nearest_resistance / current_price) - 1) * 100
-            )
+            result["distance_to_resistance"] = float(((nearest_resistance / current_price) - 1) * 100)
+            result["resistance_pct"] = float(((nearest_resistance / current_price) - 1) * 100)
 
         if nearest_support:
-            result["distance_to_support"] = float(
-                (1 - (nearest_support / current_price)) * 100
-            )
+            result["distance_to_support"] = float((1 - (nearest_support / current_price)) * 100)
             result["support_pct"] = float((1 - (nearest_support / current_price)) * 100)
 
-        logger.info(
-            f"Detected {len(resistance_levels)} resistance and {len(support_levels)} support levels"
-        )
+        logger.info(f"Detected {len(resistance_levels)} resistance and {len(support_levels)} support levels")
 
         return result
 
@@ -187,9 +178,7 @@ def format_support_resistance_text(sr_levels: Dict) -> str:
     Returns:
         Formatted text description
     """
-    if not sr_levels or not (
-        sr_levels.get("support_levels") or sr_levels.get("resistance_levels")
-    ):
+    if not sr_levels or not (sr_levels.get("support_levels") or sr_levels.get("resistance_levels")):
         return "No significant support/resistance levels detected."
 
     lines = []
@@ -205,20 +194,14 @@ def format_support_resistance_text(sr_levels: Dict) -> str:
     # Nearest resistance
     if nearest_resistance := sr_levels.get("nearest_resistance"):
         distance = sr_levels.get("distance_to_resistance", 0)
-        lines.append(
-            f"Nearest Resistance: ${nearest_resistance:.2f} ({distance:.1f}% above)"
-        )
+        lines.append(f"Nearest Resistance: ${nearest_resistance:.2f} ({distance:.1f}% above)")
 
     # All support levels
     if support_levels := sr_levels.get("support_levels"):
-        lines.append(
-            f"Support Levels: {', '.join([f'${s:.2f}' for s in support_levels])}"
-        )
+        lines.append(f"Support Levels: {', '.join([f'${s:.2f}' for s in support_levels])}")
 
     # All resistance levels
     if resistance_levels := sr_levels.get("resistance_levels"):
-        lines.append(
-            f"Resistance Levels: {', '.join([f'${r:.2f}' for r in resistance_levels])}"
-        )
+        lines.append(f"Resistance Levels: {', '.join([f'${r:.2f}' for r in resistance_levels])}")
 
     return "\n".join(lines)

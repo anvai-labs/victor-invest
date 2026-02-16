@@ -180,6 +180,30 @@ jobs:
     parameters:
       years: 5
 
+  # Beta Model Refresh - Weekend at 7AM ET (Saturday + Sunday)
+  # Inputs: ticker returns, FF6 factors, FRED DFF fallback, industry D/E
+  # Updates: symbol_beta_models (detailed) + symbol beta compatibility columns
+  calculate_beta_models:
+    enabled: true
+    script: "scripts/scheduled/calculate_beta_models.py"
+    schedule:
+      type: "cron"
+      cron: "0 7 * * 6,0"  # 7AM ET on Saturday and Sunday
+    description: "Refresh market/FF6/fundamental/blended beta models"
+    timeout_minutes: 90
+    dependencies:
+      - "collect_fama_french_factors"
+      - "refresh_macro_indicators"
+    on_failure: "retry"
+    parameters:
+      universe: "sp500"
+      models: "all"
+      benchmark: "SPY"
+      windows: "12,24,36,60"
+      frequency: "daily"
+      min_obs: 126
+      winsorize_pct: 0.01
+
   # Dividend History - Daily at 6AM ET
   # Source: Finnhub API (requires FINNHUB_API_KEY env var)
   # Updates: Dividend history, shareholder yield, streak tracking

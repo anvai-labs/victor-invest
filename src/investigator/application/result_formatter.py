@@ -99,6 +99,7 @@ class OutputDetailLevel(Enum):
 
     MINIMAL = "minimal"  # Executive summary only
     STANDARD = "standard"  # Investor decision-making (default, no duplicates)
+    COMPACT = "compact"  # Machine-readable, consolidated schema
     VERBOSE = "verbose"  # Full analysis with all metadata
 
 
@@ -124,6 +125,10 @@ def format_analysis_output(
     if detail_level == OutputDetailLevel.VERBOSE:
         # Return full analysis unchanged
         return analysis_results
+
+    elif detail_level == OutputDetailLevel.COMPACT:
+        # Return consolidated machine-readable schema
+        return _format_compact(analysis_results)
 
     elif detail_level == OutputDetailLevel.MINIMAL:
         # Return executive summary only
@@ -158,9 +163,7 @@ def _format_minimal(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
     # Log extraction audit for debugging if issues occur
     audit = extractor.get_audit()
     if audit:
-        missing_fields = [
-            name for name, result in audit.extractions.items() if not result.has_value
-        ]
+        missing_fields = [name for name, result in audit.extractions.items() if not result.has_value]
         if missing_fields:
             logger.debug(f"Summary extraction missing fields: {missing_fields}")
             audit.log_summary()
@@ -229,6 +232,150 @@ def _format_standard(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
     result["detail_level"] = "standard"
 
     return result
+
+
+def _format_compact(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Produce a consolidated, machine-readable schema with minimal duplication.
+
+    Design goals:
+    - Stable top-level keys for downstream systems
+    - Single source of truth for valuation model outputs
+    - Keep only actionable fields (drop heavy nested narrative duplicates)
+    """
+    src = copy.deepcopy(analysis_results or {})
+    agents = src.get("agents", {}) if isinstance(src.get("agents"), dict) else {}
+
+    fundamental = agents.get("fundamental", {}) if isinstance(agents.get("fundamental"), dict) else {}
+    technical = agents.get("technical", {}) if isinstance(agents.get("technical"), dict) else {}
+    synthesis = agents.get("synthesis", {}) if isinstance(agents.get("synthesis"), dict) else {}
+    market_context = agents.get("market_context", {}) if isinstance(agents.get("market_context"), dict) else {}
+    sec = agents.get("sec", {}) if isinstance(agents.get("sec"), dict) else {}
+
+    valuation = fundamental.get("valuation", {}) if isinstance(fundamental.get("valuation"), dict) else {}
+    methods = valuation.get("valuation_methods", {}) if isinstance(valuation.get("valuation_methods"), dict) else {}
+    multi_model = (
+        methods.get("multi_model")
+        if isinstance(methods.get("multi_model"), dict)
+        else (
+            fundamental.get("multi_model_summary") if isinstance(fundamental.get("multi_model_summary"), dict) else {}
+        )
+    )
+    ratios = fundamental.get("ratios", {}) if isinstance(fundamental.get("ratios"), dict) else {}
+    data_quality = fundamental.get("data_quality", {}) if isinstance(fundamental.get("data_quality"), dict) else {}
+
+    basis, horizon = _extract_basis_and_horizon(methods)
+    current_price = valuation.get("current_price") or ratios.get("current_price") or technical.get("current_price")
+    blended_fair_value = valuation.get("fair_value_estimate") or valuation.get("fair_value")
+    expected_return_pct = _calculate_expected_return(blended_fair_value, current_price)
+
+    compact_models = _compact_valuation_models(methods)
+
+    synthesis_payload = synthesis.get("synthesis", {}) if isinstance(synthesis.get("synthesis"), dict) else {}
+    recommendation_payload = (
+        synthesis.get("recommendation", {}) if isinstance(synthesis.get("recommendation"), dict) else {}
+    )
+    final_recommendation = (
+        recommendation_payload.get("final_recommendation")
+        or fundamental.get("recommendation")
+        or valuation.get("recommendation")
+    )
+    aligned_recommendation, recommendation_adjustment = _align_recommendation_with_expected_return(
+        final_recommendation, expected_return_pct
+    )
+
+    output = {
+        "schema_version": "analysis.compact.v1",
+        "symbol": src.get("symbol"),
+        "mode": src.get("mode"),
+        "timing": {
+            "started_at": src.get("started_at"),
+            "completed_at": src.get("completed_at"),
+            "duration_seconds": src.get("duration"),
+        },
+        "status": {
+            "overall": "completed" if src.get("completed_at") else "incomplete",
+            "agents": _extract_agent_statuses(agents),
+        },
+        "price": {
+            "current": current_price,
+            "target": blended_fair_value,
+            "expected_return_pct": expected_return_pct,
+        },
+        "recommendation": {
+            "action": aligned_recommendation,
+            "confidence_score": (
+                recommendation_payload.get("confidence")
+                or synthesis.get("confidence")
+                or fundamental.get("confidence", {}).get("confidence_score")
+            ),
+            "investment_grade": (valuation.get("investment_grade") or fundamental.get("investment_grade")),
+        },
+        "quality": {
+            "data_quality_score": data_quality.get("data_quality_score"),
+            "quality_grade": data_quality.get("quality_grade"),
+            "completeness_score": data_quality.get("completeness_score"),
+            "confidence_level": (
+                fundamental.get("confidence", {}).get("confidence_level")
+                if isinstance(fundamental.get("confidence"), dict)
+                else None
+            ),
+        },
+        "valuation": {
+            "basis": basis,
+            "forward_horizon": horizon,
+            "blended_fair_value": blended_fair_value,
+            "overall_confidence": multi_model.get("overall_confidence"),
+            "model_agreement_score": multi_model.get("model_agreement_score"),
+            "dispersion_ratio": multi_model.get("dispersion_ratio"),
+            "divergence_flag": multi_model.get("divergence_flag"),
+            "applicable_models": multi_model.get("applicable_models"),
+            "models": compact_models,
+        },
+        "technical": {
+            "recommendation": technical.get("recommendation"),
+            "rating": technical.get("technical_rating"),
+            "levels": _compact_levels(technical.get("levels")),
+        },
+        "market": {
+            "sector": market_context.get("sector"),
+            "market_regime": (
+                market_context.get("market_context", {}).get("market_regime")
+                if isinstance(market_context.get("market_context"), dict)
+                else None
+            ),
+            "sector_strength": (
+                market_context.get("sector_context", {}).get("sector_strength")
+                if isinstance(market_context.get("sector_context"), dict)
+                else None
+            ),
+        },
+        "sec": {
+            "entity_name": (
+                sec.get("companyfacts_summary", {}).get("entityName")
+                if isinstance(sec.get("companyfacts_summary"), dict)
+                else None
+            ),
+            "fact_count": (
+                sec.get("companyfacts_summary", {}).get("fact_count")
+                if isinstance(sec.get("companyfacts_summary"), dict)
+                else None
+            ),
+            "data_cached": sec.get("data_cached"),
+            "forward_guidance": sec.get("forward_guidance") if isinstance(sec.get("forward_guidance"), dict) else None,
+        },
+        "notes": (multi_model.get("notes") if isinstance(multi_model.get("notes"), list) else []),
+        "trace": {
+            "source_detail_level": src.get("detail_level"),
+            "compact_generated": True,
+            "synthesis_report_mode": (
+                synthesis_payload.get("report_mode") if isinstance(synthesis_payload, dict) else None
+            ),
+            "recommendation_adjusted_for_valuation_consistency": recommendation_adjustment,
+        },
+    }
+
+    return _remove_empty_values(output)
 
 
 def _clean_agent_section(agent_data: Dict[str, Any]) -> None:
@@ -321,18 +468,19 @@ def _consolidate_duplicates(result: Dict[str, Any]) -> None:
 
     Modifies result in-place.
     """
+    # Handle both legacy (top-level) and wrapped ("agents") structures
+    agents = result.get("agents") if isinstance(result.get("agents"), dict) else result
+
     # Remove company data duplicates from synthesis
-    if "synthesis" in result:
-        synthesis = result["synthesis"]
+    if isinstance(agents, dict) and "synthesis" in agents:
+        synthesis = agents["synthesis"]
         if isinstance(synthesis, dict) and "synthesis" in synthesis:
             synth_data = synthesis["synthesis"]
             if isinstance(synth_data, dict):
                 _remove_keys(synth_data, ["company_data", "market_data"])
 
                 # Keep only references in response, not full data
-                if "response" in synth_data and isinstance(
-                    synth_data["response"], dict
-                ):
+                if "response" in synth_data and isinstance(synth_data["response"], dict):
                     synth_response = synth_data["response"]
                     _remove_keys(
                         synth_response,
@@ -343,6 +491,113 @@ def _consolidate_duplicates(result: Dict[str, Any]) -> None:
                             "complete_ratios",
                         ],
                     )
+
+    # Remove duplicate valuation payloads from fundamental section
+    if isinstance(agents, dict) and "fundamental" in agents:
+        fundamental = agents["fundamental"]
+        if isinstance(fundamental, dict):
+            # Duplicate of valuation.multi_model / valuation_methods
+            _remove_keys(fundamental, ["multi_model_summary", "llm_fair_value_estimate"])
+
+
+def _extract_agent_statuses(agents: Dict[str, Any]) -> Dict[str, Any]:
+    statuses: Dict[str, Any] = {}
+    for name, payload in (agents or {}).items():
+        if isinstance(payload, dict):
+            statuses[name] = payload.get("status", "unknown")
+        else:
+            statuses[name] = "unknown"
+    return statuses
+
+
+def _extract_basis_and_horizon(methods: Dict[str, Any]) -> tuple[str, Optional[str]]:
+    basis: Optional[str] = None
+    horizon: Optional[str] = None
+    for model in (methods or {}).values():
+        if not isinstance(model, dict):
+            continue
+        assumptions = model.get("assumptions", {}) if isinstance(model.get("assumptions"), dict) else {}
+        metadata = model.get("metadata", {}) if isinstance(model.get("metadata"), dict) else {}
+        basis = assumptions.get("valuation_basis") or metadata.get("valuation_basis") or basis
+        horizon = assumptions.get("forward_horizon") or metadata.get("forward_horizon") or horizon
+        if basis and horizon:
+            break
+
+    basis = basis or "ttm"
+    if basis != "forward":
+        horizon = None
+    return basis, horizon
+
+
+def _compact_valuation_models(methods: Dict[str, Any]) -> Dict[str, Any]:
+    compact: Dict[str, Any] = {}
+    for model_name in ["dcf_professional", "pe", "ev_ebitda", "ps", "pb", "ggm", "damodaran_dcf"]:
+        model = methods.get(model_name)
+        if not isinstance(model, dict):
+            continue
+        compact[model_name] = {
+            "applicable": model.get("applicable"),
+            "fair_value_per_share": model.get("fair_value_per_share"),
+            "reason": model.get("reason"),
+            "weight": model.get("weight"),
+            "confidence_score": model.get("confidence_score"),
+            "assumptions": _pick_assumptions(model.get("assumptions")),
+            "diagnostics": _pick_diagnostics(model.get("diagnostics")),
+        }
+    return _remove_empty_values(compact)
+
+
+def _pick_assumptions(assumptions: Any) -> Dict[str, Any]:
+    if not isinstance(assumptions, dict):
+        return {}
+    keep = [
+        "valuation_basis",
+        "forward_horizon",
+        "guidance_applied",
+        "guidance_source_form",
+        "guidance_confidence_score",
+        "guidance_revenue_mid",
+        "guidance_revenue_horizon",
+        "guidance_revenue_growth_implied",
+        "guidance_eps_mid",
+        "guidance_eps_horizon",
+        "guidance_eps_annualized",
+        "guidance_eps_growth_implied",
+        "guidance_revenue_growth_used",
+        "guidance_earnings_growth_used",
+        "target_pe",
+        "target_ps",
+        "target_ev_ebitda",
+        "wacc",
+        "terminal_growth_rate",
+        "projection_years",
+        "current_dps",
+        "expected_dps_next_year",
+        "growth_rate",
+        "required_return",
+        "dividend_yield",
+    ]
+    return {k: assumptions.get(k) for k in keep if k in assumptions}
+
+
+def _pick_diagnostics(diagnostics: Any) -> Dict[str, Any]:
+    if not isinstance(diagnostics, dict):
+        return {}
+    keep = ["flags", "data_quality_score", "fit_score", "calibration_score"]
+    return {k: diagnostics.get(k) for k in keep if k in diagnostics}
+
+
+def _compact_levels(levels: Any) -> Dict[str, Any]:
+    if not isinstance(levels, dict):
+        return {}
+    keep = [
+        "pivot_point",
+        "support_1",
+        "resistance_1",
+        "support_2",
+        "resistance_2",
+    ]
+    return {k: levels.get(k) for k in keep if k in levels}
 
 
 def _remove_keys(data: Dict[str, Any], keys: List[str]) -> None:
@@ -377,9 +632,7 @@ def _remove_empty_values(data: Any) -> Any:
             cleaned[k] = _remove_empty_values(v)
         return cleaned
     elif isinstance(data, list):
-        return [
-            _remove_empty_values(item) for item in data if not _is_empty_value(item)
-        ]
+        return [_remove_empty_values(item) for item in data if not _is_empty_value(item)]
     elif isinstance(data, np.ndarray):
         # Convert numpy arrays to lists for JSON serialization
         return data.tolist() if data.size > 0 else []
@@ -387,13 +640,103 @@ def _remove_empty_values(data: Any) -> Any:
         return data
 
 
-def _calculate_expected_return(
-    target_price: Optional[float], current_price: Optional[float]
-) -> Optional[float]:
+def _calculate_expected_return(target_price: Optional[float], current_price: Optional[float]) -> Optional[float]:
     """Calculate expected return percentage."""
     if target_price and current_price and current_price > 0:
         return round((target_price - current_price) / current_price * 100, 2)
     return None
+
+
+def _normalize_recommendation_action(action: Optional[str]) -> Optional[str]:
+    """Normalize recommendation action labels to canonical compact values."""
+    if not action or not isinstance(action, str):
+        return None
+    norm = action.strip().lower().replace("-", "_").replace(" ", "_")
+    aliases = {
+        "strongbuy": "strong_buy",
+        "strongsell": "strong_sell",
+    }
+    norm = aliases.get(norm, norm)
+    valid = {"strong_buy", "buy", "hold", "sell", "strong_sell"}
+    return norm if norm in valid else None
+
+
+def _recommendation_from_expected_return(expected_return_pct: Optional[float]) -> Optional[str]:
+    """
+    Map valuation-implied expected return (%) to canonical recommendation action.
+    """
+    if expected_return_pct is None:
+        return None
+    if expected_return_pct >= 30:
+        return "strong_buy"
+    if expected_return_pct >= 10:
+        return "buy"
+    if expected_return_pct > -10:
+        return "hold"
+    if expected_return_pct > -30:
+        return "sell"
+    return "strong_sell"
+
+
+def _action_polarity(action: Optional[str]) -> Optional[str]:
+    if action in {"strong_buy", "buy"}:
+        return "bullish"
+    if action in {"strong_sell", "sell"}:
+        return "bearish"
+    if action == "hold":
+        return "neutral"
+    return None
+
+
+def _action_score(action: Optional[str]) -> Optional[int]:
+    mapping = {
+        "strong_buy": 2,
+        "buy": 1,
+        "hold": 0,
+        "sell": -1,
+        "strong_sell": -2,
+    }
+    return mapping.get(action)
+
+
+def _align_recommendation_with_expected_return(
+    action: Optional[str], expected_return_pct: Optional[float]
+) -> tuple[Optional[str], bool]:
+    """
+    Keep recommendation coherent with computed expected return.
+
+    Returns:
+        (final_action, adjusted_flag)
+    """
+    normalized = _normalize_recommendation_action(action)
+    implied = _recommendation_from_expected_return(expected_return_pct)
+
+    if not normalized:
+        return implied or normalized, bool(implied)
+    if not implied:
+        return normalized, False
+
+    # For low expected-return regimes, avoid extreme recommendations.
+    if abs(expected_return_pct or 0) < 10 and normalized != "hold":
+        return "hold", True
+
+    # Override when polarity conflicts materially, or severity is clearly mismatched.
+    norm_pol = _action_polarity(normalized)
+    imp_pol = _action_polarity(implied)
+    norm_score = _action_score(normalized)
+    imp_score = _action_score(implied)
+
+    if norm_pol and imp_pol and norm_pol != imp_pol and abs(expected_return_pct or 0) >= 10:
+        return implied, True
+    if (
+        norm_score is not None
+        and imp_score is not None
+        and abs(norm_score - imp_score) >= 2
+        and abs(expected_return_pct or 0) < 30
+    ):
+        return implied, True
+
+    return normalized, False
 
 
 def _extract_list(data: Dict[str, Any], key: str, max_items: int = 3) -> List[str]:

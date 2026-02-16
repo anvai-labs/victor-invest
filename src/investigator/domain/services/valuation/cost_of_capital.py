@@ -176,9 +176,7 @@ class IndustryCostOfCapital:
             cost_of_debt: Pre-tax cost of debt (default: 6%)
         """
         self.risk_free_rate = risk_free_rate or self.DEFAULT_RISK_FREE_RATE
-        self.equity_risk_premium = (
-            equity_risk_premium or self.DEFAULT_EQUITY_RISK_PREMIUM
-        )
+        self.equity_risk_premium = equity_risk_premium or self.DEFAULT_EQUITY_RISK_PREMIUM
         self.cost_of_debt = cost_of_debt or self.DEFAULT_COST_OF_DEBT
 
     def get_unlevered_beta(self, industry: str) -> Tuple[float, bool]:
@@ -207,14 +205,10 @@ class IndustryCostOfCapital:
                 logger.debug(f"Partial beta match: '{industry}' -> '{key}'")
                 return (beta, False)
 
-        logger.warning(
-            f"No beta found for industry '{industry}', using default {self.DEFAULT_BETA}"
-        )
+        logger.warning(f"No beta found for industry '{industry}', using default {self.DEFAULT_BETA}")
         return (self.DEFAULT_BETA, False)
 
-    def calculate_levered_beta(
-        self, unlevered_beta: float, debt_to_equity: float, tax_rate: float
-    ) -> float:
+    def calculate_levered_beta(self, unlevered_beta: float, debt_to_equity: float, tax_rate: float) -> float:
         """
         Calculate levered (equity) beta from unlevered beta.
 
@@ -297,9 +291,7 @@ class IndustryCostOfCapital:
             notes.append(f"Beta approximated for '{industry}'")
 
         # Calculate levered beta
-        levered_beta = self.calculate_levered_beta(
-            unlevered_beta, debt_to_equity, tax_rate
-        )
+        levered_beta = self.calculate_levered_beta(unlevered_beta, debt_to_equity, tax_rate)
 
         # Calculate cost of equity
         cost_of_equity = self.calculate_cost_of_equity(levered_beta, rf, erp)

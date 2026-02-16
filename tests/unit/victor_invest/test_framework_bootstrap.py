@@ -22,10 +22,7 @@ class _FakeOrchestrator:
 
 
 def test_resolve_model_explicit():
-    assert (
-        framework_bootstrap.resolve_investment_model("ollama", "custom-model")
-        == "custom-model"
-    )
+    assert framework_bootstrap.resolve_investment_model("ollama", "custom-model") == "custom-model"
 
 
 def test_resolve_model_non_ollama_defaults_to_none():

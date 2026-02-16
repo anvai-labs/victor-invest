@@ -79,9 +79,7 @@ class SECToInternalAdapter(IDataFormatAdapter):
                     fiscal_period=fiscal_period,
                     form_type=form_type,
                     filing_date=filing_dates[i] if i < len(filing_dates) else "",
-                    accession_number=accession_numbers[i]
-                    if i < len(accession_numbers)
-                    else "",
+                    accession_number=accession_numbers[i] if i < len(accession_numbers) else "",
                     financial_data=FinancialStatementData(
                         symbol=symbol,
                         cik=str(cik).zfill(10),
@@ -214,44 +212,23 @@ class InternalToLLMAdapter(IDataFormatAdapter):
 
         # Process each quarter
         for qd in quarterly_data:
-            sections.append(
-                f"## {qd.fiscal_year} {qd.fiscal_period} (Filed: {qd.filing_date})"
-            )
+            sections.append(f"## {qd.fiscal_year} {qd.fiscal_period} (Filed: {qd.filing_date})")
 
             if qd.financial_data:
                 # Income Statement
-                if (
-                    hasattr(qd.financial_data, "income_statement")
-                    and qd.financial_data.income_statement
-                ):
+                if hasattr(qd.financial_data, "income_statement") and qd.financial_data.income_statement:
                     sections.append("\n### Income Statement")
-                    sections.extend(
-                        self._format_financial_section(
-                            qd.financial_data.income_statement
-                        )
-                    )
+                    sections.extend(self._format_financial_section(qd.financial_data.income_statement))
 
                 # Balance Sheet
-                if (
-                    hasattr(qd.financial_data, "balance_sheet")
-                    and qd.financial_data.balance_sheet
-                ):
+                if hasattr(qd.financial_data, "balance_sheet") and qd.financial_data.balance_sheet:
                     sections.append("\n### Balance Sheet")
-                    sections.extend(
-                        self._format_financial_section(qd.financial_data.balance_sheet)
-                    )
+                    sections.extend(self._format_financial_section(qd.financial_data.balance_sheet))
 
                 # Cash Flow
-                if (
-                    hasattr(qd.financial_data, "cash_flow_statement")
-                    and qd.financial_data.cash_flow_statement
-                ):
+                if hasattr(qd.financial_data, "cash_flow_statement") and qd.financial_data.cash_flow_statement:
                     sections.append("\n### Cash Flow Statement")
-                    sections.extend(
-                        self._format_financial_section(
-                            qd.financial_data.cash_flow_statement
-                        )
-                    )
+                    sections.extend(self._format_financial_section(qd.financial_data.cash_flow_statement))
 
             sections.append("")
 
@@ -292,22 +269,13 @@ class InternalToLLMAdapter(IDataFormatAdapter):
                                 value = metric_data["value"]
                                 if isinstance(value, (int, float)):
                                     # Special formatting for different metric types
-                                    if (
-                                        "eps" in metric_key.lower()
-                                        or "book_value_per_share" in metric_key.lower()
-                                    ):
+                                    if "eps" in metric_key.lower() or "book_value_per_share" in metric_key.lower():
                                         formatted_value = f"${value:.2f}"
                                     elif "margin" in metric_key.lower():
                                         formatted_value = f"{value:.1f}%"
-                                    elif (
-                                        "ratio" in metric_key.lower()
-                                        or "debt_to_equity" in metric_key.lower()
-                                    ):
+                                    elif "ratio" in metric_key.lower() or "debt_to_equity" in metric_key.lower():
                                         formatted_value = f"{value:.2f}"
-                                    elif (
-                                        "working_capital" in metric_key.lower()
-                                        or metric_data.get("unit") == "USD"
-                                    ):
+                                    elif "working_capital" in metric_key.lower() or metric_data.get("unit") == "USD":
                                         formatted_value = f"${value:,.0f}"
                                     else:
                                         formatted_value = f"{value:.2f}"
@@ -455,9 +423,7 @@ class CompanyFactsToDetailedAdapter(IDataFormatAdapter):
 
         return detailed_results
 
-    def _extract_category_data(
-        self, facts: Dict, concept_mappings: Dict
-    ) -> Dict[str, Any]:
+    def _extract_category_data(self, facts: Dict, concept_mappings: Dict) -> Dict[str, Any]:
         """Extract data for a specific category"""
         concepts = {}
         successful = 0
@@ -477,9 +443,7 @@ class CompanyFactsToDetailedAdapter(IDataFormatAdapter):
 
                     for unit_type in ["USD", "shares", "pure"]:
                         if unit_type in units and units[unit_type]:
-                            latest = max(
-                                units[unit_type], key=lambda x: x.get("end", "")
-                            )
+                            latest = max(units[unit_type], key=lambda x: x.get("end", ""))
 
                             concepts[field_name] = {
                                 "value": latest.get("val"),

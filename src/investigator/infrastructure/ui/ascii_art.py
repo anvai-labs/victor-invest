@@ -296,11 +296,7 @@ if __name__ == "__main__":
         print()
 
     # Demo utility functions
-    ASCIIArt.print_success_box(
-        "✅ All systems operational!\nCache performance: 89.6% success rate\nReady for analysis"
-    )
+    ASCIIArt.print_success_box("✅ All systems operational!\nCache performance: 89.6% success rate\nReady for analysis")
     print()
 
-    ASCIIArt.print_error_box(
-        "❌ System error detected\nDatabase connection failed\nPlease check configuration"
-    )
+    ASCIIArt.print_error_box("❌ System error detected\nDatabase connection failed\nPlease check configuration")

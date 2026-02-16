@@ -44,9 +44,7 @@ class SymbolUpdateAgent(InvestmentAgent):
         stock_engine: SQLAlchemy engine for stock database connection
     """
 
-    def __init__(
-        self, agent_id: str, ollama_client=None, event_bus=None, cache_manager=None
-    ):
+    def __init__(self, agent_id: str, ollama_client=None, event_bus=None, cache_manager=None):
         """
         Initialize SymbolUpdate agent.
 
@@ -117,7 +115,9 @@ class SymbolUpdateAgent(InvestmentAgent):
             config = get_config()
             # Build stock database URL with separate credentials
             stock_db_password = os.environ.get("STOCK_DB_PASSWORD", "")
-            stock_db_url = f"postgresql://stockuser:{stock_db_password}@{config.database.host}:{config.database.port}/stock"
+            stock_db_url = (
+                f"postgresql://stockuser:{stock_db_password}@{config.database.host}:{config.database.port}/stock"
+            )
             self.stock_engine = create_engine(
                 stock_db_url,
                 pool_size=config.database.pool_size,
@@ -146,9 +146,7 @@ class SymbolUpdateAgent(InvestmentAgent):
 
         # Check if we have fundamental data in context
         if not task.context:
-            raise ValueError(
-                f"SymbolUpdate agent requires context with fundamental_analysis for {task.symbol}"
-            )
+            raise ValueError(f"SymbolUpdate agent requires context with fundamental_analysis for {task.symbol}")
 
         if "fundamental_analysis" not in task.context:
             raise ValueError(
@@ -173,9 +171,7 @@ class SymbolUpdateAgent(InvestmentAgent):
         # Check if we have SEC data (optional but recommended)
         sec_data = task.context.get("sec_analysis")
         if not sec_data or not isinstance(sec_data, dict):
-            self.logger.warning(
-                f"No SEC data available for {task.symbol}. Will update with fundamental data only."
-            )
+            self.logger.warning(f"No SEC data available for {task.symbol}. Will update with fundamental data only.")
         else:
             self.logger.info(f"✅ SEC data validated: {len(sec_data)} keys")
 
@@ -226,8 +222,7 @@ class SymbolUpdateAgent(InvestmentAgent):
             rows_updated = self._update_symbol_table(symbol, update_data)
 
             self.logger.info(
-                f"✅ Updated symbol table for {symbol}: {len(update_data)} fields, "
-                f"{rows_updated} row(s) affected"
+                f"✅ Updated symbol table for {symbol}: {len(update_data)} fields, " f"{rows_updated} row(s) affected"
             )
 
             return AgentResult(
@@ -250,9 +245,7 @@ class SymbolUpdateAgent(InvestmentAgent):
             )
 
         except Exception as e:
-            self.logger.error(
-                f"Failed to update symbol table for {symbol}: {e}", exc_info=True
-            )
+            self.logger.error(f"Failed to update symbol table for {symbol}: {e}", exc_info=True)
             return AgentResult(
                 task_id=task.task_id,
                 agent_id=self.agent_id,
@@ -263,9 +256,7 @@ class SymbolUpdateAgent(InvestmentAgent):
                 metadata={"error_type": type(e).__name__},
             )
 
-    def _extract_metrics(
-        self, symbol: str, fundamental: Dict, sec_data: Dict
-    ) -> Dict[str, Any]:
+    def _extract_metrics(self, symbol: str, fundamental: Dict, sec_data: Dict) -> Dict[str, Any]:
         """
         Extract metrics from fundamental and SEC analysis.
 
@@ -334,14 +325,10 @@ class SymbolUpdateAgent(InvestmentAgent):
                         if "wacc" in assumptions:
                             update_data["wacc"] = round(float(assumptions["wacc"]), 4)
                         if "terminal_growth" in assumptions:
-                            update_data["terminal_growth_rate"] = round(
-                                float(assumptions["terminal_growth"]), 4
-                            )
+                            update_data["terminal_growth_rate"] = round(float(assumptions["terminal_growth"]), 4)
                         metadata = model.get("metadata", {})
                         if "projection_years" in assumptions:
-                            update_data["dcf_projection_years"] = int(
-                                assumptions["projection_years"]
-                            )
+                            update_data["dcf_projection_years"] = int(assumptions["projection_years"])
                         # Rule of 40 from DCF metadata
                         rule40 = metadata.get("rule_of_40", {})
                         if rule40:
@@ -350,9 +337,7 @@ class SymbolUpdateAgent(InvestmentAgent):
                                 update_data["rule_of_40_score"] = round(float(score), 2)
                             classification = rule40.get("classification")
                             if classification:
-                                update_data["rule_of_40_classification"] = str(
-                                    classification
-                                )
+                                update_data["rule_of_40_classification"] = str(classification)
                     elif model_name == "ggm":
                         update_data["fair_value_ggm"] = round(float(fair_value), 2)
                     elif model_name == "ps":
@@ -362,9 +347,7 @@ class SymbolUpdateAgent(InvestmentAgent):
                     elif model_name == "pb":
                         update_data["fair_value_pb"] = round(float(fair_value), 2)
                     elif model_name == "ev_ebitda":
-                        update_data["fair_value_ev_ebitda"] = round(
-                            float(fair_value), 2
-                        )
+                        update_data["fair_value_ev_ebitda"] = round(float(fair_value), 2)
 
             # Store full JSONB for detailed analysis
             update_data["valuation_models_json"] = multi_model_summary
@@ -384,9 +367,7 @@ class SymbolUpdateAgent(InvestmentAgent):
         if llm_estimate and llm_estimate > 0:
             # Store in JSONB metadata, not as separate column
             if "valuation_models_json" in update_data:
-                update_data["valuation_models_json"]["llm_estimate"] = round(
-                    float(llm_estimate), 2
-                )
+                update_data["valuation_models_json"]["llm_estimate"] = round(float(llm_estimate), 2)
 
         # === RATIOS ===
         ratios = fundamental.get("ratios", {})
@@ -427,9 +408,7 @@ class SymbolUpdateAgent(InvestmentAgent):
                 update_data["fcf_margin"] = round(float(fcf_margin), 2)
 
             # Revenue growth rate
-            rev_growth = ratios.get("revenue_growth") or ratios.get(
-                "revenue_growth_rate"
-            )
+            rev_growth = ratios.get("revenue_growth") or ratios.get("revenue_growth_rate")
             if rev_growth is not None:
                 update_data["revenue_growth_rate"] = round(float(rev_growth), 2)
 
@@ -463,9 +442,7 @@ class SymbolUpdateAgent(InvestmentAgent):
                 update_data["net_income"] = int(financial_data["net_income"])
 
             if "operating_cash_flow" in financial_data:
-                update_data["operating_cash_flow"] = int(
-                    financial_data["operating_cash_flow"]
-                )
+                update_data["operating_cash_flow"] = int(financial_data["operating_cash_flow"])
 
             if "free_cash_flow" in financial_data:
                 update_data["free_cash_flow"] = int(financial_data["free_cash_flow"])
@@ -481,31 +458,23 @@ class SymbolUpdateAgent(InvestmentAgent):
                 update_data["total_assets"] = int(financial_data["total_assets"])
 
             if "total_liabilities" in financial_data:
-                update_data["total_liabilities"] = int(
-                    financial_data["total_liabilities"]
-                )
+                update_data["total_liabilities"] = int(financial_data["total_liabilities"])
 
             if "stockholders_equity" in financial_data:
-                update_data["stockholders_equity"] = int(
-                    financial_data["stockholders_equity"]
-                )
+                update_data["stockholders_equity"] = int(financial_data["stockholders_equity"])
 
             if "total_debt" in financial_data:
                 update_data["total_debt"] = int(financial_data["total_debt"])
 
             if "cash_and_cash_equivalents" in financial_data:
-                update_data["cash_and_equivalents"] = int(
-                    financial_data["cash_and_cash_equivalents"]
-                )
+                update_data["cash_and_equivalents"] = int(financial_data["cash_and_cash_equivalents"])
 
             if "dividends_paid" in financial_data:
                 update_data["dividends_paid"] = int(financial_data["dividends_paid"])
 
             # Shares outstanding (use standard shares_outstanding key)
             if "shares_outstanding" in financial_data:
-                update_data["outstandingshares"] = int(
-                    financial_data["shares_outstanding"]
-                )
+                update_data["outstandingshares"] = int(financial_data["shares_outstanding"])
 
             # Public float (EntityPublicFloat from SEC DEI namespace is in USD)
             # Convert to float_shares by dividing by current price
@@ -573,9 +542,7 @@ class SymbolUpdateAgent(InvestmentAgent):
             if col in update_data and update_data[col] is not None:
                 if isinstance(update_data[col], dict):
                     update_data[col] = json.dumps(update_data[col])
-                    self.logger.debug(
-                        f"Serialized {col} to JSON string ({len(update_data[col])} chars)"
-                    )
+                    self.logger.debug(f"Serialized {col} to JSON string ({len(update_data[col])} chars)")
 
         # Build SET clause
         set_clause = ", ".join([f"{col} = :{col}" for col in update_data.keys()])
@@ -614,17 +581,11 @@ class SymbolUpdateAgent(InvestmentAgent):
         """
         # Log summary
         if result.status == TaskStatus.COMPLETED:
-            symbol = (
-                task.symbol if task else result.result_data.get("symbol", "unknown")
-            )
+            symbol = task.symbol if task else result.result_data.get("symbol", "unknown")
             metrics_count = result.result_data.get("metrics_count", 0)
-            self.logger.info(
-                f"Symbol table updated for {symbol}: {metrics_count} metrics"
-            )
+            self.logger.info(f"Symbol table updated for {symbol}: {metrics_count} metrics")
         elif result.status == TaskStatus.FAILED:
-            symbol = (
-                task.symbol if task else result.result_data.get("symbol", "unknown")
-            )
+            symbol = task.symbol if task else result.result_data.get("symbol", "unknown")
             error = result.error or result.result_data.get("error", "Unknown error")
             self.logger.error(f"Symbol update failed for {symbol}: {error}")
 

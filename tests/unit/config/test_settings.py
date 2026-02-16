@@ -4,7 +4,6 @@ Unit tests for configuration settings.
 Updated for Phase 4: Nested InvestiGatorConfig structure.
 """
 
-
 from investigator.config import settings
 
 

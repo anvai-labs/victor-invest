@@ -11,9 +11,10 @@ Author: InvestiGator Team
 Date: 2025-11-10
 """
 
-from typing import Optional, Dict, Tuple
 import logging
 from pathlib import Path
+from typing import Dict, Optional, Tuple
+
 from sqlalchemy import text
 
 logger = logging.getLogger(__name__)
@@ -198,9 +199,7 @@ def _load_russell1000_overrides() -> Dict[str, Tuple[str, str]]:
         # Load the module dynamically
         import importlib.util
 
-        spec = importlib.util.spec_from_file_location(
-            "russell1000_overrides", overrides_file
-        )
+        spec = importlib.util.spec_from_file_location("russell1000_overrides", overrides_file)
         if spec and spec.loader:
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
@@ -247,14 +246,10 @@ class IndustryClassifier:
                 self.db_engine = get_db_manager().engine
                 logger.debug("Loaded database engine for industry classification")
             except Exception as e:
-                logger.warning(
-                    f"Could not load database engine: {e}. Industry classification will use SIC codes only."
-                )
+                logger.warning(f"Could not load database engine: {e}. Industry classification will use SIC codes only.")
                 self.db_engine = None
 
-    def _query_database_industry(
-        self, symbol: str
-    ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    def _query_database_industry(self, symbol: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
         """
         Query sec_companyfacts_metadata for sector/industry/sic_code
 
@@ -270,17 +265,13 @@ class IndustryClassifier:
         try:
             with self.db_engine.connect() as conn:
                 query = text(
-                    "SELECT sector, industry, sic_code "
-                    "FROM sec_companyfacts_metadata "
-                    "WHERE symbol = :symbol"
+                    "SELECT sector, industry, sic_code " "FROM sec_companyfacts_metadata " "WHERE symbol = :symbol"
                 )
                 result = conn.execute(query, {"symbol": symbol.upper()}).fetchone()
 
                 if result:
                     sector, industry, sic = result
-                    logger.debug(
-                        f"Database lookup for {symbol}: sector={sector}, industry={industry}, sic={sic}"
-                    )
+                    logger.debug(f"Database lookup for {symbol}: sector={sector}, industry={industry}, sic={sic}")
                     return (sector, industry, sic)
 
                 return (None, None, None)
@@ -319,9 +310,7 @@ class IndustryClassifier:
         # Priority 1: Database lookup (PRIMARY SOURCE per user requirement)
         db_sector, db_industry, db_sic = self._query_database_industry(symbol)
         if db_sector and db_industry:
-            logger.debug(
-                f"Using database industry for {symbol}: {db_sector}/{db_industry}"
-            )
+            logger.debug(f"Using database industry for {symbol}: {db_sector}/{db_industry}")
             return (db_sector, db_industry)
 
         # If database has SIC code but no sector/industry, use it for SIC mapping below
@@ -338,9 +327,7 @@ class IndustryClassifier:
         # Priority 3: Russell 1000 overrides (924 large-cap stocks from stock database)
         if symbol and symbol.upper() in self.russell1000_overrides:
             sector, industry = self.russell1000_overrides[symbol.upper()]
-            logger.debug(
-                f"Using Russell 1000 classification for {symbol}: {sector}/{industry}"
-            )
+            logger.debug(f"Using Russell 1000 classification for {symbol}: {sector}/{industry}")
             return (sector, industry)
 
         # Priority 4: SIC code mapping (fallback when database empty)
@@ -350,9 +337,7 @@ class IndustryClassifier:
 
             if sic_normalized in self.sic_map:
                 sector, industry = self.sic_map[sic_normalized]
-                logger.debug(
-                    f"Using SIC code {sic_normalized} for {symbol}: {sector}/{industry}"
-                )
+                logger.debug(f"Using SIC code {sic_normalized} for {symbol}: {sector}/{industry}")
                 return (sector, industry)
 
             # Try truncated SIC codes (e.g., 6331 → 6300 → 6000)
@@ -360,37 +345,27 @@ class IndustryClassifier:
                 sic_prefix = sic_normalized[:prefix_len] + "0" * (4 - prefix_len)
                 if sic_prefix in self.sic_map:
                     sector, industry = self.sic_map[sic_prefix]
-                    logger.debug(
-                        f"Using SIC prefix {sic_prefix} for {symbol}: {sector}/{industry}"
-                    )
+                    logger.debug(f"Using SIC prefix {sic_prefix} for {symbol}: {sector}/{industry}")
                     return (sector, industry)
 
         # Priority 5: Profile industry (if it's a recognized industry within the sector)
         if profile_sector and profile_industry:
             # Normalize industry name from profile to match our industry names
-            normalized_industry = self._normalize_industry_name(
-                profile_industry, profile_sector
-            )
+            normalized_industry = self._normalize_industry_name(profile_industry, profile_sector)
             if normalized_industry:
-                logger.debug(
-                    f"Using profile industry for {symbol}: {profile_sector}/{normalized_industry}"
-                )
+                logger.debug(f"Using profile industry for {symbol}: {profile_sector}/{normalized_industry}")
                 return (profile_sector, normalized_industry)
 
         # Priority 6: Sector only (no industry specificity)
         if profile_sector:
-            logger.debug(
-                f"Using profile sector only for {symbol}: {profile_sector}/None"
-            )
+            logger.debug(f"Using profile sector only for {symbol}: {profile_sector}/None")
             return (profile_sector, None)
 
-        # Unable to classify
-        logger.warning(f"Unable to classify {symbol} - no SIC code or profile data")
+        # Unable to classify - caller may still proceed with generic handling.
+        logger.info(f"Unable to classify {symbol} - no SIC code or profile data")
         return (None, None)
 
-    def _normalize_industry_name(
-        self, profile_industry: str, sector: str
-    ) -> Optional[str]:
+    def _normalize_industry_name(self, profile_industry: str, sector: str) -> Optional[str]:
         """
         Normalize industry name from company profile to match our taxonomy
 
@@ -421,30 +396,18 @@ class IndustryClassifier:
                 ]
             ):
                 return "Insurance"
-            elif any(
-                term in industry_lower
-                for term in ["investment", "asset management", "wealth", "broker"]
-            ):
+            elif any(term in industry_lower for term in ["investment", "asset management", "wealth", "broker"]):
                 return "Investment Management"
-            elif any(
-                term in industry_lower for term in ["reit", "real estate investment"]
-            ):
+            elif any(term in industry_lower for term in ["reit", "real estate investment"]):
                 return "REITs"
 
         # Technology industry mappings
         elif sector == "Technology":
-            if any(
-                term in industry_lower for term in ["software", "saas", "application"]
-            ):
+            if any(term in industry_lower for term in ["software", "saas", "application"]):
                 return "Software"
-            elif any(
-                term in industry_lower
-                for term in ["semiconductor", "chip", "integrated circuit"]
-            ):
+            elif any(term in industry_lower for term in ["semiconductor", "chip", "integrated circuit"]):
                 return "Semiconductors"
-            elif any(
-                term in industry_lower for term in ["hardware", "computer", "server"]
-            ):
+            elif any(term in industry_lower for term in ["hardware", "computer", "server"]):
                 return "Hardware"
 
         # Healthcare industry mappings
@@ -453,47 +416,27 @@ class IndustryClassifier:
                 return "Pharmaceuticals"
             elif any(term in industry_lower for term in ["biotech", "biological"]):
                 return "Biotechnology"
-            elif any(
-                term in industry_lower
-                for term in ["medical device", "equipment", "instrument"]
-            ):
+            elif any(term in industry_lower for term in ["medical device", "equipment", "instrument"]):
                 return "Medical Devices"
-            elif any(
-                term in industry_lower
-                for term in ["hospital", "health service", "clinic"]
-            ):
+            elif any(term in industry_lower for term in ["hospital", "health service", "clinic"]):
                 return "Healthcare Services"
 
         # Energy industry mappings
         elif sector == "Energy":
-            if any(
-                term in industry_lower for term in ["exploration", "production", "e&p"]
-            ):
+            if any(term in industry_lower for term in ["exploration", "production", "e&p"]):
                 return "Oil & Gas Exploration"
-            elif any(
-                term in industry_lower for term in ["refining", "refin", "midstream"]
-            ):
+            elif any(term in industry_lower for term in ["refining", "refin", "midstream"]):
                 return "Oil & Gas Refining"
-            elif any(
-                term in industry_lower for term in ["service", "drilling", "equipment"]
-            ):
+            elif any(term in industry_lower for term in ["service", "drilling", "equipment"]):
                 return "Oil & Gas Services"
 
         # Consumer industry mappings
         elif sector == "Consumer":
-            if any(
-                term in industry_lower
-                for term in ["e-commerce", "online retail", "internet retail"]
-            ):
+            if any(term in industry_lower for term in ["e-commerce", "online retail", "internet retail"]):
                 return "E-commerce"
-            elif any(
-                term in industry_lower for term in ["retail", "store", "department"]
-            ):
+            elif any(term in industry_lower for term in ["retail", "store", "department"]):
                 return "Retail"
-            elif any(
-                term in industry_lower
-                for term in ["consumer goods", "packaged", "beverage", "food"]
-            ):
+            elif any(term in industry_lower for term in ["consumer goods", "packaged", "beverage", "food"]):
                 return "Consumer Goods"
 
         # No match found

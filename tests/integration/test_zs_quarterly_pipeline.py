@@ -25,7 +25,7 @@ from datetime import datetime
 import pytest
 
 from investigator.config import get_config
-from investigator.domain.agents.fundamental import FundamentalAgent
+from investigator.domain.agents.fundamental import FundamentalAnalysisAgent as FundamentalAgent
 from investigator.domain.agents.sec import SECAgent
 from investigator.domain.models import AgentTask, TaskStatus
 from utils.quarterly_calculator import get_rolling_ttm_periods
@@ -73,9 +73,7 @@ class TestZSQuarterlyPipeline:
 
         sec_result = await sec_agent.execute(sec_task)
 
-        assert sec_result.status == TaskStatus.COMPLETED, (
-            f"SEC agent failed: {sec_result.error}"
-        )
+        assert sec_result.status == TaskStatus.COMPLETED, f"SEC agent failed: {sec_result.error}"
         assert sec_result.data is not None, "SEC data should not be None"
 
         # Step 2: Run fundamental analysis (includes quarterly metrics)
@@ -89,9 +87,7 @@ class TestZSQuarterlyPipeline:
 
         fund_result = await fundamental_agent.execute(fund_task)
 
-        assert fund_result.status == TaskStatus.COMPLETED, (
-            f"Fundamental agent failed: {fund_result.error}"
-        )
+        assert fund_result.status == TaskStatus.COMPLETED, f"Fundamental agent failed: {fund_result.error}"
 
         # Step 3: Extract quarterly metrics
         quarterly_metrics = fund_result.data.get("quarterly_metrics", [])
@@ -119,12 +115,8 @@ class TestZSQuarterlyPipeline:
 
         gaps_over_150_days = []
         for i in range(len(sorted_quarters) - 1):
-            current_date = datetime.strptime(
-                sorted_quarters[i]["period_end_date"], "%Y-%m-%d"
-            )
-            next_date = datetime.strptime(
-                sorted_quarters[i + 1]["period_end_date"], "%Y-%m-%d"
-            )
+            current_date = datetime.strptime(sorted_quarters[i]["period_end_date"], "%Y-%m-%d")
+            next_date = datetime.strptime(sorted_quarters[i + 1]["period_end_date"], "%Y-%m-%d")
             gap_days = (current_date - next_date).days
 
             if gap_days > 150:  # Typical quarter ~90 days
@@ -139,9 +131,7 @@ class TestZSQuarterlyPipeline:
                 )
 
         # CRITICAL: No 184-day gaps (Q1 → Q3) should exist
-        q1_to_q3_gaps = [
-            g for g in gaps_over_150_days if "Q1" in g["from"] and "Q3" in g["to"]
-        ]
+        q1_to_q3_gaps = [g for g in gaps_over_150_days if "Q1" in g["from"] and "Q3" in g["to"]]
 
         assert len(q1_to_q3_gaps) == 0, (
             f"Found {len(q1_to_q3_gaps)} Q1→Q3 gaps (184 days), indicating missing Q4 periods. "
@@ -169,9 +159,7 @@ class TestZSQuarterlyPipeline:
                 f"got FY {q1['fiscal_year']}"
             )
 
-        print(
-            f"\n✓ Q1 fiscal year adjustment verified for {len(q1_periods)} Q1 periods"
-        )
+        print(f"\n✓ Q1 fiscal year adjustment verified for {len(q1_periods)} Q1 periods")
 
         # Step 8: Test TTM calculation includes Q4
         ttm_periods = get_rolling_ttm_periods(
@@ -195,9 +183,7 @@ class TestZSQuarterlyPipeline:
         print("ZS Quarterly Pipeline Test Summary")
         print("=" * 60)
         print(f"Total quarterly metrics: {len(quarterly_metrics)}")
-        print(
-            f"Q4 periods computed: {len(q4_periods)} (fiscal years: {q4_fiscal_years})"
-        )
+        print(f"Q4 periods computed: {len(q4_periods)} (fiscal years: {q4_fiscal_years})")
         print(f"Q1 periods: {len(q1_periods)}")
         print(f"Gaps over 150 days: {len(gaps_over_150_days)}")
         print(f"Q1→Q3 gaps (should be 0): {len(q1_to_q3_gaps)}")
@@ -235,13 +221,7 @@ class TestZSQuarterlyPipeline:
 
         # Find a fiscal year with Q4 computed
         for fy, periods in fiscal_years.items():
-            if (
-                "Q4" in periods
-                and "FY" in periods
-                and "Q1" in periods
-                and "Q2" in periods
-                and "Q3" in periods
-            ):
+            if "Q4" in periods and "FY" in periods and "Q1" in periods and "Q2" in periods and "Q3" in periods:
                 # Verify arithmetic: Q4 = FY - (Q1 + Q2 + Q3)
                 fy_fcf = periods["FY"].get("free_cash_flow", 0)
                 q1_fcf = periods["Q1"].get("free_cash_flow", 0)
@@ -257,9 +237,7 @@ class TestZSQuarterlyPipeline:
                     f"FY={fy_fcf}, Q1={q1_fcf}, Q2={q2_fcf}, Q3={q3_fcf}"
                 )
 
-                print(
-                    f"\n✓ Q4-{fy} FCF verified: {q4_fcf} = {fy_fcf} - ({q1_fcf} + {q2_fcf} + {q3_fcf})"
-                )
+                print(f"\n✓ Q4-{fy} FCF verified: {q4_fcf} = {fy_fcf} - ({q1_fcf} + {q2_fcf} + {q3_fcf})")
                 break
         else:
             pytest.fail("No fiscal year found with complete Q1+Q2+Q3+Q4+FY data")
@@ -301,12 +279,8 @@ class TestZSQuarterlyPipeline:
             )
 
             for i in range(len(sorted_ttm) - 1):
-                current_date = datetime.strptime(
-                    sorted_ttm[i]["period_end_date"], "%Y-%m-%d"
-                )
-                next_date = datetime.strptime(
-                    sorted_ttm[i + 1]["period_end_date"], "%Y-%m-%d"
-                )
+                current_date = datetime.strptime(sorted_ttm[i]["period_end_date"], "%Y-%m-%d")
+                next_date = datetime.strptime(sorted_ttm[i + 1]["period_end_date"], "%Y-%m-%d")
                 gap_days = (current_date - next_date).days
 
                 assert 60 <= gap_days <= 150, (
@@ -316,9 +290,7 @@ class TestZSQuarterlyPipeline:
                     f"{gap_days} days (expected 60-150)"
                 )
 
-            print(
-                f"\n✓ All {len(ttm_periods)} TTM periods are consecutive (60-150 days apart)"
-            )
+            print(f"\n✓ All {len(ttm_periods)} TTM periods are consecutive (60-150 days apart)")
 
 
 class TestQ4ComputationRobustness:
@@ -339,7 +311,7 @@ class TestQ4ComputationRobustness:
         - MSFT: Fiscal year ends June 30
         """
         from investigator.config import get_config
-        from investigator.domain.agents.fundamental import FundamentalAgent
+        from investigator.domain.agents.fundamental import FundamentalAnalysisAgent as FundamentalAgent
 
         config = get_config()
         fundamental_agent = FundamentalAgent(config=config)
@@ -364,16 +336,12 @@ class TestQ4ComputationRobustness:
             fund_result = await fundamental_agent.execute(fund_task)
             quarterly_metrics = fund_result.data.get("quarterly_metrics", [])
 
-            q4_periods = [
-                q for q in quarterly_metrics if q.get("fiscal_period") == "Q4"
-            ]
+            q4_periods = [q for q in quarterly_metrics if q.get("fiscal_period") == "Q4"]
 
             results[symbol] = {
                 "total_quarters": len(quarterly_metrics),
                 "q4_count": len(q4_periods),
-                "q4_fiscal_years": sorted(
-                    [q["fiscal_year"] for q in q4_periods], reverse=True
-                ),
+                "q4_fiscal_years": sorted([q["fiscal_year"] for q in q4_periods], reverse=True),
             }
 
             print(f"\n{symbol}:")
@@ -383,9 +351,7 @@ class TestQ4ComputationRobustness:
 
         # All companies should have Q4 periods computed
         for symbol, data in results.items():
-            assert data["q4_count"] >= 1, (
-                f"{symbol} should have at least 1 Q4 period, got {data['q4_count']}"
-            )
+            assert data["q4_count"] >= 1, f"{symbol} should have at least 1 Q4 period, got {data['q4_count']}"
 
 
 if __name__ == "__main__":

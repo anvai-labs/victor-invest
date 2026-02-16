@@ -189,6 +189,26 @@ python3 -m victor_invest.cli test-system
 
 Generated artifacts land in `results/<SYMBOL_TIMESTAMP>.json` alongside cached prompts and charts under `data/`.
 
+=== Refresh Latest SEC Filings (Two-Step)
+
+Use this flow when analysis output shows older filing periods and you need to force a fresh SEC CompanyFacts pull:
+
+[source,bash]
+----
+# Step 1: Fetch fresh SEC CompanyFacts and populate processed table
+investigator cache warm --symbols STX --process-raw --force-refresh
+
+# Step 2: Run analysis against refreshed SEC data
+investigator analyze single STX --mode comprehensive --force-refresh
+----
+
+Optional cleanup before step 1 (if symbol cache is stale/corrupt):
+
+[source,bash]
+----
+investigator cache clean --symbol STX --force
+----
+
 == 🔧 Development Guidelines
 
 * *Code style:* PEP 8, 4-space indent, Google-style docstrings, functions <120 LOC.

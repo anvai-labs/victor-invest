@@ -64,9 +64,7 @@ class FeatureStatistics:
         self.mean += delta / self.count
         delta2 = value - self.mean
         self.variance = (
-            (self.variance * (self.count - 1) + delta * delta2) / self.count
-            if self.count > 1
-            else self.variance
+            (self.variance * (self.count - 1) + delta * delta2) / self.count if self.count > 1 else self.variance
         )
         self.min_val = min(self.min_val, value)
         self.max_val = max(self.max_val, value)
@@ -161,12 +159,7 @@ class FeatureNormalizer:
             return self
 
         # Convert contexts to feature matrix
-        features_matrix = np.array(
-            [
-                self.extractor.to_tensor(ctx, self.include_categorical)
-                for ctx in contexts
-            ]
-        )
+        features_matrix = np.array([self.extractor.to_tensor(ctx, self.include_categorical) for ctx in contexts])
 
         # Update statistics for each feature
         for i, name in enumerate(self._feature_names):
@@ -234,17 +227,11 @@ class FeatureNormalizer:
                 continue
 
             if self.normalization_method == "z_score":
-                normalized[i] = self._z_score_normalize(
-                    raw_features[i], stats.mean, stats.std
-                )
+                normalized[i] = self._z_score_normalize(raw_features[i], stats.mean, stats.std)
             elif self.normalization_method == "min_max":
-                normalized[i] = self._min_max_normalize(
-                    raw_features[i], stats.min_val, stats.max_val
-                )
+                normalized[i] = self._min_max_normalize(raw_features[i], stats.min_val, stats.max_val)
             else:  # robust or unknown
-                normalized[i] = self._z_score_normalize(
-                    raw_features[i], stats.mean, stats.std
-                )
+                normalized[i] = self._z_score_normalize(raw_features[i], stats.mean, stats.std)
 
         return normalized
 

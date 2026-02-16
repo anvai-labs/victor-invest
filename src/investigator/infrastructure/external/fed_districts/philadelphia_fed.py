@@ -43,9 +43,13 @@ import aiohttp
 logger = logging.getLogger(__name__)
 
 # Philadelphia Fed data URLs
-MANUFACTURING_URL = "https://www.philadelphiafed.org/-/media/frbp/assets/surveys-and-data/mbos/historical-data/bos_historical_data.xlsx"
+MANUFACTURING_URL = (
+    "https://www.philadelphiafed.org/-/media/frbp/assets/surveys-and-data/mbos/historical-data/bos_historical_data.xlsx"
+)
 LEADING_INDEX_URL = "https://www.philadelphiafed.org/-/media/frbp/assets/surveys-and-data/sli/sli_historical_data.xlsx"
-COINCIDENT_INDEX_URL = "https://www.philadelphiafed.org/-/media/frbp/assets/surveys-and-data/sci/sci_historical_data.xlsx"
+COINCIDENT_INDEX_URL = (
+    "https://www.philadelphiafed.org/-/media/frbp/assets/surveys-and-data/sci/sci_historical_data.xlsx"
+)
 ADS_URL = "https://www.philadelphiafed.org/-/media/frbp/assets/surveys-and-data/ads/ads_index.xlsx"
 
 
@@ -273,9 +277,7 @@ class PhiladelphiaFedClient:
             logger.warning(f"Failed to fetch manufacturing survey: {e}")
             return None
 
-    def _parse_manufacturing_excel(
-        self, content: bytes
-    ) -> Optional[ManufacturingSurvey]:
+    def _parse_manufacturing_excel(self, content: bytes) -> Optional[ManufacturingSurvey]:
         """Parse manufacturing survey from Excel file."""
         try:
             import io
@@ -295,16 +297,12 @@ class PhiladelphiaFedClient:
             # Find key columns
             def find_col(keywords: List[str]) -> Optional[str]:
                 for col in df.columns:
-                    col_lower = (
-                        col.lower() if isinstance(col, str) else str(col).lower()
-                    )
+                    col_lower = col.lower() if isinstance(col, str) else str(col).lower()
                     if all(k in col_lower for k in keywords):
                         return col
                 return None
 
-            diffusion_col = (
-                find_col(["diffusion"]) or find_col(["index"]) or df.columns[1]
-            )
+            diffusion_col = find_col(["diffusion"]) or find_col(["index"]) or df.columns[1]
             orders_col = find_col(["new", "order"])
             ship_col = find_col(["shipment"])
             emp_col = find_col(["employment"])
@@ -346,9 +344,7 @@ class PhiladelphiaFedClient:
             logger.warning(f"Failed to fetch leading index: {e}")
             return None
 
-    def _parse_leading_index_excel(
-        self, content: bytes, state: str
-    ) -> Optional[LeadingIndex]:
+    def _parse_leading_index_excel(self, content: bytes, state: str) -> Optional[LeadingIndex]:
         """Parse leading index from Excel file."""
         try:
             import io
@@ -380,9 +376,7 @@ class PhiladelphiaFedClient:
 
             value = float(latest[state_col])
             prev_value = float(prev[state_col]) if prev is not None else None
-            six_month_value = (
-                float(six_month_ago[state_col]) if six_month_ago is not None else None
-            )
+            six_month_value = float(six_month_ago[state_col]) if six_month_ago is not None else None
 
             return LeadingIndex(
                 date=obs_date,
@@ -395,9 +389,7 @@ class PhiladelphiaFedClient:
             logger.debug(f"Could not parse leading index Excel: {e}")
             return None
 
-    async def get_coincident_index(
-        self, state: str = "US"
-    ) -> Optional[CoincidentIndex]:
+    async def get_coincident_index(self, state: str = "US") -> Optional[CoincidentIndex]:
         """Get the coincident index for a state.
 
         Args:
@@ -419,9 +411,7 @@ class PhiladelphiaFedClient:
             logger.warning(f"Failed to fetch coincident index: {e}")
             return None
 
-    def _parse_coincident_index_excel(
-        self, content: bytes, state: str
-    ) -> Optional[CoincidentIndex]:
+    def _parse_coincident_index_excel(self, content: bytes, state: str) -> Optional[CoincidentIndex]:
         """Parse coincident index from Excel file."""
         try:
             import io
@@ -456,17 +446,11 @@ class PhiladelphiaFedClient:
                 date=obs_date,
                 state=state.upper(),
                 coincident_index=value,
-                one_month_change=value - float(prev[state_col])
-                if prev is not None
-                else None,
+                one_month_change=value - float(prev[state_col]) if prev is not None else None,
                 three_month_change=(
-                    (value - float(three_month_ago[state_col])) * 4
-                    if three_month_ago is not None
-                    else None
+                    (value - float(three_month_ago[state_col])) * 4 if three_month_ago is not None else None
                 ),
-                twelve_month_change=value - float(year_ago[state_col])
-                if year_ago is not None
-                else None,
+                twelve_month_change=value - float(year_ago[state_col]) if year_ago is not None else None,
             )
         except Exception as e:
             logger.debug(f"Could not parse coincident index Excel: {e}")
@@ -537,9 +521,7 @@ class PhiladelphiaFedClient:
         return {
             "manufacturing_survey": mfg if not isinstance(mfg, Exception) else None,
             "leading_index_us": leading if not isinstance(leading, Exception) else None,
-            "coincident_index_us": coincident
-            if not isinstance(coincident, Exception)
-            else None,
+            "coincident_index_us": coincident if not isinstance(coincident, Exception) else None,
             "ads_index": ads if not isinstance(ads, Exception) else None,
         }
 

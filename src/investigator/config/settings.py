@@ -468,9 +468,7 @@ class InvestiGatorConfig(BaseSettings):
             else:
                 value = os.getenv(var_spec)
                 if value is None:
-                    raise ValueError(
-                        f"Environment variable {var_spec} not set and no default provided"
-                    )
+                    raise ValueError(f"Environment variable {var_spec} not set and no default provided")
                 return value
 
         yaml_content = re.sub(r"\$\{([^}]+)\}", env_var_replacer, yaml_content)

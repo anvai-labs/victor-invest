@@ -4,8 +4,6 @@ Unit tests for safe_formatters module.
 Tests defensive formatting for None, NaN, inf, and edge cases.
 """
 
-
-
 from investigator.domain.services.safe_formatters import (
     format_currency,
     format_number,
