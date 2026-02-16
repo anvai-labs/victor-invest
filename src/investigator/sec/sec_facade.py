@@ -291,7 +291,7 @@ class FundamentalAnalysisFacadeV2:
         self.cache_manager = get_cache_manager()
 
         # Use existing aggregator and LLM facade with cache management
-        from patterns.llm.llm_facade import create_llm_facade
+        from investigator.infrastructure.llm.llm_facade import create_llm_facade
         from utils.financial_data_aggregator import FinancialDataAggregator
 
         self.data_aggregator = FinancialDataAggregator(config)
@@ -352,9 +352,7 @@ class FundamentalAnalysisFacadeV2:
             # Perform LLM analysis
             self.sec_facade.format_for_llm(quarterly_data)
 
-            self.config.ollama.models.get(
-                "fundamental_analysis", "deepseek-r1:32b"
-            )
+            self.config.ollama.models.get("fundamental_analysis", "deepseek-r1:32b")
 
             # Convert quarterly data to dictionaries for JSON serialization
             quarterly_data_dicts = []
@@ -605,9 +603,7 @@ Format as JSON.
             )
 
             # Get model for quarterly analysis
-            self.config.ollama.models.get(
-                "quarterly_analysis", "deepseek-r1:32b"
-            )
+            self.config.ollama.models.get("quarterly_analysis", "deepseek-r1:32b")
 
             # Submit to LLM facade with proper metadata for cache key generation
             from patterns.llm.llm_interfaces import LLMTaskType
@@ -713,9 +709,7 @@ Provide analysis in the following exact JSON format:
 """
 
             # Submit comprehensive analysis to LLM
-            self.config.ollama.models.get(
-                "fundamental_analysis", "deepseek-r1:32b"
-            )
+            self.config.ollama.models.get("fundamental_analysis", "deepseek-r1:32b")
 
             # Use queue-based processing for comprehensive analysis
             from patterns.llm.llm_interfaces import LLMTaskType

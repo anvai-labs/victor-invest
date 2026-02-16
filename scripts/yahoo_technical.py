@@ -35,7 +35,7 @@ from investigator.config import get_config
 from utils.cache import CacheType
 from data.models import TechnicalAnalysisData
 from utils.cache.cache_manager import CacheManager
-from patterns.llm.llm_facade import create_llm_facade
+from investigator.infrastructure.llm.llm_facade import create_llm_facade
 from utils.ascii_art import ASCIIArt
 
 logger = logging.getLogger(__name__)
@@ -861,7 +861,6 @@ Price Performance:
     ) -> float:
         """Calculate comprehensive technical score based on all indicators"""
         try:
-
             # Get values from dictionaries
             ma = indicators.moving_averages
             mom = indicators.momentum_indicators
