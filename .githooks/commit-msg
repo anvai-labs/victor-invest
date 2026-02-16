@@ -19,4 +19,14 @@ if echo "$COMMIT_MSG" | grep -iqE "^[[:space:]]*co-authored-by:"; then
     exit 1
 fi
 
+# Reject any Claude/AI attribution references (case-insensitive)
+if echo "$COMMIT_MSG" | grep -iqE "(claude\s*(code|ai|opus|sonnet|haiku)|anthropic|generated\s+with\s+claude)"; then
+    echo -e "${RED}Commit message rejected:${NC}"
+    echo -e "${RED}Contains an AI attribution reference.${NC}"
+    echo ""
+    echo "AI attribution references (Claude, Anthropic, etc.) are not allowed in commit messages."
+    echo "Remove the reference and try again."
+    exit 1
+fi
+
 exit 0
