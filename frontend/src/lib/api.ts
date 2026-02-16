@@ -3,9 +3,16 @@ import type {
   ChartPayload,
   HealthResponse,
   HistoryEntry,
+  RankedSymbol,
   RankingsFilterParams,
   RankingsResponse,
   SymbolSearchResult,
+  UIFundamental,
+  UIRefreshRequest,
+  UISignal,
+  UITechnical,
+  UIView,
+  ValuationModel,
 } from "./types";
 
 const BASE = "/ui/api";
@@ -26,37 +33,305 @@ export function searchSymbols(
   return fetchJSON(`${BASE}/search?query=${encodeURIComponent(query)}&limit=${limit}`);
 }
 
-export function getLatestAnalysis(symbol: string): Promise<AnalysisResponse> {
-  return fetchJSON(`${BASE}/analysis/${encodeURIComponent(symbol)}/latest`);
+const MODEL_DISPLAY_NAMES: Record<string, string> = {
+  dcf_professional: "DCF",
+  damodaran_dcf: "Damodaran DCF",
+  pe: "P/E",
+  ps: "P/S",
+  pb: "P/B",
+  ev_ebitda: "EV/EBITDA",
+  ggm: "GGM",
+};
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function transformModels(raw: any): ValuationModel[] {
+  if (!raw) return [];
+  // API returns { dcf_professional: {...}, pe: {...} } dict
+  if (!Array.isArray(raw)) {
+    return Object.entries(raw)
+      .filter(([, v]: [string, any]) => v && v.applicable)
+      .map(([name, v]: [string, any]) => ({
+        name: MODEL_DISPLAY_NAMES[name] ?? name.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()),
+        fair_value: v.fair_value_per_share ?? null,
+        weight: v.weight ?? 0,
+        confidence: v.confidence_score != null
+          ? (v.confidence_score > 1 ? `${v.confidence_score}%` : v.confidence_score >= 0.7 ? "high" : v.confidence_score >= 0.4 ? "medium" : "low")
+          : "unknown",
+        details: v.assumptions ?? {},
+      }));
+  }
+  return raw;
 }
 
-export function refreshAnalysis(
+function transformForwardGuidance(raw: any): UIFundamental["forward_guidance"] {
+  if (!raw) return null;
+  const rg = raw.revenue_guidance ?? {};
+  return {
+    revenue_growth_pct: raw.revenue_growth_pct ?? null,
+    eps_estimate: raw.eps_estimate ?? null,
+    guidance_period: rg.horizon ?? raw.guidance_period ?? "",
+    source: raw.source ?? "",
+    revenue_low: rg.low ?? raw.revenue_low ?? null,
+    revenue_high: rg.high ?? raw.revenue_high ?? null,
+    revenue_mid: rg.mid ?? raw.revenue_mid ?? null,
+    filing_date: raw.filing_date ?? null,
+  };
+}
+
+function transformFundamental(raw: any): UIFundamental | null {
+  if (!raw) return null;
+  const valuation = raw.valuation ?? {};
+  return {
+    models: transformModels(valuation.models),
+    forward_guidance: transformForwardGuidance(raw.forward_guidance),
+    notes: raw.notes ?? [],
+    raw_payload: raw.sec ?? null,
+  };
+}
+
+function transformTechnical(raw: any): UITechnical | null {
+  if (!raw) return null;
+  const levels = raw.levels ?? {};
+  return {
+    trend: raw.recommendation ?? "neutral",
+    rsi: raw.rsi ?? null,
+    macd_signal: raw.macd_signal ?? "neutral",
+    moving_averages: {
+      sma_20: raw.sma_20 ?? null,
+      sma_50: raw.sma_50 ?? null,
+      sma_200: raw.sma_200 ?? null,
+      ema_12: raw.ema_12 ?? null,
+      ema_26: raw.ema_26 ?? null,
+    },
+    support_resistance: {
+      support: levels.support_1 ?? levels.support ?? null,
+      resistance: levels.resistance_1 ?? levels.resistance ?? null,
+      support_2: levels.support_2 ?? null,
+      resistance_2: levels.resistance_2 ?? null,
+      pivot_point: levels.pivot_point ?? null,
+    },
+    raw_payload: levels.pivot_point ? { pivot_point: levels.pivot_point, ...levels } : null,
+  };
+}
+
+function buildSignals(summary: any, technical: any): UISignal[] {
+  const signals: UISignal[] = [];
+  if (technical?.recommendation) {
+    const rec = technical.recommendation.toLowerCase();
+    signals.push({
+      label: "Trend",
+      value: technical.recommendation,
+      sentiment: rec === "bullish" || rec === "buy" ? "good" : rec === "bearish" || rec === "sell" ? "bad" : "neutral",
+    });
+  }
+  if (technical?.rating != null) {
+    signals.push({
+      label: "Tech Rating",
+      value: String(technical.rating),
+      sentiment: technical.rating >= 7 ? "good" : technical.rating <= 3 ? "bad" : "neutral",
+    });
+  }
+  if (summary?.market_regime) {
+    const regime = summary.market_regime.toLowerCase();
+    signals.push({
+      label: "Regime",
+      value: summary.market_regime.replace(/_/g, " "),
+      sentiment: regime.includes("risk_on") ? "good" : regime.includes("risk_off") ? "bad" : "neutral",
+    });
+  }
+  if (summary?.investment_grade) {
+    const grade = summary.investment_grade;
+    signals.push({
+      label: "Grade",
+      value: grade,
+      sentiment: grade <= "B" ? "good" : grade >= "D" ? "bad" : "warn",
+    });
+  }
+  return signals;
+}
+
+function transformAnalysisResponse(raw: any): AnalysisResponse {
+  // If already in frontend shape, return as-is
+  if (raw.status && raw.data) return raw as AnalysisResponse;
+
+  const view = raw.view ?? raw.data ?? {};
+  const summary = view.summary ?? {};
+
+  const uiView: UIView = {
+    symbol: raw.symbol ?? summary.symbol ?? "",
+    company_name: summary.company_name ?? raw.symbol ?? "",
+    sector: summary.sector ?? "",
+    industry: summary.industry ?? "",
+    timestamp: raw.cached_at ?? raw.timestamp ?? "",
+    summary: {
+      action: (summary.action ?? "").replace(/_/g, " "),
+      composite_score: summary.confidence_score ?? summary.composite_score ?? 0,
+      price: summary.current_price ?? summary.price ?? 0,
+      fair_value: summary.blended_fair_value ?? summary.target_price ?? summary.fair_value ?? null,
+      target_return_pct: summary.expected_return_pct ?? summary.target_return_pct ?? null,
+      valuation_basis: summary.valuation_basis ?? "",
+      data_quality: summary.quality_grade ?? summary.data_quality ?? "",
+      thesis: summary.thesis ?? "",
+      key_risks: summary.key_risks ?? [],
+      key_catalysts: summary.key_catalysts ?? [],
+    },
+    fundamental: transformFundamental(view.fundamental),
+    technical: transformTechnical(view.technical),
+    signals: view.signals ?? buildSignals(summary, view.technical),
+  };
+
+  return {
+    symbol: raw.symbol ?? "",
+    status: "success",
+    cached: raw.source !== "live",
+    timestamp: raw.cached_at ?? raw.timestamp ?? "",
+    data: uiView,
+  };
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+export async function getLatestAnalysis(symbol: string): Promise<AnalysisResponse> {
+  const raw = await fetchJSON<unknown>(`${BASE}/analysis/${encodeURIComponent(symbol)}/latest`);
+  return transformAnalysisResponse(raw);
+}
+
+export async function refreshAnalysis(
   symbol: string,
-  mode: string = "standard",
+  request: UIRefreshRequest = {},
 ): Promise<AnalysisResponse> {
-  return fetchJSON(`${BASE}/analysis/${encodeURIComponent(symbol)}/refresh`, {
+  const body: Record<string, unknown> = {
+    mode: request.mode ?? "comprehensive",
+    valuation_basis: request.valuation_basis ?? "ttm",
+    force_refresh: request.force_refresh ?? true,
+  };
+  if (request.valuation_basis === "forward") {
+    body.forward_horizon = request.forward_horizon ?? "1y";
+  }
+  const raw = await fetchJSON<unknown>(`${BASE}/analysis/${encodeURIComponent(symbol)}/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mode }),
+    body: JSON.stringify(body),
   });
+  return transformAnalysisResponse(raw);
 }
 
-export function getChart(symbol: string, days = 180): Promise<ChartPayload> {
-  return fetchJSON(`${BASE}/chart/${encodeURIComponent(symbol)}?days=${days}`);
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function transformChartResponse(raw: any): ChartPayload {
+  // If already in frontend row format, return as-is
+  if (raw.candles) return raw as ChartPayload;
+
+  const chart = raw.chart ?? raw;
+  const dates: string[] = chart.dates ?? [];
+  const ohlcv = chart.ohlcv ?? {};
+  const indicators = chart.indicators ?? {};
+
+  const candles = dates.map((date: string, i: number) => ({
+    date,
+    open: ohlcv.open?.[i] ?? 0,
+    high: ohlcv.high?.[i] ?? 0,
+    low: ohlcv.low?.[i] ?? 0,
+    close: ohlcv.close?.[i] ?? 0,
+  }));
+
+  const volume = dates.map((date: string, i: number) => ({
+    date,
+    volume: ohlcv.volume?.[i] ?? 0,
+    obv: indicators.obv?.[i] ?? 0,
+  }));
+
+  const macd = dates
+    .map((date: string, i: number) => ({
+      date,
+      macd: indicators.macd?.[i] ?? null,
+      signal: indicators.macd_signal?.[i] ?? null,
+      histogram: indicators.macd_hist?.[i] ?? null,
+    }))
+    .filter((m: { macd: number | null }) => m.macd != null);
+
+  const rsi = dates
+    .map((date: string, i: number) => ({
+      date,
+      rsi: indicators.rsi_14?.[i] ?? null,
+    }))
+    .filter((r: { rsi: number | null }) => r.rsi != null);
+
+  const overlays = dates.map((date: string, i: number) => ({
+    date,
+    sma_20: indicators.sma_20?.[i] ?? null,
+    sma_50: indicators.sma_50?.[i] ?? null,
+    sma_200: indicators.sma_200?.[i] ?? null,
+    ema_20: indicators.ema_20?.[i] ?? null,
+    ema_50: indicators.ema_50?.[i] ?? null,
+    bb_upper: indicators.bb_upper?.[i] ?? null,
+    bb_middle: indicators.bb_middle?.[i] ?? null,
+    bb_lower: indicators.bb_lower?.[i] ?? null,
+  }));
+
+  return {
+    symbol: chart.symbol ?? raw.symbol ?? "",
+    days: chart.days ?? dates.length,
+    candles,
+    volume,
+    indicators: { macd, rsi },
+    overlays,
+  };
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+export async function getChart(symbol: string, days = 180): Promise<ChartPayload> {
+  const raw = await fetchJSON<unknown>(`${BASE}/chart/${encodeURIComponent(symbol)}?days=${days}`);
+  return transformChartResponse(raw);
 }
 
-export function getRankings(params?: RankingsFilterParams): Promise<RankingsResponse> {
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function mapRankedSymbol(raw: any, index: number): RankedSymbol {
+  return {
+    rank: index + 1,
+    symbol: raw.symbol ?? "",
+    company_name: raw.company_name ?? raw.symbol ?? "",
+    sector: raw.sector ?? "",
+    composite_score: raw.confidence_score ?? raw.composite_score ?? 0,
+    action: (raw.action ?? "").replace(/_/g, " "),
+    target_return_pct: raw.expected_return_pct ?? raw.target_return_pct ?? null,
+    valuation_basis: raw.valuation_basis ?? "",
+  };
+}
+
+function transformRankingsResponse(raw: any): RankingsResponse {
+  const longs = (raw.overall?.longs ?? raw.longs ?? []).map(mapRankedSymbol);
+  const shorts = (raw.overall?.shorts ?? raw.shorts ?? []).map(mapRankedSymbol);
+  const sectors = raw.sectors ?? raw.sector_neutral ?? [];
+  return {
+    generated_at: raw.generated_at ?? "",
+    total_symbols: raw.universe?.eligible_symbols ?? raw.total_symbols ?? 0,
+    longs,
+    shorts,
+    sector_neutral: sectors.map((s: any) => ({
+      sector: s.sector ?? "",
+      longs: (s.longs ?? []).map(mapRankedSymbol),
+      shorts: (s.shorts ?? []).map(mapRankedSymbol),
+    })),
+    pairs: (raw.pairs ?? []).map((p: any) => ({
+      long: mapRankedSymbol(p.long, 0),
+      short: mapRankedSymbol(p.short, 0),
+      sector: p.sector ?? "",
+      spread: p.spread_pct ?? p.spread ?? 0,
+    })),
+  };
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+export async function getRankings(params?: RankingsFilterParams): Promise<RankingsResponse> {
   const qs = new URLSearchParams();
-  if (params?.min_score != null) qs.set("min_score", String(params.min_score));
-  if (params?.max_score != null) qs.set("max_score", String(params.max_score));
-  if (params?.top_n != null) qs.set("top_n", String(params.top_n));
-  if (params?.sectors?.length) qs.set("sectors", params.sectors.join(","));
+  if (params?.top_n != null) qs.set("limit", String(params.top_n));
+  if (params?.min_score != null) qs.set("min_quality", String(params.min_score));
   const query = qs.toString();
-  return fetchJSON(`${BASE}/rankings${query ? `?${query}` : ""}`);
+  const raw = await fetchJSON<unknown>(`${BASE}/rankings${query ? `?${query}` : ""}`);
+  return transformRankingsResponse(raw);
 }
 
 export function exportRankingsCsvUrl(): string {
-  return `${BASE}/rankings/export?format=csv`;
+  return `${BASE}/rankings/export.csv`;
 }
 
 export function getHealth(): Promise<HealthResponse> {

@@ -22,6 +22,9 @@ export const mockTechnical: UITechnical = {
   support_resistance: {
     support: 170.0,
     resistance: 190.0,
+    support_2: 160.0,
+    resistance_2: 200.0,
+    pivot_point: 180.0,
   },
   raw_payload: null,
 };
@@ -55,6 +58,10 @@ export const mockFundamental: UIFundamental = {
     eps_estimate: 6.75,
     guidance_period: "FY2025",
     source: "Company guidance",
+    revenue_low: 53_500_000_000,
+    revenue_high: 56_500_000_000,
+    revenue_mid: 55_000_000_000,
+    filing_date: "2025-01-28",
   },
   notes: ["Strong free cash flow generation", "Share buyback program active"],
   raw_payload: null,
@@ -120,6 +127,11 @@ export const mockChartPayload: ChartPayload = {
       { date: "2025-01-15", rsi: 55.3 },
     ],
   },
+  overlays: [
+    { date: "2025-01-13", sma_20: 178.5, sma_50: 172.3, sma_200: 165.1, ema_20: 179.0, ema_50: 173.0, bb_upper: 190.0, bb_middle: 178.5, bb_lower: 167.0 },
+    { date: "2025-01-14", sma_20: 179.0, sma_50: 172.5, sma_200: 165.2, ema_20: 180.0, ema_50: 173.5, bb_upper: 191.0, bb_middle: 179.0, bb_lower: 167.0 },
+    { date: "2025-01-15", sma_20: 179.5, sma_50: 172.8, sma_200: 165.3, ema_20: 180.5, ema_50: 174.0, bb_upper: 191.5, bb_middle: 179.5, bb_lower: 167.5 },
+  ],
 };
 
 export const mockRankingsResponse: RankingsResponse = {

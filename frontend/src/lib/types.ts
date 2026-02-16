@@ -17,6 +17,9 @@ export interface AnalysisResponse {
 
 export interface UIRefreshRequest {
   mode?: "quick" | "standard" | "comprehensive";
+  valuation_basis?: "ttm" | "forward";
+  forward_horizon?: "1q" | "2q" | "3q" | "1y";
+  force_refresh?: boolean;
 }
 
 export interface UIView {
@@ -64,6 +67,10 @@ export interface ForwardGuidance {
   eps_estimate: number | null;
   guidance_period: string;
   source: string;
+  revenue_low: number | null;
+  revenue_high: number | null;
+  revenue_mid: number | null;
+  filing_date: string | null;
 }
 
 export interface UITechnical {
@@ -86,6 +93,9 @@ export interface MovingAverages {
 export interface SupportResistance {
   support: number | null;
   resistance: number | null;
+  support_2: number | null;
+  resistance_2: number | null;
+  pivot_point: number | null;
 }
 
 export interface UISignal {
@@ -100,6 +110,7 @@ export interface ChartPayload {
   candles: Candle[];
   volume: VolumeBar[];
   indicators: ChartIndicators;
+  overlays: PriceOverlay[];
 }
 
 export interface Candle {
@@ -108,6 +119,18 @@ export interface Candle {
   high: number;
   low: number;
   close: number;
+}
+
+export interface PriceOverlay {
+  date: string;
+  sma_20: number | null;
+  sma_50: number | null;
+  sma_200: number | null;
+  ema_20: number | null;
+  ema_50: number | null;
+  bb_upper: number | null;
+  bb_middle: number | null;
+  bb_lower: number | null;
 }
 
 export interface VolumeBar {

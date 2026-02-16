@@ -20,6 +20,6 @@ describe("ChartPanel", () => {
 
   it("renders RSI card", () => {
     render(<ChartPanel chart={mockChartPayload} />);
-    expect(screen.getByText("RSI")).toBeInTheDocument();
+    expect(screen.getByText("RSI (14)")).toBeInTheDocument();
   });
 });
