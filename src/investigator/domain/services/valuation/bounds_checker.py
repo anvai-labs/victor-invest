@@ -238,14 +238,14 @@ class BoundsChecker:
                                 field=field_name,
                                 value=num_value,
                                 severity=ValidationSeverity.ERROR,
-                                message=f"{field}={num_value:.4f} outside bounds [{min_val}, {max_val}]",
+                                message=f"{field_name}={num_value:.4f} outside bounds [{min_val}, {max_val}]",
                                 suggested_action="Clamp to bounds or review data source",
                             )
                         )
 
                     # Check warning thresholds
-                    elif field in self.WARNING_THRESHOLDS:
-                        threshold, warning_msg = self.WARNING_THRESHOLDS[field]
+                    elif field_name in self.WARNING_THRESHOLDS:
+                        threshold, warning_msg = self.WARNING_THRESHOLDS[field_name]
                         if abs(num_value) > threshold:
                             severity = (
                                 ValidationSeverity.ERROR
@@ -254,7 +254,7 @@ class BoundsChecker:
                             )
                             issues.append(
                                 ValidationIssue(
-                                    field=field,
+                                    field=field_name,
                                     value=num_value,
                                     severity=severity,
                                     message=warning_msg,
@@ -265,10 +265,10 @@ class BoundsChecker:
                 except (TypeError, ValueError):
                     issues.append(
                         ValidationIssue(
-                            field=field,
+                            field=field_name,
                             value=value,
                             severity=ValidationSeverity.ERROR,
-                            message=f"{field} is not a valid number: {value}",
+                            message=f"{field_name} is not a valid number: {value}",
                             suggested_action="Provide numeric value",
                         )
                     )
