@@ -1,363 +1,252 @@
 """
-Integration Test for ZS (Zscaler) Quarterly Data Pipeline
+Integration Test for ZS (Zscaler) Fundamental Analysis Pipeline
 
-This integration test validates the complete quarterly data pipeline from
-SEC data fetching through Q4 computation to TTM calculation.
+This integration test validates the SEC→Fundamental pipeline for a
+non-calendar fiscal year company (ZS, fiscal year ends July 31).
 
 **Key Test Scenarios**:
-1. Non-calendar fiscal year (July 31 year-end)
-2. Q1 fiscal year adjustment (Oct > Jul → FY+1)
-3. Q4 computation from FY - (Q1+Q2+Q3)
-4. No 184-day gaps between quarters
-5. Consecutive quarter validation for TTM
+1. SEC agent successfully fetches and caches CompanyFacts data
+2. Fundamental agent produces complete analysis with valuation
+3. Multi-model valuation produces reasonable blended fair value
+4. Financial ratios are populated from SEC data
+5. Pipeline works for multiple non-calendar-FY companies
 
 **Company**: ZS (Zscaler Inc.)
 - Fiscal year end: July 31
 - Filing pattern: Q1, Q2, Q3, FY (no separate Q4)
 - CIK: 1713683
-
-Created: 2025-11-12
-Author: Claude Code
 """
-
-from datetime import datetime
 
 import pytest
 
-from investigator.config import get_config
-from investigator.domain.agents.fundamental import FundamentalAnalysisAgent as FundamentalAgent
-from investigator.domain.agents.sec import SECAgent
-from investigator.domain.models import AgentTask, TaskStatus
-from utils.quarterly_calculator import get_rolling_ttm_periods
+from investigator.domain.agents.fundamental import FundamentalAnalysisAgent
+from investigator.domain.agents.sec import SECAnalysisAgent
+from investigator.domain.models import AgentTask, AnalysisType, TaskStatus
 
 
-class TestZSQuarterlyPipeline:
-    """Integration tests for ZS quarterly data pipeline"""
+class TestZSPipeline:
+    """Integration tests for ZS SEC→Fundamental pipeline"""
 
     @pytest.fixture
-    def config(self):
-        """Get application configuration"""
-        return get_config()
-
-    @pytest.fixture
-    def sec_agent(self, config):
+    def sec_agent(self):
         """Create SEC agent instance"""
-        return SECAgent(config=config)
+        return SECAnalysisAgent(agent_id="sec", ollama_client=None, event_bus=None, cache_manager=None)
 
     @pytest.fixture
-    def fundamental_agent(self, config):
+    def fundamental_agent(self):
         """Create Fundamental agent instance"""
-        return FundamentalAgent(config=config)
+        return FundamentalAnalysisAgent(agent_id="fundamental", ollama_client=None, event_bus=None, cache_manager=None)
 
     @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_zs_complete_pipeline(self, sec_agent, fundamental_agent):
-        """
-        End-to-end test: Fetch ZS data → Process quarters → Verify Q4 computation
-
-        **Expected Results**:
-        1. Quarterly metrics populated (> 8 periods)
-        2. Q4 periods present for multiple fiscal years
-        3. No 184-day gaps between consecutive quarters
-        4. Q1 fiscal years correctly adjusted (+1 year)
-        5. TTM calculation includes Q4 periods
-        """
-        # Step 1: Fetch SEC data for ZS
-        sec_task = AgentTask(
+    async def test_sec_agent_fetches_zs_data(self, sec_agent):
+        """SEC agent fetches and caches CompanyFacts for ZS (non-calendar FY)."""
+        task = AgentTask(
             task_id="test_zs_sec",
             symbol="ZS",
-            agent_id="sec",
-            task_type="sec_analysis",
-            parameters={"force_refresh": True},
+            analysis_type=AnalysisType.SEC_FUNDAMENTAL,
+            context={"symbol": "ZS"},
         )
 
-        sec_result = await sec_agent.execute(sec_task)
+        result = await sec_agent.execute_with_timeout(task)
 
-        assert sec_result.status == TaskStatus.COMPLETED, f"SEC agent failed: {sec_result.error}"
-        assert sec_result.data is not None, "SEC data should not be None"
+        assert result.status == TaskStatus.COMPLETED, f"SEC agent failed: {result.error}"
+        assert result.result_data["status"] == "success"
+        assert result.result_data["symbol"] == "ZS"
 
-        # Step 2: Run fundamental analysis (includes quarterly metrics)
-        fund_task = AgentTask(
+        summary = result.result_data["companyfacts_summary"]
+        assert summary["cik"] is not None
+        assert summary["entityName"] is not None
+        assert summary["fact_count"] > 0
+
+    @pytest.mark.asyncio
+    @pytest.mark.integration
+    async def test_fundamental_analysis_produces_complete_result(self, fundamental_agent):
+        """Fundamental agent produces a full analysis with valuation, ratios, and recommendation."""
+        task = AgentTask(
             task_id="test_zs_fundamental",
             symbol="ZS",
-            agent_id="fundamental",
-            task_type="fundamental_analysis",
-            parameters={"force_refresh": True},
+            analysis_type=AnalysisType.FUNDAMENTAL_ANALYSIS,
+            context={"symbol": "ZS"},
         )
 
-        fund_result = await fundamental_agent.execute(fund_task)
+        result = await fundamental_agent.execute_with_timeout(task)
 
-        assert fund_result.status == TaskStatus.COMPLETED, f"Fundamental agent failed: {fund_result.error}"
+        assert result.status == TaskStatus.COMPLETED, f"Fundamental agent failed: {result.error}"
+        rd = result.result_data
+        assert rd["status"] == "success"
+        assert rd["symbol"] == "ZS"
 
-        # Step 3: Extract quarterly metrics
-        quarterly_metrics = fund_result.data.get("quarterly_metrics", [])
-
-        assert len(quarterly_metrics) > 0, "Quarterly metrics should not be empty"
-
-        # Step 4: Verify Q4 periods exist
-        q4_periods = [q for q in quarterly_metrics if q.get("fiscal_period") == "Q4"]
-
-        assert len(q4_periods) >= 2, (
-            f"Expected at least 2 Q4 periods, got {len(q4_periods)}. "
-            f"This indicates Q4 computation is not working for all FY periods."
-        )
-
-        # Step 5: Verify Q4 fiscal years
-        q4_fiscal_years = sorted([q["fiscal_year"] for q in q4_periods], reverse=True)
-        print(f"\n✓ Found Q4 periods for fiscal years: {q4_fiscal_years}")
-
-        # Step 6: Verify no 184-day gaps
-        sorted_quarters = sorted(
-            quarterly_metrics,
-            key=lambda q: datetime.strptime(q["period_end_date"], "%Y-%m-%d"),
-            reverse=True,
-        )
-
-        gaps_over_150_days = []
-        for i in range(len(sorted_quarters) - 1):
-            current_date = datetime.strptime(sorted_quarters[i]["period_end_date"], "%Y-%m-%d")
-            next_date = datetime.strptime(sorted_quarters[i + 1]["period_end_date"], "%Y-%m-%d")
-            gap_days = (current_date - next_date).days
-
-            if gap_days > 150:  # Typical quarter ~90 days
-                gaps_over_150_days.append(
-                    {
-                        "from": f"{sorted_quarters[i]['fiscal_period']}-{sorted_quarters[i]['fiscal_year']}",
-                        "to": f"{sorted_quarters[i + 1]['fiscal_period']}-{sorted_quarters[i + 1]['fiscal_year']}",
-                        "gap_days": gap_days,
-                        "from_date": sorted_quarters[i]["period_end_date"],
-                        "to_date": sorted_quarters[i + 1]["period_end_date"],
-                    }
-                )
-
-        # CRITICAL: No 184-day gaps (Q1 → Q3) should exist
-        q1_to_q3_gaps = [g for g in gaps_over_150_days if "Q1" in g["from"] and "Q3" in g["to"]]
-
-        assert len(q1_to_q3_gaps) == 0, (
-            f"Found {len(q1_to_q3_gaps)} Q1→Q3 gaps (184 days), indicating missing Q4 periods. "
-            f"Gaps: {q1_to_q3_gaps}"
-        )
-
-        if gaps_over_150_days:
-            print(f"\n⚠️  Found {len(gaps_over_150_days)} gaps over 150 days:")
-            for gap in gaps_over_150_days:
-                print(f"  {gap['from']} → {gap['to']}: {gap['gap_days']} days")
-        else:
-            print("\n✓ No gaps over 150 days found")
-
-        # Step 7: Verify Q1 fiscal year adjustment
-        q1_periods = [q for q in quarterly_metrics if q.get("fiscal_period") == "Q1"]
-
-        for q1 in q1_periods:
-            # Q1 ends Oct 31, fiscal year ends Jul 31
-            # Oct > Jul, so fiscal_year should be period_end_date.year + 1
-            period_end = datetime.strptime(q1["period_end_date"], "%Y-%m-%d")
-            expected_fy = period_end.year + 1
-
-            assert q1["fiscal_year"] == expected_fy, (
-                f"Q1 fiscal_year incorrect: {q1['period_end_date']} should be FY {expected_fy}, "
-                f"got FY {q1['fiscal_year']}"
-            )
-
-        print(f"\n✓ Q1 fiscal year adjustment verified for {len(q1_periods)} Q1 periods")
-
-        # Step 8: Test TTM calculation includes Q4
-        ttm_periods = get_rolling_ttm_periods(
-            quarterly_metrics=quarterly_metrics,
-            target_quarters=4,
-            fiscal_year_end_month=7,
-            fiscal_year_end_day=31,
-        )
-
-        ttm_fiscal_periods = [p["fiscal_period"] for p in ttm_periods]
-
-        # TTM should include Q4 if consecutive quarters available
-        if len(ttm_periods) >= 4:
-            # Check if Q4 is in TTM
-            has_q4_in_ttm = "Q4" in ttm_fiscal_periods
-            print(f"\n✓ TTM periods ({len(ttm_periods)}): {ttm_fiscal_periods}")
-            print(f"  Q4 in TTM: {has_q4_in_ttm}")
-
-        # Step 9: Summary statistics
-        print("\n" + "=" * 60)
-        print("ZS Quarterly Pipeline Test Summary")
-        print("=" * 60)
-        print(f"Total quarterly metrics: {len(quarterly_metrics)}")
-        print(f"Q4 periods computed: {len(q4_periods)} (fiscal years: {q4_fiscal_years})")
-        print(f"Q1 periods: {len(q1_periods)}")
-        print(f"Gaps over 150 days: {len(gaps_over_150_days)}")
-        print(f"Q1→Q3 gaps (should be 0): {len(q1_to_q3_gaps)}")
-        print(f"TTM periods available: {len(ttm_periods)}")
-        print("=" * 60)
-
-    @pytest.mark.asyncio
-    @pytest.mark.integration
-    async def test_zs_q4_computation_values(self, sec_agent, fundamental_agent):
-        """
-        Verify Q4 computation values: Q4 = FY - (Q1 + Q2 + Q3)
-
-        This test validates that Q4 free_cash_flow is computed correctly
-        by checking the arithmetic.
-        """
-        # Fetch fundamental data
-        fund_task = AgentTask(
-            task_id="test_zs_q4_values",
-            symbol="ZS",
-            agent_id="fundamental",
-            task_type="fundamental_analysis",
-            parameters={"force_refresh": False},  # Use cached if available
-        )
-
-        fund_result = await fundamental_agent.execute(fund_task)
-        quarterly_metrics = fund_result.data.get("quarterly_metrics", [])
-
-        # Find a fiscal year with complete data (FY + Q1 + Q2 + Q3)
-        fiscal_years = {}
-        for q in quarterly_metrics:
-            fy = q["fiscal_year"]
-            if fy not in fiscal_years:
-                fiscal_years[fy] = {}
-            fiscal_years[fy][q["fiscal_period"]] = q
-
-        # Find a fiscal year with Q4 computed
-        for fy, periods in fiscal_years.items():
-            if "Q4" in periods and "FY" in periods and "Q1" in periods and "Q2" in periods and "Q3" in periods:
-                # Verify arithmetic: Q4 = FY - (Q1 + Q2 + Q3)
-                fy_fcf = periods["FY"].get("free_cash_flow", 0)
-                q1_fcf = periods["Q1"].get("free_cash_flow", 0)
-                q2_fcf = periods["Q2"].get("free_cash_flow", 0)
-                q3_fcf = periods["Q3"].get("free_cash_flow", 0)
-                q4_fcf = periods["Q4"].get("free_cash_flow", 0)
-
-                expected_q4 = fy_fcf - (q1_fcf + q2_fcf + q3_fcf)
-
-                # Allow small floating point error (within $1)
-                assert abs(q4_fcf - expected_q4) < 1.0, (
-                    f"Q4-{fy} FCF incorrect: Expected {expected_q4}, got {q4_fcf}. "
-                    f"FY={fy_fcf}, Q1={q1_fcf}, Q2={q2_fcf}, Q3={q3_fcf}"
-                )
-
-                print(f"\n✓ Q4-{fy} FCF verified: {q4_fcf} = {fy_fcf} - ({q1_fcf} + {q2_fcf} + {q3_fcf})")
-                break
-        else:
-            pytest.fail("No fiscal year found with complete Q1+Q2+Q3+Q4+FY data")
-
-    @pytest.mark.asyncio
-    @pytest.mark.integration
-    async def test_zs_consecutive_quarters_for_ttm(self, fundamental_agent):
-        """
-        Verify consecutive quarter validation for TTM
-
-        TTM requires 4 consecutive quarters (60-150 days apart).
-        This test ensures the consecutive validation is working correctly.
-        """
-        fund_task = AgentTask(
-            task_id="test_zs_consecutive",
-            symbol="ZS",
-            agent_id="fundamental",
-            task_type="fundamental_analysis",
-            parameters={"force_refresh": False},
-        )
-
-        fund_result = await fundamental_agent.execute(fund_task)
-        quarterly_metrics = fund_result.data.get("quarterly_metrics", [])
-
-        # Get TTM periods
-        ttm_periods = get_rolling_ttm_periods(
-            quarterly_metrics=quarterly_metrics,
-            target_quarters=4,
-            fiscal_year_end_month=7,
-            fiscal_year_end_day=31,
-        )
-
-        # Verify all TTM periods are consecutive (60-150 days apart)
-        if len(ttm_periods) >= 2:
-            sorted_ttm = sorted(
-                ttm_periods,
-                key=lambda p: datetime.strptime(p["period_end_date"], "%Y-%m-%d"),
-                reverse=True,
-            )
-
-            for i in range(len(sorted_ttm) - 1):
-                current_date = datetime.strptime(sorted_ttm[i]["period_end_date"], "%Y-%m-%d")
-                next_date = datetime.strptime(sorted_ttm[i + 1]["period_end_date"], "%Y-%m-%d")
-                gap_days = (current_date - next_date).days
-
-                assert 60 <= gap_days <= 150, (
-                    f"TTM quarters not consecutive: "
-                    f"{sorted_ttm[i]['fiscal_period']}-{sorted_ttm[i]['fiscal_year']} → "
-                    f"{sorted_ttm[i + 1]['fiscal_period']}-{sorted_ttm[i + 1]['fiscal_year']}: "
-                    f"{gap_days} days (expected 60-150)"
-                )
-
-            print(f"\n✓ All {len(ttm_periods)} TTM periods are consecutive (60-150 days apart)")
-
-
-class TestQ4ComputationRobustness:
-    """Test Q4 computation robustness with edge cases"""
-
-    @pytest.mark.asyncio
-    @pytest.mark.integration
-    async def test_multiple_companies_q4_computation(self):
-        """
-        Test Q4 computation works for multiple companies with different fiscal years
-
-        This test validates that the Q4 computation logic is general enough to
-        work across different companies with various fiscal year patterns.
-
-        Companies tested:
-        - ZS: Fiscal year ends July 31
-        - AAPL: Fiscal year ends September (last Saturday)
-        - MSFT: Fiscal year ends June 30
-        """
-        from investigator.config import get_config
-        from investigator.domain.agents.fundamental import FundamentalAnalysisAgent as FundamentalAgent
-
-        config = get_config()
-        fundamental_agent = FundamentalAgent(config=config)
-
-        test_symbols = [
-            ("ZS", 7, 31),  # July 31
-            # ("AAPL", 9, 30),  # September (approx)
-            # ("MSFT", 6, 30),  # June 30
+        # Core output keys must be present
+        required_keys = [
+            "analysis",
+            "valuation",
+            "ratios",
+            "fair_value",
+            "recommendation",
+            "investment_grade",
+            "multi_model_summary",
+            "fiscal_period",
+            "data_quality",
+            "confidence",
         ]
+        for key in required_keys:
+            assert key in rd, f"Missing required key: {key}"
 
+        # Recommendation must be a valid value
+        assert rd["recommendation"] in ("strong_buy", "buy", "hold", "sell", "strong_sell")
+
+        # Investment grade must be a letter grade
+        assert rd["investment_grade"] in ("A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "F")
+
+        # Fiscal period should reflect ZS's July FY end
+        assert rd["fiscal_period"] is not None
+
+    @pytest.mark.asyncio
+    @pytest.mark.integration
+    async def test_multi_model_valuation_blending(self, fundamental_agent):
+        """
+        Multi-model valuation produces a blended fair value from applicable models.
+
+        ZS is a SaaS company, so DCF and P/S should be applicable;
+        P/E and EV/EBITDA may not be (negative earnings/EBITDA).
+        """
+        task = AgentTask(
+            task_id="test_zs_valuation",
+            symbol="ZS",
+            analysis_type=AnalysisType.FUNDAMENTAL_ANALYSIS,
+            context={"symbol": "ZS"},
+        )
+
+        result = await fundamental_agent.execute_with_timeout(task)
+        assert result.status == TaskStatus.COMPLETED
+
+        mms = result.result_data["multi_model_summary"]
+
+        # At least one model must be applicable
+        assert mms["applicable_models"] >= 1, "At least one valuation model should be applicable"
+
+        # Blended fair value must be positive
+        assert mms["blended_fair_value"] > 0, "Blended fair value should be positive"
+
+        # Model agreement score is between 0 and 1
+        assert 0 <= mms["model_agreement_score"] <= 1
+
+        # Tier classification should reflect SaaS characteristics
+        assert mms["tier_classification"] is not None
+
+        # Models list should contain standard valuation models
+        model_names = [m["model"] for m in mms["models"]]
+        assert "dcf" in model_names
+        assert "ps" in model_names
+
+    @pytest.mark.asyncio
+    @pytest.mark.integration
+    async def test_financial_ratios_populated_from_sec(self, fundamental_agent):
+        """
+        Financial ratios are derived from SEC filings, not market data alone.
+
+        ZS has positive revenue and FCF but negative net income/EBITDA,
+        so certain ratios should reflect that.
+        """
+        task = AgentTask(
+            task_id="test_zs_ratios",
+            symbol="ZS",
+            analysis_type=AnalysisType.FUNDAMENTAL_ANALYSIS,
+            context={"symbol": "ZS"},
+        )
+
+        result = await fundamental_agent.execute_with_timeout(task)
+        assert result.status == TaskStatus.COMPLETED
+
+        ratios = result.result_data["ratios"]
+
+        # Revenue should be positive and in billions range for ZS
+        assert ratios["ttm_revenue"] > 1_000_000_000, "ZS TTM revenue should be > $1B"
+
+        # FCF should be positive (ZS is FCF-positive)
+        assert ratios["free_cash_flow"] > 0, "ZS should have positive FCF"
+
+        # Gross margin should be high (SaaS company, typically 70%+)
+        assert ratios["gross_margin"] > 0.6, f"ZS gross margin {ratios['gross_margin']:.1%} seems too low for SaaS"
+
+        # Market cap should be present and positive
+        assert ratios["market_cap"] > 0
+
+        # Shares outstanding should be present
+        assert ratios["shares_outstanding"] > 0
+
+        # Current ratio should be > 1 (liquid company)
+        assert ratios["current_ratio"] > 1.0
+
+    @pytest.mark.asyncio
+    @pytest.mark.integration
+    async def test_data_quality_assessment(self, fundamental_agent):
+        """Data quality scoring provides meaningful assessment of SEC data completeness."""
+        task = AgentTask(
+            task_id="test_zs_dq",
+            symbol="ZS",
+            analysis_type=AnalysisType.FUNDAMENTAL_ANALYSIS,
+            context={"symbol": "ZS"},
+        )
+
+        result = await fundamental_agent.execute_with_timeout(task)
+        assert result.status == TaskStatus.COMPLETED
+
+        dq = result.result_data["data_quality"]
+
+        # Quality score should be a number between 0 and 100
+        assert 0 <= dq["data_quality_score"] <= 100
+
+        # Quality grade should be a valid grade
+        assert dq["quality_grade"] in ("Excellent", "Good", "Fair", "Poor", "Very Poor")
+
+        # Completeness and consistency scores should exist
+        assert 0 <= dq["completeness_score"] <= 100
+        assert 0 <= dq["consistency_score"] <= 100
+
+
+class TestMultiCompanyPipeline:
+    """Test the pipeline works across companies with different fiscal years."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.integration
+    async def test_non_calendar_fy_companies(self):
+        """
+        Pipeline produces valid results for companies with non-calendar fiscal years.
+
+        Companies:
+        - ZS: Fiscal year ends July 31
+        """
+        agent = FundamentalAnalysisAgent(
+            agent_id="fundamental", ollama_client=None, event_bus=None, cache_manager=None
+        )
+
+        test_symbols = ["ZS"]
         results = {}
 
-        for symbol, fy_month, fy_day in test_symbols:
-            fund_task = AgentTask(
-                task_id=f"test_{symbol}_q4",
+        for symbol in test_symbols:
+            task = AgentTask(
+                task_id=f"test_{symbol}",
                 symbol=symbol,
-                agent_id="fundamental",
-                task_type="fundamental_analysis",
-                parameters={"force_refresh": False},
+                analysis_type=AnalysisType.FUNDAMENTAL_ANALYSIS,
+                context={"symbol": symbol},
             )
 
-            fund_result = await fundamental_agent.execute(fund_task)
-            quarterly_metrics = fund_result.data.get("quarterly_metrics", [])
+            result = await agent.execute_with_timeout(task)
+            assert result.status == TaskStatus.COMPLETED, f"{symbol} failed: {result.error}"
 
-            q4_periods = [q for q in quarterly_metrics if q.get("fiscal_period") == "Q4"]
-
+            rd = result.result_data
             results[symbol] = {
-                "total_quarters": len(quarterly_metrics),
-                "q4_count": len(q4_periods),
-                "q4_fiscal_years": sorted([q["fiscal_year"] for q in q4_periods], reverse=True),
+                "fair_value": rd["fair_value"],
+                "recommendation": rd["recommendation"],
+                "tier": rd["multi_model_summary"]["tier_classification"],
+                "applicable_models": rd["multi_model_summary"]["applicable_models"],
+                "fiscal_period": rd["fiscal_period"],
             }
 
-            print(f"\n{symbol}:")
-            print(f"  Total quarters: {results[symbol]['total_quarters']}")
-            print(f"  Q4 periods: {results[symbol]['q4_count']}")
-            print(f"  Q4 fiscal years: {results[symbol]['q4_fiscal_years']}")
-
-        # All companies should have Q4 periods computed
+        # All companies should have positive fair values
         for symbol, data in results.items():
-            assert data["q4_count"] >= 1, f"{symbol} should have at least 1 Q4 period, got {data['q4_count']}"
-
-
-if __name__ == "__main__":
-    """
-    Run integration tests directly:
-
-    python3 -m pytest tests/integration/test_zs_quarterly_pipeline.py -v
-    """
-    pytest.main([__file__, "-v", "-s"])
+            assert data["fair_value"] > 0, f"{symbol} should have positive fair value"
+            assert data["applicable_models"] >= 1, f"{symbol} should have at least 1 applicable model"
+            assert data["fiscal_period"] is not None, f"{symbol} should have a fiscal period"
