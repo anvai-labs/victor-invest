@@ -100,9 +100,9 @@ Parameters:
                    will use get_config() on first use.
         """
         super().__init__(config)
-        self._sec_client = None
-        self._xbrl_parser = None
-        self._facts_extractor = None
+        self._sec_client: Optional[Any] = None
+        self._xbrl_parser: Optional[Any] = None
+        self._facts_extractor: Optional[Any] = None
 
     async def initialize(self) -> None:
         """Initialize SEC infrastructure components."""
@@ -203,6 +203,8 @@ Parameters:
             ToolResult with filing content and metadata
         """
         try:
+            if self._sec_client is None:
+                return ToolResult.create_failure("SEC client not initialized")
             filing_data = await self._sec_client.get_filing_by_symbol(
                 symbol=symbol, form_type=form_type, period=period
             )
@@ -248,6 +250,9 @@ Parameters:
             ToolResult with company facts data
         """
         try:
+            if self._facts_extractor is None:
+                return ToolResult.create_failure("SEC facts extractor not initialized")
+
             # Run synchronous method in thread pool
             loop = asyncio.get_event_loop()
             facts_data = await loop.run_in_executor(
@@ -294,6 +299,8 @@ Parameters:
             ToolResult with list of filing metadata
         """
         try:
+            if self._sec_client is None:
+                return ToolResult.create_failure("SEC client not initialized")
             filings = await self._sec_client.search_filings(
                 symbol=symbol, form_type=form_type, limit=limit
             )
@@ -328,6 +335,9 @@ Parameters:
             ToolResult with extracted financial metrics
         """
         try:
+            if self._facts_extractor is None:
+                return ToolResult.create_failure("SEC facts extractor not initialized")
+
             # Run synchronous method in thread pool
             loop = asyncio.get_event_loop()
             metrics = await loop.run_in_executor(
@@ -478,7 +488,8 @@ Parameters:
             return None
 
         combined_ratio = ((claims + expenses) / premiums) * 100
-        return round(combined_ratio, 2)
+        result: float | None = round(combined_ratio, 2)
+        return result
 
     def _calculate_backlog_ratio(self, metrics: Dict) -> Optional[float]:
         """Calculate backlog-to-revenue ratio for defense contractors.
@@ -497,7 +508,8 @@ Parameters:
         if not backlog or not revenue or revenue <= 0:
             return None
 
-        return round(backlog / revenue, 2)
+        result: float | None = round(backlog / revenue, 2)
+        return result
 
     async def _parse_xbrl(self, xbrl_content: str) -> ToolResult:
         """Parse XBRL content from a filing.
@@ -511,6 +523,9 @@ Parameters:
         try:
             if not xbrl_content:
                 return ToolResult.create_failure("No XBRL content provided")
+
+            if self._xbrl_parser is None:
+                return ToolResult.create_failure("XBRL parser not initialized")
 
             parsed_data = await self._xbrl_parser.parse_filing(xbrl_content)
 

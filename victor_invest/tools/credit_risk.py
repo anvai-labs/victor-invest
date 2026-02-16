@@ -88,8 +88,8 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
             config: Optional investigator config object.
         """
         super().__init__(config)
-        self._service = None
-        self._sec_tool = None
+        self._service: Optional[Any] = None
+        self._sec_tool: Optional[Any] = None
 
     async def initialize(self) -> None:
         """Initialize credit risk service and dependencies."""
@@ -140,6 +140,8 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
             action = action.lower().strip()
 
             # Get SEC financial data
+            if self._sec_tool is None:
+                return ToolResult.create_failure("SEC filing tool not initialized")
             sec_result = await self._sec_tool.execute(
                 symbol=symbol, action="extract_metrics"
             )
@@ -227,6 +229,8 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
 
     async def _calculate_all(self, fin_data) -> ToolResult:
         """Calculate all credit risk scores."""
+        if self._service is None:
+            return ToolResult.create_failure("Credit risk service not available")
         loop = asyncio.get_event_loop()
         assessment = await loop.run_in_executor(
             None, self._service.calculate_all, fin_data
@@ -242,6 +246,8 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
 
     async def _calculate_altman(self, fin_data) -> ToolResult:
         """Calculate Altman Z-Score."""
+        if self._service is None:
+            return ToolResult.create_failure("Credit risk service not available")
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(
             None, self._service.calculate_altman, fin_data
@@ -258,6 +264,8 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
 
     async def _calculate_beneish(self, fin_data) -> ToolResult:
         """Calculate Beneish M-Score."""
+        if self._service is None:
+            return ToolResult.create_failure("Credit risk service not available")
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(
             None, self._service.calculate_beneish, fin_data
@@ -274,6 +282,8 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
 
     async def _calculate_piotroski(self, fin_data) -> ToolResult:
         """Calculate Piotroski F-Score."""
+        if self._service is None:
+            return ToolResult.create_failure("Credit risk service not available")
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(
             None, self._service.calculate_piotroski, fin_data
@@ -291,6 +301,8 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
 
     async def _calculate_composite(self, fin_data) -> ToolResult:
         """Calculate composite distress assessment."""
+        if self._service is None:
+            return ToolResult.create_failure("Credit risk service not available")
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(
             None, self._service.calculate_composite, fin_data

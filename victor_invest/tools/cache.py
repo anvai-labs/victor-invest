@@ -124,8 +124,8 @@ Returns cache data, operation status, or statistics.
             config: Optional investigator config object
         """
         super().__init__(config)
-        self._cache_manager = None
-        self._cache_type_enum = None
+        self._cache_manager: Optional[Any] = None
+        self._cache_type_enum: Optional[Any] = None
 
     async def initialize(self) -> None:
         """Initialize cache infrastructure."""
@@ -216,17 +216,17 @@ Returns cache data, operation status, or statistics.
             action = action.lower().strip()
 
             if action == "get":
-                return await self._cache_get(cache_type, key)
+                return await self._cache_get(cache_type, key)  # type: ignore[arg-type]
             elif action == "set":
-                return await self._cache_set(cache_type, key, value)
+                return await self._cache_set(cache_type, key, value)  # type: ignore[arg-type]
             elif action == "exists":
-                return await self._cache_exists(cache_type, key)
+                return await self._cache_exists(cache_type, key)  # type: ignore[arg-type]
             elif action == "delete":
-                return await self._cache_delete(cache_type, key)
+                return await self._cache_delete(cache_type, key)  # type: ignore[arg-type]
             elif action == "delete_by_symbol":
-                return await self._delete_by_symbol(symbol)
+                return await self._delete_by_symbol(symbol)  # type: ignore[arg-type]
             elif action == "clear_type":
-                return await self._clear_type(cache_type)
+                return await self._clear_type(cache_type)  # type: ignore[arg-type]
             elif action == "get_stats":
                 return await self._get_stats()
             elif action == "get_recent_ops":
@@ -235,11 +235,11 @@ Returns cache data, operation status, or statistics.
                 )
                 return await self._get_recent_ops(cache_type_obj)
             elif action == "validate":
-                return await self._validate_entry(cache_type, key)
+                return await self._validate_entry(cache_type, key)  # type: ignore[arg-type]
             elif action == "invalidate_sec":
                 filing_date = kwargs.get("filing_date")
                 dry_run = kwargs.get("dry_run", True)
-                return await self._invalidate_sec(symbol, filing_date, dry_run)
+                return await self._invalidate_sec(symbol, filing_date, dry_run)  # type: ignore[arg-type]
             elif action == "ping":
                 return await self._ping()
             else:
@@ -273,6 +273,9 @@ Returns cache data, operation status, or statistics.
 
             cache_type_obj = self._get_cache_type(cache_type)
 
+            if self._cache_manager is None:
+                return ToolResult.create_failure("Cache manager not initialized")
+
             # Use async method for non-blocking I/O
             data = await self._cache_manager.get_async(cache_type_obj, key)
 
@@ -304,7 +307,7 @@ Returns cache data, operation status, or statistics.
             return ToolResult.create_failure(f"Cache get failed: {str(e)}")
 
     async def _cache_set(
-        self, cache_type: str, key: Union[Dict, Tuple], value: Dict[str, Any]
+        self, cache_type: str, key: Union[Dict, Tuple], value: Optional[Dict[str, Any]]
     ) -> ToolResult:
         """Set data in cache.
 
@@ -325,6 +328,9 @@ Returns cache data, operation status, or statistics.
                 return ToolResult.create_failure("value is required")
 
             cache_type_obj = self._get_cache_type(cache_type)
+
+            if self._cache_manager is None:
+                return ToolResult.create_failure("Cache manager not initialized")
 
             # Create standardized metadata
             metadata = self._cache_manager.create_cache_metadata(cache_type_obj, key)
@@ -374,6 +380,9 @@ Returns cache data, operation status, or statistics.
 
             cache_type_obj = self._get_cache_type(cache_type)
 
+            if self._cache_manager is None:
+                return ToolResult.create_failure("Cache manager not initialized")
+
             loop = asyncio.get_event_loop()
             exists = await loop.run_in_executor(
                 None, self._cache_manager.exists, cache_type_obj, key
@@ -413,6 +422,9 @@ Returns cache data, operation status, or statistics.
 
             cache_type_obj = self._get_cache_type(cache_type)
 
+            if self._cache_manager is None:
+                return ToolResult.create_failure("Cache manager not initialized")
+
             loop = asyncio.get_event_loop()
             deleted = await loop.run_in_executor(
                 None, self._cache_manager.delete, cache_type_obj, key
@@ -446,6 +458,9 @@ Returns cache data, operation status, or statistics.
                 return ToolResult.create_failure("symbol is required")
 
             symbol = symbol.upper().strip()
+
+            if self._cache_manager is None:
+                return ToolResult.create_failure("Cache manager not initialized")
 
             loop = asyncio.get_event_loop()
             results = await loop.run_in_executor(
@@ -481,6 +496,9 @@ Returns cache data, operation status, or statistics.
 
             cache_type_obj = self._get_cache_type(cache_type)
 
+            if self._cache_manager is None:
+                return ToolResult.create_failure("Cache manager not initialized")
+
             loop = asyncio.get_event_loop()
             success = await loop.run_in_executor(
                 None, self._cache_manager.clear_cache_type, cache_type_obj
@@ -506,6 +524,9 @@ Returns cache data, operation status, or statistics.
             ToolResult with cache statistics
         """
         try:
+            if self._cache_manager is None:
+                return ToolResult.create_failure("Cache manager not initialized")
+
             loop = asyncio.get_event_loop()
 
             # Get both stats methods
@@ -538,6 +559,9 @@ Returns cache data, operation status, or statistics.
             ToolResult with recent operations
         """
         try:
+            if self._cache_manager is None:
+                return ToolResult.create_failure("Cache manager not initialized")
+
             loop = asyncio.get_event_loop()
             recent_ops = await loop.run_in_executor(
                 None, self._cache_manager.get_recent_operations, cache_type, 20
@@ -568,6 +592,9 @@ Returns cache data, operation status, or statistics.
                 return ToolResult.create_failure("key is required")
 
             cache_type_obj = self._get_cache_type(cache_type)
+
+            if self._cache_manager is None:
+                return ToolResult.create_failure("Cache manager not initialized")
 
             # Get the entry first
             data = await self._cache_manager.get_async(cache_type_obj, key)
@@ -628,6 +655,9 @@ Returns cache data, operation status, or statistics.
 
             symbol = symbol.upper().strip()
 
+            if self._cache_manager is None:
+                return ToolResult.create_failure("Cache manager not initialized")
+
             loop = asyncio.get_event_loop()
             result = await loop.run_in_executor(
                 None,
@@ -652,6 +682,9 @@ Returns cache data, operation status, or statistics.
             ToolResult with health status
         """
         try:
+            if self._cache_manager is None:
+                return ToolResult.create_failure("Cache manager not initialized")
+
             is_healthy = await self._cache_manager.ping()
 
             return ToolResult.create_success(

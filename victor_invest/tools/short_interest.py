@@ -95,8 +95,8 @@ Investment Signals:
             config: Optional investigator config object.
         """
         super().__init__(config)
-        self._fetcher = None
-        self._data_source_manager = None
+        self._fetcher: Optional[Any] = None
+        self._data_source_manager: Optional[Any] = None
 
     async def initialize(self) -> None:
         """Initialize short interest fetcher and DataSourceManager."""
@@ -232,6 +232,10 @@ Investment Signals:
 
         # Fall back to direct fetcher if DataSourceManager didn't provide data
         if not data:
+            if self._fetcher is None:
+                return ToolResult.create_failure(
+                    "Short interest fetcher not initialized"
+                )
             data = await self._fetcher.get_short_interest(symbol)
             source = "finra"
 
@@ -264,6 +268,8 @@ Investment Signals:
 
     async def _get_history(self, symbol: str, periods: int) -> ToolResult:
         """Get historical short interest data."""
+        if self._fetcher is None:
+            return ToolResult.create_failure("Short interest fetcher not initialized")
         history = await self._fetcher.get_short_interest_history(symbol, periods)
 
         if not history:
@@ -294,6 +300,8 @@ Investment Signals:
 
     async def _get_volume(self, symbol: str, days: int) -> ToolResult:
         """Get daily short volume data."""
+        if self._fetcher is None:
+            return ToolResult.create_failure("Short interest fetcher not initialized")
         volume = await self._fetcher.get_short_volume(symbol, days)
 
         if not volume:
@@ -328,6 +336,8 @@ Investment Signals:
 
     async def _get_squeeze_risk(self, symbol: str) -> ToolResult:
         """Calculate short squeeze risk assessment."""
+        if self._fetcher is None:
+            return ToolResult.create_failure("Short interest fetcher not initialized")
         risk = await self._fetcher.calculate_squeeze_risk(symbol)
 
         return ToolResult.create_success(
@@ -340,6 +350,8 @@ Investment Signals:
 
     async def _get_most_shorted(self, limit: int) -> ToolResult:
         """Get list of most shorted stocks."""
+        if self._fetcher is None:
+            return ToolResult.create_failure("Short interest fetcher not initialized")
         stocks = await self._fetcher.get_most_shorted(limit)
 
         if not stocks:
@@ -413,10 +425,11 @@ Investment Signals:
         Returns:
             Signal dict with level and interpretation
         """
-        signal = {
+        factors: list[str] = []
+        signal: Dict[str, Any] = {
             "level": "neutral",
             "interpretation": "",
-            "factors": [],
+            "factors": factors,
         }
 
         # Check short percent of float

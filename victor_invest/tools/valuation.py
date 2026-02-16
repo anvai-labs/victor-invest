@@ -147,15 +147,15 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             config: Optional investigator config object
         """
         super().__init__(config)
-        self._db_manager = None
+        self._db_manager: Optional[Any] = None
         # Shared services will be initialized lazily
-        self._shares_service = None
-        self._price_service = None
-        self._metadata_service = None
-        self._validation_service = None
+        self._shares_service: Optional[Any] = None
+        self._price_service: Optional[Any] = None
+        self._metadata_service: Optional[Any] = None
+        self._validation_service: Optional[Any] = None
         # Shared valuation config services
-        self._valuation_config_service = None
-        self._sector_multiples_service = None
+        self._valuation_config_service: Optional[Any] = None
+        self._sector_multiples_service: Optional[Any] = None
 
     async def initialize(self) -> None:
         """Initialize valuation infrastructure components."""
@@ -347,26 +347,27 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             Dict with quarterly_metrics, multi_year_data, and success flag
         """
         try:
-            quarterly_metrics = []
-            multi_year_data = []
+            quarterly_metrics: list[Any] = []
+            multi_year_data: list[Any] = []
 
             # Try database manager first
             if self._db_manager:
+                db_manager = self._db_manager
                 loop = asyncio.get_event_loop()
                 try:
                     quarterly_metrics = await loop.run_in_executor(
                         None,
                         lambda: (
-                            self._db_manager.get_quarterly_metrics(symbol)
-                            if hasattr(self._db_manager, "get_quarterly_metrics")
+                            db_manager.get_quarterly_metrics(symbol)
+                            if hasattr(db_manager, "get_quarterly_metrics")
                             else []
                         ),
                     )
                     multi_year_data = await loop.run_in_executor(
                         None,
                         lambda: (
-                            self._db_manager.get_multi_year_data(symbol)
-                            if hasattr(self._db_manager, "get_multi_year_data")
+                            db_manager.get_multi_year_data(symbol)
+                            if hasattr(db_manager, "get_multi_year_data")
                             else []
                         ),
                     )
@@ -419,7 +420,8 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
         """
         try:
             if self._price_service:
-                return self._price_service.get_current_price(symbol)
+                result: float | None = self._price_service.get_current_price(symbol)
+                return result
 
             # Fallback to legacy method if shared service not available
             from investigator.infrastructure.database.market_data import (
@@ -428,7 +430,8 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
             fetcher = get_market_data_fetcher(self.config)
             info = fetcher.get_stock_info(symbol)
-            return info.get("current_price")
+            price: float | None = info.get("current_price")
+            return price
         except Exception as e:
             logger.warning(f"Could not get current price for {symbol}: {e}")
             return None
@@ -577,7 +580,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
         1. Direct quarterly metrics: [{"net_income": x, "revenue": y, ...}]
         2. SEC filing tool format: [{"income_statement": {...}, "balance_sheet": {...}}]
         """
-        result = {
+        result: Dict[str, Optional[float]] = {
             "ttm_eps": None,
             "ttm_revenue": None,
             "ttm_ebitda": None,
@@ -657,7 +660,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
         return result
 
     def _get_sector_multiples(
-        self, sector: str, industry: str = None
+        self, sector: str, industry: str | None = None
     ) -> Dict[str, float]:
         """Get sector median multiples with industry override.
 
@@ -674,7 +677,10 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
         """
         # Use shared config service if available (single source of truth)
         if self._sector_multiples_service:
-            return self._sector_multiples_service.get_multiples(sector, industry)
+            result: dict[str, float] = self._sector_multiples_service.get_multiples(
+                sector, industry
+            )
+            return result
 
         # Fallback to hardcoded values if service not initialized
         logger.debug(
@@ -711,8 +717,8 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             ToolResult with all model results
         """
         try:
-            results = {}
-            warnings = []
+            results: Dict[str, Any] = {}
+            warnings: list[str] = []
 
             # Run DCF
             dcf_result = await self._run_dcf(

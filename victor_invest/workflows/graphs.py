@@ -117,7 +117,8 @@ def _ensure_state(state_input) -> AnalysisWorkflowState:
     """Convert dict to AnalysisWorkflowState if needed."""
     if isinstance(state_input, dict):
         return AnalysisWorkflowState.from_dict(state_input)
-    return state_input
+    result: AnalysisWorkflowState = state_input
+    return result
 
 
 def _state_to_dict(state: AnalysisWorkflowState) -> dict:
@@ -639,7 +640,8 @@ Respond ONLY with the JSON object, no other text."""
         end = response_text.rfind("}") + 1
         if start >= 0 and end > start:
             json_str = response_text[start:end]
-            return json.loads(json_str)
+            result: dict[Any, Any] | None = json.loads(json_str)
+            return result
 
         return None
 
@@ -1085,11 +1087,11 @@ def build_graph_for_mode(mode: AnalysisMode) -> StateGraph:
 # =============================================================================
 
 
-async def run_analysis(
+async def run_stategraph_analysis(
     symbol: str,
     mode: AnalysisMode = AnalysisMode.STANDARD,
 ) -> AnalysisWorkflowState:
-    """Convenience function to run a complete analysis workflow.
+    """Run analysis using the legacy StateGraph path.
 
     Args:
         symbol: Stock ticker symbol to analyze.
@@ -1099,8 +1101,8 @@ async def run_analysis(
         Final AnalysisWorkflowState with results.
 
     Example:
-        result = await run_analysis("AAPL", AnalysisMode.COMPREHENSIVE)
-        print(result.synthesis)
+        result = await run_stategraph_analysis("AAPL", AnalysisMode.COMPREHENSIVE)
+        print(result.recommendation)
     """
     # Create initial state
     state = AnalysisWorkflowState(symbol=symbol, mode=mode)
@@ -1128,7 +1130,7 @@ async def run_analysis(
     elif isinstance(result_data, AnalysisWorkflowState):
         return result_data
     else:
-        # Fallback - return the original state with any updates
+        # Fallback: return original state.
         return state
 
 
@@ -1177,6 +1179,7 @@ async def run_yaml_analysis(
         AnalysisMode.QUICK: "quick",
         AnalysisMode.STANDARD: "standard",
         AnalysisMode.COMPREHENSIVE: "comprehensive",
+        AnalysisMode.CUSTOM: "comprehensive",
     }
     workflow_name = workflow_map.get(mode, "standard")
     symbol_normalized = symbol.upper()
@@ -1215,6 +1218,29 @@ async def run_yaml_analysis(
     )
 
 
+async def run_analysis(
+    symbol: str,
+    mode: AnalysisMode = AnalysisMode.STANDARD,
+) -> AnalysisWorkflowState:
+    """Run analysis with framework-first YAML execution.
+
+    Primary path:
+    - YAML workflow execution through Victor's WorkflowExecutor + handlers.
+
+    Fallback path:
+    - StateGraph execution when YAML path fails unexpectedly.
+    """
+    try:
+        return await run_yaml_analysis(symbol, mode)
+    except Exception as exc:
+        logger.warning(
+            "YAML workflow execution failed for %s (%s); falling back to StateGraph",
+            symbol,
+            exc,
+        )
+        return await run_stategraph_analysis(symbol, mode)
+
+
 __all__ = [
     # Graph builders
     "build_quick_graph",
@@ -1223,6 +1249,7 @@ __all__ = [
     "build_graph_for_mode",
     # Execution helpers
     "run_analysis",
+    "run_stategraph_analysis",
     "run_yaml_analysis",
     # Node functions (for testing/extension)
     "fetch_sec_data",
@@ -1231,6 +1258,4 @@ __all__ = [
     "run_technical_analysis",
     "run_market_context_analysis",
     "run_synthesis",
-    # Convenience
-    "run_analysis",
 ]

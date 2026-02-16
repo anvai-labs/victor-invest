@@ -36,8 +36,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
 # Victor framework imports for new pattern
-from victor.framework.handler_registry import handler_decorator
-from victor.framework.workflows.base_handler import BaseHandler
+from victor_invest.compat.handlers import BaseHandler, handler_decorator
 
 if TYPE_CHECKING:
     from victor.tools.registry import ToolRegistry
@@ -235,7 +234,7 @@ class RunFundamentalAnalysisHandler(BaseHandler):
         result = await valuation_tool.execute(
             {},  # _exec_ctx
             symbol=symbol,
-            action="full_valuation",
+            model="all",
         )
 
         return {
@@ -467,7 +466,7 @@ class RunSynthesisHandler(BaseHandler):
         technical: dict,
         fundamental: dict,
         market_context: dict,
-        peer_data: dict = None,
+        peer_data: dict | None = None,
     ) -> str:
         """Build synthesis prompt for LLM.
 
@@ -485,7 +484,7 @@ class RunSynthesisHandler(BaseHandler):
 Market Regime: {market_context.get("market_regime", "unknown")}
 
 ## Peer Comparison
-{self._format_peer_comparison(peer_data)}
+{self._format_peer_comparison(peer_data if peer_data is not None else {})}
 
 Your task: Synthesize all data into a clear investment recommendation.
 
@@ -595,8 +594,8 @@ Respond ONLY with the JSON object."""
         technical: dict,
         fundamental: dict,
         market_context: dict,
-        peer_data: dict = None,
-    ) -> dict:
+        peer_data: dict | None = None,
+    ) -> dict | None:
         """Use LLM for intelligent synthesis.
 
         Returns LLM-generated synthesis dict or None if unavailable.
@@ -629,7 +628,8 @@ Respond ONLY with the JSON object."""
                 end = response_text.rfind("}") + 1
                 if start >= 0 and end > start:
                     json_str = response_text[start:end]
-                    return json.loads(json_str)
+                    result: dict = json.loads(json_str)
+                    return result
             except json.JSONDecodeError:
                 logger.warning("Could not parse LLM synthesis response as JSON")
 
@@ -1376,7 +1376,7 @@ class GenerateReportHandler(BaseHandler):
 
         Returns metrics dict.
         """
-        metrics = {}
+        metrics: Dict[str, Any] = {}
 
         # Extract company metrics from fundamental data
         if not fund_data:
@@ -1715,7 +1715,7 @@ class IdentifyPeersHandler(BaseHandler):
         if not peers:
             return {}
 
-        metrics = {
+        metrics: Dict[str, list] = {
             "pe_ratio": [],
             "revenue_growth": [],
             "fcf_margin": [],
@@ -1779,12 +1779,12 @@ class AnalyzePeersHandler(BaseHandler):
 
         import asyncio
 
-        from victor_invest.workflows import AnalysisMode, run_analysis
+        from victor_invest.workflows import AnalysisMode, run_yaml_analysis
 
         async def analyze_one(peer):
             symbol = peer.get("symbol") if isinstance(peer, dict) else peer
             try:
-                result = await run_analysis(symbol, AnalysisMode.QUICK)
+                result = await run_yaml_analysis(str(symbol), AnalysisMode.QUICK)
                 return {
                     "symbol": symbol,
                     "composite_score": result.synthesis.get("composite_score", 50)
@@ -1869,6 +1869,7 @@ class ProcessBacktestBatchHandler(BaseHandler):
             symbol=symbol,
             lookback_months_list=lookback_dates,
             interval=interval,
+            use_yaml_workflow=False,
         )
 
         return result.to_dict(), 0

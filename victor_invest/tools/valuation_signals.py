@@ -109,11 +109,11 @@ Signal Integration:
             config: Optional investigator config object.
         """
         super().__init__(config)
-        self._signal_integrator = None
-        self._credit_risk_tool = None
-        self._insider_tool = None
-        self._short_interest_tool = None
-        self._market_regime_tool = None
+        self._signal_integrator: Optional[Any] = None
+        self._credit_risk_tool: Optional[Any] = None
+        self._insider_tool: Optional[Any] = None
+        self._short_interest_tool: Optional[Any] = None
+        self._market_regime_tool: Optional[Any] = None
 
     async def initialize(self) -> None:
         """Initialize valuation signal services."""
@@ -216,6 +216,9 @@ Signal Integration:
         short_interest_data = await self._fetch_short_interest_data(symbol)
         market_regime_data = await self._fetch_market_regime_data()
 
+        if self._signal_integrator is None:
+            return ToolResult.create_failure("Signal integrator not available")
+
         # Integrate signals
         result = self._signal_integrator.integrate_signals(
             symbol=symbol,
@@ -263,6 +266,9 @@ Signal Integration:
                 beneish_mscore = credit_data.get("beneish_mscore")
                 piotroski_fscore = credit_data.get("piotroski_fscore")
 
+        if self._signal_integrator is None:
+            return ToolResult.create_failure("Signal integrator not available")
+
         signal = self._signal_integrator.calculate_credit_risk_signal(
             altman_zscore=altman_zscore,
             beneish_mscore=beneish_mscore,
@@ -305,6 +311,9 @@ Signal Integration:
                 cluster_detected = insider_data.get("cluster_detected", False)
                 net_shares_change = insider_data.get("net_shares_change")
 
+        if self._signal_integrator is None:
+            return ToolResult.create_failure("Signal integrator not available")
+
         signal = self._signal_integrator.calculate_insider_sentiment_signal(
             buy_sell_ratio=buy_sell_ratio,
             net_shares_change=net_shares_change,
@@ -342,6 +351,9 @@ Signal Integration:
                 short_percent_float = short_data.get("short_percent_float")
                 days_to_cover = short_data.get("days_to_cover")
                 squeeze_score = short_data.get("squeeze_score")
+
+        if self._signal_integrator is None:
+            return ToolResult.create_failure("Signal integrator not available")
 
         signal = self._signal_integrator.calculate_short_interest_signal(
             short_percent_float=short_percent_float,
@@ -381,6 +393,9 @@ Signal Integration:
                 credit_cycle_phase = "mid_cycle"
                 volatility_regime = "normal"
                 recession_probability = "low"
+
+        if self._signal_integrator is None:
+            return ToolResult.create_failure("Signal integrator not available")
 
         signal = self._signal_integrator.calculate_market_regime_adjustment(
             credit_cycle_phase=credit_cycle_phase,

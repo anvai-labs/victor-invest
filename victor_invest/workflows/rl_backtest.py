@@ -62,7 +62,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, Dict, List, Optional
 
-from dateutil.relativedelta import relativedelta
+from dateutil.relativedelta import relativedelta  # type: ignore[import-untyped]
 from victor.framework.graph import END, StateGraph
 
 from victor_invest.tools import RLBacktestTool, ValuationTool
@@ -104,9 +104,9 @@ class RLBacktestWorkflowState:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     # Intermediate state
-    historical_data: Dict[str, Any] = field(default_factory=dict)
-    valuation_results: Dict[str, Any] = field(default_factory=dict)
-    reward_data: Dict[str, Any] = field(default_factory=dict)
+    historical_data: Dict[Any, Any] = field(default_factory=dict)
+    valuation_results: Dict[Any, Any] = field(default_factory=dict)
+    reward_data: Dict[Any, Any] = field(default_factory=dict)
 
     def mark_step_completed(self, step: str) -> None:
         """Mark a workflow step as completed."""
@@ -157,7 +157,8 @@ def _ensure_state(state_input) -> RLBacktestWorkflowState:
     """Convert dict to RLBacktestWorkflowState if needed."""
     if isinstance(state_input, dict):
         return RLBacktestWorkflowState.from_dict(state_input)
-    return state_input
+    result: RLBacktestWorkflowState = state_input
+    return result
 
 
 def _state_to_dict(state: RLBacktestWorkflowState) -> dict:
@@ -587,33 +588,24 @@ async def run_rl_backtest(
     if use_yaml_workflow:
         # Use InvestmentWorkflowProvider (BaseYAMLWorkflowProvider pattern)
         try:
-            from victor.workflows.executor import WorkflowContext, WorkflowExecutor
-
             # Import here to avoid circular imports
             from victor_invest.workflows import InvestmentWorkflowProvider
 
             provider = InvestmentWorkflowProvider()
-            workflow = provider.get_workflow("rl_backtest")
+            workflow_result = await provider.run_workflow_with_handlers(
+                "rl_backtest",
+                context={
+                    "symbol": symbol,
+                    "max_lookback_months": max_lookback_months,
+                    "interval": interval,
+                    "lookback_dates": lookback_months_list,
+                },
+            )
 
-            if workflow:
-                # Create execution context
-                context = WorkflowContext(
-                    {
-                        "symbol": symbol,
-                        "max_lookback_months": max_lookback_months,
-                        "interval": interval,
-                        "lookback_dates": lookback_months_list,
-                    }
-                )
-
-                # Execute via YAML workflow with shared handlers
-                executor = WorkflowExecutor(orchestrator=None)
-                workflow_result = await executor.execute(workflow, context)
-
-                # Convert to RLBacktestWorkflowState
-                return _convert_yaml_result_to_state(
-                    symbol, lookback_months_list, interval, workflow_result
-                )
+            # Convert to RLBacktestWorkflowState
+            return _convert_yaml_result_to_state(
+                symbol, lookback_months_list, interval, workflow_result
+            )
 
         except Exception as e:
             logger.warning(
@@ -677,6 +669,19 @@ def _convert_yaml_result_to_state(
         state.predictions = workflow_result.get("predictions", [])
         state.metadata = workflow_result.get("metadata", {})
 
+    # Collect errors from workflow result and per-node failures when available.
+    top_level_error = getattr(workflow_result, "error", None)
+    if top_level_error:
+        state.add_error(str(top_level_error))
+
+    context_obj = getattr(workflow_result, "context", None)
+    node_results = getattr(context_obj, "node_results", None)
+    if isinstance(node_results, dict):
+        for node_id, node_result in node_results.items():
+            node_error = getattr(node_result, "error", None)
+            if node_error:
+                state.add_error(f"{node_id}: {node_error}")
+
     state.mark_step_completed("yaml_workflow_complete")
     return state
 
@@ -709,7 +714,8 @@ async def run_rl_backtest_batch(
             )
 
     tasks = [limited_backtest(s) for s in symbols]
-    return await asyncio.gather(*tasks, return_exceptions=True)
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    return [r for r in results if isinstance(r, RLBacktestWorkflowState)]
 
 
 __all__ = [

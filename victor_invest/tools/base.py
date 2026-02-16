@@ -99,7 +99,8 @@ class ToolResult(VictorToolResult):
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert result to dictionary for serialization."""
-        return self.model_dump()
+        result: Dict[str, Any] = self.model_dump()
+        return result
 
     @classmethod
     def create_success(

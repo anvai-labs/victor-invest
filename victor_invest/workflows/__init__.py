@@ -374,10 +374,63 @@ def ensure_handlers_registered() -> None:
     if _handlers_registered:
         return
     from victor_invest.handlers import register_handlers
-    from victor.framework.handler_registry import sync_handlers_with_executor
 
     register_handlers()
-    sync_handlers_with_executor(direction="to_executor")
+
+    synced = False
+    sync_method_used = None
+    try:
+        from victor.framework.handler_registry import sync_handlers_with_executor
+
+        sync_handlers_with_executor(direction="to_executor")
+        synced = True
+        sync_method_used = "sync_handlers_with_executor"
+    except Exception:
+        pass
+
+    if not synced:
+        # Compatibility path for newer/older Victor variants:
+        # use registry.sync_with_executor() if available.
+        try:
+            from victor.framework.handler_registry import get_handler_registry
+
+            registry = get_handler_registry()
+            sync_method = getattr(registry, "sync_with_executor", None)
+            if callable(sync_method):
+                sync_method(direction="to_executor")
+                synced = True
+                sync_method_used = "registry.sync_with_executor"
+        except Exception:
+            pass
+
+    if not synced:
+        # Last-resort bridge: push handlers from framework registry to
+        # executor registry directly when helper APIs are unavailable.
+        try:
+            from victor.framework.handler_registry import get_handler_registry
+            from victor.workflows.executor import register_compute_handler
+
+            registry = get_handler_registry()
+            entries: list = getattr(registry, "list_entries", lambda: [])()
+            pushed = 0
+            for entry in entries:
+                name = getattr(entry, "name", None)
+                handler = getattr(entry, "handler", None)
+                if name and handler is not None:
+                    register_compute_handler(name, handler)
+                    pushed += 1
+            synced = pushed > 0
+            sync_method_used = "manual_executor_bridge"
+        except Exception:
+            pass
+
+    if not synced:
+        logger.warning(
+            "Handler sync helpers unavailable; relying on decorator-side registration for executor compatibility"
+        )
+    else:
+        logger.debug("Handler sync completed using %s", sync_method_used)
+
     _handlers_registered = True
 
 

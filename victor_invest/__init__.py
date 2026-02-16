@@ -38,9 +38,9 @@ Example:
     agent = await Agent.create(vertical=InvestmentVertical)
 """
 
-__version__ = "0.1.0"
+__version__ = "0.5.0"
 __author__ = "Vijaykumar Singh"
-__email__ = "user@example.com"
+__email__ = "singhvjd@gmail.com"
 __license__ = "Apache-2.0"
 
 # Use lazy imports to avoid import errors when victor package has issues

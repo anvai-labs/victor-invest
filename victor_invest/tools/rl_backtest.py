@@ -36,7 +36,7 @@ import logging
 from datetime import date, timedelta
 from typing import Any, Dict, List, Optional
 
-from dateutil.relativedelta import relativedelta
+from dateutil.relativedelta import relativedelta  # type: ignore[import-untyped]
 
 from victor_invest.tools.base import BaseTool, ToolResult
 
@@ -94,16 +94,16 @@ class RLBacktestTool(BaseTool):
     def __init__(self, config: Optional[Any] = None):
         """Initialize the RL backtest tool."""
         super().__init__(config)
-        self._shares_service = None
-        self._price_service = None
-        self._technical_service = None
-        self._metadata_service = None
-        self._valuation_config = None
-        self._sector_multiples = None
-        self._outcome_tracker = None
-        self._reward_calculator = None
-        self._data_source_manager = None
-        self._db = None
+        self._shares_service: Optional[Any] = None
+        self._price_service: Optional[Any] = None
+        self._technical_service: Optional[Any] = None
+        self._metadata_service: Optional[Any] = None
+        self._valuation_config: Optional[Any] = None
+        self._sector_multiples: Optional[Any] = None
+        self._outcome_tracker: Optional[Any] = None
+        self._reward_calculator: Optional[Any] = None
+        self._data_source_manager: Optional[Any] = None
+        self._db: Optional[Any] = None
 
     async def initialize(self) -> None:
         """Initialize shared services."""
@@ -243,10 +243,14 @@ class RLBacktestTool(BaseTool):
         lookback_months: List[int],
     ) -> ToolResult:
         """Run backtest for a symbol at multiple lookback periods."""
-        results = {
+        if self._price_service is None:
+            return ToolResult.create_failure("Price service not initialized")
+
+        errors: list[str] = []
+        results: Dict[str, Any] = {
             "symbol": symbol,
             "predictions": [],
-            "errors": [],
+            "errors": errors,
         }
 
         today = date.today()
@@ -398,6 +402,8 @@ class RLBacktestTool(BaseTool):
         analysis_date: date,
     ) -> ToolResult:
         """Get historical price and shares data."""
+        if self._price_service is None or self._shares_service is None:
+            return ToolResult.create_failure("Market data services not initialized")
         price = self._price_service.get_price(symbol, analysis_date)
         shares = self._shares_service.get_sec_shares(symbol, analysis_date)
         metadata = await self._get_metadata(symbol)
@@ -468,13 +474,15 @@ class RLBacktestTool(BaseTool):
         beta: float,
     ) -> Dict[str, Any]:
         """Get multi-period prices, exit dates, and rewards."""
-        prices = {}
-        exit_dates = {}
-        long_rewards = {}
-        short_rewards = {}
+        prices: Dict[str, Any] = {}
+        exit_dates: Dict[str, Any] = {}
+        long_rewards: Dict[str, Any] = {}
+        short_rewards: Dict[str, Any] = {}
 
         for period, days in HOLDING_PERIODS.items():
             target_date = analysis_date + timedelta(days=days)
+            if self._price_service is None:
+                continue
             future_price = self._price_service.get_price(symbol, target_date)
 
             if future_price and future_price > 0:
@@ -486,7 +494,7 @@ class RLBacktestTool(BaseTool):
                 # - predicted_fv > price_at_prediction => LONG
                 # - predicted_fv < price_at_prediction => SHORT
                 # We simulate this by setting fake fair values to force the desired direction
-                if current_price > 0:
+                if current_price > 0 and self._reward_calculator is not None:
                     # For LONG: set predicted_fv higher than entry price
                     long_result = self._reward_calculator.calculate(
                         predicted_fv=current_price * 1.10,  # 10% above = LONG signal

@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 from typing import Callable, Optional
 
-from victor.core.verticals import VerticalRegistry
+from victor.core.verticals.base import VerticalRegistry
 from victor.framework import Agent
 
 from victor_invest.role_provider import register_investment_role_provider
@@ -41,7 +41,10 @@ def resolve_investment_model(provider: str, model: Optional[str]) -> Optional[st
         from investigator.config import get_config
 
         config = get_config()
-        return config.ollama.models.get("synthesis", DEFAULT_SYNTHESIS_MODEL)
+        result: str | None = config.ollama.models.get(
+            "synthesis", DEFAULT_SYNTHESIS_MODEL
+        )
+        return result
     except Exception:
         return DEFAULT_SYNTHESIS_MODEL
 

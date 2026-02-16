@@ -4,16 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "victor-invest"
-version = "1.0.0"
+version = "0.5.0"
 description = "AI-powered investment analysis platform combining SEC fundamentals, technical indicators, and multi-model valuation synthesis"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "Apache-2.0"}
 authors = [
-    {name = "Vijaykumar Singh", email = "user@example.com"}
+    {name = "Vijaykumar Singh", email = "singhvjd@gmail.com"}
 ]
 maintainers = [
-    {name = "Vijaykumar Singh", email = "user@example.com"}
+    {name = "Vijaykumar Singh", email = "singhvjd@gmail.com"}
 ]
 keywords = [
     "investment",
@@ -165,6 +165,9 @@ victor-invest = "victor_invest.cli:main"
 # Legacy CLI (deprecated - use 'investigator' instead)
 investigator-legacy = "cli_orchestrator:cli"
 
+[project.entry-points."victor.verticals"]
+investment = "victor_invest.vertical:InvestmentVertical"
+
 [project.urls]
 Homepage = "https://github.com/vjsingh1984/victor-invest"
 Documentation = "https://github.com/vjsingh1984/victor-invest#readme"
@@ -235,9 +238,34 @@ module = [
 ]
 ignore_missing_imports = true
 
+[tool.flake8]
+max-line-length = 120
+extend-ignore = ["E203", "W503", "E501"]
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    ".mypy_cache",
+    ".venv",
+    "data",
+    "artifacts"
+]
+
+[tool.pylint."MESSAGES CONTROL"]
+disable = [
+    "C0114", # Missing module docstring
+    "C0115", # Missing class docstring
+    "C0116", # Missing function or method docstring
+    "R0903", # Too few public methods (often applies to simple data classes or agents)
+    "R0913", # Too many arguments
+    "W0613", # Unused argument
+    "W1203", # Use % formatting in logging functions and pass data as arguments
+]
+
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-ra -q --strict-markers --cov=investigator --cov-report=term-missing"
+addopts = "-ra -q --strict-markers --cov=investigator --cov=victor_invest --cov-report=term-missing"
 testpaths = ["tests"]
 pythonpath = ["src"]
 asyncio_mode = "auto"
@@ -250,7 +278,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["src/investigator"]
+source = ["src/investigator", "victor_invest"]
 omit = [
     "*/tests/*",
     "*/test_*",

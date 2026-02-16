@@ -1,4 +1,4 @@
-.PHONY: help install dev-install test test-cov lint format type-check clean run analyze status cache-clean benchmark-workflows
+.PHONY: help install dev-install test test-cov lint format type-check clean run analyze status cache-clean benchmark-workflows frontend-install frontend-dev frontend-build frontend-lint frontend-type-check
 
 .DEFAULT_GOAL := help
 
@@ -23,7 +23,7 @@ test: ## Run tests
 	pytest tests/ -v
 
 test-cov: ## Run tests with coverage report
-	pytest tests/ -v --cov=src/investigator --cov-report=html --cov-report=term-missing
+	pytest tests/ -v --cov=src/investigator --cov=victor_invest --cov-report=html --cov-report=term-missing
 
 test-unit: ## Run unit tests only
 	pytest tests/ -v -m unit
@@ -81,7 +81,22 @@ benchmark-workflows: ## Benchmark quick/standard/comprehensive latency budgets (
 	python3 scripts/benchmark_victor_workflows.py --symbol $(if $(SYMBOL),$(SYMBOL),AAPL) --output-json artifacts/benchmarks/workflow_benchmark_$(if $(SYMBOL),$(SYMBOL),AAPL).json
 
 run-dev: ## Run development server (if API exists)
-	uvicorn investigator.api.main:app --reload --port 8000
+	uvicorn victor_invest.api.app:app --reload --port 8000
+
+frontend-install: ## Install frontend dependencies
+	cd frontend && npm install
+
+frontend-dev: ## Start frontend dev server (proxies API to :8000)
+	cd frontend && npm run dev
+
+frontend-build: ## Build frontend for production
+	cd frontend && npm run build
+
+frontend-lint: ## Lint frontend code
+	cd frontend && npm run lint
+
+frontend-type-check: ## Type-check frontend code
+	cd frontend && npm run type-check
 
 docker-build: ## Build Docker image
 	docker build -t investigator:latest .
@@ -112,7 +127,7 @@ verify-structure: ## Verify package structure is correct
 	@test -d src/investigator/interfaces || (echo "❌ src/investigator/interfaces/ not found" && exit 1)
 	@echo "$(GREEN)✓ Package structure verified$(RESET)"
 
-tag-release: ## Tag a new release (usage: make tag-release VERSION=v0.1.0)
+tag-release: ## Tag a new release (usage: make tag-release VERSION=v0.5.0)
 	git tag -a $(VERSION) -m "Release $(VERSION)"
 	git push origin $(VERSION)
 

@@ -101,8 +101,8 @@ Returns calculated indicators as structured data suitable for analysis.
             config: Optional investigator config object
         """
         super().__init__(config)
-        self._calculator = None
-        self._market_data_fetcher = None
+        self._calculator: Optional[Any] = None
+        self._market_data_fetcher: Optional[Any] = None
 
     async def initialize(self) -> None:
         """Initialize technical analysis infrastructure."""
@@ -223,6 +223,8 @@ Returns calculated indicators as structured data suitable for analysis.
             DataFrame with OHLCV data or None
         """
         try:
+            if self._market_data_fetcher is None:
+                return None
             loop = asyncio.get_event_loop()
             df = await loop.run_in_executor(
                 None, self._market_data_fetcher.get_stock_data, symbol, days
@@ -245,6 +247,8 @@ Returns calculated indicators as structured data suitable for analysis.
             Enhanced DataFrame with indicators
         """
         try:
+            if self._calculator is None:
+                return df
             loop = asyncio.get_event_loop()
             enhanced_df = await loop.run_in_executor(
                 None, self._calculator.calculate_all_indicators, df, symbol
@@ -501,6 +505,8 @@ Returns calculated indicators as structured data suitable for analysis.
     def _format_recent(self, symbol: str, df: pd.DataFrame, days: int) -> ToolResult:
         """Format recent data with indicators."""
         try:
+            if self._calculator is None:
+                return ToolResult.create_failure("Technical calculator not available")
             recent_df = self._calculator.extract_recent_data_for_llm(df, days)
 
             # Convert to list of records
@@ -669,7 +675,7 @@ Returns calculated indicators as structured data suitable for analysis.
         self, latest: Dict, current_price: Optional[float]
     ) -> Dict[str, str]:
         """Interpret moving average signals."""
-        signals = {}
+        signals: dict[str, str] = {}
 
         if current_price is None:
             return signals
@@ -703,7 +709,8 @@ Returns calculated indicators as structured data suitable for analysis.
                 return None
 
             # Golden cross: SMA50 was below SMA200, now above
-            return sma50_prev < sma200_prev and sma50_curr > sma200_curr
+            result: bool | None = sma50_prev < sma200_prev and sma50_curr > sma200_curr
+            return result
         except Exception:
             return None
 
@@ -726,7 +733,8 @@ Returns calculated indicators as structured data suitable for analysis.
                 return None
 
             # Death cross: SMA50 was above SMA200, now below
-            return sma50_prev > sma200_prev and sma50_curr < sma200_curr
+            result: bool | None = sma50_prev > sma200_prev and sma50_curr < sma200_curr
+            return result
         except Exception:
             return None
 

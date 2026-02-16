@@ -61,9 +61,11 @@ DATABASE ACCESS PATTERN:
 See: docs/ARCHITECTURE_DECISION_DATA_ACCESS.md for full rationale.
 """
 
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from victor.core.verticals import VerticalBase
+from victor.core.vertical_types import StageDefinition
+from victor.core.verticals.base import VerticalBase
 
 DEFAULT_INVESTMENT_TOOL_NAMES = [
     "sec_filing",
@@ -112,7 +114,51 @@ class InvestmentVertical(VerticalBase):
 
     name = "investment"
     description = "Institutional-grade investment research and equity analysis"
-    version = "1.0.0"
+    version = "0.5.0"
+    _yaml_config_cache: Optional[Dict[str, Any]] = None
+
+    @classmethod
+    def _vertical_config_path(cls) -> Path:
+        return Path(__file__).parent / "config" / "vertical.yaml"
+
+    @classmethod
+    def _load_vertical_yaml_config(cls) -> Dict[str, Any]:
+        if cls._yaml_config_cache is not None:
+            return cls._yaml_config_cache
+
+        config_path = cls._vertical_config_path()
+        if not config_path.exists():
+            cls._yaml_config_cache = {}
+            return cls._yaml_config_cache
+
+        try:
+            import yaml
+
+            data = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+            cls._yaml_config_cache = data if isinstance(data, dict) else {}
+        except Exception:
+            cls._yaml_config_cache = {}
+
+        return cls._yaml_config_cache
+
+    @classmethod
+    def _yaml_stage_definitions(cls) -> Dict[str, StageDefinition]:
+        config = cls._load_vertical_yaml_config()
+        stages_config = config.get("core", {}).get("stages", {})
+        if not isinstance(stages_config, dict):
+            return {}
+
+        stages: Dict[str, StageDefinition] = {}
+        for stage_name, raw in stages_config.items():
+            stage_data = raw if isinstance(raw, dict) else {}
+            stages[stage_name] = StageDefinition(
+                name=stage_name,
+                description=str(stage_data.get("description", "")),
+                tools=set(stage_data.get("tools", []) or []),
+                keywords=list(stage_data.get("keywords", []) or []),
+                next_stages=set(stage_data.get("next_stages", []) or []),
+            )
+        return stages
 
     @classmethod
     def get_tools(cls) -> List[str]:
@@ -121,18 +167,94 @@ class InvestmentVertical(VerticalBase):
         Returns:
             List of tool names to enable.
         """
-        try:
-            yaml_tools = super().get_tools()
-        except NotImplementedError:
+        config = cls._load_vertical_yaml_config()
+        yaml_tools = config.get("core", {}).get("tools", {}).get("list", [])
+        if not isinstance(yaml_tools, list) or not yaml_tools:
             yaml_tools = list(DEFAULT_INVESTMENT_TOOL_NAMES)
+        else:
+            yaml_tools = [str(tool) for tool in yaml_tools]
 
         _ensure_investment_tool_pack_registered(yaml_tools)
         try:
             from victor.framework.tool_packs import resolve_tool_pack
 
-            return resolve_tool_pack("investment")
+            resolved_tools = resolve_tool_pack("investment")
+            if resolved_tools:
+                result: list[str] = resolved_tools
+                return result
         except Exception:
-            return yaml_tools
+            pass
+        return yaml_tools
+
+    @classmethod
+    def get_system_prompt(cls) -> str:
+        """Get the investment system prompt text."""
+        config = cls._load_vertical_yaml_config()
+        source_cfg = config.get("core", {}).get("system_prompt", {})
+        if isinstance(source_cfg, dict) and source_cfg.get("source") == "file":
+            prompt_file = source_cfg.get("file_path")
+            if prompt_file:
+                prompt_path = Path(__file__).parent / "config" / str(prompt_file)
+                if prompt_path.exists():
+                    return prompt_path.read_text(encoding="utf-8").strip()
+
+        return (
+            "You are an institutional-grade investment analyst. "
+            "Use SEC fundamentals, valuation models, technical analysis, and "
+            "market context to produce a disciplined recommendation."
+        )
+
+    @classmethod
+    def get_stages(cls) -> Dict[str, StageDefinition]:
+        """Get stage definitions, preferring YAML-backed workflow stages."""
+        yaml_stages = cls._yaml_stage_definitions()
+        if yaml_stages:
+            return yaml_stages
+        result: Dict[str, StageDefinition] = super().get_stages()
+        return result
+
+    @classmethod
+    def get_provider_hints(cls) -> Dict[str, Any]:
+        """Get provider hints, preferring YAML metadata."""
+        config = cls._load_vertical_yaml_config()
+        hints = config.get("provider", {}).get("hints")
+        if isinstance(hints, dict) and hints:
+            return hints
+        result: Dict[str, Any] = super().get_provider_hints()
+        return result
+
+    @classmethod
+    def get_evaluation_criteria(cls) -> List[str]:
+        """Get evaluation criteria, preferring YAML metadata."""
+        config = cls._load_vertical_yaml_config()
+        criteria = config.get("evaluation", {}).get("criteria")
+        if isinstance(criteria, list) and criteria:
+            return [str(item) for item in criteria]
+        result: list[str] = super().get_evaluation_criteria()
+        return result
+
+    @classmethod
+    def clear_config_cache(cls, *, clear_all: bool = False) -> None:
+        """Clear config and YAML caches for this vertical."""
+        cls._yaml_config_cache = None
+        super().clear_config_cache(clear_all=clear_all)
+
+    @classmethod
+    def get_config(cls, *, use_cache: bool = True, use_yaml: bool = True):
+        """Get vertical config with compatibility for older `use_yaml` callers.
+
+        Args:
+            use_cache: Whether to use cached VerticalConfig.
+            use_yaml: Backward-compatible arg retained for older call sites.
+        """
+        _ = use_yaml
+        config = super().get_config(use_cache=use_cache)
+
+        # Backward compatibility for tests/callers that expect config.name.
+        if not hasattr(config, "name"):
+            setattr(config, "name", cls.name)
+
+        return config
 
     @classmethod
     def get_task_type_hints(cls) -> Dict[str, Any]:

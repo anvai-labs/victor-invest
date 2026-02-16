@@ -214,7 +214,7 @@ def _calculate_fiscal_year_from_date(
 | Mar   | 0331     | Various   | PASS*       |
 | Apr   | 0430     | Various   | PASS*       |
 | May   | 0531     | ORCL      | PASS        |
-| Jun   | 0630     | MSFT      | PASS*       |
+| Jun   | 0630   | MSFT      | PASS*       |
 | Jul   | 0731     | ZS        | PASS*       |
 | Aug   | 0831     | Various   | PASS*       |
 | Sep   | 0930     | AAPL, V   | PASS*       |
@@ -242,7 +242,7 @@ def _calculate_fiscal_year_from_date(
 
 1. **Update `_calculate_fiscal_year_from_date` method** in:
    - `src/investigator/infrastructure/sec/companyfacts_extractor.py` (line 593-631)
-   - Add special case logic for `period_month == fiscal_year_end_month`
+   - Add special case logic for Jan-Jun FYE when `period_month == fiscal_year_end_month`
 
 2. **Add unit tests** for fiscal year edge cases:
    - Test all 12 fiscal year end months
@@ -386,3 +386,31 @@ After applying fix:
 **Risk of Fix**: LOW (well-understood, testable logic)
 
 **Recommendation**: **Apply fix immediately** before production use to avoid systematic data labeling errors.
+
+---
+
+## Update: Enhanced Fiscal Year Selection for YTD Normalization (2026-02-12)
+
+**Author**: Gemini CLI
+
+### Summary
+
+This update addresses a critical issue in the SEC data processing pipeline that led to incomplete data for Year-to-Date (YTD) normalization, particularly for companies with non-calendar fiscal years. The problem manifested as `YTD_NORM_CRITICAL` warnings, indicating that previous quarterly periods could not be found during normalization.
+
+### Why the Change Was Needed
+
+The `_select_best_entries_per_period` method in `src/investigator/infrastructure/sec/data_processor.py` was too aggressive in filtering out potential fiscal period entries. It would reject entries as "likely comparative data" if the absolute difference between the candidate fiscal year (`candidate_fy`) and the calendar year of the period end (`period_end_year`) was one or more (`abs(candidate_fy - period_end_year) >= 1`). This filtering occurred even when `candidate_fy` was a correctly derived fiscal year for a non-calendar fiscal period (e.g., a Q2 ending in June 2010 might correctly belong to fiscal year 2011). This resulted in valid quarterly filings being discarded before reaching the YTD normalization step, leading to missing data and calculation errors in downstream financial analysis.
+
+### What Was Changed
+
+The logic within the `for score, candidate in scored:` loop in `_select_best_entries_per_period` (located in `src/investigator/infrastructure/sec/data_processor.py`) has been revised. The updated logic now explicitly prioritizes acceptance of fiscal period entries based on the following criteria:
+
+1.  **Missing Fiscal Year (`candidate_fy is None`):** These entries are accepted as a robust fallback.
+2.  **Matching Expected Fiscal Year (`expected_fy is not None and candidate_fy == expected_fy`):** Entries where the `candidate_fy` aligns with the `expected_fy` (calculated for non-calendar fiscal years to correctly determine the fiscal year label based on period end date relative to the fiscal year end month) are given high priority and accepted. This directly addresses the core issue of incorrectly rejecting valid non-calendar fiscal periods.
+3.  **Matching Calendar Year (`abs(candidate_fy - period_end_year) < 1`):** Entries where the `candidate_fy` matches the `period_end_year` (i.e., typical calendar fiscal year scenarios) are also accepted.
+
+Only if an entry fails all these acceptance criteria is it considered truly comparative data and rejected. This ensures that valid quarterly filings, especially those crossing calendar year boundaries due to non-calendar fiscal years, are retained for accurate YTD normalization.
+
+### Impact
+
+This enhancement significantly improves the accuracy and completeness of financial data processing, particularly for companies operating on non-calendar fiscal years. By ensuring that all necessary quarterly periods are correctly identified and passed to the YTD normalization step, it resolves `YTD_NORM_CRITICAL` errors and prevents the generation of unreliable financial metrics and valuations. This leads to higher quality fundamental analysis and more robust investment insights.

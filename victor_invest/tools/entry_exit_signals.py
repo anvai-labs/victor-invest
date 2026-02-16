@@ -72,8 +72,8 @@ class EntryExitSignalTool(BaseTool):
     def __init__(self, config: Optional[Any] = None):
         """Initialize the entry/exit signal tool."""
         super().__init__(config)
-        self._engine = None
-        self._integrator = None
+        self._engine: Optional[Any] = None
+        self._integrator: Optional[Any] = None
 
     async def initialize(self) -> None:
         """Initialize the signal engine and integrator."""
@@ -406,7 +406,7 @@ class EntryExitSignalTool(BaseTool):
         return ToolResult.create_success(output=report_data)
 
     def _to_dataframe(
-        self, price_data: Optional[Dict], current_price: float
+        self, price_data: Optional[Any], current_price: float
     ) -> pd.DataFrame:
         """Convert price data to DataFrame."""
         if price_data is None:

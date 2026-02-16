@@ -105,9 +105,9 @@ Investment Signals by Regime:
             config: Optional investigator config object.
         """
         super().__init__(config)
-        self._yield_curve_analyzer = None
-        self._credit_cycle_analyzer = None
-        self._recession_indicator = None
+        self._yield_curve_analyzer: Optional[Any] = None
+        self._credit_cycle_analyzer: Optional[Any] = None
+        self._recession_indicator: Optional[Any] = None
 
     async def initialize(self) -> None:
         """Initialize market regime analyzers."""
@@ -187,6 +187,13 @@ Investment Signals by Regime:
 
     async def _get_summary(self) -> ToolResult:
         """Get comprehensive market regime summary."""
+        if self._yield_curve_analyzer is None:
+            return ToolResult.create_failure("Yield curve analyzer not available")
+        if self._credit_cycle_analyzer is None:
+            return ToolResult.create_failure("Credit cycle analyzer not available")
+        if self._recession_indicator is None:
+            return ToolResult.create_failure("Recession indicator not available")
+
         # Get all analyses
         yc_analysis = await self._yield_curve_analyzer.analyze()
         cc_analysis = await self._credit_cycle_analyzer.analyze()
@@ -241,6 +248,8 @@ Investment Signals by Regime:
 
     async def _get_yield_curve(self) -> ToolResult:
         """Get yield curve analysis."""
+        if self._yield_curve_analyzer is None:
+            return ToolResult.create_failure("Yield curve analyzer not available")
         analysis = await self._yield_curve_analyzer.analyze()
 
         return ToolResult.create_success(
@@ -254,6 +263,8 @@ Investment Signals by Regime:
 
     async def _get_credit_cycle(self) -> ToolResult:
         """Get credit cycle analysis."""
+        if self._credit_cycle_analyzer is None:
+            return ToolResult.create_failure("Credit cycle analyzer not available")
         analysis = await self._credit_cycle_analyzer.analyze()
 
         return ToolResult.create_success(
@@ -268,6 +279,8 @@ Investment Signals by Regime:
 
     async def _get_recession(self) -> ToolResult:
         """Get recession probability assessment."""
+        if self._recession_indicator is None:
+            return ToolResult.create_failure("Recession indicator not available")
         assessment = await self._recession_indicator.assess()
 
         return ToolResult.create_success(
@@ -282,6 +295,8 @@ Investment Signals by Regime:
 
     async def _get_volatility(self) -> ToolResult:
         """Get volatility regime analysis."""
+        if self._credit_cycle_analyzer is None:
+            return ToolResult.create_failure("Credit cycle analyzer not available")
         cc_analysis = await self._credit_cycle_analyzer.analyze()
 
         return ToolResult.create_success(
@@ -301,6 +316,10 @@ Investment Signals by Regime:
 
     async def _get_recommendations(self) -> ToolResult:
         """Get investment recommendations based on regime."""
+        if self._credit_cycle_analyzer is None:
+            return ToolResult.create_failure("Credit cycle analyzer not available")
+        if self._yield_curve_analyzer is None:
+            return ToolResult.create_failure("Yield curve analyzer not available")
         cc_analysis = await self._credit_cycle_analyzer.analyze()
         yc_analysis = await self._yield_curve_analyzer.analyze()
 

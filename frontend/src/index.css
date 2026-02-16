@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-accent: 0 95 115;
+    --color-good: 27 127 70;
+    --color-bad: 180 35 24;
+    --color-warn: 154 103 0;
+    --color-surface: 255 255 255;
+    --color-muted: 241 245 249;
+  }
+
+  .dark {
+    --color-surface: 15 23 42;
+    --color-muted: 30 41 59;
+  }
+}

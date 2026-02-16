@@ -151,7 +151,7 @@ Example indicators: DGS10 (10Y Treasury), FEDFUNDS (Fed Funds Rate), VIXCLS (VIX
             config: Optional investigator config object.
         """
         super().__init__(config)
-        self._fetcher = None
+        self._fetcher: Optional[Any] = None
 
     async def initialize(self) -> None:
         """Initialize FRED infrastructure components."""
@@ -236,6 +236,8 @@ Example indicators: DGS10 (10Y Treasury), FEDFUNDS (Fed Funds Rate), VIXCLS (VIX
             ToolResult with categorized indicators and risk assessment
         """
         try:
+            if self._fetcher is None:
+                return ToolResult.create_failure("Macro data fetcher not available")
             loop = asyncio.get_event_loop()
             summary = await loop.run_in_executor(None, self._fetcher.get_macro_summary)
 
@@ -314,10 +316,13 @@ Example indicators: DGS10 (10Y Treasury), FEDFUNDS (Fed Funds Rate), VIXCLS (VIX
         try:
             indicator_ids = INDICATOR_CATEGORIES[category]
 
+            if self._fetcher is None:
+                return ToolResult.create_failure("Macro data fetcher not available")
+            fetcher = self._fetcher
             loop = asyncio.get_event_loop()
             data = await loop.run_in_executor(
                 None,
-                lambda: self._fetcher.get_latest_values(
+                lambda: fetcher.get_latest_values(
                     indicator_ids=indicator_ids, lookback_days=lookback_days
                 ),
             )
@@ -361,13 +366,17 @@ Example indicators: DGS10 (10Y Treasury), FEDFUNDS (Fed Funds Rate), VIXCLS (VIX
             )
 
         try:
+            if self._fetcher is None:
+                return ToolResult.create_failure("Macro data fetcher not available")
+            fetcher = self._fetcher
+
             # Normalize indicator IDs
             indicator_ids = [ind.upper().strip() for ind in indicators]
 
             loop = asyncio.get_event_loop()
             data = await loop.run_in_executor(
                 None,
-                lambda: self._fetcher.get_latest_values(
+                lambda: fetcher.get_latest_values(
                     indicator_ids=indicator_ids, lookback_days=lookback_days
                 ),
             )
@@ -421,14 +430,16 @@ Example indicators: DGS10 (10Y Treasury), FEDFUNDS (Fed Funds Rate), VIXCLS (VIX
             )
 
         try:
+            if self._fetcher is None:
+                return ToolResult.create_failure("Macro data fetcher not available")
+            fetcher = self._fetcher
+
             indicator_id = indicator_id.upper().strip()
 
             loop = asyncio.get_event_loop()
             df = await loop.run_in_executor(
                 None,
-                lambda: self._fetcher.get_time_series(
-                    indicator_id=indicator_id, limit=limit
-                ),
+                lambda: fetcher.get_time_series(indicator_id=indicator_id, limit=limit),
             )
 
             if df.empty:
@@ -486,6 +497,8 @@ Example indicators: DGS10 (10Y Treasury), FEDFUNDS (Fed Funds Rate), VIXCLS (VIX
             ToolResult with Buffett Indicator calculation
         """
         try:
+            if self._fetcher is None:
+                return ToolResult.create_failure("Macro data fetcher not available")
             loop = asyncio.get_event_loop()
             buffett = await loop.run_in_executor(
                 None, self._fetcher.calculate_buffett_indicator

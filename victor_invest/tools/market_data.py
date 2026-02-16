@@ -47,7 +47,6 @@ import asyncio
 import logging
 from typing import Any, Dict, Optional
 
-
 from victor_invest.tools.base import BaseTool, ToolResult
 
 logger = logging.getLogger(__name__)
@@ -95,7 +94,7 @@ Returns current market data, historical prices, and company metadata.
             config: Optional investigator config object
         """
         super().__init__(config)
-        self._fetcher = None
+        self._fetcher: Optional[Any] = None
 
     async def initialize(self) -> None:
         """Initialize market data infrastructure."""
@@ -197,6 +196,8 @@ Returns current market data, historical prices, and company metadata.
             ToolResult with quote data
         """
         try:
+            if self._fetcher is None:
+                return ToolResult.create_failure("Market data fetcher not available")
             loop = asyncio.get_event_loop()
             info = await loop.run_in_executor(
                 None, self._fetcher.get_stock_info, symbol
@@ -236,6 +237,8 @@ Returns current market data, historical prices, and company metadata.
             ToolResult with historical data
         """
         try:
+            if self._fetcher is None:
+                return ToolResult.create_failure("Market data fetcher not available")
             loop = asyncio.get_event_loop()
             df = await loop.run_in_executor(
                 None, self._fetcher.get_stock_data, symbol, days
@@ -302,6 +305,8 @@ Returns current market data, historical prices, and company metadata.
             ToolResult with company info
         """
         try:
+            if self._fetcher is None:
+                return ToolResult.create_failure("Market data fetcher not available")
             loop = asyncio.get_event_loop()
             info = await loop.run_in_executor(
                 None, self._fetcher.get_stock_info, symbol
@@ -350,6 +355,8 @@ Returns current market data, historical prices, and company metadata.
             ToolResult with price change data
         """
         try:
+            if self._fetcher is None:
+                return ToolResult.create_failure("Market data fetcher not available")
             # Map period to days
             period_map = {
                 "1d": 1,
@@ -425,6 +432,8 @@ Returns current market data, historical prices, and company metadata.
             ToolResult with availability status
         """
         try:
+            if self._fetcher is None:
+                return ToolResult.create_failure("Market data fetcher not available")
             loop = asyncio.get_event_loop()
             df = await loop.run_in_executor(
                 None,
@@ -464,6 +473,8 @@ Returns current market data, historical prices, and company metadata.
             ToolResult with list of symbols
         """
         try:
+            if self._fetcher is None:
+                return ToolResult.create_failure("Market data fetcher not available")
             loop = asyncio.get_event_loop()
             symbols = await loop.run_in_executor(
                 None, self._fetcher.get_available_symbols

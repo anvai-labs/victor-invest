@@ -95,8 +95,8 @@ Investment Signals:
             config: Optional investigator config object.
         """
         super().__init__(config)
-        self._fetcher = None
-        self._data_source_manager = None
+        self._fetcher: Optional[Any] = None
+        self._data_source_manager: Optional[Any] = None
 
     async def initialize(self) -> None:
         """Initialize institutional holdings fetcher and DataSourceManager."""
@@ -269,6 +269,10 @@ Investment Signals:
 
         # Fallback to direct fetcher (required for quarter-specific queries
         # or when DataSourceManager is unavailable/failed)
+        if self._fetcher is None:
+            return ToolResult.create_failure(
+                "Institutional holdings fetcher not initialized"
+            )
         ownership = await self._fetcher.get_holdings_by_symbol(symbol, quarter)
 
         if ownership.num_institutions == 0:
@@ -337,6 +341,10 @@ Investment Signals:
                 # Fall through to use fetcher
 
         # Fallback to direct fetcher (for custom limits or when DataSourceManager unavailable)
+        if self._fetcher is None:
+            return ToolResult.create_failure(
+                "Institutional holdings fetcher not initialized"
+            )
         holders = await self._fetcher.get_top_holders(symbol, limit)
 
         if not holders:
@@ -370,6 +378,10 @@ Investment Signals:
         self, symbol: str, quarters: int = 4
     ) -> ToolResult:
         """Get ownership changes over multiple quarters."""
+        if self._fetcher is None:
+            return ToolResult.create_failure(
+                "Institutional holdings fetcher not initialized"
+            )
         changes = await self._fetcher.get_ownership_changes(symbol, quarters)
 
         if not changes:
@@ -402,6 +414,10 @@ Investment Signals:
         self, cik: str, quarter: Optional[str] = None
     ) -> ToolResult:
         """Get holdings for a specific institution."""
+        if self._fetcher is None:
+            return ToolResult.create_failure(
+                "Institutional holdings fetcher not initialized"
+            )
         holdings = await self._fetcher.get_institution_holdings(cik, quarter)
 
         if not holdings:
@@ -446,6 +462,10 @@ Investment Signals:
 
     async def _search_institutions(self, query: str, limit: int = 20) -> ToolResult:
         """Search for institutions by name."""
+        if self._fetcher is None:
+            return ToolResult.create_failure(
+                "Institutional holdings fetcher not initialized"
+            )
         institutions = await self._fetcher.search_institutions(query, limit)
 
         if not institutions:
@@ -486,10 +506,11 @@ Investment Signals:
         Returns:
             Signal dict with level and interpretation
         """
-        signal = {
+        factors: list[str] = []
+        signal: Dict[str, Any] = {
             "level": "neutral",
             "interpretation": "",
-            "factors": [],
+            "factors": factors,
         }
 
         # Check QoQ change

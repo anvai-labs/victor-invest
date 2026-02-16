@@ -91,10 +91,10 @@ values, and cluster detection flags.
             config: Optional investigator config object.
         """
         super().__init__(config)
-        self._sentiment_service = None
-        self._dao = None
-        self._fetcher = None
-        self._data_source_manager = None
+        self._sentiment_service: Optional[Any] = None
+        self._dao: Optional[Any] = None
+        self._fetcher: Optional[Any] = None
+        self._data_source_manager: Optional[Any] = None
 
     async def initialize(self) -> None:
         """Initialize insider trading services."""
@@ -232,6 +232,10 @@ values, and cluster detection flags.
                 logger.debug(f"DataSourceManager fallback for {symbol}: {e}")
 
         # Fallback to specialized sentiment service for detailed analysis
+        if self._sentiment_service is None:
+            return ToolResult.create_failure(
+                "Insider sentiment service not initialized"
+            )
         sentiment = await self._sentiment_service.analyze_sentiment(symbol, days)
 
         return ToolResult.create_success(
@@ -314,6 +318,8 @@ values, and cluster detection flags.
                 logger.debug(f"DataSourceManager fallback for recent {symbol}: {e}")
 
         # Fallback to DAO for detailed transaction data or significant_only filter
+        if self._dao is None:
+            return ToolResult.create_failure("Insider trading DAO not initialized")
         loop = asyncio.get_event_loop()
         filings = await loop.run_in_executor(
             None, self._dao.get_recent_activity, symbol, days, significant_only
@@ -369,6 +375,10 @@ values, and cluster detection flags.
 
     async def _detect_clusters(self, symbol: str, days: int) -> ToolResult:
         """Detect cluster activity."""
+        if self._sentiment_service is None:
+            return ToolResult.create_failure(
+                "Insider sentiment service not initialized"
+            )
         clusters = await self._sentiment_service.detect_cluster_activity(symbol, days)
 
         cluster_data = [c.to_dict() for c in clusters]
@@ -408,6 +418,10 @@ values, and cluster detection flags.
 
     async def _get_key_insiders(self, symbol: str, days: int) -> ToolResult:
         """Get key insider summary."""
+        if self._sentiment_service is None:
+            return ToolResult.create_failure(
+                "Insider sentiment service not initialized"
+            )
         summary = await self._sentiment_service.get_key_insider_summary(symbol, days)
 
         return ToolResult.create_success(
@@ -442,6 +456,8 @@ values, and cluster detection flags.
                 )
 
             # Save to database
+            if self._dao is None:
+                return ToolResult.create_failure("Insider trading DAO not initialized")
             loop = asyncio.get_event_loop()
             saved_count = await loop.run_in_executor(
                 None, self._dao.save_filings_batch, filings

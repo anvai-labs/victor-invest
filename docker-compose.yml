@@ -131,7 +131,7 @@ services:
       WORKERS: ${WORKERS:-4}
       
       # SEC API configuration
-      SEC_USER_AGENT: ${SEC_USER_AGENT:-InvestiGator/2.0 (admin@example.com)}
+      SEC_USER_AGENT: ${SEC_USER_AGENT:-InvestiGator/2.0 (singhvjd@gmail.com)}
       
       # Cache settings
       CACHE_TTL_SEC: 7776000  # 90 days

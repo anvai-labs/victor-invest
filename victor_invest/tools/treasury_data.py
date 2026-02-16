@@ -91,10 +91,10 @@ and investment recommendations based on current market regime.
             config: Optional investigator config object.
         """
         super().__init__(config)
-        self._treasury_client = None
-        self._nyfed_client = None
-        self._yield_analyzer = None
-        self._recession_indicator = None
+        self._treasury_client: Optional[Any] = None
+        self._nyfed_client: Optional[Any] = None
+        self._yield_analyzer: Optional[Any] = None
+        self._recession_indicator: Optional[Any] = None
 
     async def initialize(self) -> None:
         """Initialize treasury and market regime services."""
@@ -176,6 +176,8 @@ and investment recommendations based on current market regime.
 
     async def _get_yield_curve(self) -> ToolResult:
         """Get current yield curve."""
+        if self._treasury_client is None:
+            return ToolResult.create_failure("Treasury client not available")
         curve = await self._treasury_client.get_yield_curve()
 
         if curve is None:
@@ -191,6 +193,10 @@ and investment recommendations based on current market regime.
 
     async def _get_spread_analysis(self) -> ToolResult:
         """Get yield spread analysis."""
+        if self._treasury_client is None:
+            return ToolResult.create_failure("Treasury client not available")
+        if self._yield_analyzer is None:
+            return ToolResult.create_failure("Yield analyzer not available")
         curve = await self._treasury_client.get_yield_curve()
 
         if curve is None:
@@ -223,6 +229,8 @@ and investment recommendations based on current market regime.
 
     async def _get_market_regime(self) -> ToolResult:
         """Get market regime from yield curve analysis."""
+        if self._yield_analyzer is None:
+            return ToolResult.create_failure("Yield analyzer not available")
         analysis = await self._yield_analyzer.analyze()
 
         return ToolResult.create_success(
@@ -236,6 +244,8 @@ and investment recommendations based on current market regime.
 
     async def _get_recession_assessment(self) -> ToolResult:
         """Get recession probability and economic phase."""
+        if self._recession_indicator is None:
+            return ToolResult.create_failure("Recession indicator not available")
         assessment = await self._recession_indicator.assess()
 
         return ToolResult.create_success(
@@ -250,6 +260,8 @@ and investment recommendations based on current market regime.
 
     async def _get_history(self, days: int, maturity: str) -> ToolResult:
         """Get historical yield data."""
+        if self._treasury_client is None:
+            return ToolResult.create_failure("Treasury client not available")
         history = await self._treasury_client.get_yield_history(days, maturity)
 
         if not history:
@@ -287,6 +299,8 @@ and investment recommendations based on current market regime.
 
     async def _get_summary(self) -> ToolResult:
         """Get comprehensive market regime summary."""
+        if self._recession_indicator is None:
+            return ToolResult.create_failure("Recession indicator not available")
         summary = await self._recession_indicator.get_market_regime_summary()
 
         return ToolResult.create_success(
