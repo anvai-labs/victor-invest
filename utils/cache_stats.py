@@ -9,9 +9,9 @@ Utility for monitoring cache performance and generating reports
 
 import json
 import logging
-from typing import Dict, Any, Optional
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, Optional
 
 from investigator.infrastructure.cache.cache_manager import get_cache_manager
 from investigator.infrastructure.cache.cache_types import CacheType
@@ -88,24 +88,16 @@ class CacheStatsMonitor:
 
             # Calculate efficiency score (0-100)
             hit_ratio = perf["hit_ratio_pct"]
-            error_ratio = (
-                ops["errors"] / max(1, ops["hits"] + ops["misses"] + ops["writes"])
-            ) * 100
-            speed_score = max(
-                0, 100 - (perf["avg_time_ms"] / 10)
-            )  # Penalty for slow operations
+            error_ratio = (ops["errors"] / max(1, ops["hits"] + ops["misses"] + ops["writes"])) * 100
+            speed_score = max(0, 100 - (perf["avg_time_ms"] / 10))  # Penalty for slow operations
 
             # Weighted efficiency score
-            efficiency = (
-                (hit_ratio * 0.6) + (speed_score * 0.3) + ((100 - error_ratio) * 0.1)
-            )
+            efficiency = (hit_ratio * 0.6) + (speed_score * 0.3) + ((100 - error_ratio) * 0.1)
             efficiency_scores[cache_type] = round(efficiency, 2)
 
         return efficiency_scores
 
-    def get_recent_operations_summary(
-        self, cache_type: Optional[CacheType] = None, limit: int = 10
-    ) -> Dict[str, Any]:
+    def get_recent_operations_summary(self, cache_type: Optional[CacheType] = None, limit: int = 10) -> Dict[str, Any]:
         """Get summary of recent cache operations"""
         recent_ops = self.cache_manager.get_recent_operations(cache_type, limit)
 
@@ -125,9 +117,7 @@ class CacheStatsMonitor:
                 summary[ct] = {
                     "total_operations": len(operations),
                     "operation_breakdown": operation_types,
-                    "avg_time_ms": round(total_time / len(operations), 2)
-                    if operations
-                    else 0,
+                    "avg_time_ms": round(total_time / len(operations), 2) if operations else 0,
                     "recent_operations": operations[-5:],  # Last 5 operations
                 }
 
@@ -145,11 +135,7 @@ class CacheStatsMonitor:
             "read_from_cache": cache_control.read_from_cache,
             "write_to_cache": cache_control.write_to_cache,
             "force_refresh": cache_control.force_refresh,
-            "enabled_cache_types": [
-                ct.value
-                for ct in CacheType
-                if cache_control.is_cache_type_enabled(ct.value)
-            ],
+            "enabled_cache_types": [ct.value for ct in CacheType if cache_control.is_cache_type_enabled(ct.value)],
         }
 
     def export_stats_to_json(self, file_path: str = None) -> str:
@@ -178,23 +164,17 @@ class CacheStatsMonitor:
 
         for cache_type, score in efficiency_scores.items():
             if score < 50:
-                self.logger.warning(
-                    f"⚠️ Poor cache efficiency for {cache_type}: {score:.1f}%"
-                )
+                self.logger.warning(f"⚠️ Poor cache efficiency for {cache_type}: {score:.1f}%")
 
                 type_stats = performance.get(cache_type, {})
                 ops = type_stats.get("operations", {})
                 perf = type_stats.get("performance", {})
 
                 if perf.get("hit_ratio_pct", 0) < 30:
-                    self.logger.warning(
-                        f"   Low hit ratio: {perf.get('hit_ratio_pct', 0):.1f}%"
-                    )
+                    self.logger.warning(f"   Low hit ratio: {perf.get('hit_ratio_pct', 0):.1f}%")
 
                 if perf.get("avg_time_ms", 0) > 100:
-                    self.logger.warning(
-                        f"   Slow operations: {perf.get('avg_time_ms', 0):.1f}ms average"
-                    )
+                    self.logger.warning(f"   Slow operations: {perf.get('avg_time_ms', 0):.1f}ms average")
 
                 if ops.get("errors", 0) > 0:
                     error_rate = (ops["errors"] / max(1, sum(ops.values()))) * 100
@@ -217,13 +197,9 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Cache Statistics Monitor")
-    parser.add_argument(
-        "--detailed", action="store_true", help="Show detailed handler statistics"
-    )
+    parser.add_argument("--detailed", action="store_true", help="Show detailed handler statistics")
     parser.add_argument("--export", type=str, help="Export statistics to JSON file")
-    parser.add_argument(
-        "--efficiency", action="store_true", help="Show efficiency scores only"
-    )
+    parser.add_argument("--efficiency", action="store_true", help="Show efficiency scores only")
 
     args = parser.parse_args()
 

@@ -162,9 +162,7 @@ class RuleOf40Valuation(BaseValuationModel):
 
         # Calculate Rule of 40 score
         # Convert decimals to percentages for the calculation
-        revenue_growth_pct = (
-            revenue_growth * 100 if abs(revenue_growth) < 5 else revenue_growth
-        )
+        revenue_growth_pct = revenue_growth * 100 if abs(revenue_growth) < 5 else revenue_growth
         fcf_margin_pct = fcf_margin * 100 if abs(fcf_margin) < 5 else fcf_margin
 
         rule_40_score = revenue_growth_pct + fcf_margin_pct
@@ -174,9 +172,7 @@ class RuleOf40Valuation(BaseValuationModel):
         benchmarks = self._get_benchmarks(industry)
 
         # Determine P/S multiple based on score
-        ps_multiple, score_classification = self._get_ps_multiple(
-            rule_40_score, benchmarks
-        )
+        ps_multiple, score_classification = self._get_ps_multiple(rule_40_score, benchmarks)
 
         # Calculate fair value
         fair_market_cap = current_revenue * ps_multiple
@@ -188,9 +184,7 @@ class RuleOf40Valuation(BaseValuationModel):
             upside_potential = (fair_value / current_price - 1) * 100
 
         # Estimate confidence
-        confidence = self._calculate_confidence(
-            rule_40_score, score_classification, revenue_growth_pct
-        )
+        confidence = self._calculate_confidence(rule_40_score, score_classification, revenue_growth_pct)
 
         # Build assumptions
         assumptions = {
@@ -250,16 +244,12 @@ class RuleOf40Valuation(BaseValuationModel):
         # Try partial match
         industry_lower = industry.lower()
         for key, benchmarks in self.INDUSTRY_BENCHMARKS.items():
-            if key != "default" and (
-                industry_lower in key.lower() or key.lower() in industry_lower
-            ):
+            if key != "default" and (industry_lower in key.lower() or key.lower() in industry_lower):
                 return benchmarks
 
         return self.INDUSTRY_BENCHMARKS["default"]
 
-    def _get_ps_multiple(
-        self, rule_40_score: float, benchmarks: Rule40Benchmarks
-    ) -> tuple:
+    def _get_ps_multiple(self, rule_40_score: float, benchmarks: Rule40Benchmarks) -> tuple:
         """
         Determine P/S multiple based on Rule of 40 score.
 
@@ -299,9 +289,7 @@ class RuleOf40Valuation(BaseValuationModel):
             multiple = median_ps * 0.4
             return (multiple, "distressed")
 
-    def _calculate_confidence(
-        self, score: float, classification: str, revenue_growth: float
-    ) -> float:
+    def _calculate_confidence(self, score: float, classification: str, revenue_growth: float) -> float:
         """Calculate confidence score for the valuation."""
         base_confidence = 0.70
 

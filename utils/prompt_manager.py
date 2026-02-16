@@ -16,8 +16,8 @@ application layer as orchestration logic, following clean architecture principle
 # Re-export from canonical location
 from investigator.application.prompts import (
     PromptManager,
-    get_prompt_manager,
     get_enhanced_prompt_manager,
+    get_prompt_manager,
 )
 
 __all__ = [

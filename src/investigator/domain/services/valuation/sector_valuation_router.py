@@ -81,6 +81,28 @@ class SectorValuationRouter:
     def __init__(self):
         self.logger = logging.getLogger(self.__class__.__name__)
 
+    @staticmethod
+    def _is_fee_based_insurance_service(industry: Optional[str]) -> bool:
+        """
+        Return True for insurance brokers/administrators that are fee-driven,
+        not underwriting-balance-sheet businesses.
+        """
+        if not industry:
+            return False
+
+        industry_lower = industry.lower()
+        fee_based_terms = (
+            "insurance broker",
+            "insurance brokers",
+            "insurance agency",
+            "insurance agencies",
+            "insurance service",
+            "insurance services",
+            "insurance administration",
+            "third-party administrator",
+        )
+        return any(term in industry_lower for term in fee_based_terms)
+
     def route_valuation(
         self,
         symbol: str,
@@ -110,7 +132,12 @@ class SectorValuationRouter:
         # Matches: "Insurance", "Property-Casualty Insurers", "Life Insurance", etc.
         # Database uses "Finance" sector, but some sources use "Financials"
         is_financial_sector = sector in ("Finance", "Financials", "Financial Services")
-        if is_financial_sector and industry and "insur" in industry.lower():
+        if (
+            is_financial_sector
+            and industry
+            and "insur" in industry.lower()
+            and not self._is_fee_based_insurance_service(industry)
+        ):
             valuation_type = "insurance"
         # Flexible matching for banks
         # Matches: "Banks", "Commercial Banks", "Regional Banks", etc.
@@ -133,15 +160,10 @@ class SectorValuationRouter:
             method_key = (sector, industry)
             valuation_type = self.VALUATION_METHODS.get(
                 method_key,
-                self.VALUATION_METHODS.get(
-                    (sector, None), self.VALUATION_METHODS[("default", None)]
-                ),
+                self.VALUATION_METHODS.get((sector, None), self.VALUATION_METHODS[("default", None)]),
             )
 
-        self.logger.info(
-            f"{symbol} - Routing to {valuation_type} valuation "
-            f"(sector={sector}, industry={industry})"
-        )
+        self.logger.info(f"{symbol} - Routing to {valuation_type} valuation " f"(sector={sector}, industry={industry})")
 
         # Route to appropriate method
         if valuation_type == "insurance":
@@ -158,9 +180,7 @@ class SectorValuationRouter:
             return self._value_bank(symbol, financials, current_price)
         elif valuation_type == "reit":
             # Extract company_name from financials if available
-            company_name = financials.get("company_name") or financials.get(
-                "entityName"
-            )
+            company_name = financials.get("company_name") or financials.get("entityName")
             return self._value_reit(
                 symbol=symbol,
                 financials=financials,
@@ -170,9 +190,7 @@ class SectorValuationRouter:
             )
         elif valuation_type == "biotech":
             # P2-A: Pre-revenue biotech pipeline valuation
-            company_name = financials.get("company_name") or financials.get(
-                "entityName"
-            )
+            company_name = financials.get("company_name") or financials.get("entityName")
             pipeline = financials.get("pipeline", [])  # Pipeline data if available
             return self._value_biotech(
                 symbol=symbol,
@@ -308,10 +326,7 @@ class SectorValuationRouter:
             return InsuranceType.PROPERTY_CASUALTY
 
         # Life insurance patterns
-        if any(
-            pattern in industry_lower
-            for pattern in ["life insur", "life & health", "annuity", "life insurance"]
-        ):
+        if any(pattern in industry_lower for pattern in ["life insur", "life & health", "annuity", "life insurance"]):
             return InsuranceType.LIFE
 
         # Health insurance patterns
@@ -329,24 +344,16 @@ class SectorValuationRouter:
             return InsuranceType.HEALTH
 
         # Reinsurance patterns
-        if any(
-            pattern in industry_lower
-            for pattern in ["reinsur", "re-insur", "reinsurance"]
-        ):
+        if any(pattern in industry_lower for pattern in ["reinsur", "re-insur", "reinsurance"]):
             return InsuranceType.REINSURANCE
 
         # Multi-line patterns
-        if any(
-            pattern in industry_lower
-            for pattern in ["multi-line", "multiline", "diversified insur"]
-        ):
+        if any(pattern in industry_lower for pattern in ["multi-line", "multiline", "diversified insur"]):
             return InsuranceType.MULTI_LINE
 
         return InsuranceType.UNKNOWN
 
-    def _value_bank(
-        self, symbol: str, financials: Dict, current_price: float
-    ) -> ValuationResult:
+    def _value_bank(self, symbol: str, financials: Dict, current_price: float) -> ValuationResult:
         """
         Value bank using ROE multiples method
 
@@ -404,9 +411,7 @@ class SectorValuationRouter:
                     "roe": roe,
                     "book_value_per_share": book_value_per_share,
                     "target_pb_ratio": target_pb,
-                    "current_pb_ratio": current_price / book_value_per_share
-                    if book_value_per_share > 0
-                    else 0,
+                    "current_pb_ratio": current_price / book_value_per_share if book_value_per_share > 0 else 0,
                 },
                 warnings=warnings,
             )
@@ -491,11 +496,7 @@ class SectorValuationRouter:
                     "detection_method": reit_result.detection_method,
                     "current_10yr_yield": reit_result.current_10yr_yield,
                     "rate_adjustment": reit_result.rate_adjustment,
-                    "current_ffo_yield": (
-                        reit_result.ffo_per_share / current_price * 100
-                    )
-                    if current_price > 0
-                    else 0,
+                    "current_ffo_yield": (reit_result.ffo_per_share / current_price * 100) if current_price > 0 else 0,
                 },
                 warnings=reit_result.warnings,
             )
@@ -504,9 +505,7 @@ class SectorValuationRouter:
             self.logger.warning(f"{symbol} - REIT valuation failed: {e}")
             raise
 
-    def _is_biotech_industry(
-        self, industry: Optional[str], sector: Optional[str], financials: Dict
-    ) -> bool:
+    def _is_biotech_industry(self, industry: Optional[str], sector: Optional[str], financials: Dict) -> bool:
         """
         Determine if company should use biotech pre-revenue valuation.
 
@@ -591,9 +590,7 @@ class SectorValuationRouter:
                 pipeline=pipeline,
             )
 
-            upside = (
-                (result.fair_value_per_share - current_price) / current_price
-            ) * 100
+            upside = ((result.fair_value_per_share - current_price) / current_price) * 100
 
             # Determine method string based on methodology
             if result.methodology == "pipeline_probability_weighted":
@@ -639,9 +636,7 @@ class SectorValuationRouter:
             self.logger.warning(f"{symbol} - Biotech valuation failed: {e}")
             raise
 
-    def _is_defense_industry(
-        self, industry: Optional[str], sector: Optional[str], symbol: str
-    ) -> bool:
+    def _is_defense_industry(self, industry: Optional[str], sector: Optional[str], symbol: str) -> bool:
         """
         Determine if company should use defense contractor valuation.
 
@@ -754,9 +749,7 @@ class SectorValuationRouter:
         try:
             # First, we need a base fair value from standard models
             # For now, use a simple EV/EBITDA approach as the base
-            base_fair_value = self._calculate_defense_base_value(
-                symbol, financials, current_price
-            )
+            base_fair_value = self._calculate_defense_base_value(symbol, financials, current_price)
 
             # Apply defense-specific adjustments
             result: DefenseValuationResult = value_defense_contractor(
@@ -786,11 +779,7 @@ class SectorValuationRouter:
                 "tier_weights": get_defense_tier_weights(),
             }
 
-            backlog_str = (
-                f"backlog_ratio={result.backlog_ratio:.2f}x"
-                if result.backlog_ratio
-                else "backlog_ratio=N/A"
-            )
+            backlog_str = f"backlog_ratio={result.backlog_ratio:.2f}x" if result.backlog_ratio else "backlog_ratio=N/A"
             self.logger.info(
                 f"{symbol} - Defense contractor valuation: "
                 f"base=${result.base_fair_value:.2f}, "
@@ -813,9 +802,7 @@ class SectorValuationRouter:
             self.logger.warning(f"{symbol} - Defense contractor valuation failed: {e}")
             raise
 
-    def _calculate_defense_base_value(
-        self, symbol: str, financials: Dict, current_price: float
-    ) -> float:
+    def _calculate_defense_base_value(self, symbol: str, financials: Dict, current_price: float) -> float:
         """
         Calculate base fair value for defense contractor using EV/EBITDA.
 
@@ -836,9 +823,7 @@ class SectorValuationRouter:
         """
         # Extract key metrics
         ebitda = financials.get("ebitda", 0) or financials.get("operating_income", 0)
-        total_debt = financials.get("total_debt", 0) or financials.get(
-            "long_term_debt", 0
-        )
+        total_debt = financials.get("total_debt", 0) or financials.get("long_term_debt", 0)
         cash = financials.get("cash_and_equivalents", 0) or financials.get("cash", 0)
         shares_outstanding = financials.get("shares_outstanding", 0)
 
@@ -851,8 +836,7 @@ class SectorValuationRouter:
                 return eps * target_pe
             else:
                 self.logger.warning(
-                    f"{symbol} - Insufficient data for defense base valuation, "
-                    "using current price as base"
+                    f"{symbol} - Insufficient data for defense base valuation, " "using current price as base"
                 )
                 return current_price
 
@@ -914,10 +898,10 @@ class SectorValuationRouter:
             and adjusted_fair_value fields populated
         """
         try:
+            from investigator.domain.services.industry_datasets import get_industry_summary  # noqa: F401
             from investigator.domain.services.industry_datasets import (
                 apply_adjustments_to_fair_value,
                 extract_industry_metrics,
-                get_industry_summary,  # noqa: F401
                 get_valuation_adjustments,
             )
 
@@ -955,8 +939,7 @@ class SectorValuationRouter:
                         result.adjusted_fair_value = result.fair_value * total_factor
                         if result.current_price > 0:
                             result.upside_percent = (
-                                (result.adjusted_fair_value - result.current_price)
-                                / result.current_price
+                                (result.adjusted_fair_value - result.current_price) / result.current_price
                             ) * 100
 
                 return result
@@ -1019,10 +1002,7 @@ class SectorValuationRouter:
 
                     # Update upside based on adjusted value
                     if result.current_price > 0:
-                        result.upside_percent = (
-                            (adjusted_value - result.current_price)
-                            / result.current_price
-                        ) * 100
+                        result.upside_percent = ((adjusted_value - result.current_price) / result.current_price) * 100
 
                     self.logger.info(
                         f"{symbol} - Applied {len(adjustments)} industry adjustments: "
@@ -1044,14 +1024,10 @@ class SectorValuationRouter:
             return result
 
         except ImportError:
-            self.logger.debug(
-                f"{symbol} - IndustryDatasetRegistry not available, skipping enhancement"
-            )
+            self.logger.debug(f"{symbol} - IndustryDatasetRegistry not available, skipping enhancement")
             return result
         except Exception as e:
-            self.logger.warning(
-                f"{symbol} - Failed to enhance with industry metrics: {e}"
-            )
+            self.logger.warning(f"{symbol} - Failed to enhance with industry metrics: {e}")
             return result
 
     def _get_cached_industry_metrics(self, symbol: str):
@@ -1081,9 +1057,7 @@ class SectorValuationRouter:
                 if entry.expires_at:
                     expires_at = datetime.fromisoformat(entry.expires_at)
                     if now > expires_at:
-                        self.logger.debug(
-                            f"{symbol} - Cache expired (expires_at={entry.expires_at})"
-                        )
+                        self.logger.debug(f"{symbol} - Cache expired (expires_at={entry.expires_at})")
                         return None, cache
                 elif age_days > 7:
                     self.logger.debug(f"{symbol} - Cache too old ({age_days} days)")
@@ -1141,8 +1115,7 @@ class SectorValuationRouter:
 
             if success:
                 self.logger.info(
-                    f"{symbol} - Cached industry metrics "
-                    f"(quality={metrics.quality.value}, ttl={ttl_days}d)"
+                    f"{symbol} - Cached industry metrics " f"(quality={metrics.quality.value}, ttl={ttl_days}d)"
                 )
 
         except Exception as e:
@@ -1151,9 +1124,7 @@ class SectorValuationRouter:
         # Also update industry benchmarks if we have enough symbols
         self._maybe_update_industry_benchmarks(cache, industry)
 
-    def _maybe_update_industry_benchmarks(
-        self, cache, industry: str, min_symbols: int = 3
-    ):
+    def _maybe_update_industry_benchmarks(self, cache, industry: str, min_symbols: int = 3):
         """
         Update industry-level benchmarks if enough symbols are cached.
 
@@ -1175,18 +1146,14 @@ class SectorValuationRouter:
                     cached_at = datetime.fromisoformat(existing.cached_at)
                     age_days = (datetime.now(timezone.utc) - cached_at).days
                     # Only recompute if old or symbol count changed significantly
-                    if (
-                        age_days < 1
-                        and abs(existing.symbol_count - len(industry_symbols)) < 2
-                    ):
+                    if age_days < 1 and abs(existing.symbol_count - len(industry_symbols)) < 2:
                         return
 
                 # Compute and cache industry benchmarks
                 benchmarks = cache.compute_and_cache_industry_benchmarks(industry)
                 if benchmarks:
                     self.logger.info(
-                        f"Updated industry benchmarks for {industry} "
-                        f"({benchmarks.symbol_count} symbols)"
+                        f"Updated industry benchmarks for {industry} " f"({benchmarks.symbol_count} symbols)"
                     )
 
         except Exception as e:

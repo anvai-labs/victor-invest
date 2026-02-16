@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="420" viewBox="0 0 980 420">
+  <defs>
+    <style>
+      .title { font: 700 22px Arial, sans-serif; fill: #1f2937; }
+      .label { font: 600 14px Arial, sans-serif; fill: #111827; }
+      .small { font: 12px Arial, sans-serif; fill: #374151; }
+      .box { fill: #f8fafc; stroke: #64748b; stroke-width: 2; rx: 10; ry: 10; }
+      .accent { fill: #ecfeff; stroke: #0e7490; stroke-width: 2; rx: 10; ry: 10; }
+      .warn { fill: #fff7ed; stroke: #c2410c; stroke-width: 2; rx: 10; ry: 10; }
+      .arrow { stroke: #334155; stroke-width: 2.5; marker-end: url(#arrowHead); fill: none; }
+    </style>
+    <marker id="arrowHead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#334155"/>
+    </marker>
+  </defs>
+
+  <text x="40" y="42" class="title">Valuation Basis Switch (Relative Models)</text>
+
+  <rect x="40" y="75" width="210" height="96" class="box"/>
+  <text x="58" y="105" class="label">Input Metrics</text>
+  <text x="58" y="130" class="small">EPS, EBITDA, Revenue/share</text>
+  <text x="58" y="150" class="small">Growth inputs (rev/earnings)</text>
+
+  <rect x="290" y="75" width="260" height="96" class="accent"/>
+  <text x="308" y="105" class="label">Basis Selector</text>
+  <text x="308" y="130" class="small">`--valuation-basis ttm|forward`</text>
+  <text x="308" y="150" class="small">`--forward-horizon 1q|2q|3q|1y`</text>
+
+  <rect x="590" y="75" width="350" height="96" class="box"/>
+  <text x="608" y="105" class="label">Denominator Used</text>
+  <text x="608" y="130" class="small">TTM: raw trailing values</text>
+  <text x="608" y="150" class="small">Forward: TTM * (1+g)^(h/4)</text>
+
+  <path d="M250 123 L290 123" class="arrow"/>
+  <path d="M550 123 L590 123" class="arrow"/>
+
+  <rect x="40" y="220" width="280" height="125" class="box"/>
+  <text x="58" y="248" class="label">Relative Models</text>
+  <text x="58" y="272" class="small">P/E, EV/EBITDA, P/S, P/B</text>
+  <text x="58" y="292" class="small">Assumptions include basis + horizon</text>
+  <text x="58" y="312" class="small">for traceability in logs/JSON</text>
+
+  <rect x="360" y="220" width="240" height="125" class="box"/>
+  <text x="378" y="248" class="label">Blend Layer</text>
+  <text x="378" y="272" class="small">Dynamic weights + applicability</text>
+  <text x="378" y="292" class="small">Model agreement score</text>
+
+  <rect x="640" y="220" width="300" height="125" class="warn"/>
+  <text x="658" y="248" class="label">Validation Harness</text>
+  <text x="658" y="272" class="small">Pipeline vs Manual vs Direct LLM</text>
+  <text x="658" y="292" class="small">Flag duplicates/out-of-range params</text>
+  <text x="658" y="312" class="small">Use as diagnostics, not price target</text>
+
+  <path d="M320 282 L360 282" class="arrow"/>
+  <path d="M600 282 L640 282" class="arrow"/>
+</svg>

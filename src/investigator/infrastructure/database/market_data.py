@@ -9,6 +9,7 @@ Connects to read-only market data database on ${DB_HOST:-localhost}
 """
 
 import logging
+import os
 import threading
 from decimal import Decimal
 from typing import Any, Dict, Optional
@@ -60,13 +61,9 @@ class DatabaseMarketDataFetcher:
 
         # Warning tuning – prevent false alarms on intentionally short lookbacks.
         self.history_warning_days = getattr(config.analysis, "history_warning_days", 50)
-        self.history_warning_tolerance = getattr(
-            config.analysis, "history_warning_tolerance", 0.8
-        )
+        self.history_warning_tolerance = getattr(config.analysis, "history_warning_tolerance", 0.8)
         # Clamp tolerance to sensible bounds (10%-100%)
-        self.history_warning_tolerance = min(
-            1.0, max(0.1, self.history_warning_tolerance)
-        )
+        self.history_warning_tolerance = min(1.0, max(0.1, self.history_warning_tolerance))
         self.low_volume_notice_min_days = getattr(
             config.analysis, "low_volume_notice_min_days", 30
         )  # only escalate low volume when we have a reasonable sample size
@@ -117,9 +114,7 @@ class DatabaseMarketDataFetcher:
             if days is None:
                 days = self.default_days
 
-            logger.info(
-                f"Fetching {days} days of market data for {symbol} from database"
-            )
+            logger.info(f"Fetching {days} days of market data for {symbol} from database")
 
             # SQL query to fetch OHLCV data - get exact N trading days using LIMIT
             # Database contains only trading days (no weekends/holidays)
@@ -166,9 +161,7 @@ class DatabaseMarketDataFetcher:
                 df[col] = pd.to_numeric(df[col], errors="coerce")
 
             # Convert volume to int
-            df["Volume"] = (
-                pd.to_numeric(df["Volume"], errors="coerce").fillna(0).astype(np.int64)
-            )
+            df["Volume"] = pd.to_numeric(df["Volume"], errors="coerce").fillna(0).astype(np.int64)
 
             # Remove any rows with all NaN values
             df = df.dropna(how="all")
@@ -187,11 +180,7 @@ class DatabaseMarketDataFetcher:
             # Check volume requirement – only escalate when we have a reasonable sample
             avg_volume = df["Volume"].mean()
             if avg_volume < self.min_volume:
-                log_fn = (
-                    logger.info
-                    if len(df) < self.low_volume_notice_min_days
-                    else logger.warning
-                )
+                log_fn = logger.info if len(df) < self.low_volume_notice_min_days else logger.warning
                 log_fn(
                     "Low volume for %s: %s < %s (lookback %d days)",
                     symbol,
@@ -223,9 +212,7 @@ class DatabaseMarketDataFetcher:
         expected = int(cap * self.history_warning_tolerance)
         return max(5, expected)
 
-    async def get_historical_data(
-        self, symbol: str, period: str = "1y"
-    ) -> pd.DataFrame:
+    async def get_historical_data(self, symbol: str, period: str = "1y") -> pd.DataFrame:
         """
         Async alias for get_stock_data to match technical agent expectations
 
@@ -268,25 +255,15 @@ class DatabaseMarketDataFetcher:
             )
 
             with self.engine.connect() as conn:
-                price_info = conn.execute(
-                    query_price, {"symbol": symbol.upper()}
-                ).fetchone()
+                price_info = conn.execute(query_price, {"symbol": symbol.upper()}).fetchone()
 
             if not price_info:
                 logger.warning(f"No recent price data found for {symbol}")
                 current_price = None
                 current_volume = None
             else:
-                current_price = (
-                    float(price_info.current_price)
-                    if price_info.current_price
-                    else None
-                )
-                current_volume = (
-                    int(price_info.current_volume)
-                    if price_info.current_volume
-                    else None
-                )
+                current_price = float(price_info.current_price) if price_info.current_price else None
+                current_volume = int(price_info.current_volume) if price_info.current_volume else None
 
             # Calculate 52-week high/low
             query_52w = text(
@@ -302,61 +279,71 @@ class DatabaseMarketDataFetcher:
             )
 
             with self.engine.connect() as conn:
-                result_52w = conn.execute(
-                    query_52w, {"symbol": symbol.upper()}
-                ).fetchone()
+                result_52w = conn.execute(query_52w, {"symbol": symbol.upper()}).fetchone()
 
             # Calculate market cap if we have shares outstanding and current price
             market_cap = None
             shares_outstanding = self._extract_int(
-                company_info.get("outstandingshares")
-                or company_info.get("shares_outstanding")
+                company_info.get("outstandingshares") or company_info.get("shares_outstanding")
             )
             if shares_outstanding and current_price:
                 market_cap = shares_outstanding * current_price
 
             # Use 12-month beta as default, fallback to longer periods if not available
             beta = None
-            beta_candidates = [
-                company_info.get("b_12_month"),
-                company_info.get("beta_12m"),
-                company_info.get("b_24_month"),
-                company_info.get("beta_24m"),
-                company_info.get("b_36_month"),
-                company_info.get("beta_36m"),
-                company_info.get("b_60_month"),
-                company_info.get("beta_60m"),
-            ]
-            for candidate in beta_candidates:
-                if candidate is not None:
-                    try:
-                        beta = float(candidate)
-                        break
-                    except (TypeError, ValueError):
-                        continue
+            beta_source = "symbol"
+            beta_as_of_date = None
+            beta_r_squared = None
+
+            requested_beta_source, requested_beta_horizon = self._get_beta_preference()
+            model_beta = self._get_beta_from_models_table(
+                symbol=symbol,
+                beta_source=requested_beta_source,
+                horizon_months=requested_beta_horizon,
+            )
+            if model_beta:
+                beta = model_beta["beta"]
+                beta_source = model_beta["model"]
+                beta_as_of_date = model_beta.get("as_of_date")
+                beta_r_squared = model_beta.get("r_squared")
+            else:
+                beta_candidates = [
+                    company_info.get("b_12_month"),
+                    company_info.get("beta_12m"),
+                    company_info.get("b_24_month"),
+                    company_info.get("beta_24m"),
+                    company_info.get("b_36_month"),
+                    company_info.get("beta_36m"),
+                    company_info.get("b_60_month"),
+                    company_info.get("beta_60m"),
+                ]
+                for candidate in beta_candidates:
+                    if candidate is not None:
+                        try:
+                            beta = float(candidate)
+                            break
+                        except (TypeError, ValueError):
+                            continue
+
+            if beta_r_squared is None:
+                beta_r_squared = self._extract_float(company_info.get("r2_12_month"))
 
             is_etf = self._infer_is_etf(symbol, company_info)
 
             info = {
                 "current_price": current_price,
                 "current_volume": current_volume,
-                "52_week_high": float(result_52w.week_52_high)
-                if result_52w and result_52w.week_52_high
-                else None,
-                "52_week_low": float(result_52w.week_52_low)
-                if result_52w and result_52w.week_52_low
-                else None,
-                "avg_volume": int(result_52w.avg_volume)
-                if result_52w and result_52w.avg_volume
-                else None,
+                "52_week_high": float(result_52w.week_52_high) if result_52w and result_52w.week_52_high else None,
+                "52_week_low": float(result_52w.week_52_low) if result_52w and result_52w.week_52_low else None,
+                "avg_volume": int(result_52w.avg_volume) if result_52w and result_52w.avg_volume else None,
                 "market_cap": market_cap,
-                "sector": self._extract_first_nonempty(
-                    company_info, ["sec_sector", "sector", "gics_sector"]
-                ),
-                "industry": self._extract_first_nonempty(
-                    company_info, ["sec_industry", "industry", "gics_industry"]
-                ),
+                "sector": self._extract_first_nonempty(company_info, ["sec_sector", "sector", "gics_sector"]),
+                "industry": self._extract_first_nonempty(company_info, ["sec_industry", "industry", "gics_industry"]),
                 "beta": beta,
+                "beta_source": beta_source,
+                "beta_as_of_date": beta_as_of_date,
+                "beta_r_squared": beta_r_squared,
+                "r2_12_month": self._extract_float(company_info.get("r2_12_month")),
                 "cik": self._format_cik(company_info.get("cik")),
                 "sic_code": company_info.get("sic_code"),
                 "shares_outstanding": shares_outstanding,
@@ -448,6 +435,87 @@ class DatabaseMarketDataFetcher:
         metadata = dict(row) if row else {}
         self._symbol_metadata_cache[symbol_key] = metadata
         return metadata
+
+    @staticmethod
+    def _extract_float(value: Any) -> Optional[float]:
+        if value is None:
+            return None
+        try:
+            if isinstance(value, Decimal):
+                value = float(value)
+            parsed = float(value)
+            if np.isfinite(parsed):
+                return parsed
+            return None
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _get_beta_preference() -> tuple[str, int]:
+        source = os.getenv("INVESTIGATOR_BETA_SOURCE", "market").strip().lower()
+        if source in {"blend", "blended"}:
+            source = "blended"
+        if source not in {"market", "ff6", "fundamental", "blended", "auto"}:
+            source = "market"
+
+        try:
+            horizon = int(os.getenv("INVESTIGATOR_BETA_HORIZON_MONTHS", "12"))
+        except ValueError:
+            horizon = 12
+        horizon = max(1, horizon)
+        return source, horizon
+
+    def _get_beta_from_models_table(
+        self, symbol: str, beta_source: str, horizon_months: int
+    ) -> Optional[Dict[str, Any]]:
+        model_preference = {
+            "auto": ["blended", "ff6", "market", "fundamental"],
+            "market": ["market"],
+            "ff6": ["ff6"],
+            "fundamental": ["fundamental"],
+            "blended": ["blended"],
+        }
+        models = model_preference.get(beta_source, ["market"])
+
+        for model in models:
+            query = text(
+                """
+                SELECT model, beta_value, r_squared, as_of_date
+                FROM symbol_beta_models
+                WHERE symbol = :symbol
+                  AND lookback_months = :lookback
+                  AND model = :model
+                ORDER BY as_of_date DESC
+                LIMIT 1
+                """
+            )
+            try:
+                with self.engine.connect() as conn:
+                    row = conn.execute(
+                        query,
+                        {
+                            "symbol": symbol.upper(),
+                            "lookback": int(horizon_months),
+                            "model": model,
+                        },
+                    ).fetchone()
+            except Exception:
+                # Table may not exist yet - quietly fall back to symbol columns.
+                return None
+
+            if not row:
+                continue
+
+            beta = self._extract_float(row.beta_value)
+            if beta is None:
+                continue
+            return {
+                "model": row.model,
+                "beta": beta,
+                "r_squared": self._extract_float(row.r_squared),
+                "as_of_date": row.as_of_date.isoformat() if row.as_of_date else None,
+            }
+        return None
 
     @staticmethod
     def _extract_int(value: Any) -> Optional[int]:

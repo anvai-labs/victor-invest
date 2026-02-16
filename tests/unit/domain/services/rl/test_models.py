@@ -4,7 +4,6 @@ Unit tests for RL models and dataclasses.
 
 from datetime import date
 
-
 from investigator.domain.services.rl.models import (
     ABTestGroup,
     ABTestResults,

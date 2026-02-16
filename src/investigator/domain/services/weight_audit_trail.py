@@ -67,9 +67,7 @@ class AuditStep:
                     "before": round(before, 2),
                     "after": round(after, 2),
                     "delta": round(after - before, 2),
-                    "delta_pct": round((after - before) / before * 100, 1)
-                    if before > 0
-                    else 0,
+                    "delta_pct": round((after - before) / before * 100, 1) if before > 0 else 0,
                 }
         return changes
 
@@ -169,14 +167,10 @@ class WeightAuditTrail:
         # Log step summary
         changes = step.get_changes()
         if changes:
-            logger.debug(
-                f"[{self.symbol}] Step {step_number} ({step_name}): "
-                f"{len(changes)} models changed"
-            )
+            logger.debug(f"[{self.symbol}] Step {step_number} ({step_name}): " f"{len(changes)} models changed")
             for model, change in changes.items():
                 logger.debug(
-                    f"  {model}: {change['before']:.1f}% → {change['after']:.1f}% "
-                    f"({change['delta']:+.1f}%)"
+                    f"  {model}: {change['before']:.1f}% → {change['after']:.1f}% " f"({change['delta']:+.1f}%)"
                 )
 
     def mark_bounds_applied(self) -> None:
@@ -227,8 +221,7 @@ class WeightAuditTrail:
                 change_pct = (final - initial) / initial * 100
                 if abs(change_pct) > 50:
                     warnings.append(
-                        f"{model}: Weight changed by {change_pct:+.0f}% "
-                        f"({initial:.1f}% → {final:.1f}%)"
+                        f"{model}: Weight changed by {change_pct:+.0f}% " f"({initial:.1f}% → {final:.1f}%)"
                     )
 
         return AuditSummary(
@@ -260,9 +253,7 @@ class WeightAuditTrail:
         logger.info("╠══════════════════════════════════════════════════════════╣")
         logger.info("║ INITIAL WEIGHTS:                                         ║")
         for model, weight in summary.initial_weights.items():
-            logger.info(
-                f"║   {model:12}: {weight:6.1f}%                               ║"
-            )
+            logger.info(f"║   {model:12}: {weight:6.1f}%                               ║")
 
         # Final weights
         logger.info("╠══════════════════════════════════════════════════════════╣")
@@ -270,17 +261,13 @@ class WeightAuditTrail:
         for model, weight in summary.final_weights.items():
             initial = summary.initial_weights.get(model, 0)
             delta = weight - initial
-            logger.info(
-                f"║   {model:12}: {weight:6.1f}% ({delta:+5.1f}%)                     ║"
-            )
+            logger.info(f"║   {model:12}: {weight:6.1f}% ({delta:+5.1f}%)                     ║")
 
         # Largest change
         if summary.largest_change:
             lc = summary.largest_change
             logger.info("╠══════════════════════════════════════════════════════════╣")
-            logger.info(
-                f"║ LARGEST CHANGE: {lc['model']} in {lc['step'][:20]:20}       ║"
-            )
+            logger.info(f"║ LARGEST CHANGE: {lc['model']} in {lc['step'][:20]:20}       ║")
             logger.info(
                 f"║   {lc['before']:.1f}% → {lc['after']:.1f}% ({lc['delta']:+.1f}%)                            ║"
             )
@@ -288,9 +275,7 @@ class WeightAuditTrail:
         # Warnings
         if summary.warnings:
             logger.info("╠══════════════════════════════════════════════════════════╣")
-            logger.info(
-                f"║ WARNINGS ({len(summary.warnings)}):                                          ║"
-            )
+            logger.info(f"║ WARNINGS ({len(summary.warnings)}):                                          ║")
             for warning in summary.warnings[:3]:  # Limit to 3
                 logger.info(f"║   ⚠️  {warning[:50]:50} ║")
 

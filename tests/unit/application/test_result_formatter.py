@@ -221,12 +221,137 @@ class TestFormatAnalysisOutput:
 
     def test_standard_handles_numpy_arrays(self):
         """Standard mode should handle numpy arrays without crashing."""
-        data = {
-            "fundamental": {"prices": np.array([100.0, 101.5]), "recommendation": "BUY"}
-        }
+        data = {"fundamental": {"prices": np.array([100.0, 101.5]), "recommendation": "BUY"}}
         # Should not raise ValueError
         result = format_analysis_output(data, OutputDetailLevel.STANDARD)
         assert "fundamental" in result
+
+    def test_standard_removes_fundamental_duplicate_summaries(self):
+        """Standard mode should remove duplicated fundamental valuation summary fields."""
+        data = {
+            "agents": {
+                "fundamental": {
+                    "multi_model_summary": {"blended_fair_value": 123.4},
+                    "llm_fair_value_estimate": 123.4,
+                    "valuation": {"fair_value_estimate": 123.4},
+                }
+            }
+        }
+        result = format_analysis_output(data, OutputDetailLevel.STANDARD)
+        assert "multi_model_summary" not in result["agents"]["fundamental"]
+        assert "llm_fair_value_estimate" not in result["agents"]["fundamental"]
+
+    def test_compact_produces_machine_readable_consolidated_schema(self):
+        """Compact mode should emit consolidated schema without nested duplication."""
+        data = {
+            "symbol": "STX",
+            "mode": "comprehensive",
+            "started_at": "2026-02-13T00:00:00",
+            "completed_at": "2026-02-13T00:00:10",
+            "duration": 10.0,
+            "agents": {
+                "fundamental": {
+                    "status": "success",
+                    "recommendation": "hold",
+                    "valuation": {
+                        "fair_value_estimate": 250.0,
+                        "current_price": 200.0,
+                        "valuation_methods": {
+                            "pe": {
+                                "applicable": True,
+                                "fair_value_per_share": 260.0,
+                                "weight": 0.3,
+                                "confidence_score": 0.7,
+                                "assumptions": {
+                                    "target_pe": 25.0,
+                                    "valuation_basis": "forward",
+                                    "forward_horizon": "2q",
+                                    "guidance_applied": True,
+                                    "guidance_source_form": "8-K",
+                                    "guidance_confidence_score": 0.65,
+                                    "guidance_revenue_growth_used": 0.08,
+                                },
+                                "diagnostics": {"flags": ["PE_DIVERGENCE"]},
+                            }
+                        },
+                    },
+                    "ratios": {"current_price": 200.0},
+                    "data_quality": {"data_quality_score": 75.0, "quality_grade": "Good"},
+                    "confidence": {"confidence_level": "HIGH", "confidence_score": 80.0},
+                },
+                "technical": {
+                    "status": "success",
+                    "recommendation": "neutral",
+                    "technical_rating": 0.0,
+                    "levels": {"pivot_point": 201.0, "support_1": 190.0, "resistance_1": 210.0},
+                },
+                "synthesis": {
+                    "status": "success",
+                    "recommendation": {"final_recommendation": "hold", "confidence": 70.0},
+                    "synthesis": {"report_mode": "deterministic"},
+                },
+                "market_context": {
+                    "status": "success",
+                    "sector": "technology",
+                    "market_context": {"market_regime": "risk_off"},
+                    "sector_context": {"sector_strength": "weak"},
+                },
+                "sec": {
+                    "status": "success",
+                    "companyfacts_summary": {"entityName": "Seagate", "fact_count": 1000},
+                    "forward_guidance": {
+                        "source": "sec_filing_regex",
+                        "source_form": "8-K",
+                        "confidence_score": 0.65,
+                    },
+                },
+            },
+        }
+        result = format_analysis_output(data, OutputDetailLevel.COMPACT)
+        assert result["schema_version"] == "analysis.compact.v1"
+        assert result["symbol"] == "STX"
+        assert "agents" not in result
+        assert result["valuation"]["basis"] == "forward"
+        assert result["valuation"]["forward_horizon"] == "2q"
+        assert result["valuation"]["models"]["pe"]["fair_value_per_share"] == 260.0
+        assert result["valuation"]["models"]["pe"]["assumptions"]["guidance_applied"] is True
+        assert result["sec"]["forward_guidance"]["source_form"] == "8-K"
+
+    def test_compact_preserves_non_applicable_reason_for_models(self):
+        """Compact mode should keep model non-applicable reason for UI diagnostics."""
+        data = {
+            "symbol": "JNJ",
+            "mode": "comprehensive",
+            "started_at": "2026-02-13T00:00:00",
+            "completed_at": "2026-02-13T00:00:03",
+            "duration": 3.0,
+            "agents": {
+                "fundamental": {
+                    "status": "success",
+                    "recommendation": "hold",
+                    "valuation": {
+                        "fair_value_estimate": 150.0,
+                        "current_price": 200.0,
+                        "valuation_methods": {
+                            "ggm": {
+                                "applicable": False,
+                                "fair_value_per_share": 0.0,
+                                "reason": "No dividends paid",
+                            }
+                        },
+                    },
+                    "ratios": {"current_price": 200.0},
+                    "data_quality": {"data_quality_score": 70.0, "quality_grade": "Good"},
+                    "confidence": {"confidence_level": "HIGH", "confidence_score": 80.0},
+                },
+                "technical": {"status": "success"},
+                "synthesis": {"status": "success"},
+            },
+        }
+
+        result = format_analysis_output(data, OutputDetailLevel.COMPACT)
+        assert result["valuation"]["models"]["ggm"]["applicable"] is False
+        assert result["valuation"]["models"]["ggm"]["reason"] == "No dividends paid"
 
 
 class TestEdgeCases:

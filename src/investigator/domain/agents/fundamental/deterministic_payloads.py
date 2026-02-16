@@ -6,9 +6,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional, Tuple
 
 
-def build_deterministic_response(
-    agent_id: str, label: str, payload: Dict[str, Any]
-) -> Dict[str, Any]:
+def build_deterministic_response(agent_id: str, label: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     """Build a deterministic analysis response compatible with LLM-shaped contracts."""
     return {
         "response": payload,

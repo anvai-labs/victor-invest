@@ -13,16 +13,15 @@ from pathlib import Path
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from utils.executive_summary_generator import generate_executive_summary_from_file
 from core.ollama_client import OllamaClient
+
+from utils.executive_summary_generator import generate_executive_summary_from_file
 
 
 async def main():
     if len(sys.argv) < 2:
         print("Usage: python3 scripts/test_executive_summary.py <input_json_file>")
-        print(
-            "Example: python3 scripts/test_executive_summary.py results/NEE_FINAL_FIX.json"
-        )
+        print("Example: python3 scripts/test_executive_summary.py results/NEE_FINAL_FIX.json")
         sys.exit(1)
 
     input_file = sys.argv[1]
@@ -72,9 +71,7 @@ async def main():
         print(f"  - Conviction: {summary['recommendation']['conviction']}")
         print(f"  - Price Target: ${summary['recommendation']['price_target']:.2f}")
         print(f"  - Current Price: ${summary['recommendation']['current_price']:.2f}")
-        print(
-            f"  - Upside Potential: {summary['recommendation']['upside_potential']:.1f}%"
-        )
+        print(f"  - Upside Potential: {summary['recommendation']['upside_potential']:.1f}%")
 
     except Exception as e:
         print(f"\n❌ Failed to generate summary: {e}")

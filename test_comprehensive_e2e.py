@@ -31,18 +31,18 @@ async def test_comprehensive():
 
     # Import all handlers
     from victor_invest.handlers import (
-        FetchSECDataHandler,
-        FetchMarketDataHandler,
+        AnalyzePeersHandler,
         FetchMacroDataHandler,
-        RunFundamentalAnalysisHandler,
-        RunTechnicalAnalysisHandler,
-        RunMarketContextHandler,
-        RunSynthesisHandler,
+        FetchMarketDataHandler,
+        FetchSECDataHandler,
+        GenerateLookbackDatesHandler,
         GenerateReportHandler,
         IdentifyPeersHandler,
-        AnalyzePeersHandler,
-        GenerateLookbackDatesHandler,
         ProcessBacktestBatchHandler,
+        RunFundamentalAnalysisHandler,
+        RunMarketContextHandler,
+        RunSynthesisHandler,
+        RunTechnicalAnalysisHandler,
         SaveRLPredictionsHandler,
     )
 
@@ -139,9 +139,7 @@ async def test_comprehensive():
         except Exception as e:
             error_type = type(e).__name__
             if "ModuleNotFoundError" in str(e) or "Database" in str(e):
-                print(
-                    f"⚠ {handler_name}: Infrastructure error (expected) - {error_type}"
-                )
+                print(f"⚠ {handler_name}: Infrastructure error (expected) - {error_type}")
             else:
                 print(f"✗ {handler_name}: {error_type}: {str(e)[:80]}")
 
@@ -151,6 +149,7 @@ async def test_comprehensive():
     # Test YAML workflows
     try:
         from pathlib import Path
+
         import yaml
 
         yaml_file = Path("victor_invest/workflows/comprehensive.yaml")

@@ -47,20 +47,20 @@ from sqlalchemy import text
 from investigator.infrastructure.database.symbol_repository import SymbolRepository
 
 # Victor-Invest imports - uses BaseYAMLWorkflowProvider pattern
+from victor_invest.workflows import run_analysis  # Fallback for backwards compatibility
 from victor_invest.workflows import (
     AnalysisMode,
     InvestmentWorkflowProvider,
-    run_analysis,  # Fallback for backwards compatibility
 )
 
 # RL Infrastructure imports for tracking predictions
 try:
-    from investigator.domain.services.rl.outcome_tracker import OutcomeTracker
     from investigator.domain.services.rl.models import (
-        ValuationContext,
-        GrowthStage,
         CompanySize,
+        GrowthStage,
+        ValuationContext,
     )
+    from investigator.domain.services.rl.outcome_tracker import OutcomeTracker
 
     RL_AVAILABLE = True
 except ImportError:
@@ -68,23 +68,23 @@ except ImportError:
     OutcomeTracker = None
     ValuationContext = None
 
+# Data source facade for economic indicators
+from investigator.domain.services.data_sources.facade import get_data_source_facade
+
 # Shared market data services (used by rl_backtest, batch_analysis_runner, victor_invest)
 from investigator.domain.services.market_data import (
-    SharesService,
-    PriceService,
     DataValidationService,
+    PriceService,
+    SharesService,
     SymbolMetadataService,
     get_technical_analysis_service,
 )
 
 # Shared valuation config services (single source of truth for sector multiples, CAPM, GGM)
 from investigator.domain.services.valuation_shared import (
-    ValuationConfigService,
     SectorMultiplesService,
+    ValuationConfigService,
 )
-
-# Data source facade for economic indicators
-from investigator.domain.services.data_sources.facade import get_data_source_facade
 
 # Create logs directory
 Path("logs").mkdir(exist_ok=True)
@@ -107,9 +107,7 @@ console_handler.setFormatter(formatter)
 console_handler.setLevel(logging.INFO)
 
 file_handler = logging.FileHandler(log_filename)
-file_handler.setFormatter(
-    logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-)
+file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
 file_handler.setLevel(logging.INFO)
 
 logger.addHandler(console_handler)
@@ -216,9 +214,7 @@ class BatchAnalysisRunner:
         if RL_AVAILABLE:
             try:
                 self.outcome_tracker = OutcomeTracker()
-                logger.info(
-                    "RL OutcomeTracker initialized - predictions will be recorded for training"
-                )
+                logger.info("RL OutcomeTracker initialized - predictions will be recorded for training")
             except Exception as e:
                 logger.warning(f"Failed to initialize OutcomeTracker: {e}")
 
@@ -229,16 +225,12 @@ class BatchAnalysisRunner:
         self.metadata_service = SymbolMetadataService()
         self.validation_service = DataValidationService()
         self.technical_service = get_technical_analysis_service()
-        logger.info(
-            "Shared market data services initialized (including TechnicalAnalysisService)"
-        )
+        logger.info("Shared market data services initialized (including TechnicalAnalysisService)")
 
         # Initialize shared valuation config services
         # Single source of truth for sector multiples, CAPM, GGM defaults
         self.valuation_config_service = ValuationConfigService()
-        self.sector_multiples_service = SectorMultiplesService(
-            self.valuation_config_service
-        )
+        self.sector_multiples_service = SectorMultiplesService(self.valuation_config_service)
         logger.info("Shared valuation config services initialized")
 
         # Initialize data source facade for economic indicators
@@ -294,9 +286,7 @@ class BatchAnalysisRunner:
 
         Returns list of warning messages if issues detected.
         """
-        validation_warnings = self.validation_service.validate_shares(
-            symbol, current_price
-        )
+        validation_warnings = self.validation_service.validate_shares(symbol, current_price)
         return [str(w) for w in validation_warnings]
 
     def get_domestic_filers(self) -> Set[str]:
@@ -307,9 +297,7 @@ class BatchAnalysisRunner:
         """Delegate to shared SymbolRepository."""
         return self.symbol_repo.get_russell1000_symbols()
 
-    def get_all_symbols(
-        self, us_only: bool = True, order_by: str = "stockid"
-    ) -> List[str]:
+    def get_all_symbols(self, us_only: bool = True, order_by: str = "stockid") -> List[str]:
         """Delegate to shared SymbolRepository."""
         return self.symbol_repo.get_all_symbols(us_only=us_only, order_by=order_by)
 
@@ -324,9 +312,7 @@ class BatchAnalysisRunner:
     def get_already_processed_symbols(self) -> Set[str]:
         """Get symbols that already have SEC processed data."""
         with self.sec_engine.connect() as conn:
-            result = conn.execute(
-                text("SELECT DISTINCT symbol FROM sec_companyfacts_processed")
-            )
+            result = conn.execute(text("SELECT DISTINCT symbol FROM sec_companyfacts_processed"))
             symbols = {row[0] for row in result.fetchall()}
             logger.info(f"Found {len(symbols)} symbols already in SEC database")
             return symbols
@@ -371,11 +357,7 @@ class BatchAnalysisRunner:
 
             # Extract regional Fed summary
             regional_fed = analysis_data.regional_fed_indicators or {}
-            fed_summary = (
-                regional_fed.get("summary", {})
-                if isinstance(regional_fed, dict)
-                else {}
-            )
+            fed_summary = regional_fed.get("summary", {}) if isinstance(regional_fed, dict) else {}
 
             # Extract CBOE data
             cboe = analysis_data.cboe_data or {}
@@ -404,9 +386,7 @@ class BatchAnalysisRunner:
                 "empire_state_mfg": fed_summary.get("empire_state_mfg"),
                 # CBOE data
                 "vix": vix,
-                "vix_term_structure": (vix3m / vix)
-                if vix and vix3m and vix > 0
-                else 1.0,
+                "vix_term_structure": (vix3m / vix) if vix and vix3m and vix > 0 else 1.0,
                 "skew": cboe.get("skew"),
                 "volatility_regime": vol_regime,
                 "is_backwardation": cboe.get("is_backwardation", False),
@@ -438,8 +418,7 @@ class BatchAnalysisRunner:
                     "technical_analysis": ctx.get("technical_analysis"),
                     "market_context": ctx.get("market_context"),
                     "synthesis": ctx.get("synthesis"),
-                    "recommendation": ctx.get("recommendation")
-                    or ctx.get("synthesis", {}).get("recommendation"),
+                    "recommendation": ctx.get("recommendation") or ctx.get("synthesis", {}).get("recommendation"),
                 }
             elif isinstance(ctx, dict):
                 context_data = ctx
@@ -541,9 +520,7 @@ class BatchAnalysisRunner:
             industry=fundamental.get("industry", "Unknown"),
             growth_stage=growth_stage,
             company_size=company_size,
-            profitability_score=min(
-                1.0, max(0, (profitability.get("net_margin", 0) or 0) + 0.1) / 0.3
-            ),
+            profitability_score=min(1.0, max(0, (profitability.get("net_margin", 0) or 0) + 0.1) / 0.3),
             pe_level=min(1.0, (valuation.get("pe_ratio", 20) or 20) / 50),
             revenue_growth=revenue_growth,
             fcf_margin=profitability.get("fcf_margin", 0) or 0,
@@ -602,22 +579,17 @@ class BatchAnalysisRunner:
             logger.info(f"  Starting: {symbol} ({sector})")
 
             # Map mode to workflow name
-            workflow_name = (
-                self.workflow_provider.get_workflow_for_task_type(self.mode.value)
-                or self.mode.value
-            )
+            workflow_name = self.workflow_provider.get_workflow_for_task_type(self.mode.value) or self.mode.value
 
             # Get the workflow definition
             workflow = self.workflow_provider.get_workflow(workflow_name)
 
             if workflow:
                 # Execute via YAML workflow with shared handlers
-                from victor.workflows.executor import WorkflowExecutor, WorkflowContext
+                from victor.workflows.executor import WorkflowContext, WorkflowExecutor
 
                 # Create execution context with symbol
-                context = WorkflowContext(
-                    {"symbol": symbol.upper(), "mode": self.mode.value}
-                )
+                context = WorkflowContext({"symbol": symbol.upper(), "mode": self.mode.value})
 
                 # Create executor (no orchestrator needed for pure compute workflows)
                 # All our handlers have llm_allowed: false
@@ -630,9 +602,7 @@ class BatchAnalysisRunner:
                 result = self._convert_workflow_result(symbol, workflow_result)
             else:
                 # Fallback to Python-based execution if workflow not found
-                logger.debug(
-                    f"  Workflow '{workflow_name}' not found, using Python fallback"
-                )
+                logger.debug(f"  Workflow '{workflow_name}' not found, using Python fallback")
                 result = await run_analysis(symbol.upper(), self.mode)
 
             duration = time.time() - start_time
@@ -665,9 +635,7 @@ class BatchAnalysisRunner:
                             if fv is not None
                         )
                         fair_value = weighted_sum / total_weight
-                        logger.debug(
-                            f"  Calculated fair_value from model weights: ${fair_value:.2f}"
-                        )
+                        logger.debug(f"  Calculated fair_value from model weights: ${fair_value:.2f}")
 
                 if fair_value and current_price and current_price > 0:
                     upside_pct = ((fair_value / current_price) - 1) * 100
@@ -703,26 +671,18 @@ class BatchAnalysisRunner:
                         model_weights=model_weights,
                         tier_classification=tier or "unknown",
                         context_features=context,
-                        fiscal_period=result.synthesis.get("fiscal_period")
-                        if result.synthesis
-                        else None,
+                        fiscal_period=result.synthesis.get("fiscal_period") if result.synthesis else None,
                     )
                     if rl_record_id:
-                        logger.debug(
-                            f"  RL prediction recorded: {symbol} -> record_id={rl_record_id}"
-                        )
+                        logger.debug(f"  RL prediction recorded: {symbol} -> record_id={rl_record_id}")
                 except Exception as e:
-                    logger.warning(
-                        f"  Failed to record RL prediction for {symbol}: {e}"
-                    )
+                    logger.warning(f"  Failed to record RL prediction for {symbol}: {e}")
 
             # Enhanced logging with shares and market cap
             fv_str = f"${fair_value:.2f}" if fair_value else "N/A"
             price_str = f"${current_price:.2f}" if current_price else "N/A"
             upside_str = f"{upside_pct:.1f}%" if upside_pct is not None else "N/A"
-            shares_str = (
-                f"{shares_outstanding / 1e9:.2f}B" if shares_outstanding else "N/A"
-            )
+            shares_str = f"{shares_outstanding / 1e9:.2f}B" if shares_outstanding else "N/A"
             mktcap_str = f"${market_cap / 1e9:.0f}B" if market_cap else "N/A"
 
             logger.info(
@@ -846,9 +806,7 @@ class BatchAnalysisRunner:
                     f"{len(symbols)} domestic filers remaining"
                 )
         else:
-            print(
-                "  Skipping domestic filer filter (--skip-domestic-filter)", flush=True
-            )
+            print("  Skipping domestic filer filter (--skip-domestic-filter)", flush=True)
 
         # Resume from specific symbol
         if resume_from:
@@ -859,9 +817,7 @@ class BatchAnalysisRunner:
                     f"  Resuming from {resume_from}, {len(symbols)} remaining",
                     flush=True,
                 )
-                logger.info(
-                    f"Resuming from {resume_from}, {len(symbols)} symbols remaining"
-                )
+                logger.info(f"Resuming from {resume_from}, {len(symbols)} symbols remaining")
             except ValueError:
                 logger.warning(f"Resume symbol {resume_from} not found in list")
 
@@ -908,10 +864,7 @@ class BatchAnalysisRunner:
                 flush=True,
             )
             logger.info(f"\n{'=' * 40}")
-            logger.info(
-                f"BATCH {batch_num + 1}/{total_batches} "
-                f"({batch_start + 1}-{batch_end} of {total_symbols})"
-            )
+            logger.info(f"BATCH {batch_num + 1}/{total_batches} " f"({batch_start + 1}-{batch_end} of {total_symbols})")
             logger.info(f"Symbols: {', '.join(batch_symbols)}")
             logger.info(f"{'=' * 40}")
 
@@ -926,9 +879,7 @@ class BatchAnalysisRunner:
                 if result.success:
                     self.save_processed_symbol(result.symbol)
                     success_count += 1
-                    upside_str = (
-                        f"{result.upside_pct:+.1f}%" if result.upside_pct else "N/A"
-                    )
+                    upside_str = f"{result.upside_pct:+.1f}%" if result.upside_pct else "N/A"
                     print(
                         f"  ✓ {result.symbol}: {upside_str} ({result.duration_seconds:.1f}s)",
                         flush=True,
@@ -961,18 +912,14 @@ class BatchAnalysisRunner:
 
             # Delay before next batch (unless this is the last batch)
             if batch_num < total_batches - 1:
-                logger.info(
-                    f"Waiting {self.delay_between_batches}s before next batch..."
-                )
+                logger.info(f"Waiting {self.delay_between_batches}s before next batch...")
                 await asyncio.sleep(self.delay_between_batches)
 
         # Final summary
         elapsed = (datetime.now() - start_time).total_seconds()
 
         # Calculate summary statistics
-        successful_results = [
-            r for r in all_results if r.success and r.upside_pct is not None
-        ]
+        successful_results = [r for r in all_results if r.success and r.upside_pct is not None]
 
         logger.info("\n" + "=" * 60)
         logger.info("BATCH ANALYSIS COMPLETE")
@@ -981,14 +928,10 @@ class BatchAnalysisRunner:
         logger.info(f"Symbols processed: {success_count}")
         logger.info(f"Symbols failed: {error_count}")
         if success_count + error_count > 0:
-            logger.info(
-                f"Success rate: {success_count / (success_count + error_count) * 100:.1f}%"
-            )
+            logger.info(f"Success rate: {success_count / (success_count + error_count) * 100:.1f}%")
 
         if successful_results:
-            avg_upside = sum(r.upside_pct for r in successful_results) / len(
-                successful_results
-            )
+            avg_upside = sum(r.upside_pct for r in successful_results) / len(successful_results)
             undervalued = [r for r in successful_results if r.upside_pct > 20]
             overvalued = [r for r in successful_results if r.upside_pct < -20]
 
@@ -998,9 +941,7 @@ class BatchAnalysisRunner:
             logger.info(f"  Overvalued (<-20% upside): {len(overvalued)}")
 
             if undervalued:
-                top_5 = sorted(undervalued, key=lambda r: r.upside_pct, reverse=True)[
-                    :5
-                ]
+                top_5 = sorted(undervalued, key=lambda r: r.upside_pct, reverse=True)[:5]
                 logger.info("\n  Top 5 Undervalued:")
                 for r in top_5:
                     logger.info(
@@ -1013,27 +954,19 @@ class BatchAnalysisRunner:
             logger.info("\nRL Training Data:")
             logger.info(f"  Predictions recorded: {len(rl_recorded)}")
             logger.info("  Ready for reward calculation after 30/90/365 days")
-            logger.info(
-                "  Run 'python3 scripts/rl_update_outcomes.py' to update outcomes"
-            )
+            logger.info("  Run 'python3 scripts/rl_update_outcomes.py' to update outcomes")
         elif self.outcome_tracker:
-            logger.info(
-                "\nRL Training: No predictions recorded (check OutcomeTracker)"
-            )
+            logger.info("\nRL Training: No predictions recorded (check OutcomeTracker)")
 
         # Data Quality Warnings Summary
         results_with_warnings = [r for r in all_results if r.data_quality_warnings]
         if results_with_warnings:
-            logger.info(
-                f"\nData Quality Warnings ({len(results_with_warnings)} symbols):"
-            )
+            logger.info(f"\nData Quality Warnings ({len(results_with_warnings)} symbols):")
             for r in results_with_warnings[:10]:  # Show top 10
                 for warning in r.data_quality_warnings:
                     logger.info(f"  {r.symbol}: {warning}")
             if len(results_with_warnings) > 10:
-                logger.info(
-                    f"  ... and {len(results_with_warnings) - 10} more symbols with warnings"
-                )
+                logger.info(f"  ... and {len(results_with_warnings) - 10} more symbols with warnings")
             logger.info("  Tip: Review these symbols for potential stock split issues")
 
         # Sector Distribution
@@ -1055,27 +988,17 @@ def main():
 
     # Symbol source options (mutually exclusive)
     source_group = parser.add_mutually_exclusive_group(required=True)
-    source_group.add_argument(
-        "--russell1000", action="store_true", help="Process Russell 1000 stocks"
-    )
-    source_group.add_argument(
-        "--sp500", action="store_true", help="Process S&P 500 stocks"
-    )
-    source_group.add_argument(
-        "--all", action="store_true", help="Process ALL stocks from symbol table"
-    )
-    source_group.add_argument(
-        "--top", type=int, metavar="N", help="Process top N stocks by market cap"
-    )
+    source_group.add_argument("--russell1000", action="store_true", help="Process Russell 1000 stocks")
+    source_group.add_argument("--sp500", action="store_true", help="Process S&P 500 stocks")
+    source_group.add_argument("--all", action="store_true", help="Process ALL stocks from symbol table")
+    source_group.add_argument("--top", type=int, metavar="N", help="Process top N stocks by market cap")
     source_group.add_argument(
         "--file",
         type=str,
         metavar="FILE",
         help="Process symbols from file (one per line)",
     )
-    source_group.add_argument(
-        "--symbols", type=str, nargs="+", help="Process specific symbols"
-    )
+    source_group.add_argument("--symbols", type=str, nargs="+", help="Process specific symbols")
 
     # Processing options
     parser.add_argument(
@@ -1096,15 +1019,9 @@ def main():
         default="standard",
         help="Analysis mode (default: standard)",
     )
-    parser.add_argument(
-        "--output", type=str, default=None, help="Output directory for results"
-    )
-    parser.add_argument(
-        "--no-skip", action="store_true", help="Don't skip already processed symbols"
-    )
-    parser.add_argument(
-        "--resume-from", type=str, metavar="SYMBOL", help="Resume from specific symbol"
-    )
+    parser.add_argument("--output", type=str, default=None, help="Output directory for results")
+    parser.add_argument("--no-skip", action="store_true", help="Don't skip already processed symbols")
+    parser.add_argument("--resume-from", type=str, metavar="SYMBOL", help="Resume from specific symbol")
     parser.add_argument(
         "--include-foreign",
         action="store_true",
@@ -1164,9 +1081,7 @@ def main():
         symbols = runner.get_top_n_symbols(args.top, us_only=us_only)
         print(f"  Found {len(symbols)} symbols", flush=True)
         if us_only:
-            logger.info(
-                "Filtering to US stocks with SEC CIK only (use --include-foreign for all)"
-            )
+            logger.info("Filtering to US stocks with SEC CIK only (use --include-foreign for all)")
     elif args.file:
         with open(args.file) as f:
             symbols = [line.strip() for line in f if line.strip()]

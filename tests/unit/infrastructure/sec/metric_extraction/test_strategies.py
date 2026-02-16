@@ -5,7 +5,6 @@ Tests ByPeriodEndMatcher, ByDateRangeMatcher, ByFrameFieldMatcher,
 ByAdshOnlyMatcher, and ByAdshFyFpMatcher strategies.
 """
 
-
 from investigator.infrastructure.sec.metric_extraction.result import MatchMethod
 from investigator.infrastructure.sec.metric_extraction.strategies import (
     ByAdshFyFpMatcher,

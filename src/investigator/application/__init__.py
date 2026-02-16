@@ -25,9 +25,7 @@ if TYPE_CHECKING:
 def __getattr__(name: str) -> Any:
     """Lazily import heavyweight application modules on demand."""
     if name == "InvestmentSynthesizer":
-        from investigator.application.synthesizer import (
-            InvestmentSynthesizer as _InvestmentSynthesizer,
-        )
+        from investigator.application.synthesizer import InvestmentSynthesizer as _InvestmentSynthesizer
 
         return _InvestmentSynthesizer
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

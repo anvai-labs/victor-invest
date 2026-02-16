@@ -50,9 +50,7 @@ class TreasuryYieldSource(DataSource):
     """
 
     def __init__(self):
-        super().__init__(
-            "treasury_yields", DataCategory.FIXED_INCOME, DataFrequency.DAILY
-        )
+        super().__init__("treasury_yields", DataCategory.FIXED_INCOME, DataFrequency.DAILY)
 
     @property
     def metadata(self) -> SourceMetadata:
@@ -213,9 +211,7 @@ class TreasuryYieldSource(DataSource):
 
         return analysis
 
-    def get_historical_spreads(
-        self, spread_type: str = "10y_2y", lookback_days: int = 365
-    ) -> DataResult:
+    def get_historical_spreads(self, spread_type: str = "10y_2y", lookback_days: int = 365) -> DataResult:
         """Get historical spread data"""
         try:
             from datetime import timedelta
@@ -239,9 +235,7 @@ class TreasuryYieldSource(DataSource):
                 )
 
             # Map spread type to column
-            spread_column = (
-                "spread_10y_2y" if spread_type == "10y_2y" else "spread_10y_3m"
-            )
+            spread_column = "spread_10y_2y" if spread_type == "10y_2y" else "spread_10y_3m"
 
             with engine.connect() as conn:
                 result = conn.execute(

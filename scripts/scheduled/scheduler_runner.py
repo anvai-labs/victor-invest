@@ -47,7 +47,6 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from scripts.scheduled.base import setup_logging  # noqa: E402
 
-
 # Job module mapping
 JOB_MODULES = {
     "collect_treasury_data": "scripts.scheduled.collect_treasury_data",
@@ -55,6 +54,8 @@ JOB_MODULES = {
     "collect_insider_transactions": "scripts.scheduled.collect_insider_transactions",
     "collect_13f_filings": "scripts.scheduled.collect_13f_filings",
     "collect_short_interest": "scripts.scheduled.collect_short_interest",
+    "collect_fama_french_factors": "scripts.scheduled.collect_fama_french_factors",
+    "calculate_beta_models": "scripts.scheduled.calculate_beta_models",
     "update_market_regime": "scripts.scheduled.update_market_regime",
     "calculate_credit_risk": "scripts.scheduled.calculate_credit_risk",
 }
@@ -261,21 +262,11 @@ class SchedulerRunner:
 
 def main():
     parser = argparse.ArgumentParser(description="Run scheduled data collection jobs")
-    parser.add_argument(
-        "--config", type=str, help="Path to scheduler configuration file"
-    )
-    parser.add_argument(
-        "--run-now", type=str, metavar="JOB_NAME", help="Run a specific job immediately"
-    )
-    parser.add_argument(
-        "--run-all", action="store_true", help="Run all enabled jobs immediately"
-    )
-    parser.add_argument(
-        "--list-jobs", action="store_true", help="List all configured jobs"
-    )
-    parser.add_argument(
-        "--daemon", action="store_true", help="Run as a daemon (continuous scheduler)"
-    )
+    parser.add_argument("--config", type=str, help="Path to scheduler configuration file")
+    parser.add_argument("--run-now", type=str, metavar="JOB_NAME", help="Run a specific job immediately")
+    parser.add_argument("--run-all", action="store_true", help="Run all enabled jobs immediately")
+    parser.add_argument("--list-jobs", action="store_true", help="List all configured jobs")
+    parser.add_argument("--daemon", action="store_true", help="Run as a daemon (continuous scheduler)")
     args = parser.parse_args()
 
     config_path = Path(args.config) if args.config else None

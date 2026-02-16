@@ -79,6 +79,30 @@ class MetricExtractionOrchestrator:
         ByAdshFyFpMatcher(),
     ]
 
+    # Metrics that are frequently absent in valid filings and should not flood WARNING logs.
+    LOW_SIGNAL_MISSING_KEYS = {
+        "operating_expenses",
+        "interest_expense",
+        "earnings_per_share_diluted",
+        "intangible_assets",
+        "deferred_revenue",
+        "treasury_stock",
+        "preferred_stock_dividends",
+        "common_stock_dividends",
+        "financial_total_deposits",
+        "financial_repo_borrowings",
+        "financial_fhlb_borrowings",
+        "financial_other_short_term_borrowings",
+    }
+    HISTORICAL_OPTIONAL_WARNING_KEYS = {
+        "short_term_debt",
+        "goodwill",
+        "dividends_paid",
+        "other_comprehensive_income",
+    }
+    HISTORICAL_WARNING_CUTOFF_YEARS = 8
+    MAX_WARNING_FAILURES_PER_KEY = 3
+
     def __init__(
         self,
         sector: Optional[str] = None,
@@ -119,6 +143,8 @@ class MetricExtractionOrchestrator:
             "by_strategy": {},
             "by_tag_position": {},
         }
+        self._failure_log_counts: Dict[str, int] = {}
+        self._failure_log_keys = set()
 
     def extract(
         self,
@@ -175,12 +201,16 @@ class MetricExtractionOrchestrator:
         )
 
         # Get tag fallback chain for this canonical key
-        fallback_tags = self.canonical_mapper.get_tags(
-            canonical_key, sector=self.sector, industry=self.industry
-        )
+        fallback_tags = self.canonical_mapper.get_tags(canonical_key, sector=self.sector, industry=self.industry)
 
         if not fallback_tags:
-            logger.warning(f"No XBRL tags found for canonical key '{canonical_key}'")
+            if self._is_low_signal_missing_metric(canonical_key):
+                logger.debug(
+                    "No XBRL tags found for low-signal canonical key '%s'",
+                    canonical_key,
+                )
+            else:
+                logger.warning(f"No XBRL tags found for canonical key '{canonical_key}'")
             if audit:
                 audit.completed_at = datetime.now().isoformat()
             return ExtractionResult.not_found(
@@ -242,9 +272,7 @@ class MetricExtractionOrchestrator:
                             tag_name=tag_name,
                             matched=match_result.matched,
                             entries_found=len(match_result.entries),
-                            selected_entry=match_result.entries[0]
-                            if match_result.entries
-                            else None,
+                            selected_entry=match_result.entries[0] if match_result.entries else None,
                             reason=match_result.reason,
                             duration_ms=(time.time() - attempt_start) * 1000,
                         )
@@ -252,23 +280,17 @@ class MetricExtractionOrchestrator:
 
                 if match_result.matched and match_result.entries:
                     # Select best entry (prefer individual quarter over YTD)
-                    best_entry = self._select_best_entry(
-                        match_result.entries, target_fiscal_period
-                    )
+                    best_entry = self._select_best_entry(match_result.entries, target_fiscal_period)
 
                     if best_entry and best_entry.get("val") is not None:
                         value = best_entry["val"]
 
                         # Determine confidence based on strategy and tag position
-                        confidence = self._determine_confidence(
-                            matcher, tag_position, len(fallback_tags)
-                        )
+                        confidence = self._determine_confidence(matcher, tag_position, len(fallback_tags))
 
                         # Update statistics
                         self.stats["successes"] += 1
-                        self.stats["by_strategy"][matcher.name] = (
-                            self.stats["by_strategy"].get(matcher.name, 0) + 1
-                        )
+                        self.stats["by_strategy"][matcher.name] = self.stats["by_strategy"].get(matcher.name, 0) + 1
                         self.stats["by_tag_position"][tag_position] = (
                             self.stats["by_tag_position"].get(tag_position, 0) + 1
                         )
@@ -303,11 +325,18 @@ class MetricExtractionOrchestrator:
             audit.completed_at = datetime.now().isoformat()
 
         elapsed_ms = (time.time() - start_time) * 1000
-        logger.warning(
+        failure_msg = (
             f"✗ Failed to extract {canonical_key} for period_end={target_period_end} "
             f"after trying {len(self.matchers)} strategies × {len(fallback_tags)} tags "
             f"({elapsed_ms:.1f}ms)"
         )
+        failure_key = (
+            canonical_key,
+            target_period_end,
+            target_fiscal_period,
+            target_adsh,
+        )
+        self._log_extraction_failure(canonical_key, failure_key, failure_msg, target_period_end)
 
         return ExtractionResult.not_found(
             canonical_key,
@@ -315,9 +344,63 @@ class MetricExtractionOrchestrator:
             reason=f"Exhausted {len(self.matchers)} matchers × {len(fallback_tags)} tags",
         )
 
-    def _select_best_entry(
-        self, entries: List[Dict], target_fiscal_period: Optional[str]
-    ) -> Optional[Dict]:
+    def _log_extraction_failure(
+        self,
+        canonical_key: str,
+        failure_key: tuple,
+        failure_msg: str,
+        target_period_end: Optional[str],
+    ) -> None:
+        """Log extraction failures with duplicate suppression and warning throttling."""
+        if self._is_historical_optional_gap(canonical_key, target_period_end):
+            logger.debug("%s [historical optional metric warning downgraded to DEBUG]", failure_msg)
+            return
+
+        if self._is_low_signal_missing_metric(canonical_key):
+            logger.debug(failure_msg)
+            return
+
+        # Avoid repeating identical warnings for duplicate filings/period rows.
+        if failure_key in self._failure_log_keys:
+            logger.debug("%s [duplicate failure suppressed at WARNING level]", failure_msg)
+            return
+        self._failure_log_keys.add(failure_key)
+
+        count = self._failure_log_counts.get(canonical_key, 0) + 1
+        self._failure_log_counts[canonical_key] = count
+
+        if count <= self.MAX_WARNING_FAILURES_PER_KEY:
+            logger.warning(failure_msg)
+            if count == self.MAX_WARNING_FAILURES_PER_KEY:
+                logger.warning(
+                    "Further '%s' extraction failures in this run will be downgraded to DEBUG",
+                    canonical_key,
+                )
+            return
+
+        logger.debug(
+            "%s [warning-throttled: %s failures logged for key='%s']",
+            failure_msg,
+            count,
+            canonical_key,
+        )
+
+    def _is_historical_optional_gap(self, canonical_key: str, target_period_end: Optional[str]) -> bool:
+        """Downgrade optional-metric misses for very old history to DEBUG."""
+        if canonical_key not in self.HISTORICAL_OPTIONAL_WARNING_KEYS:
+            return False
+        if not target_period_end:
+            return False
+
+        try:
+            period_end = datetime.strptime(target_period_end, "%Y-%m-%d")
+        except ValueError:
+            return False
+
+        age_days = (datetime.utcnow() - period_end).days
+        return age_days >= self.HISTORICAL_WARNING_CUTOFF_YEARS * 365
+
+    def _select_best_entry(self, entries: List[Dict], target_fiscal_period: Optional[str]) -> Optional[Dict]:
         """
         Select best entry from matched entries.
 
@@ -388,6 +471,16 @@ class MetricExtractionOrchestrator:
             return unknown[0]
 
         return entries[0] if entries else None
+
+    def _is_low_signal_missing_metric(self, canonical_key: str) -> bool:
+        """Return True when missing metric is usually non-actionable noise."""
+        if canonical_key in self.LOW_SIGNAL_MISSING_KEYS:
+            return True
+
+        mapping = self.canonical_mapper.mappings.get(canonical_key, {})
+        description = str(mapping.get("description", "")).lower()
+        # Mapping files mark some keys as "support metric" (especially financial institution fields).
+        return "support metric" in description
 
     def _determine_confidence(
         self, matcher: PeriodMatchStrategy, tag_position: int, total_tags: int
@@ -481,20 +574,14 @@ class MetricExtractionOrchestrator:
             # Simple formula evaluation (supports +, -, *, /)
             value = self._evaluate_formula(formula, components)
             if value is not None:
-                logger.debug(
-                    f"✓ Derived {canonical_key} = {value:,.0f} from formula '{formula}'"
-                )
-                return ExtractionResult.derived(
-                    value=value, formula=formula, components=components, audit=audit
-                )
+                logger.debug(f"✓ Derived {canonical_key} = {value:,.0f} from formula '{formula}'")
+                return ExtractionResult.derived(value=value, formula=formula, components=components, audit=audit)
         except Exception as e:
             logger.warning(f"Failed to evaluate formula '{formula}': {e}")
 
         return None
 
-    def _evaluate_formula(
-        self, formula: str, components: Dict[str, float]
-    ) -> Optional[float]:
+    def _evaluate_formula(self, formula: str, components: Dict[str, float]) -> Optional[float]:
         """
         Safely evaluate a simple arithmetic formula.
 
@@ -519,9 +606,5 @@ class MetricExtractionOrchestrator:
 
     def get_stats(self) -> Dict:
         """Get extraction statistics."""
-        success_rate = (
-            self.stats["successes"] / self.stats["extractions"] * 100
-            if self.stats["extractions"] > 0
-            else 0
-        )
+        success_rate = self.stats["successes"] / self.stats["extractions"] * 100 if self.stats["extractions"] > 0 else 0
         return {**self.stats, "success_rate": f"{success_rate:.1f}%"}

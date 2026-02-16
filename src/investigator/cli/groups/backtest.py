@@ -37,9 +37,7 @@ def backtest(ctx):
 @click.option("--lookback", "-l", default=365, type=int, help="Lookback period in days")
 @click.option("--start-date", callback=validate_date, help="Start date (YYYY-MM-DD)")
 @click.option("--end-date", callback=validate_date, help="End date (YYYY-MM-DD)")
-@click.option(
-    "--parallel", "-p", default=5, type=int, help="Number of parallel workers"
-)
+@click.option("--parallel", "-p", default=5, type=int, help="Number of parallel workers")
 @click.option(
     "--min-confidence",
     default=0.6,
@@ -88,9 +86,7 @@ def run_backtest(
         # Import the backtest runner
         import sys
 
-        sys.path.insert(
-            0, str(Path(__file__).parent.parent.parent.parent.parent.parent)
-        )
+        sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent.parent))
         from scripts.rl_backtest import RLBacktester
 
         backtester = RLBacktester(
@@ -139,23 +135,17 @@ def run_backtest(
 @click.option("--epochs", "-e", default=100, type=int, help="Number of training epochs")
 @click.option("--batch-size", "-b", default=32, type=int, help="Training batch size")
 @click.option("--learning-rate", "-lr", default=0.001, type=float, help="Learning rate")
-@click.option(
-    "--min-samples", default=100, type=int, help="Minimum samples required for training"
-)
+@click.option("--min-samples", default=100, type=int, help="Minimum samples required for training")
 @click.option(
     "--policy",
     type=click.Choice(["contextual_bandit", "hybrid", "fundamental", "technical"]),
     default="hybrid",
     help="Policy type to train",
 )
-@click.option(
-    "--output-dir", "-o", default="models", help="Output directory for trained model"
-)
+@click.option("--output-dir", "-o", default="models", help="Output directory for trained model")
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
 @click.pass_context
-def train(
-    ctx, epochs, batch_size, learning_rate, min_samples, policy, output_dir, verbose
-):
+def train(ctx, epochs, batch_size, learning_rate, min_samples, policy, output_dir, verbose):
     """Train RL model on historical data
 
     Trains the reinforcement learning model using historical decisions and outcomes.
@@ -173,9 +163,7 @@ def train(
     try:
         import sys
 
-        sys.path.insert(
-            0, str(Path(__file__).parent.parent.parent.parent.parent.parent)
-        )
+        sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent.parent))
         from scripts.rl_train import RLTrainer
 
         Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -200,10 +188,7 @@ def train(
             click.echo(f"Final loss: {results.get('final_loss', 'N/A')}")
             click.echo(f"Best accuracy: {results.get('best_accuracy', 0):.2%}")
 
-            model_path = (
-                Path(output_dir)
-                / f"rl_model_{policy}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pt"
-            )
+            model_path = Path(output_dir) / f"rl_model_{policy}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pt"
             click.echo(f"\nModel saved to: {model_path}")
 
     except ImportError as e:
@@ -242,11 +227,7 @@ def status(ctx, detailed):
             total_decisions = result.scalar()
 
             # Count outcomes
-            result = conn.execute(
-                text(
-                    "SELECT COUNT(*) FROM rl_decisions WHERE actual_return IS NOT NULL"
-                )
-            )
+            result = conn.execute(text("SELECT COUNT(*) FROM rl_decisions WHERE actual_return IS NOT NULL"))
             with_outcomes = result.scalar()
 
             # Recent accuracy
@@ -295,10 +276,7 @@ def status(ctx, detailed):
                     )
                 )
                 for row in result:
-                    click.echo(
-                        f"  {row[0]}: {row[1]} decisions, "
-                        f"conf={row[2]:.2f}, ret={row[3]:.2%}"
-                    )
+                    click.echo(f"  {row[0]}: {row[1]} decisions, " f"conf={row[2]:.2f}, ret={row[3]:.2%}")
 
     except Exception as e:
         click.echo(f"Error: {e}", err=True)
@@ -319,9 +297,7 @@ def update_outcomes(ctx, days, force):
     try:
         import sys
 
-        sys.path.insert(
-            0, str(Path(__file__).parent.parent.parent.parent.parent.parent)
-        )
+        sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent.parent))
         from scripts.rl_outcome_updater import update_outcomes
 
         results = asyncio.run(update_outcomes(days=days, force=force))
@@ -361,9 +337,7 @@ def analyze_results(ctx, period, output):
     try:
         import sys
 
-        sys.path.insert(
-            0, str(Path(__file__).parent.parent.parent.parent.parent.parent)
-        )
+        sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent.parent))
         from scripts.analyze_backtest import analyze_backtest_results
 
         results = analyze_backtest_results(days=period_days[period])

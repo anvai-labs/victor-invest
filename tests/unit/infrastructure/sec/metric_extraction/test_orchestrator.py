@@ -200,6 +200,102 @@ class TestMetricExtractionOrchestrator:
         assert result.match_method == MatchMethod.NOT_FOUND
         assert result.error is not None
 
+    def test_extract_failure_warning_suppresses_duplicate_period(self, caplog):
+        """Duplicate failures for same key/period should not flood WARNING logs."""
+        caplog.set_level("DEBUG")
+
+        self.orchestrator.extract(
+            canonical_key="total_revenue",
+            us_gaap={},
+            target_period_end="2025-06-27",
+            target_fiscal_period="FY",
+        )
+        self.orchestrator.extract(
+            canonical_key="total_revenue",
+            us_gaap={},
+            target_period_end="2025-06-27",
+            target_fiscal_period="FY",
+        )
+
+        warning_failures = [
+            rec
+            for rec in caplog.records
+            if rec.levelname == "WARNING" and "Failed to extract total_revenue" in rec.getMessage()
+        ]
+        assert len(warning_failures) == 1
+
+    def test_extract_failure_warning_throttles_after_threshold(self, caplog):
+        """Warnings should be throttled after repeated failures for same canonical key."""
+        caplog.set_level("DEBUG")
+
+        for idx in range(5):
+            self.orchestrator.extract(
+                canonical_key="total_revenue",
+                us_gaap={},
+                target_period_end=f"2025-06-{20 + idx:02d}",
+                target_fiscal_period="FY",
+            )
+
+        warning_failures = [
+            rec
+            for rec in caplog.records
+            if rec.levelname == "WARNING" and "Failed to extract total_revenue" in rec.getMessage()
+        ]
+        assert len(warning_failures) == MetricExtractionOrchestrator.MAX_WARNING_FAILURES_PER_KEY
+        assert any(
+            "Further 'total_revenue' extraction failures in this run will be downgraded to DEBUG" in rec.getMessage()
+            for rec in caplog.records
+        )
+
+    def test_extract_failure_historical_optional_metric_downgraded_to_debug(self, caplog):
+        """Old-period optional-metric misses should avoid WARNING noise."""
+        self.mock_mapper.mappings["short_term_debt"] = {
+            "tags": ["ShortTermDebt"],
+            "unit": "USD",
+            "description": "Short-Term Debt",
+        }
+        caplog.set_level("DEBUG")
+
+        self.orchestrator.extract(
+            canonical_key="short_term_debt",
+            us_gaap={},
+            target_period_end="2014-10-03",
+            target_fiscal_period="Q1",
+        )
+
+        warning_failures = [
+            rec
+            for rec in caplog.records
+            if rec.levelname == "WARNING" and "Failed to extract short_term_debt" in rec.getMessage()
+        ]
+        assert len(warning_failures) == 0
+        assert any(
+            "historical optional metric warning downgraded to DEBUG" in rec.getMessage() for rec in caplog.records
+        )
+
+    def test_extract_failure_recent_optional_metric_still_warns(self, caplog):
+        """Recent-period optional-metric misses should still produce warnings."""
+        self.mock_mapper.mappings["short_term_debt"] = {
+            "tags": ["ShortTermDebt"],
+            "unit": "USD",
+            "description": "Short-Term Debt",
+        }
+        caplog.set_level("DEBUG")
+
+        self.orchestrator.extract(
+            canonical_key="short_term_debt",
+            us_gaap={},
+            target_period_end="2025-10-03",
+            target_fiscal_period="Q1",
+        )
+
+        warning_failures = [
+            rec
+            for rec in caplog.records
+            if rec.levelname == "WARNING" and "Failed to extract short_term_debt" in rec.getMessage()
+        ]
+        assert len(warning_failures) == 1
+
     def test_extract_no_tags_configured(self):
         """Test extraction when no XBRL tags are configured for canonical key."""
         result = self.orchestrator.extract(
@@ -316,9 +412,7 @@ class TestMetricExtractionOrchestrator:
         assert result.success is True
         assert result.value == 48_000_000_000
         # Used fallback tag
-        assert (
-            result.source_tag == "RevenueFromContractWithCustomerExcludingAssessedTax"
-        )
+        assert result.source_tag == "RevenueFromContractWithCustomerExcludingAssessedTax"
 
     def test_confidence_levels(self):
         """Test confidence level assignment based on strategy and tag position."""
@@ -475,9 +569,7 @@ class TestDerivedValueCalculation:
             "capital_expenditures": 3_000_000_000,
         }
 
-        result = orchestrator._evaluate_formula(
-            "operating_cash_flow - capital_expenditures", components
-        )
+        result = orchestrator._evaluate_formula("operating_cash_flow - capital_expenditures", components)
 
         assert result == 5_000_000_000
 

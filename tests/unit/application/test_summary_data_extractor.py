@@ -152,6 +152,52 @@ NO_GRADE_WITH_UPSIDE = {
     },
 }
 
+# Simulates current synthesis output shape from orchestrator (post-wrapper normalization)
+CURRENT_SYNTHESIS_SHAPE = {
+    "symbol": "STX",
+    "agents": {
+        "fundamental": {
+            "valuation": {
+                "fair_value_estimate": 148.34,
+                "investment_grade": "F",
+                "valuation_risks": "Model outputs diverge under stressed assumptions.",
+            },
+            "ratios": {
+                "current_price": 407.25,
+            },
+            "confidence": {
+                "confidence_level": "HIGH",
+            },
+            "data_quality": {
+                "data_quality_score": 75.5,
+            },
+        },
+        "synthesis": {
+            "analysis": {
+                "investment_thesis": {
+                    "core_thesis": "Execution quality remains strong despite valuation risk.",
+                    "value_drivers": [
+                        "Strong FCF generation",
+                        "Dividend discipline",
+                        "Improving macro backdrop",
+                    ],
+                },
+                "risk_assessment": {
+                    "primary_risks": [
+                        "Valuation compression",
+                        "Cyclical demand swings",
+                        "Execution miss on guidance",
+                    ],
+                },
+            },
+            "recommendation": {
+                "final_recommendation": "hold",
+                "time_horizon": "medium_term",
+            },
+        },
+    },
+}
+
 
 # =============================================================================
 # ExtractionResult Tests
@@ -162,27 +208,19 @@ class TestExtractionResult:
     """Tests for ExtractionResult dataclass."""
 
     def test_has_value_with_valid_string(self):
-        result = ExtractionResult(
-            value="BUY", confidence=ExtractionConfidence.HIGH, source_path="test.path"
-        )
+        result = ExtractionResult(value="BUY", confidence=ExtractionConfidence.HIGH, source_path="test.path")
         assert result.has_value is True
 
     def test_has_value_with_none(self):
-        result = ExtractionResult(
-            value=None, confidence=ExtractionConfidence.NONE, source_path="test"
-        )
+        result = ExtractionResult(value=None, confidence=ExtractionConfidence.NONE, source_path="test")
         assert result.has_value is False
 
     def test_has_value_with_na_string(self):
-        result = ExtractionResult(
-            value="N/A", confidence=ExtractionConfidence.MEDIUM, source_path="test"
-        )
+        result = ExtractionResult(value="N/A", confidence=ExtractionConfidence.MEDIUM, source_path="test")
         assert result.has_value is False
 
     def test_has_value_with_empty_list(self):
-        result = ExtractionResult(
-            value=[], confidence=ExtractionConfidence.HIGH, source_path="test"
-        )
+        result = ExtractionResult(value=[], confidence=ExtractionConfidence.HIGH, source_path="test")
         assert result.has_value is False
 
     def test_has_value_with_valid_list(self):
@@ -429,6 +467,25 @@ class TestRecommendationExtractor:
 
         assert result.value == "HOLD"
 
+    def test_falls_back_to_fundamental_recommendation(self):
+        data = {
+            "agents": {
+                "fundamental": {
+                    "recommendation": "hold",
+                },
+                "synthesis": {
+                    "synthesis": {
+                        "response": {},
+                    },
+                },
+            },
+        }
+        extractor = RecommendationExtractor()
+        result = extractor.extract(data)
+
+        assert result.has_value is True
+        assert result.value == "HOLD"
+
 
 # =============================================================================
 # SummaryDataExtractor Integration Tests
@@ -472,9 +529,7 @@ class TestSummaryDataExtractor:
         assert summary["valuation"]["price_target_12m"] == 95.00
         assert summary["valuation"]["current_price"] == 85.00
         # Expected return: (95-85)/85 * 100 = 11.76%
-        assert summary["valuation"]["expected_return_pct"] == pytest.approx(
-            11.76, rel=0.01
-        )
+        assert summary["valuation"]["expected_return_pct"] == pytest.approx(11.76, rel=0.01)
 
     def test_calculates_investment_grade_when_missing(self):
         """Should calculate investment grade from upside when explicit grade missing."""
@@ -562,6 +617,23 @@ class TestSummaryDataExtractor:
 
         # Should not crash, expected_return should be None
         assert summary["valuation"]["expected_return_pct"] is None
+
+    def test_supports_current_synthesis_shape(self):
+        """Should extract recommendation/strengths/risks from the normalized synthesis payload."""
+        extractor = SummaryDataExtractor(CURRENT_SYNTHESIS_SHAPE)
+        summary = extractor.extract_minimal_summary()
+
+        assert summary["recommendation"]["action"] == "HOLD"
+        assert summary["recommendation"]["time_horizon"] == "medium_term"
+        assert summary["thesis"]["investment_thesis"].startswith("Execution quality remains strong")
+        assert summary["thesis"]["key_strengths"][:2] == [
+            "Strong FCF generation",
+            "Dividend discipline",
+        ]
+        assert summary["thesis"]["key_risks"][:2] == [
+            "Valuation compression",
+            "Cyclical demand swings",
+        ]
 
 
 class TestExtractorExtensibility:

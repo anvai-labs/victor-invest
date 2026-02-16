@@ -26,17 +26,13 @@ from investigator.domain.services.dynamic_model_weighting import (
     DynamicModelWeightingService,
 )
 from investigator.domain.services.fiscal_period_service import get_fiscal_period_service
-from investigator.domain.services.safe_formatters import (
-    format_currency as _fmt_currency,
-)
-from investigator.domain.services.safe_formatters import (
-    format_int_with_commas as _fmt_int_comma,
-)
+from investigator.domain.services.safe_formatters import format_currency as _fmt_currency
+from investigator.domain.services.safe_formatters import format_int_with_commas as _fmt_int_comma
 from investigator.domain.services.safe_formatters import format_percentage as _fmt_pct
 from investigator.domain.services.toon_formatter import TOONFormatter, to_toon_quarterly
-from investigator.domain.services.valuation import (
+from investigator.domain.services.valuation import (  # Sector-aware valuation routing
     SectorValuationRouter,
-)  # Sector-aware valuation routing
+)
 
 # New valuation models (Milestone 7 - Plan implementation)
 from investigator.domain.services.valuation.dcf import DCFValuation
@@ -61,21 +57,15 @@ from investigator.infrastructure.cache.cache_types import CacheType
 from investigator.infrastructure.data.sector_multiples_loader import (
     SectorMultiplesLoader,
 )
-from investigator.infrastructure.database.market_data import (
+from investigator.infrastructure.database.market_data import (  # Singleton pattern
     get_market_data_fetcher,
-)  # Singleton pattern
-from investigator.infrastructure.database.ticker_mapper import (
+)
+from investigator.infrastructure.database.ticker_mapper import (  # TODO: Move to infrastructure
     TickerCIKMapper,
-)  # TODO: Move to infrastructure
+)
 from investigator.infrastructure.formatters import ValuationTableFormatter
 from investigator.infrastructure.sec.canonical_mapper import get_canonical_mapper
 
-from .constants import (
-    FALLBACK_CANONICAL_KEYS,
-    PROCESSED_ADDITIONAL_FINANCIAL_KEYS,
-    PROCESSED_RATIO_KEYS,
-)
-from .company_fetch import fetch_latest_company_data_from_processed_table
 from .company_data_fetch import (
     build_company_cache_key,
     build_company_data_payload,
@@ -85,18 +75,18 @@ from .company_data_fetch import (
     resolve_cik_for_symbol,
     validate_financial_statements,
 )
+from .company_fetch import fetch_latest_company_data_from_processed_table
 from .company_profile_enrichment import enrich_company_profile
-from .data_quality_assessor import get_data_quality_assessor
-from .cost_of_capital import (
-    apply_cost_of_capital_penalty as apply_cost_of_capital_penalty_helper,
+from .constants import (
+    FALLBACK_CANONICAL_KEYS,
+    PROCESSED_ADDITIONAL_FINANCIAL_KEYS,
+    PROCESSED_RATIO_KEYS,
 )
-from .cost_of_capital import (
-    evaluate_cost_of_capital_inputs as evaluate_cost_of_capital_inputs_helper,
-)
-from .cost_of_capital import (
-    hydrate_cost_of_capital_inputs as hydrate_cost_of_capital_inputs_helper,
-)
+from .cost_of_capital import apply_cost_of_capital_penalty as apply_cost_of_capital_penalty_helper
+from .cost_of_capital import evaluate_cost_of_capital_inputs as evaluate_cost_of_capital_inputs_helper
+from .cost_of_capital import hydrate_cost_of_capital_inputs as hydrate_cost_of_capital_inputs_helper
 from .cost_of_equity import calculate_cost_of_equity_capm
+from .data_quality_assessor import get_data_quality_assessor
 from .deterministic_analyzer import DeterministicAnalyzer
 from .deterministic_payloads import (
     build_deterministic_cache_record,
@@ -107,12 +97,14 @@ from .financial_ratios import (
     apply_balance_sheet_and_cashflow_ratios,
     apply_valuation_ratios,
     calculate_revenue_growth_yoy,
+    calculate_ttm_metrics,
     log_ratio_calc_debug,
     resolve_market_inputs,
 )
 from .formatters import safe_fmt_float as _safe_fmt_float
 from .formatters import safe_fmt_int_comma as _safe_fmt_int_comma
 from .formatters import safe_fmt_pct as _safe_fmt_pct
+from .llm_sanitization import sanitize_for_llm_inputs
 from .logging_utils import (
     format_trend_context,
     log_data_quality_issues,
@@ -120,7 +112,6 @@ from .logging_utils import (
     log_quarterly_snapshot,
     log_valuation_snapshot,
 )
-from .llm_sanitization import sanitize_for_llm_inputs
 from .models import QuarterlyData
 from .quarterly_fetch import (
     fetch_processed_quarter_payload,
@@ -131,14 +122,14 @@ from .summaries import extract_latest_financials as _extract_latest_financials_h
 from .summaries import get_historical_trend as _get_historical_trend_helper
 from .summaries import summarize_company_data as _summarize_company_data_helper
 from .trend_analyzer import get_trend_analyzer
-from .valuation_models import calculate_relative_valuation_models
 from .valuation_extensions import calculate_valuation_extensions
+from .valuation_models import calculate_relative_valuation_models
 from .valuation_orchestrator import (
     assign_and_log_relative_models,
     dispatch_valuation_synthesis,
     log_multi_model_summary,
-    run_sector_and_dcf,
     run_multi_model_blending,
+    run_sector_and_dcf,
 )
 from .valuation_synthesis import (
     build_models_detail_lines,
@@ -164,20 +155,14 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                                 scoring + DCF/GGM/multiples      → cached for synthesis
     """
 
-    def __init__(
-        self, agent_id: str, ollama_client, event_bus, cache_manager: CacheManager
-    ):
+    def __init__(self, agent_id: str, ollama_client, event_bus, cache_manager: CacheManager):
         from investigator.config import get_config
 
         config = get_config()
         self.config = config
 
-        self.primary_model = config.ollama.models.get(
-            "fundamental_analysis", "deepseek-r1:32b"
-        )
-        self.comparison_model = config.ollama.models.get(
-            "comparison", self.primary_model
-        )
+        self.primary_model = config.ollama.models.get("fundamental_analysis", "deepseek-r1:32b")
+        self.comparison_model = config.ollama.models.get("comparison", self.primary_model)
 
         # Specialized models for different analysis types
         self.models = {
@@ -212,20 +197,12 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         delta_threshold = 0.15
         if isinstance(valuation_cfg, dict):
             multiples_path = valuation_cfg.get("sector_multiples_path")
-            freshness_days = valuation_cfg.get(
-                "sector_multiples_freshness_days", freshness_days
-            )
-            delta_threshold = valuation_cfg.get(
-                "sector_multiples_delta_threshold", delta_threshold
-            )
+            freshness_days = valuation_cfg.get("sector_multiples_freshness_days", freshness_days)
+            delta_threshold = valuation_cfg.get("sector_multiples_delta_threshold", delta_threshold)
         elif valuation_cfg is not None:
             multiples_path = getattr(valuation_cfg, "sector_multiples_path", None)
-            freshness_days = getattr(
-                valuation_cfg, "sector_multiples_freshness_days", freshness_days
-            )
-            delta_threshold = getattr(
-                valuation_cfg, "sector_multiples_delta_threshold", delta_threshold
-            )
+            freshness_days = getattr(valuation_cfg, "sector_multiples_freshness_days", freshness_days)
+            delta_threshold = getattr(valuation_cfg, "sector_multiples_delta_threshold", delta_threshold)
 
         if multiples_path:
             reference_path = Path(multiples_path)
@@ -250,18 +227,16 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         with open(config_file, "r") as f:
             raw_config = yaml.safe_load(f)
         valuation_config_dict = raw_config.get("valuation", {})
-        self.dynamic_weighting_service = DynamicModelWeightingService(
-            valuation_config_dict
-        )
+        self.dynamic_weighting_service = DynamicModelWeightingService(valuation_config_dict)
 
         # Deterministic processing config (replaces LLM calls with rule-based computation)
         deterministic_config = valuation_config_dict.get("deterministic", {})
         self.use_deterministic = deterministic_config.get("enabled", True)
-        self.deterministic_valuation_synthesis = deterministic_config.get(
-            "valuation_synthesis", True
-        )
-        self.deterministic_competitive_analysis = deterministic_config.get(
-            "competitive_analysis", True
+        self.deterministic_valuation_synthesis = deterministic_config.get("valuation_synthesis", True)
+        self.deterministic_competitive_analysis = deterministic_config.get("competitive_analysis", True)
+        self.deterministic_forecast_generation = deterministic_config.get("forecast_generation", True)
+        self.deterministic_fundamental_report_generation = deterministic_config.get(
+            "fundamental_report_generation", True
         )
 
         # Key fundamental metrics to analyze
@@ -298,9 +273,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
     def _debug_log_prompt(self, label: str, prompt: str) -> None:
         """Emit prompt text when debug logging is enabled."""
         if self.logger.isEnabledFor(logging.DEBUG):
-            trimmed = (
-                prompt if len(prompt) <= 6000 else f"{prompt[:6000]}\n...[truncated]"
-            )
+            trimmed = prompt if len(prompt) <= 6000 else f"{prompt[:6000]}\n...[truncated]"
             self.logger.debug("📤 %s PROMPT:\n%s", label, trimmed)
 
     def _debug_log_response(self, label: str, response: Any) -> None:
@@ -362,15 +335,12 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                         get_fiscal_period_strategy,
                     )
 
-                    strategy = (
-                        get_fiscal_period_strategy()
-                    )  # Uses db_manager internally
+                    strategy = get_fiscal_period_strategy()  # Uses db_manager internally
                     fy, fp, adsh = strategy.get_latest_fiscal_period(symbol, cik)
 
                     if fy and fp:
                         self.logger.info(
-                            f"Using fiscal period from bulk tables for {symbol}: "
-                            f"{fy}-{fp} (ADSH: {adsh})"
+                            f"Using fiscal period from bulk tables for {symbol}: " f"{fy}-{fp} (ADSH: {adsh})"
                         )
                         return f"{fy}-{fp}"
 
@@ -379,9 +349,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
 
             # TIER 1.5: Query sec_companyfacts_processed for latest filing metadata
             if cik:
-                self.logger.info(
-                    f"🔍 TIER 1.5: Checking processed SEC filings for {symbol}"
-                )
+                self.logger.info(f"🔍 TIER 1.5: Checking processed SEC filings for {symbol}")
                 try:
                     from sqlalchemy import text
 
@@ -413,9 +381,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                         )
                         return f"{latest.fiscal_year}-{latest.fiscal_period}"
                 except Exception as e:
-                    self.logger.warning(
-                        f"Processed SEC lookup failed for {symbol}: {e}", exc_info=True
-                    )
+                    self.logger.warning(f"Processed SEC lookup failed for {symbol}: {e}", exc_info=True)
 
             # TIER 2A: Check if financials have fiscal period from SEC data
             if financials:
@@ -471,8 +437,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
 
         except Exception as e:
             self.logger.warning(
-                f"Failed to determine fiscal period for {symbol}: {e}. "
-                f"Using 'unknown' as fallback."
+                f"Failed to determine fiscal period for {symbol}: {e}. " f"Using 'unknown' as fallback."
             )
             return "unknown"
 
@@ -493,15 +458,11 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         # CRITICAL: Normalize field names to snake_case for internal consistency
         # This ensures all internal Python code uses snake_case, matching CLAUDE.md standards
         # SEC data from extractors should be converted to snake_case at source
-        normalized_financials = DataNormalizer.normalize_field_names(
-            financials, to_camel_case=False
-        )
+        normalized_financials = DataNormalizer.normalize_field_names(financials, to_camel_case=False)
 
         return normalized_financials
 
-    def _build_company_profile(
-        self, symbol: str, company_data: Dict, ratios: Dict
-    ) -> CompanyProfile:
+    def _build_company_profile(self, symbol: str, company_data: Dict, ratios: Dict) -> CompanyProfile:
         """
         Assemble a CompanyProfile snapshot from the data already loaded by the agent.
 
@@ -514,14 +475,14 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         market_data = company_data.get("market_data") or {}
         data_quality = company_data.get("data_quality") or {}
 
-        # CRITICAL: Use _get_sector_for_symbol() first to respect config.yaml sector overrides
-        # This ensures CompanyMetadataService priority order is followed (config override → cache → database → fallbacks)
-        sector = self._get_sector_for_symbol(symbol)
-        industry = market_data.get("industry") or company_data.get("industry")
+        # CRITICAL: Use CompanyMetadataService first to respect config overrides.
+        # This keeps sector/industry classification consistent across weighting/routing.
+        sector, metadata_industry = self.company_metadata_service.get_sector_industry(symbol, use_cache=True)
+        if not sector:
+            sector = self._get_sector_for_symbol(symbol)
+        industry = metadata_industry or market_data.get("industry") or company_data.get("industry")
 
-        profile = CompanyProfile(
-            symbol=symbol, sector=sector or "Unknown", industry=industry
-        )
+        profile = CompanyProfile(symbol=symbol, sector=sector or "Unknown", industry=industry)
         enrich_company_profile(
             profile=profile,
             symbol=symbol,
@@ -555,18 +516,14 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         """
         # Check instance cache first
         if symbol in self._sector_cache:
-            self.logger.debug(
-                f"Using cached sector for {symbol}: {self._sector_cache[symbol]}"
-            )
+            self.logger.debug(f"Using cached sector for {symbol}: {self._sector_cache[symbol]}")
             return self._sector_cache[symbol]
 
         # Use CompanyMetadataService for centralized sector lookup with override support
         try:
             sector = self.company_metadata_service.get_sector(symbol, use_cache=True)
             self._sector_cache[symbol] = sector
-            self.logger.debug(
-                f"CompanyMetadataService returned sector for {symbol}: {sector}"
-            )
+            self.logger.debug(f"CompanyMetadataService returned sector for {symbol}: {sector}")
             return sector
         except Exception as e:
             self.logger.warning(
@@ -591,9 +548,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         # Check instance cache first
         cache_key = f"{symbol}:{cik}"
         if cache_key in self._shares_cache:
-            self.logger.debug(
-                f"Using cached shares outstanding for {symbol}: {self._shares_cache[cache_key]:,.0f}"
-            )
+            self.logger.debug(f"Using cached shares outstanding for {symbol}: {self._shares_cache[cache_key]:,.0f}")
             return self._shares_cache[cache_key]
 
         try:
@@ -637,16 +592,11 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                     # Scale normalization: Some companies report shares in millions (value < 100,000)
                     # For large-cap companies (market cap > $1B), this is likely in millions
                     # DEI namespace (EntityCommonStockSharesOutstanding) is always in actual shares
-                    if (
-                        tag_used != "EntityCommonStockSharesOutstanding"
-                        and shares < 100_000
-                    ):
+                    if tag_used != "EntityCommonStockSharesOutstanding" and shares < 100_000:
                         # Cross-check with market data to detect millions reporting
                         stock_info = self.market_data.get_stock_info(symbol)
                         market_cap = stock_info.get("market_cap", 0)
-                        price = stock_info.get("current_price") or stock_info.get(
-                            "price", 0
-                        )
+                        price = stock_info.get("current_price") or stock_info.get("price", 0)
 
                         if market_cap and market_cap > 1_000_000_000:  # $1B+ market cap
                             # Shares value < 100k but market cap > $1B indicates millions reporting
@@ -684,9 +634,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                 )
                 return shares
 
-            self.logger.warning(
-                f"No shares outstanding found for {symbol} (CIK: {cik})"
-            )
+            self.logger.warning(f"No shares outstanding found for {symbol} (CIK: {cik})")
             self._shares_cache[cache_key] = 0
             return 0
 
@@ -776,12 +724,12 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         symbol = task.context.get("symbol")
         analysis_depth = task.context.get("depth", "comprehensive")
         include_forecast = task.context.get("include_forecast", True)
+        valuation_basis = str(task.context.get("valuation_basis", "ttm")).strip().lower()
+        forward_horizon = str(task.context.get("forward_horizon", "1y")).strip().lower()
 
         # DEBUG: Explicit logging to trace execution
         self.logger.debug("FundamentalAgent.process() START for %s", symbol)
-        self.logger.info(
-            f"Performing {analysis_depth} fundamental analysis for {symbol}"
-        )
+        self.logger.info(f"Performing {analysis_depth} fundamental analysis for {symbol}")
 
         try:
             # Fetch company facts and financials
@@ -797,9 +745,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             try:
                 # CRITICAL: Request 12 quarters (3 years) to ensure we get ≥8 after Q4 computation
                 # AVGO showed only 7 quarters when requesting 8 (boundary case - Q4 not yet filed)
-                quarterly_data = await self._fetch_historical_quarters(
-                    symbol, num_quarters=12
-                )
+                quarterly_data = await self._fetch_historical_quarters(symbol, num_quarters=12)
 
                 # CRITICAL FIX: Add quarterly_data to company_data for valuation methods
                 # DCF and GGM need this data for FCF, dividends, and growth rate calculations
@@ -834,19 +780,13 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                         f"Cyclical={cyclical['seasonal_pattern']}"
                     )
                 else:
-                    self.logger.warning(
-                        f"Insufficient quarterly data for {symbol}: {len(quarterly_data)} quarters"
-                    )
+                    self.logger.warning(f"Insufficient quarterly data for {symbol}: {len(quarterly_data)} quarters")
                     company_data["trend_analysis"] = None
 
             except Exception as e:
-                self.logger.warning(
-                    f"Multi-quarter analysis failed for {symbol}: {e}", exc_info=True
-                )
+                self.logger.warning(f"Multi-quarter analysis failed for {symbol}: {e}", exc_info=True)
                 company_data["trend_analysis"] = None
-                company_data[
-                    "quarterly_data"
-                ] = []  # Ensure empty list if extraction fails
+                company_data["quarterly_data"] = []  # Ensure empty list if extraction fails
 
             # Calculate financial ratios
             ratios = await self._calculate_financial_ratios(company_data)
@@ -855,14 +795,10 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             # This ensures LLM prompts receive correct values (not market_cap=0, price=0)
             if "market_cap" in ratios:
                 company_data["market_cap"] = ratios["market_cap"]
-                self.logger.info(
-                    f"Updated company_data market_cap for {symbol}: ${ratios['market_cap']:,.0f}"
-                )
+                self.logger.info(f"Updated company_data market_cap for {symbol}: ${ratios['market_cap']:,.0f}")
             if "shares_outstanding" in ratios:
                 company_data["shares_outstanding"] = ratios["shares_outstanding"]
-                self.logger.info(
-                    f"Updated company_data shares for {symbol}: {ratios['shares_outstanding']:,.0f}"
-                )
+                self.logger.info(f"Updated company_data shares for {symbol}: {ratios['shares_outstanding']:,.0f}")
             if "current_price" in ratios:
                 if "market_data" not in company_data:
                     company_data["market_data"] = {}
@@ -879,9 +815,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
 
             # FEATURE #3: Log quality improvement metrics
             if data_quality.get("quality_improvement", 0) > 0:
-                self.logger.info(
-                    f"Data enrichment for {symbol}: {data_quality['enhancement_summary']}"
-                )
+                self.logger.info(f"Data enrichment for {symbol}: {data_quality['enhancement_summary']}")
 
             # FEATURE #2: Calculate confidence level based on data quality
             confidence = self._calculate_confidence_level(data_quality)
@@ -895,20 +829,34 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             company_data, ratios = self._sanitize_for_llm(company_data, ratios, symbol)
 
             # Analyze financial health (with data quality in prompt)
-            health_analysis = await self._analyze_financial_health(
-                company_data, ratios, symbol
-            )
+            health_analysis = await self._analyze_financial_health(company_data, ratios, symbol)
 
             # Analyze growth metrics
             growth_analysis = await self._analyze_growth(company_data, symbol)
 
             # Analyze profitability
-            profitability = await self._analyze_profitability(
-                company_data, ratios, symbol
-            )
+            profitability = await self._analyze_profitability(company_data, ratios, symbol)
+
+            sec_analysis = task.context.get("sec_analysis", {})
+            forward_guidance = sec_analysis.get("forward_guidance", {}) if isinstance(sec_analysis, dict) else {}
+            if isinstance(forward_guidance, dict) and forward_guidance:
+                company_data["forward_guidance"] = forward_guidance
+                self.logger.info(
+                    "%s - Forward guidance available from SEC agent (%s, confidence=%s)",
+                    symbol,
+                    forward_guidance.get("source_form", "unknown"),
+                    forward_guidance.get("confidence_score", "n/a"),
+                )
 
             # Perform valuation analysis
-            valuation = await self._perform_valuation(company_data, ratios, symbol)
+            valuation = await self._perform_valuation(
+                company_data,
+                ratios,
+                symbol,
+                valuation_basis=valuation_basis,
+                forward_horizon=forward_horizon,
+                guidance_context=forward_guidance if isinstance(forward_guidance, dict) else None,
+            )
 
             # Analyze competitive position
             competitive = await self._analyze_competitive_position(company_data, symbol)
@@ -916,9 +864,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             # Generate earnings forecast if requested
             forecast = None
             if include_forecast:
-                forecast = await self._generate_forecast(
-                    company_data, growth_analysis, symbol
-                )
+                forecast = await self._generate_forecast(company_data, growth_analysis, symbol)
 
             # Calculate quality score
             quality_score = await self._calculate_quality_score(
@@ -940,9 +886,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                     "quality_score": quality_score,
                     "data_quality": data_quality,  # FEATURE #1: Include data quality in synthesis
                     "confidence": confidence,  # FEATURE #2: Include confidence in synthesis
-                    "fiscal_period": company_data.get(
-                        "fiscal_period"
-                    ),  # Period for caching
+                    "fiscal_period": company_data.get("fiscal_period"),  # Period for caching
                 }
             )
 
@@ -964,16 +908,22 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                         multi_model_summary = valuation_methods.get("multi_model", {})
 
                     # Also get LLM fair value estimate from response data
-                    llm_fair_value_estimate = response_data.get(
-                        "fair_value_estimate", 0
-                    )
+                    llm_fair_value_estimate = response_data.get("fair_value_estimate", 0)
 
             blended_fair_value = multi_model_summary.get("blended_fair_value")
 
             # Use blended fair value as primary (fallback to LLM estimate if unavailable)
-            primary_fair_value = (
-                blended_fair_value if blended_fair_value else llm_fair_value_estimate
+            primary_fair_value = blended_fair_value if blended_fair_value else llm_fair_value_estimate
+            report_response = (
+                report.get("response", {})
+                if isinstance(report, dict) and isinstance(report.get("response"), dict)
+                else {}
             )
+            recommendation_value = report_response.get(
+                "investment_recommendation",
+                report_response.get("recommendation", "hold"),
+            )
+            investment_grade_value = report_response.get("investment_grade", "B")
 
             return AgentResult(
                 task_id=task.task_id,
@@ -982,29 +932,25 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                 result_data={
                     "status": "success",
                     "symbol": symbol,
-                    "analysis": report,
+                    "analysis": report_response,
                     "valuation": valuation_unwrapped,  # CRITICAL FIX: Store unwrapped valuation data
                     "ratios": ratios,  # FIX #2: Include calculated ratios in output
                     "quality_score": quality_score,
                     "data_quality": data_quality,  # FEATURE #1: Include in results
                     "confidence": confidence,  # FEATURE #2: Include in results
-                    "investment_grade": report.get("investment_grade", "B"),
+                    "investment_grade": investment_grade_value,
                     # PRIMARY FIX: Use blended fair value from multi-model orchestrator
                     "fair_value": primary_fair_value,
                     "llm_fair_value_estimate": llm_fair_value_estimate,  # Keep for reference
                     "multi_model_summary": multi_model_summary,  # Full multi-model data for synthesis
-                    "recommendation": report.get("recommendation", "hold"),
-                    "fiscal_period": company_data.get(
-                        "fiscal_period"
-                    ),  # Include fiscal period in output
+                    "recommendation": recommendation_value,
+                    "fiscal_period": company_data.get("fiscal_period"),  # Include fiscal period in output
                 },
                 processing_time=0,  # Will be calculated by base class
             )
 
         except Exception as e:
-            self.logger.error(
-                f"Fundamental analysis failed for {symbol}: {e}", exc_info=True
-            )
+            self.logger.error(f"Fundamental analysis failed for {symbol}: {e}", exc_info=True)
             return AgentResult(
                 task_id=task.task_id,
                 agent_id=self.agent_id,
@@ -1014,9 +960,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                 error=str(e),
             )
 
-    async def recalculate_derived_metrics(
-        self, task: AgentTask, cached_result: Dict
-    ) -> Dict:
+    async def recalculate_derived_metrics(self, task: AgentTask, cached_result: Dict) -> Dict:
         """
         HYBRID CACHING FIX (Phase 1):
         Recalculate deterministic metrics (CompanyProfile, ratios) from cached LLM responses.
@@ -1034,18 +978,14 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             Enriched cached_result with fresh CompanyProfile and derived metrics
         """
         symbol = task.symbol
-        self.logger.debug(
-            f"{symbol} - Recalculating derived metrics from cached LLM response"
-        )
+        self.logger.debug(f"{symbol} - Recalculating derived metrics from cached LLM response")
 
         try:
             # Step 1: Re-fetch company_data (cheap database queries ~100ms)
             company_data = await self._fetch_company_data(symbol)
 
             if not company_data or "error" in company_data:
-                self.logger.warning(
-                    f"{symbol} - Failed to re-fetch company_data for metric recalculation"
-                )
+                self.logger.warning(f"{symbol} - Failed to re-fetch company_data for metric recalculation")
                 return cached_result  # Return original cached result if fetch fails
 
             # Step 2: Re-calculate financial ratios (deterministic, ~50ms)
@@ -1059,33 +999,25 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             enriched_result = cached_result.copy()
 
             # Replace CompanyProfile in valuation section
-            if "valuation" in enriched_result and isinstance(
-                enriched_result["valuation"], dict
-            ):
+            if "valuation" in enriched_result and isinstance(enriched_result["valuation"], dict):
                 if "company_profile" in enriched_result["valuation"]:
                     # Convert CompanyProfile dataclass to dict for JSON serialization
                     from dataclasses import asdict
 
                     enriched_result["valuation"]["company_profile"] = asdict(profile)
-                    self.logger.debug(
-                        f"{symbol} - Updated CompanyProfile in cached valuation data"
-                    )
+                    self.logger.debug(f"{symbol} - Updated CompanyProfile in cached valuation data")
 
             # Update ratios (used by valuation models)
             if "ratios" in enriched_result:
                 enriched_result["ratios"].update(ratios)
-                self.logger.debug(
-                    f"{symbol} - Updated {len(ratios)} ratios in cached data"
-                )
+                self.logger.debug(f"{symbol} - Updated {len(ratios)} ratios in cached data")
 
             # Update company_data reference (for consistency)
             if "company_data" in enriched_result:
                 enriched_result["company_data"] = company_data
 
             revenue_growth_str = (
-                f"{profile.revenue_growth_yoy:.1%}"
-                if profile.revenue_growth_yoy is not None
-                else "None"
+                f"{profile.revenue_growth_yoy:.1%}" if profile.revenue_growth_yoy is not None else "None"
             )
             self.logger.info(
                 f"{symbol} - Successfully recalculated derived metrics (revenue_growth_yoy: {revenue_growth_str})"
@@ -1094,9 +1026,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             return enriched_result
 
         except Exception as e:
-            self.logger.warning(
-                f"{symbol} - Failed to recalculate derived metrics: {e}", exc_info=True
-            )
+            self.logger.warning(f"{symbol} - Failed to recalculate derived metrics: {e}", exc_info=True)
             return cached_result  # Fallback to original cached data on error
 
     async def _fetch_company_data(self, symbol: str) -> Dict:
@@ -1118,30 +1048,19 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                                                                             └─► quarterly_data → DCF / multiples
         """
         try:
-            cik = resolve_cik_for_symbol(
-                symbol=symbol, ticker_mapper=self.ticker_mapper, logger=self.logger
-            )
-            fiscal_period = self._get_current_fiscal_period(
-                symbol, financials=None, cik=cik
-            )
-            cache_key = build_company_cache_key(
-                symbol=symbol, fiscal_period=fiscal_period, cik=cik
-            )
+            cik = resolve_cik_for_symbol(symbol=symbol, ticker_mapper=self.ticker_mapper, logger=self.logger)
+            fiscal_period = self._get_current_fiscal_period(symbol, financials=None, cik=cik)
+            cache_key = build_company_cache_key(symbol=symbol, fiscal_period=fiscal_period, cik=cik)
             self.logger.debug(
-                f"Cache key for {symbol}: {cache_key} "
-                f"(fiscal_period ensures quarter-specific caching)"
+                f"Cache key for {symbol}: {cache_key} " f"(fiscal_period ensures quarter-specific caching)"
             )
 
-            cached = get_cached_company_data(
-                cache=self.cache, cache_key=cache_key, symbol=symbol, logger=self.logger
-            )
+            cached = get_cached_company_data(cache=self.cache, cache_key=cache_key, symbol=symbol, logger=self.logger)
             if cached:
                 return cached
 
             try:
-                self.logger.info(
-                    f"[CLEAN ARCH] Fetching company data for {symbol} from processed table"
-                )
+                self.logger.info(f"[CLEAN ARCH] Fetching company data for {symbol} from processed table")
                 processed_data = self._fetch_company_data_from_processed_table(symbol)
                 if not processed_data:
                     raise ValueError(
@@ -1158,9 +1077,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                 fiscal_year = financial_metrics.get("fiscal_year")
                 fiscal_period_name = financial_metrics.get("fiscal_period")
                 fiscal_period_label = (
-                    f"{fiscal_year}-{fiscal_period_name}"
-                    if fiscal_year and fiscal_period_name
-                    else None
+                    f"{fiscal_year}-{fiscal_period_name}" if fiscal_year and fiscal_period_name else None
                 )
                 company_facts = financial_metrics
                 financial_statements = build_financial_statements_from_processed(
@@ -1196,9 +1113,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                 market_data=market_data,
                 fiscal_period_label=fiscal_period_label,
             )
-            validate_financial_statements(
-                financial_statements=financial_statements, symbol=symbol, cik=cik
-            )
+            validate_financial_statements(financial_statements=financial_statements, symbol=symbol, cik=cik)
             cache_company_data_payload(
                 cache=self.cache,
                 cache_key=cache_key,
@@ -1215,9 +1130,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             # Re-raise ValueError for missing data (already has good error message)
             raise
         except Exception as e:
-            self.logger.error(
-                f"Failed to fetch company data for {symbol}: {e}", exc_info=True
-            )
+            self.logger.error(f"Failed to fetch company data for {symbol}: {e}", exc_info=True)
             raise ValueError(f"Failed to fetch company data for {symbol}: {str(e)}")
 
     @staticmethod
@@ -1233,9 +1146,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         except (TypeError, ValueError):
             return None
 
-    async def _fetch_historical_quarters(
-        self, symbol: str, num_quarters: int = 12
-    ) -> List[QuarterlyData]:
+    async def _fetch_historical_quarters(self, symbol: str, num_quarters: int = 12) -> List[QuarterlyData]:
         """
         Fetch historical quarterly data using HYBRID 12-quarter strategy
 
@@ -1256,22 +1167,36 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         Raises:
             ValueError: If insufficient quarterly data available
         """
+        cik = self.ticker_mapper.resolve_cik(symbol)
+        if not cik:
+            raise ValueError(f"No CIK found for {symbol}")
+
+        # TD2: always include fiscal_period for QUARTERLY_METRICS cache keys to prevent collisions.
+        # Use latest known fiscal period when available; otherwise keep a deterministic fallback token.
+        fiscal_period_for_cache = f"latest-{num_quarters}"
+        try:
+            resolved_period = self._get_current_fiscal_period(symbol=symbol, cik=cik)
+            if resolved_period:
+                fiscal_period_for_cache = f"{resolved_period}-latest-{num_quarters}"
+        except Exception as exc:
+            self.logger.debug(
+                "Could not resolve fiscal period for %s quarterly cache key: %s. " "Using fallback token %s.",
+                symbol,
+                exc,
+                fiscal_period_for_cache,
+            )
+
         cache_key = build_cache_key(
-            CacheType.QUARTERLY_METRICS, symbol=symbol, num_quarters=num_quarters
+            CacheType.QUARTERLY_METRICS,
+            symbol=symbol,
+            fiscal_period=fiscal_period_for_cache,
+            num_quarters=num_quarters,
         )
-        cached_data = (
-            self.cache.get(CacheType.QUARTERLY_METRICS, cache_key)
-            if self.cache
-            else None
-        )
+        cached_data = self.cache.get(CacheType.QUARTERLY_METRICS, cache_key) if self.cache else None
 
         if cached_data:
-            if isinstance(cached_data, list) and all(
-                isinstance(q, QuarterlyData) for q in cached_data
-            ):
-                self.logger.info(
-                    f"🔍 CACHE HIT: Fetched historical quarters for {symbol} from cache."
-                )
+            if isinstance(cached_data, list) and all(isinstance(q, QuarterlyData) for q in cached_data):
+                self.logger.info(f"🔍 CACHE HIT: Fetched historical quarters for {symbol} from cache.")
                 return cached_data
             else:
                 self.logger.warning(
@@ -1282,15 +1207,9 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                 self.cache.delete(CacheType.QUARTERLY_METRICS, cache_key)
                 # Proceed to fetch from DB
 
-        self.logger.info(
-            f"Fetching {num_quarters} quarters from processed table for {symbol}"
-        )
+        self.logger.info(f"Fetching {num_quarters} quarters from processed table for {symbol}")
 
         try:
-            cik = self.ticker_mapper.resolve_cik(symbol)
-            if not cik:
-                raise ValueError(f"No CIK found for {symbol}")
-
             from investigator.infrastructure.database.db import get_db_manager
 
             db_manager = get_db_manager()
@@ -1347,9 +1266,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             raise
         except Exception as e:
             self.logger.error(f"Failed to fetch historical quarters for {symbol}: {e}")
-            raise ValueError(
-                f"Failed to fetch historical quarters for {symbol}: {str(e)}"
-            )
+            raise ValueError(f"Failed to fetch historical quarters for {symbol}: {str(e)}")
 
     def _fetch_company_data_from_processed_table(self, symbol: str) -> Optional[Dict]:
         """
@@ -1383,9 +1300,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             )
 
         except Exception as e:
-            self.logger.error(
-                f"[CLEAN ARCH] Failed to fetch company data from processed table for {symbol}: {e}"
-            )
+            self.logger.error(f"[CLEAN ARCH] Failed to fetch company data from processed table for {symbol}: {e}")
             return None
 
     def _fetch_from_processed_table(
@@ -1422,9 +1337,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             )
 
         except Exception as e:
-            self.logger.warning(
-                f"Error fetching from processed table for {symbol}: {e}"
-            )
+            self.logger.warning(f"Error fetching from processed table for {symbol}: {e}")
             return None
 
     def _calculate_quarterly_ratios(self, financial_data: Dict) -> Dict:
@@ -1460,9 +1373,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         # Profitability ratios
         if revenue > 0:
             ratios["profit_margin"] = (float(net_income) / float(revenue)) * 100
-            ratios["revenue_per_asset"] = (
-                float(revenue) / float(assets) if assets > 0 else 0
-            )
+            ratios["revenue_per_asset"] = float(revenue) / float(assets) if assets > 0 else 0
 
         # Efficiency ratios
         if assets > 0:
@@ -1529,13 +1440,9 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         """Delegate cash flow trend analysis to dedicated TrendAnalyzer service."""
         return self._get_trend_analyzer().analyze_cash_flow_trend(quarterly_data)
 
-    def _calculate_quarterly_comparisons(
-        self, quarterly_data: List[QuarterlyData]
-    ) -> Dict:
+    def _calculate_quarterly_comparisons(self, quarterly_data: List[QuarterlyData]) -> Dict:
         """Delegate quarterly comparisons to dedicated TrendAnalyzer service."""
-        return self._get_trend_analyzer().calculate_quarterly_comparisons(
-            quarterly_data
-        )
+        return self._get_trend_analyzer().calculate_quarterly_comparisons(quarterly_data)
 
     def _detect_cyclical_patterns(self, quarterly_data: List[QuarterlyData]) -> Dict:
         """Delegate cyclical pattern detection to dedicated TrendAnalyzer service."""
@@ -1553,9 +1460,18 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         shares = 0.0
         market_cap = 0.0
 
-        log_ratio_calc_debug(
-            logger=self.logger, symbol=symbol, company_data=company_data
+        log_ratio_calc_debug(logger=self.logger, symbol=symbol, company_data=company_data)
+        quarterly_data = company_data.get("quarterly_data", [])
+        ttm_metrics = calculate_ttm_metrics(
+            quarterly_data=quarterly_data,
+            symbol=symbol,
+            logger=self.logger,
         )
+        if ttm_metrics:
+            existing_ttm_metrics = company_data.get("ttm_metrics", {})
+            if not isinstance(existing_ttm_metrics, dict):
+                existing_ttm_metrics = {}
+            company_data["ttm_metrics"] = {**existing_ttm_metrics, **ttm_metrics}
 
         if market_data and financials:
             market_inputs = resolve_market_inputs(
@@ -1575,7 +1491,8 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             apply_valuation_ratios(
                 symbol=symbol,
                 financials=financials,
-                quarterly_data=company_data.get("quarterly_data", []),
+                quarterly_data=quarterly_data,
+                ttm_metrics=ttm_metrics,
                 ratios=ratios,
                 market_cap=market_cap,
                 shares=shares,
@@ -1599,37 +1516,28 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             price=price,
         )
 
-        quarterly_data = company_data.get("quarterly_data", [])
         self.logger.info(
             "REVENUE_GROWTH_DEBUG - quarterly_data exists: %s, length: %s",
             quarterly_data is not None,
             len(quarterly_data) if quarterly_data else 0,
         )
         try:
-            yoy_growth = calculate_revenue_growth_yoy(
-                quarterly_data=quarterly_data, logger=self.logger
-            )
+            yoy_growth = calculate_revenue_growth_yoy(quarterly_data=quarterly_data, logger=self.logger)
             if yoy_growth is not None:
                 ratios["revenue_growth_yoy"] = yoy_growth
                 ratios["revenue_growth"] = yoy_growth
         except Exception as e:
-            self.logger.warning(
-                f"Failed to calculate revenue_growth_yoy from quarterly data: {e}"
-            )
+            self.logger.warning(f"Failed to calculate revenue_growth_yoy from quarterly data: {e}")
 
         return ratios
 
     def _assess_data_quality(self, company_data: Dict, ratios: Dict) -> Dict:
         """Delegate comprehensive data quality scoring to DataQualityAssessor."""
-        return self._get_data_quality_assessor().assess_data_quality(
-            company_data, ratios
-        )
+        return self._get_data_quality_assessor().assess_data_quality(company_data, ratios)
 
     def _calculate_confidence_level(self, data_quality: Dict) -> Dict:
         """Delegate confidence mapping to DataQualityAssessor."""
-        return self._get_data_quality_assessor().calculate_confidence_level(
-            data_quality
-        )
+        return self._get_data_quality_assessor().calculate_confidence_level(data_quality)
 
     def _sanitize_for_llm(self, company_data: Dict, ratios: Dict, symbol: str) -> tuple:
         """
@@ -1661,23 +1569,17 @@ class FundamentalAnalysisAgent(InvestmentAgent):
     def _format_trend_context(self, company_data: Dict) -> str:
         return format_trend_context(company_data)
 
-    def _log_quarterly_snapshot(
-        self, symbol: str, quarterly_data: List["QuarterlyData"]
-    ) -> None:
+    def _log_quarterly_snapshot(self, symbol: str, quarterly_data: List["QuarterlyData"]) -> None:
         """
         Backwards-compatible hook for legacy callers; prefer log_quarterly_snapshot helper.
         """
         log_quarterly_snapshot(self.logger, symbol, quarterly_data)
 
-    def _log_valuation_snapshot(
-        self, symbol: str, valuation_results: Dict[str, Any]
-    ) -> None:
+    def _log_valuation_snapshot(self, symbol: str, valuation_results: Dict[str, Any]) -> None:
         """Compatibility shim for legacy callers."""
         log_valuation_snapshot(self.logger, symbol, valuation_results)
 
-    def _build_deterministic_response(
-        self, label: str, payload: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _build_deterministic_response(self, label: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Return a structure consistent with _wrap_llm_response for rule-based analyses."""
         return build_deterministic_response(self.agent_id, label, payload)
 
@@ -1704,31 +1606,19 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         try:
             self.cache.set(CacheType.LLM_RESPONSE, cache_key, wrapped)
         except Exception as exc:  # pragma: no cover - defensive
-            self.logger.debug(
-                "Failed to store deterministic %s for %s: %s", label, symbol, exc
-            )
+            self.logger.debug("Failed to store deterministic %s for %s: %s", label, symbol, exc)
 
-    async def _analyze_financial_health(
-        self, company_data: Dict, ratios: Dict, symbol: str
-    ) -> Dict:
+    async def _analyze_financial_health(self, company_data: Dict, ratios: Dict, symbol: str) -> Dict:
         """Delegate deterministic financial-health analysis to specialized analyzer."""
-        return await self._get_deterministic_analyzer().analyze_financial_health(
-            company_data, ratios, symbol
-        )
+        return await self._get_deterministic_analyzer().analyze_financial_health(company_data, ratios, symbol)
 
     async def _analyze_growth(self, company_data: Dict, symbol: str) -> Dict:
         """Delegate deterministic growth analysis to specialized analyzer."""
-        return await self._get_deterministic_analyzer().analyze_growth(
-            company_data, symbol
-        )
+        return await self._get_deterministic_analyzer().analyze_growth(company_data, symbol)
 
-    async def _analyze_profitability(
-        self, company_data: Dict, ratios: Dict, symbol: str
-    ) -> Dict:
+    async def _analyze_profitability(self, company_data: Dict, ratios: Dict, symbol: str) -> Dict:
         """Delegate deterministic profitability analysis to specialized analyzer."""
-        return await self._get_deterministic_analyzer().analyze_profitability(
-            company_data, ratios, symbol
-        )
+        return await self._get_deterministic_analyzer().analyze_profitability(company_data, ratios, symbol)
 
     def _hydrate_cost_of_capital_inputs(
         self,
@@ -1824,10 +1714,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             # Hybrid strategy already provides 8 quarters (2 years) of data
             # DCF module will aggregate and project forward
             # Convert QuarterlyData objects to dicts if needed
-            quarterly_metrics = [
-                q.to_dict() if isinstance(q, QuarterlyData) else q
-                for q in quarterly_data
-            ]
+            quarterly_metrics = [q.to_dict() if isinstance(q, QuarterlyData) else q for q in quarterly_data]
             multi_year_data = []  # DCF will aggregate from quarterly_metrics
 
             db_manager = get_db_manager()
@@ -1840,10 +1727,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             )
             result = model.calculate_dcf_valuation()
 
-            if (
-                result.get("applicable", True)
-                and (result.get("fair_value_per_share") or 0) > 0
-            ):
+            if result.get("applicable", True) and (result.get("fair_value_per_share") or 0) > 0:
                 pass
             else:
                 self.logger.warning(
@@ -1883,10 +1767,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
 
             # Hybrid strategy already provides 8 quarters (2 years) for growth calculation
             # Convert QuarterlyData objects to dicts if needed
-            quarterly_metrics = [
-                q.to_dict() if isinstance(q, QuarterlyData) else q
-                for q in quarterly_data
-            ]
+            quarterly_metrics = [q.to_dict() if isinstance(q, QuarterlyData) else q for q in quarterly_data]
             multi_year_data = []  # GGM will aggregate from quarterly_metrics
 
             db_manager = get_db_manager()
@@ -1901,9 +1782,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             # GGM returns a dict directly (not ValuationModelResult), so no normalization needed
 
             if not result.get("applicable"):
-                self.logger.info(
-                    f"{symbol} - GGM not applicable: {result.get('reason', 'Unknown')}"
-                )
+                self.logger.info(f"{symbol} - GGM not applicable: {result.get('reason', 'Unknown')}")
             return result
         except Exception as e:
             self.logger.error(f"{symbol} - GGM calculation error: {e}", exc_info=True)
@@ -1914,7 +1793,14 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             }
 
     async def _perform_valuation(
-        self, company_data: Dict, ratios: Dict, symbol: str
+        self,
+        company_data: Dict,
+        ratios: Dict,
+        symbol: str,
+        *,
+        valuation_basis: str = "ttm",
+        forward_horizon: str = "1y",
+        guidance_context: Optional[Dict[str, Any]] = None,
     ) -> Dict:
         """
         Perform comprehensive valuation analysis with DCF and GGM (Gordon Growth Model)
@@ -1930,6 +1816,19 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         financials = self._require_financials(company_data)
         data_quality = company_data.get("data_quality", {})
         trend_context = format_trend_context(company_data)
+        self.logger.info(
+            "%s - Relative valuation basis=%s, forward_horizon=%s",
+            symbol,
+            valuation_basis,
+            forward_horizon,
+        )
+        if isinstance(guidance_context, dict) and guidance_context:
+            self.logger.info(
+                "%s - Guidance context detected for forward valuation (%s, confidence=%s)",
+                symbol,
+                guidance_context.get("source_form", "unknown"),
+                guidance_context.get("confidence_score", "n/a"),
+            )
 
         valuation_results = {}
 
@@ -1940,12 +1839,8 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         quarterly_data = company_data.get("quarterly_data", [])
 
         # Hydrate cost-of-capital inputs before kicking off valuation
-        self._hydrate_cost_of_capital_inputs(
-            company_profile, company_data, ratios, symbol
-        )
-        cost_of_capital_issues = self._evaluate_cost_of_capital_inputs(
-            company_profile, company_data
-        )
+        self._hydrate_cost_of_capital_inputs(company_profile, company_data, ratios, symbol)
+        cost_of_capital_issues = self._evaluate_cost_of_capital_inputs(company_profile, company_data)
 
         from investigator.config import get_config
 
@@ -1981,6 +1876,9 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             calculate_enterprise_value=self._calculate_enterprise_value,
             log_model_result=log_individual_model_result,
             logger=self.logger,
+            valuation_basis=valuation_basis,
+            forward_horizon=forward_horizon,
+            guidance_context=guidance_context,
         )
         normalized_pe = relative_models["pe"]
         normalized_ev_ebitda = relative_models["ev_ebitda"]
@@ -2046,9 +1944,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             format_currency=_fmt_currency,
             format_percentage=_fmt_pct,
         )
-        archetype_labels = (
-            ", ".join(company_profile.archetype_labels()) or "Unclassified"
-        )
+        archetype_labels = ", ".join(company_profile.archetype_labels()) or "Unclassified"
         prompt = build_valuation_synthesis_prompt(
             data_quality=data_quality,
             trend_context=trend_context,
@@ -2093,23 +1989,15 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             logger=self.logger,
         )
 
-    async def _analyze_competitive_position(
-        self, company_data: Dict, symbol: str
-    ) -> Dict:
+    async def _analyze_competitive_position(self, company_data: Dict, symbol: str) -> Dict:
         """Analyze company's competitive position"""
         # Check if deterministic competitive analysis is enabled (saves tokens, faster)
         if self.use_deterministic and self.deterministic_competitive_analysis:
-            self.logger.debug(
-                f"{symbol} - Using deterministic competitive analysis (LLM bypass)"
-            )
+            self.logger.debug(f"{symbol} - Using deterministic competitive analysis (LLM bypass)")
 
-            response_data = analyze_competitive_position(
-                symbol=symbol, company_data=company_data
-            )
+            response_data = analyze_competitive_position(symbol=symbol, company_data=company_data)
 
-            return self._build_deterministic_response(
-                "competitive_position", response_data
-            )
+            return self._build_deterministic_response("competitive_position", response_data)
 
         # === LLM Path (fallback when deterministic is disabled) ===
         financials = self._require_financials(company_data)
@@ -2220,78 +2108,58 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             period=company_data.get("fiscal_period"),  # Period-based caching
         )
 
-    def _lookup_sector_multiple(
-        self, sector: Optional[str], multiple: str
-    ) -> Optional[float]:
+    def _lookup_sector_multiple(self, sector: Optional[str], multiple: str) -> Optional[float]:
         """Fetch sector-level reference multiples from configuration if available."""
         if not sector:
-            self.logger.warning("[SECTOR_LOOKUP_DEBUG] sector is None, returning None")
+            self.logger.debug("[SECTOR_LOOKUP_DEBUG] sector is None, returning None")
             return None
 
         try:
-            self.logger.warning(f"[SECTOR_LOOKUP_DEBUG] Looking up {sector}/{multiple}")
-            self.logger.warning(
+            self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] Looking up {sector}/{multiple}")
+            self.logger.debug(
                 f"[SECTOR_LOOKUP_DEBUG] _sector_multiples_loader exists: {self._sector_multiples_loader is not None}"
             )
 
             if self._sector_multiples_loader:
                 record = self._sector_multiples_loader.get(sector)
-                self.logger.warning(
-                    f"[SECTOR_LOOKUP_DEBUG] Loader record for {sector}: {record}"
-                )
+                self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] Loader record for {sector}: {record}")
                 if record:
                     value = getattr(record, multiple, None)
-                    self.logger.warning(
-                        f"[SECTOR_LOOKUP_DEBUG] Record.{multiple} = {value}"
-                    )
+                    self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] Record.{multiple} = {value}")
                     if value is not None:
-                        self.logger.warning(
-                            f"[SECTOR_LOOKUP_DEBUG] Returning value from loader: {value}"
-                        )
+                        self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] Returning value from loader: {value}")
                         return float(value)
 
             valuation_settings = getattr(self.config, "valuation", None)
-            self.logger.warning(
-                f"[SECTOR_LOOKUP_DEBUG] valuation_settings exists: {valuation_settings is not None}"
-            )
+            self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] valuation_settings exists: {valuation_settings is not None}")
             if isinstance(valuation_settings, dict):
                 multiples = valuation_settings.get("sector_multiples", {}) or {}
             elif valuation_settings is not None:
                 multiples = getattr(valuation_settings, "sector_multiples", {}) or {}
             else:
-                self.logger.warning(
-                    "[SECTOR_LOOKUP_DEBUG] No valuation_settings, returning None"
-                )
+                self.logger.debug("[SECTOR_LOOKUP_DEBUG] No valuation_settings, returning None")
                 return None
 
-            self.logger.warning(
+            self.logger.debug(
                 f"[SECTOR_LOOKUP_DEBUG] Config multiples keys: {list(multiples.keys()) if multiples else 'empty'}"
             )
             sector_key = sector.lower()
             for key, values in multiples.items():
                 if key.lower() == sector_key:
                     value = values.get(multiple)
-                    self.logger.warning(
-                        f"[SECTOR_LOOKUP_DEBUG] Found {key} matching {sector_key}, {multiple}={value}"
-                    )
+                    self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] Found {key} matching {sector_key}, {multiple}={value}")
                     if value is not None:
-                        self.logger.warning(
-                            f"[SECTOR_LOOKUP_DEBUG] Returning value from config: {value}"
-                        )
+                        self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] Returning value from config: {value}")
                         return float(value)
         except Exception as exc:  # pragma: no cover - defensive guard
-            self.logger.warning(f"[SECTOR_LOOKUP_DEBUG] Exception in lookup: {exc}")
-            self.logger.debug(
-                f"Failed to load sector multiple for {sector}/{multiple}: {exc}"
-            )
+            self.logger.warning(f"Sector multiple lookup failed for {sector}/{multiple}: {exc}")
+            self.logger.debug(f"Failed to load sector multiple for {sector}/{multiple}: {exc}")
 
-        self.logger.warning("[SECTOR_LOOKUP_DEBUG] No value found, returning None")
+        self.logger.debug("[SECTOR_LOOKUP_DEBUG] No value found, returning None")
         return None
 
     @staticmethod
-    def _calculate_enterprise_value(
-        market_data: Dict, financials: Dict
-    ) -> Optional[float]:
+    def _calculate_enterprise_value(market_data: Dict, financials: Dict) -> Optional[float]:
         ev_candidates = [
             market_data.get("enterprise_value"),
             market_data.get("enterpriseValue"),
@@ -2308,16 +2176,8 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         if market_cap is None:
             return None
 
-        total_debt = (
-            financials.get("total_debt")
-            or financials.get("long_term_debt")
-            or market_data.get("total_debt")
-        )
-        cash = (
-            financials.get("cash")
-            or financials.get("cash_and_equivalents")
-            or market_data.get("cash")
-        )
+        total_debt = financials.get("total_debt") or financials.get("long_term_debt") or market_data.get("total_debt")
+        cash = financials.get("cash") or financials.get("cash_and_equivalents") or market_data.get("cash")
 
         try:
             market_cap_val = float(market_cap)
@@ -2356,20 +2216,12 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             self.logger.warning(f"Failed to load model selection rules: {exc}")
             return {}
 
-    def _select_models_for_company(
-        self, profile: CompanyProfile
-    ) -> Optional[List[str]]:
+    def _select_models_for_company(self, profile: CompanyProfile) -> Optional[List[str]]:
         if not self._model_selection_rules:
             return None
 
-        rules = (
-            self._model_selection_rules
-            if isinstance(self._model_selection_rules, dict)
-            else {}
-        )
-        defaults = (
-            rules.get("defaults", {}) if isinstance(rules.get("defaults"), dict) else {}
-        )
+        rules = self._model_selection_rules if isinstance(self._model_selection_rules, dict) else {}
+        defaults = rules.get("defaults", {}) if isinstance(rules.get("defaults"), dict) else {}
 
         include = set(defaults.get("include", []))
         exclude = set(defaults.get("exclude", []))
@@ -2386,30 +2238,16 @@ class FundamentalAnalysisAgent(InvestmentAgent):
 
         _merge_blocking(defaults.get("blocking_flags"))
 
-        archetype_rules = (
-            rules.get("archetypes", {})
-            if isinstance(rules.get("archetypes"), dict)
-            else {}
-        )
-        primary = (
-            profile.primary_archetype.name.lower()
-            if profile.primary_archetype
-            else None
-        )
+        archetype_rules = rules.get("archetypes", {}) if isinstance(rules.get("archetypes"), dict) else {}
+        primary = profile.primary_archetype.name.lower() if profile.primary_archetype else None
         if primary and archetype_rules.get(primary):
             rule = archetype_rules[primary] or {}
             include.update(rule.get("include", []))
             exclude.update(rule.get("exclude", []))
             _merge_blocking(rule.get("blocking_flags"))
 
-            secondary_rules = (
-                rule.get("secondary") if isinstance(rule.get("secondary"), dict) else {}
-            )
-            secondary = (
-                profile.secondary_archetype.name.lower()
-                if profile.secondary_archetype
-                else None
-            )
+            secondary_rules = rule.get("secondary") if isinstance(rule.get("secondary"), dict) else {}
+            secondary = profile.secondary_archetype.name.lower() if profile.secondary_archetype else None
             if secondary and secondary in secondary_rules:
                 sec_rule = secondary_rules[secondary] or {}
                 include.update(sec_rule.get("include", []))
@@ -2431,13 +2269,30 @@ class FundamentalAnalysisAgent(InvestmentAgent):
 
         return allowed if allowed else None
 
-    async def _generate_forecast(
-        self, company_data: Dict, growth_analysis: Dict, symbol: str
-    ) -> Dict:
+    async def _generate_forecast(self, company_data: Dict, growth_analysis: Dict, symbol: str) -> Dict:
         """Generate earnings and revenue forecast"""
         financials = self._require_financials(company_data)
         data_quality = company_data.get("data_quality", {})
         trend_context = format_trend_context(company_data)
+
+        if self.use_deterministic and self.deterministic_forecast_generation:
+            self.logger.debug(
+                "%s - Using deterministic forecast generation (LLM bypass)",
+                symbol,
+            )
+            deterministic_payload = self._build_deterministic_forecast_payload(
+                financials=financials,
+                growth_analysis=growth_analysis,
+            )
+            return self._wrap_llm_response(
+                response=deterministic_payload,
+                model=self.models["valuation"],
+                prompt="deterministic_forecast_generation",
+                temperature=0.3,
+                top_p=0.9,
+                format="json",
+                period=company_data.get("fiscal_period"),
+            )
 
         prompt = f"""
         Generate financial forecasts based on historical data and growth analysis:
@@ -2550,6 +2405,164 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             period=company_data.get("fiscal_period"),  # Period-based caching
         )
 
+    @staticmethod
+    def _coerce_float(value: Any, default: float = 0.0) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+    def _build_deterministic_forecast_payload(
+        self, financials: Dict[str, Any], growth_analysis: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Build deterministic 3-year forecast payload when LLM is bypassed/unavailable."""
+        current_year = datetime.now().year
+        revenue = max(self._coerce_float(financials.get("revenue"), 0.0), 0.0)
+        net_income = max(self._coerce_float(financials.get("net_income"), 0.0), 0.0)
+        free_cash_flow = max(
+            self._coerce_float(
+                financials.get("free_cash_flow", financials.get("operating_cash_flow", 0.0)),
+                0.0,
+            ),
+            0.0,
+        )
+        shares = self._coerce_float(financials.get("shares_outstanding"), 0.0)
+        eps = net_income / shares if shares > 0 else self._coerce_float(financials.get("eps"), 0.0)
+
+        raw_growth = growth_analysis.get("revenue_growth_rate", growth_analysis.get("revenue_growth", 0.05))
+        growth = self._coerce_float(raw_growth, 0.05)
+        if abs(growth) > 1:
+            growth = growth / 100.0
+        growth = min(max(growth, -0.20), 0.30)
+
+        rev_forecast: List[Dict[str, Any]] = []
+        eps_forecast: List[Dict[str, Any]] = []
+        fcf_forecast: List[Dict[str, Any]] = []
+
+        revenue_run = revenue
+        eps_run = eps
+        fcf_run = free_cash_flow
+
+        for year_offset in range(1, 4):
+            fade = max(0.5, 1.0 - (year_offset - 1) * 0.15)
+            annual_growth = growth * fade
+
+            revenue_run *= 1 + annual_growth
+            eps_run *= 1 + annual_growth
+            fcf_run *= 1 + annual_growth
+
+            forecast_year = current_year + year_offset
+            rev_forecast.append(
+                {
+                    "year": forecast_year,
+                    "revenue": round(revenue_run, 2),
+                    "growth_rate": round(annual_growth, 4),
+                }
+            )
+            eps_forecast.append({"year": forecast_year, "eps": round(eps_run, 4)})
+            fcf_forecast.append({"year": forecast_year, "fcf": round(fcf_run, 2)})
+
+        bull_growth = min(growth + 0.03, 0.40)
+        bear_growth = max(growth - 0.03, -0.25)
+        revenue_2028 = rev_forecast[-1]["revenue"] if rev_forecast else revenue
+        eps_2028 = eps_forecast[-1]["eps"] if eps_forecast else eps
+
+        return {
+            "revenue_forecast": rev_forecast,
+            "earnings_forecast": eps_forecast,
+            "free_cash_flow_forecast": fcf_forecast,
+            "margin_projections": {
+                "gross_margin": round(self._coerce_float(financials.get("gross_margin"), 0.35), 4),
+                "operating_margin": round(self._coerce_float(financials.get("operating_margin"), 0.15), 4),
+                "net_margin": round(self._coerce_float(financials.get("net_margin"), 0.10), 4),
+            },
+            "key_assumptions": [
+                "Deterministic forecast mode enabled",
+                "Growth rate derived from existing growth analysis inputs",
+                "Linear fade applied to avoid over-extrapolation",
+            ],
+            "scenario_analysis": {
+                "base_case": {"revenue_growth": round(growth, 4), "eps": round(eps_2028, 4)},
+                "bull_case": {
+                    "revenue_growth": round(bull_growth, 4),
+                    "eps": round(eps_2028 * (1 + max(bull_growth - growth, 0)), 4),
+                },
+                "bear_case": {
+                    "revenue_growth": round(bear_growth, 4),
+                    "eps": round(eps_2028 * (1 - max(growth - bear_growth, 0)), 4),
+                },
+            },
+            "confidence_intervals": {
+                "revenue_2028": [
+                    round(revenue_2028 * 0.9, 2),
+                    round(revenue_2028 * 1.1, 2),
+                ],
+                "eps_2028": [round(eps_2028 * 0.9, 4), round(eps_2028 * 1.1, 4)],
+            },
+            "fallback_used": True,
+        }
+
+    def _build_deterministic_fundamental_report_payload(self, analysis_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Build deterministic fundamental report payload."""
+        valuation_data = analysis_data.get("valuation", {})
+        if isinstance(valuation_data, dict) and isinstance(valuation_data.get("response"), dict):
+            valuation_data = valuation_data.get("response", {})
+        elif not isinstance(valuation_data, dict):
+            valuation_data = {}
+
+        ratios = analysis_data.get("ratios", {}) or {}
+        company_profile = analysis_data.get("company_data", {}) or {}
+        current_price = self._coerce_float(ratios.get("current_price"), 0.0)
+        fair_value = self._coerce_float(
+            valuation_data.get("fair_value_estimate")
+            or valuation_data.get("fair_value")
+            or company_profile.get("current_price")
+            or current_price,
+            0.0,
+        )
+        upside_pct = ((fair_value - current_price) / current_price) * 100 if current_price > 0 else 0.0
+
+        if upside_pct >= 15:
+            recommendation = "buy"
+        elif upside_pct <= -15:
+            recommendation = "sell"
+        else:
+            recommendation = "hold"
+
+        return {
+            "executive_summary": (
+                "Deterministic fallback used because LLM fundamental synthesis returned empty output."
+            ),
+            "investment_thesis": (
+                "Focus on valuation discipline and execution quality while monitoring cyclical risk."
+            ),
+            "financial_analysis_summary": (
+                "Core valuation and ratio inputs are available; narrative synthesis used fallback mode."
+            ),
+            "valuation_assessment": valuation_data.get("valuation_stance", "uncertain"),
+            "growth_prospects": "Moderate growth with scenario uncertainty.",
+            "risk_analysis": valuation_data.get(
+                "valuation_risks",
+                "Model divergence and macro sensitivity remain key risks.",
+            ),
+            "competitive_position": "Refer to deterministic competitive analysis output.",
+            "investment_grade": valuation_data.get("investment_grade", "B"),
+            "price_target": round(fair_value, 2),
+            "investment_recommendation": recommendation,
+            "recommendation": recommendation,
+            "key_catalysts": [
+                "Execution versus guidance",
+                "Margin stability",
+                "Cash flow resilience",
+            ],
+            "key_risks": [
+                "Valuation compression risk",
+                "Demand cyclicality",
+                "Macro regime shift",
+            ],
+            "fallback_used": True,
+        }
+
     async def _calculate_quality_score(
         self, health: Dict, growth: Dict, profitability: Dict, competitive: Dict
     ) -> float:
@@ -2590,9 +2603,23 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         symbol = analysis_data.get("symbol", "UNKNOWN")
         data_quality = analysis_data.get("data_quality", {})
         confidence = analysis_data.get("confidence", {})
-        fiscal_period = analysis_data.get(
-            "fiscal_period"
-        )  # Extract period from analysis_data
+        fiscal_period = analysis_data.get("fiscal_period")  # Extract period from analysis_data
+
+        if self.use_deterministic and self.deterministic_fundamental_report_generation:
+            self.logger.debug(
+                "%s - Using deterministic fundamental report generation (LLM bypass)",
+                symbol,
+            )
+            deterministic_payload = self._build_deterministic_fundamental_report_payload(analysis_data)
+            return self._wrap_llm_response(
+                response=deterministic_payload,
+                model=self.models["quality"],
+                prompt="deterministic_fundamental_report_generation",
+                temperature=0.3,
+                top_p=0.9,
+                format="json",
+                period=fiscal_period,
+            )
 
         # Check if TOON format is enabled
         use_toon = getattr(self.config.ollama, "use_toon_format", False) and getattr(
@@ -2604,11 +2631,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             # Extract quarterly data for TOON formatting (63% token savings)
             quarterly_data = analysis_data.get("quarterly_data", [])
 
-            if (
-                quarterly_data
-                and isinstance(quarterly_data, list)
-                and len(quarterly_data) > 0
-            ):
+            if quarterly_data and isinstance(quarterly_data, list) and len(quarterly_data) > 0:
                 try:
                     # Convert QuarterlyData objects to dicts if needed
                     quarterly_dicts = []
@@ -2623,21 +2646,17 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                         toon_quarterly = to_toon_quarterly(quarterly_dicts)
 
                         # Remove quarterly_data from analysis_data to avoid duplication
-                        remaining_data = {
-                            k: v
-                            for k, v in analysis_data.items()
-                            if k != "quarterly_data"
-                        }
+                        remaining_data = {k: v for k, v in analysis_data.items() if k != "quarterly_data"}
 
                         # Build data section with TOON quarterly + JSON for other data
-                        data_section = f"{toon_quarterly}\n\nAdditional Analysis:\n{json.dumps(remaining_data, indent=2)[:8000]}"
+                        data_section = (
+                            f"{toon_quarterly}\n\nAdditional Analysis:\n{json.dumps(remaining_data, indent=2)[:8000]}"
+                        )
                     else:
                         # No valid quarterly data, fall back to JSON
                         data_section = json.dumps(analysis_data, indent=2)[:10000]
                 except Exception as e:
-                    self.logger.warning(
-                        f"Failed to convert quarterly data to TOON for {symbol}: {e}"
-                    )
+                    self.logger.warning(f"Failed to convert quarterly data to TOON for {symbol}: {e}")
                     data_section = json.dumps(analysis_data, indent=2)[:10000]
             else:
                 # No quarterly data, use JSON
@@ -2723,9 +2742,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         self._debug_log_prompt(prompt_name, prompt)
 
         # Build system prompt with optional TOON explanation
-        system_prompt = (
-            "You are a senior equity analyst providing investment recommendations."
-        )
+        system_prompt = "You are a senior equity analyst providing investment recommendations."
         if use_toon and quarterly_data:
             system_prompt += "\n\n" + TOONFormatter.get_format_explanation()
 
@@ -2753,7 +2770,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             period=fiscal_period,  # Period-based caching
         )
 
-        return self._wrap_llm_response(
+        wrapped_report = self._wrap_llm_response(
             response=response,
             model=self.models["quality"],
             prompt=prompt,
@@ -2762,6 +2779,26 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             format="json",
             period=fiscal_period,  # Period-based caching
         )
+
+        payload = wrapped_report.get("response", {})
+        if not isinstance(payload, dict) or not payload:
+            self.logger.warning(
+                "Fundamental synthesis returned empty/invalid payload for %s. Using deterministic fallback report.",
+                symbol,
+            )
+            fallback_payload = self._build_deterministic_fundamental_report_payload(analysis_data)
+
+            return self._wrap_llm_response(
+                response=fallback_payload,
+                model=self.models["quality"],
+                prompt=prompt,
+                temperature=0.3,
+                top_p=0.9,
+                format="json",
+                period=fiscal_period,
+            )
+
+        return wrapped_report
 
     def _calculate_growth_rate(self, financials: Dict, metric: str) -> float:
         """Calculate compound annual growth rate for a metric"""
@@ -2783,190 +2820,20 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         Returns:
             TTM net income (sum of last 4 quarters), or 0 if insufficient data
         """
-        from investigator.domain.agents.fundamental.models import QuarterlyData
-
-        # Debug: Log quarterly data structure
-        self.logger.info(
-            f"🔍 [TTM_DEBUG] {symbol} - Quarterly data received: "
-            f"{len(quarterly_data) if quarterly_data else 0} periods"
+        ttm_metrics = calculate_ttm_metrics(
+            quarterly_data=quarterly_data,
+            symbol=symbol,
+            logger=self.logger,
         )
-
-        # ENHANCED DEBUG: Show ALL quarters BEFORE filtering (CRITICAL for ORCL Q2-2025 investigation)
-        if quarterly_data:
-            self.logger.info(
-                f"🔍 [QUARTER_FILTER] {symbol} - ALL QUARTERS BEFORE FY FILTERING:"
-            )
-            for idx, q in enumerate(quarterly_data):
-                if isinstance(q, QuarterlyData):
-                    fp = getattr(q, "fiscal_period", "UNKNOWN")
-                    fy = getattr(q, "fiscal_year", "UNKNOWN")
-                    period_end = getattr(q, "period_end_date", "UNKNOWN")
-                elif isinstance(q, dict):
-                    fp = q.get("fiscal_period", "UNKNOWN")
-                    fy = q.get("fiscal_year", "UNKNOWN")
-                    period_end = q.get("period_end_date", "UNKNOWN")
-                else:
-                    fp = fy = period_end = "UNKNOWN_TYPE"
-
-                self.logger.info(
-                    f"  [{idx}] fiscal_year={fy}, fiscal_period={fp}, period_end={period_end}"
-                )
-
-        if not quarterly_data or len(quarterly_data) < 4:
-            self.logger.warning(
-                f"{symbol} - Insufficient quarterly data for TTM calculation "
-                f"({len(quarterly_data) if quarterly_data else 0} quarters < 4 required)"
-            )
-            return 0
-
-        # CRITICAL: Filter out FY (Full Year) periods to avoid double-counting
-        # FY periods contain the full year's net income (Q1+Q2+Q3+Q4 already summed)
-        # If we include FY in our TTM sum, we'd double-count net income
-        actual_quarters = []
-        filtered_out = []
-        for q in quarterly_data:
-            # Extract fiscal_period from QuarterlyData or dict
-            if isinstance(q, QuarterlyData):
-                fiscal_period = getattr(q, "fiscal_period", "").upper()
-                fiscal_year = getattr(q, "fiscal_year", "UNKNOWN")
-                period_end = getattr(q, "period_end_date", "UNKNOWN")
-            elif isinstance(q, dict):
-                fiscal_period = q.get("fiscal_period", "").upper()
-                fiscal_year = q.get("fiscal_year", "UNKNOWN")
-                period_end = q.get("period_end_date", "UNKNOWN")
-            else:
-                continue
-
-            # Only include actual quarters (Q1, Q2, Q3, Q4), exclude FY
-            if fiscal_period in ["Q1", "Q2", "Q3", "Q4"]:
-                actual_quarters.append(q)
-            else:
-                # Track what got filtered out
-                filtered_out.append(
-                    f"{fiscal_year}-{fiscal_period} (period_end={period_end})"
-                )
-
-        self.logger.info(
-            f"🔍 [TTM_DEBUG] {symbol} - Filtered to {len(actual_quarters)} actual quarters "
-            f"(excluded FY periods from {len(quarterly_data)} total periods)"
-        )
-
-        # ENHANCED DEBUG: Show what was filtered out
-        if filtered_out:
-            self.logger.info(
-                f"🔍 [QUARTER_FILTER] {symbol} - FILTERED OUT (FY periods): {', '.join(filtered_out)}"
-            )
-
-        # ENHANCED DEBUG: Show quarters AFTER filtering (what we'll use for TTM)
-        if actual_quarters:
-            self.logger.info(
-                f"🔍 [QUARTER_FILTER] {symbol} - QUARTERS AFTER FY FILTERING (will use first 4 for TTM):"
-            )
-            for idx, q in enumerate(actual_quarters[:8]):  # Show first 8
-                if isinstance(q, QuarterlyData):
-                    fp = getattr(q, "fiscal_period", "UNKNOWN")
-                    fy = getattr(q, "fiscal_year", "UNKNOWN")
-                    period_end = getattr(q, "period_end_date", "UNKNOWN")
-                elif isinstance(q, dict):
-                    fp = q.get("fiscal_period", "UNKNOWN")
-                    fy = q.get("fiscal_year", "UNKNOWN")
-                    period_end = q.get("period_end_date", "UNKNOWN")
-                else:
-                    fp = fy = period_end = "UNKNOWN_TYPE"
-
-                prefix = "**WILL USE**" if idx < 4 else "available"
-                self.logger.info(
-                    f"  [{idx}] {prefix}: {fy}-{fp} (period_end={period_end})"
-                )
-
-        if len(actual_quarters) < 4:
-            self.logger.warning(
-                f"{symbol} - Insufficient actual quarterly data for TTM calculation "
-                f"({len(actual_quarters)} quarters < 4 required after filtering out FY periods)"
-            )
-            return 0
-
-        # Take the last 4 quarters (most recent = index 0)
-        last_4_quarters = actual_quarters[:4]
-
-        ttm_net_income = 0
-        quarter_details = []
-
-        for idx, q in enumerate(last_4_quarters):
-            # Debug: Log quarter structure
-            self.logger.info(
-                f"🔍 [TTM_DEBUG] {symbol} - Q{idx + 1} type: {type(q).__name__}"
-            )
-
-            # Handle both dict and QuarterlyData object
-            if isinstance(q, QuarterlyData):
-                # Debug: Log QuarterlyData attributes
-                self.logger.info(
-                    f"🔍 [TTM_DEBUG] {symbol} - Q{idx + 1} QuarterlyData attributes: "
-                    f"{list(q.__dict__.keys()) if hasattr(q, '__dict__') else 'no __dict__'}"
-                )
-
-                ni = (
-                    q.financial_data.get("net_income", 0)
-                    if hasattr(q, "financial_data")
-                    else 0
-                )
-                period = (
-                    f"{q.fiscal_year}-{q.fiscal_period}"
-                    if hasattr(q, "fiscal_year")
-                    else "Unknown"
-                )
-
-                # Debug: Log extracted values
-                self.logger.info(
-                    f"🔍 [TTM_DEBUG] {symbol} - Q{idx + 1} {period}: "
-                    f"net_income=${ni:,.0f} (from QuarterlyData.financial_data)"
-                )
-
-            elif isinstance(q, dict):
-                # Debug: Log dict keys
-                self.logger.info(
-                    f"🔍 [TTM_DEBUG] {symbol} - Q{idx + 1} dict keys: {list(q.keys())[:10]}..."
-                )
-
-                # Try multiple paths to find net_income
-                ni = (
-                    q.get("financial_data", {}).get("net_income")
-                    or q.get("net_income")
-                    or q.get("financials", {}).get("net_income")
-                    or 0
-                )
-
-                period = (
-                    f"{q.get('fiscal_year', 'Unknown')}-{q.get('fiscal_period', 'Q?')}"
-                )
-
-                # Debug: Log all attempted paths
-                self.logger.info(
-                    f"🔍 [TTM_DEBUG] {symbol} - Q{idx + 1} {period}: "
-                    f"financial_data.net_income={q.get('financial_data', {}).get('net_income')}, "
-                    f"net_income={q.get('net_income')}, "
-                    f"financials.net_income={q.get('financials', {}).get('net_income')}, "
-                    f"→ using ni=${ni:,.0f}"
-                )
-            else:
-                self.logger.warning(
-                    f"{symbol} - Unexpected quarterly data type: {type(q)}"
-                )
-                continue
-
-            ttm_net_income += ni
-            quarter_details.append(f"{period}=${ni:,.0f}")
+        ttm_net_income = float(ttm_metrics.get("net_income", 0.0))
 
         if ttm_net_income > 0:
-            self.logger.info(
-                f"✅ {symbol} - TTM Net Income: ${ttm_net_income:,.0f} "
-                f"(sum of {', '.join(quarter_details)})"
-            )
+            self.logger.info("✅ %s - TTM Net Income: $%s", symbol, format(ttm_net_income, ",.0f"))
         else:
             self.logger.warning(
-                f"❌ {symbol} - TTM Net Income is zero or negative: ${ttm_net_income:,.0f} "
-                f"(quarters: {', '.join(quarter_details)})"
+                "❌ %s - TTM Net Income is zero or negative: $%s",
+                symbol,
+                format(ttm_net_income, ",.0f"),
             )
 
         return ttm_net_income

@@ -56,9 +56,7 @@ class GordonGrowthModel:
         self.db_manager = db_manager
         self.company_profile = company_profile
 
-    def calculate_ggm_valuation(
-        self, cost_of_equity: float, terminal_growth_rate: Optional[float] = None
-    ) -> Dict:
+    def calculate_ggm_valuation(self, cost_of_equity: float, terminal_growth_rate: Optional[float] = None) -> Dict:
         """
         Calculate Gordon Growth Model valuation
 
@@ -72,17 +70,11 @@ class GordonGrowthModel:
             Dictionary with fair value, assumptions, and validation info
         """
         try:
-            logger.info(
-                f"🔍 [GGM_START] {self.symbol} - Initializing Gordon Growth Model valuation"
-            )
-            logger.info(
-                f"🔍 [GGM_INPUTS] {self.symbol} - Cost of Equity (r): {cost_of_equity * 100:.2f}%"
-            )
+            logger.info(f"🔍 [GGM_START] {self.symbol} - Initializing Gordon Growth Model valuation")
+            logger.info(f"🔍 [GGM_INPUTS] {self.symbol} - Cost of Equity (r): {cost_of_equity * 100:.2f}%")
 
             # Step 1: Check if company pays dividends
-            logger.info(
-                f"🔍 [GGM_STAGE_1] {self.symbol} - Checking dividend eligibility..."
-            )
+            logger.info(f"🔍 [GGM_STAGE_1] {self.symbol} - Checking dividend eligibility...")
             latest_dps = self._get_latest_dps()
             if latest_dps <= 0:
                 logger.info(
@@ -94,9 +86,7 @@ class GordonGrowthModel:
                     "fair_value_per_share": 0,
                 }
 
-            logger.info(
-                f"🔍 [GGM_DIVIDEND] {self.symbol} - ✅ Dividend-paying stock: TTM DPS = ${latest_dps:.4f}"
-            )
+            logger.info(f"🔍 [GGM_DIVIDEND] {self.symbol} - ✅ Dividend-paying stock: TTM DPS = ${latest_dps:.4f}")
 
             # Step 2: Determine growth rate (unified or internal calculation)
             if terminal_growth_rate is not None:
@@ -108,23 +98,17 @@ class GordonGrowthModel:
                 )
             else:
                 # Fall back to internal calculation (backward compatible)
-                logger.info(
-                    f"🔍 [GGM_STAGE_2] {self.symbol} - Calculating sustainable growth rate..."
-                )
+                logger.info(f"🔍 [GGM_STAGE_2] {self.symbol} - Calculating sustainable growth rate...")
                 growth_rate = self._calculate_sustainable_growth()
                 logger.info(
                     f"🔍 [GGM_GROWTH] {self.symbol} - Sustainable growth rate (g) [internal]: {growth_rate * 100:.2f}%"
                 )
 
             # Step 3: Validate model constraints
-            logger.info(
-                f"🔍 [GGM_STAGE_3] {self.symbol} - Validating model constraints (g < r)..."
-            )
+            logger.info(f"🔍 [GGM_STAGE_3] {self.symbol} - Validating model constraints (g < r)...")
             validation = self._validate_model_constraints(growth_rate, cost_of_equity)
             if not validation["valid"]:
-                logger.warning(
-                    f"🔍 [GGM_CONSTRAINT_FAIL] {self.symbol} - Validation failed: {validation['reason']}"
-                )
+                logger.warning(f"🔍 [GGM_CONSTRAINT_FAIL] {self.symbol} - Validation failed: {validation['reason']}")
                 return {
                     "applicable": False,
                     "reason": validation["reason"],
@@ -141,9 +125,7 @@ class GordonGrowthModel:
             )
 
             # Step 4: Calculate next year's expected dividend (D₁)
-            logger.info(
-                f"🔍 [GGM_STAGE_4] {self.symbol} - Calculating expected dividend D₁ = D₀ × (1 + g)"
-            )
+            logger.info(f"🔍 [GGM_STAGE_4] {self.symbol} - Calculating expected dividend D₁ = D₀ × (1 + g)")
             d1 = latest_dps * (1 + growth_rate)
             logger.info(
                 f"🔍 [GGM_D1_CALC] {self.symbol} - "
@@ -151,9 +133,7 @@ class GordonGrowthModel:
             )
 
             # Step 5: Apply GGM formula: Fair Value = D₁ / (r - g)
-            logger.info(
-                f"🔍 [GGM_STAGE_5] {self.symbol} - Applying GGM formula: Fair Value = D₁ / (r - g)"
-            )
+            logger.info(f"🔍 [GGM_STAGE_5] {self.symbol} - Applying GGM formula: Fair Value = D₁ / (r - g)")
             denominator = cost_of_equity - growth_rate
             fair_value = d1 / denominator
             logger.info(
@@ -163,19 +143,13 @@ class GordonGrowthModel:
             )
 
             # Step 6: Compare to current price
-            logger.info(
-                f"🔍 [GGM_STAGE_6] {self.symbol} - Comparing to current market price..."
-            )
+            logger.info(f"🔍 [GGM_STAGE_6] {self.symbol} - Comparing to current market price...")
             current_price = self._get_current_price()
-            upside_downside = (
-                ((fair_value / current_price) - 1) * 100 if current_price > 0 else 0
-            )
+            upside_downside = ((fair_value / current_price) - 1) * 100 if current_price > 0 else 0
 
             assessment = self._get_valuation_assessment(upside_downside)
 
-            dividend_yield = (
-                (latest_dps / current_price * 100) if current_price > 0 else 0
-            )
+            dividend_yield = (latest_dps / current_price * 100) if current_price > 0 else 0
 
             logger.info(
                 f"🔍 [GGM_RESULT] {self.symbol} - "
@@ -237,26 +211,18 @@ class GordonGrowthModel:
         from utils.quarterly_calculator import get_rolling_ttm_periods
 
         # Get 4 most recent quarters (with Q4 computed if needed)
-        ttm_periods = get_rolling_ttm_periods(
-            self.quarterly_metrics, compute_missing=True, num_quarters=4
-        )
+        ttm_periods = get_rolling_ttm_periods(self.quarterly_metrics, compute_missing=True, num_quarters=4)
 
         if not ttm_periods:
-            logger.warning(
-                f"{self.symbol} - No quarterly data available for TTM DPS calculation"
-            )
+            logger.warning(f"{self.symbol} - No quarterly data available for TTM DPS calculation")
             return 0
 
         ttm_dividends = 0.0
         for period in ttm_periods:
             cash_flow = period.get("cash_flow", {})
             if cash_flow.get("is_ytd"):
-                logger.error(
-                    f"{self.symbol} - YTD data detected in TTM DPS calculation!"
-                )
-                raise ValueError(
-                    f"YTD data not allowed for TTM calculation. Period: {period.get('fiscal_period')}"
-                )
+                logger.error(f"{self.symbol} - YTD data detected in TTM DPS calculation!")
+                raise ValueError(f"YTD data not allowed for TTM calculation. Period: {period.get('fiscal_period')}")
 
             dividend_value = self._extract_dividends(period)
             if dividend_value is not None:
@@ -273,9 +239,7 @@ class GordonGrowthModel:
         shares = self._get_shares_outstanding()
 
         if shares <= 0:
-            logger.warning(
-                f"{self.symbol} - Unable to determine shares outstanding for DPS calculation"
-            )
+            logger.warning(f"{self.symbol} - Unable to determine shares outstanding for DPS calculation")
             return 0
 
         logger.info(
@@ -312,19 +276,13 @@ class GordonGrowthModel:
             )
         elif historical_growth > 0:
             growth_rate = historical_growth
-            logger.info(
-                f"{self.symbol} - Using historical growth: {growth_rate * 100:.2f}%"
-            )
+            logger.info(f"{self.symbol} - Using historical growth: {growth_rate * 100:.2f}%")
         elif fundamental_growth > 0:
             growth_rate = fundamental_growth
-            logger.info(
-                f"{self.symbol} - Using fundamental growth: {growth_rate * 100:.2f}%"
-            )
+            logger.info(f"{self.symbol} - Using fundamental growth: {growth_rate * 100:.2f}%")
         else:
             growth_rate = 0.03  # Default: 3% (GDP growth)
-            logger.warning(
-                f"{self.symbol} - Insufficient data, using default growth: {growth_rate * 100:.2f}%"
-            )
+            logger.warning(f"{self.symbol} - Insufficient data, using default growth: {growth_rate * 100:.2f}%")
 
         # Cap growth at reasonable level (6% max for dividend growth)
         growth_rate = min(growth_rate, 0.06)
@@ -352,18 +310,14 @@ class GordonGrowthModel:
             )
 
             # Get 8 quarters for 2-year trend analysis
-            quarters_8 = get_rolling_ttm_periods(
-                self.quarterly_metrics, compute_missing=True, num_quarters=8
-            )
+            quarters_8 = get_rolling_ttm_periods(self.quarterly_metrics, compute_missing=True, num_quarters=8)
 
             if len(quarters_8) >= 6:  # Need at least 6 quarters for meaningful analysis
                 # Analyze dividend patterns
                 patterns = analyze_quarterly_patterns(quarters_8, "dividends_paid")
 
                 if patterns and "avg_yoy_growth" in patterns:
-                    yoy_growth = (
-                        patterns["avg_yoy_growth"] / 100
-                    )  # Convert % to decimal
+                    yoy_growth = patterns["avg_yoy_growth"] / 100  # Convert % to decimal
 
                     logger.info(
                         f"{self.symbol} - Quarterly dividend analysis: "
@@ -437,9 +391,7 @@ class GordonGrowthModel:
         # Sanity check: cap at 20%
         return max(0, min(sustainable_growth, 0.20))
 
-    def _validate_model_constraints(
-        self, growth_rate: float, cost_of_equity: float
-    ) -> Dict:
+    def _validate_model_constraints(self, growth_rate: float, cost_of_equity: float) -> Dict:
         """
         Validate GGM model constraints
 
@@ -463,21 +415,13 @@ class GordonGrowthModel:
 
         # Constraint 2: Growth rate reasonableness
         if growth_rate > 0.06:
-            warnings.append(
-                f"High growth rate ({growth_rate * 100:.2f}%) may not be sustainable for dividends"
-            )
+            warnings.append(f"High growth rate ({growth_rate * 100:.2f}%) may not be sustainable for dividends")
 
         # Constraint 3: Check dividend consistency (at least 2 years of dividends)
         if self.multi_year_data and len(self.multi_year_data) >= 2:
-            dividend_years = sum(
-                1
-                for y in self.multi_year_data
-                if abs(self._to_float(y.get("dividends_paid", 0))) > 0
-            )
+            dividend_years = sum(1 for y in self.multi_year_data if abs(self._to_float(y.get("dividends_paid", 0))) > 0)
             if dividend_years < 2:
-                warnings.append(
-                    "Limited dividend history (< 2 years), valuation may be less reliable"
-                )
+                warnings.append("Limited dividend history (< 2 years), valuation may be less reliable")
 
         return {"valid": True, "warnings": warnings}
 
@@ -510,19 +454,22 @@ class GordonGrowthModel:
         if self.company_profile:
             profile_shares = getattr(self.company_profile, "shares_outstanding", None)
             if profile_shares:
-                logger.info(
-                    f"{self.symbol} - GGM using shares from company profile: {profile_shares:,.0f}"
-                )
+                normalized_shares = self._normalize_share_count(profile_shares)
+                if normalized_shares:
+                    logger.info(f"{self.symbol} - GGM using shares from company profile: {normalized_shares:,.0f}")
+                    return float(normalized_shares)
+                logger.info(f"{self.symbol} - GGM using shares from company profile: {profile_shares:,.0f}")
                 return float(profile_shares)
 
         if self.quarterly_metrics:
             for period in reversed(self.quarterly_metrics):
                 shares = self._extract_shares(period, prefer_diluted=True)
                 if shares:
-                    logger.info(
-                        f"{self.symbol} - GGM using shares from quarterly metrics: {shares:,.0f}"
-                    )
-                    return shares
+                    normalized_shares = self._normalize_share_count(shares)
+                    if not normalized_shares:
+                        continue
+                    logger.info(f"{self.symbol} - GGM using shares from quarterly metrics: {normalized_shares:,.0f}")
+                    return normalized_shares
 
         try:
             import yfinance as yf
@@ -534,9 +481,7 @@ class GordonGrowthModel:
         except Exception as e:
             logger.warning(f"Could not fetch shares outstanding for {self.symbol}: {e}")
 
-        logger.warning(
-            f"{self.symbol} - Falling back to default share count for valuation"
-        )
+        logger.warning(f"{self.symbol} - Falling back to default share count for valuation")
         return 1000000000  # Fallback: 1B shares
 
     def _get_valuation_assessment(self, upside_downside_pct: float) -> str:
@@ -576,6 +521,22 @@ class GordonGrowthModel:
             return float(value)
         return float(value)
 
+    def _normalize_share_count(self, value: Optional[float]) -> Optional[float]:
+        if value is None:
+            return None
+        shares = self._to_float(value)
+        if shares <= 0:
+            return None
+        # Some SEC-derived payloads carry share counts in millions (e.g., 715.9 for 715.9M).
+        if shares < 100_000:
+            logger.warning(
+                "%s - Suspiciously low share count (%s); assuming value is in millions",
+                self.symbol,
+                shares,
+            )
+            shares *= 1_000_000.0
+        return shares
+
     def _extract_dividends(self, period: Dict) -> Optional[float]:
         """Extract dividends_paid from a quarterly period dict."""
         if not isinstance(period, dict):
@@ -599,9 +560,7 @@ class GordonGrowthModel:
 
         return None
 
-    def _extract_shares(
-        self, period: Dict, prefer_diluted: bool = False
-    ) -> Optional[float]:
+    def _extract_shares(self, period: Dict, prefer_diluted: bool = False) -> Optional[float]:
         """Extract share count from a quarterly period dict."""
         if not isinstance(period, dict):
             return None

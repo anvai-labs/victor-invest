@@ -213,13 +213,9 @@ class PriceService:
             ).fetchall()
 
             if result:
-                df = pd.DataFrame(
-                    result, columns=["date", "open", "high", "low", "close", "volume"]
-                )
+                df = pd.DataFrame(result, columns=["date", "open", "high", "low", "close", "volume"])
                 return df
-            return pd.DataFrame(
-                columns=["date", "open", "high", "low", "close", "volume"]
-            )
+            return pd.DataFrame(columns=["date", "open", "high", "low", "close", "volume"])
 
     def get_price_at_lookback(
         self,

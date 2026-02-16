@@ -45,9 +45,7 @@ def inspect_cache_directories():
 
                 print(f"  Files: {total_files}")
                 print(f"  Directories: {total_dirs}")
-                print(
-                    f"  Total size: {total_size:,} bytes ({total_size / 1024 / 1024:.1f} MB)"
-                )
+                print(f"  Total size: {total_size:,} bytes ({total_size / 1024 / 1024:.1f} MB)")
 
                 # Show recent files
                 if total_files > 0:
@@ -278,29 +276,19 @@ def generate_cache_recommendations(issues):
 
     for issue in issues:
         if "get_sec_response method missing" in issue:
-            recommendations.append(
-                "🔧 Add get_sec_response method to CacheFacade class"
-            )
+            recommendations.append("🔧 Add get_sec_response method to CacheFacade class")
 
         if "get_technical_data method missing" in issue:
-            recommendations.append(
-                "🔧 Add get_technical_data method to CacheFacade class"
-            )
+            recommendations.append("🔧 Add get_technical_data method to CacheFacade class")
 
         if "Missing required key" in issue:
-            recommendations.append(
-                "🔧 Fix file cache handler key patterns - ensure all required keys are provided"
-            )
+            recommendations.append("🔧 Fix file cache handler key patterns - ensure all required keys are provided")
 
         if "sec_companyfacts" in issue or "UndefinedTable" in issue:
-            recommendations.append(
-                "🔧 Create missing database tables or disable RDBMS cache handlers"
-            )
+            recommendations.append("🔧 Create missing database tables or disable RDBMS cache handlers")
 
         if "Cache WRITE FAILED" in issue:
-            recommendations.append(
-                "🔧 Fix cache write operations - check key formats and handler configurations"
-            )
+            recommendations.append("🔧 Fix cache write operations - check key formats and handler configurations")
 
     # General recommendations
     recommendations.extend(

@@ -104,9 +104,7 @@ CREDENTIAL_PATTERNS: Dict[CredentialPattern, List[Tuple[Pattern, float, str]]] =
             "high",
         ),
         (
-            re.compile(
-                r'["\']?apikey["\']?\s*[=:]\s*["\']?([a-zA-Z0-9_\-]{20,})["\']?', re.I
-            ),
+            re.compile(r'["\']?apikey["\']?\s*[=:]\s*["\']?([a-zA-Z0-9_\-]{20,})["\']?', re.I),
             0.9,
             "high",
         ),
@@ -119,9 +117,7 @@ CREDENTIAL_PATTERNS: Dict[CredentialPattern, List[Tuple[Pattern, float, str]]] =
     ],
     CredentialPattern.PASSWORD: [
         (
-            re.compile(
-                r'["\']?password["\']?\s*[=:]\s*["\']?([^\s"\']{8,})["\']?', re.I
-            ),
+            re.compile(r'["\']?password["\']?\s*[=:]\s*["\']?([^\s"\']{8,})["\']?', re.I),
             0.85,
             "high",
         ),
@@ -138,9 +134,7 @@ CREDENTIAL_PATTERNS: Dict[CredentialPattern, List[Tuple[Pattern, float, str]]] =
     ],
     CredentialPattern.SECRET: [
         (
-            re.compile(
-                r'["\']?secret["\']?\s*[=:]\s*["\']?([a-zA-Z0-9_\-]{16,})["\']?', re.I
-            ),
+            re.compile(r'["\']?secret["\']?\s*[=:]\s*["\']?([a-zA-Z0-9_\-]{16,})["\']?', re.I),
             0.85,
             "high",
         ),
@@ -155,9 +149,7 @@ CREDENTIAL_PATTERNS: Dict[CredentialPattern, List[Tuple[Pattern, float, str]]] =
     ],
     CredentialPattern.TOKEN: [
         (
-            re.compile(
-                r'["\']?token["\']?\s*[=:]\s*["\']?([a-zA-Z0-9_\-\.]{20,})["\']?', re.I
-            ),
+            re.compile(r'["\']?token["\']?\s*[=:]\s*["\']?([a-zA-Z0-9_\-\.]{20,})["\']?', re.I),
             0.8,
             "high",
         ),
@@ -230,12 +222,8 @@ CREDENTIAL_PATTERNS: Dict[CredentialPattern, List[Tuple[Pattern, float, str]]] =
 # Known safe patterns to exclude (reduce false positives)
 SAFE_PATTERNS = [
     re.compile(r'password["\']?\s*[=:]\s*["\']?\*+["\']?', re.I),  # password = "****"
-    re.compile(
-        r'password["\']?\s*[=:]\s*["\']?<[^>]+>["\']?', re.I
-    ),  # password = "<redacted>"
-    re.compile(
-        r'api[_-]?key["\']?\s*[=:]\s*["\']?your[_-]?[a-z_]+["\']?', re.I
-    ),  # api_key = "your_api_key"
+    re.compile(r'password["\']?\s*[=:]\s*["\']?<[^>]+>["\']?', re.I),  # password = "<redacted>"
+    re.compile(r'api[_-]?key["\']?\s*[=:]\s*["\']?your[_-]?[a-z_]+["\']?', re.I),  # api_key = "your_api_key"
     re.compile(r'password["\']?\s*[=:]\s*["\']?None["\']?', re.I),  # password = None
     re.compile(r'token["\']?\s*[=:]\s*["\']?null["\']?', re.I),  # token = null
 ]
@@ -406,9 +394,7 @@ class CredentialSanitizer:
                 self._alert_callback(result)
 
             if self._strict_mode:
-                raise CredentialLeakageError(
-                    f"Credential leakage detected: {result.summary}"
-                )
+                raise CredentialLeakageError(f"Credential leakage detected: {result.summary}")
 
         return result
 
@@ -441,10 +427,7 @@ class CredentialSanitizer:
                 new_path = f"{path}.{key}"
 
                 # Check if key name suggests sensitive data
-                if any(
-                    s in key.lower()
-                    for s in ["password", "secret", "token", "key", "credential"]
-                ):
+                if any(s in key.lower() for s in ["password", "secret", "token", "key", "credential"]):
                     if isinstance(value, str) and len(value) >= 8:
                         findings.append(
                             CredentialFinding(
@@ -463,10 +446,7 @@ class CredentialSanitizer:
             return redacted
 
         elif isinstance(data, list):
-            return [
-                self._scan_recursive(item, f"{path}[{i}]", findings)
-                for i, item in enumerate(data)
-            ]
+            return [self._scan_recursive(item, f"{path}[{i}]", findings) for i, item in enumerate(data)]
 
         else:
             # For other types, convert to string and check
@@ -504,9 +484,7 @@ class CredentialSanitizer:
 
         for scan in self._scan_history:
             for finding in scan.findings:
-                by_pattern[finding.pattern_type.value] = (
-                    by_pattern.get(finding.pattern_type.value, 0) + 1
-                )
+                by_pattern[finding.pattern_type.value] = by_pattern.get(finding.pattern_type.value, 0) + 1
                 by_severity[finding.severity] += 1
 
         return {

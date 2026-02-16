@@ -14,13 +14,13 @@ IMPORTANT: Do NOT modify this file. All changes should be made to:
 
 # Re-export from canonical location
 from investigator.domain.services.quarterly_processor import (
-    compute_missing_quarter,
-    extract_nested_value,
-    convert_ytd_to_quarterly,
-    get_rolling_ttm_periods,
-    analyze_quarterly_patterns,
-    validate_computed_quarter,
     _find_consecutive_quarters,
+    analyze_quarterly_patterns,
+    compute_missing_quarter,
+    convert_ytd_to_quarterly,
+    extract_nested_value,
+    get_rolling_ttm_periods,
+    validate_computed_quarter,
 )
 
 __all__ = [

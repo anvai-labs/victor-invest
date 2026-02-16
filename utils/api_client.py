@@ -16,8 +16,8 @@ infrastructure layer for external API communication, following clean architectur
 # Re-export from canonical location
 from investigator.infrastructure.http import (
     BaseAPIClient,
-    SECAPIClient,
     OllamaAPIClient,
+    SECAPIClient,
     rate_limit,
     retry_on_failure,
 )

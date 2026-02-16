@@ -224,9 +224,7 @@ class ContextualBanditPolicy(RLPolicy):
         # Posterior: theta_a ~ N(mu_a, Sigma_a)
         self._initialized = False
         self._mu: Optional[np.ndarray] = None  # Shape: (n_actions, n_features)
-        self._Sigma: Optional[np.ndarray] = (
-            None  # Shape: (n_actions, n_features, n_features)
-        )
+        self._Sigma: Optional[np.ndarray] = None  # Shape: (n_actions, n_features, n_features)
         self._Lambda: Optional[np.ndarray] = None  # Precision matrices
 
         self.action_counts = np.zeros(n_actions)
@@ -245,20 +243,14 @@ class ContextualBanditPolicy(RLPolicy):
         # Precision matrix (inverse covariance)
         # Lambda = (1/prior_variance) * I
         prior_precision = 1.0 / self.prior_variance
-        self._Lambda = np.array(
-            [np.eye(n_features) * prior_precision for _ in range(self.n_actions)]
-        )
+        self._Lambda = np.array([np.eye(n_features) * prior_precision for _ in range(self.n_actions)])
 
         # Covariance is inverse of precision
-        self._Sigma = np.array(
-            [np.eye(n_features) * self.prior_variance for _ in range(self.n_actions)]
-        )
+        self._Sigma = np.array([np.eye(n_features) * self.prior_variance for _ in range(self.n_actions)])
 
         self._initialized = True
         self._ready = True
-        logger.info(
-            f"Initialized bandit with {n_features} features, {self.n_actions} actions"
-        )
+        logger.info(f"Initialized bandit with {n_features} features, {self.n_actions} actions")
 
     def predict(self, context: ValuationContext) -> Dict[str, float]:
         """
@@ -281,9 +273,7 @@ class ContextualBanditPolicy(RLPolicy):
         for a in range(self.n_actions):
             # Sample theta_a ~ N(mu_a, Sigma_a)
             try:
-                theta_sample = np.random.multivariate_normal(
-                    self._mu[a], self._Sigma[a] * self.exploration_weight
-                )
+                theta_sample = np.random.multivariate_normal(self._mu[a], self._Sigma[a] * self.exploration_weight)
             except np.linalg.LinAlgError:
                 # Fallback if covariance is singular
                 theta_sample = self._mu[a] + np.random.randn(self.n_features) * 0.1
@@ -296,9 +286,7 @@ class ContextualBanditPolicy(RLPolicy):
         tier = TIER_CLASSIFICATIONS[best_action]
 
         # Get weight template for this tier
-        weights = TIER_WEIGHT_TEMPLATES.get(
-            tier, TIER_WEIGHT_TEMPLATES["balanced_default"]
-        )
+        weights = TIER_WEIGHT_TEMPLATES.get(tier, TIER_WEIGHT_TEMPLATES["balanced_default"])
 
         # Apply applicability mask
         weights = self.apply_applicability_mask(dict(weights), context)
@@ -324,15 +312,11 @@ class ContextualBanditPolicy(RLPolicy):
         for a in range(self.n_actions):
             expected_rewards[a] = np.dot(features, self._mu[a])
             # Uncertainty: sqrt(x^T Sigma x)
-            uncertainties[a] = np.sqrt(
-                np.dot(features, np.dot(self._Sigma[a], features))
-            )
+            uncertainties[a] = np.sqrt(np.dot(features, np.dot(self._Sigma[a], features)))
 
         best_action = np.argmax(expected_rewards)
         tier = TIER_CLASSIFICATIONS[best_action]
-        weights = TIER_WEIGHT_TEMPLATES.get(
-            tier, TIER_WEIGHT_TEMPLATES["balanced_default"]
-        )
+        weights = TIER_WEIGHT_TEMPLATES.get(tier, TIER_WEIGHT_TEMPLATES["balanced_default"])
         weights = self.apply_applicability_mask(dict(weights), context)
 
         # Confidence: inverse of uncertainty (normalized)
@@ -450,9 +434,7 @@ class ContextualBanditPolicy(RLPolicy):
     def save(self, path: str) -> bool:
         """Save policy state to file."""
         try:
-            os.makedirs(
-                os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True
-            )
+            os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
 
             state = {
                 "name": self.name,
@@ -494,9 +476,7 @@ class ContextualBanditPolicy(RLPolicy):
             self.n_actions = state["n_actions"]
             self.prior_variance = state.get("prior_variance", self.prior_variance)
             self.noise_variance = state.get("noise_variance", self.noise_variance)
-            self.exploration_weight = state.get(
-                "exploration_weight", self.exploration_weight
-            )
+            self.exploration_weight = state.get("exploration_weight", self.exploration_weight)
             self._mu = state["mu"]
             self._Lambda = state["Lambda"]
             self._Sigma = state["Sigma"]
@@ -528,12 +508,8 @@ class ContextualBanditPolicy(RLPolicy):
             {
                 "n_features": self.n_features,
                 "n_actions": self.n_actions,
-                "action_counts": self.action_counts.tolist()
-                if self.action_counts is not None
-                else [],
-                "action_rewards": self.action_rewards.tolist()
-                if self.action_rewards is not None
-                else [],
+                "action_counts": self.action_counts.tolist() if self.action_counts is not None else [],
+                "action_rewards": self.action_rewards.tolist() if self.action_rewards is not None else [],
                 "total_updates": self._update_count,
             }
         )
@@ -547,8 +523,6 @@ class ContextualBanditPolicy(RLPolicy):
             stats[tier] = {
                 "count": int(count),
                 "total_reward": float(self.action_rewards[i]),
-                "avg_reward": float(self.action_rewards[i] / count)
-                if count > 0
-                else 0.0,
+                "avg_reward": float(self.action_rewards[i] / count) if count > 0 else 0.0,
             }
         return stats

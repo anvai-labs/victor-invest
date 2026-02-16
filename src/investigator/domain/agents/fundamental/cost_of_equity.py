@@ -52,7 +52,5 @@ def calculate_cost_of_equity_capm(
 
         return cost_of_equity
     except Exception as exc:
-        logger.warning(
-            "%s - Error calculating cost of equity: %s, using default 10%%", symbol, exc
-        )
+        logger.warning("%s - Error calculating cost of equity: %s, using default 10%%", symbol, exc)
         return fallback_cost_of_equity

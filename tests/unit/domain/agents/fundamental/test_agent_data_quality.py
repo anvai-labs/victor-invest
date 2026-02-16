@@ -111,10 +111,7 @@ class TestAssessDataQuality:
 
         result = agent._assess_data_quality(company_data, {})
 
-        assert any(
-            "Current liabilities exceed" in issue
-            for issue in result["consistency_issues"]
-        )
+        assert any("Current liabilities exceed" in issue for issue in result["consistency_issues"])
 
     def test_detects_unrealistic_current_ratio(self, agent):
         """Should detect impossibly high current ratio."""
@@ -123,10 +120,7 @@ class TestAssessDataQuality:
 
         result = agent._assess_data_quality(company_data, ratios)
 
-        assert any(
-            "Unrealistic current ratio" in issue
-            for issue in result["consistency_issues"]
-        )
+        assert any("Unrealistic current ratio" in issue for issue in result["consistency_issues"])
 
     def test_calculates_enhancement_summary(self, agent):
         """Should calculate enhancement summary for enriched data."""

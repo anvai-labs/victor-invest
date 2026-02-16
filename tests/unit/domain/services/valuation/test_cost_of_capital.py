@@ -51,9 +51,7 @@ class TestIndustryCostOfCapital:
         debt_to_equity = 0.5
         tax_rate = 0.21
 
-        levered_beta = coc.calculate_levered_beta(
-            unlevered_beta, debt_to_equity, tax_rate
-        )
+        levered_beta = coc.calculate_levered_beta(unlevered_beta, debt_to_equity, tax_rate)
 
         # Levered beta = Unlevered * (1 + (1-t) * D/E)
         expected = 1.0 * (1 + (1 - 0.21) * 0.5)
@@ -62,9 +60,7 @@ class TestIndustryCostOfCapital:
     def test_calculate_levered_beta_no_debt(self, coc):
         """Test levered beta equals unlevered when no debt."""
         unlevered_beta = 1.2
-        levered_beta = coc.calculate_levered_beta(
-            unlevered_beta, debt_to_equity=0, tax_rate=0.21
-        )
+        levered_beta = coc.calculate_levered_beta(unlevered_beta, debt_to_equity=0, tax_rate=0.21)
         assert levered_beta == unlevered_beta
 
     def test_calculate_cost_of_equity(self, coc):
@@ -96,9 +92,7 @@ class TestIndustryCostOfCapital:
 
     def test_calculate_wacc_bank(self, coc):
         """Test WACC for bank (lower beta)."""
-        result = coc.calculate_wacc(
-            industry="Banks (Regional)", debt_to_equity=0.5, tax_rate=0.21
-        )
+        result = coc.calculate_wacc(industry="Banks (Regional)", debt_to_equity=0.5, tax_rate=0.21)
 
         # Banks have lower beta
         assert result.unlevered_beta < 1.0
@@ -106,9 +100,7 @@ class TestIndustryCostOfCapital:
 
     def test_calculate_wacc_semiconductor(self, coc):
         """Test WACC for semiconductor (higher beta)."""
-        result = coc.calculate_wacc(
-            industry="Semiconductor", debt_to_equity=0.15, tax_rate=0.21
-        )
+        result = coc.calculate_wacc(industry="Semiconductor", debt_to_equity=0.15, tax_rate=0.21)
 
         # Semiconductors have higher beta
         assert result.unlevered_beta > 1.0
@@ -116,9 +108,7 @@ class TestIndustryCostOfCapital:
 
     def test_calculate_wacc_no_debt(self, coc):
         """Test WACC with no debt equals cost of equity."""
-        result = coc.calculate_wacc(
-            industry="Software (System & Application)", debt_to_equity=0, tax_rate=0.21
-        )
+        result = coc.calculate_wacc(industry="Software (System & Application)", debt_to_equity=0, tax_rate=0.21)
 
         # With no debt, WACC should equal cost of equity
         assert abs(result.wacc - result.cost_of_equity) < 0.001
@@ -160,9 +150,7 @@ class TestIndustryCostOfCapital:
 
     def test_custom_initialization(self):
         """Test custom initialization parameters."""
-        coc = IndustryCostOfCapital(
-            risk_free_rate=0.05, equity_risk_premium=0.06, cost_of_debt=0.07
-        )
+        coc = IndustryCostOfCapital(risk_free_rate=0.05, equity_risk_premium=0.06, cost_of_debt=0.07)
 
         assert coc.risk_free_rate == 0.05
         assert coc.equity_risk_premium == 0.06
@@ -176,9 +164,7 @@ class TestIndustryCostOfCapital:
 
     def test_wacc_result_notes(self, coc):
         """Test that approximated betas include notes."""
-        result = coc.calculate_wacc(
-            industry="Unknown Industry XYZ", debt_to_equity=0.25, tax_rate=0.21
-        )
+        result = coc.calculate_wacc(industry="Unknown Industry XYZ", debt_to_equity=0.25, tax_rate=0.21)
 
         # Should have a note about approximation
         assert len(result.notes) > 0

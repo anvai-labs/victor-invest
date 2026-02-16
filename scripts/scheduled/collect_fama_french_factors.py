@@ -58,7 +58,9 @@ from scripts.scheduled.base import (  # noqa: E402
 )
 
 # Kenneth French Data Library URLs
-FF5_DAILY_URL = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_5_Factors_2x3_daily_CSV.zip"
+FF5_DAILY_URL = (
+    "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_5_Factors_2x3_daily_CSV.zip"
+)
 MOM_DAILY_URL = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Momentum_Factor_daily_CSV.zip"
 
 
@@ -209,16 +211,12 @@ class FamaFrenchCollector(BaseCollector):
                 factors_df["UMD"] = None
 
             # Filter to lookback period and new dates
-            cutoff_date = datetime.now().date() - timedelta(
-                days=365 * self.lookback_years
-            )
+            cutoff_date = datetime.now().date() - timedelta(days=365 * self.lookback_years)
             factors_df = factors_df[factors_df.index >= pd.Timestamp(cutoff_date)]
 
             if last_date:
                 factors_df = factors_df[factors_df.index > pd.Timestamp(last_date)]
-                self.logger.info(
-                    f"Incremental fetch: {len(factors_df)} new days after {last_date}"
-                )
+                self.logger.info(f"Incremental fetch: {len(factors_df)} new days after {last_date}")
             else:
                 self.logger.info(f"Full fetch: {len(factors_df)} days")
 
@@ -316,10 +314,7 @@ class FamaFrenchCollector(BaseCollector):
                         self.metrics.records_inserted += 1
 
                     # Track high watermark
-                    if (
-                        self.metrics.high_watermark_date is None
-                        or record_date > self.metrics.high_watermark_date
-                    ):
+                    if self.metrics.high_watermark_date is None or record_date > self.metrics.high_watermark_date:
                         self.metrics.high_watermark_date = record_date
 
                 except Exception as e:
@@ -357,9 +352,7 @@ class FamaFrenchCollector(BaseCollector):
 
 def main():
     parser = argparse.ArgumentParser(description="Collect Fama-French factor data")
-    parser.add_argument(
-        "--years", type=int, default=5, help="Number of years to fetch (default: 5)"
-    )
+    parser.add_argument("--years", type=int, default=5, help="Number of years to fetch (default: 5)")
     args = parser.parse_args()
 
     collector = FamaFrenchCollector(lookback_years=args.years)

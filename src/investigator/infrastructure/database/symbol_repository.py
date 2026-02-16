@@ -130,9 +130,7 @@ class SymbolRepository:
             logger.info(f"Found {len(symbols)} S&P 500 symbols")
             return symbols
 
-    def get_all_symbols(
-        self, us_only: bool = True, order_by: str = "mktcap"
-    ) -> List[str]:
+    def get_all_symbols(self, us_only: bool = True, order_by: str = "mktcap") -> List[str]:
         """
         Get ALL stocks from symbol table (excludes ETFs/ETNs).
 
@@ -183,9 +181,7 @@ class SymbolRepository:
                     )
                 )
             symbols = [row[0] for row in result.fetchall()]
-            logger.info(
-                f"Found {len(symbols)} total stocks (us_only={us_only}, order_by={order_by})"
-            )
+            logger.info(f"Found {len(symbols)} total stocks (us_only={us_only}, order_by={order_by})")
             return symbols
 
     def get_top_n_symbols(self, n: int, us_only: bool = True) -> List[str]:
@@ -263,9 +259,7 @@ class SymbolRepository:
             logger.info(f"Found {len(domestic)} domestic filers with quarterly data")
             return domestic
 
-    def get_symbols_with_sec_data(
-        self, min_market_cap: float = 1_000_000_000
-    ) -> List[str]:
+    def get_symbols_with_sec_data(self, min_market_cap: float = 1_000_000_000) -> List[str]:
         """
         Get symbols that exist in BOTH stock and SEC databases.
 
@@ -312,8 +306,7 @@ class SymbolRepository:
         # Return intersection, maintaining market cap order
         valid_symbols = [s for s in stock_symbols if s in sec_symbols]
         logger.info(
-            f"Found {len(valid_symbols)} symbols with both stock and SEC data "
-            f"(min_cap=${min_market_cap:,.0f})"
+            f"Found {len(valid_symbols)} symbols with both stock and SEC data " f"(min_cap=${min_market_cap:,.0f})"
         )
         return valid_symbols
 
@@ -341,8 +334,7 @@ class SymbolRepository:
 
         if removed > 0:
             logger.info(
-                f"Filtered out {removed} foreign filers (20-F/6-K) - "
-                f"{len(filtered)} domestic filers remaining"
+                f"Filtered out {removed} foreign filers (20-F/6-K) - " f"{len(filtered)} domestic filers remaining"
             )
 
         return filtered

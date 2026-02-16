@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 
 # load libraries
-import numpy as np
-from sklearn.linear_model import LinearRegression
-from sqlalchemy import create_engine
-import pandas as pd
 import logging
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
 import os
 import sys
-from sqlalchemy import text
+from datetime import datetime
+
+import numpy as np
+import pandas as pd
+from dateutil.relativedelta import relativedelta
+from sklearn.linear_model import LinearRegression
+from sqlalchemy import create_engine, text
 
 
 def getConnectionEngine(user, password, database, host, port):
@@ -69,7 +69,9 @@ def getTickerList(connEngine, dt, column):
                      AND S.skiptametric = FALSE
                      Group By S.ticker
               ) X
-              Order By 2 DESC """.format(dtstr=dt.strftime("%Y-%m-%d"), )
+              Order By 2 DESC """.format(
+        dtstr=dt.strftime("%Y-%m-%d"),
+    )
     try:
         logging.info("Executing ticker list sql: {sql}".format(sql=sql))
         return pd.read_sql(sql, con=connEngine)
@@ -111,11 +113,7 @@ def clean_and_validate_data(y: np.ndarray) -> np.ndarray:
 
     # Create mask for valid values
     valid_mask = (
-        ~np.isinf(y)
-        & ~np.isnan(y)
-        & (
-            np.abs(y) < 1e100
-        )  # Remove infinity  # Remove NaN  # Remove too large values
+        ~np.isinf(y) & ~np.isnan(y) & (np.abs(y) < 1e100)  # Remove infinity  # Remove NaN  # Remove too large values
     )
 
     # Apply mask
@@ -237,9 +235,7 @@ if __name__ == "__main__":
         level=logging.INFO,
         handlers=[
             logging.FileHandler(
-                "/var/log/saveBetaForStock.{currdatestr}.log".format(
-                    currdatestr=currdate.strftime("%Y-%m-%d")
-                )
+                "/var/log/saveBetaForStock.{currdatestr}.log".format(currdatestr=currdate.strftime("%Y-%m-%d"))
             ),
             logging.StreamHandler(sys.stdout),
         ],

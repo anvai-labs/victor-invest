@@ -62,6 +62,7 @@ class CompanyMetadataService:
         self.peer_group_mapping = self._load_peer_group_sectors()
         self.extended_sector_mapping = self._load_sector_map_txt()
         self.sector_overrides = self._load_sector_overrides()
+        self.industry_overrides = self._load_industry_overrides()
 
         # Cache for database lookups (symbol → (sector, industry))
         # Using functools.lru_cache for automatic size management
@@ -97,18 +98,14 @@ class CompanyMetadataService:
             Dict mapping symbol → sector (e.g., {"NVDA": "Technology", ...})
         """
         if not os.path.exists(self.peer_group_json_path):
-            logger.warning(
-                f"Peer group sector mapping file not found: {self.peer_group_json_path}"
-            )
+            logger.warning(f"Peer group sector mapping file not found: {self.peer_group_json_path}")
             return {}
 
         try:
             with open(self.peer_group_json_path, "r") as f:
                 sector_mapping = json.load(f)
 
-            logger.info(
-                f"Loaded {len(sector_mapping)} symbols from peer group sector mapping"
-            )
+            logger.info(f"Loaded {len(sector_mapping)} symbols from peer group sector mapping")
             return sector_mapping
 
         except Exception as e:
@@ -149,13 +146,9 @@ class CompanyMetadataService:
                         "industry": industry_value.strip() if industry_value else None,
                     }
 
-            logger.info(
-                "Loaded %s symbols from sector_industry_ticker_map", len(mapping)
-            )
+            logger.info("Loaded %s symbols from sector_industry_ticker_map", len(mapping))
         except Exception as exc:
-            logger.warning(
-                "Failed to load sector map txt (%s): %s", self.sector_map_txt_path, exc
-            )
+            logger.warning("Failed to load sector map txt (%s): %s", self.sector_map_txt_path, exc)
 
         return mapping
 
@@ -180,18 +173,42 @@ class CompanyMetadataService:
             overrides = dcf_config.get("sector_override", {})
 
             if overrides:
-                logger.info(
-                    f"Loaded {len(overrides)} sector overrides from config.yaml"
-                )
+                logger.info(f"Loaded {len(overrides)} sector overrides from config.yaml")
 
             return overrides
         except Exception as exc:
             logger.warning(f"Failed to load sector overrides from config.yaml: {exc}")
             return {}
 
-    def get_sector_industry(
-        self, symbol: str, use_cache: bool = True
-    ) -> Tuple[str, Optional[str]]:
+    def _load_industry_overrides(self) -> Dict[str, str]:
+        """
+        Load industry overrides from config.yaml for business-model corrections.
+
+        Returns:
+            Dict mapping symbol -> overridden industry name
+        """
+        import yaml
+
+        try:
+            config_path = "config.yaml"
+            if not os.path.isfile(config_path):
+                return {}
+
+            with open(config_path, "r") as f:
+                config = yaml.safe_load(f)
+
+            dcf_config = config.get("dcf_valuation", {})
+            overrides = dcf_config.get("industry_override", {})
+
+            if overrides:
+                logger.info(f"Loaded {len(overrides)} industry overrides from config.yaml")
+
+            return overrides
+        except Exception as exc:
+            logger.warning(f"Failed to load industry overrides from config.yaml: {exc}")
+            return {}
+
+    def get_sector_industry(self, symbol: str, use_cache: bool = True) -> Tuple[str, Optional[str]]:
         """
         Get normalized sector and industry for a symbol.
 
@@ -209,26 +226,44 @@ class CompanyMetadataService:
             (normalized_sector, industry) tuple
             Example: ("Technology", "Semiconductors")
         """
-        # Priority 0: Check for sector override (for misclassified companies)
+        # Priority 0: Check for sector/industry overrides (for misclassified companies)
         symbol_upper = symbol.upper()
-        if symbol_upper in self.sector_overrides:
-            override_sector = self.sector_overrides[symbol_upper]
-            logger.info(
-                f"{symbol} - Using sector override from config.yaml: {override_sector} (correcting database misclassification)"
-            )
-            # Normalize the overridden sector name
-            normalized_sector = self._normalize_sector_name(override_sector)
+        has_sector_override = symbol_upper in self.sector_overrides
+        has_industry_override = symbol_upper in self.industry_overrides
+        if has_sector_override or has_industry_override:
+            db_sector = "Unknown"
+            db_industry = None
+            needs_db_lookup = not has_sector_override or not has_industry_override
+            if needs_db_lookup:
+                db_sector, db_industry = self._get_from_database(symbol)
 
-            # Still get industry from extended mapping (don't lose industry info)
-            industry = None
-            if symbol_upper in self.extended_sector_mapping:
-                industry = self.extended_sector_mapping[symbol_upper].get("industry")
-                if industry:
-                    logger.info(
-                        f"{symbol} - Also using industry from sector map: {industry}"
-                    )
+            if has_sector_override:
+                override_sector = self.sector_overrides[symbol_upper]
+                logger.info(
+                    f"{symbol} - Using sector override from config.yaml: {override_sector} (correcting database misclassification)"
+                )
+                normalized_sector = self._normalize_sector_name(override_sector)
+            else:
+                normalized_sector = db_sector
 
-            # Cache the overridden result
+            if has_industry_override:
+                industry = self.industry_overrides[symbol_upper]
+                logger.info(
+                    f"{symbol} - Using industry override from config.yaml: {industry} (business-model override)"
+                )
+            else:
+                industry = db_industry
+
+            mapped = self.extended_sector_mapping.get(symbol_upper)
+            if mapped:
+                mapped_sector = mapped.get("sector")
+                mapped_industry = mapped.get("industry")
+                if normalized_sector == "Unknown" and mapped_sector:
+                    normalized_sector = self._normalize_sector_name(mapped_sector)
+                if not industry and mapped_industry:
+                    industry = mapped_industry
+                    logger.info(f"{symbol} - Using industry from sector map fallback: {industry}")
+
             if use_cache:
                 self._cache[symbol] = (normalized_sector, industry)
             return (normalized_sector, industry)
@@ -299,9 +334,7 @@ class CompanyMetadataService:
                 # Normalize sector name
                 normalized_sector = self._normalize_sector_name(raw_sector)
 
-                logger.debug(
-                    f"{symbol} - DB: sector={raw_sector} → {normalized_sector}, industry={industry}"
-                )
+                logger.debug(f"{symbol} - DB: sector={raw_sector} → {normalized_sector}, industry={industry}")
                 return normalized_sector, industry
             else:
                 # Symbol not in database
@@ -362,9 +395,7 @@ class CompanyMetadataService:
         _, industry = self.get_sector_industry(symbol, use_cache=use_cache)
         return industry
 
-    def batch_get_sector_industry(
-        self, symbols: list[str]
-    ) -> Dict[str, Tuple[str, Optional[str]]]:
+    def batch_get_sector_industry(self, symbols: list[str]) -> Dict[str, Tuple[str, Optional[str]]]:
         """
         Fetch sector/industry for multiple symbols efficiently.
 
@@ -401,9 +432,7 @@ class CompanyMetadataService:
 
         try:
             with self.engine.connect() as conn:
-                db_results = conn.execute(
-                    query, {"symbols": uncached_symbols}
-                ).fetchall()
+                db_results = conn.execute(query, {"symbols": uncached_symbols}).fetchall()
 
             # Process database results
             found_symbols = set()

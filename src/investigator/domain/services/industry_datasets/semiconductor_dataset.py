@@ -169,9 +169,7 @@ class SemiconductorDataset(BaseIndustryDataset):
             ),
         ]
 
-    def extract_metrics(
-        self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs
-    ) -> IndustryMetrics:
+    def extract_metrics(self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs) -> IndustryMetrics:
         """Extract semiconductor-specific metrics from XBRL data and financials."""
         metrics = IndustryMetrics(
             industry="semiconductor",
@@ -189,9 +187,7 @@ class SemiconductorDataset(BaseIndustryDataset):
             warnings.append("Could not extract inventory days")
 
         # Extract book-to-bill (often not in standard XBRL)
-        book_to_bill = self._extract_from_xbrl(
-            xbrl_data, "book_to_bill", ["BookToOrderRatio"], default=None
-        )
+        book_to_bill = self._extract_from_xbrl(xbrl_data, "book_to_bill", ["BookToOrderRatio"], default=None)
         if book_to_bill:
             metrics.metrics["book_to_bill"] = book_to_bill
         else:
@@ -234,9 +230,7 @@ class SemiconductorDataset(BaseIndustryDataset):
 
         return metrics
 
-    def _extract_inventory_days(
-        self, xbrl_data: Optional[Dict], financials: Dict
-    ) -> Optional[float]:
+    def _extract_inventory_days(self, xbrl_data: Optional[Dict], financials: Dict) -> Optional[float]:
         """Extract or calculate inventory days."""
         # Try direct XBRL extraction first
         inv_days = self._extract_from_xbrl(

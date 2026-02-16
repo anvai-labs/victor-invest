@@ -47,7 +47,6 @@ from scripts.scheduled.base import (  # noqa: E402
     get_russell1000_symbols,
 )
 
-
 # Distress tier thresholds
 DISTRESS_TIERS = {
     "HEALTHY": {"z_min": 2.99, "m_max": -1.78, "f_min": 7},
@@ -88,9 +87,7 @@ class CreditRiskCalculator(BaseCollector):
             else:
                 symbols = get_russell1000_symbols()
 
-            self.logger.info(
-                f"Calculating credit risk scores for {len(symbols)} symbols"
-            )
+            self.logger.info(f"Calculating credit risk scores for {len(symbols)} symbols")
 
             conn = get_database_connection()
             cursor = conn.cursor()
@@ -116,18 +113,14 @@ class CreditRiskCalculator(BaseCollector):
                     try:
                         assessment = asyncio.run(service.calculate_from_symbol(symbol))
                     except Exception as e:
-                        self.logger.warning(
-                            f"Failed to calculate scores for {symbol}: {e}"
-                        )
+                        self.logger.warning(f"Failed to calculate scores for {symbol}: {e}")
                         self.metrics.records_failed += 1
                         continue
 
                     # Extract scores from assessment
                     z_score = assessment.altman.score if assessment.altman else None
                     z_interpretation = (
-                        assessment.altman.zone.value
-                        if assessment.altman and assessment.altman.zone
-                        else None
+                        assessment.altman.zone.value if assessment.altman and assessment.altman.zone else None
                     )
 
                     m_score = assessment.beneish.score if assessment.beneish else None
@@ -137,9 +130,7 @@ class CreditRiskCalculator(BaseCollector):
                         else None
                     )
 
-                    f_score = (
-                        assessment.piotroski.score if assessment.piotroski else None
-                    )
+                    f_score = assessment.piotroski.score if assessment.piotroski else None
                     f_interpretation = (
                         assessment.piotroski.strength.value
                         if assessment.piotroski and assessment.piotroski.strength
@@ -218,9 +209,7 @@ class CreditRiskCalculator(BaseCollector):
             cursor.close()
             conn.close()
 
-            self.logger.info(
-                f"Calculated credit risk for {self.metrics.records_inserted} symbols"
-            )
+            self.logger.info(f"Calculated credit risk for {self.metrics.records_inserted} symbols")
 
         except ImportError as e:
             self.logger.error(f"Credit risk analyzers not available: {e}")
@@ -297,10 +286,7 @@ class CreditRiskCalculator(BaseCollector):
             if tier_scores[tier] > 0:
                 # But also consider if majority of models agree on better tier
                 better_score = sum(
-                    tier_scores[t]
-                    for t in list(DISTRESS_TIERS.keys())[
-                        : list(DISTRESS_TIERS.keys()).index(tier)
-                    ]
+                    tier_scores[t] for t in list(DISTRESS_TIERS.keys())[: list(DISTRESS_TIERS.keys()).index(tier)]
                 )
                 if better_score >= 2:
                     continue
@@ -311,7 +297,8 @@ class CreditRiskCalculator(BaseCollector):
     def _generate_summary_stats(self, cursor) -> None:
         """Generate and store summary statistics."""
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO credit_risk_summary
                     (summary_date, total_analyzed,
                      healthy_count, watch_count, concern_count,
@@ -340,15 +327,14 @@ class CreditRiskCalculator(BaseCollector):
                     avg_m_score = EXCLUDED.avg_m_score,
                     avg_f_score = EXCLUDED.avg_f_score,
                     updated_at = NOW()
-            """)
+            """
+            )
         except Exception as e:
             self.logger.debug(f"Could not generate summary stats: {e}")
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Calculate credit risk scores for companies"
-    )
+    parser = argparse.ArgumentParser(description="Calculate credit risk scores for companies")
     parser.add_argument(
         "--symbols",
         type=str,

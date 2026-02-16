@@ -79,9 +79,7 @@ def summary(ctx, json_output):
             click.echo("  VIX in BACKWARDATION (fear signal)")
 
     # Federal Reserve data
-    fed_summary = (
-        regional_fed.get("summary", {}) if isinstance(regional_fed, dict) else {}
-    )
+    fed_summary = regional_fed.get("summary", {}) if isinstance(regional_fed, dict) else {}
     if fed_summary:
         click.echo("\nECONOMIC ACTIVITY")
         click.echo("-" * 40)
@@ -93,20 +91,12 @@ def summary(ctx, json_output):
 
         if fed_summary.get("cfnai") is not None:
             cfnai = fed_summary["cfnai"]
-            status = (
-                "CONTRACTION"
-                if cfnai < -0.7
-                else "EXPANSION"
-                if cfnai > 0
-                else "NEUTRAL"
-            )
+            status = "CONTRACTION" if cfnai < -0.7 else "EXPANSION" if cfnai > 0 else "NEUTRAL"
             click.echo(f"  CFNAI (Chicago Fed):      {cfnai:.3f} ({status})")
 
         if fed_summary.get("empire_state_mfg") is not None:
             emp = fed_summary["empire_state_mfg"]
-            status = (
-                "CONTRACTING" if emp < -10 else "EXPANDING" if emp > 10 else "NEUTRAL"
-            )
+            status = "CONTRACTING" if emp < -10 else "EXPANDING" if emp > 10 else "NEUTRAL"
             click.echo(f"  Empire State Mfg:         {emp:.1f} ({status})")
 
         click.echo("\nFINANCIAL CONDITIONS")
@@ -133,13 +123,7 @@ def summary(ctx, json_output):
         if fed_summary.get("recession_probability") is not None:
             rec = fed_summary["recession_probability"]
             rec_pct = rec * 100 if rec < 1 else rec
-            status = (
-                "HIGH RISK"
-                if rec_pct > 30
-                else "LOW RISK"
-                if rec_pct < 15
-                else "MODERATE"
-            )
+            status = "HIGH RISK" if rec_pct > 30 else "LOW RISK" if rec_pct < 15 else "MODERATE"
             click.echo(f"  Recession Probability:    {rec_pct:.1f}% ({status})")
 
     click.echo("\n" + "=" * 60)
@@ -197,9 +181,7 @@ def fed_data(ctx, district, json_output):
     click.echo("FEDERAL RESERVE INDICATORS")
     click.echo("=" * 60)
 
-    by_district = (
-        regional_fed.get("by_district", {}) if isinstance(regional_fed, dict) else {}
-    )
+    by_district = regional_fed.get("by_district", {}) if isinstance(regional_fed, dict) else {}
 
     if district:
         if district in by_district:

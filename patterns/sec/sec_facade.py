@@ -94,18 +94,12 @@ class SECDataFacade:
                 fetch_strategy = self.strategies[self.default_strategy]
 
             # Fetch data using strategy
-            self.logger.info(
-                f"Fetching quarterly data for {symbol} using {fetch_strategy.get_strategy_name()}"
-            )
-            quarterly_data = fetch_strategy.fetch_quarterly_data(
-                symbol, cik, max_periods
-            )
+            self.logger.info(f"Fetching quarterly data for {symbol} using {fetch_strategy.get_strategy_name()}")
+            quarterly_data = fetch_strategy.fetch_quarterly_data(symbol, cik, max_periods)
 
             # Populate financial data if needed
             for qd in quarterly_data:
-                if not qd.financial_data or not hasattr(
-                    qd.financial_data, "income_statement"
-                ):
+                if not qd.financial_data or not hasattr(qd.financial_data, "income_statement"):
                     self._populate_financial_data(qd)
 
             return quarterly_data
@@ -128,9 +122,7 @@ class SECDataFacade:
             self.logger.error(f"Error getting company facts for {symbol}: {e}")
             return None
 
-    def get_latest_filing(
-        self, symbol: str, form_type: str = "10-K"
-    ) -> Optional[Dict[str, Any]]:
+    def get_latest_filing(self, symbol: str, form_type: str = "10-K") -> Optional[Dict[str, Any]]:
         """Get latest SEC filing for a symbol"""
         try:
             cik = self.ticker_mapper.get_cik_padded(symbol)
@@ -139,9 +131,7 @@ class SECDataFacade:
 
             # Get submissions
             cache_key = {"symbol": symbol, "cik": cik}
-            submissions_data = self.cache_manager.get(
-                CacheType.SUBMISSION_DATA, cache_key
-            )
+            submissions_data = self.cache_manager.get(CacheType.SUBMISSION_DATA, cache_key)
             if not submissions_data:
                 return None
 
@@ -162,9 +152,7 @@ class SECDataFacade:
                         return {
                             "form_type": form,
                             "filing_date": recent_filings.get("filingDate", [])[i],
-                            "accession_number": recent_filings.get(
-                                "accessionNumber", []
-                            )[i],
+                            "accession_number": recent_filings.get("accessionNumber", [])[i],
                         }
 
             return None
@@ -199,9 +187,7 @@ class SECDataFacade:
         """Format quarterly data for LLM consumption"""
         return self.llm_adapter.adapt(quarterly_data)
 
-    def get_detailed_categories(
-        self, symbol: str, fiscal_year: int, fiscal_period: str
-    ) -> Dict[str, Any]:
+    def get_detailed_categories(self, symbol: str, fiscal_year: int, fiscal_period: str) -> Dict[str, Any]:
         """Get detailed financial categories for a specific period"""
         try:
             # Get company facts
@@ -246,28 +232,16 @@ class SECDataFacade:
                 )
 
             # Populate income statement
-            income_categories = [
-                k for k in detailed.keys() if k.startswith("income_statement_")
-            ]
-            quarterly_data.financial_data.income_statement = {
-                cat: detailed[cat] for cat in income_categories
-            }
+            income_categories = [k for k in detailed.keys() if k.startswith("income_statement_")]
+            quarterly_data.financial_data.income_statement = {cat: detailed[cat] for cat in income_categories}
 
             # Populate balance sheet
-            balance_categories = [
-                k for k in detailed.keys() if k.startswith("balance_sheet_")
-            ]
-            quarterly_data.financial_data.balance_sheet = {
-                cat: detailed[cat] for cat in balance_categories
-            }
+            balance_categories = [k for k in detailed.keys() if k.startswith("balance_sheet_")]
+            quarterly_data.financial_data.balance_sheet = {cat: detailed[cat] for cat in balance_categories}
 
             # Populate cash flow
-            cashflow_categories = [
-                k for k in detailed.keys() if k.startswith("cash_flow_")
-            ]
-            quarterly_data.financial_data.cash_flow_statement = {
-                cat: detailed[cat] for cat in cashflow_categories
-            }
+            cashflow_categories = [k for k in detailed.keys() if k.startswith("cash_flow_")]
+            quarterly_data.financial_data.cash_flow_statement = {cat: detailed[cat] for cat in cashflow_categories}
 
             # Store comprehensive data
             quarterly_data.financial_data.comprehensive_data = detailed
@@ -319,9 +293,7 @@ class FundamentalAnalysisFacadeV2:
             max_periods = options.get("max_periods", 8)
             strategy = options.get("strategy", "hybrid")
 
-            quarterly_data = self.sec_facade.get_recent_quarterly_data(
-                symbol, max_periods, strategy
-            )
+            quarterly_data = self.sec_facade.get_recent_quarterly_data(symbol, max_periods, strategy)
 
             if not quarterly_data:
                 return self._create_error_result(symbol, "No quarterly data available")
@@ -338,13 +310,10 @@ class FundamentalAnalysisFacadeV2:
             extraction_qualities = [
                 qd.financial_data.data_quality_score * 100
                 for qd in quarterly_data
-                if hasattr(qd.financial_data, "data_quality_score")
-                and qd.financial_data.data_quality_score
+                if hasattr(qd.financial_data, "data_quality_score") and qd.financial_data.data_quality_score
             ]
             avg_extraction_quality = (
-                sum(extraction_qualities) / len(extraction_qualities)
-                if extraction_qualities
-                else 0
+                sum(extraction_qualities) / len(extraction_qualities) if extraction_qualities else 0
             )
 
             self.logger.info(f"Data aggregated for {symbol}")
@@ -384,24 +353,18 @@ class FundamentalAnalysisFacadeV2:
                 if quarter_result and not quarter_result.get("error"):
                     quarterly_analyses.append(quarter_result)
                 else:
-                    self.logger.warning(
-                        f"Failed to analyze quarter {qdata.get('fiscal_period')}"
-                    )
+                    self.logger.warning(f"Failed to analyze quarter {qdata.get('fiscal_period')}")
 
             # Create comprehensive analysis based on all quarters (conditional on skip_comprehensive)
             if not options.get("skip_comprehensive", False):
-                self.logger.info(
-                    f"Creating comprehensive fundamental analysis from {len(quarterly_analyses)} quarters"
-                )
+                self.logger.info(f"Creating comprehensive fundamental analysis from {len(quarterly_analyses)} quarters")
                 analysis_result = self._create_comprehensive_fundamental_analysis(
                     symbol=symbol,
                     quarterly_analyses=quarterly_analyses,
                     aggregated_data=aggregated,
                 )
             else:
-                self.logger.info(
-                    "Skipping comprehensive analysis (--skip-comprehensive flag set)"
-                )
+                self.logger.info("Skipping comprehensive analysis (--skip-comprehensive flag set)")
                 # Return just the quarterly analyses without comprehensive synthesis
                 analysis_result = {
                     "symbol": symbol,
@@ -421,9 +384,7 @@ class FundamentalAnalysisFacadeV2:
                         "prompt": "",  # Prompt is generated inside _create_comprehensive_fundamental_analysis
                         "response": analysis_result,  # The parsed analysis result
                         "model_info": {
-                            "model": self.config.ollama.models.get(
-                                "fundamental_analysis", "deepseek-r1:32b"
-                            ),
+                            "model": self.config.ollama.models.get("fundamental_analysis", "deepseek-r1:32b"),
                             "temperature": 0.3,
                             "top_p": 0.9,
                         },
@@ -435,50 +396,29 @@ class FundamentalAnalysisFacadeV2:
                         "period": f"{fiscal_year}-FY",
                         "llm_type": "sec",
                     }
-                    cache_success = self.cache_manager.set(
-                        CacheType.LLM_RESPONSE, cache_key, cache_response_data
-                    )
+                    cache_success = self.cache_manager.set(CacheType.LLM_RESPONSE, cache_key, cache_response_data)
                     if cache_success:
-                        self.logger.debug(
-                            f"Cached LLM fundamental analysis for {symbol}"
-                        )
+                        self.logger.debug(f"Cached LLM fundamental analysis for {symbol}")
                     else:
-                        self.logger.warning(
-                            f"Failed to cache LLM analysis for {symbol}"
-                        )
+                        self.logger.warning(f"Failed to cache LLM analysis for {symbol}")
                 except Exception as cache_error:
-                    self.logger.warning(
-                        f"Error caching LLM analysis for {symbol}: {cache_error}"
-                    )
+                    self.logger.warning(f"Error caching LLM analysis for {symbol}: {cache_error}")
             else:
-                self.logger.info(
-                    "Skipping comprehensive analysis cache (not performed)"
-                )
+                self.logger.info("Skipping comprehensive analysis cache (not performed)")
 
             # Extract response for processing
             # The comprehensive analysis should return the structured data directly
-            if (
-                isinstance(analysis_result, dict)
-                and "analysis_summary" in analysis_result
-            ):
+            if isinstance(analysis_result, dict) and "analysis_summary" in analysis_result:
                 # Use the structured analysis result directly instead of trying to parse text
                 result = {
                     "symbol": symbol,
-                    "financial_health_score": analysis_result.get(
-                        "financial_health_score", 5.0
-                    ),
-                    "business_quality_score": analysis_result.get(
-                        "business_quality_score", 5.0
-                    ),
-                    "growth_prospects_score": analysis_result.get(
-                        "growth_prospects_score", 5.0
-                    ),
+                    "financial_health_score": analysis_result.get("financial_health_score", 5.0),
+                    "business_quality_score": analysis_result.get("business_quality_score", 5.0),
+                    "growth_prospects_score": analysis_result.get("growth_prospects_score", 5.0),
                     "overall_score": analysis_result.get("overall_score", 5.0),
                     "key_insights": analysis_result.get("key_insights", []),
                     "key_risks": analysis_result.get("key_risks", []),
-                    "confidence_level": analysis_result.get(
-                        "confidence_level", "MEDIUM"
-                    ),
+                    "confidence_level": analysis_result.get("confidence_level", "MEDIUM"),
                     "analysis_summary": analysis_result.get("analysis_summary", ""),
                     "investment_thesis": analysis_result.get("investment_thesis", ""),
                     "trend_analysis": analysis_result.get("trend_analysis", {}),
@@ -496,15 +436,11 @@ class FundamentalAnalysisFacadeV2:
                     if isinstance(analysis_result, dict)
                     else str(analysis_result)
                 )
-                result = self._parse_analysis_response(
-                    response_text, symbol, aggregated
-                )
+                result = self._parse_analysis_response(response_text, symbol, aggregated)
 
             self.logger.info(f"Analysis complete for {symbol}")
 
-            self.logger.info(
-                f"Fundamental analysis completed successfully for {symbol}"
-            )
+            self.logger.info(f"Fundamental analysis completed successfully for {symbol}")
 
             return result
 
@@ -514,9 +450,7 @@ class FundamentalAnalysisFacadeV2:
 
     # Observer pattern removed - using direct logging for progress tracking
 
-    def _create_analysis_prompt(
-        self, symbol: str, aggregated: Dict, llm_data: str
-    ) -> str:
+    def _create_analysis_prompt(self, symbol: str, aggregated: Dict, llm_data: str) -> str:
         """Create prompt for LLM analysis"""
         return f"""
 Analyze the fundamental financial health of {symbol} based on the following data:
@@ -537,9 +471,7 @@ Please provide:
 Format as JSON.
 """
 
-    def _parse_analysis_response(
-        self, response: str, symbol: str, aggregated: Dict
-    ) -> Dict[str, Any]:
+    def _parse_analysis_response(self, response: str, symbol: str, aggregated: Dict) -> Dict[str, Any]:
         """Parse LLM response"""
         try:
             from utils.json_utils import extract_json_from_text
@@ -548,9 +480,7 @@ Format as JSON.
             try:
                 result = extract_json_from_text(response)
             except ValueError:
-                self.logger.warning(
-                    f"Failed to extract JSON from response for {symbol}"
-                )
+                self.logger.warning(f"Failed to extract JSON from response for {symbol}")
                 result = {}
 
             # Ensure all fields are present
@@ -580,9 +510,7 @@ Format as JSON.
         self.logger.error(error_msg)
         raise RuntimeError(error_msg)
 
-    def _analyze_single_quarter(
-        self, symbol: str, quarter_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _analyze_single_quarter(self, symbol: str, quarter_data: Dict[str, Any]) -> Dict[str, Any]:
         """Analyze a single quarter's financial data"""
         try:
             from utils.prompt_manager import get_prompt_manager
@@ -617,18 +545,14 @@ Format as JSON.
             }
 
             # Use LLM facade's orchestration - it handles cache and queue management
-            response = self.ollama.generate_response(
-                task_type=LLMTaskType.QUARTERLY_SUMMARY, data=task_data
-            )
+            response = self.ollama.generate_response(task_type=LLMTaskType.QUARTERLY_SUMMARY, data=task_data)
 
             # LLM facade handles caching automatically - no manual caching needed
 
             return response
 
         except Exception as e:
-            self.logger.error(
-                f"Error analyzing quarter {quarter_data.get('fiscal_period')}: {e}"
-            )
+            self.logger.error(f"Error analyzing quarter {quarter_data.get('fiscal_period')}: {e}")
             return {"error": str(e)}
 
     def _create_comprehensive_fundamental_analysis(
@@ -749,9 +673,7 @@ Provide analysis in the following exact JSON format:
                 return result
 
             except Exception as e:
-                self.logger.warning(
-                    f"Failed to parse comprehensive analysis response: {e}"
-                )
+                self.logger.warning(f"Failed to parse comprehensive analysis response: {e}")
                 # Fallback structure
                 return {
                     "financial_health_score": 5.0,
@@ -768,9 +690,7 @@ Provide analysis in the following exact JSON format:
             self.logger.error(f"Error creating comprehensive analysis: {e}")
             return {"error": str(e), "quarterly_analyses": quarterly_analyses}
 
-    def _calculate_and_cache_quarterly_metrics(
-        self, quarterly_data: List, symbol: str
-    ) -> None:
+    def _calculate_and_cache_quarterly_metrics(self, quarterly_data: List, symbol: str) -> None:
         """Calculate comprehensive quarterly metrics and cache them to RDBMS"""
         try:
             from investigator.infrastructure.cache import get_cache_manager
@@ -806,17 +726,13 @@ Provide analysis in the following exact JSON format:
                         "fiscal_period": fiscal_period,
                         "form_type": form_type,
                         "period": f"{fiscal_year}-{fiscal_period}",
-                        "fiscal_quarter": fiscal_period.replace("Q", "")
-                        if "Q" in fiscal_period
-                        else "4",
+                        "fiscal_quarter": fiscal_period.replace("Q", "") if "Q" in fiscal_period else "4",
                         # Extract financial metrics from appropriate statement sections
                         "revenue": income_stmt.get("revenue", 0),
                         "net_income": income_stmt.get("net_income", 0),
                         "operating_income": income_stmt.get("operating_income", 0),
                         "total_assets": balance_sheet.get("total_assets", 0),
-                        "stockholders_equity": balance_sheet.get(
-                            "stockholders_equity", 0
-                        ),
+                        "stockholders_equity": balance_sheet.get("stockholders_equity", 0),
                         "total_debt": balance_sheet.get(
                             "long_term_debt", 0
                         ),  # Use long_term_debt as proxy for total_debt
@@ -824,9 +740,7 @@ Provide analysis in the following exact JSON format:
                     }
 
                     # Calculate comprehensive metrics (returns DataFrame)
-                    metrics_df = calculator.calculate_all_metrics(
-                        [quarterly_data_dict], symbol
-                    )
+                    metrics_df = calculator.calculate_all_metrics([quarterly_data_dict], symbol)
 
                     # Convert DataFrame to dictionary for storage
                     if not metrics_df.empty:
@@ -842,13 +756,9 @@ Provide analysis in the following exact JSON format:
                             elif isinstance(value, pd.Timestamp):
                                 metrics[key] = value.isoformat()
                             elif isinstance(value, (np.integer, np.floating)):
-                                metrics[key] = (
-                                    float(value) if not np.isnan(value) else None
-                                )
+                                metrics[key] = float(value) if not np.isnan(value) else None
                             elif isinstance(value, np.ndarray):
-                                metrics[key] = (
-                                    value.tolist() if value.size > 0 else None
-                                )
+                                metrics[key] = value.tolist() if value.size > 0 else None
                     else:
                         metrics = quarterly_data_dict  # Fallback to basic data
 
@@ -879,9 +789,7 @@ Provide analysis in the following exact JSON format:
                     )
 
                     if success:
-                        self.logger.debug(
-                            f"Cached quarterly metrics for {symbol} {fiscal_year}-{fiscal_period}"
-                        )
+                        self.logger.debug(f"Cached quarterly metrics for {symbol} {fiscal_year}-{fiscal_period}")
                     else:
                         self.logger.warning(
                             f"Failed to cache quarterly metrics for {symbol} {fiscal_year}-{fiscal_period}"
@@ -893,6 +801,4 @@ Provide analysis in the following exact JSON format:
                     )
 
         except Exception as e:
-            self.logger.error(
-                f"Error in quarterly metrics calculation for {symbol}: {e}"
-            )
+            self.logger.error(f"Error in quarterly metrics calculation for {symbol}: {e}")

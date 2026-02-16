@@ -223,16 +223,12 @@ class TechnicalAnalysisService:
             indicators = self._build_indicators_dict(df_enhanced)
 
             # Get support/resistance levels
-            support_resistance = self._get_support_resistance(
-                df_enhanced, current_price
-            )
+            support_resistance = self._get_support_resistance(df_enhanced, current_price)
 
             # Valuation info
             valuation = {
                 "fair_value": fair_value,
-                "upside": (fair_value - current_price) / current_price
-                if current_price > 0
-                else 0,
+                "upside": (fair_value - current_price) / current_price if current_price > 0 else 0,
             }
 
             # Generate signals
@@ -267,9 +263,7 @@ class TechnicalAnalysisService:
                 fair_value=fair_value,
                 support_levels=support_levels,
                 resistance_levels=resistance_levels,
-                volatility=indicators.get("atr_14", 0) / current_price
-                if current_price > 0
-                else 0.02,
+                volatility=indicators.get("atr_14", 0) / current_price if current_price > 0 else 0.02,
                 atr=indicators.get("atr_14", 0),
             )
 
@@ -306,16 +300,10 @@ class TechnicalAnalysisService:
         Returns:
             Dictionary with technical_indicators and entry_exit_signals
         """
-        features = self.get_technical_features(
-            symbol, analysis_date, lookback_days, fair_value
-        )
+        features = self.get_technical_features(symbol, analysis_date, lookback_days, fair_value)
 
         # Compute trend score from price vs moving averages
-        trend_score = (
-            features.price_vs_sma_20
-            + features.price_vs_sma_50
-            + features.price_vs_sma_200
-        ) / 3
+        trend_score = (features.price_vs_sma_20 + features.price_vs_sma_50 + features.price_vs_sma_200) / 3
         trend_score = max(-1.0, min(1.0, trend_score))
 
         # Compute sentiment from momentum indicators
@@ -533,9 +521,7 @@ class TechnicalAnalysisService:
             "EMA_200": float(latest.get("EMA_200", current_price)),
         }
 
-    def _get_support_resistance(
-        self, df: pd.DataFrame, current_price: float
-    ) -> Dict[str, float]:
+    def _get_support_resistance(self, df: pd.DataFrame, current_price: float) -> Dict[str, float]:
         """Get support/resistance levels from DataFrame."""
         latest = df.iloc[-1]
 
@@ -551,18 +537,10 @@ class TechnicalAnalysisService:
             resistance_1 = latest.get("BB_Upper", current_price * 1.05)
 
         return {
-            "support_1": float(support_1)
-            if not pd.isna(support_1)
-            else current_price * 0.95,
-            "support_2": float(support_2)
-            if not pd.isna(support_2)
-            else current_price * 0.90,
-            "resistance_1": float(resistance_1)
-            if not pd.isna(resistance_1)
-            else current_price * 1.05,
-            "resistance_2": float(resistance_2)
-            if not pd.isna(resistance_2)
-            else current_price * 1.10,
+            "support_1": float(support_1) if not pd.isna(support_1) else current_price * 0.95,
+            "support_2": float(support_2) if not pd.isna(support_2) else current_price * 0.90,
+            "resistance_1": float(resistance_1) if not pd.isna(resistance_1) else current_price * 1.05,
+            "resistance_2": float(resistance_2) if not pd.isna(resistance_2) else current_price * 1.10,
         }
 
 

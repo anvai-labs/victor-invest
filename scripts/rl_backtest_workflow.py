@@ -40,9 +40,9 @@ from sqlalchemy import create_engine, text
 
 # Victor-Invest workflow imports
 from victor_invest.workflows import (
-    run_rl_backtest,
-    generate_lookback_list,
     RLBacktestWorkflowState,
+    generate_lookback_list,
+    run_rl_backtest,
 )
 
 # Create logs directory
@@ -76,9 +76,7 @@ logger.info(f"Logging to: {log_filename}")
 
 def get_db_engine():
     """Get database engine."""
-    return create_engine(
-        "postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}/sec_database"
-    )
+    return create_engine("postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}/sec_database")
 
 
 def get_all_eligible_symbols() -> List[str]:
@@ -86,13 +84,15 @@ def get_all_eligible_symbols() -> List[str]:
     engine = get_db_engine()
     with engine.connect() as conn:
         result = conn.execute(
-            text("""
+            text(
+                """
             SELECT DISTINCT symbol
             FROM stock_symbols
             WHERE is_active = true
               AND (is_sp500 = true OR is_russell1000 = true)
             ORDER BY symbol
-        """)
+        """
+            )
         )
         return [row[0] for row in result.fetchall()]
 
@@ -102,14 +102,16 @@ def get_top_n_symbols(n: int) -> List[str]:
     engine = get_db_engine()
     with engine.connect() as conn:
         result = conn.execute(
-            text("""
+            text(
+                """
             SELECT symbol
             FROM stock_symbols
             WHERE is_active = true
               AND market_cap IS NOT NULL
             ORDER BY market_cap DESC
             LIMIT :n
-        """),
+        """
+            ),
             {"n": n},
         )
         return [row[0] for row in result.fetchall()]
@@ -183,12 +185,8 @@ async def run_batch_backtest(
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Run RL backtest using victor workflow (StateGraph)"
-    )
-    parser.add_argument(
-        "--symbols", nargs="+", help="List of stock symbols to backtest"
-    )
+    parser = argparse.ArgumentParser(description="Run RL backtest using victor workflow (StateGraph)")
+    parser.add_argument("--symbols", nargs="+", help="List of stock symbols to backtest")
     parser.add_argument(
         "--all-symbols",
         action="store_true",

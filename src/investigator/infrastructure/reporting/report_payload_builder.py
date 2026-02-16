@@ -18,6 +18,7 @@ Author: InvestiGator Team
 Date: 2025-11-02
 """
 
+import json
 import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
@@ -108,7 +109,7 @@ class ReportPayloadBuilder:
     def build(
         self,
         symbol: str,
-        synthesis_report: Dict[str, Any],
+        synthesis_report: Any,
         fundamental_data: Optional[Dict] = None,
         technical_data: Optional[Dict] = None,
         chart_paths: Optional[List[str]] = None,
@@ -130,13 +131,18 @@ class ReportPayloadBuilder:
 
         # Unwrap LLM response if needed
         unwrapped = self._unwrap_response(synthesis_report)
+        if not isinstance(unwrapped, dict):
+            self.logger.warning(
+                "Unwrapped synthesis payload is %s for %s. Falling back to empty payload.",
+                type(unwrapped),
+                symbol,
+            )
+            unwrapped = {}
 
         # Extract core fields
         recommendation = self._extract_recommendation(unwrapped)
         scores = self._extract_scores(unwrapped)
-        financials = self._extract_financials(
-            unwrapped, fundamental_data, technical_data
-        )
+        financials = self._extract_financials(unwrapped, fundamental_data, technical_data)
         thesis = self._extract_thesis(unwrapped)
         risks = self._extract_risks(unwrapped)
         scenarios = self._extract_scenarios(unwrapped)
@@ -157,7 +163,10 @@ class ReportPayloadBuilder:
         # Build normalized payload
         payload = {
             "symbol": symbol,
-            "timestamp": synthesis_report.get("timestamp", ""),
+            "timestamp": (
+                unwrapped.get("timestamp")
+                or (synthesis_report.get("timestamp", "") if isinstance(synthesis_report, dict) else "")
+            ),
             # Recommendation
             "recommendation": recommendation.get("action", "hold"),
             "confidence": int(recommendation.get("confidence", 50)),
@@ -208,30 +217,101 @@ class ReportPayloadBuilder:
 
         return payload
 
-    def _unwrap_response(self, synthesis_report: Dict) -> Dict:
+    def _unwrap_response(self, synthesis_report: Any) -> Dict:
         """Unwrap LLM response wrappers to get actual data."""
-        # Check for nested response wrapper
-        if "response" in synthesis_report:
-            data = synthesis_report["response"]
-            if isinstance(data, dict):
-                # Further unwrap if there's a 'report' key
-                if "report" in data:
-                    return data["report"]
-                return data
-            else:
+        data: Any = synthesis_report
+
+        # Parse JSON strings eagerly (some callers pass serialized payloads).
+        if isinstance(data, str):
+            parsed = self._parse_json_object(data)
+            if parsed is None:
                 self.logger.warning(
-                    f"Response is {type(data)}, not dict - returning empty"
+                    "Synthesis report is string and not JSON object (type=%s). Returning empty payload.",
+                    type(synthesis_report),
                 )
                 return {}
-        return synthesis_report
+            data = parsed
+
+        if not isinstance(data, dict):
+            self.logger.warning(
+                "Synthesis report has unsupported type %s. Returning empty payload.",
+                type(data),
+            )
+            return {}
+
+        # Recursively unwrap common envelope shape: {"response": ...}
+        max_unwrap_depth = 5
+        depth = 0
+        while isinstance(data, dict) and "response" in data and depth < max_unwrap_depth:
+            wrapped = data.get("response")
+            if isinstance(wrapped, dict):
+                data = wrapped
+                depth += 1
+                continue
+            if isinstance(wrapped, str):
+                if not wrapped.strip():
+                    self.logger.warning("Response is empty string - returning empty payload")
+                    return {}
+                parsed = self._parse_json_object(wrapped)
+                if parsed is None:
+                    self.logger.warning(
+                        "Response is %s, not JSON object - returning empty payload",
+                        type(wrapped),
+                    )
+                    return {}
+                data = parsed
+                depth += 1
+                continue
+            self.logger.warning("Response is %s, not dict - returning empty payload", type(wrapped))
+            return {}
+
+        # Further unwrap if report key exists and is a dict
+        if isinstance(data, dict) and isinstance(data.get("report"), dict):
+            return data["report"]
+
+        return data if isinstance(data, dict) else {}
+
+    def _parse_json_object(self, raw: str) -> Optional[Dict[str, Any]]:
+        """Parse a JSON string and return dict payloads only."""
+        try:
+            parsed = json.loads(raw)
+        except (TypeError, json.JSONDecodeError):
+            return None
+
+        return parsed if isinstance(parsed, dict) else None
 
     def _extract_recommendation(self, data: Dict) -> Dict:
         """Extract recommendation and confidence."""
         rec = data.get("recommendation", {})
+        if not rec and isinstance(data.get("recommendation_and_action_plan"), dict):
+            rec = data.get("recommendation_and_action_plan", {})
+
         if isinstance(rec, dict):
             return {
-                "action": rec.get("action", rec.get("recommendation", "hold")),
-                "confidence": rec.get("confidence", rec.get("confidence_level", 50)),
+                "action": (
+                    rec.get("action")
+                    or rec.get("recommendation")
+                    or rec.get("final_recommendation")
+                    or rec.get("investment_recommendation")
+                    or "hold"
+                ),
+                "confidence": (
+                    rec.get("confidence")
+                    or rec.get("confidence_level")
+                    or data.get("confidence")
+                    or data.get("confidence_level")
+                    or 50
+                ),
+            }
+        if isinstance(rec, str) and rec.strip():
+            return {
+                "action": rec.strip(),
+                "confidence": data.get("confidence", data.get("confidence_level", 50)),
+            }
+        if isinstance(data.get("final_recommendation"), str):
+            return {
+                "action": data.get("final_recommendation", "hold"),
+                "confidence": data.get("confidence", data.get("confidence_level", 50)),
             }
         return {"action": "hold", "confidence": 50}
 
@@ -253,24 +333,18 @@ class ReportPayloadBuilder:
 
         return {
             "composite": (
-                composite.get("overall_score")
-                or composite.get("composite")
-                or analysis.get("composite", 50)
+                composite.get("overall_score") or composite.get("composite") or analysis.get("composite", 50)
             ),
             "fundamental": (
                 composite.get("fundamental_score")
                 or analysis.get("fundamental")
                 or assessment.get("financial_health", {}).get("score", 50)
             ),
-            "technical": (
-                composite.get("technical_score") or analysis.get("technical", 50)
-            ),
+            "technical": (composite.get("technical_score") or analysis.get("technical", 50)),
             "value": (composite.get("value_score") or analysis.get("value", 50)),
             "growth": (composite.get("growth_score") or analysis.get("growth", 50)),
             "quality": (
-                composite.get("business_quality_score")
-                or composite.get("quality_score")
-                or analysis.get("quality", 50)
+                composite.get("business_quality_score") or composite.get("quality_score") or analysis.get("quality", 50)
             ),
         }
 
@@ -321,38 +395,24 @@ class ReportPayloadBuilder:
         # Extract with fallback chain
         financials = {
             "current_price": (
-                valuation.get("current_price", 0)
-                or parse_currency(key_metrics.get("current_price", 0))
-                or 0
+                valuation.get("current_price", 0) or parse_currency(key_metrics.get("current_price", 0)) or 0
             ),
-            "fair_value": (
-                valuation.get("fair_value", 0)
-                or parse_currency(key_metrics.get("fair_value", 0))
-                or 0
-            ),
+            "fair_value": (valuation.get("fair_value", 0) or parse_currency(key_metrics.get("fair_value", 0)) or 0),
             "price_target_12m": (
                 valuation.get("price_target_12m", 0)
                 or valuation.get("price_target", 0)
                 or parse_currency(key_metrics.get("price_target", 0))
                 or 0
             ),
-            "market_cap": (
-                data.get("market_cap", 0)
-                or parse_currency(key_metrics.get("market_cap", 0))
-                or 0
-            ),
+            "market_cap": (data.get("market_cap", 0) or parse_currency(key_metrics.get("market_cap", 0)) or 0),
         }
 
         # Backfill from fundamental if still missing
         if fundamental_data:
             fund_val = fundamental_data.get("valuation", {})
-            fund_analysis_response = fundamental_data.get("analysis", {}).get(
-                "response", {}
-            )
+            fund_analysis_response = fundamental_data.get("analysis", {}).get("response", {})
             fund_ratios = fund_analysis_response.get("ratios", {})
-            fund_company_data = fundamental_data.get("analysis", {}).get(
-                "company_data", {}
-            )
+            fund_company_data = fundamental_data.get("analysis", {}).get("company_data", {})
 
             if financials["current_price"] == 0:
                 financials["current_price"] = (
@@ -420,11 +480,17 @@ class ReportPayloadBuilder:
     def _extract_risks(self, data: Dict) -> Dict:
         """Extract risk assessment."""
         risk_data = data.get("risk_assessment", {})
+        if isinstance(risk_data, list):
+            return {
+                "overall_risk": data.get("risk_score", 50),
+                "primary_risks": risk_data[:5],
+                "tier": data.get("risk_tier", "MEDIUM"),
+            }
+        if not isinstance(risk_data, dict):
+            risk_data = {}
 
         return {
-            "overall_risk": risk_data.get(
-                "overall_risk", risk_data.get("risk_score", 50)
-            ),
+            "overall_risk": risk_data.get("overall_risk", risk_data.get("risk_score", 50)),
             "primary_risks": risk_data.get("primary_risks", risk_data.get("risks", [])),
             "tier": risk_data.get("risk_tier", risk_data.get("tier", "MEDIUM")),
         }
@@ -432,18 +498,28 @@ class ReportPayloadBuilder:
     def _extract_scenarios(self, data: Dict) -> Dict:
         """Extract price scenarios."""
         scenarios = data.get("scenarios", {})
+        if not isinstance(scenarios, dict):
+            scenarios = {}
 
         return {
-            "bull_case": scenarios.get("bull_case", scenarios.get("bull")),
-            "base_case": scenarios.get("base_case", scenarios.get("base")),
-            "bear_case": scenarios.get("bear_case", scenarios.get("bear")),
+            "bull_case": (scenarios.get("bull_case") or scenarios.get("bull") or data.get("bull_case")),
+            "base_case": (scenarios.get("base_case") or scenarios.get("base") or data.get("base_case")),
+            "bear_case": (scenarios.get("bear_case") or scenarios.get("bear") or data.get("bear_case")),
         }
 
     def _extract_action_plan(self, data: Dict) -> Dict:
         """Extract action plan."""
         action_plan = data.get("action_plan", {})
+        if not action_plan and isinstance(data.get("recommendation_and_action_plan"), dict):
+            action_plan = data.get("recommendation_and_action_plan", {})
+        if not isinstance(action_plan, dict):
+            action_plan = {}
 
         actions = action_plan.get("specific_actions", action_plan.get("actions", []))
+        if not actions and isinstance(action_plan.get("entry_strategy"), dict):
+            entry = action_plan.get("entry_strategy", {})
+            maybe_action = entry.get("entry_timing_considerations")
+            actions = [maybe_action] if isinstance(maybe_action, str) and maybe_action else []
 
         return {
             "actions": actions if isinstance(actions, list) else [],
@@ -455,33 +531,21 @@ class ReportPayloadBuilder:
         """Backfill missing financials from fundamental analysis."""
         if financials["current_price"] == 0:
             # Try ratios
-            ratios = (
-                fundamental_data.get("analysis", {})
-                .get("response", {})
-                .get("ratios", {})
-            )
+            ratios = fundamental_data.get("analysis", {}).get("response", {}).get("ratios", {})
             financials["current_price"] = ratios.get("current_price", 0)
 
         if financials["market_cap"] == 0:
             # Try multiple locations including company_data
-            ratios = (
-                fundamental_data.get("analysis", {})
-                .get("response", {})
-                .get("ratios", {})
-            )
+            ratios = fundamental_data.get("analysis", {}).get("response", {}).get("ratios", {})
             company_data = fundamental_data.get("analysis", {}).get("company_data", {})
             financials["market_cap"] = (
                 fundamental_data.get("market_cap", 0)
                 or company_data.get("market_cap", 0)
                 or ratios.get("market_cap", 0)
-                or fundamental_data.get("analysis", {})
-                .get("response", {})
-                .get("market_cap", 0)
+                or fundamental_data.get("analysis", {}).get("response", {}).get("market_cap", 0)
             )
             if financials["market_cap"] > 0:
-                self.logger.info(
-                    f"✅ Backfilled market_cap from fundamental agent: ${financials['market_cap']:,.0f}"
-                )
+                self.logger.info(f"✅ Backfilled market_cap from fundamental agent: ${financials['market_cap']:,.0f}")
 
         return financials
 
@@ -489,9 +553,7 @@ class ReportPayloadBuilder:
         """Backfill scores from fundamental data."""
         # If composite is still default, try to calculate from fundamentals
         if scores["composite"] == 50:
-            quality_score = fundamental_data.get("data_quality", {}).get(
-                "data_quality_score", 0
-            )
+            quality_score = fundamental_data.get("data_quality", {}).get("data_quality_score", 0)
             if quality_score > 0:
                 # Use quality score as a proxy for composite
                 scores["composite"] = quality_score
@@ -511,18 +573,14 @@ class ReportPayloadBuilder:
             current_price = tech_analysis.get("current_price", 0)
             if current_price > 0:
                 financials["current_price"] = current_price
-                self.logger.info(
-                    f"✅ Backfilled current_price from technical agent: ${current_price:.2f}"
-                )
+                self.logger.info(f"✅ Backfilled current_price from technical agent: ${current_price:.2f}")
 
         # Technical analysis might also have market_cap in some cases
         if financials["market_cap"] == 0:
             market_cap = tech_analysis.get("market_cap", 0)
             if market_cap > 0:
                 financials["market_cap"] = market_cap
-                self.logger.info(
-                    f"✅ Backfilled market_cap from technical agent: ${market_cap:,.0f}"
-                )
+                self.logger.info(f"✅ Backfilled market_cap from technical agent: ${market_cap:,.0f}")
 
         return financials
 
@@ -555,6 +613,4 @@ class ReportPayloadBuilder:
             issues.append("composite_score=default(50)")
 
         if issues:
-            self.logger.warning(
-                f"⚠️  Payload validation issues for {symbol}: {', '.join(issues)}"
-            )
+            self.logger.warning(f"⚠️  Payload validation issues for {symbol}: {', '.join(issues)}")

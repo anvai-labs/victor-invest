@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict
 
-
 LATENCY_BUDGET_PROFILES: Dict[str, Dict[str, float]] = {
     # End-to-end budgets for full CLI analysis runs.
     "production": {

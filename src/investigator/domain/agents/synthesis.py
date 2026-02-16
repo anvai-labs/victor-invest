@@ -4,6 +4,7 @@ Master agent that synthesizes insights from all specialized agents using Ollama 
 """
 
 import json
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -27,6 +28,12 @@ from investigator.domain.services.toon_formatter import (
     to_toon_peers,
 )
 from investigator.infrastructure.cache import CacheManager
+from investigator.infrastructure.utils import extract_json_from_text
+
+try:
+    from json_repair import repair_json as repair_malformed_json
+except Exception:  # pragma: no cover - optional dependency
+    repair_malformed_json = None
 
 
 class AnalysisWeight(Enum):
@@ -59,9 +66,7 @@ class SynthesisAgent(InvestmentAgent):
     to produce comprehensive investment recommendations
     """
 
-    def __init__(
-        self, agent_id: str, ollama_client, event_bus, cache_manager: CacheManager
-    ):
+    def __init__(self, agent_id: str, ollama_client, event_bus, cache_manager: CacheManager):
         from investigator.config import get_config
 
         config = get_config()
@@ -103,24 +108,19 @@ class SynthesisAgent(InvestmentAgent):
 
         # Deterministic processing config (replaces LLM calls with rule-based computation)
         valuation_config = getattr(config, "valuation", None)
-        valuation_config_dict = (
-            valuation_config if isinstance(valuation_config, dict) else {}
-        )
+        valuation_config_dict = valuation_config if isinstance(valuation_config, dict) else {}
         deterministic_config = valuation_config_dict.get("deterministic", {})
         self.use_deterministic = deterministic_config.get("enabled", True)
-        self.deterministic_conflict_resolution = deterministic_config.get(
-            "conflict_resolution", True
-        )
-        self.deterministic_insight_extraction = deterministic_config.get(
-            "insight_extraction", True
-        )
-        self.deterministic_thesis_generation = deterministic_config.get(
-            "thesis_generation", True
-        )
+        self.deterministic_conflict_resolution = deterministic_config.get("conflict_resolution", True)
+        self.deterministic_insight_extraction = deterministic_config.get("insight_extraction", True)
+        self.deterministic_thesis_generation = deterministic_config.get("thesis_generation", True)
+        self.deterministic_risk_assessment_generation = deterministic_config.get("risk_assessment_generation", True)
+        self.deterministic_scenario_generation = deterministic_config.get("scenario_generation", True)
+        self.deterministic_recommendation_generation = deterministic_config.get("recommendation_generation", True)
+        self.deterministic_action_plan_generation = deterministic_config.get("action_plan_generation", True)
+        self.deterministic_report_generation = deterministic_config.get("report_generation", True)
 
-    def _build_deterministic_response(
-        self, label: str, payload: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _build_deterministic_response(self, label: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Return a structure consistent with _wrap_llm_response for rule-based analyses."""
         return {
             "response": payload,
@@ -153,8 +153,67 @@ class SynthesisAgent(InvestmentAgent):
         if default is None:
             default = {}
 
-        # If already a dict, return as-is
+        def _parse_json_payload(payload: str, wrapped: bool = False) -> Dict[str, Any]:
+            """Parse JSON payloads that may include <think> blocks or markdown wrappers."""
+            payload = payload.strip()
+            if not payload:
+                return default
+
+            # Prefer direct parse for clean payloads.
+            try:
+                parsed = json.loads(payload)
+                if isinstance(parsed, dict):
+                    return parsed
+            except json.JSONDecodeError:
+                pass
+
+            # Remove think tags and retry for reasoning models that prepend traces.
+            sanitized = re.sub(r"<think>.*?</think>", "", payload, flags=re.DOTALL).strip()
+            if sanitized and sanitized != payload:
+                try:
+                    parsed = json.loads(sanitized)
+                    if isinstance(parsed, dict):
+                        return parsed
+                except json.JSONDecodeError:
+                    pass
+
+            # Last fallback: extract first valid JSON object from mixed text/code fences.
+            try:
+                extracted = extract_json_from_text(sanitized or payload)
+                if isinstance(extracted, dict):
+                    return extracted
+            except Exception:
+                pass
+
+            # Final fallback: repair malformed JSON emitted by smaller local models.
+            if repair_malformed_json is not None:
+                try:
+                    repaired = repair_malformed_json(sanitized or payload, return_objects=True)
+                    if isinstance(repaired, dict):
+                        return repaired
+                    if isinstance(repaired, str):
+                        parsed = json.loads(repaired)
+                        if isinstance(parsed, dict):
+                            return parsed
+                except Exception:
+                    pass
+
+            if wrapped:
+                self.logger.warning("Failed to parse wrapped LLM response as JSON")
+            else:
+                self.logger.warning("Failed to parse LLM response as JSON")
+                self.logger.debug("Raw response: %s...", payload[:200])
+            return default
+
+        # If already a dict, unwrap common LLM wrapper shape first.
         if isinstance(response, dict):
+            payload = response.get("response")
+            if isinstance(payload, dict):
+                return payload
+            if isinstance(payload, str):
+                return _parse_json_payload(payload, wrapped=True)
+            if payload is None and {"response", "model_info", "metadata"} <= set(response.keys()):
+                return default
             return response
 
         # If None or empty, return default
@@ -163,16 +222,402 @@ class SynthesisAgent(InvestmentAgent):
 
         # If string, try to parse as JSON
         if isinstance(response, str):
-            try:
-                return json.loads(response)
-            except json.JSONDecodeError as e:
-                self.logger.warning(f"Failed to parse LLM response as JSON: {e}")
-                self.logger.debug(f"Raw response: {response[:200]}...")
-                return default
+            return _parse_json_payload(response)
 
         # Unknown type, log warning and return default
         self.logger.warning(f"Unexpected LLM response type: {type(response)}")
         return default
+
+    def _strip_llm_wrappers(self, value: Any) -> Any:
+        """Recursively unwrap common LLM/cache wrapper envelopes."""
+        if isinstance(value, dict):
+            if "response" in value and ("model_info" in value or "metadata" in value or "prompt" in value):
+                return self._strip_llm_wrappers(value.get("response"))
+            return {k: self._strip_llm_wrappers(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [self._strip_llm_wrappers(item) for item in value]
+        return value
+
+    @staticmethod
+    def _first_non_empty(mapping: Dict[str, Any], keys: List[str]) -> Any:
+        """Return first non-empty value among candidate keys."""
+        for key in keys:
+            value = mapping.get(key)
+            if value not in (None, "", [], {}):
+                return value
+        return None
+
+    def _normalize_scenarios_response(self, payload: Any) -> Dict[str, Any]:
+        """Normalize scenario payloads from alternative model output schemas."""
+        if not isinstance(payload, dict):
+            return {}
+
+        candidate = payload
+        nested = payload.get("scenarios")
+        if isinstance(nested, dict) and not any(payload.get(name) for name in ("bull_case", "base_case", "bear_case")):
+            candidate = nested
+
+        def _coerce_case(case_payload: Any, default_probability: int) -> Dict[str, Any]:
+            if isinstance(case_payload, dict):
+                return case_payload
+            if isinstance(case_payload, list):
+                assumptions = [str(item) for item in case_payload if item][:5]
+                return {"key_assumptions": assumptions, "probability": default_probability}
+            if isinstance(case_payload, str) and case_payload.strip():
+                return {"summary": case_payload.strip(), "probability": default_probability}
+            return {}
+
+        normalized = dict(candidate)
+        bull_case = self._first_non_empty(
+            candidate,
+            ["bull_case", "bull", "bullish_case", "upside_case", "optimistic_case"],
+        )
+        base_case = self._first_non_empty(candidate, ["base_case", "base", "neutral_case", "expected_case"])
+        bear_case = self._first_non_empty(
+            candidate,
+            ["bear_case", "bear", "bearish_case", "downside_case", "pessimistic_case"],
+        )
+
+        normalized["bull_case"] = _coerce_case(bull_case, 30)
+        normalized["base_case"] = _coerce_case(base_case, 50)
+        normalized["bear_case"] = _coerce_case(bear_case, 20)
+
+        if not normalized.get("probability_weighted_expected_return"):
+            weighted_return = self._first_non_empty(
+                candidate,
+                [
+                    "probability_weighted_expected_return",
+                    "weighted_expected_return",
+                    "expected_return",
+                    "expected_return_pct",
+                ],
+            )
+            if weighted_return is not None:
+                normalized["probability_weighted_expected_return"] = weighted_return
+
+        return normalized
+
+    def _normalize_recommendation_response(self, payload: Any) -> Dict[str, Any]:
+        """Normalize recommendation payloads into canonical synthesis keys."""
+        if not isinstance(payload, dict):
+            return {}
+
+        normalized = dict(payload)
+        nested = payload.get("recommendation_and_action_plan")
+        if isinstance(nested, dict):
+            normalized = {**nested, **normalized}
+
+        final_recommendation = self._first_non_empty(
+            normalized,
+            [
+                "final_recommendation",
+                "recommendation",
+                "action",
+                "investment_recommendation",
+            ],
+        )
+        if isinstance(final_recommendation, str) and final_recommendation.strip():
+            normalized["final_recommendation"] = final_recommendation.strip().lower().replace(" ", "_")
+
+        if not normalized.get("key_reasons_for_recommendation"):
+            reasons = self._first_non_empty(normalized, ["key_reasons", "reasons", "rationale"])
+            if isinstance(reasons, str):
+                normalized["key_reasons_for_recommendation"] = [reasons]
+            elif isinstance(reasons, list):
+                normalized["key_reasons_for_recommendation"] = reasons
+
+        if not normalized.get("main_risks_to_monitor"):
+            risks = self._first_non_empty(normalized, ["main_risks", "risks", "risk_factors"])
+            if isinstance(risks, str):
+                normalized["main_risks_to_monitor"] = [risks]
+            elif isinstance(risks, list):
+                normalized["main_risks_to_monitor"] = risks
+
+        if not normalized.get("exit_conditions"):
+            exits = self._first_non_empty(normalized, ["exit_strategy", "exits", "stop_conditions"])
+            if isinstance(exits, str):
+                normalized["exit_conditions"] = [exits]
+            elif isinstance(exits, list):
+                normalized["exit_conditions"] = exits
+
+        return normalized
+
+    def _normalize_action_plan_response(self, payload: Any) -> Dict[str, Any]:
+        """Normalize action-plan payloads into canonical section keys."""
+        if not isinstance(payload, dict):
+            return {}
+
+        normalized = dict(payload)
+        nested = payload.get("action_plan")
+        if isinstance(nested, dict):
+            normalized = {**nested, **normalized}
+
+        alias_map = {
+            "entry_strategy": ["entry_plan", "entry", "entry_guidance"],
+            "risk_management": ["risk_plan", "risk_controls", "risk_management_plan"],
+            "profit_taking": ["take_profit", "profit_targets"],
+            "monitoring_plan": ["monitoring", "monitor_plan"],
+            "contingency_plans": ["contingencies", "contingency_plan"],
+        }
+
+        for canonical, aliases in alias_map.items():
+            if normalized.get(canonical):
+                continue
+            alias_value = self._first_non_empty(normalized, aliases)
+            if alias_value is None:
+                continue
+            if isinstance(alias_value, dict):
+                normalized[canonical] = alias_value
+            elif isinstance(alias_value, list):
+                normalized[canonical] = {"items": alias_value}
+            elif isinstance(alias_value, str):
+                normalized[canonical] = {"summary": alias_value}
+
+        if isinstance(normalized.get("entry_strategy"), str):
+            normalized["entry_strategy"] = {"entry_timing_considerations": normalized["entry_strategy"]}
+
+        return normalized
+
+    @staticmethod
+    def _normalize_expected_return(value: Any) -> float:
+        """
+        Normalize expected return to decimal form (e.g. 0.12 for 12%).
+
+        Accepts numeric decimal, numeric percent, and strings like '12%' / '0.12'.
+        """
+        if value is None:
+            return 0.0
+
+        parsed: Optional[float] = None
+        if isinstance(value, (int, float)):
+            parsed = float(value)
+        elif isinstance(value, str):
+            cleaned = value.strip().replace("%", "")
+            try:
+                parsed = float(cleaned)
+            except ValueError:
+                parsed = None
+
+        if parsed is None:
+            return 0.0
+
+        # Treat magnitudes > 1 as percentages.
+        if abs(parsed) > 1.0:
+            return parsed / 100.0
+        return parsed
+
+    def _build_deterministic_risk_assessment_payload(
+        self,
+        all_risks: List[Dict[str, Any]],
+        conflicts: Optional[List[Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
+        """Build deterministic risk assessment payload when LLM output is unavailable."""
+        conflicts = conflicts or []
+
+        severity_to_weight = {"high": 20, "medium": 10, "low": 5}
+        category_counts: Dict[str, int] = {}
+        weighted_risk = 0.0
+
+        for risk in all_risks:
+            category = str(risk.get("category", "general"))
+            severity = str(risk.get("severity", "medium")).lower()
+            category_counts[category] = category_counts.get(category, 0) + 1
+            weighted_risk += severity_to_weight.get(severity, 8)
+
+        conflict_penalty = min(20.0, len(conflicts) * 5.0)
+        overall_risk = int(max(15, min(95, 35 + weighted_risk + conflict_penalty)))
+        risk_reward_ratio = round(max(0.3, (100.0 - overall_risk) / 50.0), 2)
+
+        priority_map = {"high": "High", "medium": "Medium", "low": "Low"}
+        categorized = []
+        matrix: Dict[str, Dict[str, str]] = {}
+        for risk in all_risks:
+            severity = str(risk.get("severity", "medium")).lower()
+            description = str(risk.get("description", "Unspecified risk"))
+            category = str(risk.get("category", "general"))
+            priority = priority_map.get(severity, "Medium")
+            categorized.append({"risk": description, "category": category, "priority": priority})
+            matrix[description[:80]] = {"probability": priority, "impact": priority}
+
+        if not categorized:
+            categorized.append(
+                {
+                    "risk": "No explicit risks identified from upstream analyses",
+                    "category": "general",
+                    "priority": "Low",
+                }
+            )
+
+        return {
+            "categories": category_counts,
+            "overall_risk": overall_risk,
+            "overall_risk_score": overall_risk,
+            "risk_reward_ratio": risk_reward_ratio,
+            "risk_categorization_and_prioritization": categorized,
+            "risk_probability_and_impact_matrix": matrix,
+            "correlation_between_risks": (
+                "Deterministic fallback: risks are assumed moderately correlated during market stress."
+            ),
+            "mitigation_strategies": (
+                "Enforce position sizing, stop-loss discipline, and diversify catalysts across scenarios."
+            ),
+            "risk_adjusted_return_potential": (
+                "limited" if overall_risk >= 70 else "balanced" if overall_risk >= 45 else "favorable"
+            ),
+            "worst_case_scenario_analysis": (
+                "Adverse macro + execution miss can drive prolonged downside; preserve capital via strict risk limits."
+            ),
+            "black_swan_considerations": (
+                "Liquidity shocks, policy surprises, or abrupt demand collapse can invalidate base-case assumptions."
+            ),
+            "fallback_used": True,
+        }
+
+    def _build_fallback_scenarios_payload(
+        self,
+        synthesis_input: SynthesisInput,
+        *,
+        methodology: str,
+        error: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Build deterministic scenario payload used for fallback and deterministic mode."""
+        current_price = synthesis_input.fundamental_analysis.get("valuation", {}).get("current_price", 100)
+        fair_value = synthesis_input.fundamental_analysis.get("valuation", {}).get("fair_value", current_price)
+
+        upside_to_fair = ((fair_value - current_price) / current_price) if current_price > 0 else 0.0
+        bull_return = 0.25
+        base_return = upside_to_fair
+        bear_return = -0.20
+        expected_return = (0.3 * bull_return) + (0.5 * base_return) + (0.2 * bear_return)
+
+        payload: Dict[str, Any] = {
+            "bull_case": {
+                "price_target": round(current_price * 1.25, 2),
+                "probability": 30,
+                "upside_potential": 25.0,
+                "key_assumptions": [
+                    "Market conditions improve",
+                    "Company executes growth strategy",
+                    "Valuation multiple expansion",
+                ],
+                "required_catalysts": [
+                    "Strong earnings beat",
+                    "Positive industry trends",
+                    "Market sentiment improvement",
+                ],
+            },
+            "base_case": {
+                "price_target": round(fair_value, 2),
+                "probability": 50,
+                "return_potential": round(upside_to_fair * 100, 1),
+                "key_assumptions": [
+                    "Current trends continue",
+                    "Valuation normalizes to fair value",
+                    "Stable market conditions",
+                ],
+                "expected_developments": [
+                    "Steady financial performance",
+                    "Modest growth in line with estimates",
+                ],
+            },
+            "bear_case": {
+                "price_target": round(current_price * 0.80, 2),
+                "probability": 20,
+                "downside_potential": -20.0,
+                "risk_factors": [
+                    "Market downturn",
+                    "Competitive pressure increases",
+                    "Economic headwinds",
+                ],
+                "warning_signs": [
+                    "Deteriorating fundamentals",
+                    "Market share loss",
+                    "Margin compression",
+                ],
+            },
+            "expected_return": round(expected_return, 4),  # Decimal form
+            "probability_weighted_expected_return": round(expected_return * 100, 1),
+            "methodology": methodology,
+        }
+        if error:
+            payload["error"] = error
+        return payload
+
+    def _build_deterministic_recommendation_payload(
+        self,
+        recommendation: str,
+        risk_adjusted_score: float,
+        confidence: float,
+        expected_return: float,
+    ) -> Dict[str, Any]:
+        """Build deterministic recommendation payload."""
+        conviction_level = "high" if confidence >= 75 else "medium" if confidence >= 55 else "low"
+        return {
+            "final_recommendation": recommendation,
+            "conviction_level": conviction_level,
+            "position_sizing_suggestion": (7 if recommendation in {"strong_buy", "buy"} else 3),
+            "time_horizon": "medium_term",
+            "key_reasons_for_recommendation": [
+                f"Risk-adjusted score: {risk_adjusted_score:.1f}/100",
+                f"Confidence: {confidence:.1f}%",
+                f"Expected return: {expected_return:.1%}",
+            ],
+            "main_risks_to_monitor": [
+                "Macro regime shifts",
+                "Earnings execution versus expectations",
+                "Valuation multiple compression",
+            ],
+            "exit_conditions": [
+                "Thesis deterioration in two consecutive quarters",
+                "Risk-adjusted score falls below hold threshold",
+            ],
+            "fallback_used": True,
+        }
+
+    def _build_deterministic_action_plan_payload(self, synthesis_input: SynthesisInput) -> Dict[str, Any]:
+        """Build deterministic action-plan payload."""
+        technical_levels = (
+            synthesis_input.technical_analysis.get("levels", {}) if synthesis_input.technical_analysis else {}
+        )
+        return {
+            "entry_strategy": {
+                "ideal_entry_price_range": [
+                    technical_levels.get("support_1"),
+                    technical_levels.get("pivot_point"),
+                ],
+                "entry_timing_considerations": "Scale entries around support with strict risk limits.",
+                "position_building_approach": "Scale-in across 2-3 tranches.",
+            },
+            "risk_management": {
+                "stop_loss_level": technical_levels.get("support_2"),
+                "rationale": "Preserve capital if key support fails.",
+                "position_size_adjustments": "Reduce exposure if volatility spikes.",
+                "hedging_considerations": "Use optional hedge on macro event risk.",
+            },
+            "profit_taking": {
+                "target_levels": [
+                    technical_levels.get("resistance_1"),
+                    technical_levels.get("resistance_2"),
+                ],
+                "scaling_out_strategy": "Take partial profits at each resistance level.",
+                "rebalancing_triggers": "Rebalance when position exceeds risk budget.",
+            },
+            "monitoring_plan": {
+                "key_metrics_to_track": [
+                    "Revenue trend",
+                    "FCF trend",
+                    "Margin trend",
+                ],
+                "review_frequency": "Quarterly or on material events",
+                "alert_conditions": "Missed guidance or material thesis break",
+            },
+            "contingency_plans": {
+                "if_price_drops_10_percent": "Reassess thesis before adding risk.",
+                "if_thesis_changes": "Exit or materially reduce position.",
+                "if_better_opportunity_arises": "Reallocate by expected risk-adjusted return.",
+            },
+            "fallback_used": True,
+        }
 
     def register_capabilities(self) -> List:
         """Register agent capabilities"""
@@ -205,19 +650,15 @@ class SynthesisAgent(InvestmentAgent):
             for analysis_type, analysis_data in analyses.items():
                 if analysis_data and isinstance(analysis_data, dict):
                     try:
-                        normalized_analyses[analysis_type] = (
-                            DataNormalizer.normalize_and_round(
-                                analysis_data, to_camel_case=False
-                            )
+                        normalized_analyses[analysis_type] = DataNormalizer.normalize_and_round(
+                            analysis_data, to_camel_case=False
                         )
                         self.logger.debug(
-                            f"Normalized {analysis_type} analysis to snake_case "
-                            f"({len(analysis_data)} keys)"
+                            f"Normalized {analysis_type} analysis to snake_case " f"({len(analysis_data)} keys)"
                         )
                     except Exception as e:
                         self.logger.warning(
-                            f"Failed to normalize {analysis_type} analysis: {e}. "
-                            f"Using original data."
+                            f"Failed to normalize {analysis_type} analysis: {e}. " f"Using original data."
                         )
                         normalized_analyses[analysis_type] = analysis_data
                 else:
@@ -240,7 +681,8 @@ class SynthesisAgent(InvestmentAgent):
             analysis_scores = await self._score_analyses(synthesis_input)
 
             # Identify key insights from each analysis
-            key_insights = await self._extract_key_insights(synthesis_input)
+            key_insights_raw = await self._extract_key_insights(synthesis_input)
+            key_insights = self._strip_llm_wrappers(key_insights_raw)
 
             # Calculate multi-year CAGR and volatility metrics (Phase 1 enhancement)
             multi_year_trends = self._calculate_multi_year_metrics(synthesis_input)
@@ -267,41 +709,38 @@ class SynthesisAgent(InvestmentAgent):
             )
 
             # Detect conflicts and reconcile
-            conflicts = await self._detect_conflicts(synthesis_input)
-            reconciliation = await self._reconcile_conflicts(conflicts, synthesis_input)
+            conflicts_raw = await self._detect_conflicts(synthesis_input)
+            conflicts = self._strip_llm_wrappers(conflicts_raw) or []
+            reconciliation_raw = await self._reconcile_conflicts(conflicts, synthesis_input)
+            reconciliation = self._strip_llm_wrappers(reconciliation_raw)
 
             # Calculate composite scores
-            composite_scores = await self._calculate_composite_scores(
-                synthesis_input, analysis_scores
-            )
+            composite_scores = await self._calculate_composite_scores(synthesis_input, analysis_scores)
 
             # Generate investment thesis
-            thesis = await self._generate_investment_thesis(
-                synthesis_input, key_insights, composite_scores
-            )
+            thesis_raw = await self._generate_investment_thesis(synthesis_input, key_insights, composite_scores)
+            thesis = self._strip_llm_wrappers(thesis_raw)
 
             # Assess risks comprehensively
-            risk_assessment = await self._comprehensive_risk_assessment(
-                synthesis_input, conflicts
-            )
+            risk_assessment_raw = await self._comprehensive_risk_assessment(synthesis_input, conflicts)
+            risk_assessment = self._strip_llm_wrappers(risk_assessment_raw)
 
             # Generate scenarios
-            scenarios = await self._generate_scenarios(
-                synthesis_input, composite_scores, risk_assessment
-            )
+            scenarios_raw = await self._generate_scenarios(synthesis_input, composite_scores, risk_assessment)
+            scenarios = self._strip_llm_wrappers(scenarios_raw)
 
             # Make final recommendation
-            recommendation = await self._make_recommendation(
+            recommendation_raw = await self._make_recommendation(
                 composite_scores, risk_assessment, scenarios, synthesis_input.symbol
             )
+            recommendation = self._strip_llm_wrappers(recommendation_raw)
 
             # Generate action plan
-            action_plan = await self._generate_action_plan(
-                recommendation, synthesis_input, scenarios
-            )
+            action_plan_raw = await self._generate_action_plan(recommendation, synthesis_input, scenarios)
+            action_plan = self._strip_llm_wrappers(action_plan_raw)
 
             # Create comprehensive report
-            report = await self._create_synthesis_report(
+            report_raw = await self._create_synthesis_report(
                 {
                     "symbol": symbol,
                     "timestamp": synthesis_input.timestamp.isoformat(),
@@ -320,11 +759,10 @@ class SynthesisAgent(InvestmentAgent):
                     "action_plan": action_plan,
                 }
             )
+            report = self._strip_llm_wrappers(report_raw)
 
             # Generate PDF report with embedded charts (Phase 4 enhancement)
-            pdf_result = self._generate_pdf_report(
-                symbol, report, charts, synthesis_input
-            )
+            pdf_result = self._generate_pdf_report(symbol, report, charts, synthesis_input)
             if pdf_result["pdf_generated"]:
                 self.logger.info(f"PDF report generated: {pdf_result['pdf_path']}")
             else:
@@ -342,7 +780,7 @@ class SynthesisAgent(InvestmentAgent):
                     "synthesis": report,  # DEPRECATED: Keep for backward compatibility, will be removed in future
                     "recommendation": recommendation,
                     "confidence": composite_scores.get("confidence", 0),
-                    "risk_score": risk_assessment.get("overall_risk", 50),
+                    "risk_score": risk_assessment.get("overall_risk", 50) if isinstance(risk_assessment, dict) else 50,
                     "action_plan": action_plan,
                     "pdf_report": pdf_result,  # Phase 4: PDF report path and status
                 },
@@ -402,9 +840,7 @@ class SynthesisAgent(InvestmentAgent):
         """Extract key insights from each analysis using LLM"""
         # Check if deterministic insight extraction is enabled (saves tokens, faster)
         if self.use_deterministic and self.deterministic_insight_extraction:
-            self.logger.debug(
-                f"{synthesis_input.symbol} - Using deterministic insight extraction (LLM bypass)"
-            )
+            self.logger.debug(f"{synthesis_input.symbol} - Using deterministic insight extraction (LLM bypass)")
 
             response_data = extract_key_insights(
                 fundamental=synthesis_input.fundamental_analysis,
@@ -414,9 +850,7 @@ class SynthesisAgent(InvestmentAgent):
             )
 
             # Add quantitative insights (same as LLM path)
-            response_data["quantitative"] = self._extract_quantitative_insights(
-                synthesis_input
-            )
+            response_data["quantitative"] = self._extract_quantitative_insights(synthesis_input)
 
             return self._build_deterministic_response("key_insights", response_data)
 
@@ -460,7 +894,7 @@ class SynthesisAgent(InvestmentAgent):
             "4. Unique insight not found in other analyses\n"
             "5. Confidence level in the analysis\n\n"
             "Prioritize actionable, specific insights over generic observations.\n\n"
-            "Before generating the JSON, think step-by-step about the analysis. Put your thinking process inside <think> and </think> tags.\n\n"
+            "Return valid JSON only. Do not include markdown code fences, commentary, or <think> tags.\n\n"
             "Return a JSON object that strictly follows the schema below (values are illustrative):\n"
             f"{schema_example}\n"
         )
@@ -513,14 +947,10 @@ class SynthesisAgent(InvestmentAgent):
 
         # Extract valuation data
         valuation_data = (
-            synthesis_input.fundamental_analysis.get("valuation", {})
-            if synthesis_input.fundamental_analysis
-            else {}
+            synthesis_input.fundamental_analysis.get("valuation", {}) if synthesis_input.fundamental_analysis else {}
         )
         technical_data = (
-            synthesis_input.technical_analysis.get("signals", {})
-            if synthesis_input.technical_analysis
-            else {}
+            synthesis_input.technical_analysis.get("signals", {}) if synthesis_input.technical_analysis else {}
         )
 
         # Extract multi-model summary for blended fair value
@@ -534,11 +964,7 @@ class SynthesisAgent(InvestmentAgent):
         multi_model_summary.get("overall_confidence")
 
         # Use blended fair value as primary (fallback to regular fair_value if unavailable)
-        final_fair_value = (
-            blended_fair_value
-            if blended_fair_value
-            else valuation_data.get("fair_value", 0)
-        )
+        final_fair_value = blended_fair_value if blended_fair_value else valuation_data.get("fair_value", 0)
 
         # Create valuation metrics
         metrics = ValuationMetrics(
@@ -557,49 +983,29 @@ class SynthesisAgent(InvestmentAgent):
         )
 
         # Get market context if available
-        market_context = (
-            synthesis_input.market_context
-            if hasattr(synthesis_input, "market_context")
-            else None
-        )
+        market_context = synthesis_input.market_context if hasattr(synthesis_input, "market_context") else None
 
         # Prepare analysis context
         analysis_context = {
-            "risk_level": self._map_risk_score_to_level(
-                risk_assessment.get("overall_risk", 50)
-            ),
-            "technical_trend": self._extract_technical_trend(
-                synthesis_input.technical_analysis
-            ),
-            "market_sentiment": self._assess_market_sentiment(
-                synthesis_input, market_context
-            ),
+            "risk_level": self._map_risk_score_to_level(risk_assessment.get("overall_risk", 50)),
+            "technical_trend": self._extract_technical_trend(synthesis_input.technical_analysis),
+            "market_sentiment": self._assess_market_sentiment(synthesis_input, market_context),
             "sector": synthesis_input.context.get("sector", "default"),
-            "quality_factors": self._extract_quality_factors(
-                synthesis_input.fundamental_analysis
-            ),
+            "quality_factors": self._extract_quality_factors(synthesis_input.fundamental_analysis),
             "market_regime": (
-                market_context.get("market_sentiment", {}).get("market_regime")
-                if market_context
-                else "neutral"
+                market_context.get("market_sentiment", {}).get("market_regime") if market_context else "neutral"
             ),
             "sector_strength": (
-                market_context.get("sector_context", {}).get("sector_strength")
-                if market_context
-                else "neutral"
+                market_context.get("sector_context", {}).get("sector_strength") if market_context else "neutral"
             ),
         }
 
         # Calculate smart adjusted target
         adjuster = SmartValuationAdjuster()
-        adjusted_target, adjustment_details = adjuster.calculate_adjusted_target(
-            metrics, analysis_context
-        )
+        adjusted_target, adjustment_details = adjuster.calculate_adjusted_target(metrics, analysis_context)
 
         # Generate valuation summary
-        valuation_summary = adjuster.generate_valuation_summary(
-            metrics, adjusted_target, adjustment_details
-        )
+        valuation_summary = adjuster.generate_valuation_summary(metrics, adjusted_target, adjustment_details)
 
         return {
             "adjusted_target": adjusted_target,
@@ -646,9 +1052,7 @@ class SynthesisAgent(InvestmentAgent):
         else:
             return "sideways"
 
-    def _assess_market_sentiment(
-        self, synthesis_input: SynthesisInput, market_context: Optional[Dict] = None
-    ) -> str:
+    def _assess_market_sentiment(self, synthesis_input: SynthesisInput, market_context: Optional[Dict] = None) -> str:
         """Assess overall market sentiment using ETF context data"""
         # If we have ETF market context, use it for better sentiment assessment
         if market_context:
@@ -666,9 +1070,7 @@ class SynthesisAgent(InvestmentAgent):
                 return "bearish"
 
             # Fall back to market performance
-            market_perf = market_context.get("market_context", {}).get(
-                "medium_term", {}
-            )
+            market_perf = market_context.get("market_context", {}).get("medium_term", {})
             spy_data = market_perf.get("broad_market", {})
             spy_return = spy_data.get("return", 0)
 
@@ -708,20 +1110,12 @@ class SynthesisAgent(InvestmentAgent):
 
         return {
             "quality_score": fundamental_analysis.get("quality_score", 50),
-            "competitive_advantages": fundamental_analysis.get(
-                "competitive_advantages", []
-            ),
-            "management_quality": fundamental_analysis.get(
-                "management_quality", "average"
-            ),
-            "financial_strength": fundamental_analysis.get(
-                "financial_strength", "average"
-            ),
+            "competitive_advantages": fundamental_analysis.get("competitive_advantages", []),
+            "management_quality": fundamental_analysis.get("management_quality", "average"),
+            "financial_strength": fundamental_analysis.get("financial_strength", "average"),
         }
 
-    def _aggregate_to_fiscal_years(
-        self, quarterly_data: List[Dict], metric_name: str
-    ) -> List[Dict]:
+    def _aggregate_to_fiscal_years(self, quarterly_data: List[Dict], metric_name: str) -> List[Dict]:
         """
         Aggregate quarterly financial data into fiscal years
 
@@ -896,9 +1290,7 @@ class SynthesisAgent(InvestmentAgent):
 
         # Check if fundamental analysis is available
         if not synthesis_input.fundamental_analysis:
-            self.logger.debug(
-                "No fundamental analysis available for multi-year metrics"
-            )
+            self.logger.debug("No fundamental analysis available for multi-year metrics")
             return metrics
 
         fundamental_data = synthesis_input.fundamental_analysis
@@ -924,10 +1316,7 @@ class SynthesisAgent(InvestmentAgent):
             years_diff = latest_year["fiscal_year"] - oldest_year["fiscal_year"]
 
             if years_diff > 0 and oldest_year["value"] > 0:
-                revenue_cagr = (
-                    ((latest_year["value"] / oldest_year["value"]) ** (1 / years_diff))
-                    - 1
-                ) * 100
+                revenue_cagr = (((latest_year["value"] / oldest_year["value"]) ** (1 / years_diff)) - 1) * 100
                 metrics["revenue"]["cagr"] = round(revenue_cagr, 2)
 
                 # Calculate Revenue Volatility (year-over-year growth rate standard deviation)
@@ -944,20 +1333,14 @@ class SynthesisAgent(InvestmentAgent):
                     metrics["revenue"]["volatility"] = round(revenue_volatility, 2)
 
                     # Detect pattern and trend
-                    metrics["revenue"]["pattern"] = self._detect_cyclical_pattern(
-                        revenue_cagr, revenue_volatility
-                    )
-                    metrics["revenue"]["trend"] = self._detect_trend_direction(
-                        revenue_annual
-                    )
+                    metrics["revenue"]["pattern"] = self._detect_cyclical_pattern(revenue_cagr, revenue_volatility)
+                    metrics["revenue"]["trend"] = self._detect_trend_direction(revenue_annual)
 
         # --- EARNINGS METRICS ---
         earnings_annual = self._aggregate_to_fiscal_years(quarterly_data, "net_income")
         if not earnings_annual:
             # Try alternative field names
-            earnings_annual = self._aggregate_to_fiscal_years(
-                quarterly_data, "earnings"
-            )
+            earnings_annual = self._aggregate_to_fiscal_years(quarterly_data, "earnings")
 
         if len(earnings_annual) >= 2:
             # Calculate Earnings CAGR
@@ -966,10 +1349,7 @@ class SynthesisAgent(InvestmentAgent):
             years_diff = latest_year["fiscal_year"] - oldest_year["fiscal_year"]
 
             if years_diff > 0 and oldest_year["value"] > 0:
-                earnings_cagr = (
-                    ((latest_year["value"] / oldest_year["value"]) ** (1 / years_diff))
-                    - 1
-                ) * 100
+                earnings_cagr = (((latest_year["value"] / oldest_year["value"]) ** (1 / years_diff)) - 1) * 100
                 metrics["earnings"]["cagr"] = round(earnings_cagr, 2)
 
                 # Calculate Earnings Volatility
@@ -986,12 +1366,8 @@ class SynthesisAgent(InvestmentAgent):
                     metrics["earnings"]["volatility"] = round(earnings_volatility, 2)
 
                     # Detect pattern and trend
-                    metrics["earnings"]["pattern"] = self._detect_cyclical_pattern(
-                        earnings_cagr, earnings_volatility
-                    )
-                    metrics["earnings"]["trend"] = self._detect_trend_direction(
-                        earnings_annual
-                    )
+                    metrics["earnings"]["pattern"] = self._detect_cyclical_pattern(earnings_cagr, earnings_volatility)
+                    metrics["earnings"]["trend"] = self._detect_trend_direction(earnings_annual)
 
         # --- DATA QUALITY ASSESSMENT ---
         max_years = max(len(revenue_annual), len(earnings_annual))
@@ -1008,9 +1384,7 @@ class SynthesisAgent(InvestmentAgent):
 
         return metrics
 
-    def _generate_charts(
-        self, symbol: str, synthesis_input: SynthesisInput, multi_year_metrics: Dict
-    ) -> Dict:
+    def _generate_charts(self, symbol: str, synthesis_input: SynthesisInput, multi_year_metrics: Dict) -> Dict:
         """
         Generate charts for quarterly revenue trends and multi-year historical analysis
 
@@ -1041,9 +1415,7 @@ class SynthesisAgent(InvestmentAgent):
 
             # Check if fundamental analysis data is available
             if not synthesis_input.fundamental_analysis:
-                self.logger.debug(
-                    "No fundamental analysis available for chart generation"
-                )
+                self.logger.debug("No fundamental analysis available for chart generation")
                 return charts
 
             fundamental_data = synthesis_input.fundamental_analysis
@@ -1055,9 +1427,7 @@ class SynthesisAgent(InvestmentAgent):
             # Extract quarterly data for revenue trend chart
             quarterly_data = fundamental_data.get("quarterly_metrics", [])
             if not quarterly_data:
-                quarterly_data = fundamental_data.get("financials", {}).get(
-                    "quarterly", []
-                )
+                quarterly_data = fundamental_data.get("financials", {}).get("quarterly", [])
             if not quarterly_data:
                 quarterly_data = fundamental_data.get("quarterly", [])
 
@@ -1073,14 +1443,10 @@ class SynthesisAgent(InvestmentAgent):
 
                 if revenue_trend_data:
                     quarterly_trends = {"revenue_trend": revenue_trend_data}
-                    quarterly_chart_path = chart_gen.generate_quarterly_revenue_trend(
-                        symbol, quarterly_trends
-                    )
+                    quarterly_chart_path = chart_gen.generate_quarterly_revenue_trend(symbol, quarterly_trends)
                     if quarterly_chart_path:
                         charts["quarterly_revenue_chart"] = quarterly_chart_path
-                        self.logger.info(
-                            f"Generated quarterly revenue chart: {quarterly_chart_path}"
-                        )
+                        self.logger.info(f"Generated quarterly revenue chart: {quarterly_chart_path}")
 
             # Generate multi-year trends chart
             if multi_year_metrics.get("data_quality") in [
@@ -1092,25 +1458,15 @@ class SynthesisAgent(InvestmentAgent):
                 annual_data = []
 
                 # Get revenue and earnings annual data
-                revenue_annual = self._aggregate_to_fiscal_years(
-                    quarterly_data, "revenue"
-                )
-                earnings_annual = self._aggregate_to_fiscal_years(
-                    quarterly_data, "net_income"
-                )
+                revenue_annual = self._aggregate_to_fiscal_years(quarterly_data, "revenue")
+                earnings_annual = self._aggregate_to_fiscal_years(quarterly_data, "net_income")
 
                 # Combine revenue and earnings by fiscal year
-                years_revenue = {
-                    item["fiscal_year"]: item["value"] for item in revenue_annual
-                }
-                years_earnings = {
-                    item["fiscal_year"]: item["value"] for item in earnings_annual
-                }
+                years_revenue = {item["fiscal_year"]: item["value"] for item in revenue_annual}
+                years_earnings = {item["fiscal_year"]: item["value"] for item in earnings_annual}
 
                 # Get all years
-                all_years = sorted(
-                    set(years_revenue.keys()) | set(years_earnings.keys()), reverse=True
-                )
+                all_years = sorted(set(years_revenue.keys()) | set(years_earnings.keys()), reverse=True)
 
                 for year in all_years:
                     annual_data.append(
@@ -1124,26 +1480,18 @@ class SynthesisAgent(InvestmentAgent):
                 # Prepare metrics in expected format
                 metrics = {
                     "revenue_cagr": multi_year_metrics.get("revenue", {}).get("cagr"),
-                    "cyclical_pattern": multi_year_metrics.get("revenue", {}).get(
-                        "pattern"
-                    ),
+                    "cyclical_pattern": multi_year_metrics.get("revenue", {}).get("pattern"),
                 }
 
                 if annual_data and len(annual_data) >= 2:
                     multi_year_trends_data = {"data": annual_data, "metrics": metrics}
-                    multi_year_chart_path = chart_gen.generate_multi_year_trends_chart(
-                        symbol, multi_year_trends_data
-                    )
+                    multi_year_chart_path = chart_gen.generate_multi_year_trends_chart(symbol, multi_year_trends_data)
                     if multi_year_chart_path:
                         charts["multi_year_trends_chart"] = multi_year_chart_path
-                        self.logger.info(
-                            f"Generated multi-year trends chart: {multi_year_chart_path}"
-                        )
+                        self.logger.info(f"Generated multi-year trends chart: {multi_year_chart_path}")
 
             # Set charts_generated flag if at least one chart was created
-            charts["charts_generated"] = bool(
-                charts["quarterly_revenue_chart"] or charts["multi_year_trends_chart"]
-            )
+            charts["charts_generated"] = bool(charts["quarterly_revenue_chart"] or charts["multi_year_trends_chart"])
 
         except ImportError as e:
             self.logger.warning(f"Chart generation not available: {e}")
@@ -1345,21 +1693,15 @@ class SynthesisAgent(InvestmentAgent):
             quarterly_data = fundamental_data.get("quarterly", [])
 
         if not quarterly_data or len(quarterly_data) < 4:
-            self.logger.debug(
-                "Insufficient quarterly data for comprehensive trend analysis"
-            )
+            self.logger.debug("Insufficient quarterly data for comprehensive trend analysis")
             return trend_analysis
 
         # Sort by period (most recent first)
-        sorted_data = sorted(
-            quarterly_data, key=lambda x: x.get("period", ""), reverse=True
-        )
+        sorted_data = sorted(quarterly_data, key=lambda x: x.get("period", ""), reverse=True)
 
         # Limit to last 8 quarters (2 years)
         recent_data = sorted_data[:8]
-        trend_analysis["quarterly_insights"]["recent_quarters_analyzed"] = len(
-            recent_data
-        )
+        trend_analysis["quarterly_insights"]["recent_quarters_analyzed"] = len(recent_data)
 
         # Extract revenue data and calculate YoY growth
         revenue_values = []
@@ -1379,9 +1721,7 @@ class SynthesisAgent(InvestmentAgent):
 
         # Analyze revenue trend
         if revenue_growth_rates:
-            trend_analysis["revenue_trend"] = self._classify_revenue_trend(
-                revenue_growth_rates
-            )
+            trend_analysis["revenue_trend"] = self._classify_revenue_trend(revenue_growth_rates)
 
             # Determine revenue momentum
             avg_growth = np.mean(revenue_growth_rates)
@@ -1428,18 +1768,13 @@ class SynthesisAgent(InvestmentAgent):
 
         # Analyze cash flow trend
         if len(cash_flow_values) >= 4:
-            trend_analysis["cash_flow_trend"] = self._classify_cash_flow_trend(
-                cash_flow_values
-            )
+            trend_analysis["cash_flow_trend"] = self._classify_cash_flow_trend(cash_flow_values)
 
             # Determine cash generation quality
             avg_cash_flow = np.mean(cash_flow_values)
             if trend_analysis["cash_flow_trend"] == "improving" and avg_cash_flow > 0:
                 trend_analysis["quarterly_insights"]["cash_generation"] = "strong"
-            elif (
-                trend_analysis["cash_flow_trend"] == "deteriorating"
-                or avg_cash_flow < 0
-            ):
+            elif trend_analysis["cash_flow_trend"] == "deteriorating" or avg_cash_flow < 0:
                 trend_analysis["quarterly_insights"]["cash_generation"] = "weak"
             else:
                 trend_analysis["quarterly_insights"]["cash_generation"] = "adequate"
@@ -1526,14 +1861,10 @@ class SynthesisAgent(InvestmentAgent):
 
             # Get fundamental and technical data from synthesis input for backfilling
             fundamental_data = (
-                synthesis_input.fundamental_analysis
-                if hasattr(synthesis_input, "fundamental_analysis")
-                else None
+                synthesis_input.fundamental_analysis if hasattr(synthesis_input, "fundamental_analysis") else None
             )
             technical_data = (
-                synthesis_input.technical_analysis
-                if hasattr(synthesis_input, "technical_analysis")
-                else None
+                synthesis_input.technical_analysis if hasattr(synthesis_input, "technical_analysis") else None
             )
 
             # Build normalized recommendation payload
@@ -1546,9 +1877,7 @@ class SynthesisAgent(InvestmentAgent):
             )
 
             # Generate PDF report
-            self.logger.info(
-                f"Generating PDF report for {symbol} with {len(include_charts)} charts"
-            )
+            self.logger.info(f"Generating PDF report for {symbol} with {len(include_charts)} charts")
 
             pdf_path = pdf_gen.generate_report(
                 recommendations=[recommendation],
@@ -1579,9 +1908,7 @@ class SynthesisAgent(InvestmentAgent):
 
         # Check fundamental vs technical conflicts
         if synthesis_input.fundamental_analysis and synthesis_input.technical_analysis:
-            fund_rec = synthesis_input.fundamental_analysis.get(
-                "recommendation", "hold"
-            )
+            fund_rec = synthesis_input.fundamental_analysis.get("recommendation", "hold")
             tech_rec = synthesis_input.technical_analysis.get("recommendation", "hold")
 
             if self._are_recommendations_conflicting(fund_rec, tech_rec):
@@ -1599,15 +1926,9 @@ class SynthesisAgent(InvestmentAgent):
         if synthesis_input.fundamental_analysis:
             valuation = synthesis_input.fundamental_analysis.get("valuation", {})
             # Use multi-model blended fair value if available
-            multi_model_summary = synthesis_input.fundamental_analysis.get(
-                "multi_model_summary", {}
-            )
+            multi_model_summary = synthesis_input.fundamental_analysis.get("multi_model_summary", {})
             blended_fair_value = multi_model_summary.get("blended_fair_value")
-            fair_value = (
-                blended_fair_value
-                if blended_fair_value
-                else valuation.get("fair_value", 0)
-            )
+            fair_value = blended_fair_value if blended_fair_value else valuation.get("fair_value", 0)
             current_price = valuation.get("current_price", 0)
 
             if synthesis_input.technical_analysis:
@@ -1615,11 +1936,7 @@ class SynthesisAgent(InvestmentAgent):
                 tech_target = tech_signals.get("target_price", 0)
 
                 if fair_value and tech_target:
-                    deviation = (
-                        abs(fair_value - tech_target) / current_price
-                        if current_price
-                        else 0
-                    )
+                    deviation = abs(fair_value - tech_target) / current_price if current_price else 0
                     if deviation > 0.20:  # More than 20% difference
                         conflicts.append(
                             {
@@ -1634,13 +1951,9 @@ class SynthesisAgent(InvestmentAgent):
         # Check risk assessment conflicts
         if synthesis_input.sec_analysis and synthesis_input.fundamental_analysis:
             sec_risks = synthesis_input.sec_analysis.get("risks", [])
-            fund_health = synthesis_input.fundamental_analysis.get("analysis", {}).get(
-                "health_score", 50
-            )
+            fund_health = synthesis_input.fundamental_analysis.get("analysis", {}).get("health_score", 50)
 
-            high_risk_count = sum(
-                1 for risk in sec_risks if risk.get("severity") == "high"
-            )
+            high_risk_count = sum(1 for risk in sec_risks if risk.get("severity") == "high")
 
             if high_risk_count > 3 and fund_health > 70:
                 conflicts.append(
@@ -1654,9 +1967,7 @@ class SynthesisAgent(InvestmentAgent):
 
         return conflicts
 
-    async def _reconcile_conflicts(
-        self, conflicts: List[Dict], synthesis_input: SynthesisInput
-    ) -> Dict:
+    async def _reconcile_conflicts(self, conflicts: List[Dict], synthesis_input: SynthesisInput) -> Dict:
         """Reconcile conflicts between analyses using reasoning"""
         symbol = synthesis_input.symbol
 
@@ -1665,9 +1976,7 @@ class SynthesisAgent(InvestmentAgent):
 
         # Check if deterministic conflict resolution is enabled (saves tokens, faster)
         if self.use_deterministic and self.deterministic_conflict_resolution:
-            self.logger.debug(
-                f"{symbol} - Using deterministic conflict resolution (LLM bypass)"
-            )
+            self.logger.debug(f"{symbol} - Using deterministic conflict resolution (LLM bypass)")
 
             response_data = reconcile_conflicts(
                 conflicts=conflicts,
@@ -1678,9 +1987,7 @@ class SynthesisAgent(InvestmentAgent):
                 time_horizon="long_term",
             )
 
-            return self._build_deterministic_response(
-                "conflict_resolution", response_data
-            )
+            return self._build_deterministic_response("conflict_resolution", response_data)
 
         # === LLM Path (fallback when deterministic is disabled) ===
         conflicts_json = json.dumps(conflicts, indent=2)
@@ -1713,7 +2020,7 @@ class SynthesisAgent(InvestmentAgent):
             "- Market conditions and regime\n"
             "- Data quality and recency\n"
             "- Analysis confidence levels\n\n"
-            "Before generating the JSON, think step-by-step about the analysis. Put your thinking process inside <think> and </think> tags.\n\n"
+            "Return valid JSON only. Do not include markdown code fences, commentary, or <think> tags.\n\n"
             "Return a JSON object that strictly follows the schema below (values are illustrative):\n"
             f"{schema_example}\n"
         )
@@ -1749,9 +2056,7 @@ class SynthesisAgent(InvestmentAgent):
             format="json",
         )
 
-    async def _calculate_composite_scores(
-        self, synthesis_input: SynthesisInput, analysis_scores: Dict
-    ) -> Dict:
+    async def _calculate_composite_scores(self, synthesis_input: SynthesisInput, analysis_scores: Dict) -> Dict:
         """Calculate composite scores from all analyses"""
         composite = {}
 
@@ -1760,9 +2065,7 @@ class SynthesisAgent(InvestmentAgent):
 
         # Extract scores from analyses
         if synthesis_input.fundamental_analysis:
-            scores["fundamental"] = synthesis_input.fundamental_analysis.get(
-                "quality_score", 50
-            )
+            scores["fundamental"] = synthesis_input.fundamental_analysis.get("quality_score", 50)
 
         if synthesis_input.technical_analysis:
             tech_rating = synthesis_input.technical_analysis.get("technical_rating", 5)
@@ -1773,9 +2076,7 @@ class SynthesisAgent(InvestmentAgent):
             scores["sec"] = sec_analysis.get("overall_rating", 5) * 10
 
         if synthesis_input.sentiment_analysis:
-            scores["sentiment"] = synthesis_input.sentiment_analysis.get(
-                "sentiment_score", 50
-            )
+            scores["sentiment"] = synthesis_input.sentiment_analysis.get("sentiment_score", 50)
 
         # Apply quality weights
         weighted_scores = {}
@@ -1793,16 +2094,13 @@ class SynthesisAgent(InvestmentAgent):
 
         total_weight = sum(weights[k] for k in weighted_scores.keys())
         composite["overall_score"] = (
-            sum(weighted_scores[k] * weights[k] for k in weighted_scores.keys())
-            / total_weight
+            sum(weighted_scores[k] * weights[k] for k in weighted_scores.keys()) / total_weight
             if total_weight > 0
             else 50
         )
 
         # Calculate confidence based on analysis completeness and agreement
-        composite["confidence"] = self._calculate_confidence(
-            synthesis_input, analysis_scores, weighted_scores
-        )
+        composite["confidence"] = self._calculate_confidence(synthesis_input, analysis_scores, weighted_scores)
 
         # Component scores
         composite["component_scores"] = weighted_scores
@@ -1819,9 +2117,7 @@ class SynthesisAgent(InvestmentAgent):
         """Generate comprehensive investment thesis"""
         # Check if deterministic thesis generation is enabled (saves tokens, faster)
         if self.use_deterministic and self.deterministic_thesis_generation:
-            self.logger.debug(
-                f"{synthesis_input.symbol} - Using deterministic thesis generation (LLM bypass)"
-            )
+            self.logger.debug(f"{synthesis_input.symbol} - Using deterministic thesis generation (LLM bypass)")
 
             response_data = generate_investment_thesis(
                 symbol=synthesis_input.symbol,
@@ -1831,9 +2127,7 @@ class SynthesisAgent(InvestmentAgent):
                 company_profile=None,  # Will use data from fundamental_analysis if available
             )
 
-            return self._build_deterministic_response(
-                "investment_thesis", response_data
-            )
+            return self._build_deterministic_response("investment_thesis", response_data)
 
         # === LLM Path (fallback when deterministic is disabled) ===
         insights_json = json.dumps(key_insights, indent=2)[:4000]
@@ -1866,7 +2160,7 @@ class SynthesisAgent(InvestmentAgent):
             "7. Key metrics to monitor\n"
             "8. Thesis invalidation triggers\n\n"
             "Be specific, actionable, and balanced.\n\n"
-            "Before generating the JSON, think step-by-step about the analysis. Put your thinking process inside <think> and </think> tags.\n\n"
+            "Return valid JSON only. Do not include markdown code fences, commentary, or <think> tags.\n\n"
             "Return a JSON object that strictly follows the schema below (values are illustrative):\n"
             f"{schema_example}\n"
         )
@@ -1903,9 +2197,7 @@ class SynthesisAgent(InvestmentAgent):
             format="json",
         )
 
-    async def _comprehensive_risk_assessment(
-        self, synthesis_input: SynthesisInput, conflicts: List[Dict]
-    ) -> Dict:
+    async def _comprehensive_risk_assessment(self, synthesis_input: SynthesisInput, conflicts: List[Dict]) -> Dict:
         """Perform comprehensive risk assessment across all dimensions"""
         risks = {"categories": {}, "overall_risk": 50, "risk_reward_ratio": 1.0}
 
@@ -1923,9 +2215,7 @@ class SynthesisAgent(InvestmentAgent):
                     {
                         "category": "financial",
                         "description": "Financial health concerns",
-                        "severity": self._score_to_severity(
-                            100 - fund_analysis.get("health_score", 50)
-                        ),
+                        "severity": self._score_to_severity(100 - fund_analysis.get("health_score", 50)),
                     }
                 )
 
@@ -1981,10 +2271,18 @@ class SynthesisAgent(InvestmentAgent):
             "6. Risk-adjusted return potential\n"
             "7. Worst-case scenario analysis\n"
             "8. Black swan considerations\n\n"
-            "Before generating the JSON, think step-by-step about the analysis. Put your thinking process inside <think> and </think> tags.\n\n"
+            "Return valid JSON only. Do not include markdown code fences, commentary, or <think> tags.\n\n"
             "Return a JSON object that strictly follows the schema below (values are illustrative):\n"
             f"{schema_example}\n"
         )
+
+        if self.use_deterministic and self.deterministic_risk_assessment_generation:
+            self.logger.debug(
+                "%s - Using deterministic risk assessment generation (LLM bypass)",
+                synthesis_input.symbol,
+            )
+            response_data = self._build_deterministic_risk_assessment_payload(all_risks, conflicts)
+            return self._build_deterministic_response("risk_assessment", response_data)
 
         response = await self.ollama.generate(
             model=self.models["reasoning"],
@@ -2008,6 +2306,24 @@ class SynthesisAgent(InvestmentAgent):
 
         # Parse response safely
         response_dict = self._parse_llm_response(response)
+        if not isinstance(response_dict, dict) or not response_dict:
+            self.logger.warning(
+                "Risk assessment LLM returned empty/invalid payload for %s. Using deterministic fallback.",
+                synthesis_input.symbol,
+            )
+            response_dict = self._build_deterministic_risk_assessment_payload(all_risks, conflicts)
+
+        if (
+            "overall_risk" not in response_dict
+            and "overall_risk_score" in response_dict
+            and isinstance(response_dict.get("overall_risk_score"), (int, float))
+        ):
+            response_dict["overall_risk"] = response_dict["overall_risk_score"]
+
+        if "risk_reward_ratio" not in response_dict:
+            base_risk = float(response_dict.get("overall_risk", 50) or 50)
+            response_dict["risk_reward_ratio"] = round(max(0.3, (100.0 - base_risk) / 50.0), 2)
+
         risks.update(response_dict)
 
         return self._wrap_llm_response(
@@ -2045,10 +2361,20 @@ class SynthesisAgent(InvestmentAgent):
                 "error": "All assessment values are zero - data quality issue",
             }
 
+        # Deterministic path for robust local execution.
+        if self.use_deterministic and self.deterministic_scenario_generation:
+            self.logger.debug(
+                "%s - Using deterministic scenario generation (LLM bypass)",
+                synthesis_input.symbol,
+            )
+            response_data = self._build_fallback_scenarios_payload(
+                synthesis_input,
+                methodology="Deterministic scenario generation (LLM bypass)",
+            )
+            return self._build_deterministic_response("scenarios", response_data)
+
         # Apply smart valuation adjustments
-        smart_targets = self._calculate_smart_price_targets(
-            synthesis_input, composite_scores, risk_assessment
-        )
+        smart_targets = self._calculate_smart_price_targets(synthesis_input, composite_scores, risk_assessment)
 
         prompt = f"""
         Generate investment scenarios for {synthesis_input.symbol}:
@@ -2089,7 +2415,7 @@ class SynthesisAgent(InvestmentAgent):
         
         Calculate probability-weighted expected return.
 
-        Before generating the JSON, think step-by-step about the analysis. Put your thinking process inside <think> and </think> tags.
+        Return valid JSON only. Do not include markdown code fences, commentary, or <think> tags.
 
         Return a JSON object containing keys:
         - "bull_case" (with probability, price_target, key_assumptions, required_catalysts, upside_potential)
@@ -2121,6 +2447,7 @@ class SynthesisAgent(InvestmentAgent):
         # Parse response safely with fallback
         try:
             parsed_response = self._parse_llm_response(response)
+            parsed_response = self._normalize_scenarios_response(parsed_response)
 
             # Validate scenarios have required fields
             if (
@@ -2144,72 +2471,11 @@ class SynthesisAgent(InvestmentAgent):
             self.logger.warning(
                 f"Scenario generation failed for {synthesis_input.symbol}: {e}. Using fallback scenarios."
             )
-
-            current_price = synthesis_input.fundamental_analysis.get(
-                "valuation", {}
-            ).get("current_price", 100)
-            fair_value = synthesis_input.fundamental_analysis.get("valuation", {}).get(
-                "fair_value", current_price
+            fallback_scenarios = self._build_fallback_scenarios_payload(
+                synthesis_input,
+                methodology="Fallback scenarios generated due to LLM parsing error",
+                error=str(e),
             )
-
-            # Generate reasonable default scenarios based on fair value and current price
-            upside_to_fair = (
-                ((fair_value - current_price) / current_price)
-                if current_price > 0
-                else 0
-            )
-
-            fallback_scenarios = {
-                "bull_case": {
-                    "price_target": round(current_price * 1.25, 2),
-                    "probability": 30,
-                    "upside_potential": 25.0,
-                    "key_assumptions": [
-                        "Market conditions improve",
-                        "Company executes growth strategy",
-                        "Valuation multiple expansion",
-                    ],
-                    "required_catalysts": [
-                        "Strong earnings beat",
-                        "Positive industry trends",
-                        "Market sentiment improvement",
-                    ],
-                },
-                "base_case": {
-                    "price_target": round(fair_value, 2),
-                    "probability": 50,
-                    "return_potential": round(upside_to_fair * 100, 1),
-                    "key_assumptions": [
-                        "Current trends continue",
-                        "Valuation normalizes to fair value",
-                        "Stable market conditions",
-                    ],
-                    "expected_developments": [
-                        "Steady financial performance",
-                        "Modest growth in line with estimates",
-                    ],
-                },
-                "bear_case": {
-                    "price_target": round(current_price * 0.80, 2),
-                    "probability": 20,
-                    "downside_potential": -20.0,
-                    "risk_factors": [
-                        "Market downturn",
-                        "Competitive pressure increases",
-                        "Economic headwinds",
-                    ],
-                    "warning_signs": [
-                        "Deteriorating fundamentals",
-                        "Market share loss",
-                        "Margin compression",
-                    ],
-                },
-                "expected_return": round(
-                    (0.3 * 25.0) + (0.5 * upside_to_fair * 100) + (0.2 * -20.0), 1
-                ),
-                "methodology": "Fallback scenarios generated due to LLM parsing error",
-                "error": str(e),
-            }
 
             return self._wrap_llm_response(
                 response=fallback_scenarios,
@@ -2253,8 +2519,28 @@ class SynthesisAgent(InvestmentAgent):
         else:
             recommendation = "strong_sell"
 
-        # Get expected return from scenarios
-        expected_return = scenarios_data.get("expected_return", 0)
+        # Get expected return from scenarios (normalized to decimal form).
+        expected_return_raw = scenarios_data.get(
+            "expected_return",
+            scenarios_data.get("probability_weighted_expected_return", 0),
+        )
+        expected_return = self._normalize_expected_return(expected_return_raw)
+
+        # Deterministic path for robust local execution.
+        if self.use_deterministic and self.deterministic_recommendation_generation:
+            self.logger.debug(
+                "%s - Using deterministic recommendation generation (LLM bypass)",
+                symbol,
+            )
+            response_data = self._build_deterministic_recommendation_payload(
+                recommendation=recommendation,
+                risk_adjusted_score=risk_adjusted_score,
+                confidence=confidence,
+                expected_return=expected_return,
+            )
+            response_data["risk_adjusted_score"] = risk_adjusted_score
+            response_data["expected_return"] = expected_return
+            return self._build_deterministic_response("recommendation", response_data)
 
         prompt = f"""
         Make final investment recommendation:
@@ -2287,10 +2573,8 @@ class SynthesisAgent(InvestmentAgent):
         
         Be decisive but acknowledge uncertainty.
 
-        Before generating the JSON, think step-by-step about the analysis. Put your thinking process inside <think> and </think> tags.
-
-        Return as structured JSON, wrapped in a markdown code block (```json ... ```). For example:
-        ```json
+        Return valid JSON only. Do not include markdown code fences, commentary, or <think> tags.
+        For example:
         {{
           "final_recommendation": "buy",
           "conviction_level": "high",
@@ -2311,7 +2595,6 @@ class SynthesisAgent(InvestmentAgent):
             "A significant deterioration in fundamentals"
           ]
         }}
-        ```
         """
 
         response = await self.ollama.generate(
@@ -2334,7 +2617,19 @@ class SynthesisAgent(InvestmentAgent):
         )
 
         # Parse response safely
-        response_dict = self._parse_llm_response(response)
+        response_dict = self._parse_llm_response(response, default={})
+        response_dict = self._normalize_recommendation_response(response_dict)
+        if not isinstance(response_dict, dict) or not response_dict or not response_dict.get("final_recommendation"):
+            self.logger.warning(
+                "Recommendation LLM returned empty/invalid payload for %s. Using deterministic fallback.",
+                symbol,
+            )
+            response_dict = self._build_deterministic_recommendation_payload(
+                recommendation=recommendation,
+                risk_adjusted_score=risk_adjusted_score,
+                confidence=confidence,
+                expected_return=expected_return,
+            )
         response_dict["risk_adjusted_score"] = risk_adjusted_score
         response_dict["expected_return"] = expected_return
 
@@ -2351,6 +2646,14 @@ class SynthesisAgent(InvestmentAgent):
         self, recommendation: Dict, synthesis_input: SynthesisInput, scenarios: Dict
     ) -> Dict:
         """Generate specific action plan based on recommendation"""
+        if self.use_deterministic and self.deterministic_action_plan_generation:
+            self.logger.debug(
+                "%s - Using deterministic action plan generation (LLM bypass)",
+                synthesis_input.symbol,
+            )
+            response_data = self._build_deterministic_action_plan_payload(synthesis_input)
+            return self._build_deterministic_response("action_plan", response_data)
+
         prompt = f"""
         Generate specific action plan for {synthesis_input.symbol}:
         
@@ -2389,14 +2692,12 @@ class SynthesisAgent(InvestmentAgent):
         
         Be specific with prices, percentages, and conditions.
 
-        Before generating the JSON, think step-by-step about the analysis. Put your thinking process inside <think> and </think> tags.
-
-        Return as structured JSON, wrapped in a markdown code block (```json ... ```). For example:
+        Return valid JSON only. Do not include markdown code fences, commentary, or <think> tags.
+        For example:
         """
 
         # Append JSON example outside f-string to avoid format specifier conflicts
         json_example = """
-        ```json
         {
           "entry_strategy": {
             "ideal_entry_price_range": [140.0, 145.0],
@@ -2425,7 +2726,6 @@ class SynthesisAgent(InvestmentAgent):
             "if_better_opportunity_arises": "Consider selling a portion of the position to fund the new opportunity."
           }
         }
-        ```
         """
         prompt += json_example
 
@@ -2450,7 +2750,14 @@ class SynthesisAgent(InvestmentAgent):
         )
 
         # Parse response safely
-        parsed_response = self._parse_llm_response(response)
+        parsed_response = self._parse_llm_response(response, default={})
+        parsed_response = self._normalize_action_plan_response(parsed_response)
+        if not isinstance(parsed_response, dict) or not parsed_response or not parsed_response.get("entry_strategy"):
+            self.logger.warning(
+                "Action plan LLM returned empty/invalid payload for %s. Using deterministic fallback.",
+                synthesis_input.symbol,
+            )
+            parsed_response = self._build_deterministic_action_plan_payload(synthesis_input)
 
         return self._wrap_llm_response(
             response=parsed_response,
@@ -2467,6 +2774,20 @@ class SynthesisAgent(InvestmentAgent):
         from investigator.domain.services.data_normalizer import DataNormalizer
 
         rounded_data = DataNormalizer.round_financial_data(report_data)
+
+        # Deterministic path for robust local execution.
+        if self.use_deterministic and self.deterministic_report_generation:
+            self.logger.debug(
+                "%s - Using deterministic synthesis report generation (LLM bypass)",
+                report_data.get("symbol", "UNKNOWN"),
+            )
+            response_dict = self._strip_llm_wrappers(rounded_data)
+            if not isinstance(response_dict, dict):
+                response_dict = {}
+            response_dict["generated_at"] = datetime.now().isoformat()
+            response_dict["synthesis_version"] = "2.0"
+            response_dict["report_mode"] = "deterministic"
+            return self._build_deterministic_response("synthesis_report", response_dict)
 
         # Check if TOON format is enabled
         use_toon = getattr(self.config.ollama, "use_toon_format", False) and getattr(
@@ -2491,7 +2812,9 @@ class SynthesisAgent(InvestmentAgent):
                         remaining_data["peer_comparison"] = peer_comp_copy
 
                     # Build data section with TOON peers + JSON for other data
-                    data_section = f"{toon_peers}\n\nAdditional Analysis:\n{json.dumps(remaining_data, indent=2)[:8000]}"
+                    data_section = (
+                        f"{toon_peers}\n\nAdditional Analysis:\n{json.dumps(remaining_data, indent=2)[:8000]}"
+                    )
                 except Exception as e:
                     self.logger.warning(f"Failed to convert peer data to TOON: {e}")
                     data_section = json.dumps(rounded_data, indent=2)[:10000]
@@ -2548,10 +2871,8 @@ class SynthesisAgent(InvestmentAgent):
         
         Make it concise, professional, and actionable.
 
-        Before generating the JSON, think step-by-step about the analysis. Put your thinking process inside <think> and </think> tags.
-
-        Return as structured JSON, wrapped in a markdown code block (```json ... ```). For example:
-        ```json
+        Return valid JSON only. Do not include markdown code fences, commentary, or <think> tags.
+        For example:
         {{
           "executive_summary": [
             "Recommendation: Buy",
@@ -2590,13 +2911,10 @@ class SynthesisAgent(InvestmentAgent):
             "data_quality_notes": "The financial data used in this analysis is of high quality."
           }}
         }}
-        ```
         """
 
         # Build system prompt with optional TOON explanation
-        system_prompt = (
-            "Create professional investment report with clear recommendations."
-        )
+        system_prompt = "Create professional investment report with clear recommendations."
         if use_toon and peer_data:
             system_prompt += "\n\n" + TOONFormatter.get_format_explanation()
 
@@ -2621,7 +2939,13 @@ class SynthesisAgent(InvestmentAgent):
         )
 
         # Parse response safely
-        response_dict = self._parse_llm_response(response)
+        response_dict = self._parse_llm_response(response, default={})
+        if not isinstance(response_dict, dict) or not response_dict:
+            self.logger.warning(
+                "Synthesis report LLM returned empty/invalid payload for %s. Using structured fallback report.",
+                report_data.get("symbol", "UNKNOWN"),
+            )
+            response_dict = self._strip_llm_wrappers(rounded_data)
         response_dict["generated_at"] = datetime.now().isoformat()
         response_dict["synthesis_version"] = "2.0"
 
@@ -2634,17 +2958,13 @@ class SynthesisAgent(InvestmentAgent):
             format="json",
         )
 
-    def _evaluate_analysis_quality(
-        self, analysis: Dict, required_fields: List[str]
-    ) -> float:
+    def _evaluate_analysis_quality(self, analysis: Dict, required_fields: List[str]) -> float:
         """Evaluate the quality and completeness of an analysis"""
         if not analysis:
             return 0.0
 
         # Check for required fields
-        completeness = sum(1 for field in required_fields if field in analysis) / len(
-            required_fields
-        )
+        completeness = sum(1 for field in required_fields if field in analysis) / len(required_fields)
 
         # Check for errors
         if analysis.get("status") == "error":
@@ -2666,29 +2986,21 @@ class SynthesisAgent(InvestmentAgent):
             summary["sec"] = {
                 "risks": synthesis_input.sec_analysis.get("risks", [])[:5],
                 "metrics": synthesis_input.sec_analysis.get("metrics", {}),
-                "key_points": synthesis_input.sec_analysis.get("analysis", {}).get(
-                    "executive_summary", ""
-                ),
+                "key_points": synthesis_input.sec_analysis.get("analysis", {}).get("executive_summary", ""),
             }
 
         if synthesis_input.fundamental_analysis:
             summary["fundamental"] = {
                 "valuation": synthesis_input.fundamental_analysis.get("valuation", {}),
-                "quality_score": synthesis_input.fundamental_analysis.get(
-                    "quality_score", 0
-                ),
-                "key_points": synthesis_input.fundamental_analysis.get(
-                    "analysis", {}
-                ).get("investment_thesis", ""),
+                "quality_score": synthesis_input.fundamental_analysis.get("quality_score", 0),
+                "key_points": synthesis_input.fundamental_analysis.get("analysis", {}).get("investment_thesis", ""),
             }
 
         if synthesis_input.technical_analysis:
             summary["technical"] = {
                 "signals": synthesis_input.technical_analysis.get("signals", {}),
                 "levels": synthesis_input.technical_analysis.get("levels", {}),
-                "recommendation": synthesis_input.technical_analysis.get(
-                    "recommendation", ""
-                ),
+                "recommendation": synthesis_input.technical_analysis.get("recommendation", ""),
             }
 
         if synthesis_input.sentiment_analysis:
@@ -2707,12 +3019,8 @@ class SynthesisAgent(InvestmentAgent):
             fair_value = valuation.get("fair_value", 0)
 
             if current_price and fair_value:
-                insights["upside_potential"] = (
-                    (fair_value - current_price) / current_price
-                ) * 100
-                insights["margin_of_safety"] = (
-                    (current_price - fair_value) / fair_value
-                ) * 100
+                insights["upside_potential"] = ((fair_value - current_price) / current_price) * 100
+                insights["margin_of_safety"] = ((current_price - fair_value) / fair_value) * 100
 
         # Extract technical metrics
         if synthesis_input.technical_analysis:
@@ -2727,9 +3035,7 @@ class SynthesisAgent(InvestmentAgent):
         bullish = ["strong_buy", "buy"]
         bearish = ["sell", "strong_sell"]
 
-        return (rec1 in bullish and rec2 in bearish) or (
-            rec1 in bearish and rec2 in bullish
-        )
+        return (rec1 in bullish and rec2 in bearish) or (rec1 in bearish and rec2 in bullish)
 
     def _score_to_severity(self, score: float) -> str:
         """Convert numerical score to severity level"""
@@ -2764,9 +3070,7 @@ class SynthesisAgent(InvestmentAgent):
         confidence_factors.append(completeness)
 
         # Factor 2: Analysis quality
-        avg_quality = (
-            np.mean(list(analysis_scores.values())) if analysis_scores else 0.5
-        )
+        avg_quality = np.mean(list(analysis_scores.values())) if analysis_scores else 0.5
         confidence_factors.append(avg_quality)
 
         # Factor 3: Agreement between analyses
@@ -2780,9 +3084,7 @@ class SynthesisAgent(InvestmentAgent):
 
         return min(max(confidence, 0), 100)  # Clamp between 0 and 100
 
-    async def generate_peer_synthesis(
-        self, target: str, peers: List[str], analyses: Dict[str, Dict]
-    ) -> Dict:
+    async def generate_peer_synthesis(self, target: str, peers: List[str], analyses: Dict[str, Dict]) -> Dict:
         """Generate synthesis comparing target to peers"""
         # Round numeric values to reduce token usage
         from investigator.domain.services.data_normalizer import DataNormalizer

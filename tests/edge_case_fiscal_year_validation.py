@@ -81,9 +81,7 @@ class FiscalYearEdgeCaseValidator:
 
         with self.engine.connect() as conn:
             result = conn.execute(query)
-            return [
-                (row.fye, row.count, row.sample_symbols.split(", ")) for row in result
-            ]
+            return [(row.fye, row.count, row.sample_symbols.split(", ")) for row in result]
 
     def get_company_fiscal_periods(self, cik: int, min_year: int = 2023) -> List[Dict]:
         """
@@ -120,9 +118,7 @@ class FiscalYearEdgeCaseValidator:
             result = conn.execute(query, {"cik": cik, "min_year": min_year})
             return [dict(row._mapping) for row in result]
 
-    def _calculate_fiscal_year_from_date(
-        self, period_end_date: str, fiscal_year_end_month: int
-    ) -> int:
+    def _calculate_fiscal_year_from_date(self, period_end_date: str, fiscal_year_end_month: int) -> int:
         """
         Calculate fiscal year from period end date and fiscal year end month.
 
@@ -181,9 +177,7 @@ class FiscalYearEdgeCaseValidator:
         """
         try:
             # Calculate fiscal year using local logic
-            calculated_fy = self._calculate_fiscal_year_from_date(
-                period_end_date, fiscal_year_end_month
-            )
+            calculated_fy = self._calculate_fiscal_year_from_date(period_end_date, fiscal_year_end_month)
 
             # Parse period to get quarter
             period_date = datetime.strptime(period_end_date, "%Y-%m-%d")
@@ -240,9 +234,7 @@ class FiscalYearEdgeCaseValidator:
 
         results = []
         for period_end, fy_end_month, expected_fy, expected_fp in test_cases:
-            result = self.test_fiscal_year_calculation(
-                period_end, fy_end_month, expected_fy, expected_fp
-            )
+            result = self.test_fiscal_year_calculation(period_end, fy_end_month, expected_fy, expected_fp)
             results.append(result)
 
         return results
@@ -272,9 +264,7 @@ class FiscalYearEdgeCaseValidator:
 
         results = []
         for period_end, fy_end_month, expected_fy, expected_fp in test_cases:
-            result = self.test_fiscal_year_calculation(
-                period_end, fy_end_month, expected_fy, expected_fp
-            )
+            result = self.test_fiscal_year_calculation(period_end, fy_end_month, expected_fy, expected_fp)
             results.append(result)
 
         return results
@@ -292,9 +282,7 @@ class FiscalYearEdgeCaseValidator:
 
         results = []
         for period_end, fy_end_month, expected_fy, expected_fp in test_cases:
-            result = self.test_fiscal_year_calculation(
-                period_end, fy_end_month, expected_fy, expected_fp
-            )
+            result = self.test_fiscal_year_calculation(period_end, fy_end_month, expected_fy, expected_fp)
             results.append(result)
 
         return results
@@ -312,9 +300,7 @@ class FiscalYearEdgeCaseValidator:
 
         results = []
         for period_end, fy_end_month, expected_fy, expected_fp in test_cases:
-            result = self.test_fiscal_year_calculation(
-                period_end, fy_end_month, expected_fy, expected_fp
-            )
+            result = self.test_fiscal_year_calculation(period_end, fy_end_month, expected_fy, expected_fp)
             results.append(result)
 
         return results
@@ -340,9 +326,7 @@ class FiscalYearEdgeCaseValidator:
 
         results = []
         for period_end, fy_end_month, expected_fy, expected_fp in test_cases:
-            result = self.test_fiscal_year_calculation(
-                period_end, fy_end_month, expected_fy, expected_fp
-            )
+            result = self.test_fiscal_year_calculation(period_end, fy_end_month, expected_fy, expected_fp)
             results.append(result)
 
         return results
@@ -352,9 +336,7 @@ class FiscalYearEdgeCaseValidator:
         print(f"\n{'=' * 80}")
         print(f"{test_name}")
         print(f"{'=' * 80}")
-        print(
-            f"{'Period End':<15} {'FY End':<10} {'Expected':<10} {'Calculated':<10} {'Status':<10}"
-        )
+        print(f"{'Period End':<15} {'FY End':<10} {'Expected':<10} {'Calculated':<10} {'Status':<10}")
         print(f"{'-' * 80}")
 
         for result in results:
@@ -372,9 +354,7 @@ class FiscalYearEdgeCaseValidator:
             else:
                 status_str = f"⚠ {status}"
 
-            print(
-                f"{period_end:<15} {fy_end:<10} {expected:<10} {calculated:<10} {status_str:<10}"
-            )
+            print(f"{period_end:<15} {fy_end:<10} {expected:<10} {calculated:<10} {status_str:<10}")
 
             if "error" in result:
                 print(f"  ERROR: {result['error']}")
@@ -384,9 +364,7 @@ class FiscalYearEdgeCaseValidator:
         failed = sum(1 for r in results if r["status"] == "FAIL")
         errors = sum(1 for r in results if r["status"] == "ERROR")
 
-        print(
-            f"\nSummary: {passed} PASS, {failed} FAIL, {errors} ERROR (Total: {len(results)})"
-        )
+        print(f"\nSummary: {passed} PASS, {failed} FAIL, {errors} ERROR (Total: {len(results)})")
 
     def run_all_validations(self):
         """Run all edge case validations"""
@@ -400,9 +378,7 @@ class FiscalYearEdgeCaseValidator:
 
         # 2. Walmart (Jan FYE)
         walmart_results = self.validate_walmart_edge_cases()
-        self.print_results(
-            "2. Walmart Edge Cases (Jan Fiscal Year End)", walmart_results
-        )
+        self.print_results("2. Walmart Edge Cases (Jan Fiscal Year End)", walmart_results)
 
         # 3. Leap Year
         leap_year_results = self.validate_leap_year_edge_cases()
@@ -414,18 +390,10 @@ class FiscalYearEdgeCaseValidator:
 
         # 5. Same Date, Different FY
         same_date_results = self.validate_same_date_different_fy()
-        self.print_results(
-            "5. Same Calendar Date, Different Fiscal Years", same_date_results
-        )
+        self.print_results("5. Same Calendar Date, Different Fiscal Years", same_date_results)
 
         # Overall summary
-        all_results = (
-            oracle_results
-            + walmart_results
-            + leap_year_results
-            + boundary_results
-            + same_date_results
-        )
+        all_results = oracle_results + walmart_results + leap_year_results + boundary_results + same_date_results
 
         total_passed = sum(1 for r in all_results if r["status"] == "PASS")
         total_failed = sum(1 for r in all_results if r["status"] == "FAIL")
@@ -436,12 +404,8 @@ class FiscalYearEdgeCaseValidator:
         print(f"{'=' * 80}")
         print(f"Total Tests: {len(all_results)}")
         print(f"Passed: {total_passed} ({100 * total_passed / len(all_results):.1f}%)")
-        print(
-            f"Failed: {total_failed} ({100 * total_failed / len(all_results) if total_failed > 0 else 0:.1f}%)"
-        )
-        print(
-            f"Errors: {total_errors} ({100 * total_errors / len(all_results) if total_errors > 0 else 0:.1f}%)"
-        )
+        print(f"Failed: {total_failed} ({100 * total_failed / len(all_results) if total_failed > 0 else 0:.1f}%)")
+        print(f"Errors: {total_errors} ({100 * total_errors / len(all_results) if total_errors > 0 else 0:.1f}%)")
 
         if total_failed > 0 or total_errors > 0:
             print("\n⚠️  VALIDATION FAILED - Fix required!")

@@ -23,6 +23,14 @@ from investigator.domain.services.valuation.models.company_profile import Compan
 
 logger = logging.getLogger(__name__)
 
+UNSUPPORTED_FINANCIAL_SECTOR_TOKENS = (
+    "financial",
+    "bank",
+    "insurance",
+    "reit",
+    "real estate",
+)
+
 
 class EVEBITDAModel(BaseValuationModel):
     model_name = "ev_ebitda"
@@ -50,6 +58,15 @@ class EVEBITDAModel(BaseValuationModel):
         self.interest_coverage = interest_coverage
 
     def calculate(self, **_: Any) -> ValuationModelResult | ModelNotApplicable:
+        if self._is_financial_sector():
+            diagnostics = self._build_baseline_diagnostics()
+            diagnostics.flags.append("UNSUPPORTED_FINANCIAL_SECTOR")
+            return ModelNotApplicable(
+                model_name=self.model_name,
+                reason="unsupported_financial_sector",
+                diagnostics=diagnostics,
+            )
+
         if not self._is_applicable():
             diagnostics = self._build_baseline_diagnostics()
             diagnostics.flags.append(DataQualityFlag.NEGATIVE_DENOMINATOR.name)
@@ -128,6 +145,12 @@ class EVEBITDAModel(BaseValuationModel):
 
     def _is_applicable(self) -> bool:
         return self.ttm_ebitda is not None and self.ttm_ebitda > 0
+
+    def _is_financial_sector(self) -> bool:
+        sector = (self.company_profile.sector or "").strip().lower()
+        if not sector:
+            return False
+        return any(token in sector for token in UNSUPPORTED_FINANCIAL_SECTOR_TOKENS)
 
     def _determine_target_multiple(self) -> Optional[float]:
         candidates = []

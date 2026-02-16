@@ -1,0 +1,1359 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Victor Research Dashboard</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --ink: #122230;
+      --muted: #5a6a78;
+      --line: #d9e0e7;
+      --accent: #005f73;
+      --accent-2: #0a9396;
+      --good: #1b7f46;
+      --bad: #b42318;
+      --warn: #9a6700;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: linear-gradient(145deg, #f8fafc, #eef3f7);
+      color: var(--ink);
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+    }
+    .wrap {
+      width: 100%;
+      max-width: none;
+      margin: 0;
+      padding: 18px clamp(12px, 2vw, 28px);
+    }
+    .head {
+      display: flex; gap: 10px; justify-content: space-between; align-items: center;
+      background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+    }
+    .title { font-size: 1.15rem; font-weight: 700; }
+    .sub { font-size: 0.86rem; color: var(--muted); }
+    .controls {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: 1.4fr 0.55fr 0.55fr 0.55fr auto auto;
+      gap: 8px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+    }
+    input, select, button {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px 11px;
+      font: inherit;
+      background: #fff;
+    }
+    button {
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 600;
+      background: linear-gradient(120deg, var(--accent), var(--accent-2));
+    }
+    button.secondary { background: #1f2937; }
+    .status { margin-top: 8px; color: var(--muted); font-size: 0.9rem; }
+    .suggestions {
+      margin-top: 8px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      max-height: 220px;
+      overflow: auto;
+      display: none;
+    }
+    .suggestion {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--line);
+      cursor: pointer;
+    }
+    .suggestion:hover { background: #f3f8fb; }
+    .suggestion:last-child { border-bottom: none; }
+
+    .grid {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+    }
+    .kpi {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px;
+    }
+    .k { color: var(--muted); font-size: 0.78rem; }
+    .v { margin-top: 5px; font-size: 1.02rem; font-weight: 700; }
+
+    .tabs {
+      margin-top: 12px;
+      display: flex;
+      gap: 6px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 8px;
+    }
+    .tab-btn {
+      border: 1px solid var(--line);
+      background: #f8fafc;
+      color: var(--ink);
+      font-weight: 600;
+      padding: 7px 10px;
+    }
+    .tab-btn.active {
+      border-color: transparent;
+      color: #fff;
+      background: linear-gradient(120deg, var(--accent), var(--accent-2));
+    }
+
+    .panel {
+      margin-top: 10px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .panel h3 { margin: 0 0 8px 0; font-size: 0.95rem; }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1fr;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .summary-card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px;
+      background: #fff;
+    }
+    .signal-board {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .signal-pill {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 0.78rem;
+      background: #f8fafc;
+    }
+    .signal-pill.good { border-color: #b9e4c8; background: #e9f7ef; }
+    .signal-pill.bad { border-color: #f7c8c8; background: #fef0f0; }
+    .signal-pill.warn { border-color: #f2ddb1; background: #fff8e8; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86rem;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      padding: 6px 4px;
+    }
+    th { color: var(--muted); font-weight: 600; }
+
+    .chart-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .chart-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      width: 100%;
+    }
+    .chart-box {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 4px;
+      background: #fff;
+      width: 100%;
+    }
+    .chart-box > div {
+      width: 100% !important;
+    }
+
+    details {
+      margin-top: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 6px;
+      background: #f8fafc;
+    }
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 12px;
+    }
+
+    .good { color: var(--good); }
+    .bad { color: var(--bad); }
+    .warn { color: var(--warn); }
+
+    .rankings-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .rankings-controls label {
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+    .rankings-controls .inline-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .rankings-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .rank-row-clickable {
+      cursor: pointer;
+    }
+    .rank-row-clickable:hover {
+      background: #f3f8fb;
+    }
+    .rank-symbol-click {
+      cursor: pointer;
+      color: var(--accent);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    @media (max-width: 1100px) {
+      .controls { grid-template-columns: 1fr 1fr; }
+      .grid { grid-template-columns: repeat(2, 1fr); }
+      .summary-grid { grid-template-columns: 1fr; }
+      .rankings-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="head">
+      <div>
+        <div class="title">Victor Research Dashboard</div>
+        <div class="sub">Search symbol, load latest cached analysis, or refresh on demand.</div>
+        <div class="sub">Chart uses minimum 1 quarter (63 sessions). Recommended 126-252 for stable MACD/RSI context.</div>
+      </div>
+      <div class="sub" id="active-symbol">No symbol selected</div>
+    </div>
+
+    <div class="controls">
+      <input id="symbol-input" placeholder="Type ticker or name (e.g., STX, TRV, HIG)" autocomplete="off" />
+      <select id="mode-select">
+        <option value="quick">quick</option>
+        <option value="standard">standard</option>
+        <option value="comprehensive" selected>comprehensive</option>
+      </select>
+      <select id="basis-select">
+        <option value="ttm" selected>ttm</option>
+        <option value="forward">forward</option>
+      </select>
+      <select id="horizon-select">
+        <option value="1q">1q</option>
+        <option value="2q">2q</option>
+        <option value="3q">3q</option>
+        <option value="1y" selected>1y</option>
+      </select>
+      <button class="secondary" id="load-latest-btn">Load Latest</button>
+      <button id="refresh-btn">Refresh Analysis</button>
+    </div>
+    <div class="suggestions" id="suggestions"></div>
+    <div class="status" id="status">Ready.</div>
+
+    <div class="grid">
+      <div class="kpi"><div class="k">Action</div><div class="v" id="k-action">-</div></div>
+      <div class="kpi"><div class="k">Current</div><div class="v" id="k-current">-</div></div>
+      <div class="kpi"><div class="k">Target</div><div class="v" id="k-target">-</div></div>
+      <div class="kpi"><div class="k">Expected Return</div><div class="v" id="k-return">-</div></div>
+      <div class="kpi"><div class="k">Valuation Basis</div><div class="v" id="k-basis">-</div></div>
+      <div class="kpi"><div class="k">Data Quality</div><div class="v" id="k-quality">-</div></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="summary">Summary</button>
+      <button class="tab-btn" data-tab="fundamental">Fundamental</button>
+      <button class="tab-btn" data-tab="technical">Technical</button>
+      <button class="tab-btn" data-tab="chart">Chart</button>
+      <button class="tab-btn" data-tab="rankings">Rankings</button>
+    </div>
+
+    <div class="panel tab-panel active" id="tab-summary">
+      <h3>Summary</h3>
+      <table>
+        <tbody id="summary-table"></tbody>
+      </table>
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="sub">Valuation Dial</div>
+          <div id="valuation-gauge" style="height: 180px;"></div>
+        </div>
+        <div class="summary-card">
+          <div class="sub">Fair Value Range</div>
+          <table>
+            <tbody id="fair-range-table"></tbody>
+          </table>
+        </div>
+        <div class="summary-card">
+          <div class="sub">Signal Board</div>
+          <div id="signal-board" class="signal-board"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel tab-panel" id="tab-fundamental">
+      <h3>Fundamental Thesis</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>Fair Value</th>
+            <th>Weight</th>
+            <th>Confidence</th>
+            <th>Basis</th>
+            <th>Status / Reason</th>
+          </tr>
+        </thead>
+        <tbody id="fund-models-body"></tbody>
+      </table>
+      <div style="margin-top: 8px;">
+        <strong>Notes</strong>
+        <ul id="fund-notes"></ul>
+      </div>
+      <div style="margin-top: 8px;">
+        <strong>Forward Guidance</strong>
+        <table>
+          <tbody id="forward-guidance-body"></tbody>
+        </table>
+      </div>
+      <details>
+        <summary>Raw Fundamental JSON</summary>
+        <pre id="fundamental-json">{}</pre>
+      </details>
+    </div>
+
+    <div class="panel tab-panel" id="tab-technical">
+      <h3>Technical Thesis</h3>
+      <table>
+        <thead>
+          <tr><th>Metric</th><th>Value</th></tr>
+        </thead>
+        <tbody id="tech-table-body"></tbody>
+      </table>
+      <details>
+        <summary>Raw Technical JSON</summary>
+        <pre id="technical-json">{}</pre>
+      </details>
+    </div>
+
+    <div class="panel tab-panel" id="tab-chart">
+      <h3>Price + Indicators</h3>
+      <div class="chart-controls">
+        <label for="chart-days">Candles:</label>
+        <select id="chart-days">
+          <option value="63">63 (1Q minimum)</option>
+          <option value="126">126 (~2Q)</option>
+          <option value="252" selected>252 (~1Y recommended)</option>
+          <option value="504">504 (~2Y)</option>
+        </select>
+        <button class="secondary" id="reload-chart-btn">Reload Chart</button>
+      </div>
+      <div class="chart-grid">
+        <div class="chart-box"><div id="price-chart" style="height: 420px;"></div></div>
+        <div class="chart-box"><div id="volume-obv-chart" style="height: 220px;"></div></div>
+        <div class="chart-box"><div id="macd-chart" style="height: 220px;"></div></div>
+        <div class="chart-box"><div id="rsi-chart" style="height: 220px;"></div></div>
+      </div>
+    </div>
+
+    <div class="panel tab-panel" id="tab-rankings">
+      <h3>Universe Rankings</h3>
+      <div class="rankings-controls">
+        <label>Top/Bottom N <input id="rank-limit" type="number" min="1" max="100" value="20" style="width: 72px;" /></label>
+        <label>Per Sector <input id="rank-per-sector" type="number" min="1" max="20" value="3" style="width: 72px;" /></label>
+        <label>Min Quality <input id="rank-min-quality" type="number" min="0" max="100" step="1" value="50" style="width: 78px;" /></label>
+        <label>Max Age (h) <input id="rank-max-age" type="number" min="1" max="8760" step="1" value="720" style="width: 88px;" /></label>
+        <label>Min Agree <input id="rank-min-agreement" type="number" min="0" max="1" step="0.01" value="0.35" style="width: 72px;" /></label>
+        <label>Max Disp <input id="rank-max-dispersion" type="number" min="0" max="10" step="0.01" value="0.8" style="width: 72px;" /></label>
+        <label>Min Conf <input id="rank-min-confidence" type="number" min="0" max="100" step="0.1" value="40" style="width: 76px;" /></label>
+        <label>Max 1-Model Wt <input id="rank-max-model-weight" type="number" min="0" max="1" step="0.01" value="0.8" style="width: 82px;" /></label>
+        <label class="inline-check"><input id="rank-require-agreement" type="checkbox" checked /> Require Agree</label>
+        <label class="inline-check"><input id="rank-require-dispersion" type="checkbox" checked /> Require Disp</label>
+        <label class="inline-check"><input id="rank-require-multi-model" type="checkbox" checked /> Require Multi-Model</label>
+        <label>Pair Limit <input id="rank-pair-limit" type="number" min="0" max="200" value="25" style="width: 72px;" /></label>
+        <label>Pairs/Sector <input id="rank-pair-per-sector" type="number" min="0" max="20" value="2" style="width: 74px;" /></label>
+        <label>Min Pair Spread <input id="rank-min-pair-spread" type="number" min="0" max="200" step="0.1" value="5" style="width: 84px;" /></label>
+        <label>Portfolio Legs <input id="rank-portfolio-legs" type="number" min="1" max="100" value="10" style="width: 78px;" /></label>
+        <label>Basis
+          <select id="rank-basis">
+            <option value="" selected>any</option>
+            <option value="ttm">ttm</option>
+            <option value="forward">forward</option>
+          </select>
+        </label>
+        <label>Horizon
+          <select id="rank-horizon">
+            <option value="" selected>any</option>
+            <option value="1q">1q</option>
+            <option value="2q">2q</option>
+            <option value="3q">3q</option>
+            <option value="1y">1y</option>
+          </select>
+        </label>
+        <label>Export
+          <select id="rank-export-type">
+            <option value="overall">overall</option>
+            <option value="sectors">sectors</option>
+            <option value="pairs">pairs</option>
+            <option value="portfolio">portfolio</option>
+          </select>
+        </label>
+        <button class="secondary" id="load-rankings-btn">Load Rankings</button>
+        <button class="secondary" id="export-rankings-btn">Export CSV</button>
+      </div>
+
+      <div class="sub" id="rankings-meta">No rankings loaded.</div>
+      <div class="rankings-grid" style="margin-top: 8px;">
+        <div class="summary-card">
+          <div class="sub">Top Long Candidates</div>
+          <table>
+            <thead><tr><th>Symbol</th><th>Sector</th><th>Exp Ret</th><th>Quality</th></tr></thead>
+            <tbody id="rank-overall-longs-body"></tbody>
+          </table>
+        </div>
+        <div class="summary-card">
+          <div class="sub">Top Short Candidates</div>
+          <table>
+            <thead><tr><th>Symbol</th><th>Sector</th><th>Exp Ret</th><th>Quality</th></tr></thead>
+            <tbody id="rank-overall-shorts-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style="margin-top: 10px;">
+        <div class="sub">Sector-Neutral Long/Short Candidates</div>
+        <table>
+          <thead>
+            <tr><th>Sector</th><th>Count</th><th>Spread</th><th>Long Candidates</th><th>Short Candidates</th></tr>
+          </thead>
+          <tbody id="rank-sector-body"></tbody>
+        </table>
+      </div>
+
+      <div style="margin-top: 10px;">
+        <div class="sub">Top Pair Candidates (Market Neutral)</div>
+        <table>
+          <thead>
+            <tr><th>Sector</th><th>Long</th><th>Short</th><th>Spread</th><th>Q Floor</th><th>Agree Floor</th><th>Beta Net</th></tr>
+          </thead>
+          <tbody id="rank-pairs-body"></tbody>
+        </table>
+      </div>
+
+      <div class="rankings-grid" style="margin-top: 10px;">
+        <div class="summary-card">
+          <div class="sub">Portfolio Preview</div>
+          <table>
+            <thead>
+              <tr><th>Mode</th><th>Long</th><th>Short</th><th>Gross</th><th>Net</th><th>Alpha</th><th>Beta Net</th></tr>
+            </thead>
+            <tbody id="rank-portfolio-body"></tbody>
+          </table>
+          <div class="sub" id="rank-beta-coverage">Beta coverage: -</div>
+        </div>
+        <div class="summary-card">
+          <div class="sub">Sector Balance Preview</div>
+          <div class="sub">Equal Weight</div>
+          <table>
+            <thead><tr><th>Sector</th><th>Net Exposure</th></tr></thead>
+            <tbody id="rank-eq-sector-body"></tbody>
+          </table>
+          <div class="sub" style="margin-top: 8px;">Beta Neutral</div>
+          <table>
+            <thead><tr><th>Sector</th><th>Net Exposure</th></tr></thead>
+            <tbody id="rank-bn-sector-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const inputEl = document.getElementById("symbol-input");
+    const suggestionsEl = document.getElementById("suggestions");
+    const modeEl = document.getElementById("mode-select");
+    const basisEl = document.getElementById("basis-select");
+    const horizonEl = document.getElementById("horizon-select");
+    const statusEl = document.getElementById("status");
+    const activeSymbolEl = document.getElementById("active-symbol");
+    const chartDaysEl = document.getElementById("chart-days");
+    const fundamentalEl = document.getElementById("fundamental-json");
+    const technicalEl = document.getElementById("technical-json");
+    const rankLimitEl = document.getElementById("rank-limit");
+    const rankPerSectorEl = document.getElementById("rank-per-sector");
+    const rankMinQualityEl = document.getElementById("rank-min-quality");
+    const rankMaxAgeEl = document.getElementById("rank-max-age");
+    const rankMinAgreementEl = document.getElementById("rank-min-agreement");
+    const rankMaxDispersionEl = document.getElementById("rank-max-dispersion");
+    const rankMinConfidenceEl = document.getElementById("rank-min-confidence");
+    const rankMaxModelWeightEl = document.getElementById("rank-max-model-weight");
+    const rankRequireAgreementEl = document.getElementById("rank-require-agreement");
+    const rankRequireDispersionEl = document.getElementById("rank-require-dispersion");
+    const rankRequireMultiModelEl = document.getElementById("rank-require-multi-model");
+    const rankPairLimitEl = document.getElementById("rank-pair-limit");
+    const rankPairPerSectorEl = document.getElementById("rank-pair-per-sector");
+    const rankMinPairSpreadEl = document.getElementById("rank-min-pair-spread");
+    const rankPortfolioLegsEl = document.getElementById("rank-portfolio-legs");
+    const rankBasisEl = document.getElementById("rank-basis");
+    const rankHorizonEl = document.getElementById("rank-horizon");
+    const rankExportTypeEl = document.getElementById("rank-export-type");
+
+    let activeSymbol = "";
+    let debounceId = null;
+    let lastView = {};
+    let lastChartPayload = null;
+    let rankingsLoaded = false;
+
+    function fmtMoney(v) {
+      if (v === null || v === undefined || Number.isNaN(Number(v))) return "-";
+      return `$${Number(v).toFixed(2)}`;
+    }
+
+    function fmtPct(v) {
+      if (v === null || v === undefined || Number.isNaN(Number(v))) return "-";
+      return `${Number(v).toFixed(2)}%`;
+    }
+
+    function fmtBasis(basis, horizon) {
+      if (!basis) return "-";
+      if (String(basis).toLowerCase() !== "forward") return basis;
+      return `${basis}/${horizon || "-"}`;
+    }
+
+    function fmtGuidanceGrowth(v) {
+      if (v === null || v === undefined || Number.isNaN(Number(v))) return "-";
+      const n = Number(v);
+      const pct = Math.abs(n) <= 2 ? n * 100 : n;
+      return `${pct.toFixed(2)}%`;
+    }
+
+    function fmtGuidanceConfidence(v) {
+      if (v === null || v === undefined || Number.isNaN(Number(v))) return "-";
+      const n = Number(v);
+      return n <= 1 ? `${(n * 100).toFixed(1)}%` : `${n.toFixed(1)}`;
+    }
+
+    function fmtGuidanceRange(range, asMoney = false) {
+      if (!range || typeof range !== "object") return "-";
+      const low = range.low ?? range.min ?? range.start;
+      const high = range.high ?? range.max ?? range.end;
+      const mid = range.mid ?? range.midpoint;
+      const horizon = range.horizon || "";
+      let text = "-";
+
+      if (low !== undefined && high !== undefined && !Number.isNaN(Number(low)) && !Number.isNaN(Number(high))) {
+        if (asMoney) text = `${fmtMoney(low)} to ${fmtMoney(high)}`;
+        else text = `${Number(low).toFixed(2)} to ${Number(high).toFixed(2)}`;
+      } else if (mid !== undefined && !Number.isNaN(Number(mid))) {
+        if (asMoney) text = fmtMoney(mid);
+        else text = Number(mid).toFixed(2);
+      }
+
+      return horizon ? `${text} (${horizon})` : text;
+    }
+
+    function fmtInt(v) {
+      if (v === null || v === undefined || Number.isNaN(Number(v))) return "-";
+      return Number(v).toLocaleString();
+    }
+
+    function setStatus(msg) {
+      statusEl.textContent = msg;
+    }
+
+    function syncHorizonEnabled() {
+      horizonEl.disabled = basisEl.value !== "forward";
+    }
+
+    function syncRankingHorizonEnabled() {
+      rankHorizonEl.disabled = rankBasisEl.value !== "forward";
+      if (rankHorizonEl.disabled) rankHorizonEl.value = "";
+    }
+
+    function setSummary(view) {
+      const s = (view && view.summary) ? view.summary : {};
+      const action = (s.action || "-").toString();
+      const actionEl = document.getElementById("k-action");
+      actionEl.textContent = action;
+      actionEl.className = "v";
+      if (action.includes("buy")) actionEl.classList.add("good");
+      else if (action.includes("sell")) actionEl.classList.add("bad");
+      else if (action !== "-") actionEl.classList.add("warn");
+
+      document.getElementById("k-current").textContent = fmtMoney(s.current_price);
+      document.getElementById("k-target").textContent = fmtMoney(s.target_price || s.blended_fair_value);
+      document.getElementById("k-return").textContent = fmtPct(s.expected_return_pct);
+      document.getElementById("k-basis").textContent = fmtBasis(s.valuation_basis, s.forward_horizon);
+      const q = s.data_quality_score;
+      document.getElementById("k-quality").textContent = q === null || q === undefined ? "-" : `${Number(q).toFixed(1)} / 100`;
+
+      const summaryRows = [
+        ["Symbol", s.symbol || "-"],
+        ["Action", s.action || "-"],
+        ["Confidence", s.confidence_score ?? "-"],
+        ["Investment Grade", s.investment_grade || "-"],
+        ["Valuation Basis", fmtBasis(s.valuation_basis, s.forward_horizon)],
+        ["Guidance Source", s.guidance_source_form || "-"],
+        ["Guidance Confidence", fmtGuidanceConfidence(s.guidance_confidence_score)],
+        ["Sector", s.sector || "-"],
+        ["Market Regime", s.market_regime || "-"],
+        ["Model Agreement", s.model_agreement_score ?? "-"],
+        ["Dispersion", s.dispersion_ratio ?? "-"],
+      ];
+      document.getElementById("summary-table").innerHTML = summaryRows
+        .map(([k, v]) => `<tr><td><strong>${k}</strong></td><td>${v}</td></tr>`)
+        .join("");
+
+      renderValuationDialAndRange(view);
+      renderSignalBoard(view);
+    }
+
+    function valuationState(expectedReturnPct) {
+      const v = Number(expectedReturnPct);
+      if (Number.isNaN(v)) return { label: "unknown", cls: "warn" };
+      if (v >= 15) return { label: "undervalued", cls: "good" };
+      if (v <= -15) return { label: "overvalued", cls: "bad" };
+      return { label: "fairly valued", cls: "warn" };
+    }
+
+    function collectModelFairValues(view) {
+      const models = view?.fundamental?.valuation?.models || {};
+      const values = [];
+      Object.values(models).forEach((m) => {
+        const fv = Number(m?.fair_value_per_share);
+        const applicable = Number(m?.applicable ?? 1);
+        if (!Number.isNaN(fv) && fv > 0 && applicable > 0) values.push(fv);
+      });
+      return values.sort((a, b) => a - b);
+    }
+
+    function renderValuationDialAndRange(view) {
+      const s = view?.summary || {};
+      const current = Number(s.current_price);
+      const target = Number(s.target_price || s.blended_fair_value);
+      const expected = Number(s.expected_return_pct);
+      const state = valuationState(expected);
+      const ratio = (!Number.isNaN(current) && !Number.isNaN(target) && target > 0) ? (current / target) : null;
+      const ratioPct = ratio !== null ? Math.max(0, Math.min(250, ratio * 100)) : 100;
+
+      Plotly.react("valuation-gauge", [{
+        type: "indicator",
+        mode: "gauge+number+delta",
+        value: ratioPct,
+        number: { suffix: "% FV" },
+        delta: { reference: 100, relative: true, valueformat: ".1%" },
+        title: { text: `${state.label.toUpperCase()}` },
+        gauge: {
+          axis: { range: [0, 250] },
+          steps: [
+            { range: [0, 85], color: "#dff3e7" },
+            { range: [85, 115], color: "#fff8e8" },
+            { range: [115, 250], color: "#fde7e7" },
+          ],
+          threshold: { line: { color: "#0f172a", width: 2 }, value: ratioPct },
+        },
+      }], {
+        margin: { l: 20, r: 20, t: 30, b: 10 },
+      }, { displayModeBar: false, responsive: true });
+
+      const values = collectModelFairValues(view);
+      const min = values.length ? values[0] : null;
+      const max = values.length ? values[values.length - 1] : null;
+      const med = values.length ? values[Math.floor(values.length / 2)] : null;
+      const distToMed = (!Number.isNaN(current) && med) ? ((current - med) / med * 100) : null;
+      const fairRows = [
+        ["State", `<span class="${state.cls}">${state.label}</span>`],
+        ["Min Fair", fmtMoney(min)],
+        ["Median Fair", fmtMoney(med)],
+        ["Max Fair", fmtMoney(max)],
+        ["Current vs Median", distToMed === null ? "-" : `${distToMed.toFixed(2)}%`],
+      ];
+      document.getElementById("fair-range-table").innerHTML = fairRows
+        .map(([k, v]) => `<tr><td><strong>${k}</strong></td><td>${v}</td></tr>`)
+        .join("");
+    }
+
+    function renderSignalBoard(view) {
+      const s = view?.summary || {};
+      const tech = view?.technical || {};
+      const pills = [];
+      const state = valuationState(s.expected_return_pct);
+
+      pills.push({ k: "Valuation", v: state.label, cls: state.cls });
+      pills.push({ k: "Action", v: s.action || "-", cls: (String(s.action || "").includes("sell") ? "bad" : (String(s.action || "").includes("buy") ? "good" : "warn")) });
+      pills.push({ k: "Sector", v: s.sector || "-", cls: "warn" });
+      pills.push({ k: "Regime", v: s.market_regime || "-", cls: (s.market_regime === "risk_off" ? "bad" : "good") });
+      pills.push({ k: "Tech", v: tech.recommendation || "-", cls: (String(tech.recommendation || "").includes("buy") ? "good" : (String(tech.recommendation || "").includes("sell") ? "bad" : "warn")) });
+      pills.push({ k: "Model Agree", v: s.model_agreement_score ?? "-", cls: Number(s.model_agreement_score) >= 0.7 ? "good" : "warn" });
+      pills.push({ k: "Dispersion", v: s.dispersion_ratio ?? "-", cls: Number(s.dispersion_ratio) > 0.35 ? "bad" : "good" });
+      pills.push({ k: "Quality", v: s.quality_grade || "-", cls: Number(s.data_quality_score) >= 70 ? "good" : "warn" });
+
+      if (lastChartPayload?.indicators) {
+        const ind = lastChartPayload.indicators;
+        const close = lastChartPayload.ohlcv?.close || [];
+        const c = Number(close[close.length - 1]);
+        const sma20 = Number((ind.sma_20 || [])[ind.sma_20.length - 1]);
+        const sma50 = Number((ind.sma_50 || [])[ind.sma_50.length - 1]);
+        const rsi = Number((ind.rsi_14 || [])[ind.rsi_14.length - 1]);
+        const macd = Number((ind.macd || [])[ind.macd.length - 1]);
+        const signal = Number((ind.macd_signal || [])[ind.macd_signal.length - 1]);
+
+        if (!Number.isNaN(c) && !Number.isNaN(sma20)) pills.push({ k: "Price>SMA20", v: c > sma20 ? "yes" : "no", cls: c > sma20 ? "good" : "bad" });
+        if (!Number.isNaN(c) && !Number.isNaN(sma50)) pills.push({ k: "Price>SMA50", v: c > sma50 ? "yes" : "no", cls: c > sma50 ? "good" : "bad" });
+        if (!Number.isNaN(rsi)) pills.push({ k: "RSI", v: rsi.toFixed(1), cls: (rsi > 70 ? "bad" : (rsi < 30 ? "good" : "warn")) });
+        if (!Number.isNaN(macd) && !Number.isNaN(signal)) pills.push({ k: "MACD", v: macd > signal ? "bull" : "bear", cls: macd > signal ? "good" : "bad" });
+      }
+
+      document.getElementById("signal-board").innerHTML = pills
+        .map((p) => `<span class="signal-pill ${p.cls}"><strong>${p.k}:</strong> ${p.v}</span>`)
+        .join("");
+    }
+
+    function renderForwardGuidance(guidance) {
+      const body = document.getElementById("forward-guidance-body");
+      if (!body) return;
+      if (!guidance || typeof guidance !== "object" || Object.keys(guidance).length === 0) {
+        body.innerHTML = `<tr><td colspan="2">No explicit forward guidance extracted</td></tr>`;
+        return;
+      }
+
+      const rows = [
+        ["Source", guidance.source || "-"],
+        ["Form", guidance.source_form || "-"],
+        ["Filing Date", guidance.filing_date || "-"],
+        ["Confidence", fmtGuidanceConfidence(guidance.confidence_score)],
+        ["Revenue Guidance", fmtGuidanceRange(guidance.revenue_guidance, true)],
+        ["EPS Guidance", fmtGuidanceRange(guidance.eps_guidance, true)],
+        ["Revenue Growth", fmtGuidanceGrowth(guidance.revenue_growth_guidance)],
+        ["Earnings Growth", fmtGuidanceGrowth(guidance.earnings_growth_guidance)],
+      ];
+
+      body.innerHTML = rows
+        .map(([k, v]) => `<tr><td><strong>${k}</strong></td><td>${v}</td></tr>`)
+        .join("");
+    }
+
+    function renderFundamental(view) {
+      const fundamental = view?.fundamental || {};
+      const valuation = fundamental.valuation || {};
+      const models = valuation.models || {};
+      const body = document.getElementById("fund-models-body");
+      const rows = Object.entries(models).map(([name, m]) => {
+        const assumptions = m?.assumptions || {};
+        const basis = assumptions.valuation_basis ? `${assumptions.valuation_basis}/${assumptions.forward_horizon || "-"}` : "-";
+        const applicable = Number(m?.applicable ?? 0) > 0;
+        const statusReason = applicable ? "applicable" : (m?.reason || "-");
+        return `<tr>
+          <td>${name}</td>
+          <td>${fmtMoney(m?.fair_value_per_share)}</td>
+          <td>${m?.weight ?? "-"}</td>
+          <td>${m?.confidence_score ?? "-"}</td>
+          <td>${basis}</td>
+          <td>${statusReason}</td>
+        </tr>`;
+      });
+      body.innerHTML = rows.length ? rows.join("") : `<tr><td colspan="6">No model data</td></tr>`;
+
+      const notes = fundamental.notes || [];
+      const notesEl = document.getElementById("fund-notes");
+      notesEl.innerHTML = notes.length ? notes.map((n) => `<li>${n}</li>`).join("") : "<li>No notes</li>";
+      const forwardGuidance = (
+        fundamental.forward_guidance ||
+        (fundamental.sec && fundamental.sec.forward_guidance) ||
+        {}
+      );
+      renderForwardGuidance(forwardGuidance);
+      fundamentalEl.textContent = JSON.stringify(fundamental, null, 2);
+    }
+
+    async function navigateToSymbol(symbol) {
+      if (!symbol || symbol === "-") return;
+      inputEl.value = symbol;
+      await loadLatest(symbol);
+    }
+
+    function renderRankRows(bodyId, items) {
+      const body = document.getElementById(bodyId);
+      if (!body) return;
+      if (!items || !items.length) {
+        body.innerHTML = `<tr><td colspan="4">No candidates</td></tr>`;
+        return;
+      }
+      body.innerHTML = items.map((item) => {
+        const symbol = item.symbol || "-";
+        const sector = item.sector || "-";
+        const expected = fmtPct(item.expected_return_pct);
+        const quality = item.data_quality_score === null || item.data_quality_score === undefined
+          ? "-"
+          : Number(item.data_quality_score).toFixed(1);
+        return `<tr class="rank-row-clickable" data-symbol="${symbol}">
+          <td>${symbol}</td>
+          <td>${sector}</td>
+          <td>${expected}</td>
+          <td>${quality}</td>
+        </tr>`;
+      }).join("");
+      body.querySelectorAll(".rank-row-clickable").forEach((row) => {
+        row.addEventListener("click", async () => {
+          await navigateToSymbol(row.getAttribute("data-symbol"));
+        });
+      });
+    }
+
+    function formatSectorCandidates(items) {
+      if (!items || !items.length) return "-";
+      return items.map((item) => {
+        const symbol = item.symbol || "-";
+        const expected = fmtPct(item.expected_return_pct);
+        return `${symbol} (${expected})`;
+      }).join(", ");
+    }
+
+    function renderSectorRankings(sectors) {
+      const body = document.getElementById("rank-sector-body");
+      if (!body) return;
+      if (!sectors || !sectors.length) {
+        body.innerHTML = `<tr><td colspan="5">No sector candidates</td></tr>`;
+        return;
+      }
+      body.innerHTML = sectors.map((sectorRow) => {
+        return `<tr>
+          <td>${sectorRow.sector || "-"}</td>
+          <td>${fmtInt(sectorRow.count)}</td>
+          <td>${fmtPct(sectorRow.spread_top_pair_pct)}</td>
+          <td>${formatSectorCandidates(sectorRow.longs)}</td>
+          <td>${formatSectorCandidates(sectorRow.shorts)}</td>
+        </tr>`;
+      }).join("");
+    }
+
+    function renderPairRankings(pairs) {
+      const body = document.getElementById("rank-pairs-body");
+      if (!body) return;
+      if (!pairs || !pairs.length) {
+        body.innerHTML = `<tr><td colspan="7">No pair candidates</td></tr>`;
+        return;
+      }
+
+      body.innerHTML = pairs.map((pair) => {
+        const longItem = pair.long || {};
+        const shortItem = pair.short || {};
+        const longSymbol = longItem.symbol || "-";
+        const shortSymbol = shortItem.symbol || "-";
+        const betaNet = pair.beta_net_estimate === null || pair.beta_net_estimate === undefined
+          ? "-"
+          : Number(pair.beta_net_estimate).toFixed(3);
+        return `<tr>
+          <td>${pair.sector || "-"}</td>
+          <td><span class="rank-symbol-click" data-symbol="${longSymbol}">${longSymbol}</span> (${fmtPct(longItem.expected_return_pct)})</td>
+          <td><span class="rank-symbol-click" data-symbol="${shortSymbol}">${shortSymbol}</span> (${fmtPct(shortItem.expected_return_pct)})</td>
+          <td>${fmtPct(pair.spread_pct)}</td>
+          <td>${pair.quality_floor ?? "-"}</td>
+          <td>${pair.model_agreement_floor ?? "-"}</td>
+          <td>${betaNet}</td>
+        </tr>`;
+      }).join("");
+
+      body.querySelectorAll(".rank-symbol-click").forEach((el) => {
+        el.addEventListener("click", async () => {
+          await navigateToSymbol(el.getAttribute("data-symbol"));
+        });
+      });
+    }
+
+    function renderExposureRows(bodyId, rows) {
+      const body = document.getElementById(bodyId);
+      if (!body) return;
+      if (!rows || !rows.length) {
+        body.innerHTML = `<tr><td colspan="2">No exposure data</td></tr>`;
+        return;
+      }
+      body.innerHTML = rows.map((row) => {
+        const net = row.net_exposure === null || row.net_exposure === undefined
+          ? "-"
+          : `${(Number(row.net_exposure) * 100).toFixed(1)}%`;
+        return `<tr><td>${row.sector || "-"}</td><td>${net}</td></tr>`;
+      }).join("");
+    }
+
+    function renderPortfolioPreview(preview) {
+      const body = document.getElementById("rank-portfolio-body");
+      if (!body) return;
+      if (!preview || typeof preview !== "object" || Object.keys(preview).length === 0) {
+        body.innerHTML = `<tr><td colspan="7">No portfolio preview</td></tr>`;
+        document.getElementById("rank-beta-coverage").textContent = "Beta coverage: -";
+        renderExposureRows("rank-eq-sector-body", []);
+        renderExposureRows("rank-bn-sector-body", []);
+        return;
+      }
+
+      const eq = preview.equal_weight || {};
+      const bn = preview.beta_neutral || {};
+      const toPct = (v) => (v === null || v === undefined || Number.isNaN(Number(v)))
+        ? "-"
+        : `${(Number(v) * 100).toFixed(1)}%`;
+      const toNum = (v) => (v === null || v === undefined || Number.isNaN(Number(v)))
+        ? "-"
+        : Number(v).toFixed(3);
+      const alphaPct = (v) => (v === null || v === undefined || Number.isNaN(Number(v)))
+        ? "-"
+        : `${Number(v).toFixed(2)}%`;
+
+      body.innerHTML = [
+        `<tr>
+          <td>equal_weight</td>
+          <td>${toPct(eq.long_notional)}</td>
+          <td>${toPct(eq.short_notional)}</td>
+          <td>${toPct(eq.gross_exposure)}</td>
+          <td>${toPct(eq.net_exposure)}</td>
+          <td>${alphaPct(eq.expected_alpha_pct)}</td>
+          <td>${toNum(eq.beta_net_estimate)}</td>
+        </tr>`,
+        `<tr>
+          <td>beta_neutral</td>
+          <td>${toPct(bn.long_notional)}</td>
+          <td>${toPct(bn.short_notional)}</td>
+          <td>${toPct(bn.gross_exposure)}</td>
+          <td>${toPct(bn.net_exposure)}</td>
+          <td>${alphaPct(bn.expected_alpha_pct)}</td>
+          <td>${toNum(bn.beta_net_estimate)}</td>
+        </tr>`,
+      ].join("");
+
+      const coverage = preview.beta_coverage || {};
+      const legs = preview.legs || {};
+      const longCovered = coverage.long_beta_available ?? 0;
+      const shortCovered = coverage.short_beta_available ?? 0;
+      const longLegs = legs.longs ?? 0;
+      const shortLegs = legs.shorts ?? 0;
+      document.getElementById("rank-beta-coverage").textContent =
+        `Beta coverage: long ${longCovered}/${longLegs}, short ${shortCovered}/${shortLegs}`;
+
+      renderExposureRows("rank-eq-sector-body", eq.sector_balance || []);
+      renderExposureRows("rank-bn-sector-body", bn.sector_balance || []);
+    }
+
+    function buildRankingParams() {
+      const limit = Math.max(1, Number(rankLimitEl?.value || 20));
+      const perSector = Math.max(1, Number(rankPerSectorEl?.value || 3));
+      const minQuality = Math.max(0, Number(rankMinQualityEl?.value || 50));
+      const maxAgeHours = Math.max(1, Number(rankMaxAgeEl?.value || 720));
+      const minAgreement = Math.max(0, Math.min(1, Number(rankMinAgreementEl?.value || 0.35)));
+      const maxDispersion = Math.max(0, Math.min(10, Number(rankMaxDispersionEl?.value || 0.8)));
+      const minConfidence = Math.max(0, Math.min(100, Number(rankMinConfidenceEl?.value || 40)));
+      const maxSingleModelWeight = Math.max(0, Math.min(1, Number(rankMaxModelWeightEl?.value || 0.8)));
+      const pairLimit = Math.max(0, Number(rankPairLimitEl?.value || 25));
+      const pairPerSector = Math.max(0, Number(rankPairPerSectorEl?.value || 2));
+      const minPairSpread = Math.max(0, Number(rankMinPairSpreadEl?.value || 5));
+      const portfolioLegs = Math.max(1, Number(rankPortfolioLegsEl?.value || 10));
+      const requireAgreement = !!rankRequireAgreementEl?.checked;
+      const requireDispersion = !!rankRequireDispersionEl?.checked;
+      const requireMultiModel = !!rankRequireMultiModelEl?.checked;
+      const basis = rankBasisEl?.value || "";
+      const horizon = rankHorizonEl?.value || "";
+
+      const params = new URLSearchParams();
+      params.set("limit", String(limit));
+      params.set("per_sector", String(perSector));
+      params.set("min_quality", String(minQuality));
+      params.set("max_age_hours", String(maxAgeHours));
+      params.set("min_model_agreement", String(minAgreement));
+      params.set("max_dispersion", String(maxDispersion));
+      params.set("min_confidence", String(minConfidence));
+      params.set("max_single_model_weight", String(maxSingleModelWeight));
+      params.set("pair_limit", String(pairLimit));
+      params.set("pair_per_sector", String(pairPerSector));
+      params.set("min_pair_spread", String(minPairSpread));
+      params.set("portfolio_legs", String(portfolioLegs));
+      if (requireAgreement) params.set("require_model_agreement", "true");
+      if (requireDispersion) params.set("require_dispersion", "true");
+      if (requireMultiModel) params.set("require_multi_model", "true");
+      if (basis) params.set("basis", basis);
+      if (horizon) params.set("forward_horizon", horizon);
+      return { params, basis, horizon };
+    }
+
+    async function loadRankings() {
+      const { params, basis, horizon } = buildRankingParams();
+
+      setStatus("Loading rankings...");
+      const res = await fetch(`/ui/api/rankings?${params.toString()}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setStatus(err.detail || "Failed to load rankings");
+        return;
+      }
+      const data = await res.json();
+      const universe = data.universe || {};
+      const overall = data.overall || {};
+      renderRankRows("rank-overall-longs-body", overall.longs || []);
+      renderRankRows("rank-overall-shorts-body", overall.shorts || []);
+      renderSectorRankings(data.sectors || []);
+      renderPairRankings(data.pairs || []);
+      renderPortfolioPreview(data.portfolio_preview || {});
+
+      const basisLabel = basis || "any";
+      const horizonLabel = horizon || "any";
+      const pairCount = (data.pairs || []).length;
+      document.getElementById("rankings-meta").textContent =
+        `Eligible ${fmtInt(universe.eligible_symbols)} / Cached ${fmtInt(universe.cached_symbols)} symbols, ` +
+        `${fmtInt(universe.sector_count)} sectors, ${fmtInt(pairCount)} pairs (basis=${basisLabel}, horizon=${horizonLabel}).`;
+      rankingsLoaded = true;
+      setStatus("Rankings loaded.");
+    }
+
+    function exportRankingsCsv() {
+      const exportType = rankExportTypeEl?.value || "overall";
+      const { params } = buildRankingParams();
+      params.set("export_type", exportType);
+      window.location.href = `/ui/api/rankings/export.csv?${params.toString()}`;
+    }
+
+    function renderTechnical(view) {
+      const technical = view?.technical || {};
+      const levels = technical.levels || {};
+      const rows = [
+        ["Recommendation", technical.recommendation || "-"],
+        ["Rating", technical.rating ?? "-"],
+        ["Pivot", levels.pivot_point ?? "-"],
+        ["Support 1", levels.support_1 ?? "-"],
+        ["Support 2", levels.support_2 ?? "-"],
+        ["Resistance 1", levels.resistance_1 ?? "-"],
+        ["Resistance 2", levels.resistance_2 ?? "-"],
+      ];
+      document.getElementById("tech-table-body").innerHTML = rows
+        .map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`)
+        .join("");
+      technicalEl.textContent = JSON.stringify(technical, null, 2);
+    }
+
+    function renderView(view) {
+      lastView = view || {};
+      setSummary(lastView);
+      renderFundamental(lastView);
+      renderTechnical(lastView);
+    }
+
+    function tabActivate(tabId) {
+      document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+      document.querySelector(`.tab-btn[data-tab="${tabId}"]`)?.classList.add("active");
+      document.getElementById(`tab-${tabId}`)?.classList.add("active");
+    }
+
+    async function loadLatest(symbol) {
+      if (!symbol) return;
+      setStatus(`Loading latest cached analysis for ${symbol}...`);
+      const res = await fetch(`/ui/api/analysis/${encodeURIComponent(symbol)}/latest`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setStatus(err.detail || `No cached analysis for ${symbol}. Click Refresh.`);
+        return;
+      }
+      const data = await res.json();
+      activeSymbol = symbol;
+      activeSymbolEl.textContent = `Active: ${symbol} (cached: ${data.cached_at || "unknown"})`;
+      renderView(data.view || {});
+      setStatus(`Loaded cached analysis for ${symbol}.`);
+      await loadChart(symbol, Number(chartDaysEl.value));
+    }
+
+    async function refreshSymbol(symbol, mode, valuationBasis, forwardHorizon) {
+      if (!symbol) return;
+      setStatus(`Refreshing ${symbol} (${mode}, ${valuationBasis}/${forwardHorizon})... this can take a while.`);
+      const res = await fetch(`/ui/api/analysis/${encodeURIComponent(symbol)}/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode,
+          backend: "legacy",
+          valuation_basis: valuationBasis,
+          forward_horizon: forwardHorizon,
+          force_refresh: true,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setStatus(err.detail || `Refresh failed for ${symbol}`);
+        return;
+      }
+      const data = await res.json();
+      activeSymbol = symbol;
+      activeSymbolEl.textContent = `Active: ${symbol} (mode: ${mode}, ${valuationBasis}/${forwardHorizon})`;
+      renderView(data.view || {});
+      setStatus(`Refresh complete for ${symbol}.`);
+      await loadChart(symbol, Number(chartDaysEl.value));
+    }
+
+    async function loadChart(symbol, days) {
+      if (!symbol) return;
+      const queryDays = Math.max(63, Number(days || 252));
+      const res = await fetch(`/ui/api/chart/${encodeURIComponent(symbol)}?days=${queryDays}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setStatus(err.detail || `Chart load failed for ${symbol}`);
+        return;
+      }
+      const data = await res.json();
+      const c = data.chart || {};
+      lastChartPayload = c;
+      const d = c.dates || [];
+      const o = c.ohlcv || {};
+      const i = c.indicators || {};
+      const lv = c.levels || {};
+
+      const priceTraces = [
+        {
+          x: d, open: o.open, high: o.high, low: o.low, close: o.close,
+          type: "candlestick", name: "OHLC"
+        },
+        { x: d, y: i.sma_20, type: "scatter", mode: "lines", name: "SMA20", line: { width: 1.5 } },
+        { x: d, y: i.sma_50, type: "scatter", mode: "lines", name: "SMA50", line: { width: 1.5 } },
+        { x: d, y: i.sma_100, type: "scatter", mode: "lines", name: "SMA100", line: { width: 1.2 } },
+        { x: d, y: i.sma_200, type: "scatter", mode: "lines", name: "SMA200", line: { width: 1.2 } },
+        { x: d, y: i.ema_20, type: "scatter", mode: "lines", name: "EMA20", line: { width: 1.2, dash: "dot" } },
+        { x: d, y: i.ema_50, type: "scatter", mode: "lines", name: "EMA50", line: { width: 1.2, dash: "dot" } },
+        { x: d, y: i.ema_100, type: "scatter", mode: "lines", name: "EMA100", line: { width: 1.0, dash: "dot" } },
+        { x: d, y: i.ema_200, type: "scatter", mode: "lines", name: "EMA200", line: { width: 1.0, dash: "dot" } },
+        { x: d, y: i.bb_upper, type: "scatter", mode: "lines", name: "BB Upper", line: { width: 1, color: "#999" } },
+        { x: d, y: i.bb_lower, type: "scatter", mode: "lines", name: "BB Lower", line: { width: 1, color: "#999" }, fill: "tonexty", fillcolor: "rgba(153,153,153,0.08)" },
+      ];
+
+      const bullX = [];
+      const bullY = [];
+      const bearX = [];
+      const bearY = [];
+      const macdArr = i.macd || [];
+      const sigArr = i.macd_signal || [];
+      const highs = o.high || [];
+      const lows = o.low || [];
+      for (let idx = 1; idx < d.length; idx++) {
+        const m0 = Number(macdArr[idx - 1]);
+        const s0 = Number(sigArr[idx - 1]);
+        const m1 = Number(macdArr[idx]);
+        const s1 = Number(sigArr[idx]);
+        if ([m0, s0, m1, s1].some((v) => Number.isNaN(v))) continue;
+        if (m0 <= s0 && m1 > s1) {
+          bullX.push(d[idx]);
+          bullY.push(Number(lows[idx]) * 0.995);
+        } else if (m0 >= s0 && m1 < s1) {
+          bearX.push(d[idx]);
+          bearY.push(Number(highs[idx]) * 1.005);
+        }
+      }
+
+      if (bullX.length) {
+        priceTraces.push({
+          x: bullX,
+          y: bullY,
+          type: "scatter",
+          mode: "markers",
+          name: "Bull Arrow",
+          marker: { symbol: "triangle-up", size: 10, color: "#1b7f46" },
+        });
+      }
+      if (bearX.length) {
+        priceTraces.push({
+          x: bearX,
+          y: bearY,
+          type: "scatter",
+          mode: "markers",
+          name: "Bear Arrow",
+          marker: { symbol: "triangle-down", size: 10, color: "#b42318" },
+        });
+      }
+
+      function levelLine(name, value, color) {
+        if (value === null || value === undefined || d.length === 0) return null;
+        return {
+          x: [d[0], d[d.length - 1]],
+          y: [value, value],
+          type: "scatter",
+          mode: "lines",
+          name,
+          line: { color, width: 1, dash: "dash" },
+        };
+      }
+
+      const levels = [
+        levelLine("Support1", lv.support_1, "#1b7f46"),
+        levelLine("Resistance1", lv.resistance_1, "#b42318"),
+        levelLine("Pivot", lv.pivot_point, "#9a6700"),
+        levelLine("Fair Value", lv.fair_value, "#005f73"),
+      ].filter(Boolean);
+
+      Plotly.react("price-chart", [...priceTraces, ...levels], {
+        title: `${symbol} Price`,
+        autosize: true,
+        margin: { l: 40, r: 20, t: 36, b: 30 },
+        xaxis: { rangeslider: { visible: false } },
+        yaxis: { title: "Price" },
+        legend: { orientation: "h" },
+      }, { responsive: true, displayModeBar: false });
+
+      Plotly.react("volume-obv-chart", [
+        { x: d, y: o.volume, type: "bar", name: "Volume", marker: { opacity: 0.45 } },
+        { x: d, y: i.obv, type: "scatter", mode: "lines", name: "OBV", yaxis: "y2", line: { color: "#005f73", width: 1.5 } }
+      ], {
+        title: "Volume / OBV",
+        autosize: true,
+        margin: { l: 40, r: 40, t: 30, b: 30 },
+        yaxis: { title: "Volume" },
+        yaxis2: { title: "OBV", overlaying: "y", side: "right" },
+        legend: { orientation: "h" },
+      }, { responsive: true, displayModeBar: false });
+
+      Plotly.react("macd-chart", [
+        { x: d, y: i.macd_hist, type: "bar", name: "MACD Hist", marker: { opacity: 0.5 } },
+        { x: d, y: i.macd, type: "scatter", mode: "lines", name: "MACD", line: { width: 1.5 } },
+        { x: d, y: i.macd_signal, type: "scatter", mode: "lines", name: "Signal", line: { width: 1.5, dash: "dot" } },
+      ], {
+        title: "MACD (12,26,9)",
+        autosize: true,
+        margin: { l: 40, r: 20, t: 30, b: 30 },
+        legend: { orientation: "h" },
+      }, { responsive: true, displayModeBar: false });
+
+      Plotly.react("rsi-chart", [
+        { x: d, y: i.rsi_14, type: "scatter", mode: "lines", name: "RSI14", line: { color: "#6f42c1", width: 1.5 } },
+        { x: [d[0], d[d.length - 1]], y: [70, 70], type: "scatter", mode: "lines", name: "70", line: { dash: "dash", color: "#b42318" } },
+        { x: [d[0], d[d.length - 1]], y: [30, 30], type: "scatter", mode: "lines", name: "30", line: { dash: "dash", color: "#1b7f46" } },
+      ], {
+        title: "RSI",
+        autosize: true,
+        margin: { l: 40, r: 20, t: 30, b: 30 },
+        yaxis: { range: [0, 100] },
+        legend: { orientation: "h" },
+      }, { responsive: true, displayModeBar: false });
+
+      renderSignalBoard(lastView);
+      setTimeout(resizeCharts, 40);
+    }
+
+    function resizeCharts() {
+      const ids = ["price-chart", "volume-obv-chart", "macd-chart", "rsi-chart"];
+      ids.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el && el.data && el.layout && window.Plotly && Plotly.Plots) {
+          Plotly.Plots.resize(el);
+        }
+      });
+    }
+
+    async function searchSymbols(query) {
+      if (!query || query.length < 1) {
+        suggestionsEl.style.display = "none";
+        suggestionsEl.innerHTML = "";
+        return;
+      }
+      const res = await fetch(`/ui/api/search?query=${encodeURIComponent(query)}&limit=12`);
+      const data = await res.json().catch(() => ({ results: [] }));
+      const rows = data.results || [];
+      if (!rows.length) {
+        suggestionsEl.style.display = "none";
+        suggestionsEl.innerHTML = "";
+        return;
+      }
+      suggestionsEl.innerHTML = rows.map((r) => `
+        <div class="suggestion" data-symbol="${r.symbol}">
+          <strong>${r.symbol}</strong> - ${r.name || ""}<br />
+          <span class="sub">${r.sector || "Unknown"} / ${r.industry || "Unknown"}</span>
+        </div>
+      `).join("");
+      suggestionsEl.style.display = "block";
+      suggestionsEl.querySelectorAll(".suggestion").forEach((el) => {
+        el.addEventListener("click", async () => {
+          const symbol = el.getAttribute("data-symbol");
+          inputEl.value = symbol;
+          suggestionsEl.style.display = "none";
+          await loadLatest(symbol);
+        });
+      });
+    }
+
+    inputEl.addEventListener("input", () => {
+      clearTimeout(debounceId);
+      debounceId = setTimeout(() => searchSymbols(inputEl.value.trim()), 150);
+    });
+    basisEl.addEventListener("change", syncHorizonEnabled);
+    syncHorizonEnabled();
+    rankBasisEl.addEventListener("change", syncRankingHorizonEnabled);
+    syncRankingHorizonEnabled();
+
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const tab = btn.getAttribute("data-tab");
+        tabActivate(tab);
+        if (tab === "chart" && activeSymbol) {
+          await loadChart(activeSymbol, Number(chartDaysEl.value));
+          setTimeout(resizeCharts, 20);
+        } else if (tab === "rankings" && !rankingsLoaded) {
+          await loadRankings();
+        }
+      });
+    });
+
+    window.addEventListener("resize", () => {
+      resizeCharts();
+    });
+
+    document.getElementById("load-latest-btn").addEventListener("click", async () => {
+      const symbol = (inputEl.value || "").trim().toUpperCase();
+      if (!symbol) return setStatus("Enter a symbol first.");
+      await loadLatest(symbol);
+    });
+
+    document.getElementById("refresh-btn").addEventListener("click", async () => {
+      const symbol = (inputEl.value || "").trim().toUpperCase();
+      if (!symbol) return setStatus("Enter a symbol first.");
+      await refreshSymbol(symbol, modeEl.value, basisEl.value, horizonEl.value);
+    });
+
+    document.getElementById("reload-chart-btn").addEventListener("click", async () => {
+      if (!activeSymbol) return setStatus("Load a symbol first.");
+      await loadChart(activeSymbol, Number(chartDaysEl.value));
+    });
+
+    document.getElementById("load-rankings-btn").addEventListener("click", async () => {
+      await loadRankings();
+    });
+
+    document.getElementById("export-rankings-btn").addEventListener("click", () => {
+      exportRankingsCsv();
+    });
+  </script>
+</body>
+</html>

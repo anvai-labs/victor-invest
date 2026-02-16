@@ -19,9 +19,5 @@ class CacheType(Enum):
     SUBMISSION_DATA = "submission_data"  # For all_submission_store - RDBMS only
     COMPANY_FACTS = "company_facts"
     QUARTERLY_METRICS = "quarterly_metrics"
-    MARKET_CONTEXT = (
-        "market_context"  # Market-wide and sector data (macro indicators, ETFs)
-    )
-    INDUSTRY_METRICS = (
-        "industry_metrics"  # Industry-specific metrics from IndustryDatasetRegistry
-    )
+    MARKET_CONTEXT = "market_context"  # Market-wide and sector data (macro indicators, ETFs)
+    INDUSTRY_METRICS = "industry_metrics"  # Industry-specific metrics from IndustryDatasetRegistry

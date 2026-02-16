@@ -548,15 +548,11 @@ class OutcomeTracker:
         # Calculate predicted upside
         predicted_upside_pct = 0.0
         if current_price and current_price > 0:
-            predicted_upside_pct = (
-                (blended_fair_value - current_price) / current_price
-            ) * 100
+            predicted_upside_pct = ((blended_fair_value - current_price) / current_price) * 100
 
         # Convert context to dict if needed
         context_dict = (
-            context_features.to_dict()
-            if isinstance(context_features, ValuationContext)
-            else context_features
+            context_features.to_dict() if isinstance(context_features, ValuationContext) else context_features
         )
 
         # Get AB test group string
@@ -599,9 +595,7 @@ class OutcomeTracker:
             Tuple of (updated_count, error_count).
         """
         if not self.price_service:
-            logger.warning(
-                "No price history service configured, skipping outcome update"
-            )
+            logger.warning("No price history service configured, skipping outcome update")
             return 0, 0
 
         updated_count = 0
@@ -612,9 +606,7 @@ class OutcomeTracker:
         for record in pending_30d:
             try:
                 target_date = record["analysis_date"] + timedelta(days=30)
-                price = await self.price_service.get_price_on_date(
-                    record["symbol"], target_date
-                )
+                price = await self.price_service.get_price_on_date(record["symbol"], target_date)
                 if price:
                     self.dao.update_outcome_prices(record["id"], actual_price_30d=price)
                     updated_count += 1
@@ -627,9 +619,7 @@ class OutcomeTracker:
         for record in pending_90d:
             try:
                 target_date = record["analysis_date"] + timedelta(days=90)
-                price = await self.price_service.get_price_on_date(
-                    record["symbol"], target_date
-                )
+                price = await self.price_service.get_price_on_date(record["symbol"], target_date)
                 if price:
                     self.dao.update_outcome_prices(record["id"], actual_price_90d=price)
 
@@ -651,9 +641,7 @@ class OutcomeTracker:
                 logger.error(f"Error updating 90d outcome for {record['symbol']}: {e}")
                 error_count += 1
 
-        logger.info(
-            f"Outcome update complete: {updated_count} updated, {error_count} errors"
-        )
+        logger.info(f"Outcome update complete: {updated_count} updated, {error_count} errors")
         return updated_count, error_count
 
     def _calculate_rewards(
@@ -717,11 +705,7 @@ class OutcomeTracker:
             reward_30d = result_30d.reward
 
         # Calculate error for reporting
-        error_90d = (
-            abs(blended_fair_value - actual_price_90d) / actual_price_90d
-            if actual_price_90d > 0
-            else 0
-        )
+        error_90d = abs(blended_fair_value - actual_price_90d) / actual_price_90d if actual_price_90d > 0 else 0
 
         return {
             "reward_90d": round(result_90d.reward, 4),
@@ -750,9 +734,7 @@ class OutcomeTracker:
         Returns:
             List of Experience objects ready for training.
         """
-        records = self.dao.get_training_ready_experiences(
-            limit=limit, exclude_used=exclude_used
-        )
+        records = self.dao.get_training_ready_experiences(limit=limit, exclude_used=exclude_used)
 
         experiences = []
         for record in records:
@@ -763,9 +745,7 @@ class OutcomeTracker:
                     reward_30d=record["reward_30d"],
                     reward_90d=record["reward_90d"],
                     reward_365d=record["reward_365d"],
-                    direction_correct_90d=record.get("per_model_rewards", {}).get(
-                        "direction_correct"
-                    ),
+                    direction_correct_90d=record.get("per_model_rewards", {}).get("direction_correct"),
                 )
 
                 experience = Experience(

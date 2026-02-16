@@ -53,9 +53,7 @@ class InsiderTradingDAO:
     stored in PostgreSQL.
     """
 
-    def __init__(
-        self, db_config: Optional[Dict] = None, engine: Optional[Engine] = None
-    ):
+    def __init__(self, db_config: Optional[Dict] = None, engine: Optional[Engine] = None):
         """Initialize DAO with database configuration.
 
         Args:
@@ -98,7 +96,8 @@ class InsiderTradingDAO:
             True if saved successfully
         """
         try:
-            query = text("""
+            query = text(
+                """
                 INSERT INTO form4_filings (
                     symbol, cik, accession_number, filing_date,
                     owner_name, owner_title, is_director, is_officer,
@@ -119,7 +118,8 @@ class InsiderTradingDAO:
                     is_significant = EXCLUDED.is_significant,
                     significance_reasons = EXCLUDED.significance_reasons
                 RETURNING id
-            """)
+            """
+            )
 
             # Determine primary transaction type
             transaction_type = "Other"
@@ -142,30 +142,18 @@ class InsiderTradingDAO:
                 reasons.append(f"Large sale: ${filing.total_sale_value:,.0f}")
 
             params = {
-                "symbol": filing.issuer_symbol.upper()
-                if filing.issuer_symbol
-                else None,
+                "symbol": filing.issuer_symbol.upper() if filing.issuer_symbol else None,
                 "cik": filing.issuer_cik,
                 "accession_number": filing.accession_number,
                 "filing_date": filing.filing_date,
-                "owner_name": filing.reporting_owner.name
-                if filing.reporting_owner
-                else None,
-                "owner_title": filing.reporting_owner.title
-                if filing.reporting_owner
-                else None,
-                "is_director": filing.reporting_owner.is_director
-                if filing.reporting_owner
-                else False,
-                "is_officer": filing.reporting_owner.is_officer
-                if filing.reporting_owner
-                else False,
+                "owner_name": filing.reporting_owner.name if filing.reporting_owner else None,
+                "owner_title": filing.reporting_owner.title if filing.reporting_owner else None,
+                "is_director": filing.reporting_owner.is_director if filing.reporting_owner else False,
+                "is_officer": filing.reporting_owner.is_officer if filing.reporting_owner else False,
                 "transaction_type": transaction_type,
                 "transaction_code": transaction_code,
                 "shares": sum(t.shares for t in filing.transactions),
-                "price_per_share": filing.transactions[0].price_per_share
-                if filing.transactions
-                else 0,
+                "price_per_share": filing.transactions[0].price_per_share if filing.transactions else 0,
                 "total_value": filing.net_value,
                 "is_significant": filing.is_significant,
                 "significance_reasons": reasons,
@@ -198,9 +186,7 @@ class InsiderTradingDAO:
                 saved += 1
         return saved
 
-    def get_recent_activity(
-        self, symbol: str, days: int = 30, significant_only: bool = False
-    ) -> List[Dict[str, Any]]:
+    def get_recent_activity(self, symbol: str, days: int = 30, significant_only: bool = False) -> List[Dict[str, Any]]:
         """Get recent insider activity for a symbol.
 
         Args:
@@ -243,9 +229,7 @@ class InsiderTradingDAO:
             query = text(query_str)
 
             with self.engine.connect() as conn:
-                result = conn.execute(
-                    query, {"symbol": symbol, "cutoff_date": cutoff_date}
-                )
+                result = conn.execute(query, {"symbol": symbol, "cutoff_date": cutoff_date})
 
                 filings = []
                 for row in result.fetchall():
@@ -289,7 +273,8 @@ class InsiderTradingDAO:
         try:
             cutoff_date = date.today() - timedelta(days=days)
 
-            query = text("""
+            query = text(
+                """
                 SELECT
                     COUNT(*) FILTER (WHERE transaction_code = 'P') AS purchase_count,
                     COUNT(*) FILTER (WHERE transaction_code = 'S') AS sale_count,
@@ -300,12 +285,11 @@ class InsiderTradingDAO:
                 FROM form4_filings
                 WHERE UPPER(symbol) = UPPER(:symbol)
                 AND filing_date >= :cutoff_date
-            """)
+            """
+            )
 
             with self.engine.connect() as conn:
-                result = conn.execute(
-                    query, {"symbol": symbol, "cutoff_date": cutoff_date}
-                ).fetchone()
+                result = conn.execute(query, {"symbol": symbol, "cutoff_date": cutoff_date}).fetchone()
 
                 if not result:
                     return self._empty_sentiment(symbol, days)
@@ -346,9 +330,9 @@ class InsiderTradingDAO:
                     sentiment_label = "neutral"
 
                 # Detect cluster buying/selling
-                cluster_detected = (
-                    purchase_count >= 3 and purchase_value > 500000
-                ) or (sale_count >= 3 and sale_value > 500000)
+                cluster_detected = (purchase_count >= 3 and purchase_value > 500000) or (
+                    sale_count >= 3 and sale_value > 500000
+                )
 
                 return {
                     "symbol": symbol,
@@ -388,9 +372,7 @@ class InsiderTradingDAO:
             "analysis_date": str(date.today()),
         }
 
-    def get_key_insider_transactions(
-        self, symbol: str, days: int = 90
-    ) -> List[Dict[str, Any]]:
+    def get_key_insider_transactions(self, symbol: str, days: int = 90) -> List[Dict[str, Any]]:
         """Get transactions from key insiders only.
 
         Key insiders: CEO, CFO, Directors, 10% owners
@@ -405,7 +387,8 @@ class InsiderTradingDAO:
         try:
             cutoff_date = date.today() - timedelta(days=days)
 
-            query = text("""
+            query = text(
+                """
                 SELECT
                     accession_number,
                     filing_date,
@@ -427,12 +410,11 @@ class InsiderTradingDAO:
                     OR LOWER(owner_title) LIKE '%president%'
                 )
                 ORDER BY filing_date DESC
-            """)
+            """
+            )
 
             with self.engine.connect() as conn:
-                result = conn.execute(
-                    query, {"symbol": symbol, "cutoff_date": cutoff_date}
-                )
+                result = conn.execute(query, {"symbol": symbol, "cutoff_date": cutoff_date})
 
                 transactions = []
                 for row in result.fetchall():
@@ -465,12 +447,14 @@ class InsiderTradingDAO:
             CIK string or None
         """
         try:
-            query = text("""
+            query = text(
+                """
                 SELECT cik
                 FROM ticker_cik_mapping
                 WHERE UPPER(ticker) = UPPER(:symbol)
                 LIMIT 1
-            """)
+            """
+            )
 
             with self.engine.connect() as conn:
                 result = conn.execute(query, {"symbol": symbol}).fetchone()

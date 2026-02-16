@@ -242,9 +242,7 @@ class TestDataQualityScorer:
         }
         result = scorer.score_metrics(data)
         # GGM requires dividend data which is missing
-        assert result.model_applicability.get(
-            "ggm", 0
-        ) < result.model_applicability.get("ps", 1)
+        assert result.model_applicability.get("ggm", 0) < result.model_applicability.get("ps", 1)
 
     def test_recency_score_current(self, scorer):
         """Test recency score with current data."""
@@ -336,9 +334,7 @@ class TestQualityScorerEdgeCases:
         # Returns POOR (not INSUFFICIENT) due to recency/consistency contributing to score
         assert result.level in [DataQualityLevel.POOR, DataQualityLevel.INSUFFICIENT]
         # Most models should not be applicable
-        applicable_count = sum(
-            1 for v in result.model_applicability.values() if v >= 0.5
-        )
+        applicable_count = sum(1 for v in result.model_applicability.values() if v >= 0.5)
         assert applicable_count <= 2  # Few models should be applicable
 
     def test_mixed_valid_invalid(self, scorer):

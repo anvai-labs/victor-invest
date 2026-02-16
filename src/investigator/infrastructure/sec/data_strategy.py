@@ -65,12 +65,13 @@ class SECDataStrategy:
     - Direct API call for latest filings
     """
 
+    # Prevent duplicate stale warnings for the same symbol within a process run.
+    _stale_warning_symbols = set()
+
     def __init__(self, engine):
         self.engine = engine
 
-    def get_latest_fiscal_period(
-        self, symbol: str, cik: str
-    ) -> Tuple[Optional[int], Optional[str], Optional[str]]:
+    def get_latest_fiscal_period(self, symbol: str, cik: str) -> Tuple[Optional[int], Optional[str], Optional[str]]:
         """
         Get latest fiscal period using 2-tier strategy
 
@@ -91,29 +92,31 @@ class SECDataStrategy:
 
             if age_days is not None and age_days < 90:
                 logger.info(
-                    f"Using bulk-loaded data for {symbol}: {fy}-{fp} "
-                    f"({age_days:.0f} days old, ADSH: {adsh})"
+                    f"Using bulk-loaded data for {symbol}: {fy}-{fp} " f"({age_days:.0f} days old, ADSH: {adsh})"
                 )
                 return (fy, fp, adsh)
             else:
-                logger.warning(
-                    f"Bulk data for {symbol} is stale ({age_days:.0f} days old). "
-                    f"Will attempt CompanyFacts API as fallback."
-                )
+                symbol_key = (symbol or "").upper()
+                if symbol_key not in self._stale_warning_symbols:
+                    logger.warning(
+                        f"Bulk data for {symbol} is stale ({age_days:.0f} days old). "
+                        f"Will attempt CompanyFacts API as fallback."
+                    )
+                    self._stale_warning_symbols.add(symbol_key)
+                else:
+                    logger.debug(
+                        f"Bulk data for {symbol} remains stale ({age_days:.0f} days old). "
+                        f"Using CompanyFacts API fallback."
+                    )
 
         # TIER 2: Fallback to CompanyFacts API
-        logger.info(
-            f"Bulk data unavailable or stale for {symbol}. "
-            f"Using CompanyFacts API fallback."
-        )
+        logger.info(f"Bulk data unavailable or stale for {symbol}. " f"Using CompanyFacts API fallback.")
 
         # Note: CompanyFacts API extraction handled by caller
         # Return None to signal caller to use API
         return (None, None, None)
 
-    def _get_from_bulk_tables(
-        self, cik: str
-    ) -> Tuple[Optional[int], Optional[str], Optional[str]]:
+    def _get_from_bulk_tables(self, cik: str) -> Tuple[Optional[int], Optional[str], Optional[str]]:
         """
         Query sec_sub_data for latest filed quarter
 
@@ -193,9 +196,7 @@ class SECDataStrategy:
             logger.debug(f"Error checking bulk data age for CIK {cik}: {e}")
             return None
 
-    def get_8_quarters_hybrid(
-        self, symbol: str, cik: str, max_bulk_age_days: int = 180
-    ) -> List[Dict]:
+    def get_8_quarters_hybrid(self, symbol: str, cik: str, max_bulk_age_days: int = 180) -> List[Dict]:
         """
         ALWAYS return 8 quarters using hybrid strategy
 
@@ -265,17 +266,13 @@ class SECDataStrategy:
                             reverse=True,
                         )
                     except Exception:
-                        sorted_bulk = (
-                            bulk_quarters  # Fallback to unsorted if sorting fails
-                        )
+                        sorted_bulk = bulk_quarters  # Fallback to unsorted if sorting fails
 
                     if bulk_age <= 180:
                         # Scenario: Bulk is reasonably fresh (90-180 days)
                         # Strategy: Use most bulk (7 quarters), fetch latest 1 from API
                         # Rationale: Latest quarter may have restatements, older quarters are stable
-                        use_bulk_quarters = sorted_bulk[
-                            1:8
-                        ]  # Skip most recent, use next 7
+                        use_bulk_quarters = sorted_bulk[1:8]  # Skip most recent, use next 7
                         logger.info(
                             f"Bulk data moderately stale ({bulk_age:.0f} days, threshold: 90 days). "
                             f"Using {len(use_bulk_quarters)} historical quarters from bulk, "
@@ -285,9 +282,7 @@ class SECDataStrategy:
                         # Scenario: Bulk is stale (180-270 days / ~6-9 months)
                         # Strategy: Use bulk for older quarters (6), fetch recent 2 from API
                         # Rationale: Recent 2 quarters may have updates, older 6 are stable
-                        use_bulk_quarters = sorted_bulk[
-                            2:8
-                        ]  # Skip 2 most recent, use next 6
+                        use_bulk_quarters = sorted_bulk[2:8]  # Skip 2 most recent, use next 6
                         logger.info(
                             f"Bulk data stale ({bulk_age:.0f} days, threshold: 180 days). "
                             f"Using {len(use_bulk_quarters)} historical quarters from bulk, "
@@ -308,11 +303,7 @@ class SECDataStrategy:
                         )
                         use_bulk_quarters = sorted_bulk[4:8]  # Use oldest 4 from bulk
                     except Exception:
-                        use_bulk_quarters = (
-                            bulk_quarters[4:8]
-                            if len(bulk_quarters) >= 8
-                            else bulk_quarters[:]
-                        )
+                        use_bulk_quarters = bulk_quarters[4:8] if len(bulk_quarters) >= 8 else bulk_quarters[:]
 
                     logger.info(
                         f"Bulk data very stale ({bulk_age:.0f} days, threshold: 270 days). "
@@ -324,9 +315,7 @@ class SECDataStrategy:
             needed_quarters = 8 - len(use_bulk_quarters)
 
             if needed_quarters > 0:
-                logger.info(
-                    f"Need {needed_quarters} additional quarters from API for {symbol}"
-                )
+                logger.info(f"Need {needed_quarters} additional quarters from API for {symbol}")
 
                 # Fetch from CompanyFacts API using clean architecture
                 api_quarters = []
@@ -345,9 +334,7 @@ class SECDataStrategy:
 
                         if us_gaap and "Revenues" in us_gaap:
                             # Extract fiscal periods from Revenues data
-                            revenues_units = (
-                                us_gaap["Revenues"].get("units", {}).get("USD", [])
-                            )
+                            revenues_units = us_gaap["Revenues"].get("units", {}).get("USD", [])
 
                             # Filter to SEC filings (including foreign 20-F/6-K)
                             quarterly_filings = [
@@ -357,28 +344,20 @@ class SECDataStrategy:
                             ]
 
                             # Sort by filed date (newest first) and get latest N
-                            quarterly_filings.sort(
-                                key=lambda x: x.get("filed", ""), reverse=True
-                            )
+                            quarterly_filings.sort(key=lambda x: x.get("filed", ""), reverse=True)
 
                             # Get the needed quarters
-                            for entry in quarterly_filings[
-                                : needed_quarters * 2
-                            ]:  # Get extra to filter
+                            for entry in quarterly_filings[: needed_quarters * 2]:  # Get extra to filter
                                 # Skip if we already have this quarter from bulk
                                 fy = entry.get("fy")
                                 fp = entry.get("fp")
 
                                 # Check if already in bulk quarters
                                 already_have = any(
-                                    q["fiscal_year"] == fy and q["fiscal_period"] == fp
-                                    for q in use_bulk_quarters
+                                    q["fiscal_year"] == fy and q["fiscal_period"] == fp for q in use_bulk_quarters
                                 )
 
-                                if (
-                                    not already_have
-                                    and len(api_quarters) < needed_quarters
-                                ):
+                                if not already_have and len(api_quarters) < needed_quarters:
                                     api_quarters.append(
                                         {
                                             "fiscal_year": fy,
@@ -415,14 +394,10 @@ class SECDataStrategy:
                     f"= {len(combined_quarters[:8])} total quarters for {symbol}"
                 )
 
-                return combined_quarters[
-                    :8
-                ]  # Return List[Dict] - fundamental_agent will convert to QuarterlyData
+                return combined_quarters[:8]  # Return List[Dict] - fundamental_agent will convert to QuarterlyData
 
             # Step 5: Return exactly 8 quarters (or less if not enough data exists)
-            return use_bulk_quarters[
-                :8
-            ]  # Return List[Dict] - fundamental_agent will convert to QuarterlyData
+            return use_bulk_quarters[:8]  # Return List[Dict] - fundamental_agent will convert to QuarterlyData
 
         except Exception as e:
             logger.error(f"Error in hybrid 8-quarter retrieval for {symbol}: {e}")
@@ -493,9 +468,7 @@ class SECDataStrategy:
             )
 
             with self.engine.connect() as conn:
-                results = conn.execute(
-                    query, {"cik": cik_int, "limit": num_quarters}
-                ).fetchall()
+                results = conn.execute(query, {"cik": cik_int, "limit": num_quarters}).fetchall()
 
             # Detect fiscal_year_end from FY periods in results
             fiscal_year_end = None
@@ -503,17 +476,11 @@ class SECDataStrategy:
                 if row.fp == "FY" and row.period:
                     try:
                         fy_end_date = datetime.strptime(str(row.period), "%Y-%m-%d")
-                        fiscal_year_end = (
-                            f"-{fy_end_date.month:02d}-{fy_end_date.day:02d}"
-                        )
-                        logger.debug(
-                            f"[Q1 Fix] {symbol}: Detected fiscal_year_end = {fiscal_year_end} from FY period"
-                        )
+                        fiscal_year_end = f"-{fy_end_date.month:02d}-{fy_end_date.day:02d}"
+                        logger.debug(f"[Q1 Fix] {symbol}: Detected fiscal_year_end = {fiscal_year_end} from FY period")
                         break  # Use first FY found
                     except Exception as e:
-                        logger.warning(
-                            f"[Q1 Fix] {symbol}: Failed to parse FY period date: {e}"
-                        )
+                        logger.warning(f"[Q1 Fix] {symbol}: Failed to parse FY period date: {e}")
 
             quarters = []
             for row in results:
@@ -524,22 +491,15 @@ class SECDataStrategy:
                 # Q1/Q2/Q3/Q4 can cross calendar year boundary. If period_end is after fiscal_year_end,
                 # the quarter belongs to the NEXT fiscal year.
                 # Examples: ORCL (FY ends May 31): Q2 (Nov), Q3 (Feb) → fiscal_year = period_year + 1
-                if (
-                    fiscal_period in ["Q1", "Q2", "Q3", "Q4"]
-                    and fiscal_year_end
-                    and row.period
-                ):
+                if fiscal_period in ["Q1", "Q2", "Q3", "Q4"] and fiscal_year_end and row.period:
                     try:
                         period_end_date = datetime.strptime(str(row.period), "%Y-%m-%d")
                         # Extract month/day from fiscal_year_end (format: '-MM-DD')
-                        fy_end_month, fy_end_day = map(
-                            int, fiscal_year_end[1:].split("-")
-                        )
+                        fy_end_month, fy_end_day = map(int, fiscal_year_end[1:].split("-"))
 
                         # Check if period_end is after fiscal_year_end
                         if (period_end_date.month > fy_end_month) or (
-                            period_end_date.month == fy_end_month
-                            and period_end_date.day > fy_end_day
+                            period_end_date.month == fy_end_month and period_end_date.day > fy_end_day
                         ):
                             original_fy = fiscal_year
                             fiscal_year += 1
@@ -575,9 +535,7 @@ class SECDataStrategy:
             logger.error(f"Error retrieving multi-quarter data for {symbol}: {e}")
             return []
 
-    def get_complete_fiscal_year(
-        self, symbol: str, cik: str, fiscal_year: int
-    ) -> List[Dict]:
+    def get_complete_fiscal_year(self, symbol: str, cik: str, fiscal_year: int) -> List[Dict]:
         """
         Get all filings for a complete fiscal year (Q1, Q2, Q3, Q4, FY)
 
@@ -617,9 +575,7 @@ class SECDataStrategy:
             )
 
             with self.engine.connect() as conn:
-                results = conn.execute(
-                    query, {"cik": cik_int, "fiscal_year": fiscal_year}
-                ).fetchall()
+                results = conn.execute(query, {"cik": cik_int, "fiscal_year": fiscal_year}).fetchall()
 
             # Detect fiscal_year_end from FY period in results
             fiscal_year_end = None
@@ -627,17 +583,11 @@ class SECDataStrategy:
                 if row.fp == "FY" and row.period:
                     try:
                         fy_end_date = datetime.strptime(str(row.period), "%Y-%m-%d")
-                        fiscal_year_end = (
-                            f"-{fy_end_date.month:02d}-{fy_end_date.day:02d}"
-                        )
-                        logger.debug(
-                            f"[Q1 Fix] {symbol}: Detected fiscal_year_end = {fiscal_year_end} from FY period"
-                        )
+                        fiscal_year_end = f"-{fy_end_date.month:02d}-{fy_end_date.day:02d}"
+                        logger.debug(f"[Q1 Fix] {symbol}: Detected fiscal_year_end = {fiscal_year_end} from FY period")
                         break  # Use first FY found
                     except Exception as e:
-                        logger.warning(
-                            f"[Q1 Fix] {symbol}: Failed to parse FY period date: {e}"
-                        )
+                        logger.warning(f"[Q1 Fix] {symbol}: Failed to parse FY period date: {e}")
 
             quarters = []
             for row in results:
@@ -650,13 +600,10 @@ class SECDataStrategy:
                 if fp in ["Q1", "Q2", "Q3", "Q4"] and fiscal_year_end and row.period:
                     try:
                         period_end_date = datetime.strptime(str(row.period), "%Y-%m-%d")
-                        fy_end_month, fy_end_day = map(
-                            int, fiscal_year_end[1:].split("-")
-                        )
+                        fy_end_month, fy_end_day = map(int, fiscal_year_end[1:].split("-"))
 
                         if (period_end_date.month > fy_end_month) or (
-                            period_end_date.month == fy_end_month
-                            and period_end_date.day > fy_end_day
+                            period_end_date.month == fy_end_month and period_end_date.day > fy_end_day
                         ):
                             original_fy = fy
                             fy += 1
@@ -666,9 +613,7 @@ class SECDataStrategy:
                                 f"(fiscal year ends {fiscal_year_end})"
                             )
                     except Exception as e:
-                        logger.warning(
-                            f"[Fiscal Year Adjustment] {symbol}: Failed to adjust {fp} fiscal year: {e}"
-                        )
+                        logger.warning(f"[Fiscal Year Adjustment] {symbol}: Failed to adjust {fp} fiscal year: {e}")
 
                 quarters.append(
                     {

@@ -15,14 +15,13 @@ Usage:
 """
 
 import logging
-import pandas as pd
 from io import StringIO
-from sqlalchemy import create_engine, text
-import requests
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+import pandas as pd
+import requests
+from sqlalchemy import create_engine, text
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # NASDAQ FTP URLs for symbol directories
@@ -125,9 +124,7 @@ def download_nasdaq_data():
                     }
                 )
 
-            logger.info(
-                f"  Added {sum(1 for s in all_symbols if s['exchange'] == 'NASDAQ')} NASDAQ symbols"
-            )
+            logger.info(f"  Added {sum(1 for s in all_symbols if s['exchange'] == 'NASDAQ')} NASDAQ symbols")
 
     except Exception as e:
         logger.warning(f"Error downloading nasdaqlisted.txt: {e}")
@@ -168,9 +165,7 @@ def download_nasdaq_data():
                     }
                 )
 
-            logger.info(
-                f"  Added {sum(1 for s in all_symbols if s['exchange'] != 'NASDAQ')} other exchange symbols"
-            )
+            logger.info(f"  Added {sum(1 for s in all_symbols if s['exchange'] != 'NASDAQ')} other exchange symbols")
 
     except Exception as e:
         logger.warning(f"Error downloading otherlisted.txt: {e}")
@@ -219,9 +214,7 @@ def populate_from_nasdaq(engine, nasdaq_df, dry_run=False):
     logger.info(f"NASDAQ data has {len(nasdaq_df)} symbols")
 
     # Merge to find matches
-    merged = db_symbols.merge(
-        nasdaq_df, on="ticker", how="inner", suffixes=("_db", "_nasdaq")
-    )
+    merged = db_symbols.merge(nasdaq_df, on="ticker", how="inner", suffixes=("_db", "_nasdaq"))
 
     logger.info(f"Found {len(merged)} matching symbols")
 

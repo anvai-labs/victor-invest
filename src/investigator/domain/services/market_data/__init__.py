@@ -83,9 +83,7 @@ def get_sec_db_url() -> str:
         PostgreSQL connection URL for SEC database
     """
     user = os.environ.get("SEC_DB_USER", "investigator")
-    password = os.environ.get("SEC_DB_PASSWORD") or os.environ.get(
-        "DB_PASSWORD", "investigator"
-    )
+    password = os.environ.get("SEC_DB_PASSWORD") or os.environ.get("DB_PASSWORD", "investigator")
     host = os.environ.get("SEC_DB_HOST") or os.environ.get("DB_HOST", "localhost")
     port = os.environ.get("SEC_DB_PORT") or os.environ.get("DB_PORT", "5432")
     database = os.environ.get("SEC_DB_NAME", "sec_database")

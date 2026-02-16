@@ -11,9 +11,7 @@ def calculate_consistency_bonus(quality_indicators: List[float]) -> float:
         return 0.0
 
     mean_quality = sum(quality_indicators) / len(quality_indicators)
-    variance = sum((x - mean_quality) ** 2 for x in quality_indicators) / len(
-        quality_indicators
-    )
+    variance = sum((x - mean_quality) ** 2 for x in quality_indicators) / len(quality_indicators)
     std_dev = variance**0.5
 
     max_bonus = 1.0
@@ -55,14 +53,10 @@ def determine_final_recommendation(
     return {"recommendation": base_recommendation, "confidence": confidence}
 
 
-def calculate_price_target(
-    symbol: str, ai_recommendation: Dict[str, Any], current_price: float, logger: Any
-) -> float:
+def calculate_price_target(symbol: str, ai_recommendation: Dict[str, Any], current_price: float, logger: Any) -> float:
     """Calculate 12-month target price from structured fields or score mapping."""
     if "investment_recommendation" in ai_recommendation:
-        target_data = ai_recommendation["investment_recommendation"].get(
-            "target_price", {}
-        )
+        target_data = ai_recommendation["investment_recommendation"].get("target_price", {})
         if target_data.get("12_month_target"):
             return target_data["12_month_target"]
 
@@ -71,9 +65,7 @@ def calculate_price_target(
         return ai_targets["12_month"]
 
     if current_price <= 0:
-        logger.warning(
-            f"No current price available for {symbol}, using placeholder for target calculation"
-        )
+        logger.warning(f"No current price available for {symbol}, using placeholder for target calculation")
         current_price = 100
 
     overall_score = 5.0
@@ -99,9 +91,7 @@ def calculate_price_target(
     return price_target
 
 
-def calculate_stop_loss(
-    current_price: float, recommendation: Dict[str, Any], overall_score: float
-) -> float:
+def calculate_stop_loss(current_price: float, recommendation: Dict[str, Any], overall_score: float) -> float:
     """Calculate stop loss level from recommendation and conviction."""
     if not current_price or current_price <= 0:
         return 0
@@ -125,9 +115,7 @@ def calculate_stop_loss(
 def extract_position_size(ai_recommendation: Dict[str, Any]) -> str:
     """Extract normalized position size bucket."""
     if "investment_recommendation" in ai_recommendation:
-        pos_sizing = ai_recommendation["investment_recommendation"].get(
-            "position_sizing", {}
-        )
+        pos_sizing = ai_recommendation["investment_recommendation"].get("position_sizing", {})
         weight = pos_sizing.get("recommended_weight", 0.0)
         if weight >= 0.05:
             return "LARGE"

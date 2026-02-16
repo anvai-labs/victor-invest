@@ -13,19 +13,20 @@ import inspect
 from dataclasses import is_dataclass
 
 from victor.framework.workflows.base_handler import BaseHandler
+
 from victor_invest.handlers import (
-    FetchSECDataHandler,
-    FetchMarketDataHandler,
+    AnalyzePeersHandler,
     FetchMacroDataHandler,
-    RunFundamentalAnalysisHandler,
-    RunTechnicalAnalysisHandler,
-    RunMarketContextHandler,
-    RunSynthesisHandler,
+    FetchMarketDataHandler,
+    FetchSECDataHandler,
+    GenerateLookbackDatesHandler,
     GenerateReportHandler,
     IdentifyPeersHandler,
-    AnalyzePeersHandler,
-    GenerateLookbackDatesHandler,
     ProcessBacktestBatchHandler,
+    RunFundamentalAnalysisHandler,
+    RunMarketContextHandler,
+    RunSynthesisHandler,
+    RunTechnicalAnalysisHandler,
     SaveRLPredictionsHandler,
     register_handlers,
 )
@@ -74,9 +75,7 @@ def test_handler_migration():
         # Test 4: Return type
         return_annotation = sig.return_annotation
         if "Tuple" not in str(return_annotation):
-            errors.append(
-                f"{handler_name}.execute() wrong return type: {return_annotation}"
-            )
+            errors.append(f"{handler_name}.execute() wrong return type: {return_annotation}")
 
         # Test 5: Is dataclass
         if not is_dataclass(handler_cls):

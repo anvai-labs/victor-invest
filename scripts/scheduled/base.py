@@ -25,18 +25,18 @@ Provides common functionality for:
 - Hash-based change detection
 """
 
+import fcntl
 import hashlib
 import json
 import logging
 import os
 import sys
-import time
-import fcntl
 import threading
+import time
 from abc import ABC, abstractmethod
 from collections import deque
 from dataclasses import dataclass, field
-from datetime import datetime, date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar, Union
 
@@ -129,9 +129,7 @@ class LockFile:
             return self
         except BlockingIOError:
             self.lock_file.close()
-            raise RuntimeError(
-                f"Job '{self.job_name}' is already running. Lock file: {self.lock_path}"
-            )
+            raise RuntimeError(f"Job '{self.job_name}' is already running. Lock file: {self.lock_path}")
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.lock_file:
@@ -171,9 +169,7 @@ def setup_logging(
     log_file = log_dir / f"{job_name}.log"
     file_handler = logging.FileHandler(log_file)
     file_handler.setLevel(level)
-    file_formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    file_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     file_handler.setFormatter(file_formatter)
     logger.addHandler(file_handler)
 
@@ -181,9 +177,7 @@ def setup_logging(
     if console:
         console_handler = logging.StreamHandler()
         console_handler.setLevel(level)
-        console_formatter = logging.Formatter(
-            "%(asctime)s - %(levelname)s - %(message)s"
-        )
+        console_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
         console_handler.setFormatter(console_formatter)
         logger.addHandler(console_handler)
 
@@ -197,8 +191,9 @@ def get_database_connection():
         Database connection object
     """
     try:
-        from investigator.config.config import get_config
         import psycopg2
+
+        from investigator.config.config import get_config
 
         config = get_config()
         db_config = config.database
@@ -224,11 +219,13 @@ def get_sp500_symbols() -> List[str]:
     try:
         conn = get_database_connection()
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT symbol FROM companies
             WHERE is_sp500 = true AND is_active = true
             ORDER BY symbol
-        """)
+        """
+        )
         symbols = [row[0] for row in cursor.fetchall()]
         cursor.close()
         conn.close()
@@ -297,11 +294,13 @@ def get_russell1000_symbols() -> List[str]:
     try:
         conn = get_database_connection()
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT symbol FROM companies
             WHERE is_russell1000 = true AND is_active = true
             ORDER BY symbol
-        """)
+        """
+        )
         symbols = [row[0] for row in cursor.fetchall()]
         cursor.close()
         conn.close()
@@ -345,8 +344,7 @@ def retry_with_backoff(
             if attempt < max_retries:
                 if logger:
                     logger.warning(
-                        f"Attempt {attempt + 1}/{max_retries + 1} failed: {e}. "
-                        f"Retrying in {delay:.1f}s..."
+                        f"Attempt {attempt + 1}/{max_retries + 1} failed: {e}. " f"Retrying in {delay:.1f}s..."
                     )
                 time.sleep(delay)
                 delay *= backoff_factor
@@ -473,8 +471,7 @@ class FibonacciRateLimiter:
             delay = self._get_fibonacci_delay(self._consecutive_429s)
             self._backoff_until = time.time() + delay
             self.logger.warning(
-                f"Rate limited (429). Fibonacci backoff: {delay}s "
-                f"(attempt {self._consecutive_429s})"
+                f"Rate limited (429). Fibonacci backoff: {delay}s " f"(attempt {self._consecutive_429s})"
             )
             return delay
 
@@ -854,11 +851,7 @@ def upsert_with_hash(
             SET {", ".join(set_clauses)}
             WHERE {where_sql}
             """,
-            tuple(
-                [data[col] for col in update_cols]
-                + [new_hash]
-                + list(key_lookup.values())
-            ),
+            tuple([data[col] for col in update_cols] + [new_hash] + list(key_lookup.values())),
         )
         return "updated", False
 
@@ -970,9 +963,7 @@ class BaseCollector(ABC):
                     self.metrics.records_skipped,
                     self.metrics.success,
                     len(self.metrics.errors),
-                    "\n".join(self.metrics.errors[:10])
-                    if self.metrics.errors
-                    else None,
+                    "\n".join(self.metrics.errors[:10]) if self.metrics.errors else None,
                     self.metrics.high_watermark_date,
                     self.metrics.high_watermark_value,
                 ),

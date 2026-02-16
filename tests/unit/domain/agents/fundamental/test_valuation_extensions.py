@@ -15,6 +15,10 @@ def _profile(industry="Software", revenue_growth_yoy=0.15):
         industry=industry,
         revenue_growth_yoy=revenue_growth_yoy,
         shares_outstanding=100,
+        dividend_payout_ratio=None,
+        dividend_yield=None,
+        dividends_paid=0,
+        market_cap=None,
     )
 
 
@@ -28,12 +32,8 @@ def _model_mock(result):
 @patch("investigator.domain.agents.fundamental.valuation_extensions.SaaSValuationModel")
 @patch("investigator.domain.agents.fundamental.valuation_extensions.RuleOf40Valuation")
 @patch("investigator.domain.agents.fundamental.valuation_extensions.DamodaranDCFModel")
-async def test_calculate_valuation_extensions_populates_models_when_applicable(
-    damodaran_cls, rule_cls, saas_cls
-):
-    damodaran_cls.return_value = _model_mock(
-        {"model": "damodaran_dcf", "applicable": True}
-    )
+async def test_calculate_valuation_extensions_populates_models_when_applicable(damodaran_cls, rule_cls, saas_cls):
+    damodaran_cls.return_value = _model_mock({"model": "damodaran_dcf", "applicable": True})
     rule_cls.return_value = _model_mock({"model": "rule_of_40", "applicable": True})
     saas_cls.return_value = _model_mock({"model": "saas", "applicable": True})
 
@@ -72,12 +72,8 @@ async def test_calculate_valuation_extensions_populates_models_when_applicable(
 @patch("investigator.domain.agents.fundamental.valuation_extensions.SaaSValuationModel")
 @patch("investigator.domain.agents.fundamental.valuation_extensions.RuleOf40Valuation")
 @patch("investigator.domain.agents.fundamental.valuation_extensions.DamodaranDCFModel")
-async def test_calculate_valuation_extensions_sets_non_applicable_paths(
-    damodaran_cls, _rule_cls, _saas_cls
-):
-    damodaran_cls.return_value = _model_mock(
-        {"model": "damodaran_dcf", "applicable": True}
-    )
+async def test_calculate_valuation_extensions_sets_non_applicable_paths(damodaran_cls, _rule_cls, _saas_cls):
+    damodaran_cls.return_value = _model_mock({"model": "damodaran_dcf", "applicable": True})
     valuation_results = {}
 
     payout_ratio = await calculate_valuation_extensions(
@@ -105,3 +101,165 @@ async def test_calculate_valuation_extensions_sets_non_applicable_paths(
     assert "No dividends paid" in valuation_results["ggm"]["reason"]
     assert valuation_results["rule_of_40"]["applicable"] is False
     assert valuation_results["saas"]["applicable"] is False
+
+
+@pytest.mark.asyncio
+@patch("investigator.domain.agents.fundamental.valuation_extensions.SaaSValuationModel")
+@patch("investigator.domain.agents.fundamental.valuation_extensions.RuleOf40Valuation")
+@patch("investigator.domain.agents.fundamental.valuation_extensions.DamodaranDCFModel")
+async def test_calculate_valuation_extensions_inferrs_dividends_from_payout_ratio(damodaran_cls, rule_cls, saas_cls):
+    damodaran_cls.return_value = _model_mock({"model": "damodaran_dcf", "applicable": True})
+    rule_cls.return_value = _model_mock({"model": "rule_of_40", "applicable": True})
+    saas_cls.return_value = _model_mock({"model": "saas", "applicable": True})
+
+    valuation_results = {}
+    calculate_ggm = AsyncMock(return_value={"model": "ggm", "applicable": True})
+
+    payout_ratio = await calculate_valuation_extensions(
+        symbol="JNJ",
+        valuation_results=valuation_results,
+        financials={
+            "dividends_paid": 0,
+            "net_income": 1_000,
+            "revenues": 5_000,
+            "free_cash_flow": 600,
+        },
+        ratios={"payout_ratio": 0.45, "fcf_margin": 0.12, "gross_margin": 0.55},
+        market_data={"current_price": 200.0},
+        company_profile=_profile(industry="Pharmaceuticals", revenue_growth_yoy=0.08),
+        quarterly_data=[],
+        calculate_cost_of_equity=lambda _symbol: 0.09,
+        calculate_ggm=calculate_ggm,
+        normalize_model_output=lambda payload: payload,
+        log_model_result=lambda *_args, **_kwargs: None,
+        logger=MagicMock(),
+    )
+
+    assert payout_ratio == 45.0
+    assert valuation_results["ggm"]["applicable"] is True
+    calculate_ggm.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@patch("investigator.domain.agents.fundamental.valuation_extensions.SaaSValuationModel")
+@patch("investigator.domain.agents.fundamental.valuation_extensions.RuleOf40Valuation")
+@patch("investigator.domain.agents.fundamental.valuation_extensions.DamodaranDCFModel")
+async def test_calculate_valuation_extensions_handles_dividend_scale_mismatch(damodaran_cls, rule_cls, saas_cls):
+    damodaran_cls.return_value = _model_mock({"model": "damodaran_dcf", "applicable": True})
+    rule_cls.return_value = _model_mock({"model": "rule_of_40", "applicable": True})
+    saas_cls.return_value = _model_mock({"model": "saas", "applicable": True})
+
+    valuation_results = {}
+    calculate_ggm = AsyncMock(return_value={"model": "ggm", "applicable": True})
+
+    # Simulate extracted dividends badly undercounted vs payout ratio signal.
+    payout_ratio = await calculate_valuation_extensions(
+        symbol="JNJ",
+        valuation_results=valuation_results,
+        financials={
+            "dividends_paid": 1.0,  # tiny/incorrect extracted value
+            "net_income": 1_000.0,
+            "revenues": 5_000.0,
+            "free_cash_flow": 600.0,
+        },
+        ratios={"payout_ratio": 0.45, "fcf_margin": 0.12, "gross_margin": 0.55},
+        market_data={"current_price": 200.0},
+        company_profile=_profile(industry="Pharmaceuticals", revenue_growth_yoy=0.08),
+        quarterly_data=[],
+        calculate_cost_of_equity=lambda _symbol: 0.09,
+        calculate_ggm=calculate_ggm,
+        normalize_model_output=lambda payload: payload,
+        log_model_result=lambda *_args, **_kwargs: None,
+        logger=MagicMock(),
+    )
+
+    assert payout_ratio == 45.0
+    assert valuation_results["ggm"]["applicable"] is True
+    calculate_ggm.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@patch("investigator.domain.agents.fundamental.valuation_extensions.SaaSValuationModel")
+@patch("investigator.domain.agents.fundamental.valuation_extensions.RuleOf40Valuation")
+@patch("investigator.domain.agents.fundamental.valuation_extensions.DamodaranDCFModel")
+async def test_calculate_valuation_extensions_prefers_stronger_payout_signal(damodaran_cls, rule_cls, saas_cls):
+    damodaran_cls.return_value = _model_mock({"model": "damodaran_dcf", "applicable": True})
+    rule_cls.return_value = _model_mock({"model": "rule_of_40", "applicable": True})
+    saas_cls.return_value = _model_mock({"model": "saas", "applicable": True})
+
+    valuation_results = {}
+    calculate_ggm = AsyncMock(return_value={"model": "ggm", "applicable": True})
+    financials = {
+        "dividends_paid": 1.0,
+        "net_income": 1_000.0,
+        "revenues": 5_000.0,
+        "free_cash_flow": 600.0,
+        "payout_ratio": 0.001,  # bad/under-scaled value
+    }
+    ratios = {
+        "payout_ratio": 0.001,
+        "dividend_payout_ratio": 0.45,  # correct source
+        "fcf_margin": 0.12,
+        "gross_margin": 0.55,
+    }
+
+    payout_ratio = await calculate_valuation_extensions(
+        symbol="JNJ",
+        valuation_results=valuation_results,
+        financials=financials,
+        ratios=ratios,
+        market_data={"current_price": 200.0},
+        company_profile=_profile(industry="Pharmaceuticals", revenue_growth_yoy=0.08),
+        quarterly_data=[],
+        calculate_cost_of_equity=lambda _symbol: 0.09,
+        calculate_ggm=calculate_ggm,
+        normalize_model_output=lambda payload: payload,
+        log_model_result=lambda *_args, **_kwargs: None,
+        logger=MagicMock(),
+    )
+
+    assert payout_ratio == 45.0
+    assert financials["payout_ratio"] == 0.45
+    assert ratios["payout_ratio"] == 0.45
+    assert valuation_results["ggm"]["applicable"] is True
+
+
+@pytest.mark.asyncio
+@patch("investigator.domain.agents.fundamental.valuation_extensions.SaaSValuationModel")
+@patch("investigator.domain.agents.fundamental.valuation_extensions.RuleOf40Valuation")
+@patch("investigator.domain.agents.fundamental.valuation_extensions.DamodaranDCFModel")
+async def test_calculate_valuation_extensions_uses_company_profile_dividends_fallback(
+    damodaran_cls, rule_cls, saas_cls
+):
+    damodaran_cls.return_value = _model_mock({"model": "damodaran_dcf", "applicable": True})
+    rule_cls.return_value = _model_mock({"model": "rule_of_40", "applicable": True})
+    saas_cls.return_value = _model_mock({"model": "saas", "applicable": True})
+
+    valuation_results = {}
+    calculate_ggm = AsyncMock(return_value={"model": "ggm", "applicable": True})
+    profile = _profile(industry="Pharmaceuticals", revenue_growth_yoy=0.08)
+    profile.dividends_paid = 600.0
+
+    payout_ratio = await calculate_valuation_extensions(
+        symbol="JNJ",
+        valuation_results=valuation_results,
+        financials={
+            "dividends_paid": 1.0,  # bad extract
+            "net_income": 1_000.0,
+            "revenues": 5_000.0,
+            "free_cash_flow": 600.0,
+        },
+        ratios={"fcf_margin": 0.12, "gross_margin": 0.55},
+        market_data={"current_price": 200.0},
+        company_profile=profile,
+        quarterly_data=[],
+        calculate_cost_of_equity=lambda _symbol: 0.09,
+        calculate_ggm=calculate_ggm,
+        normalize_model_output=lambda payload: payload,
+        log_model_result=lambda *_args, **_kwargs: None,
+        logger=MagicMock(),
+    )
+
+    assert payout_ratio == 60.0
+    assert valuation_results["ggm"]["applicable"] is True
+    calculate_ggm.assert_awaited_once()

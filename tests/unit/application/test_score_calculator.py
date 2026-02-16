@@ -40,36 +40,20 @@ class TestScoreCalculatorFundamentalScore:
     def test_comprehensive_dict_financial_health_score(self, calculator):
         """Should extract financial_health_score from comprehensive dict response."""
         llm_responses = {
-            "fundamental": {
-                "comprehensive": {
-                    "content": {"financial_health_score": 7.5, "other_data": "value"}
-                }
-            }
+            "fundamental": {"comprehensive": {"content": {"financial_health_score": 7.5, "other_data": "value"}}}
         }
         result = calculator.calculate_fundamental_score(llm_responses)
         assert result == 7.5
 
     def test_comprehensive_dict_overall_score(self, calculator):
         """Should fallback to overall_score if financial_health_score missing."""
-        llm_responses = {
-            "fundamental": {
-                "comprehensive": {
-                    "content": {"overall_score": 8.0, "other_data": "value"}
-                }
-            }
-        }
+        llm_responses = {"fundamental": {"comprehensive": {"content": {"overall_score": 8.0, "other_data": "value"}}}}
         result = calculator.calculate_fundamental_score(llm_responses)
         assert result == 8.0
 
     def test_comprehensive_string_json_response(self, calculator):
         """Should parse JSON string response."""
-        llm_responses = {
-            "fundamental": {
-                "comprehensive": {
-                    "content": json.dumps({"financial_health_score": 6.5})
-                }
-            }
-        }
+        llm_responses = {"fundamental": {"comprehensive": {"content": json.dumps({"financial_health_score": 6.5})}}}
         result = calculator.calculate_fundamental_score(llm_responses)
         assert result == 6.5
 
@@ -101,11 +85,7 @@ class TestScoreCalculatorTechnicalScore:
 
     def test_dict_content_with_score_dict(self, calculator):
         """Should extract score from nested dict format."""
-        llm_responses = {
-            "technical": {
-                "content": {"technical_score": {"score": 7.5, "confidence": "high"}}
-            }
-        }
+        llm_responses = {"technical": {"content": {"technical_score": {"score": 7.5, "confidence": "high"}}}}
         result = calculator.calculate_technical_score(llm_responses)
         assert result == 7.5
 
@@ -117,9 +97,7 @@ class TestScoreCalculatorTechnicalScore:
 
     def test_string_json_content(self, calculator):
         """Should parse JSON string content."""
-        llm_responses = {
-            "technical": {"content": json.dumps({"technical_score": {"score": 6.5}})}
-        }
+        llm_responses = {"technical": {"content": json.dumps({"technical_score": {"score": 6.5}})}}
         result = calculator.calculate_technical_score(llm_responses)
         assert result == 6.5
 
@@ -130,9 +108,7 @@ class TestScoreCalculatorWeightedScore:
     @pytest.fixture
     def calculator(self):
         """Create calculator with default weights."""
-        return ScoreCalculator(
-            ScoreWeights(fundamental_weight=0.6, technical_weight=0.4)
-        )
+        return ScoreCalculator(ScoreWeights(fundamental_weight=0.6, technical_weight=0.4))
 
     def test_equal_scores(self, calculator):
         """Equal scores should return that score."""

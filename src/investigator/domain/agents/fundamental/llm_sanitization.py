@@ -48,10 +48,7 @@ def backfill_market_fields(
             ratios["current_price"],
         )
 
-    if (
-        company_data.get("shares_outstanding", 0) == 0
-        and ratios.get("shares_outstanding", 0) > 0
-    ):
+    if company_data.get("shares_outstanding", 0) == 0 and ratios.get("shares_outstanding", 0) > 0:
         company_data["shares_outstanding"] = ratios["shares_outstanding"]
         logger.warning(
             "⚠️  %s: Backfilled shares from ratios: %s",
@@ -75,9 +72,7 @@ def normalize_leverage_ratios(
     total_debt = _extract_numeric(financials, "total_debt")
     if total_debt is None:
         long_term_debt = _extract_numeric(financials, "long_term_debt")
-        short_term_debt = _extract_numeric(
-            financials, "short_term_debt", "debt_current"
-        )
+        short_term_debt = _extract_numeric(financials, "short_term_debt", "debt_current")
         if long_term_debt is not None or short_term_debt is not None:
             total_debt = (long_term_debt or 0.0) + (short_term_debt or 0.0)
 
@@ -100,9 +95,7 @@ def normalize_leverage_ratios(
             else:
                 if not math.isfinite(existing_value):
                     needs_log = True
-                elif abs(existing_value - recomputed) > max(
-                    leverage_abs_tol, leverage_rel_tol * abs(recomputed)
-                ):
+                elif abs(existing_value - recomputed) > max(leverage_abs_tol, leverage_rel_tol * abs(recomputed)):
                     needs_log = True
 
         if needs_log:
@@ -122,9 +115,7 @@ def normalize_leverage_ratios(
         normalize_ratio("debt_to_assets", total_debt / total_assets)
 
 
-def enforce_quick_ratio_bound(
-    *, ratios: Dict[str, Any], symbol: str, logger: Any
-) -> None:
+def enforce_quick_ratio_bound(*, ratios: Dict[str, Any], symbol: str, logger: Any) -> None:
     """Ensure quick ratio never exceeds current ratio when both are positive."""
     current_ratio = ratios.get("current_ratio", 0)
     quick_ratio = ratios.get("quick_ratio", 0)
@@ -148,12 +139,8 @@ def sanitize_for_llm_inputs(
     log_data_quality_issues: Callable[[Any, str, Dict[str, Any], Dict[str, Any]], None],
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """Apply deterministic sanitation to company/ratio payloads before LLM usage."""
-    backfill_market_fields(
-        company_data=company_data, ratios=ratios, symbol=symbol, logger=logger
-    )
-    normalize_leverage_ratios(
-        company_data=company_data, ratios=ratios, symbol=symbol, logger=logger
-    )
+    backfill_market_fields(company_data=company_data, ratios=ratios, symbol=symbol, logger=logger)
+    normalize_leverage_ratios(company_data=company_data, ratios=ratios, symbol=symbol, logger=logger)
     enforce_quick_ratio_bound(ratios=ratios, symbol=symbol, logger=logger)
     log_data_quality_issues(logger, symbol, company_data, ratios)
     return company_data, ratios
