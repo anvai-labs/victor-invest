@@ -89,17 +89,17 @@ export function ChartPanel({ chart }: ChartPanelProps) {
   const hasEMA = priceData.some((d) => d.ema_20 != null || d.ema_50 != null);
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="flex flex-col gap-4">
       {/* Price + Overlays */}
-      <Card className="md:col-span-2">
+      <Card>
         <CardHeader>
           <CardTitle>Price - {chart.symbol}</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={350}>
+          <ResponsiveContainer width="100%" height={320}>
             <ComposedChart data={priceData}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-              <XAxis dataKey="date" tickFormatter={formatDate} fontSize={11} />
+              <XAxis dataKey="date" tickFormatter={formatDate} fontSize={11} tick={false} height={4} />
               <YAxis domain={["auto", "auto"]} fontSize={11} tickFormatter={fmtPrice} />
               <Tooltip
                 labelFormatter={(l) => String(l)}
@@ -205,10 +205,10 @@ export function ChartPanel({ chart }: ChartPanelProps) {
           <CardTitle>Volume / OBV</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={160}>
             <ComposedChart data={volumeData}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-              <XAxis dataKey="date" tickFormatter={formatDate} fontSize={11} />
+              <XAxis dataKey="date" tickFormatter={formatDate} fontSize={11} tick={false} height={4} />
               <YAxis yAxisId="vol" orientation="left" fontSize={11} />
               <YAxis yAxisId="obv" orientation="right" fontSize={11} />
               <Tooltip labelFormatter={(l) => String(l)} />
@@ -227,10 +227,10 @@ export function ChartPanel({ chart }: ChartPanelProps) {
             <CardTitle>MACD</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer width="100%" height={160}>
               <ComposedChart data={macdData}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                <XAxis dataKey="date" tickFormatter={formatDate} fontSize={11} />
+                <XAxis dataKey="date" tickFormatter={formatDate} fontSize={11} tick={false} height={4} />
                 <YAxis fontSize={11} />
                 <Tooltip labelFormatter={(l) => String(l)} />
                 <Legend verticalAlign="top" height={24} iconSize={10} wrapperStyle={{ fontSize: 11 }} />
@@ -251,7 +251,7 @@ export function ChartPanel({ chart }: ChartPanelProps) {
             <CardTitle>RSI (14)</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer width="100%" height={160}>
               <LineChart data={rsiData}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                 <XAxis dataKey="date" tickFormatter={formatDate} fontSize={11} />
