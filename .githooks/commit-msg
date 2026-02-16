@@ -1,46 +1,22 @@
 #!/bin/bash
 # Commit message hook for victor-invest
-# Validates commit messages don't contain AI model co-author references
+# Rejects any Co-Authored-By trailers in commit messages
 
 COMMIT_MSG_FILE=$1
 COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
 
 # Colors for output
 RED='\033[0;31m'
-YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Patterns to reject - AI model co-author references
-# This catches: Claude, Sonnet, Opus, Haiku, and variations with co-author references
-FORBIDDEN_PATTERNS=(
-    "Co-Authored-By: Claude"
-    "Co-Authored-By: Sonnet"
-    "Co-Authored-By: Opus"
-    "Co-Authored-By: Haiku"
-    "Co-Authored-By.*Claude"
-    "co-authored-by: claude"
-    "co-authored-by: sonnet"
-    "co-authored-by: opus"
-    "co-authored-by: haiku"
-)
-
-# Check each pattern
-for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
-    if echo "$COMMIT_MSG" | grep -iqE "$pattern"; then
-        echo -e "${RED}Commit message rejected:${NC}"
-        echo -e "${RED}Contains AI model co-author reference: $pattern${NC}"
-        echo ""
-        echo "Please remove AI model co-author references from the commit message."
-        echo "AI-generated commits should not include model attribution."
-        exit 1
-    fi
-done
-
-# Optional: Warn about other AI references (but don't block)
-# This helps identify if AI was used without attribution
-if echo "$COMMIT_MSG" | grep -iqE "(generated|created|written|produced).*(by|with|using).*(AI|claude|gpt|llm|anthropic)"; then
-    echo -e "${YELLOW}Warning: Commit message appears to reference AI assistance.${NC}"
-    echo "If AI helped with this commit, consider making the changes yourself to ensure proper attribution."
+# Reject any Co-Authored-By trailer (case-insensitive)
+if echo "$COMMIT_MSG" | grep -iqE "^[[:space:]]*co-authored-by:"; then
+    echo -e "${RED}Commit message rejected:${NC}"
+    echo -e "${RED}Contains a Co-Authored-By trailer.${NC}"
+    echo ""
+    echo "Co-Authored-By lines are not allowed in this repository."
+    echo "Remove the trailer and try again."
+    exit 1
 fi
 
 exit 0
