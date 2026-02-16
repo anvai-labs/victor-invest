@@ -24,7 +24,7 @@ echo "Staged Python files:"
 echo "$STAGED_FILES"
 echo ""
 
-# Verify critical project dependencies are installed
+# Verify critical project dependencies are installed; auto-install if missing
 echo -e "${YELLOW}Checking project dependencies...${NC}"
 MISSING_DEPS=""
 for pkg in pandas numpy scipy sqlalchemy fastapi pydantic yaml ruff; do
@@ -37,17 +37,22 @@ for pkg in pandas numpy scipy sqlalchemy fastapi pydantic yaml ruff; do
     fi
 done
 
+# Also check dev tools
+for tool in ruff black mypy; do
+    command -v "$tool" >/dev/null 2>&1 || MISSING_DEPS="$MISSING_DEPS $tool"
+done
+
 if [ -n "$MISSING_DEPS" ]; then
-    echo -e "${RED}Missing dependencies:${MISSING_DEPS}${NC}"
-    echo -e "${RED}Run 'make dev-install' or 'pip install -e \".[dev,viz]\"' to install all dependencies.${NC}"
-    exit 1
+    echo -e "${YELLOW}Missing dependencies:${MISSING_DEPS}${NC}"
+    echo -e "${YELLOW}Auto-installing via 'pip install -e .[dev,viz]'...${NC}"
+    if pip install -e ".[dev,viz]" --quiet 2>&1; then
+        echo -e "${GREEN}Dependencies installed successfully.${NC}"
+    else
+        echo -e "${RED}Auto-install failed. Run 'make dev-install' manually.${NC}"
+        exit 1
+    fi
 fi
 echo -e "${GREEN}Dependencies OK.${NC}"
-
-# Check if required tools are installed
-command -v ruff >/dev/null 2>&1 || { echo -e "${RED}ruff not found. Install with: pip install ruff${NC}" && exit 1; }
-command -v black >/dev/null 2>&1 || { echo -e "${RED}black not found. Install with: pip install black${NC}" && exit 1; }
-command -v mypy >/dev/null 2>&1 || { echo -e "${RED}mypy not found. Install with: pip install mypy${NC}" && exit 1; }
 
 # Run ruff checks (format + lint)
 echo -e "${YELLOW}Running ruff format check...${NC}"
