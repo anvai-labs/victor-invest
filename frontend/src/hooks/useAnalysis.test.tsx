@@ -60,19 +60,19 @@ describe("useRefreshAnalysis", () => {
     vi.clearAllMocks();
   });
 
-  it("calls refreshAnalysis with symbol and mode", async () => {
+  it("calls refreshAnalysis with symbol and request", async () => {
     mockRefresh.mockResolvedValue(mockAnalysisResponse);
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useRefreshAnalysis("AAPL"), {
       wrapper: Wrapper,
     });
 
-    result.current.mutate("quick");
+    result.current.mutate({ mode: "quick", valuation_basis: "ttm" });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(mockRefresh).toHaveBeenCalledWith("AAPL", "quick");
+    expect(mockRefresh).toHaveBeenCalledWith("AAPL", { mode: "quick", valuation_basis: "ttm" });
   });
 
-  it("invalidates analysis query on success", async () => {
+  it("invalidates analysis and chart queries on success", async () => {
     mockRefresh.mockResolvedValue(mockAnalysisResponse);
     const { Wrapper, qc } = createWrapper();
     const invalidateSpy = vi.spyOn(qc, "invalidateQueries");
@@ -81,10 +81,13 @@ describe("useRefreshAnalysis", () => {
       wrapper: Wrapper,
     });
 
-    result.current.mutate("standard");
+    result.current.mutate({ mode: "standard" });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["analysis", "AAPL"],
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["chart", "AAPL"],
     });
   });
 });

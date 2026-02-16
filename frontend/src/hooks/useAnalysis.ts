@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getLatestAnalysis, refreshAnalysis } from "@/lib/api";
-import type { AnalysisResponse } from "@/lib/types";
+import type { AnalysisResponse, UIRefreshRequest } from "@/lib/types";
 
 export function useAnalysis(symbol: string | null) {
   return useQuery<AnalysisResponse>({
@@ -14,9 +14,12 @@ export function useAnalysis(symbol: string | null) {
 export function useRefreshAnalysis(symbol: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (mode: string) => refreshAnalysis(symbol!, mode),
+    mutationFn: (request: UIRefreshRequest) => refreshAnalysis(symbol!, request),
     onSuccess: () => {
-      if (symbol) qc.invalidateQueries({ queryKey: ["analysis", symbol] });
+      if (symbol) {
+        qc.invalidateQueries({ queryKey: ["analysis", symbol] });
+        qc.invalidateQueries({ queryKey: ["chart", symbol] });
+      }
     },
   });
 }

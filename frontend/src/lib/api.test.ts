@@ -75,23 +75,40 @@ describe("getLatestAnalysis", () => {
 });
 
 describe("refreshAnalysis", () => {
-  it("sends POST with mode", async () => {
+  it("sends POST with mode and valuation_basis", async () => {
     mockFetch.mockResolvedValue(jsonResponse({ symbol: "AAPL" }));
-    await refreshAnalysis("AAPL", "quick");
-    expect(mockFetch).toHaveBeenCalledWith(
-      "/ui/api/analysis/AAPL/refresh",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({ mode: "quick" }),
-      }),
-    );
+    await refreshAnalysis("AAPL", { mode: "quick", valuation_basis: "ttm" });
+    const call = mockFetch.mock.calls[0]!;
+    const body = JSON.parse(call[1].body as string);
+    expect(body.mode).toBe("quick");
+    expect(body.valuation_basis).toBe("ttm");
+    expect(body.force_refresh).toBe(true);
   });
 
-  it("defaults to standard mode", async () => {
+  it("defaults to comprehensive mode with ttm basis", async () => {
     mockFetch.mockResolvedValue(jsonResponse({ symbol: "AAPL" }));
     await refreshAnalysis("AAPL");
     const call = mockFetch.mock.calls[0]!;
-    expect(JSON.parse(call[1].body as string)).toEqual({ mode: "standard" });
+    const body = JSON.parse(call[1].body as string);
+    expect(body.mode).toBe("comprehensive");
+    expect(body.valuation_basis).toBe("ttm");
+  });
+
+  it("includes forward_horizon when basis is forward", async () => {
+    mockFetch.mockResolvedValue(jsonResponse({ symbol: "AAPL" }));
+    await refreshAnalysis("AAPL", { valuation_basis: "forward", forward_horizon: "2q" });
+    const call = mockFetch.mock.calls[0]!;
+    const body = JSON.parse(call[1].body as string);
+    expect(body.valuation_basis).toBe("forward");
+    expect(body.forward_horizon).toBe("2q");
+  });
+
+  it("omits forward_horizon when basis is ttm", async () => {
+    mockFetch.mockResolvedValue(jsonResponse({ symbol: "AAPL" }));
+    await refreshAnalysis("AAPL", { valuation_basis: "ttm", forward_horizon: "1y" });
+    const call = mockFetch.mock.calls[0]!;
+    const body = JSON.parse(call[1].body as string);
+    expect(body.forward_horizon).toBeUndefined();
   });
 });
 

@@ -17,6 +17,9 @@ export interface AnalysisResponse {
 
 export interface UIRefreshRequest {
   mode?: "quick" | "standard" | "comprehensive";
+  valuation_basis?: "ttm" | "forward";
+  forward_horizon?: "1q" | "2q" | "3q" | "1y";
+  force_refresh?: boolean;
 }
 
 export interface UIView {

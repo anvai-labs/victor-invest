@@ -8,6 +8,7 @@ import type {
   RankingsResponse,
   SymbolSearchResult,
   UIFundamental,
+  UIRefreshRequest,
   UISignal,
   UITechnical,
   UIView,
@@ -196,12 +197,20 @@ export async function getLatestAnalysis(symbol: string): Promise<AnalysisRespons
 
 export async function refreshAnalysis(
   symbol: string,
-  mode: string = "standard",
+  request: UIRefreshRequest = {},
 ): Promise<AnalysisResponse> {
+  const body: Record<string, unknown> = {
+    mode: request.mode ?? "comprehensive",
+    valuation_basis: request.valuation_basis ?? "ttm",
+    force_refresh: request.force_refresh ?? true,
+  };
+  if (request.valuation_basis === "forward") {
+    body.forward_horizon = request.forward_horizon ?? "1y";
+  }
   const raw = await fetchJSON<unknown>(`${BASE}/analysis/${encodeURIComponent(symbol)}/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mode }),
+    body: JSON.stringify(body),
   });
   return transformAnalysisResponse(raw);
 }

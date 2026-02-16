@@ -9,9 +9,11 @@ import { ChartPanel } from "@/components/charts/ChartPanel";
 import { RankingsTab } from "@/components/rankings/RankingsTab";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { useAnalysis, useRefreshAnalysis } from "@/hooks/useAnalysis";
 import { useChart } from "@/hooks/useChart";
-import { RefreshCw } from "lucide-react";
+import type { UIRefreshRequest } from "@/lib/types";
+import { RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,30 +26,100 @@ const queryClient = new QueryClient({
 
 function Dashboard() {
   const [symbol, setSymbol] = useState<string | null>(null);
+  const [showRefreshOpts, setShowRefreshOpts] = useState(false);
+  const [refreshMode, setRefreshMode] = useState<UIRefreshRequest["mode"]>("comprehensive");
+  const [valuationBasis, setValuationBasis] = useState<UIRefreshRequest["valuation_basis"]>("ttm");
+  const [forwardHorizon, setForwardHorizon] = useState<UIRefreshRequest["forward_horizon"]>("1y");
   const { data: analysis, isLoading, error } = useAnalysis(symbol);
   const { data: chart } = useChart(symbol);
   const refresh = useRefreshAnalysis(symbol);
 
   const view = analysis?.data ?? null;
 
+  const handleRefresh = () => {
+    refresh.mutate({
+      mode: refreshMode,
+      valuation_basis: valuationBasis,
+      forward_horizon: valuationBasis === "forward" ? forwardHorizon : undefined,
+      force_refresh: true,
+    });
+  };
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <SymbolSearch onSelect={setSymbol} />
         {symbol && (
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={refresh.isPending}
-            onClick={() => refresh.mutate("standard")}
-          >
-            <RefreshCw
-              className={`h-3.5 w-3.5 mr-1 ${refresh.isPending ? "animate-spin" : ""}`}
-            />
-            Refresh
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={refresh.isPending}
+              onClick={handleRefresh}
+            >
+              <RefreshCw
+                className={`h-3.5 w-3.5 mr-1 ${refresh.isPending ? "animate-spin" : ""}`}
+              />
+              Refresh
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowRefreshOpts((s) => !s)}
+              aria-label="Toggle refresh options"
+            >
+              {showRefreshOpts ? (
+                <ChevronUp className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5" />
+              )}
+            </Button>
+          </>
         )}
       </div>
+
+      {symbol && showRefreshOpts && (
+        <div className="flex flex-wrap items-center gap-3 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-4 py-2.5 text-sm">
+          <label className="flex items-center gap-1.5">
+            <span className="text-slate-500">Mode</span>
+            <Select
+              value={refreshMode}
+              onChange={(e) => setRefreshMode(e.target.value as UIRefreshRequest["mode"])}
+              className="w-36"
+            >
+              <option value="quick">Quick</option>
+              <option value="standard">Standard</option>
+              <option value="comprehensive">Comprehensive</option>
+            </Select>
+          </label>
+          <label className="flex items-center gap-1.5">
+            <span className="text-slate-500">Basis</span>
+            <Select
+              value={valuationBasis}
+              onChange={(e) => setValuationBasis(e.target.value as UIRefreshRequest["valuation_basis"])}
+              className="w-28"
+            >
+              <option value="ttm">TTM</option>
+              <option value="forward">Forward</option>
+            </Select>
+          </label>
+          {valuationBasis === "forward" && (
+            <label className="flex items-center gap-1.5">
+              <span className="text-slate-500">Horizon</span>
+              <Select
+                value={forwardHorizon}
+                onChange={(e) => setForwardHorizon(e.target.value as UIRefreshRequest["forward_horizon"])}
+                className="w-24"
+              >
+                <option value="1q">1Q</option>
+                <option value="2q">2Q</option>
+                <option value="3q">3Q</option>
+                <option value="1y">1Y</option>
+              </Select>
+            </label>
+          )}
+        </div>
+      )}
 
       {isLoading && (
         <p className="text-center text-slate-500 py-12">Loading analysis...</p>
