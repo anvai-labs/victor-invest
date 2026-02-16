@@ -97,7 +97,7 @@ describe("refreshAnalysis", () => {
 
 describe("getChart", () => {
   it("calls correct URL with days", async () => {
-    mockFetch.mockResolvedValue(jsonResponse({ symbol: "AAPL" }));
+    mockFetch.mockResolvedValue(jsonResponse({ candles: [], volume: [], indicators: { macd: [], rsi: [] }, symbol: "AAPL", days: 90 }));
     await getChart("AAPL", 90);
     expect(mockFetch).toHaveBeenCalledWith(
       "/ui/api/chart/AAPL?days=90",
@@ -106,12 +106,59 @@ describe("getChart", () => {
   });
 
   it("defaults to 180 days", async () => {
-    mockFetch.mockResolvedValue(jsonResponse({ symbol: "AAPL" }));
+    mockFetch.mockResolvedValue(jsonResponse({ candles: [], volume: [], indicators: { macd: [], rsi: [] }, symbol: "AAPL", days: 180 }));
     await getChart("AAPL");
     expect(mockFetch).toHaveBeenCalledWith(
       "/ui/api/chart/AAPL?days=180",
       undefined,
     );
+  });
+
+  it("transforms columnar API response to row format", async () => {
+    mockFetch.mockResolvedValue(jsonResponse({
+      symbol: "AAPL",
+      chart: {
+        symbol: "AAPL",
+        days: 3,
+        dates: ["2025-01-13", "2025-01-14", "2025-01-15"],
+        ohlcv: {
+          open: [180, 182, 184],
+          high: [183, 185, 186],
+          low: [179, 181, 182.5],
+          close: [182, 184, 182.5],
+          volume: [50000000, 45000000, 55000000],
+        },
+        indicators: {
+          macd: [1.2, 1.5, 1.3],
+          macd_signal: [0.8, 1.0, 1.1],
+          macd_hist: [0.4, 0.5, 0.2],
+          rsi_14: [55, 58, 55.3],
+          obv: [50000000, 95000000, 40000000],
+        },
+      },
+    }));
+    const result = await getChart("AAPL");
+    expect(result.candles).toHaveLength(3);
+    expect(result.candles[0]).toEqual({ date: "2025-01-13", open: 180, high: 183, low: 179, close: 182 });
+    expect(result.volume).toHaveLength(3);
+    expect(result.volume[0]).toEqual({ date: "2025-01-13", volume: 50000000, obv: 50000000 });
+    expect(result.indicators.macd).toHaveLength(3);
+    expect(result.indicators.macd[0]).toEqual({ date: "2025-01-13", macd: 1.2, signal: 0.8, histogram: 0.4 });
+    expect(result.indicators.rsi).toHaveLength(3);
+    expect(result.indicators.rsi[0]).toEqual({ date: "2025-01-13", rsi: 55 });
+  });
+
+  it("passes through already-transformed chart data", async () => {
+    const rowData = {
+      symbol: "AAPL", days: 1,
+      candles: [{ date: "2025-01-13", open: 180, high: 183, low: 179, close: 182 }],
+      volume: [{ date: "2025-01-13", volume: 50000000, obv: 50000000 }],
+      indicators: { macd: [], rsi: [] },
+    };
+    mockFetch.mockResolvedValue(jsonResponse(rowData));
+    const result = await getChart("AAPL");
+    expect(result.candles).toHaveLength(1);
+    expect(result.candles[0]!.open).toBe(180);
   });
 });
 

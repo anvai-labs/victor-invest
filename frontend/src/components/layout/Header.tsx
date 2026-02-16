@@ -16,8 +16,15 @@ export function Header() {
 
   useEffect(() => {
     const saved = localStorage.getItem("theme");
-    if (saved === "dark" || (!saved && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
-      setDark(true);
+    if (saved === "dark" || saved === "light") {
+      setDark(saved === "dark");
+    } else {
+      // No explicit preference: use time-of-day (dark 7pm–7am local time)
+      const hour = new Date().getHours();
+      const isNightTime = hour >= 19 || hour < 7;
+      if (isNightTime || window.matchMedia("(prefers-color-scheme: dark)").matches) {
+        setDark(true);
+      }
     }
   }, []);
 

@@ -52,12 +52,27 @@ function transformModels(raw: any): ValuationModel[] {
   return raw;
 }
 
+function transformForwardGuidance(raw: any): UIFundamental["forward_guidance"] {
+  if (!raw) return null;
+  const rg = raw.revenue_guidance ?? {};
+  return {
+    revenue_growth_pct: raw.revenue_growth_pct ?? null,
+    eps_estimate: raw.eps_estimate ?? null,
+    guidance_period: rg.horizon ?? raw.guidance_period ?? "",
+    source: raw.source ?? "",
+    revenue_low: rg.low ?? raw.revenue_low ?? null,
+    revenue_high: rg.high ?? raw.revenue_high ?? null,
+    revenue_mid: rg.mid ?? raw.revenue_mid ?? null,
+    filing_date: raw.filing_date ?? null,
+  };
+}
+
 function transformFundamental(raw: any): UIFundamental | null {
   if (!raw) return null;
   const valuation = raw.valuation ?? {};
   return {
     models: transformModels(valuation.models),
-    forward_guidance: raw.forward_guidance ?? null,
+    forward_guidance: transformForwardGuidance(raw.forward_guidance),
     notes: raw.notes ?? [],
     raw_payload: raw.sec ?? null,
   };
@@ -80,6 +95,9 @@ function transformTechnical(raw: any): UITechnical | null {
     support_resistance: {
       support: levels.support_1 ?? levels.support ?? null,
       resistance: levels.resistance_1 ?? levels.resistance ?? null,
+      support_2: levels.support_2 ?? null,
+      resistance_2: levels.resistance_2 ?? null,
+      pivot_point: levels.pivot_point ?? null,
     },
     raw_payload: levels.pivot_point ? { pivot_point: levels.pivot_point, ...levels } : null,
   };
@@ -178,8 +196,59 @@ export async function refreshAnalysis(
   return transformAnalysisResponse(raw);
 }
 
-export function getChart(symbol: string, days = 180): Promise<ChartPayload> {
-  return fetchJSON(`${BASE}/chart/${encodeURIComponent(symbol)}?days=${days}`);
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function transformChartResponse(raw: any): ChartPayload {
+  // If already in frontend row format, return as-is
+  if (raw.candles) return raw as ChartPayload;
+
+  const chart = raw.chart ?? raw;
+  const dates: string[] = chart.dates ?? [];
+  const ohlcv = chart.ohlcv ?? {};
+  const indicators = chart.indicators ?? {};
+
+  const candles = dates.map((date: string, i: number) => ({
+    date,
+    open: ohlcv.open?.[i] ?? 0,
+    high: ohlcv.high?.[i] ?? 0,
+    low: ohlcv.low?.[i] ?? 0,
+    close: ohlcv.close?.[i] ?? 0,
+  }));
+
+  const volume = dates.map((date: string, i: number) => ({
+    date,
+    volume: ohlcv.volume?.[i] ?? 0,
+    obv: indicators.obv?.[i] ?? 0,
+  }));
+
+  const macd = dates
+    .map((date: string, i: number) => ({
+      date,
+      macd: indicators.macd?.[i] ?? null,
+      signal: indicators.macd_signal?.[i] ?? null,
+      histogram: indicators.macd_hist?.[i] ?? null,
+    }))
+    .filter((m: { macd: number | null }) => m.macd != null);
+
+  const rsi = dates
+    .map((date: string, i: number) => ({
+      date,
+      rsi: indicators.rsi_14?.[i] ?? null,
+    }))
+    .filter((r: { rsi: number | null }) => r.rsi != null);
+
+  return {
+    symbol: chart.symbol ?? raw.symbol ?? "",
+    days: chart.days ?? dates.length,
+    candles,
+    volume,
+    indicators: { macd, rsi },
+  };
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+export async function getChart(symbol: string, days = 180): Promise<ChartPayload> {
+  const raw = await fetchJSON<unknown>(`${BASE}/chart/${encodeURIComponent(symbol)}?days=${days}`);
+  return transformChartResponse(raw);
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

@@ -35,7 +35,10 @@ export function TechnicalTab({ technical }: TechnicalTabProps) {
     { label: "EMA 12", value: ma.ema_12 },
     { label: "EMA 26", value: ma.ema_26 },
     { label: "Support", value: sr.support },
+    { label: "Support 2", value: sr.support_2 },
     { label: "Resistance", value: sr.resistance },
+    { label: "Resistance 2", value: sr.resistance_2 },
+    { label: "Pivot Point", value: sr.pivot_point },
   ];
 
   return (

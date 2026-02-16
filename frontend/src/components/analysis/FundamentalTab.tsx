@@ -61,10 +61,25 @@ export function FundamentalTab({ fundamental }: FundamentalTabProps) {
             <CardTitle>Forward Guidance</CardTitle>
           </CardHeader>
           <CardContent className="text-sm space-y-1">
-            <p>
-              <span className="text-slate-500">Period:</span>{" "}
-              {fundamental.forward_guidance.guidance_period}
-            </p>
+            {fundamental.forward_guidance.guidance_period && (
+              <p>
+                <span className="text-slate-500">Period:</span>{" "}
+                {fundamental.forward_guidance.guidance_period}
+              </p>
+            )}
+            {(fundamental.forward_guidance.revenue_low != null ||
+              fundamental.forward_guidance.revenue_mid != null) && (
+              <p>
+                <span className="text-slate-500">Revenue Guidance:</span>{" "}
+                {fundamental.forward_guidance.revenue_low != null &&
+                fundamental.forward_guidance.revenue_high != null
+                  ? `${fmtMoney(fundamental.forward_guidance.revenue_low)} – ${fmtMoney(fundamental.forward_guidance.revenue_high)}`
+                  : fmtMoney(fundamental.forward_guidance.revenue_mid)}
+                {fundamental.forward_guidance.revenue_mid != null &&
+                  fundamental.forward_guidance.revenue_low != null &&
+                  ` (mid: ${fmtMoney(fundamental.forward_guidance.revenue_mid)})`}
+              </p>
+            )}
             {fundamental.forward_guidance.revenue_growth_pct != null && (
               <p>
                 <span className="text-slate-500">Revenue Growth:</span>{" "}
@@ -77,10 +92,18 @@ export function FundamentalTab({ fundamental }: FundamentalTabProps) {
                 {fmtMoney(fundamental.forward_guidance.eps_estimate)}
               </p>
             )}
-            <p>
-              <span className="text-slate-500">Source:</span>{" "}
-              {fundamental.forward_guidance.source}
-            </p>
+            {fundamental.forward_guidance.source && (
+              <p>
+                <span className="text-slate-500">Source:</span>{" "}
+                {fundamental.forward_guidance.source}
+              </p>
+            )}
+            {fundamental.forward_guidance.filing_date && (
+              <p>
+                <span className="text-slate-500">Filing Date:</span>{" "}
+                {fundamental.forward_guidance.filing_date}
+              </p>
+            )}
           </CardContent>
         </Card>
       )}

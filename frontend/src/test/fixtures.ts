@@ -22,6 +22,9 @@ export const mockTechnical: UITechnical = {
   support_resistance: {
     support: 170.0,
     resistance: 190.0,
+    support_2: 160.0,
+    resistance_2: 200.0,
+    pivot_point: 180.0,
   },
   raw_payload: null,
 };
@@ -55,6 +58,10 @@ export const mockFundamental: UIFundamental = {
     eps_estimate: 6.75,
     guidance_period: "FY2025",
     source: "Company guidance",
+    revenue_low: 53_500_000_000,
+    revenue_high: 56_500_000_000,
+    revenue_mid: 55_000_000_000,
+    filing_date: "2025-01-28",
   },
   notes: ["Strong free cash flow generation", "Share buyback program active"],
   raw_payload: null,

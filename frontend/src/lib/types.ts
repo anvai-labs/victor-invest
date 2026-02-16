@@ -64,6 +64,10 @@ export interface ForwardGuidance {
   eps_estimate: number | null;
   guidance_period: string;
   source: string;
+  revenue_low: number | null;
+  revenue_high: number | null;
+  revenue_mid: number | null;
+  filing_date: string | null;
 }
 
 export interface UITechnical {
@@ -86,6 +90,9 @@ export interface MovingAverages {
 export interface SupportResistance {
   support: number | null;
   resistance: number | null;
+  support_2: number | null;
+  resistance_2: number | null;
+  pivot_point: number | null;
 }
 
 export interface UISignal {
