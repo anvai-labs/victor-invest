@@ -3,6 +3,7 @@ import type {
   ChartPayload,
   HealthResponse,
   HistoryEntry,
+  RankedSymbol,
   RankingsFilterParams,
   RankingsResponse,
   SymbolSearchResult,
@@ -45,18 +46,55 @@ export function getChart(symbol: string, days = 180): Promise<ChartPayload> {
   return fetchJSON(`${BASE}/chart/${encodeURIComponent(symbol)}?days=${days}`);
 }
 
-export function getRankings(params?: RankingsFilterParams): Promise<RankingsResponse> {
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function mapRankedSymbol(raw: any, index: number): RankedSymbol {
+  return {
+    rank: index + 1,
+    symbol: raw.symbol ?? "",
+    company_name: raw.company_name ?? raw.symbol ?? "",
+    sector: raw.sector ?? "",
+    composite_score: raw.confidence_score ?? raw.composite_score ?? 0,
+    action: (raw.action ?? "").replace(/_/g, " "),
+    target_return_pct: raw.expected_return_pct ?? raw.target_return_pct ?? null,
+    valuation_basis: raw.valuation_basis ?? "",
+  };
+}
+
+function transformRankingsResponse(raw: any): RankingsResponse {
+  const longs = (raw.overall?.longs ?? raw.longs ?? []).map(mapRankedSymbol);
+  const shorts = (raw.overall?.shorts ?? raw.shorts ?? []).map(mapRankedSymbol);
+  const sectors = raw.sectors ?? raw.sector_neutral ?? [];
+  return {
+    generated_at: raw.generated_at ?? "",
+    total_symbols: raw.universe?.eligible_symbols ?? raw.total_symbols ?? 0,
+    longs,
+    shorts,
+    sector_neutral: sectors.map((s: any) => ({
+      sector: s.sector ?? "",
+      longs: (s.longs ?? []).map(mapRankedSymbol),
+      shorts: (s.shorts ?? []).map(mapRankedSymbol),
+    })),
+    pairs: (raw.pairs ?? []).map((p: any) => ({
+      long: mapRankedSymbol(p.long, 0),
+      short: mapRankedSymbol(p.short, 0),
+      sector: p.sector ?? "",
+      spread: p.spread_pct ?? p.spread ?? 0,
+    })),
+  };
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+export async function getRankings(params?: RankingsFilterParams): Promise<RankingsResponse> {
   const qs = new URLSearchParams();
-  if (params?.min_score != null) qs.set("min_score", String(params.min_score));
-  if (params?.max_score != null) qs.set("max_score", String(params.max_score));
-  if (params?.top_n != null) qs.set("top_n", String(params.top_n));
-  if (params?.sectors?.length) qs.set("sectors", params.sectors.join(","));
+  if (params?.top_n != null) qs.set("limit", String(params.top_n));
+  if (params?.min_score != null) qs.set("min_quality", String(params.min_score));
   const query = qs.toString();
-  return fetchJSON(`${BASE}/rankings${query ? `?${query}` : ""}`);
+  const raw = await fetchJSON<unknown>(`${BASE}/rankings${query ? `?${query}` : ""}`);
+  return transformRankingsResponse(raw);
 }
 
 export function exportRankingsCsvUrl(): string {
-  return `${BASE}/rankings/export?format=csv`;
+  return `${BASE}/rankings/export.csv`;
 }
 
 export function getHealth(): Promise<HealthResponse> {

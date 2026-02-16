@@ -8,7 +8,7 @@ vi.mock("@/hooks/useRankings", () => ({
 }));
 
 vi.mock("@/lib/api", () => ({
-  exportRankingsCsvUrl: () => "/ui/api/rankings/export?format=csv",
+  exportRankingsCsvUrl: () => "/ui/api/rankings/export.csv",
 }));
 
 import { useRankings } from "@/hooks/useRankings";
@@ -68,7 +68,7 @@ describe("RankingsTab", () => {
 
     renderWithProviders(<RankingsTab />);
     const link = screen.getByText("CSV").closest("a");
-    expect(link).toHaveAttribute("href", "/ui/api/rankings/export?format=csv");
+    expect(link).toHaveAttribute("href", "/ui/api/rankings/export.csv");
   });
 
   it("renders total symbols count", () => {

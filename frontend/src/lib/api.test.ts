@@ -117,24 +117,42 @@ describe("getChart", () => {
 
 describe("getRankings", () => {
   it("calls without params", async () => {
-    mockFetch.mockResolvedValue(jsonResponse({ longs: [] }));
+    mockFetch.mockResolvedValue(jsonResponse({ overall: { longs: [], shorts: [] } }));
     await getRankings();
     expect(mockFetch).toHaveBeenCalledWith("/ui/api/rankings", undefined);
   });
 
-  it("includes filter params", async () => {
-    mockFetch.mockResolvedValue(jsonResponse({ longs: [] }));
-    await getRankings({ min_score: 50, top_n: 10, sectors: ["Technology", "Health Care"] });
+  it("maps top_n to limit param", async () => {
+    mockFetch.mockResolvedValue(jsonResponse({ overall: { longs: [], shorts: [] } }));
+    await getRankings({ top_n: 10, min_score: 50 });
     const url = mockFetch.mock.calls[0]![0] as string;
-    expect(url).toContain("min_score=50");
-    expect(url).toContain("top_n=10");
-    expect(url).toContain("sectors=Technology%2CHealth+Care");
+    expect(url).toContain("limit=10");
+    expect(url).toContain("min_quality=50");
+  });
+
+  it("transforms API response to frontend shape", async () => {
+    mockFetch.mockResolvedValue(jsonResponse({
+      generated_at: "2025-01-01",
+      universe: { eligible_symbols: 100 },
+      overall: {
+        longs: [{ symbol: "AAPL", sector: "tech", action: "strong_buy", confidence_score: 80, expected_return_pct: 15 }],
+        shorts: [],
+      },
+      sectors: [],
+      pairs: [],
+    }));
+    const result = await getRankings();
+    expect(result.total_symbols).toBe(100);
+    expect(result.longs[0]!.symbol).toBe("AAPL");
+    expect(result.longs[0]!.composite_score).toBe(80);
+    expect(result.longs[0]!.action).toBe("strong buy");
+    expect(result.longs[0]!.target_return_pct).toBe(15);
   });
 });
 
 describe("exportRankingsCsvUrl", () => {
   it("returns correct URL", () => {
-    expect(exportRankingsCsvUrl()).toBe("/ui/api/rankings/export?format=csv");
+    expect(exportRankingsCsvUrl()).toBe("/ui/api/rankings/export.csv");
   });
 });
 

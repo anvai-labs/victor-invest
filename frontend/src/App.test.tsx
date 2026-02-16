@@ -15,7 +15,7 @@ vi.mock("@/hooks/useRankings", () => ({
 }));
 
 vi.mock("@/lib/api", () => ({
-  exportRankingsCsvUrl: () => "/ui/api/rankings/export?format=csv",
+  exportRankingsCsvUrl: () => "/ui/api/rankings/export.csv",
 }));
 
 describe("App", () => {
