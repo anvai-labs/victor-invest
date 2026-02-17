@@ -24,6 +24,10 @@ echo "Staged Python files:"
 echo "$STAGED_FILES"
 echo ""
 
+# Find Python 3.11+ (project minimum). Prefer python3.11, fall back to python3.
+PYTHON="$(command -v python3.11 2>/dev/null || echo python3)"
+PIP="$PYTHON -m pip"
+
 # Verify critical project dependencies are installed; auto-install if missing
 echo -e "${YELLOW}Checking project dependencies...${NC}"
 MISSING_DEPS=""
@@ -31,9 +35,9 @@ for pkg in pandas numpy scipy sqlalchemy fastapi pydantic yaml ruff; do
     if [ "$pkg" = "ruff" ]; then
         command -v ruff >/dev/null 2>&1 || MISSING_DEPS="$MISSING_DEPS ruff"
     elif [ "$pkg" = "yaml" ]; then
-        python3 -c "import $pkg" 2>/dev/null || MISSING_DEPS="$MISSING_DEPS pyyaml"
+        $PYTHON -c "import $pkg" 2>/dev/null || MISSING_DEPS="$MISSING_DEPS pyyaml"
     else
-        python3 -c "import $pkg" 2>/dev/null || MISSING_DEPS="$MISSING_DEPS $pkg"
+        $PYTHON -c "import $pkg" 2>/dev/null || MISSING_DEPS="$MISSING_DEPS $pkg"
     fi
 done
 
@@ -44,8 +48,8 @@ done
 
 if [ -n "$MISSING_DEPS" ]; then
     echo -e "${YELLOW}Missing dependencies:${MISSING_DEPS}${NC}"
-    echo -e "${YELLOW}Auto-installing via 'pip install -e .[dev,viz]'...${NC}"
-    if pip install -e ".[dev,viz]" --quiet 2>&1; then
+    echo -e "${YELLOW}Auto-installing via '$PIP install -e .[dev,viz]'...${NC}"
+    if $PIP install -e ".[dev,viz]" --quiet 2>&1; then
         echo -e "${GREEN}Dependencies installed successfully.${NC}"
     else
         echo -e "${RED}Auto-install failed. Run 'make dev-install' manually.${NC}"
