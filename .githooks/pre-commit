@@ -78,7 +78,9 @@ echo -e "${YELLOW}Running mypy type check...${NC}"
 # Only run mypy on files in src/ and victor_invest/
 MYPY_FILES=$(echo "$STAGED_FILES" | grep -E '^(src/|victor_invest/)' || true)
 if [ -n "$MYPY_FILES" ]; then
-    if ! mypy $MYPY_FILES; then
+    # Use --explicit-package-bases to avoid "source file found twice" errors
+    # when using src/ layout
+    if ! mypy --explicit-package-bases $MYPY_FILES; then
         echo -e "${RED}Mypy type check failed.${NC}"
         exit 1
     fi
