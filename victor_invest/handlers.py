@@ -237,9 +237,32 @@ class RunFundamentalAnalysisHandler(BaseHandler):
             model="all",
         )
 
+        output_data = result.output if result.success else None
+
+        # Add overall_score for compatibility with synthesis
+        if output_data and result.success:
+            current_price = output_data.get("current_price")
+            consensus_fair_value = output_data.get("consensus_fair_value")
+
+            if current_price and consensus_fair_value:
+                # Calculate score based on valuation
+                upside = (consensus_fair_value / current_price) - 1
+                if upside > 0.20:
+                    overall_score = 85
+                elif upside > 0:
+                    overall_score = 70
+                elif upside > -0.10:
+                    overall_score = 50
+                elif upside > -0.30:
+                    overall_score = 30
+                else:
+                    overall_score = 15
+
+                output_data["overall_score"] = overall_score
+
         return {
             "status": "success" if result.success else "error",
-            "data": result.output if result.success else None,
+            "data": output_data,
             "error": result.error if not result.success else None,
         }, 0
 
@@ -415,8 +438,23 @@ class RunSynthesisHandler(BaseHandler):
         else:
             output = self._rule_based_synthesis(fundamental, technical, market_context)
 
-        # Calculate composite score
+        # Add fair_value_estimate from fundamental data
         fund_data = fundamental.get("data", {}) if fundamental else {}
+        if fund_data.get("consensus_fair_value") and not output.get(
+            "fair_value_estimate"
+        ):
+            output["fair_value_estimate"] = fund_data.get("consensus_fair_value")
+            output["price_target"] = fund_data.get("consensus_fair_value")
+            # Override recommendation if valuation suggests strong buy/sell
+            consensus_upside = fund_data.get("consensus_upside", 0)
+            if consensus_upside > 20:
+                output["recommendation"] = "BUY"
+                output["confidence"] = "HIGH"
+            elif consensus_upside < -20:
+                output["recommendation"] = "SELL"
+                output["confidence"] = "HIGH"
+
+        # Calculate composite score
         tech_data = technical.get("data", {}) if technical else {}
         fundamental_score = fund_data.get("overall_score", 50) if fund_data else 50
         technical_score = tech_data.get("overall_score", 50) if tech_data else 50
@@ -653,10 +691,36 @@ Respond ONLY with the JSON object."""
         fund_data = fundamental.get("data", {})
         tech_data = technical.get("data", {})
 
-        fundamental_score = fund_data.get("overall_score", 50)
+        # Extract valuation data to determine recommendation
+        fair_value = fund_data.get("consensus_fair_value")
+        current_price = fund_data.get("current_price")
+
+        # Calculate fundamental score based on valuation if available
+        if fair_value and current_price:
+            # Convert upside to score:
+            # >20% upside = 80+ (strong buy)
+            # 0-20% upside = 60-80 (buy)
+            # -10% to 0% = 40-60 (hold)
+            # -10% to -30% = 20-40 (sell)
+            # < -30% = <20 (strong sell)
+            upside = (fair_value / current_price) - 1
+            if upside > 0.20:
+                fundamental_score = 85
+            elif upside > 0:
+                fundamental_score = 70
+            elif upside > -0.10:
+                fundamental_score = 50
+            elif upside > -0.30:
+                fundamental_score = 30
+            else:
+                fundamental_score = 15
+        else:
+            fundamental_score = fund_data.get("overall_score", 50)
+
         technical_score = tech_data.get("overall_score", 50)
 
-        composite_score = fundamental_score * 0.6 + technical_score * 0.4
+        # Weight valuation more heavily than technical for recommendation
+        composite_score = fundamental_score * 0.7 + technical_score * 0.3
 
         if composite_score >= 70:
             recommendation = "BUY"
@@ -706,6 +770,8 @@ Respond ONLY with the JSON object."""
             },
             "recommendation": recommendation,
             "confidence": confidence,
+            "price_target": fair_value if fair_value else None,
+            "fair_value_estimate": fair_value if fair_value else None,
             "market_regime": market_context.get("market_regime", "unknown"),
             "score_breakdown": score_breakdown,
             "fundamental_analysis_thinking": fundamental_thinking,
