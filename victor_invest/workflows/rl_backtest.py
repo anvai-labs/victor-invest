@@ -62,7 +62,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, Dict, List, Optional
 
-from dateutil.relativedelta import relativedelta  # type: ignore[import-untyped]
+from dateutil.relativedelta import relativedelta
 from victor.framework.graph import END, StateGraph
 
 from victor_invest.tools import RLBacktestTool, ValuationTool
