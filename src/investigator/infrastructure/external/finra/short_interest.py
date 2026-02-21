@@ -247,8 +247,7 @@ class ShortInterestFetcher:
 
             engine = create_engine("postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database")
 
-            query = text(
-                """
+            query = text("""
                 SELECT
                     symbol,
                     settlement_date,
@@ -260,8 +259,7 @@ class ShortInterestFetcher:
                 WHERE symbol = :symbol
                 ORDER BY settlement_date DESC
                 LIMIT 2
-            """
-            )
+            """)
 
             with engine.connect() as conn:
                 results = conn.execute(query, {"symbol": symbol}).fetchall()
@@ -396,8 +394,7 @@ class ShortInterestFetcher:
 
             engine = create_engine("postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database")
 
-            query = text(
-                """
+            query = text("""
                 SELECT
                     symbol,
                     settlement_date,
@@ -409,8 +406,7 @@ class ShortInterestFetcher:
                 WHERE symbol = :symbol
                 ORDER BY settlement_date DESC
                 LIMIT :periods
-            """
-            )
+            """)
 
             with engine.connect() as conn:
                 results = conn.execute(query, {"symbol": symbol, "periods": periods}).fetchall()
@@ -464,8 +460,7 @@ class ShortInterestFetcher:
 
             engine = create_engine("postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database")
 
-            query = text(
-                """
+            query = text("""
                 SELECT
                     symbol,
                     trade_date,
@@ -476,8 +471,7 @@ class ShortInterestFetcher:
                 WHERE symbol = :symbol
                 ORDER BY trade_date DESC
                 LIMIT :days
-            """
-            )
+            """)
 
             with engine.connect() as conn:
                 results = conn.execute(query, {"symbol": symbol, "days": days}).fetchall()
@@ -660,8 +654,7 @@ class ShortInterestFetcher:
 
             engine = create_engine("postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database")
 
-            query = text(
-                """
+            query = text("""
                 SELECT DISTINCT ON (symbol)
                     symbol,
                     settlement_date,
@@ -671,8 +664,7 @@ class ShortInterestFetcher:
                 FROM short_interest
                 WHERE short_percent_float IS NOT NULL
                 ORDER BY symbol, settlement_date DESC
-            """
-            )
+            """)
 
             with engine.connect() as conn:
                 results = conn.execute(query).fetchall()

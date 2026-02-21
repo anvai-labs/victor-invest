@@ -122,8 +122,7 @@ class SymbolMetadataService:
         # Fetch from database
         with self.stock_engine.connect() as conn:
             result = conn.execute(
-                text(
-                    """
+                text("""
                     SELECT
                         ticker,
                         "Sector",
@@ -136,8 +135,7 @@ class SymbolMetadataService:
                         cik
                     FROM symbol
                     WHERE ticker = :symbol
-                """
-                ),
+                """),
                 {"symbol": symbol},
             ).fetchone()
 
@@ -198,8 +196,7 @@ class SymbolMetadataService:
         if uncached:
             with self.stock_engine.connect() as conn:
                 rows = conn.execute(
-                    text(
-                        """
+                    text("""
                         SELECT
                             ticker,
                             "Sector",
@@ -212,8 +209,7 @@ class SymbolMetadataService:
                             cik
                         FROM symbol
                         WHERE ticker = ANY(:symbols)
-                    """
-                    ),
+                    """),
                     {"symbols": uncached},
                 ).fetchall()
 
@@ -271,8 +267,7 @@ class SymbolMetadataService:
         """
         with self.stock_engine.connect() as conn:
             result = conn.execute(
-                text(
-                    """
+                text("""
                     SELECT ticker
                     FROM symbol
                     WHERE "Sector" = :sector
@@ -280,8 +275,7 @@ class SymbolMetadataService:
                       AND isstock = TRUE
                       AND (mktcap IS NULL OR mktcap >= :min_mktcap)
                     ORDER BY mktcap DESC NULLS LAST
-                """
-                ),
+                """),
                 {"sector": sector, "min_mktcap": min_market_cap},
             ).fetchall()
             return [row[0] for row in result]
@@ -289,33 +283,25 @@ class SymbolMetadataService:
     def get_russell1000_symbols(self) -> List[str]:
         """Get Russell 1000 symbols."""
         with self.stock_engine.connect() as conn:
-            result = conn.execute(
-                text(
-                    """
+            result = conn.execute(text("""
                     SELECT ticker
                     FROM symbol
                     WHERE russell1000 = TRUE
                       AND islisted = TRUE
                       AND isstock = TRUE
                     ORDER BY mktcap DESC NULLS LAST
-                """
-                )
-            ).fetchall()
+                """)).fetchall()
             return [row[0] for row in result]
 
     def get_sp500_symbols(self) -> List[str]:
         """Get S&P 500 symbols."""
         with self.stock_engine.connect() as conn:
-            result = conn.execute(
-                text(
-                    """
+            result = conn.execute(text("""
                     SELECT ticker
                     FROM symbol
                     WHERE sp500 = TRUE
                       AND islisted = TRUE
                       AND isstock = TRUE
                     ORDER BY mktcap DESC NULLS LAST
-                """
-                )
-            ).fetchall()
+                """)).fetchall()
             return [row[0] for row in result]

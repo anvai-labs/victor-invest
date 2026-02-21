@@ -1511,7 +1511,10 @@ class DynamicModelWeightingService:
         return any(keyword in industry_lower for keyword in self.fee_based_insurance_industry_keywords)
 
     def _is_insurance_or_managed_care(
-        self, sector: Optional[str], industry: Optional[str], symbol: Optional[str] = None
+        self,
+        sector: Optional[str],
+        industry: Optional[str],
+        symbol: Optional[str] = None,
     ) -> bool:
         """
         Check if the company is an insurance or managed care company.

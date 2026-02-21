@@ -72,9 +72,7 @@ def sector_multiples(ctx):
     help="Calculate without updating config.yaml",
 )
 @click.pass_context
-def refresh(
-    ctx, sectors, industries, min_samples, exclude_outliers, update_config, dry_run
-):
+def refresh(ctx, sectors, industries, min_samples, exclude_outliers, update_config, dry_run):
     """Refresh sector/industry multiples from database data
 
     Calculates median valuation multiples (P/E, P/S, EV/EBITDA, P/B) from
@@ -476,9 +474,7 @@ def trend(ctx, group_name, group_type, start_year, end_year, export):
     click.echo("=" * 80)
 
     # Header
-    click.echo(
-        f"{'FY':<6} {'Snapshot':<12} {'P/E':<10} {'P/S':<10} {'P/B':<10} {'Sample':<8}"
-    )
+    click.echo(f"{'FY':<6} {'Snapshot':<12} {'P/E':<10} {'P/S':<10} {'P/B':<10} {'Sample':<8}")
     click.echo("-" * 80)
 
     for row in trend_data:
@@ -500,14 +496,10 @@ def trend(ctx, group_name, group_type, start_year, end_year, export):
         if first_pe and last_pe:
             if last_pe > first_pe:
                 pct_change = ((last_pe - first_pe) / first_pe) * 100
-                click.echo(
-                    f"  P/E Swelling: {first_pe:.2f}x → {last_pe:.2f}x (+{pct_change:.1f}%)"
-                )
+                click.echo(f"  P/E Swelling: {first_pe:.2f}x → {last_pe:.2f}x (+{pct_change:.1f}%)")
             else:
                 pct_change = ((first_pe - last_pe) / first_pe) * 100
-                click.echo(
-                    f"  P/E Shrinking: {first_pe:.2f}x → {last_pe:.2f}x (-{pct_change:.1f}%)"
-                )
+                click.echo(f"  P/E Shrinking: {first_pe:.2f}x → {last_pe:.2f}x (-{pct_change:.1f}%)")
 
     click.echo("=" * 80)
 

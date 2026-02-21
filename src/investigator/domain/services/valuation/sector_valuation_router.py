@@ -898,10 +898,10 @@ class SectorValuationRouter:
             and adjusted_fair_value fields populated
         """
         try:
-            from investigator.domain.services.industry_datasets import get_industry_summary  # noqa: F401
-            from investigator.domain.services.industry_datasets import (
+            from investigator.domain.services.industry_datasets import (  # noqa: F401
                 apply_adjustments_to_fair_value,
                 extract_industry_metrics,
+                get_industry_summary,
                 get_valuation_adjustments,
             )
 

@@ -99,7 +99,12 @@ class DCFValuation:
         cache_key = (num_quarters, compute_missing)
 
         if cache_key not in self._ttm_cache:
-            from utils.quarterly_calculator import get_rolling_ttm_periods
+            try:
+                from utils.quarterly_calculator import get_rolling_ttm_periods
+            except ImportError:
+                logger.warning("utils.quarterly_calculator not available - TTM calculation limited")
+                # Return empty list if utils not available
+                return []
 
             self._ttm_cache[cache_key] = get_rolling_ttm_periods(
                 self.quarterly_metrics,

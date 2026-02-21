@@ -1541,15 +1541,13 @@ def cache_facts(symbols_file, symbol_list, parallel, process_raw, hydrate_from_d
         with manager.engine.connect() as conn:
             for symbol in symbols:
                 row = conn.execute(
-                    text(
-                        """
+                    text("""
                         SELECT cik, companyfacts
                         FROM sec_companyfacts_raw
                         WHERE symbol = :symbol
                         ORDER BY fetched_at DESC
                         LIMIT 1
-                        """
-                    ),
+                        """),
                     {"symbol": symbol},
                 ).fetchone()
                 if not row:

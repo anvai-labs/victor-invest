@@ -349,7 +349,14 @@ class KeyStrengthsExtractor(BaseFieldExtractor):
             ("agents", "synthesis", "analysis", "key_insights"),
             ("agents", "synthesis", "analysis", "investment_thesis", "value_drivers"),
             ("agents", "synthesis", "analysis", "investment_thesis", "strengths"),
-            ("agents", "synthesis", "analysis", "scenarios", "bull_case", "key_assumptions"),
+            (
+                "agents",
+                "synthesis",
+                "analysis",
+                "scenarios",
+                "bull_case",
+                "key_assumptions",
+            ),
             # Synthesis paths
             (
                 "agents",
@@ -475,7 +482,14 @@ class KeyRisksExtractor(BaseFieldExtractor):
             ("agents", "synthesis", "analysis", "risk_assessment", "primary_risks"),
             ("agents", "synthesis", "analysis", "risk_assessment", "risks"),
             ("agents", "synthesis", "analysis", "key_risks"),
-            ("agents", "synthesis", "analysis", "scenarios", "bear_case", "risk_factors"),
+            (
+                "agents",
+                "synthesis",
+                "analysis",
+                "scenarios",
+                "bear_case",
+                "risk_factors",
+            ),
             # Synthesis paths
             (
                 "agents",
@@ -628,7 +642,13 @@ class RecommendationExtractor(BaseFieldExtractor):
             # Current synthesis result shape (post-wrapper normalization)
             ("agents", "synthesis", "recommendation", "final_recommendation"),
             ("agents", "synthesis", "recommendation", "recommendation"),
-            ("agents", "synthesis", "analysis", "recommendation_and_action_plan", "recommendation"),
+            (
+                "agents",
+                "synthesis",
+                "analysis",
+                "recommendation_and_action_plan",
+                "recommendation",
+            ),
             (
                 "agents",
                 "synthesis",
@@ -707,7 +727,13 @@ class TimeHorizonExtractor(BaseFieldExtractor):
         return [
             # Current synthesis result shape (post-wrapper normalization)
             ("agents", "synthesis", "recommendation", "time_horizon"),
-            ("agents", "synthesis", "analysis", "recommendation_and_action_plan", "time_horizon"),
+            (
+                "agents",
+                "synthesis",
+                "analysis",
+                "recommendation_and_action_plan",
+                "time_horizon",
+            ),
             (
                 "agents",
                 "synthesis",

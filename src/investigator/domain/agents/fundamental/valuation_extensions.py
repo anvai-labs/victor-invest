@@ -111,7 +111,10 @@ async def calculate_valuation_extensions(
         ("financials.dividend_payout_ratio", financials.get("dividend_payout_ratio")),
         ("ratios.payout_ratio", ratios.get("payout_ratio")),
         ("ratios.dividend_payout_ratio", ratios.get("dividend_payout_ratio")),
-        ("company_profile.dividend_payout_ratio", getattr(company_profile, "dividend_payout_ratio", None)),
+        (
+            "company_profile.dividend_payout_ratio",
+            getattr(company_profile, "dividend_payout_ratio", None),
+        ),
     ):
         pct = _to_percent(value)
         if pct is not None:

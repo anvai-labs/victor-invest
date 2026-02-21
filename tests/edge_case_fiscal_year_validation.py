@@ -51,8 +51,7 @@ class FiscalYearEdgeCaseValidator:
         Returns:
             List of (fye, count, sample_symbols) tuples
         """
-        query = text(
-            """
+        query = text("""
             WITH symbol_lookup AS (
               SELECT DISTINCT ON (sub.cik)
                 sub.cik,
@@ -76,8 +75,7 @@ class FiscalYearEdgeCaseValidator:
             ) subq
             GROUP BY fye
             ORDER BY fye;
-        """
-        )
+        """)
 
         with self.engine.connect() as conn:
             result = conn.execute(query)
@@ -94,8 +92,7 @@ class FiscalYearEdgeCaseValidator:
         Returns:
             List of fiscal period records
         """
-        query = text(
-            """
+        query = text("""
             SELECT
               period,
               fy,
@@ -111,8 +108,7 @@ class FiscalYearEdgeCaseValidator:
               AND fy >= :min_year
             ORDER BY period DESC
             LIMIT 20
-        """
-        )
+        """)
 
         with self.engine.connect() as conn:
             result = conn.execute(query, {"cik": cik, "min_year": min_year})

@@ -353,7 +353,10 @@ class MetricExtractionOrchestrator:
     ) -> None:
         """Log extraction failures with duplicate suppression and warning throttling."""
         if self._is_historical_optional_gap(canonical_key, target_period_end):
-            logger.debug("%s [historical optional metric warning downgraded to DEBUG]", failure_msg)
+            logger.debug(
+                "%s [historical optional metric warning downgraded to DEBUG]",
+                failure_msg,
+            )
             return
 
         if self._is_low_signal_missing_metric(canonical_key):

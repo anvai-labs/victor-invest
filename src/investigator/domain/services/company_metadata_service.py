@@ -313,15 +313,13 @@ class CompanyMetadataService:
         Returns:
             (normalized_sector, industry) tuple
         """
-        query = text(
-            """
+        query = text("""
             SELECT
                 COALESCE(sec_sector, "Sector", 'Unknown') as sector,
                 COALESCE(sec_industry, "Industry") as industry
             FROM symbol
             WHERE ticker = :symbol
-        """
-        )
+        """)
 
         try:
             with self.engine.connect() as conn:
@@ -419,16 +417,14 @@ class CompanyMetadataService:
             return results
 
         # Batch query database for uncached symbols
-        query = text(
-            """
+        query = text("""
             SELECT
                 ticker,
                 COALESCE(sec_sector, "Sector", 'Unknown') as sector,
                 COALESCE(sec_industry, "Industry") as industry
             FROM symbol
             WHERE ticker = ANY(:symbols)
-        """
-        )
+        """)
 
         try:
             with self.engine.connect() as conn:

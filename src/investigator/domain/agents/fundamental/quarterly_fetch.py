@@ -29,8 +29,7 @@ def query_recent_processed_periods(
     logger: Any,
 ) -> List[Dict[str, Any]]:
     """Load recent FY/Q periods for a symbol from `sec_companyfacts_processed`."""
-    query = text(
-        """
+    query = text("""
         SELECT
             symbol, fiscal_year, fiscal_period, adsh,
             filed_date as filed,
@@ -74,8 +73,7 @@ def query_recent_processed_periods(
                 ELSE 0
             END DESC
         LIMIT :sql_limit
-    """
-    )
+    """)
 
     sql_limit = num_quarters + 3
     with db_manager.get_session() as session:
@@ -326,8 +324,7 @@ def fetch_processed_quarter_payload(
         fiscal_period,
         adsh[:20],
     )
-    query = text(
-        """
+    query = text("""
         SELECT *
         FROM sec_companyfacts_processed
         WHERE symbol = :symbol
@@ -335,8 +332,7 @@ def fetch_processed_quarter_payload(
           AND fiscal_period = :fiscal_period
           AND adsh = :adsh
         LIMIT 1
-    """
-    )
+    """)
     with engine.connect() as conn:
         result = conn.execute(
             query,

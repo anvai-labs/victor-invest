@@ -1388,8 +1388,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
         try:
             # Query SEC data for crisis period
-            query = text(
-                """
+            query = text("""
                 SELECT sub.fy, sub.fp, sub.period,
                        num.tag, num.value
                 FROM sec_sub_data sub
@@ -1400,8 +1399,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                     AND num.tag IN ('Revenues', 'NetIncomeLoss',
                                    'OperatingCashFlow', 'CashAndCashEquivalentsAtCarryingValue')
                 ORDER BY sub.period
-            """
-            )
+            """)
 
             with self.db_manager.get_session() as session:
                 results = session.execute(
@@ -2122,8 +2120,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         """
         try:
             # Try to fetch from synthesis_results table (will be empty on first run)
-            query = text(
-                """
+            query = text("""
                 SELECT
                     analysis_timestamp as generated_at,
                     overall_score,
@@ -2134,8 +2131,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 FROM synthesis_results
                 WHERE symbol = :symbol
                 ORDER BY generated_at ASC
-            """
-            )
+            """)
 
             with self.db_manager.get_session() as session:
                 result = session.execute(query, {"symbol": symbol})
@@ -2177,14 +2173,12 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         """
         try:
             # First, get the industry for this symbol
-            industry_query = text(
-                """
+            industry_query = text("""
                 SELECT industry, sector
                 FROM peer_metrics
                 WHERE symbol = :symbol
                 LIMIT 1
-            """
-            )
+            """)
 
             with self.db_manager.get_session() as session:
                 result = session.execute(industry_query, {"symbol": symbol}).fetchone()
@@ -2197,14 +2191,12 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 sector = result[1] if hasattr(result, "__getitem__") else result.sector
 
                 # Get peer metrics
-                peer_query = text(
-                    """
+                peer_query = text("""
                     SELECT symbol, metrics_data
                     FROM peer_metrics
                     WHERE industry = :industry
                     ORDER BY symbol
-                """
-                )
+                """)
 
                 peer_result = session.execute(peer_query, {"industry": industry})
                 peers = peer_result.fetchall()
@@ -2518,8 +2510,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             start_year = current_year - years
 
             # Query annual data from SEC tables
-            query = text(
-                """
+            query = text("""
                 SELECT
                     sub.fy as fiscal_year,
                     sub.fp as fiscal_period,
@@ -2543,8 +2534,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                         'GrossProfit', 'OperatingExpenses'
                     )
                 ORDER BY sub.fy DESC
-            """
-            )
+            """)
 
             with self.db_manager.get_session() as session:
                 result = session.execute(
@@ -2930,14 +2920,12 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             target_profit_margin = latest.get("net_margin", 0) or 0
 
             # Get industry for peer lookup
-            industry_query = text(
-                """
+            industry_query = text("""
                 SELECT industry, sector
                 FROM peer_metrics
                 WHERE symbol = :symbol
                 LIMIT 1
-            """
-            )
+            """)
 
             with self.db_manager.get_session() as session:
                 result = session.execute(industry_query, {"symbol": symbol}).fetchone()
@@ -2959,14 +2947,12 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 sector = result[1] if hasattr(result, "__getitem__") else result.sector
 
                 # Get peer metrics
-                peer_query = text(
-                    """
+                peer_query = text("""
                     SELECT symbol, metrics_data
                     FROM peer_metrics
                     WHERE industry = :industry AND symbol != :symbol
                     LIMIT 15
-                """
-                )
+                """)
 
                 peer_result = session.execute(peer_query, {"industry": industry, "symbol": symbol})
                 peers = peer_result.fetchall()
@@ -3021,14 +3007,12 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         """
         try:
             # Get industry for peer lookup
-            industry_query = text(
-                """
+            industry_query = text("""
                 SELECT industry, sector
                 FROM peer_metrics
                 WHERE symbol = :symbol
                 LIMIT 1
-            """
-            )
+            """)
 
             with self.db_manager.get_session() as session:
                 result = session.execute(industry_query, {"symbol": symbol}).fetchone()
@@ -3041,14 +3025,12 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 sector = result[1] if hasattr(result, "__getitem__") else result.sector
 
                 # Get all peer metrics including target
-                peer_query = text(
-                    """
+                peer_query = text("""
                     SELECT symbol, metrics_data
                     FROM peer_metrics
                     WHERE industry = :industry
                     ORDER BY symbol
-                """
-                )
+                """)
 
                 peer_result = session.execute(peer_query, {"industry": industry})
                 peers = peer_result.fetchall()
@@ -3310,9 +3292,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             List of quarterly metrics dictionaries
         """
         try:
-
-            query = text(
-                """
+            query = text("""
                 SELECT
                     symbol,
                     fiscal_year,
@@ -3329,8 +3309,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                         ELSE 0
                     END DESC
                 LIMIT :limit
-            """
-            )
+            """)
 
             with self.db_manager.get_session() as session:
                 result = session.execute(query, {"symbol": symbol, "limit": limit})
@@ -3378,7 +3357,6 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             List of dictionaries with OHLCV data
         """
         try:
-
             from investigator.infrastructure.database.market_data import (
                 get_market_data_fetcher,
             )
@@ -4079,12 +4057,10 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
         # Component 4: Peer Data Availability
         try:
-            query = text(
-                """
+            query = text("""
                 SELECT COUNT(*) FROM peer_metrics
                 WHERE industry = (SELECT industry FROM peer_metrics WHERE symbol = :symbol LIMIT 1)
-            """
-            )
+            """)
             with self.db_manager.get_session() as session:
                 peer_count = session.execute(query, {"symbol": symbol}).scalar()
             peer_availability = min((peer_count / 10) * 100, 100) if peer_count else 0
@@ -4773,8 +4749,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             Dictionary with previous recommendation data, or None if not found
         """
         try:
-            query = text(
-                """
+            query = text("""
                 SELECT overall_score, fundamental_score, technical_score,
                        recommendation, confidence, price_target, current_price,
                        analysis_timestamp
@@ -4782,8 +4757,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 WHERE symbol = :symbol
                 ORDER BY analysis_timestamp DESC
                 LIMIT 1
-            """
-            )
+            """)
 
             with self.db_manager.get_session() as session:
                 result = session.execute(query, {"symbol": symbol}).fetchone()
@@ -4813,8 +4787,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             import json
 
             # Prepare data for insertion
-            insert_query = text(
-                """
+            insert_query = text("""
                 INSERT INTO synthesis_results (
                     symbol, analysis_timestamp, overall_score, fundamental_score, technical_score,
                     income_score, cashflow_score, balance_score, growth_score, value_score,
@@ -4828,8 +4801,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                     :investment_thesis, :time_horizon, :position_size, :key_catalysts, :key_risks,
                     :key_insights, :entry_strategy, :exit_strategy, :stop_loss, :data_quality_score
                 )
-            """
-            )
+            """)
 
             with self.db_manager.get_session() as session:
                 session.execute(

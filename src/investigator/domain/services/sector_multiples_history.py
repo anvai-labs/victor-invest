@@ -50,9 +50,7 @@ class SectorMultiplesHistory:
 
     # Key SEC tags for valuation metrics
     TAGS = {
-        "total_revenue": [
-            "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax"
-        ],
+        "total_revenue": ["us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax"],
         "net_income": ["us-gaap:NetIncomeLoss", "us-gaap:ProfitLoss"],
         "ebitda": [],  # Calculated from operating income + D&A
         "operating_income": ["us-gaap:OperatingIncomeLoss"],
@@ -161,20 +159,14 @@ class SectorMultiplesHistory:
         # Calculate sector-level multiples
         for sector, symbols in sector_groups.items():
             logger.info(f"Calculating for sector: {sector} ({len(symbols)} symbols)")
-            multiples = self._calculate_historical_multiples_for_symbols(
-                symbols, f"sector:{sector}", fiscal_year
-            )
+            multiples = self._calculate_historical_multiples_for_symbols(symbols, f"sector:{sector}", fiscal_year)
             if multiples:
                 results[sector] = multiples
 
         # Calculate industry-level multiples
         for industry, symbols in industry_groups.items():
-            logger.info(
-                f"Calculating for industry: {industry} ({len(symbols)} symbols)"
-            )
-            multiples = self._calculate_historical_multiples_for_symbols(
-                symbols, f"industry:{industry}", fiscal_year
-            )
+            logger.info(f"Calculating for industry: {industry} ({len(symbols)} symbols)")
+            multiples = self._calculate_historical_multiples_for_symbols(symbols, f"industry:{industry}", fiscal_year)
             if multiples:
                 results[industry] = multiples
 
@@ -252,9 +244,7 @@ class SectorMultiplesHistory:
         pb_median = self._filtered_median(pb_multiples, f"{group_name}_PB")
 
         if pe_median is None:
-            logger.warning(
-                f"{group_name} FY{fiscal_year}: No valid multiples calculated"
-            )
+            logger.warning(f"{group_name} FY{fiscal_year}: No valid multiples calculated")
             return None
 
         # Calculate snapshot date (FY end + 1 month)
@@ -271,12 +261,10 @@ class SectorMultiplesHistory:
             "percentile_high": self.percentile_exclude[1],
         }
 
-    def _get_fy_metrics(
-        self, symbols: List[str], fiscal_year: int
-    ) -> Dict[str, Dict[str, float]]:
-        """Get FY metrics from SEC num/tag data for a fiscal year.
+    def _get_fy_metrics(self, symbols: List[str], fiscal_year: int) -> Dict[str, Dict[str, float]]:
+        """Get FY metrics from sec_companyfacts_processed table.
 
-        Queries sec_num_data for tag values and joins with stock.symbol for prices.
+        This table has cleaned, validated FY data with market data.
 
         Args:
             symbols: List of stock symbols
@@ -287,48 +275,33 @@ class SectorMultiplesHistory:
         """
         with self.sec_db_manager.get_session() as sec_session:
             with self.stock_db_manager.get_session() as stock_session:
-                # Get CIKs for symbols
-                symbol_cik_map = self._get_symbol_cik_map(stock_session, symbols)
-
-                if not symbol_cik_map:
-                    logger.warning("No symbols found in stock.symbol table")
-                    return {}
-
-                # Query SEC tag data for FY values
-                # Using sec_num_data table with fy filter
+                # Use sec_companyfacts_processed for FY metrics (already extracted)
                 query = text("""
                     SELECT
-                        s.adsh,
-                        s.tag,
-                        s.ddate AS filing_date,
-                        s.value,
-                        s.uom,
-                        c.ticker AS symbol
-                    FROM sec_num_data s
-                    JOIN submissions sub ON s.adsh = sub.adsh
-                    JOIN company_facts c ON sub.cik = c.cik
-                    WHERE sub.cik = ANY(:ciks)
-                        AND sub.fy = :fiscal_year
-                        AND s.tag IN (
-                            'us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax',
-                            'us-gaap:NetIncomeLoss',
-                            'us-gaap:OperatingIncomeLoss',
-                            'us-gaap:StockholdersEquity',
-                            'us-gaap:CommonStockSharesOutstanding'
-                        )
-                        AND s.qtrs = 4  -- FY data (4 quarters)
+                        p.symbol,
+                        p.total_revenue,
+                        p.net_income,
+                        p.operating_income,
+                        p.stockholders_equity,
+                        p.shares_outstanding,
+                        p.market_cap,
+                        p.period_end_date
+                    FROM sec_companyfacts_processed p
+                    WHERE p.symbol = ANY(:symbols)
+                        AND p.fiscal_year = :fiscal_year
+                        AND p.fiscal_period = 'FY'
                 """)
 
                 try:
                     result = sec_session.execute(
                         query,
                         {
-                            "ciks": list(symbol_cik_map.values()),
+                            "symbols": list(symbols),
                             "fiscal_year": fiscal_year,
                         },
                     )
                 except Exception as e:
-                    logger.warning(f"SEC num_data query failed: {e}")
+                    logger.warning(f"sec_companyfacts_processed query failed: {e}")
                     # Fallback: try simpler query
                     return {}
 
@@ -336,58 +309,61 @@ class SectorMultiplesHistory:
                 fy_metrics: Dict[str, Dict[str, float]] = {}
 
                 for row in result:
-                    symbol = row[5]
-                    tag = row[1]
-                    value = float(row[3]) if row[3] else None
+                    symbol = row[0]
+                    total_revenue = float(row[1]) if row[1] else None
+                    net_income = float(row[2]) if row[2] else None
+                    operating_income = float(row[3]) if row[3] else None
+                    equity = float(row[4]) if row[4] else None
+                    shares = float(row[5]) if row[5] else None
+                    market_cap = float(row[6]) if row[6] else None
+                    period_end = row[7]
 
                     if symbol not in fy_metrics:
                         fy_metrics[symbol] = {}
 
-                    # Map tags to metrics
-                    if "Revenue" in tag:
-                        fy_metrics[symbol]["total_revenue"] = value
-                    elif "NetIncomeLoss" in tag or "ProfitLoss" in tag:
-                        fy_metrics[symbol]["net_income"] = value
-                    elif "OperatingIncomeLoss" in tag:
-                        fy_metrics[symbol]["operating_income"] = value
-                    elif "StockholdersEquity" in tag:
-                        fy_metrics[symbol]["stockholders_equity"] = value
-                    elif "SharesOutstanding" in tag:
-                        fy_metrics[symbol]["shares_outstanding"] = value
+                    # Map columns to metrics
+                    if total_revenue:
+                        fy_metrics[symbol]["total_revenue"] = total_revenue
+                    if net_income:
+                        fy_metrics[symbol]["net_income"] = net_income
+                    if operating_income:
+                        fy_metrics[symbol]["operating_income"] = operating_income
+                    if equity:
+                        fy_metrics[symbol]["stockholders_equity"] = equity
+                    if shares and shares > 0:
+                        fy_metrics[symbol]["shares_outstanding"] = shares
+                    if market_cap:
+                        fy_metrics[symbol]["market_cap"] = market_cap
+                    if period_end:
+                        fy_metrics[symbol]["period_end_date"] = period_end
 
-                # Add market data from stock database
-                # Use end of FY + 1 month as proxy price
-                snapshot_date = datetime(fiscal_year, 12, 31) + timedelta(days=31)
-                for symbol in fy_metrics.keys():
-                    price_data = self._get_historical_price(
-                        stock_session, symbol, snapshot_date
-                    )
-                    if price_data:
-                        fy_metrics[symbol]["price"] = price_data["price"]
-                        fy_metrics[symbol]["market_cap"] = price_data["market_cap"]
+                # Add price data if not already present
+                # First try: calculate from market_cap / shares (most accurate for the FY)
+                # Fallback: use historical price from tickerdata table
+                for symbol, metrics in fy_metrics.items():
+                    if "price" not in metrics:
+                        market_cap = metrics.get("market_cap")
+                        shares = metrics.get("shares_outstanding")
+                        if market_cap and shares and shares > 0:
+                            metrics["price"] = market_cap / shares
+                        # Fallback: try to get historical price from tickerdata
+                        elif "period_end_date" in metrics:
+                            period_end = metrics["period_end_date"]
+                            if isinstance(period_end, str):
+                                from datetime import datetime
+
+                                period_end = datetime.fromisoformat(period_end)
+                            snapshot_date = period_end + timedelta(days=31)
+                            price_data = self._get_historical_price(stock_session, symbol, snapshot_date)
+                            if price_data:
+                                metrics["price"] = price_data
 
                 return fy_metrics
 
-    def _get_symbol_cik_map(
-        self, session: Session, symbols: List[str]
-    ) -> Dict[str, int]:
-        """Get CIK mapping for symbols from stock.symbol."""
-        query = text("""
-            SELECT ticker, cik
-            FROM symbol
-            WHERE UPPER(ticker) = ANY(:symbols)
-                AND islisted = true
-        """)
+    def _get_historical_price(self, session: Session, symbol: str, target_date: datetime) -> Optional[float]:
+        """Get historical price around target date from tickerdata table.
 
-        result = session.execute(query, {"symbols": [s.upper() for s in symbols]})
-        return {row[0]: int(row[1]) for row in result}
-
-    def _get_historical_price(
-        self, session: Session, symbol: str, target_date: datetime
-    ) -> Optional[Dict[str, float]]:
-        """Get historical price around target date (end of FY + 1 month proxy).
-
-        Uses end of month price closest to target date.
+        Uses price closest to target date (within ±7 days).
 
         Args:
             session: Stock database session
@@ -395,36 +371,37 @@ class SectorMultiplesHistory:
             target_date: Target date for price
 
         Returns:
-            Dict with price and market_cap or None
+            Price or None
         """
-        # Query for price closest to target date (within same month)
+        # Query for price closest to target date (within ±7 days)
         query = text("""
-            SELECT date, close, volume, market_cap
-            FROM stock_data
+            SELECT date, close
+            FROM tickerdata
             WHERE ticker = :symbol
-                AND date <= :end_date
-                AND date >= :start_date
-            ORDER BY date DESC
+                AND date BETWEEN :start_date AND :end_date
+            ORDER BY ABS(date - :target_date) ASC
             LIMIT 1
         """)
 
-        # Get date range for the month
-        start_date = target_date.replace(day=1)
-        end_date = start_date.replace(
-            month=start_date.month % 12 + 1, day=1
-        ) - timedelta(days=1)
+        # Get date range (target ± 7 days)
+        from datetime import timedelta
+
+        start_date = target_date - timedelta(days=7)
+        end_date = target_date + timedelta(days=7)
 
         result = session.execute(
             query,
-            {"symbol": symbol.upper(), "start_date": start_date, "end_date": end_date},
+            {
+                "symbol": symbol.upper(),
+                "start_date": start_date,
+                "end_date": end_date,
+                "target_date": target_date,
+            },
         )
 
         row = result.fetchone()
-        if row:
-            return {
-                "price": float(row[1]) if row[1] else None,
-                "market_cap": float(row[3]) if row[3] else None,
-            }
+        if row and row[1]:
+            return float(row[1])
 
         return None
 
@@ -441,17 +418,13 @@ class SectorMultiplesHistory:
             params: Dict[str, Any] = {}
 
             if sectors:
-                override_symbols = [
-                    s.upper() for s, sec in config_overrides.items() if sec in sectors
-                ]
+                override_symbols = [s.upper() for s, sec in config_overrides.items() if sec in sectors]
                 if override_symbols:
                     filters.append("ticker = ANY(:override_symbols)")
                     params["override_symbols"] = override_symbols
 
                 sector_list = [s.title() for s in sectors]
-                filters.append(
-                    "COALESCE(NULLIF(\"Sector\", ''), '') = ANY(:sectors) OR \"Sector\" = ANY(:sectors)"
-                )
+                filters.append("COALESCE(NULLIF(\"Sector\", ''), '') = ANY(:sectors) OR \"Sector\" = ANY(:sectors)")
                 params["sectors"] = sector_list
 
             if industries:
@@ -495,9 +468,10 @@ class SectorMultiplesHistory:
         """Load sector overrides from config.yaml."""
         from pathlib import Path
 
-        config_path = (
-            Path(__file__).parent.parent.parent.parent.parent.parent / "config.yaml"
-        )
+        # From: src/investigator/domain/services/sector_multiples_history.py
+        # To: repo_root/config.yaml
+        # Go up: services(1) -> domain(2) -> investigator(3) -> src(4) -> repo_root(5)
+        config_path = Path(__file__).parent.parent.parent.parent.parent / "config.yaml"
 
         if not config_path.exists():
             logger.warning(f"Config file not found: {config_path}")
@@ -559,13 +533,9 @@ class SectorMultiplesHistory:
                         existing.ps_multiple = multiples.get("ps")
                         existing.pb_multiple = multiples.get("pb")
                         existing.sample_size = multiples["sample_size"]
-                        existing.snapshot_date = datetime.fromisoformat(
-                            multiples["snapshot_date"]
-                        )
+                        existing.snapshot_date = datetime.fromisoformat(multiples["snapshot_date"])
                         existing.percentile_low = multiples.get("percentile_low", 0.05)
-                        existing.percentile_high = multiples.get(
-                            "percentile_high", 0.95
-                        )
+                        existing.percentile_high = multiples.get("percentile_high", 0.95)
                         existing.updated_at = datetime.utcnow()
                     else:
                         # Create new record
@@ -573,9 +543,7 @@ class SectorMultiplesHistory:
                             group_name=name,
                             group_type=group_type,
                             fiscal_year=multiples["fiscal_year"],
-                            snapshot_date=datetime.fromisoformat(
-                                multiples["snapshot_date"]
-                            ),
+                            snapshot_date=datetime.fromisoformat(multiples["snapshot_date"]),
                             pe_multiple=multiples.get("pe"),
                             ps_multiple=multiples.get("ps"),
                             pb_multiple=multiples.get("pb"),
@@ -616,9 +584,7 @@ class SectorMultiplesHistory:
         )
 
         with self.sec_db_manager.get_session() as session:
-            query = session.query(SectorMultiplesHistory).filter_by(
-                group_name=group_name, group_type=group_type
-            )
+            query = session.query(SectorMultiplesHistory).filter_by(group_name=group_name, group_type=group_type)
 
             if start_year:
                 query = query.filter(SectorMultiplesHistory.fiscal_year >= start_year)
@@ -667,9 +633,7 @@ class SectorMultiplesHistory:
                 query = session.query(SectorMultiplesHistory)
 
                 if start_year:
-                    query = query.filter(
-                        SectorMultiplesHistory.fiscal_year >= start_year
-                    )
+                    query = query.filter(SectorMultiplesHistory.fiscal_year >= start_year)
                 if end_year:
                     query = query.filter(SectorMultiplesHistory.fiscal_year <= end_year)
 

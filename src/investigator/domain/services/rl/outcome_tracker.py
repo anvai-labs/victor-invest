@@ -103,8 +103,7 @@ class ValuationOutcomesDAO:
         try:
             with self.db.get_session() as session:
                 result = session.execute(
-                    text(
-                        """
+                    text("""
                         INSERT INTO valuation_outcomes (
                             symbol, analysis_date, fiscal_period,
                             blended_fair_value, current_price, predicted_upside_pct,
@@ -143,8 +142,7 @@ class ValuationOutcomesDAO:
                             exit_date_90d = EXCLUDED.exit_date_90d,
                             updated_at = CURRENT_TIMESTAMP
                         RETURNING id
-                    """
-                    ),
+                    """),
                     {
                         "symbol": symbol,
                         "analysis_date": analysis_date,
@@ -278,14 +276,12 @@ class ValuationOutcomesDAO:
         try:
             with self.db.get_session() as session:
                 result = session.execute(
-                    text(
-                        """
+                    text("""
                         UPDATE valuation_outcomes
                         SET used_for_training = TRUE,
                             training_batch_id = :batch_id
                         WHERE id = ANY(:ids)
-                    """
-                    ),
+                    """),
                     {"ids": record_ids, "batch_id": training_batch_id},
                 )
                 session.commit()
@@ -300,16 +296,14 @@ class ValuationOutcomesDAO:
         try:
             with self.db.get_session() as session:
                 results = session.execute(
-                    text(
-                        """
+                    text("""
                         SELECT id, symbol, analysis_date, blended_fair_value, current_price
                         FROM valuation_outcomes
                         WHERE actual_price_30d IS NULL
                           AND analysis_date <= CURRENT_DATE - INTERVAL '30 days'
                         ORDER BY analysis_date ASC
                         LIMIT :limit
-                    """
-                    ),
+                    """),
                     {"limit": limit},
                 ).fetchall()
 
@@ -333,8 +327,7 @@ class ValuationOutcomesDAO:
         try:
             with self.db.get_session() as session:
                 results = session.execute(
-                    text(
-                        """
+                    text("""
                         SELECT id, symbol, analysis_date, blended_fair_value, current_price,
                                dcf_fair_value, pe_fair_value, ps_fair_value,
                                evebitda_fair_value, pb_fair_value, ggm_fair_value
@@ -343,8 +336,7 @@ class ValuationOutcomesDAO:
                           AND analysis_date <= CURRENT_DATE - INTERVAL '90 days'
                         ORDER BY analysis_date ASC
                         LIMIT :limit
-                    """
-                    ),
+                    """),
                     {"limit": limit},
                 ).fetchall()
 
@@ -381,8 +373,7 @@ class ValuationOutcomesDAO:
             with self.db.get_session() as session:
                 used_clause = "AND used_for_training = FALSE" if exclude_used else ""
                 results = session.execute(
-                    text(
-                        f"""
+                    text(f"""
                         SELECT id, symbol, analysis_date, fiscal_period,
                                blended_fair_value, current_price, predicted_upside_pct,
                                dcf_fair_value, pe_fair_value, ps_fair_value,
@@ -396,8 +387,7 @@ class ValuationOutcomesDAO:
                               {used_clause}
                         ORDER BY analysis_date DESC
                         LIMIT :limit
-                    """
-                    ),
+                    """),
                     {"limit": limit},
                 ).fetchall()
 
@@ -416,8 +406,7 @@ class ValuationOutcomesDAO:
         try:
             with self.db.get_session() as session:
                 results = session.execute(
-                    text(
-                        """
+                    text("""
                         SELECT id, symbol, analysis_date, fiscal_period,
                                blended_fair_value, current_price, predicted_upside_pct,
                                dcf_fair_value, pe_fair_value, ps_fair_value,
@@ -430,8 +419,7 @@ class ValuationOutcomesDAO:
                         WHERE symbol = :symbol
                         ORDER BY analysis_date DESC
                         LIMIT :limit
-                    """
-                    ),
+                    """),
                     {"symbol": symbol, "limit": limit},
                 ).fetchall()
 

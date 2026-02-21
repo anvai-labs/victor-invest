@@ -26,8 +26,7 @@ def test_get_config_with_custom_path(tmp_path, monkeypatch):
 
     # Create custom config file
     custom_config = tmp_path / "custom.yaml"
-    custom_config.write_text(
-        """
+    custom_config.write_text("""
 database:
   host: custom-test-host
   port: 5432
@@ -63,8 +62,7 @@ sec:
     revenue: "Revenues"
   frame_api_details: {}
   xbrl_tag_abbreviations: {}
-"""
-    )
+""")
 
     # Reset singleton before test
     import investigator.config.config as config_module
@@ -76,9 +74,7 @@ sec:
 
     # Verify custom values are loaded
     assert cfg.database.host == "custom-test-host", "Should load custom database host"
-    assert cfg.ollama.base_url == "http://custom-ollama:11434", (
-        "Should load custom Ollama URL"
-    )
+    assert cfg.ollama.base_url == "http://custom-ollama:11434", "Should load custom Ollama URL"
     assert cfg.sec.user_agent == "test-agent", "Should load custom SEC user agent"
 
     print("✅ get_config() honors custom config path")
@@ -123,8 +119,7 @@ def test_get_config_singleton_reload_with_new_path(tmp_path, monkeypatch):
 
     # Create two different config files
     config1 = tmp_path / "config1.yaml"
-    config1.write_text(
-        """
+    config1.write_text("""
 database:
   host: host1
   port: 5432
@@ -160,12 +155,10 @@ sec:
     revenue: "Revenues"
   frame_api_details: {}
   xbrl_tag_abbreviations: {}
-"""
-    )
+""")
 
     config2 = tmp_path / "config2.yaml"
-    config2.write_text(
-        """
+    config2.write_text("""
 database:
   host: host2
   port: 5432
@@ -201,8 +194,7 @@ sec:
     revenue: "Revenues"
   frame_api_details: {}
   xbrl_tag_abbreviations: {}
-"""
-    )
+""")
 
     # Reset singleton
     import investigator.config.config as config_module
@@ -233,8 +225,7 @@ def test_cli_config_flag_integration(tmp_path):
 
     # Create custom config with distinctive value
     custom_config = tmp_path / "custom_cli.yaml"
-    custom_config.write_text(
-        """
+    custom_config.write_text("""
 database:
   host: cli-custom-host
   port: 5432
@@ -270,8 +261,7 @@ sec:
     revenue: "Revenues"
   frame_api_details: {}
   xbrl_tag_abbreviations: {}
-"""
-    )
+""")
 
     # Reset singleton
     import investigator.config.config as config_module
@@ -285,9 +275,7 @@ sec:
 
     # The status command should use the custom config
     # We can't easily verify output, but we can verify no errors
-    assert result.exit_code == 0 or result.exit_code == 1, (
-        f"CLI should execute (got exit={result.exit_code})"
-    )
+    assert result.exit_code == 0 or result.exit_code == 1, f"CLI should execute (got exit={result.exit_code})"
 
     print("✅ CLI --config flag integration works")
 

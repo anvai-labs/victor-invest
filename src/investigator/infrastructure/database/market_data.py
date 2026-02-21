@@ -118,8 +118,7 @@ class DatabaseMarketDataFetcher:
 
             # SQL query to fetch OHLCV data - get exact N trading days using LIMIT
             # Database contains only trading days (no weekends/holidays)
-            query = text(
-                """
+            query = text("""
                 SELECT
                     date,
                     open,
@@ -132,8 +131,7 @@ class DatabaseMarketDataFetcher:
                 WHERE ticker = :symbol
                 ORDER BY date DESC
                 LIMIT :limit_days
-            """
-            )
+            """)
 
             # Execute query and fetch data
             with self.engine.connect() as conn:
@@ -242,8 +240,7 @@ class DatabaseMarketDataFetcher:
             company_info = self._get_symbol_metadata(symbol)
 
             # Get latest price data for basic calculations
-            query_price = text(
-                """
+            query_price = text("""
                 SELECT 
                     close as current_price,
                     volume as current_volume
@@ -251,8 +248,7 @@ class DatabaseMarketDataFetcher:
                 WHERE ticker = :symbol
                 ORDER BY date DESC
                 LIMIT 1
-            """
-            )
+            """)
 
             with self.engine.connect() as conn:
                 price_info = conn.execute(query_price, {"symbol": symbol.upper()}).fetchone()
@@ -266,8 +262,7 @@ class DatabaseMarketDataFetcher:
                 current_volume = int(price_info.current_volume) if price_info.current_volume else None
 
             # Calculate 52-week high/low
-            query_52w = text(
-                """
+            query_52w = text("""
                 SELECT 
                     MAX(high) as week_52_high,
                     MIN(low) as week_52_low,
@@ -275,8 +270,7 @@ class DatabaseMarketDataFetcher:
                 FROM tickerdata
                 WHERE ticker = :symbol
                     AND date >= CURRENT_DATE - INTERVAL '52 weeks'
-            """
-            )
+            """)
 
             with self.engine.connect() as conn:
                 result_52w = conn.execute(query_52w, {"symbol": symbol.upper()}).fetchone()
@@ -399,13 +393,11 @@ class DatabaseMarketDataFetcher:
     def get_available_symbols(self) -> list:
         """Get list of available symbols in the database"""
         try:
-            query = text(
-                """
+            query = text("""
                 SELECT DISTINCT ticker 
                 FROM tickerdata 
                 ORDER BY ticker
-            """
-            )
+            """)
 
             with self.engine.connect() as conn:
                 result = conn.execute(query)
@@ -478,8 +470,7 @@ class DatabaseMarketDataFetcher:
         models = model_preference.get(beta_source, ["market"])
 
         for model in models:
-            query = text(
-                """
+            query = text("""
                 SELECT model, beta_value, r_squared, as_of_date
                 FROM symbol_beta_models
                 WHERE symbol = :symbol
@@ -487,8 +478,7 @@ class DatabaseMarketDataFetcher:
                   AND model = :model
                 ORDER BY as_of_date DESC
                 LIMIT 1
-                """
-            )
+                """)
             try:
                 with self.engine.connect() as conn:
                     row = conn.execute(

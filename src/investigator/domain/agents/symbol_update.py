@@ -548,13 +548,11 @@ class SymbolUpdateAgent(InvestmentAgent):
         set_clause = ", ".join([f"{col} = :{col}" for col in update_data.keys()])
 
         # Build UPDATE statement
-        query = text(
-            f"""
+        query = text(f"""
             UPDATE symbol
             SET {set_clause}
             WHERE UPPER(ticker) = UPPER(:symbol)
-        """
-        )
+        """)
 
         # Add symbol to params
         params = {"symbol": symbol, **update_data}

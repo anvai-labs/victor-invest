@@ -6,7 +6,6 @@ Tests configuration validation, environment variable substitution,
 and error handling for invalid configurations.
 """
 
-
 import pytest
 from pydantic import ValidationError
 
@@ -306,8 +305,7 @@ class TestEnvironmentVariableSubstitution:
     def test_env_var_substitution_with_value(self, tmp_path, monkeypatch):
         """Test environment variable substitution when var is set."""
         config_yaml = tmp_path / "test_config.yaml"
-        config_yaml.write_text(
-            """
+        config_yaml.write_text("""
 application:
   name: InvestiGator
   version: 0.1.0
@@ -397,8 +395,7 @@ dcf_valuation:
   default_parameters: {}
   wacc_parameters: {}
   fcf_growth_parameters: {}
-"""
-        )
+""")
 
         # Test with env var set
         monkeypatch.setenv("DB_PASSWORD", "secret123")
@@ -408,8 +405,7 @@ dcf_valuation:
     def test_env_var_substitution_with_default(self, tmp_path, monkeypatch):
         """Test environment variable substitution when var not set (use default)."""
         config_yaml = tmp_path / "test_config.yaml"
-        config_yaml.write_text(
-            """
+        config_yaml.write_text("""
 application:
   name: InvestiGator
   version: 0.1.0
@@ -499,8 +495,7 @@ dcf_valuation:
   default_parameters: {}
   wacc_parameters: {}
   fcf_growth_parameters: {}
-"""
-        )
+""")
 
         # Test with env var not set (should use default)
         monkeypatch.delenv("DB_PASSWORD", raising=False)
@@ -510,8 +505,7 @@ dcf_valuation:
     def test_env_var_substitution_no_default_raises_error(self, tmp_path, monkeypatch):
         """Test environment variable substitution without default raises ValueError."""
         config_yaml = tmp_path / "test_config.yaml"
-        config_yaml.write_text(
-            """
+        config_yaml.write_text("""
 application:
   name: InvestiGator
   version: 0.1.0
@@ -563,8 +557,7 @@ valuation:
 
 dcf_valuation:
   sector_based_parameters: {}
-"""
-        )
+""")
 
         monkeypatch.delenv("REQUIRED_DB_PASSWORD", raising=False)
         with pytest.raises(ValueError) as exc_info:

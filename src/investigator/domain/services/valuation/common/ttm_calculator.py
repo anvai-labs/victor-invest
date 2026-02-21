@@ -80,9 +80,7 @@ class TTMMetrics:
             financial_data = getattr(entry, "financial_data", {}) or {}
             for key in keys:
                 value = (
-                    financial_data.get(key)
-                    if isinstance(financial_data, dict)
-                    else getattr(financial_data, key, None)
+                    financial_data.get(key) if isinstance(financial_data, dict) else getattr(financial_data, key, None)
                 )
                 if value is not None:
                     try:
@@ -93,9 +91,7 @@ class TTMMetrics:
         return None
 
     @staticmethod
-    def calculate_ttm_eps(
-        *, quarterly_data: List[Any], shares_outstanding: Optional[float]
-    ) -> Optional[float]:
+    def calculate_ttm_eps(*, quarterly_data: List[Any], shares_outstanding: Optional[float]) -> Optional[float]:
         """Calculate TTM (Trailing Twelve Months) earnings per share.
 
         Args:
@@ -122,9 +118,7 @@ class TTMMetrics:
         count = 0
 
         for entry in quarterly_data[:4]:
-            net_income = TTMMetrics._extract_metric(
-                entry, ["net_income", "net_income_loss", "net_income_common"]
-            )
+            net_income = TTMMetrics._extract_metric(entry, ["net_income", "net_income_loss", "net_income_common"])
             if net_income is not None:
                 ttm_net_income += net_income
                 count += 1
@@ -156,9 +150,7 @@ class TTMMetrics:
         count = 0
 
         for entry in quarterly_data[:quarters_to_use]:
-            revenue = TTMMetrics._extract_metric(
-                entry, ["total_revenue", "revenue", "revenues"]
-            )
+            revenue = TTMMetrics._extract_metric(entry, ["total_revenue", "revenue", "revenues"])
             if revenue is not None:
                 ttm_revenue += revenue
                 count += 1
@@ -200,9 +192,7 @@ class TTMMetrics:
                 count += 1
             else:
                 # Calculate EBITDA = Operating Income + Depreciation & Amortization
-                operating_income = TTMMetrics._extract_metric(
-                    entry, ["operating_income", "operating_profit"]
-                )
+                operating_income = TTMMetrics._extract_metric(entry, ["operating_income", "operating_profit"])
                 depreciation = TTMMetrics._extract_metric(
                     entry,
                     [
@@ -252,12 +242,8 @@ class TTMMetrics:
                 count += 1
             else:
                 # Calculate FCF = Operating Cash Flow - CapEx
-                ocf = TTMMetrics._extract_metric(
-                    entry, ["operating_cash_flow", "ocf", "cash_from_operations"]
-                )
-                capex = TTMMetrics._extract_metric(
-                    entry, ["capital_expenditures", "capex", "purchase_of_ppe"]
-                )
+                ocf = TTMMetrics._extract_metric(entry, ["operating_cash_flow", "ocf", "cash_from_operations"])
+                capex = TTMMetrics._extract_metric(entry, ["capital_expenditures", "capex", "purchase_of_ppe"])
 
                 if ocf is not None:
                     capex_value = capex if capex is not None else 0
@@ -298,11 +284,7 @@ class TTMMetrics:
             "ttm_eps": TTMMetrics.calculate_ttm_eps(
                 quarterly_data=quarterly_data, shares_outstanding=shares_outstanding
             ),
-            "ttm_revenue": TTMMetrics.calculate_ttm_revenue(
-                quarterly_data=quarterly_data
-            ),
-            "ttm_ebitda": TTMMetrics.calculate_ttm_ebitda(
-                quarterly_data=quarterly_data
-            ),
+            "ttm_revenue": TTMMetrics.calculate_ttm_revenue(quarterly_data=quarterly_data),
+            "ttm_ebitda": TTMMetrics.calculate_ttm_ebitda(quarterly_data=quarterly_data),
             "ttm_fcf": TTMMetrics.calculate_ttm_fcf(quarterly_data=quarterly_data),
         }

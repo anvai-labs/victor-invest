@@ -218,9 +218,7 @@ class TestMultiCompanyPipeline:
         Companies:
         - ZS: Fiscal year ends July 31
         """
-        agent = FundamentalAnalysisAgent(
-            agent_id="fundamental", ollama_client=None, event_bus=None, cache_manager=None
-        )
+        agent = FundamentalAnalysisAgent(agent_id="fundamental", ollama_client=None, event_bus=None, cache_manager=None)
 
         test_symbols = ["ZS"]
         results = {}

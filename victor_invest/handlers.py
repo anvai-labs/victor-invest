@@ -339,10 +339,18 @@ class RunMarketContextHandler(BaseHandler):
             from victor_invest.tools.market_regime import MarketRegimeTool
 
             regime_tool = MarketRegimeTool()
+
+            # Get lookback_days from config with fallback
+            lookback_days = 252  # Default 1 year
+            if hasattr(cfg, "market_context") and hasattr(
+                cfg.market_context, "lookback_days"
+            ):
+                lookback_days = cfg.market_context.lookback_days
+
             result = await regime_tool.execute(
                 {},  # _exec_ctx
                 symbol=symbol,
-                lookback_days=cfg.market_context.lookback_days,
+                lookback_days=lookback_days,
             )
 
             return {
@@ -493,9 +501,20 @@ class RunSynthesisHandler(BaseHandler):
     def _get_llm_client(self) -> Any:
         """Lazy load LLM client."""
         if self._llm_client is None:
-            from investigator.infrastructure.llm.client import get_client
+            from investigator.infrastructure.llm import OllamaClient
 
-            self._llm_client = get_client()
+            # Get config for Ollama base URL
+            try:
+                from investigator.config import get_config
+
+                config = get_config()
+                base_url = (
+                    getattr(config.ollama, "base_url", None) or "http://localhost:11434"
+                )
+            except Exception:
+                base_url = "http://localhost:11434"
+
+            self._llm_client = OllamaClient(base_url=base_url)
         return self._llm_client
 
     def _build_synthesis_prompt(
@@ -650,26 +669,59 @@ Respond ONLY with the JSON object."""
             )
             model = self._get_config().ollama.models.get("synthesis", "gpt-oss:20b")
 
+            # OllamaClient.generate() takes (model, prompt, ...) not (prompt, model, ...)
             response = await client.generate(
-                prompt=prompt,
                 model=model,
-                options={"temperature": 0.3, "num_predict": 4096},
+                prompt=prompt,
+                format="json",  # Request JSON response format
             )
 
             # Parse JSON response
-            response_text = response.get("response", "")
+            # OllamaClient returns dict with 'response' key
+            if isinstance(response, dict):
+                response_text = response.get("response", "")
+            else:
+                response_text = str(response)
+
+            # Debug: Log response for troubleshooting
+            logger.debug(f"LLM raw response (first 1000 chars): {response_text[:1000]}")
 
             # Try to extract JSON from response
             try:
-                # Find JSON object in response
+                # Find JSON object in response - look for complete object
                 start = response_text.find("{")
-                end = response_text.rfind("}") + 1
-                if start >= 0 and end > start:
-                    json_str = response_text[start:end]
-                    result: dict = json.loads(json_str)
-                    return result
-            except json.JSONDecodeError:
-                logger.warning("Could not parse LLM synthesis response as JSON")
+                if start >= 0:
+                    # Count braces to find matching end
+                    brace_count = 0
+                    in_string = False
+                    escape_next = False
+                    for i in range(start, len(response_text)):
+                        char = response_text[i]
+                        if escape_next:
+                            escape_next = False
+                            continue
+                        if char == "\\":
+                            escape_next = True
+                            continue
+                        if char == '"' and not escape_next:
+                            in_string = not in_string
+                            continue
+                        if not in_string:
+                            if char == "{":
+                                brace_count += 1
+                            elif char == "}":
+                                brace_count -= 1
+                                if brace_count == 0:
+                                    end = i + 1
+                                    json_str = response_text[start:end]
+                                    result: dict = json.loads(json_str)
+                                    logger.info(f"Successfully parsed LLM synthesis JSON ({len(result)} keys)")
+                                    return result
+                logger.warning(f"Could not find complete JSON object in LLM response (first {{ at {start})")
+            except json.JSONDecodeError as e:
+                logger.warning(f"Could not parse LLM synthesis response as JSON: {e}")
+                # Log first 500 chars of response for debugging
+                logger.debug(f"LLM response preview: {response_text[:500]}")
 
             return None
 

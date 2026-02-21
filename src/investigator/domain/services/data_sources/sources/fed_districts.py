@@ -64,8 +64,7 @@ class FedDistrictSource(MacroDataSource):
             data = {}
             with engine.connect() as conn:
                 result = conn.execute(
-                    text(
-                        """
+                    text("""
                         SELECT indicator_name,
                                (indicator_data->>'value')::float as value,
                                observation_date,
@@ -74,8 +73,7 @@ class FedDistrictSource(MacroDataSource):
                         WHERE district = :district
                         AND observation_date <= :target_date
                         ORDER BY indicator_name, observation_date DESC
-                    """
-                    ),
+                    """),
                     {"district": self.district, "target_date": target_date},
                 )
 

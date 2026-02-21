@@ -388,8 +388,7 @@ class ShortInterestSource(DataSource):
 
             with engine.connect() as conn:
                 result = conn.execute(
-                    text(
-                        """
+                    text("""
                         SELECT
                             settlement_date,
                             short_interest,
@@ -400,8 +399,7 @@ class ShortInterestSource(DataSource):
                         WHERE symbol = :symbol
                         ORDER BY settlement_date DESC
                         LIMIT 10
-                    """
-                    ),
+                    """),
                     {"symbol": symbol},
                 )
 

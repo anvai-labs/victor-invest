@@ -531,7 +531,15 @@ def _extract_basis_and_horizon(methods: Dict[str, Any]) -> tuple[str, Optional[s
 
 def _compact_valuation_models(methods: Dict[str, Any]) -> Dict[str, Any]:
     compact: Dict[str, Any] = {}
-    for model_name in ["dcf_professional", "pe", "ev_ebitda", "ps", "pb", "ggm", "damodaran_dcf"]:
+    for model_name in [
+        "dcf_professional",
+        "pe",
+        "ev_ebitda",
+        "ps",
+        "pb",
+        "ggm",
+        "damodaran_dcf",
+    ]:
         model = methods.get(model_name)
         if not isinstance(model, dict):
             continue
@@ -661,7 +669,9 @@ def _normalize_recommendation_action(action: Optional[str]) -> Optional[str]:
     return norm if norm in valid else None
 
 
-def _recommendation_from_expected_return(expected_return_pct: Optional[float]) -> Optional[str]:
+def _recommendation_from_expected_return(
+    expected_return_pct: Optional[float],
+) -> Optional[str]:
     """
     Map valuation-implied expected return (%) to canonical recommendation action.
     """

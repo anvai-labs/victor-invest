@@ -130,16 +130,14 @@ class SECDataStrategy:
             # Convert CIK to integer for bulk tables
             cik_int = int(cik) if isinstance(cik, str) else cik
 
-            query = text(
-                """
+            query = text("""
                 SELECT fy, fp, filed, period, adsh, form
                 FROM sec_sub_data
                 WHERE cik = :cik
                 AND form IN ('10-Q', '10-K', '20-F')
                 ORDER BY filed DESC
                 LIMIT 1
-            """
-            )
+            """)
 
             with self.engine.connect() as conn:
                 result = conn.execute(query, {"cik": cik_int}).fetchone()
@@ -171,16 +169,14 @@ class SECDataStrategy:
         try:
             cik_int = int(cik) if isinstance(cik, str) else cik
 
-            query = text(
-                """
+            query = text("""
                 SELECT filed
                 FROM sec_sub_data
                 WHERE cik = :cik
                 AND form IN ('10-Q', '10-K', '20-F', '6-K')
                 ORDER BY filed DESC
                 LIMIT 1
-            """
-            )
+            """)
 
             with self.engine.connect() as conn:
                 result = conn.execute(query, {"cik": cik_int}).fetchone()
@@ -456,16 +452,14 @@ class SECDataStrategy:
             else:
                 form_filter = "AND form = '10-Q'"
 
-            query = text(
-                f"""
+            query = text(f"""
                 SELECT fy, fp, filed, period, adsh, form
                 FROM sec_sub_data
                 WHERE cik = :cik
                 {form_filter}
                 ORDER BY filed DESC
                 LIMIT :limit
-            """
-            )
+            """)
 
             with self.engine.connect() as conn:
                 results = conn.execute(query, {"cik": cik_int, "limit": num_quarters}).fetchall()
@@ -555,8 +549,7 @@ class SECDataStrategy:
         try:
             cik_int = int(cik) if isinstance(cik, str) else cik
 
-            query = text(
-                """
+            query = text("""
                 SELECT fy, fp, filed, period, adsh, form
                 FROM sec_sub_data
                 WHERE cik = :cik
@@ -571,8 +564,7 @@ class SECDataStrategy:
                         WHEN fp = 'FY' THEN 5
                         ELSE 6
                     END
-            """
-            )
+            """)
 
             with self.engine.connect() as conn:
                 results = conn.execute(query, {"cik": cik_int, "fiscal_year": fiscal_year}).fetchall()
@@ -654,8 +646,7 @@ class SECDataStrategy:
             # SEC filings contain both total company (segments=NULL) and segment breakdowns
             # Without this filter, arbitrary segment values could be picked (e.g., JNJ Q2 2024
             # was returning $0.17B product-level revenue instead of $22.45B total revenue)
-            query = text(
-                """
+            query = text("""
                 SELECT tag, value, qtrs
                 FROM sec_num_data
                 WHERE adsh = :adsh
@@ -663,8 +654,7 @@ class SECDataStrategy:
                 AND qtrs IN (0, 1)  -- 0=point-in-time, 1=quarterly
                 AND (segments IS NULL OR segments = '')  -- Total company values only
                 ORDER BY ddate DESC, value DESC  -- Prefer most recent, then largest value
-            """
-            )
+            """)
 
             with self.engine.connect() as conn:
                 results = conn.execute(query, {"adsh": adsh, "tags": tags}).fetchall()

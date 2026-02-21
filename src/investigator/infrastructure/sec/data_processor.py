@@ -27,6 +27,8 @@ except Exception:  # pragma: no cover - optional dependency
     # Keep profiling annotations inert when line_profiler isn't installed.
     def profile(func):  # type: ignore
         return func
+
+
 from sqlalchemy import text
 
 # Import FiscalPeriodService for centralized fiscal period handling
@@ -39,7 +41,13 @@ from investigator.infrastructure.sec.canonical_mapper import get_canonical_mappe
 from investigator.infrastructure.sec.metric_extraction import (
     MetricExtractionOrchestrator,
 )
-from utils.industry_classifier import classify_company
+
+# Try to import from utils, with fallback
+try:
+    from utils.industry_classifier import classify_company
+except ImportError:
+    classify_company = None
+    logger.warning("utils.industry_classifier not available - company classification limited")
 
 logger = logging.getLogger(__name__)
 
@@ -86,16 +94,14 @@ class SECDataProcessor:
 
         try:
             with engine.begin() as conn:
-                query = text(
-                    """
+                query = text("""
                     SELECT adsh, fy, fp, period, filed
                     FROM sec_sub_data
                     WHERE cik = :cik
                       AND form IN ('10-K', '10-Q')
                     ORDER BY period DESC
                     LIMIT 50
-                """
-                )
+                """)
 
                 result = conn.execute(query, {"cik": cik_int})
 
@@ -2108,8 +2114,7 @@ class SECDataProcessor:
 
         try:
             delete_query = text("DELETE FROM sec_companyfacts_processed WHERE symbol = :symbol")
-            insert_query = text(
-                """
+            insert_query = text("""
                 INSERT INTO sec_companyfacts_processed
                 (symbol, cik, fiscal_year, fiscal_period,
                  total_revenue, net_income, gross_profit, operating_income, cost_of_revenue,
@@ -2160,8 +2165,7 @@ class SECDataProcessor:
                  :income_statement_qtrs, :cash_flow_statement_qtrs,
                  :adsh, :form_type, :filed_date, :period_end_date, :frame,
                  :extraction_version, :data_quality_score, :raw_data_id)
-                """
-            )
+                """)
 
             with self.engine.begin() as conn:
                 conn.execute(delete_query, {"symbol": symbol_upper})
@@ -2369,8 +2373,7 @@ class SECDataProcessor:
 
             next_refresh = datetime.now() + timedelta(days=90)
 
-            query = text(
-                """
+            query = text("""
                 INSERT INTO sec_companyfacts_metadata
                 (symbol, cik, entity_name, last_fetched, last_processed, fetch_count,
                  cache_ttl_days, next_refresh_due, raw_data_complete, processing_status,
@@ -2395,8 +2398,7 @@ class SECDataProcessor:
                     total_filings = EXCLUDED.total_filings,
                     quarters_available = EXCLUDED.quarters_available,
                     updated_at = NOW()
-            """
-            )
+            """)
 
             with self.engine.connect() as conn:
                 conn.execute(

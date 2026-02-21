@@ -671,8 +671,7 @@ class PostgreSQLIndustryMetricsBackend(IndustryMetricsStorageBackend):
 
         try:
             with self.db_manager.get_session() as session:
-                upsert_sql = text(
-                    f"""
+                upsert_sql = text(f"""
                 INSERT INTO {self.SYMBOLS_TABLE}
                     (symbol, industry, sector, dataset_name, dataset_version,
                      quality, coverage, metrics, adjustments, tier_weights,
@@ -689,8 +688,7 @@ class PostgreSQLIndustryMetricsBackend(IndustryMetricsStorageBackend):
                     tier_weights = EXCLUDED.tier_weights, warnings = EXCLUDED.warnings,
                     metadata = EXCLUDED.metadata, cached_at = EXCLUDED.cached_at,
                     expires_at = EXCLUDED.expires_at, updated_at = NOW()
-                """
-                )
+                """)
                 session.execute(
                     upsert_sql,
                     {
@@ -803,8 +801,7 @@ class PostgreSQLIndustryMetricsBackend(IndustryMetricsStorageBackend):
 
         try:
             with self.db_manager.get_session() as session:
-                upsert_sql = text(
-                    f"""
+                upsert_sql = text(f"""
                 INSERT INTO {self.INDUSTRIES_TABLE}
                     (industry, sector, symbol_count, symbols_included, peer_statistics,
                      benchmarks, tier_weights, cycle_indicators, dataset_name,
@@ -822,8 +819,7 @@ class PostgreSQLIndustryMetricsBackend(IndustryMetricsStorageBackend):
                     dataset_name = EXCLUDED.dataset_name, dataset_version = EXCLUDED.dataset_version,
                     cached_at = EXCLUDED.cached_at, expires_at = EXCLUDED.expires_at,
                     computation_notes = EXCLUDED.computation_notes, updated_at = NOW()
-                """
-                )
+                """)
                 session.execute(
                     upsert_sql,
                     {

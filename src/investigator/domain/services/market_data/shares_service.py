@@ -124,8 +124,7 @@ class SharesService:
         """
         with self.sec_engine.connect() as conn:
             if as_of_date:
-                query = text(
-                    """
+                query = text("""
                     SELECT shares_outstanding
                     FROM sec_companyfacts_processed
                     WHERE symbol = :symbol
@@ -133,20 +132,17 @@ class SharesService:
                       AND shares_outstanding IS NOT NULL
                     ORDER BY filed_date DESC
                     LIMIT 1
-                """
-                )
+                """)
                 result = conn.execute(query, {"symbol": symbol, "as_of_date": as_of_date}).fetchone()
             else:
-                query = text(
-                    """
+                query = text("""
                     SELECT shares_outstanding
                     FROM sec_companyfacts_processed
                     WHERE symbol = :symbol
                       AND shares_outstanding IS NOT NULL
                     ORDER BY filed_date DESC
                     LIMIT 1
-                """
-                )
+                """)
                 result = conn.execute(query, {"symbol": symbol}).fetchone()
 
             if result and result[0]:

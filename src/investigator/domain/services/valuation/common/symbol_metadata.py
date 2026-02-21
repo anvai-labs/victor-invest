@@ -74,9 +74,7 @@ class SymbolMetadata:
             current_file = Path(__file__)
             # Navigate from: src/investigator/domain/services/valuation/common/
             # to: repo_root/config.yaml
-            repo_root = (
-                current_file.parent.parent.parent.parent.parent.parent.parent
-            )
+            repo_root = current_file.parent.parent.parent.parent.parent.parent.parent
             cls._config_path = repo_root / "config.yaml"
 
         if not cls._config_path.exists():
@@ -146,7 +144,11 @@ class SymbolMetadata:
 
     @classmethod
     def get_sector_industry(
-        cls, symbol: str, *, fallback_sector: Optional[str] = None, fallback_industry: Optional[str] = None
+        cls,
+        symbol: str,
+        *,
+        fallback_sector: Optional[str] = None,
+        fallback_industry: Optional[str] = None,
     ) -> Tuple[str, Optional[str]]:
         """Get sector and industry for a symbol from config overrides.
 

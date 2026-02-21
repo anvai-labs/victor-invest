@@ -224,13 +224,11 @@ class CUSIPMapper:
 
             engine = create_engine("postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database")
 
-            query = text(
-                """
+            query = text("""
                 SELECT ticker FROM cusip_mapping
                 WHERE cusip = :cusip
                 LIMIT 1
-            """
-            )
+            """)
 
             with engine.connect() as conn:
                 result = conn.execute(query, {"cusip": cusip}).fetchone()
@@ -249,13 +247,11 @@ class CUSIPMapper:
 
             engine = create_engine("postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database")
 
-            query = text(
-                """
+            query = text("""
                 SELECT cusip FROM cusip_mapping
                 WHERE ticker = :symbol
                 LIMIT 1
-            """
-            )
+            """)
 
             with engine.connect() as conn:
                 result = conn.execute(query, {"symbol": symbol}).fetchone()
@@ -342,8 +338,7 @@ class InstitutionalHoldingsFetcher:
 
             # Build query based on available identifiers
             if cusip:
-                query = text(
-                    """
+                query = text("""
                     SELECT
                         filer_name,
                         shares,
@@ -358,13 +353,11 @@ class InstitutionalHoldingsFetcher:
                     )
                     ORDER BY value_thousands DESC
                     LIMIT 50
-                """
-                )
+                """)
                 params = {"cusip": cusip}
             else:
                 # Try matching by issuer name
-                query = text(
-                    """
+                query = text("""
                     SELECT
                         filer_name,
                         shares,
@@ -379,8 +372,7 @@ class InstitutionalHoldingsFetcher:
                     )
                     ORDER BY value_thousands DESC
                     LIMIT 50
-                """
-                )
+                """)
                 params = {"symbol_pattern": f"%{symbol}%"}
 
             with engine.connect() as conn:
@@ -448,8 +440,7 @@ class InstitutionalHoldingsFetcher:
             if not cusip:
                 return []
 
-            query = text(
-                """
+            query = text("""
                 SELECT
                     report_date,
                     SUM(shares) as total_shares,
@@ -460,8 +451,7 @@ class InstitutionalHoldingsFetcher:
                 GROUP BY report_date
                 ORDER BY report_date DESC
                 LIMIT :quarters
-            """
-            )
+            """)
 
             with engine.connect() as conn:
                 results = conn.execute(query, {"cusip": cusip, "quarters": quarters}).fetchall()
@@ -505,8 +495,7 @@ class InstitutionalHoldingsFetcher:
 
             engine = create_engine("postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database")
 
-            query = text(
-                """
+            query = text("""
                 SELECT
                     cusip,
                     issuer_name,
@@ -522,8 +511,7 @@ class InstitutionalHoldingsFetcher:
                     WHERE filer_cik = :cik
                 )
                 ORDER BY value_thousands DESC
-            """
-            )
+            """)
 
             with engine.connect() as conn:
                 results = conn.execute(query, {"cik": institution_cik}).fetchall()
@@ -565,8 +553,7 @@ class InstitutionalHoldingsFetcher:
 
             engine = create_engine("postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database")
 
-            sql = text(
-                """
+            sql = text("""
                 SELECT DISTINCT
                     cik,
                     name,
@@ -576,8 +563,7 @@ class InstitutionalHoldingsFetcher:
                 GROUP BY cik, name
                 ORDER BY latest_filing DESC
                 LIMIT :limit
-            """
-            )
+            """)
 
             with engine.connect() as conn:
                 results = conn.execute(sql, {"query": f"%{query.lower()}%", "limit": limit}).fetchall()

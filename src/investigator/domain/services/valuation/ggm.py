@@ -208,7 +208,11 @@ class GordonGrowthModel:
             return 0
 
         # Import quarterly calculator
-        from utils.quarterly_calculator import get_rolling_ttm_periods
+        try:
+            from utils.quarterly_calculator import get_rolling_ttm_periods
+        except ImportError:
+            logger.warning("utils.quarterly_calculator not available - DPS calculation limited")
+            return 0
 
         # Get 4 most recent quarters (with Q4 computed if needed)
         ttm_periods = get_rolling_ttm_periods(self.quarterly_metrics, compute_missing=True, num_quarters=4)
@@ -304,10 +308,14 @@ class GordonGrowthModel:
         """
         # Try quarterly-based dividend growth analysis first
         if self.quarterly_metrics and len(self.quarterly_metrics) >= 6:
-            from utils.quarterly_calculator import (
-                analyze_quarterly_patterns,
-                get_rolling_ttm_periods,
-            )
+            try:
+                from utils.quarterly_calculator import (
+                    analyze_quarterly_patterns,
+                    get_rolling_ttm_periods,
+                )
+            except ImportError:
+                logger.warning("utils.quarterly_calculator not available - using simple growth rate")
+                return self._calculate_simple_growth_rate()
 
             # Get 8 quarters for 2-year trend analysis
             quarters_8 = get_rolling_ttm_periods(self.quarterly_metrics, compute_missing=True, num_quarters=8)
