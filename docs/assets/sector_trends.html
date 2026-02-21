@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sector Valuation Multiples Trends (2016-2025)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px;
+        }
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .legend-item:hover {
+            background: #e9ecef;
+        }
+        .legend-item.hidden {
+            opacity: 0.4;
+        }
+        .legend-color {
+            width: 20px;
+            height: 4px;
+            border-radius: 2px;
+            margin-right: 8px;
+        }
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        @media (max-width: 1200px) {
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .chart-container {
+            position: relative;
+            background: #fafafa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        .chart-title {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        .stats-section {
+            margin-top: 40px;
+        }
+        .stats-section h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .stats-table th {
+            background: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #dee2e6;
+        }
+        .stats-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .stats-table tr:hover {
+            background: #f8f9fa;
+        }
+        .trend-up {
+            color: #28a745;
+            font-weight: 600;
+        }
+        .trend-down {
+            color: #dc3545;
+            font-weight: 600;
+        }
+        .trend-stable {
+            color: #6c757d;
+        }
+        .metric-value {
+            font-weight: 600;
+        }
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .btn {
+            padding: 10px 20px;
+            margin: 0 5px 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-1px);
+        }
+        .btn-outline {
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+        }
+        .btn-outline:hover {
+            background: #667eea;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Sector Valuation Multiples Trends</h1>
+            <p class="subtitle">Historical analysis from FY 2016 to FY 2025 | Data from sec_companyfacts_processed</p>
+        </header>
+
+        <div class="content">
+            <div class="legend" id="legend"></div>
+
+            <div class="controls">
+                <button class="btn btn-primary" onclick="showAllSectors()">Show All Sectors</button>
+                <button class="btn btn-outline" onclick="hideAllSectors()">Hide All Sectors</button>
+            </div>
+
+            <div class="chart-grid">
+                <div class="chart-container">
+                    <div class="chart-title">P/E Multiples by Sector</div>
+                    <canvas id="peChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">P/S Multiples by Sector</div>
+                    <canvas id="psChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">P/B Multiples by Sector</div>
+                    <canvas id="pbChart"></canvas>
+                </div>
+            </div>
+
+            <div class="stats-section">
+                <h2>Summary Statistics (FY 2024)</h2>
+                <table class="stats-table">
+                    <thead>
+                        <tr>
+                            <th>Sector</th>
+                            <th>P/E</th>
+                            <th>P/S</th>
+                            <th>P/B</th>
+                            <th>Trend (2016-2024)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="statsTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SECTOR_COLORS = {
+            'Technology': '#0066CC',
+            'Health Care': '#CC0066',
+            'Finance': '#009900',
+            'Energy': '#FF6600',
+            'Consumer Discretionary': '#9900CC',
+            'Consumer Staples': '#00CC99',
+            'Industrials': '#CC9900',
+            'Utilities': '#666666',
+            'Real Estate': '#FF0066',
+            'Basic Materials': '#996633',
+            'Telecommunications': '#6699CC',
+            'Miscellaneous': '#999999',
+            'Unknown': '#CCCCCC',
+            'Consumer Cyclical': '#9933CC',
+        };
+
+        let SECTOR_DATA = {
+            'years': [],
+            'sectors': {}
+        };
+
+        let charts = {};
+        let hiddenSectors = new Set();
+
+        async function loadData() {
+            try {
+                const response = await fetch('sector_trends_data.json');
+                if (response.ok) {
+                    SECTOR_DATA = await response.json();
+                    initializeCharts();
+                    renderLegend();
+                    renderStats();
+                } else {
+                    console.error('Failed to load data');
+                    document.body.innerHTML = '<div style="padding: 40px; text-align: center;"><h1>Error Loading Data</h1><p>Please ensure sector_trends_data.json is in the same directory.</p></div>';
+                }
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.body.innerHTML = '<div style="padding: 40px; text-align: center;"><h1>Error Loading Data</h1><p>Please ensure sector_trends_data.json is in the same directory.</p></div>';
+            }
+        }
+
+        function createChart(canvasId, metricKey, labelText, suggestedMin, suggestedMax) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            const datasets = [];
+
+            for (const [sector, data] of Object.entries(SECTOR_DATA.sectors)) {
+                datasets.push({
+                    label: sector,
+                    data: data[metricKey],
+                    borderColor: SECTOR_COLORS[sector] || '#999999',
+                    backgroundColor: SECTOR_COLORS[sector] || '#999999',
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    borderWidth: 2.5,
+                    hidden: hiddenSectors.has(sector),
+                });
+            }
+
+            charts[canvasId] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: SECTOR_DATA.years,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    aspectRatio: 1.5,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 13 },
+                            padding: 12,
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed.y;
+                                    return context.dataset.label + ': ' + (value !== null ? value.toFixed(2) + 'x' : 'N/A');
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            suggestedMin: suggestedMin,
+                            suggestedMax: suggestedMax,
+                            title: {
+                                display: true,
+                                text: labelText,
+                                font: { size: 14, weight: '500' }
+                            },
+                            grid: {
+                                color: '#e9ecef'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Fiscal Year',
+                                font: { size: 14, weight: '500' }
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function initializeCharts() {
+            createChart('peChart', 'pe', 'P/E Ratio', 0, 100);
+            createChart('psChart', 'ps', 'P/S Ratio', 0, 20);
+            createChart('pbChart', 'pb', 'P/B Ratio', 0, 20);
+        }
+
+        function renderLegend() {
+            const legendDiv = document.getElementById('legend');
+            legendDiv.innerHTML = '';
+
+            const sortedSectors = Object.keys(SECTOR_DATA.sectors).sort();
+
+            for (const sector of sortedSectors) {
+                const item = document.createElement('div');
+                item.className = 'legend-item';
+                item.dataset.sector = sector;
+                item.onclick = () => toggleSector(sector);
+
+                const color = SECTOR_COLORS[sector] || '#999999';
+
+                item.innerHTML = `
+                    <div class="legend-color" style="background: ${color}"></div>
+                    <span>${sector}</span>
+                `;
+                legendDiv.appendChild(item);
+            }
+        }
+
+        function toggleSector(sector) {
+            if (hiddenSectors.has(sector)) {
+                hiddenSectors.delete(sector);
+            } else {
+                hiddenSectors.add(sector);
+            }
+
+            // Update legend
+            const legendItem = document.querySelector(`.legend-item[data-sector="${sector}"]`);
+            if (legendItem) {
+                legendItem.classList.toggle('hidden', hiddenSectors.has(sector));
+            }
+
+            // Update all charts
+            for (const chart of Object.values(charts)) {
+                const dataset = chart.data.datasets.find(d => d.label === sector);
+                if (dataset) {
+                    dataset.hidden = hiddenSectors.has(sector);
+                }
+                chart.update();
+            }
+        }
+
+        function showAllSectors() {
+            hiddenSectors.clear();
+            document.querySelectorAll('.legend-item').forEach(item => {
+                item.classList.remove('hidden');
+            });
+            for (const chart of Object.values(charts)) {
+                chart.data.datasets.forEach(dataset => {
+                    dataset.hidden = false;
+                });
+                chart.update();
+            }
+        }
+
+        function hideAllSectors() {
+            for (const sector of Object.keys(SECTOR_DATA.sectors)) {
+                hiddenSectors.add(sector);
+            }
+            document.querySelectorAll('.legend-item').forEach(item => {
+                item.classList.add('hidden');
+            });
+            for (const chart of Object.values(charts)) {
+                chart.data.datasets.forEach(dataset => {
+                    dataset.hidden = true;
+                });
+                chart.update();
+            }
+        }
+
+        function renderStats() {
+            const tableBody = document.getElementById('statsTable');
+            tableBody.innerHTML = '';
+
+            const currentYear = 2024;
+            const yearIndex = SECTOR_DATA.years.indexOf(currentYear);
+            const startYear = SECTOR_DATA.years[0];
+
+            if (yearIndex === -1) {
+                tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No data available for 2024</td></tr>';
+                return;
+            }
+
+            for (const [sector, data] of Object.entries(SECTOR_DATA.sectors)) {
+                const row = document.createElement('tr');
+
+                const pe = data.pe[yearIndex];
+                const ps = data.ps[yearIndex];
+                const pb = data.pb[yearIndex];
+
+                // Calculate trend (2016 to 2024)
+                const peStart = data.pe[0];
+                const peEnd = data.pe[yearIndex];
+                let trend = '';
+                let trendClass = 'trend-stable';
+
+                if (peStart !== null && peEnd !== null) {
+                    const change = ((peEnd - peStart) / peStart) * 100;
+                    if (change > 10) {
+                        trend = `▲ EXPANDING (+${change.toFixed(1)}%)`;
+                        trendClass = 'trend-up';
+                    } else if (change < -10) {
+                        trend = `▼ SHRINKING (${change.toFixed(1)}%)`;
+                        trendClass = 'trend-down';
+                    } else {
+                        trend = `→ STABLE (${change.toFixed(1)}%)`;
+                        trendClass = 'trend-stable';
+                    }
+                }
+
+                row.innerHTML = `
+                    <td style="border-left: 4px solid ${SECTOR_COLORS[sector] || '#999'}; padding-left: 12px;">
+                        <strong>${sector}</strong>
+                    </td>
+                    <td class="metric-value">${pe !== null ? pe.toFixed(1) + 'x' : 'N/A'}</td>
+                    <td class="metric-value">${ps !== null ? ps.toFixed(1) + 'x' : 'N/A'}</td>
+                    <td class="metric-value">${pb !== null ? pb.toFixed(1) + 'x' : 'N/A'}</td>
+                    <td class="${trendClass}">${trend}</td>
+                `;
+                tableBody.appendChild(row);
+            }
+        }
+
+        // Load data on page load
+        loadData();
+    </script>
+</body>
+</html>
