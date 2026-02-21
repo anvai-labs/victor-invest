@@ -120,22 +120,113 @@ Where:
 - **Fundamental Return** = Earnings/Revenue growth
 - **Multiple Effect** = Change in P/E or P/S multiple
 
-### Examples:
+### Decomposing P/E Changes: Price vs Earnings
 
-**AAPL (2016-2024): The Perfect Compound**
-- Earnings per share: $2.50 → $6.50 (+160%)
-- P/E: 12x → 30x (+150%)
-- **Total Return**: +160% + 150% = **+260%** (actually higher due to buybacks)
+**Important:** A changing P/E multiple can mean very different things:
 
-**XOM (2022-2024): The Re-rating Play**
-- Earnings per share: $10 → $17 (+70%)
-- P/E: 8x → 12x (+50%)
-- **Total Return**: +70% + 50% = **+120%**
+| P/E Change | Price Movement | Earnings Movement | What It Means |
+|-----------|---------------|-------------------|--------------|
+| **Expansion** (P/E ↑) | Price ↑ faster than earnings | Earnings flat/slow | Market paying more for same earnings |
+| **Contraction** (P/E ↓) | Price ↓ faster than earnings | Earnings flat/slow | Market paying less for same earnings |
+| **Hidden Growth** (P/E ↓) | Price ↑ | Earnings ↑ faster | Earnings growing into multiple |
+| **Hidden Decline** (P/E ↑) | Price flat/slow ↓ | Earnings ↓ faster | Multiple masking earnings deterioration |
 
-**META (2021-2024): The Multiple Compression Pain**
-- Earnings per share: $13 → $14 (+8%)
-- P/E: 25x → 15x (-40%)
-- **Total Return**: +8% - 40% = **-32%** (actual was worse due to 2022 losses)
+**The key insight:** You must look at BOTH price and earnings to understand what the P/E change means.
+
+---
+
+### P/E Decomposition Examples
+
+#### AAPL (2016-2024): The Perfect Compound
+| Metric | 2016 | 2024 | Change |
+|--------|------|------|--------|
+| **Stock Price** | ~$25 (split-adjusted) | ~$190 | **+660%** |
+| **EPS** | $2.50 | $6.50 | **+160%** |
+| **P/E** | 10x | 29x | **+190%** |
+
+**What happened:** Both price AND earnings grew, but price grew faster (multiple re-rating)
+- Fundamental return: +160% (earnings growth)
+- Multiple effect: +190% (P/E expansion from 10x to 29x)
+- **Total Return: +660%** ( compounded)
+
+**Why P/E expanded:** AAPL transformed from a hardware company to a services ecosystem, justifying a higher multiple.
+
+#### XOM (2020-2024): The Re-rating Play
+| Metric | 2020 | 2024 | Change |
+|--------|------|------|--------|
+| **Stock Price** | ~$40 | ~$105 | **+163%** |
+| **EPS** | $3.00 | $10.50 | **+250%** |
+| **P/E** | 13x | 10x | **-23%** |
+
+**What happened:** Earnings grew FASTER than price, so P/E actually compressed despite huge gains
+- Fundamental return: +250% (earnings growth)
+- Multiple effect: -23% (P/E compression from 13x to 10x)
+- **Total Return: +163%**
+
+**Why P/E compressed:** Despite oil price boom, market remained skeptical of energy sustainability, keeping multiple low.
+
+#### META (2021-2024): The Multiple Compression Pain
+| Metric | 2021 | 2024 | Change |
+|--------|------|------|--------|
+| **Stock Price** | ~$340 | ~$350 | **+3%** |
+| **EPS** | $13.50 | $14.50 | **+7%** |
+| **P/E** | 25x | 24x | **-4%** |
+
+**What happened:** Price flatlined despite earnings growth = pure multiple compression
+- Fundamental return: +7% (earnings growth)
+- Multiple effect: -4% (P/E compression from 25x to 24x)
+- **Total Return: +3%** (roughly flat for 3 years)
+
+**Why P/E compressed:** Market de-rated "growth at any cost" narrative, shifting to profitability focus.
+
+#### NVDA (2020-2024): The AI Balloon
+| Metric | 2020 | 2024 | Change |
+|--------|------|------|--------|
+| **Stock Price** | ~$110 (split-adjusted) | ~$900 | **+718%** |
+| **EPS** | $2.00 | $18.00 | **+800%** |
+| **P/E** | 55x | 50x | **-9%** |
+
+**What happened:** Earnings growth SO strong it outpaced even massive price gains
+- Fundamental return: +800% (earnings growth)
+- Multiple effect: -9% (P/E compression from 55x to 50x)
+- **Total Return: +718%**
+
+**Why P/E compressed:** Despite AI boom, massive earnings growth meant P/E actually normalized from extreme levels.
+
+#### JPM (2020-2024): P/B Contraction Despite Strong Fundamentals
+| Metric | 2020 | 2024 | Change |
+|--------|------|------|--------|
+| **Stock Price** | ~$100 | ~$195 | +95% |
+| **Book Value (per share)** | ~$60 | ~$82 | +37% |
+| **P/B** | 1.67x | 2.38x | **+43%** |
+| **P/E** | 10.2x | 11.5x | **+13%** |
+
+**What happened:** Both P/B and P/E expanded modestly despite strong fundamentals
+- Fundamental return (book value): +37%
+- Multiple effect (P/B): +43%
+- **Total Return: +95%** (roughly matches combined effect)
+
+**Why multiples didn't contract:** Unlike most finance stocks stuck at 1.0x P/B, JPM's quality earned it a premium. Yet even JPM couldn't achieve sustained 3x P/B re-rating—a sign of the sector's persistent value trap.
+
+**P/B vs P/E for Finance:**
+- P/B matters more because book value = tangible assets
+- P/E is distorted by loan loss provision cycles
+- JPM at 2.38x P/B = "quality premium" vs sector 1.0-1.5x
+
+#### WFC (2020-2024): The Value Trap (P/B Contraction)
+| Metric | 2020 | 2024 | Change |
+|--------|------|------|--------|
+| **Stock Price** | ~$28 | ~$55 | +96% |
+| **Book Value (per share)** | ~$42 | ~$58 | +38% |
+| **P/B** | 0.67x | 0.95x | **+42%** |
+| **ROE** | ~8% | ~10% | +25% |
+
+**What happened:** P/B expanded from deeply distressed (0.67x) to still-cheap (0.95x)
+- Fundamental return (book value): +38%
+- Multiple effect (P/B): +42% (from distressed levels)
+- **Total Return: +96%**
+
+**Why still trades below book:** Regulatory issues (fake accounts scandal), lower ROE vs JPM, and persistent sentiment overhang. Even with improving fundamentals, market won't pay full book value.
 
 ---
 

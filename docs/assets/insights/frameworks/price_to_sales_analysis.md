@@ -58,6 +58,63 @@ In a world of rising interest rates and earnings manipulation, P/S ratios have b
 
 P/S tells you about revenue quality and growth expectations. The Technology sector's 83% P/S compression (17.2x → 3.0x) shows that investors stopped paying premium prices for unprofitable growth.
 
+### Decomposing P/S Changes: Price vs Revenue
+
+Just like P/E, a changing P/S multiple can have different meanings:
+
+| P/S Change | Price Movement | Revenue Movement | What It Means |
+|-----------|---------------|-----------------|--------------|
+| **Expansion** (P/S ↑) | Price ↑ faster than revenue | Revenue flat/slow | Market paying premium for growth potential |
+| **Contraction** (P/S ↓) | Price ↓ faster than revenue | Revenue flat/slow | Market de-rating, growth doubts |
+| **Hidden Growth** (P/S ↓) | Price ↑ | Revenue ↑ faster | Revenue growing into valuation |
+| **Hidden Decline** (P/S ↑) | Price flat/slow ↓ | Revenue ↓ faster | Multiple masking revenue deterioration |
+
+### P/S Decomposition Examples
+
+#### META (2021-2024): P/S Compression
+| Metric | 2021 | 2024 | Change |
+|--------|------|------|--------|
+| **Stock Price** | ~$340 | ~$350 | +3% |
+| **Revenue (per share)** | ~$27 | ~$58 | +115% |
+| **P/S** | 12.6x | 6.0x | **-52%** |
+
+**What happened:** Revenue grew +115% but price was flat, causing massive P/S compression
+- Fundamental return: +115% (revenue growth)
+- Multiple effect: -52% (P/S compression from 12.6x to 6.0x)
+- **Total Return: +3%** (price flat despite revenue doubling)
+
+**Why P/S compressed:** Market shifted from "growth at any cost" to profitability focus. META's ad revenue growth slowed dramatically post-2021, justifying lower multiple.
+
+#### NVDA (2020-2024): Revenue Growth Into Valuation
+| Metric | 2020 | 2024 | Change |
+|--------|------|------|--------|
+| **Stock Price** | ~$110 | ~$900 | +718% |
+| **Revenue (per share)** | ~$5.50 | ~$45.00 | +718% |
+| **P/S** | 20x | 20x | **0%** |
+
+**What happened:** Price AND revenue grew in lockstep, P/S stayed flat
+- Fundamental return: +718% (revenue growth)
+- Multiple effect: 0% (P/S unchanged at 20x)
+- **Total Return: +718%**
+
+**Why P/S stable:** Explosive revenue growth (+700%+) was matched by price gains, keeping P/S constant. The multiple didn't expand—revenue justified the entire price increase.
+
+#### LLY (2020-2024): P/S Expansion
+| Metric | 2020 | 2024 | Change |
+|--------|------|------|--------|
+| **Stock Price** | ~$170 | ~$580 | +241% |
+| **Revenue (per share)** | ~$25 | ~$45 | +80% |
+| **P/S** | 6.8x | 12.9x | **+90%** |
+
+**What happened:** Price grew MUCH faster than revenue = pure P/S expansion
+- Fundamental return: +80% (revenue growth)
+- Multiple effect: +90% (P/S expansion from 6.8x to 12.9x)
+- **Total Return: +241%**
+
+**Why P/S expanded:** GLP-1 (Ozempic/Wegovy) drug boom transformed growth outlook. Market re-rated from "steady pharma" to "growth juggernaut."
+
+---
+
 ### P/S vs P/E: When to Use Which?
 
 | Situation | Use P/E | Use P/S |
