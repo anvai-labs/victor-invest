@@ -30,9 +30,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
-from sqlalchemy import text
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
+from investigator.config import get_config
 from investigator.infrastructure.database.db import get_db_manager
 
 logger = logging.getLogger(__name__)
@@ -63,8 +64,26 @@ class SectorMultiplesRefresh:
             min_samples: Minimum number of symbols required for calculation
             percentile_exclude: Percentiles to exclude (low, high) for outlier filtering
         """
-        self.stock_db_manager = stock_db_manager or get_db_manager(database="stock")
-        self.sec_db_manager = sec_db_manager or get_db_manager(database="sec")
+        # Create stock database manager if not provided
+        if stock_db_manager is None:
+            from investigator.infrastructure.database.db import DatabaseManager
+
+            config = get_config()
+            stock_db_url = config.database.url.replace("/sec_database", "/stock")
+            stock_db_manager = DatabaseManager(config)
+            stock_db_manager.engine = create_engine(stock_db_url)
+            from sqlalchemy.orm import sessionmaker
+
+            stock_db_manager.SessionLocal = sessionmaker(
+                autocommit=False, autoflush=False, bind=stock_db_manager.engine
+            )
+
+        # SEC database manager (uses default)
+        if sec_db_manager is None:
+            sec_db_manager = get_db_manager()
+
+        self.stock_db_manager = stock_db_manager
+        self.sec_db_manager = sec_db_manager
         self.min_samples = min_samples
         self.percentile_exclude = percentile_exclude
 
@@ -223,33 +242,40 @@ class SectorMultiplesRefresh:
         pb_multiples = []
 
         for symbol, metrics in metrics_data.items():
+            # Skip if market_cap is None (required for all multiples)
+            mc = metrics.get("market_cap")
+            if mc is None:
+                continue
+
             # P/E = Market Cap / Net Income
-            if metrics.get("market_cap") and metrics.get("net_income"):
-                pe = metrics["market_cap"] / metrics["net_income"]
+            ni = metrics.get("net_income")
+            if ni and ni > 0:
+                pe = mc / ni
                 if pe > 0 and pe < 1000:  # Sanity check
                     pe_multiples.append(pe)
 
             # P/S = Market Cap / Revenue
-            if metrics.get("market_cap") and metrics.get("total_revenue"):
-                ps = metrics["market_cap"] / metrics["total_revenue"]
+            rev = metrics.get("total_revenue")
+            if rev and rev > 0:
+                ps = mc / rev
                 if ps > 0 and ps < 100:  # Sanity check
                     ps_multiples.append(ps)
 
             # EV/EBITDA = Enterprise Value / EBITDA
             # EV = Market Cap + Total Debt - Cash
-            if metrics.get("market_cap") and metrics.get("ebitda"):
-                ev = (
-                    metrics["market_cap"]
-                    + metrics.get("total_debt", 0)
-                    - metrics.get("cash_and_equivalents", 0)
-                )
-                ev_ebitda = ev / metrics["ebitda"]
+            ebitda = metrics.get("ebitda")
+            if ebitda and ebitda > 0:
+                debt = metrics.get("total_debt") or 0
+                cash = metrics.get("cash_and_equivalents") or 0
+                ev = mc + debt - cash
+                ev_ebitda = ev / ebitda
                 if ev_ebitda > 0 and ev_ebitda < 200:  # Sanity check
                     ev_ebitda_multiples.append(ev_ebitda)
 
             # P/B = Market Cap / Shareholders Equity
-            if metrics.get("market_cap") and metrics.get("stockholders_equity"):
-                pb = metrics["market_cap"] / metrics["stockholders_equity"]
+            equity = metrics.get("stockholders_equity")
+            if equity and equity > 0:
+                pb = mc / equity
                 if pb > 0 and pb < 50:  # Sanity check
                     pb_multiples.append(pb)
 
@@ -373,24 +399,33 @@ class SectorMultiplesRefresh:
                 result = session.execute(query, {"symbol": symbol})
                 row = result.fetchone()
                 if row:
+                    def safe_float(val, default=0.0):
+                        """Safely convert value to float, returning default if conversion fails."""
+                        if val is None:
+                            return default
+                        try:
+                            return float(val)
+                        except (ValueError, TypeError):
+                            return default
+
                     # Calculate EBITDA = Operating Income + Depreciation & Amortization
                     # Approximate as Operating Income + (Capital Expenditures - Depreciation isn't directly available)
                     # Using: Operating Income + (Operating Cash Flow - Net Income) as EBITDA proxy
-                    operating_income = float(row[3]) if row[3] else 0
-                    operating_cash_flow = float(row[8]) if row[8] else 0
-                    net_income = float(row[1]) if row[1] else 0
+                    operating_income = safe_float(row[3])
+                    operating_cash_flow = safe_float(row[8])
+                    net_income = safe_float(row[1])
 
                     # EBITDA ≈ Operating Income + (Operating Cash Flow - Net Income)
                     ebitda = operating_income + (operating_cash_flow - net_income)
 
                     ttm_metrics[symbol] = {
-                        "total_revenue": float(row[0]) if row[0] else None,
-                        "net_income": float(row[1]) if row[1] else None,
-                        "operating_income": float(row[3]) if row[3] else None,
-                        "stockholders_equity": float(row[4]) if row[4] else None,
-                        "market_cap": float(row[5]) if row[5] else None,
-                        "total_debt": float(row[6]) if row[6] else None,
-                        "cash_and_equivalents": float(row[7]) if row[7] else None,
+                        "total_revenue": safe_float(row[0], None),
+                        "net_income": safe_float(row[1], None),
+                        "operating_income": safe_float(row[3], None),
+                        "stockholders_equity": safe_float(row[4], None),
+                        "market_cap": safe_float(row[5], None),
+                        "total_debt": safe_float(row[6], None),
+                        "cash_and_equivalents": safe_float(row[7], None),
                         "ebitda": ebitda if ebitda != 0 else None,
                     }
 
@@ -398,9 +433,10 @@ class SectorMultiplesRefresh:
 
     def _load_config_overrides(self) -> Dict[str, str]:
         """Load sector overrides from config.yaml."""
-        config_path = (
-            Path(__file__).parent.parent.parent.parent.parent.parent / "config.yaml"
-        )
+        # From: src/investigator/domain/services/sector_multiples_refresh.py
+        # To: repo_root/config.yaml
+        # Go up: services(1) -> domain(2) -> investigator(3) -> src(4) -> repo_root(5)
+        config_path = Path(__file__).parent.parent.parent.parent.parent / "config.yaml"
 
         if not config_path.exists():
             logger.warning(f"Config file not found: {config_path}")
@@ -437,9 +473,10 @@ class SectorMultiplesRefresh:
         Returns:
             True if successful, False otherwise
         """
-        config_path = (
-            Path(__file__).parent.parent.parent.parent.parent.parent / "config.yaml"
-        )
+        # From: src/investigator/domain/services/sector_multiples_refresh.py
+        # To: repo_root/config.yaml
+        # Go up: services(1) -> domain(2) -> investigator(3) -> src(4) -> repo_root(5)
+        config_path = Path(__file__).parent.parent.parent.parent.parent / "config.yaml"
 
         if not config_path.exists():
             logger.error(f"Config file not found: {config_path}")
