@@ -2,12 +2,17 @@
 """
 Batch SEC Cache Warming Script
 
-Processes top 2000 stock symbols from stock.symbol table (isstock=true),
-ordered by stockid (1-2674), excluding recently processed entries.
+Intelligently processes stock symbols from stock.symbol table (isstock=true),
+ordered by stockid, excluding recently processed entries.
 
-Note: Top 2000 stocks by stockid are established, real companies.
-Stocks beyond stockid > 2674 include penny stocks, microcaps, and
-companies with limited or no market cap data.
+Cutoff Selection:
+- stockid <= 1000: Large/mega caps (avg MC $20-127B) - HIGH VALUE
+- stockid 1001-2000: Mid caps (avg MC $4.6B) - GOOD VALUE
+- stockid 2001-3000: Mid/small caps (avg MC $6.2B) - GOOD VALUE
+- stockid 3001-5000: Small caps (avg MC $1.2B) - MARGINAL VALUE
+- stockid > 5000: Micro/penny caps - LOW VALUE
+
+Default: stockid <= 3000 (covers ~1,500 stocks with good market cap coverage)
 
 Uses foreign tables (symbol, tickerdata) in sec_database for efficient joins.
 """
@@ -43,8 +48,17 @@ def retry_on_connection_error(
     return None
 
 
-# Top 2000 stocks by stockid threshold
-MAX_STOCKID_FOR_TOP_2000 = 2674
+# Default cutoff: stockid <= 3000 (covers ~1,500 stocks)
+DEFAULT_MAX_STOCKID = 3000
+
+# Tier definitions based on market cap analysis
+TIERS = {
+    "large_cap": {"max_stockid": 1000, "avg_mc_b": "$20-127B", "symbols": ~825},
+    "mid_cap": {"max_stockid": 2000, "avg_mc_b": "$4.6B", "symbols": ~721},
+    "small_cap": {"max_stockid": 3000, "avg_mc_b": "$6.2B", "symbols": ~740},
+    "micro_cap": {"max_stockid": 5000, "avg_mc_b": "$1.2B", "symbols": ~1760},
+    "nano_cap": {"max_stockid": None, "avg_mc_b": "<$1B", "symbols": ~13000},
+}
 
 # SEC database has foreign tables to stock.symbol and stock.tickerdata
 SEC_DB_URL = (
@@ -53,11 +67,13 @@ SEC_DB_URL = (
 
 
 def get_symbols_to_process(
-    batch_size: int = 100, offset: int = 0, exclude_recent_days: int = 30
+    batch_size: int = 100,
+    offset: int = 0,
+    exclude_recent_days: int = 30,
+    max_stockid: int = DEFAULT_MAX_STOCKID,
 ) -> list[tuple[str, str | None]]:
     """
     Get stock symbols that need SEC cache warming, ordered by stockid.
-    Limited to top 2000 stocks (stockid <= 2674).
 
     Returns list of (ticker, cik) tuples.
     """
@@ -91,7 +107,7 @@ def get_symbols_to_process(
                 {
                     "batch_size": batch_size,
                     "offset": offset,
-                    "max_stockid": MAX_STOCKID_FOR_TOP_2000,
+                    "max_stockid": max_stockid,
                 },
             )
             return [(row[0], row[1]) for row in result]
@@ -99,8 +115,10 @@ def get_symbols_to_process(
     return retry_on_connection_error(_query)
 
 
-def get_total_symbols_to_process(exclude_recent_days: int = 30) -> int:
-    """Get total count of stock symbols needing processing (top 2000 only)."""
+def get_total_symbols_to_process(
+    exclude_recent_days: int = 30, max_stockid: int = DEFAULT_MAX_STOCKID
+) -> int:
+    """Get total count of stock symbols needing processing."""
 
     def _query():
         engine = create_engine(
@@ -124,11 +142,25 @@ def get_total_symbols_to_process(exclude_recent_days: int = 30) -> int:
                       AND s.stockid <= :max_stockid
                       AND p.symbol IS NULL
                 """),
-                {"max_stockid": MAX_STOCKID_FOR_TOP_2000},
+                {"max_stockid": max_stockid},
             )
             return result.fetchone()[0]
 
     return retry_on_connection_error(_query)
+
+
+def get_tier_name(max_stockid: int) -> str:
+    """Get tier name based on max_stockid."""
+    if max_stockid <= 1000:
+        return "large_cap"
+    elif max_stockid <= 2000:
+        return "mid_cap"
+    elif max_stockid <= 3000:
+        return "small_cap"
+    elif max_stockid <= 5000:
+        return "micro_cap"
+    else:
+        return "nano_cap"
 
 
 def process_batch(symbols: list, batch_num: int, dry_run: bool = False):
@@ -193,7 +225,18 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Batch SEC cache warming for top 2000 stock symbols by stockid (isstock=true, stockid <= 2674)"
+        description="Batch SEC cache warming for stock symbols (isstock=true)",
+        epilog="""
+Tier Selection Guide:
+  --max-stockid 1000  : Large/mega caps (avg MC $20-127B) - ~825 symbols
+  --max-stockid 2000  : + Mid caps (avg MC $4.6B) - ~1,546 symbols total
+  --max-stockid 3000  : + Small caps (avg MC $6.2B) - ~2,286 symbols total [DEFAULT]
+  --max-stockid 5000  : + Micro caps (avg MC $1.2B) - ~4,046 symbols total
+  --max-stockid 10000 : + Nano caps (avg MC <$1B) - ~5,260 symbols total
+
+Recommendation: Use stockid <= 3000 for best balance of coverage and quality.
+        """,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--batch-size", type=int, default=100, help="Symbols per batch")
     parser.add_argument("--max-batches", type=int, default=None, help="Max batches")
@@ -202,28 +245,40 @@ def main():
         "--exclude-days", type=int, default=30, help="Exclude recent days"
     )
     parser.add_argument("--start-batch", type=int, default=0, help="Start from batch N")
+    parser.add_argument(
+        "--max-stockid",
+        type=int,
+        default=DEFAULT_MAX_STOCKID,
+        help="Maximum stockid to process (default: 3000)",
+    )
 
     args = parser.parse_args()
 
+    tier_name = get_tier_name(args.max_stockid)
+    tier_info = TIERS.get(tier_name, {})
+
     # Get total count
     print("Counting stock symbols to process...")
-    total = get_total_symbols_to_process(args.exclude_days)
+    total = get_total_symbols_to_process(args.exclude_days, args.max_stockid)
 
     print(f"\nTotal stock symbols needing refresh: {total}")
     print(f"Batch size: {args.batch_size}")
     print(f"Estimated batches: {(total + args.batch_size - 1) // args.batch_size}")
     print(f"Starting from batch: {args.start_batch + 1}")
-    print(f"Scope: Top 2000 stocks by stockid (stockid <= {MAX_STOCKID_FOR_TOP_2000})")
-    print(
-        f"Note: Excludes penny stocks and microcaps (stockid > {MAX_STOCKID_FOR_TOP_2000})"
-    )
+    print(f"Scope: stockid <= {args.max_stockid} ({tier_name} tier)")
+    if tier_info:
+        print(f"  Avg market cap: {tier_info.get('avg_mc_b', 'N/A')}")
+    print(f"Note: Excludes stocks with stockid > {args.max_stockid}")
     print("Using foreign tables: symbol, tickerdata in sec_database")
 
     if args.dry_run:
         print("\n=== DRY RUN MODE ===")
         # Show first batch in dry run
         symbols = get_symbols_to_process(
-            args.batch_size, args.start_batch * args.batch_size
+            args.batch_size,
+            args.start_batch * args.batch_size,
+            args.exclude_days,
+            args.max_stockid,
         )
         if symbols:
             process_batch(symbols, 1, dry_run=True)
@@ -242,6 +297,7 @@ def main():
             batch_size=args.batch_size,
             offset=offset,
             exclude_recent_days=args.exclude_days,
+            max_stockid=args.max_stockid,
         )
 
         if not symbols:
