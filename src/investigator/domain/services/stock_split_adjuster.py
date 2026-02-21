@@ -472,6 +472,80 @@ class StockSplitAdjuster:
             logger.error(f"Error adding stock split: {e}")
             return False
 
+    def get_actual_price_for_date(
+        self, symbol: str, split_adjusted_price: float, price_date: date
+    ) -> float:
+        """
+        Convert split-adjusted price to actual price as of a specific date.
+
+        Exchanges retroactively split-adjust historical prices. To calculate
+        market cap correctly for a historical date, we need to reverse this.
+
+        Example GOOGL 20:1 split on 2022-07-18:
+        - Price in 2020 tickerdata: $140 (split-adjusted)
+        - Splits between 2020 and now: 20:1
+        - Actual price in 2020: $140 × 20 = $2,800
+        - Market cap: 675M shares × $2,800 = $1.89T ✓
+
+        Args:
+            symbol: Stock ticker symbol
+            split_adjusted_price: Price from tickerdata (split-adjusted)
+            price_date: The date as of which we want the actual price
+
+        Returns:
+            Actual (non-split-adjusted) price as of price_date
+        """
+        # Get cumulative split ratio from price_date to today
+        # These are splits that happened AFTER price_date
+        cumulative_ratio = self.calculate_cumulative_split_ratio(
+            symbol=symbol, before_date=date.today(), after_date=price_date
+        )
+
+        # De-adjust: multiply to reverse split adjustments that happened since
+        actual_price = split_adjusted_price * cumulative_ratio
+        return actual_price
+
+    def calculate_market_cap(
+        self,
+        symbol: str,
+        price: float,
+        shares: float,
+        price_date: Optional[date] = None,
+    ) -> float:
+        """
+        Calculate market cap correctly accounting for stock splits.
+
+        IMPORTANT: The price parameter should be the split-adjusted price from
+        tickerdata. The shares parameter should be actual shares from SEC.
+
+        We de-adjust the price to match the actual shares, then calculate market cap.
+
+        Args:
+            symbol: Stock ticker symbol
+            price: Split-adjusted price from tickerdata
+            shares: Actual shares outstanding from SEC
+            price_date: Date of the price (required for historical data)
+
+        Returns:
+            Correct market cap
+
+        Example:
+            GOOGL 2020: price=$140 (split-adjusted), shares=675M
+            → Actual price = $140 × 20 = $2,800
+            → Market cap = 675M × $2,800 = $1.89T ✓
+
+            GOOGL 2024: price=$140, shares=13,200M (post-split)
+            → No adjustment needed (already at current split basis)
+            → Market cap = 13,200M × $140 = $1.85T ≈ $1.89T ✓
+        """
+        if price_date is None:
+            # Current price - no split adjustment needed
+            return price * shares
+
+        # Historical price - need to de-adjust
+        actual_price = self.get_actual_price_for_date(symbol, price, price_date)
+        return actual_price * shares
+
     def explain_split_impact(self, symbol: str) -> str:
         """
         Generate a human-readable explanation of split impact on EPS comparisons.
