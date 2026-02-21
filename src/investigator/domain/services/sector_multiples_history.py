@@ -413,18 +413,30 @@ class SectorMultiplesHistory:
                 # 2. Calculate from tickerdata (current_price * shares_outstanding)
                 # 3. Calculate from EPS * P/E (using sector median P/E as fallback)
                 for symbol, metrics in fy_metrics.items():
-                    # Skip if we already have both market_cap and price
-                    if metrics.get("market_cap") and metrics.get("market_cap", 0) > 0:
+                    # Skip if we already have both market_cap AND price
+                    # (Note: market_cap alone isn't enough - we need price for P/E and P/B)
+                    if (
+                        metrics.get("market_cap")
+                        and metrics.get("market_cap", 0) > 0
+                        and metrics.get("price")
+                    ):
                         continue
 
                     # Fallback 1: Try to get price from tickerdata around filed_date
                     # This uses tickerdata which has historical prices
-                    if "filed_date" in metrics:
+                    # We need price even if we have market_cap (for P/E and P/B calculations)
+                    if "filed_date" in metrics and not metrics.get("price"):
                         filed_date = metrics["filed_date"]
-                        from datetime import datetime, timedelta
+                        from datetime import datetime, timedelta, date
 
+                        # Convert filed_date to datetime regardless of input type
                         if isinstance(filed_date, str):
                             filed_date = datetime.fromisoformat(filed_date)
+                        elif isinstance(filed_date, date):
+                            filed_date = datetime.combine(
+                                filed_date, datetime.min.time()
+                            )
+                        # If already datetime, use as-is
 
                         # Use filed_date + 1 day (next trading day) as price anchor
                         # This is when market would have reacted to the earnings
@@ -469,13 +481,13 @@ class SectorMultiplesHistory:
         Returns:
             Price or None
         """
-        # Query for price closest to target date (within ±7 days)
+        # Query for price closest to target date (within ±14 days)
         query = text("""
             SELECT date, close
             FROM tickerdata
             WHERE ticker = :symbol
                 AND date BETWEEN :start_date AND :end_date
-            ORDER BY ABS(date - :target_date) ASC
+            ORDER BY ABS(date - CAST(:target_date AS date)) ASC
             LIMIT 1
         """)
 

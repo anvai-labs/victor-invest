@@ -653,85 +653,149 @@ Respond ONLY with the JSON object."""
         market_context: dict,
         peer_data: dict | None = None,
     ) -> dict | None:
-        """Use LLM for intelligent synthesis.
+        """Use LLM for intelligent synthesis with retry logic.
 
-        Returns LLM-generated synthesis dict or None if unavailable.
+        Returns LLM-generated synthesis dict or None if unavailable after retries.
         """
-        import json
 
         client = self._get_llm_client()
         if not client:
             return None
 
-        try:
-            prompt = self._build_synthesis_prompt(
-                symbol, technical, fundamental, market_context, peer_data
-            )
-            model = self._get_config().ollama.models.get("synthesis", "gpt-oss:20b")
+        model = self._get_config().ollama.models.get("synthesis", "gpt-oss:20b")
+        max_retries = 3
 
-            # OllamaClient.generate() takes (model, prompt, ...) not (prompt, model, ...)
-            # NOTE: Don't use format="json" as it causes issues with some models
-            response = await client.generate(
-                model=model,
-                prompt=prompt,
-            )
-
-            # Parse JSON response
-            # OllamaClient returns dict with 'response' key
-            if isinstance(response, dict):
-                response_text = response.get("response", "")
-            else:
-                response_text = str(response)
-
-            # Debug: Log response for troubleshooting
-            logger.debug(f"LLM raw response (first 1000 chars): {response_text[:1000]}")
-
-            # Try to extract JSON from response
+        for attempt in range(max_retries):
             try:
-                # Find JSON object in response - look for complete object
-                start = response_text.find("{")
-                if start >= 0:
-                    # Count braces to find matching end
-                    brace_count = 0
-                    in_string = False
-                    escape_next = False
-                    for i in range(start, len(response_text)):
-                        char = response_text[i]
-                        if escape_next:
-                            escape_next = False
-                            continue
-                        if char == "\\":
-                            escape_next = True
-                            continue
-                        if char == '"' and not escape_next:
-                            in_string = not in_string
-                            continue
-                        if not in_string:
-                            if char == "{":
-                                brace_count += 1
-                            elif char == "}":
-                                brace_count -= 1
-                                if brace_count == 0:
-                                    end = i + 1
-                                    json_str = response_text[start:end]
-                                    result: dict = json.loads(json_str)
-                                    logger.info(
-                                        f"Successfully parsed LLM synthesis JSON ({len(result)} keys)"
-                                    )
-                                    return result
-                logger.warning(
-                    f"Could not find complete JSON object in LLM response (first {{ at {start})"
+                # Build prompt - add retry instructions if this is not the first attempt
+                if attempt == 0:
+                    prompt = self._build_synthesis_prompt(
+                        symbol, technical, fundamental, market_context, peer_data
+                    )
+                else:
+                    prompt = self._build_synthesis_prompt(
+                        symbol, technical, fundamental, market_context, peer_data
+                    )
+                    # Add retry instructions
+                    prompt += (
+                        "\n\n**IMPORTANT**: Your previous response was not valid JSON. "
+                    )
+                    prompt += "You must respond ONLY with a valid JSON object. "
+                    prompt += (
+                        "Do NOT include any explanatory text before or after the JSON. "
+                    )
+                    prompt += "The response must start with '{' and end with '}'."
+
+                response = await client.generate(
+                    model=model,
+                    prompt=prompt,
                 )
-            except json.JSONDecodeError as e:
-                logger.warning(f"Could not parse LLM synthesis response as JSON: {e}")
-                # Log first 500 chars of response for debugging
-                logger.debug(f"LLM response preview: {response_text[:500]}")
 
+                # Parse JSON response
+                if isinstance(response, dict):
+                    response_text = response.get("response", "")
+                else:
+                    response_text = str(response)
+
+                # Try to extract and validate JSON
+                result = self._extract_and_validate_json(response_text, symbol)
+                if result:
+                    logger.info(
+                        f"Successfully parsed LLM synthesis JSON (attempt {attempt + 1}/{max_retries}, {len(result)} keys)"
+                    )
+                    return result
+                else:
+                    logger.warning(
+                        f"Attempt {attempt + 1}/{max_retries}: Failed to parse JSON from LLM response"
+                    )
+                    if attempt < max_retries - 1:
+                        logger.info(
+                            "Retrying with stronger JSON formatting instructions..."
+                        )
+                    continue
+
+            except Exception as e:
+                logger.warning(
+                    f"LLM synthesis attempt {attempt + 1}/{max_retries} failed: {e}"
+                )
+                if attempt < max_retries - 1:
+                    continue
+                else:
+                    logger.error(
+                        f"LLM synthesis failed after {max_retries} attempts: {e}"
+                    )
+                    return None
+
+        logger.warning(
+            f"LLM synthesis failed after {max_retries} attempts, falling back to rule-based"
+        )
+        return None
+
+    def _extract_and_validate_json(
+        self, response_text: str, symbol: str
+    ) -> dict | None:
+        """Extract and validate JSON from LLM response.
+
+        Args:
+            response_text: Raw LLM response text
+            symbol: Stock symbol for logging
+
+        Returns:
+            Parsed dict if valid JSON found, None otherwise
+        """
+        import json
+
+        # Debug: Log response for troubleshooting
+        logger.debug(f"LLM raw response (first 1000 chars): {response_text[:1000]}")
+
+        # Find JSON object in response - look for complete object
+        start = response_text.find("{")
+        if start < 0:
+            logger.debug("No '{' found in LLM response")
             return None
 
-        except Exception as e:
-            logger.warning(f"LLM synthesis failed: {e}")
-            return None
+        # Count braces to find matching end
+        brace_count = 0
+        in_string = False
+        escape_next = False
+        for i in range(start, len(response_text)):
+            char = response_text[i]
+            if escape_next:
+                escape_next = False
+                continue
+            if char == "\\":
+                escape_next = True
+                continue
+            if char == '"' and not escape_next:
+                in_string = not in_string
+                continue
+            if not in_string:
+                if char == "{":
+                    brace_count += 1
+                elif char == "}":
+                    brace_count -= 1
+                    if brace_count == 0:
+                        end = i + 1
+                        json_str = response_text[start:end]
+                        try:
+                            result: dict = json.loads(json_str)
+                            # Validate required fields
+                            required_fields = ["recommendation", "confidence"]
+                            missing_fields = [
+                                f for f in required_fields if f not in result
+                            ]
+                            if missing_fields:
+                                logger.warning(
+                                    f"JSON missing required fields: {missing_fields}"
+                                )
+                                return None
+                            return result
+                        except json.JSONDecodeError as e:
+                            logger.warning(f"JSON decode error: {e}")
+                            return None
+
+        logger.debug("Could not find complete JSON object in LLM response")
+        return None
 
     def _rule_based_synthesis(
         self, fundamental: dict, technical: dict, market_context: dict
