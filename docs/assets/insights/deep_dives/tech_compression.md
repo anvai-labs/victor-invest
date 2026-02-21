@@ -24,15 +24,22 @@ The Technology sector witnessed one of the most dramatic valuation re-ratings in
 - Quality companies with real earnings survived
 - The sector matured from speculation to fundamentals
 
-### Representative Symbols
+### Representative Symbols: Decomposing P/E Changes
 
-| Symbol | 2016 P/E | 2024 P/E | Story |
-|--------|----------|----------|-------|
-| **AAPL** | ~12x | ~30x | Steady compounder, actually expanded multiple |
-| **NVDA** | ~35x | ~100x+ | AI boom created new bubble within tech |
-| **META** | ~35x | ~25x | Ads recession crushed multiples, now recovering |
-| **GOOGL** | ~30x | ~25x | Search monopoly multiple compression |
-| **MSFT** | ~30x | ~35x | Cloud growth justified premium |
+| Symbol | 2016 Price | 2016 EPS | 2016 P/E | 2024 Price | 2024 EPS | 2024 P/E | Price Change | EPS Change | What Drove P/E |
+|--------|-----------|----------|----------|-----------|----------|----------|--------------|------------|----------------|
+| **AAPL** | ~$28 | $2.30 | 12x | ~$190 | $6.50 | 29x | **+579%** | **+183%** | Price grew faster → Multiple expanded |
+| **NVDA** | ~$50 | $1.40 | 35x | ~$900 | $18.00 | 50x | **+1700%** | **+1186%** | EPS outpaced price → Multiple compressed from peak |
+| **META** | ~$120 | $5.50 | 22x | ~$500 | $20.50 | 24x | **+317%** | **+273%** | Balanced growth → Multiple stable |
+| **GOOGL** | ~$80 | $2.70 | 30x | ~$145 | $5.80 | 25x | **+81%** | **+115%** | EPS grew faster → Multiple compressed |
+| **MSFT** | ~$60 | $2.10 | 29x | ~$400 | $11.50 | 35x | **+567%** | **+448%** | Price slightly faster → Multiple expanded |
+
+**Key Insight:** Every symbol tells a different story:
+- **AAPL:** Multiple expansion (12x→29x) - Quality compounder earned premium valuation
+- **NVDA:** Massive earnings growth (7x) but P/E compressed from 35x to 50x - EPS "grew into" valuation
+- **META:** Ads recession caused earnings collapse, then recovery - Multiple now normalized
+- **GOOGL:** Earnings grew faster than price - Multiple compression despite strong returns
+- **MSFT:** Steady execution justified multiple expansion from 29x to 35x
 
 ### Key Takeaway
 

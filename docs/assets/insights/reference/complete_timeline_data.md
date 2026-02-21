@@ -230,25 +230,61 @@ Utilities                     3.90    4.12    3.79    3.88    4.02    3.45    3.
 ## Representative Symbols by Sector (FY 2025)
 
 ### Technology
-| Symbol | P/E | P/S | Market Cap | Story |
-|--------|-----|-----|-----------|-------|
-| **NVDA** | 100x+ | 25x | $3.5T | AI bubble within Tech |
-| **AAPL** | 30x | 10x | $3.8T | Quality compounder |
-| **INTC** | 12x | 2x | $150B | Turnaround story |
+| Symbol | Price | EPS | P/E | P/S | 2016 Price | 2016 EPS | Price Δ | EPS Δ | P/E Δ | Story |
+|--------|-------|-----|-----|-----|-----------|----------|---------|--------|--------|-------|
+| **NVDA** | $900 | $18.00 | 50x | 25x | $50 | $1.40 | **+1700%** | **+1186%** | **+43%** | EPS grew into valuation |
+| **AAPL** | $190 | $6.50 | 29x | 10x | $28 | $2.30 | **+579%** | **+183%** | **+142%** | Quality earned premium |
+| **INTC** | $25 | $0.90 | 28x | 2x | $35 | $2.50 | **-29%** | **-64%** | **+180%** | Turnaround, earnings collapsed |
 
 ### Energy
-| Symbol | P/E | P/S | Dividend Yield | Story |
-|--------|-----|-----|----------------|-------|
-| **XOM** | N/A* | 1.9x | 3.5% | Dividend king |
-| **COP** | 17x | 2.7x | 2.5% | Permian growth |
-| **EOG** | 12x | 2.9x | 3.0% | Premium shale |
+| Symbol | Price | EPS | P/E | P/S | Dividend | 2022 Price | 2022 EPS | Price Δ | EPS Δ | P/E Δ | Story |
+|--------|-------|-----|-----|-----|---------|-----------|----------|---------|--------|--------|-------|
+| **XOM** | $105 | $13.00 | 12x | 1.9x | 3.5% | $80 | $10.00 | **+31%** | **+30%** | **+50%** | Re-rating from lows |
+| **COP** | $120 | $17.50 | 13x | 2.7x | 2.5% | $60 | $8.50 | **+100%** | **+106%** | **+86%** | EPS growth driver |
+| **EOG** | $125 | $14.00 | 12x | 2.9x | 3.0% | $75 | $7.00 | **+67%** | **+100%** | **+33%** | Shale premium |
 
 ### Finance
-| Symbol | P/E | P/B | ROE | Story |
-|--------|-----|-----|-----|-------|
-| **JPM** | 12x | 1.8x | 15% | Quality compounder |
-| **BAC** | 11x | 1.1x | 11% | Turnaround |
-| **WFC** | 10x | 0.9x | 10% | Value trap? |
+| Symbol | Price | EPS | P/E | P/B | ROE | Book Value | 2016 Price | 2016 EPS | Price Δ | EPS Δ | P/E Δ | Story |
+|--------|-------|-----|-----|-----|-----|-----------|-----------|----------|---------|--------|--------|-------|
+| **JPM** | $195 | $17.00 | 11x | 1.8x | 15% | $82 | $70 | $6.00 | **+179%** | **+183%** | **-4%** | Quality, stuck at 11x |
+| **BAC** | $40 | $4.00 | 10x | 1.1x | 11% | $35 | $18 | $2.00 | **+122%** | **+100%** | **-9%** | Turnaround, value trap |
+| **WFC** | $55 | $5.50 | 10x | 0.9x | 10% | $60 | $30 | $3.00 | **+83%** | **+83%** | **-23%** | Still cheap |
+
+**Key Pattern in Finance:** Despite 80-180% price gains and 80-180% EPS growth, P/E multiples have stayed flat or compressed. This is the "value trap"—fundamentals improve but valuation never re-rates.
+
+---
+
+## Decomposing P/E Changes: Price vs Earnings
+
+Understanding whether P/E changes came from the numerator (price) or denominator (earnings) is critical:
+
+### Type 1: Multiple Expansion (Price ↑ faster than Earnings)
+**Example:** AAPL 2016-2024
+- Price: $28 → $190 (+579%)
+- EPS: $2.30 → $6.50 (+183%)
+- P/E: 12x → 29x (+142%)
+- **Interpretation:** Market re-rated AAPL from "hardware" to "ecosystem/services," paying premium for quality
+
+### Type 2: Multiple Compression (Earnings ↑ faster than Price)
+**Example:** NVDA 2020-2024
+- Price: $110 → $900 (+718%)
+- EPS: $2.00 → $18.00 (+800%)
+- P/E: 55x → 50x (-9%)
+- **Interpretation:** Massive earnings growth "grew into" valuation. The P/E decline is a POSITIVE signal.
+
+### Type 3: Hidden Growth (Price flat, Earnings ↓)
+**Example:** META 2021-2022
+- Price: $340 → $130 (-62%)
+- EPS: $13.50 → $3.00 (-78%)
+- P/E: 25x → 43x (+72%)
+- **Interpretation:** Earnings collapsed faster than price. P/E expansion masked the deterioration—classic "value trap" signal.
+
+### Type 4: Value Trap (Price and Earnings both rise, P/E stuck)
+**Example:** JPM 2016-2024
+- Price: $70 → $195 (+179%)
+- EPS: $6.00 → $17.00 (+183%)
+- P/E: 12x → 11x (-4%)
+- **Interpretation:** Perfect balance between price and earnings growth, but P/E refuses to expand above 11x. Decade-long value trap.
 
 ---
 

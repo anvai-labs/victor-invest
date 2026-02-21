@@ -38,22 +38,28 @@ The market from 2016 to 2024 wasn't one story—it was a collection of vastly di
 - Benefited from infrastructure spending, reshoring
 - Modest multiple expansion (+9%) + earnings growth = solid returns
 
-### Representative Symbols by Sector
+### Representative Symbols: Decomposing P/E Changes
 
 **Energy (The Re-rating)**
-- XOM: 7x → 12x P/E (+71%)
-- COP: 9x → 13x P/E (+44%)
-- SLB: 10x → 21x P/E (+110%)
+| Symbol | Start Price | Start EPS | Start P/E | End Price | End EPS | End P/E | Price Δ | EPS Δ | Driver |
+|--------|-----------|----------|----------|-----------|----------|----------|---------|--------|--------|
+| XOM | ~$60 | $8.50 | 7x | ~$105 | $13.00 | 12x | +75% | +53% | Re-rating from panic lows |
+| COP | ~$50 | $7.00 | 7x | ~$120 | $17.50 | 13x | +140% | +150% | EPS outpaced (hidden growth) |
+| SLB | ~$35 | $3.50 | 10x | ~$55 | $6.50 | 21x | +57% | +86% | EPS growth + quality premium |
 
 **Technology (The Compression)**
-- META: 35x → 15x P/E (-57%)
-- GOOGL: 30x → 20x P/E (-33%)
-- AAPL: 12x → 30x P/E (+150%) - The exception that proves the rule
+| Symbol | Start Price | Start EPS | Start P/E | End Price | End EPS | End P/E | Price Δ | EPS Δ | Driver |
+|--------|-----------|----------|----------|-----------|----------|----------|---------|--------|--------|
+| META | ~$340 | $13.50 | 25x | ~$500 | $20.50 | 24x | +47% | +52% | EPS outpaced price (healthy) |
+| GOOGL | ~$120 | $4.00 | 30x | ~$145 | $5.80 | 25x | +21% | +45% | EPS grew faster (multiple down) |
+| AAPL | ~$28 | $2.30 | 12x | ~$190 | $6.50 | 29x | +579% | +183% | Price faster (quality premium earned) |
 
-**Finance (The COVID Recovery)**
-- JPM: 11x → 10x P/E (-9%) - Actually stable!
-- BAC: 12x → 9x P/E (-25%)
-- GS: 10x → 8x P/E (-20%)
+**Finance (The Value Trap)**
+| Symbol | Start Price | Start EPS | Start P/E | End Price | End EPS | End P/E | Price Δ | EPS Δ | Driver |
+|--------|-----------|----------|----------|-----------|----------|----------|---------|--------|--------|
+| JPM | ~$100 | $9.00 | 11x | ~$195 | $17.00 | 11x | +95% | +89% | Balanced growth, P/E stuck |
+| BAC | ~$25 | $2.50 | 10x | ~$40 | $4.00 | 10x | +60% | +60% | Perfectly balanced, P/E stuck |
+| GS | ~$220 | $22.00 | 10x | ~$400 | $32.00 | 12x | +82% | +45% | Price faster (modest re-rating) |
 
 ### Key Takeaways
 

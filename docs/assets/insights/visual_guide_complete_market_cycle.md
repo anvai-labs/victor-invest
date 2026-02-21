@@ -213,6 +213,99 @@ POSITIONS:
 
 ---
 
+## 🧮 Understanding Multiple Expansion & Compression
+
+**The Critical Insight:** A changing P/E multiple can mean VERY different things depending on whether the numerator (Price) or denominator (EPS) drove the change.
+
+### P/E Decomposition Framework
+
+**P/E = Price ÷ EPS**
+
+| Scenario | Price | EPS | P/E Change | Interpretation | Investment Signal |
+|----------|-------|-----|------------|----------------|-------------------|
+| **Multiple Expansion** | ↑↑ | → | P/E ↑ | Market paying more for same earnings | ⚠️ Warning: unsustainable without growth |
+| **Multiple Compression** | ↓↓ | → | P/E ↓ | Market paying less for same earnings | ✅ Opportunity: quality on sale |
+| **Hidden Growth** | ↑ | ↑↑ | P/E ↓ | Earnings growing faster than price | ✅ Strong: fundamentals driving |
+| **Hidden Decline** | → | ↓↓ | P/E ↑ | Earnings collapsing, P/E masks it | ❌ Danger: value trap forming |
+| **Balanced Growth** | ↑ | ↑ | P/E → | Price & earnings in sync | ✅ Healthy: sustainable gains |
+
+### Real-World Examples
+
+#### Example 1: Hidden Growth (NVDA 2020-2024)
+```
+                Price Growth: +718% ████████████████████████████████████████████
+                EPS Growth:  +800% ██████████████████████████████████████████████
+                P/E Change:   -9%   ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+
+Interpretation: EPS outpaced price despite massive gains. The P/E compression
+is a POSITIVE signal - earnings are "growing into" the valuation.
+```
+
+#### Example 2: Multiple Expansion (AAPL 2016-2024)
+```
+                Price Growth: +579% ████████████████████████████████████░░░░░░░░
+                EPS Growth:  +183% ███████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+                P/E Change:  +142% ████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+
+Interpretation: Price grew 3x faster than earnings. AAPL earned a premium
+multiple as the market re-rated it from "hardware" to "ecosystem."
+```
+
+#### Example 3: Value Trap (JPM 2016-2024)
+```
+                Price Growth: +179% ████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+                EPS Growth:  +183% ████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+                P/E Change:    -4% ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+
+Interpretation: Perfect balance between price and earnings, but P/E refused
+to expand beyond 11x. Decade-long value trap despite strong fundamentals.
+```
+
+#### Example 4: Hidden Decline (META 2021-2022)
+```
+                Price Change:  -62% ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+                EPS Change:   -78% ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+                P/E Change:   +72% ███████████████████████████████░░░░░░░░░░░░░
+
+Interpretation: Earnings collapsed faster than price. P/E expansion MASKED
+the deterioration. Classic value trap signal - avoid!
+```
+
+### P/S and P/B Decomposition
+
+The same framework applies to Price-to-Sales and Price-to-Book:
+
+#### P/S Example: LLY (2020-2024) - Pure Multiple Expansion
+```
+                Price Growth:  +241% ██████████████████████████████████░░░░░░
+                Rev/Share Gr:  +80%  ███████████████░░░░░░░░░░░░░░░░░░░░░░░
+                P/S Change:   +90%  ████████████████████████░░░░░░░░░░░░░░░░
+
+Interpretation: GLP-1 drug boom caused re-rating from "steady pharma" (26x)
+to "growth juggernaut" (46x). Unsustainable without continued acceleration.
+```
+
+#### P/B Example: WFC (2020-2024) - Stuck at Book
+```
+                Price Growth:  +83%  ██████████████░░░░░░░░░░░░░░░░░░░░░░░░░
+                Book/Share Gr: +70%  ████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░
+                P/B Change:    +8%   ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+
+Interpretation: Book value grew but P/B stayed at ~0.9x. Market refuses
+to pay full book value due to lingering scandal overhang.
+```
+
+### Decision Framework: When to Buy/Sell Based on Multiple Changes
+
+| Situation | Multiple Trend | Fundamentals Trend | Action |
+|-----------|---------------|-------------------|--------|
+| Multiple expanding + earnings flat | ↑ | → | **SELL** - unsustainable |
+| Multiple compressing + earnings growing | ↓ | ↑ | **BUY** - quality on sale |
+| Multiple stable + earnings growing | → | ↑ | **HOLD/Buy** - fair value |
+| Multiple expanding + earnings accelerating | ↑ | ↑↑ | **HOLD** - sweet spot but watch |
+
+---
+
 ## 🎯 Top 3 / Bottom 3 Symbols per Sector
 
 ### Technology (FY 2025)
