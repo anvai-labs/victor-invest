@@ -18,8 +18,14 @@ from investigator.domain.services.valuation.models.base import (
     ModelNotApplicable,
     ValuationModelResult,
 )
-from investigator.domain.services.valuation.models.common import baseline_multiple_context, clamp
-from investigator.domain.services.valuation.models.company_profile import CompanyProfile, DataQualityFlag
+from investigator.domain.services.valuation.models.common import (
+    baseline_multiple_context,
+    clamp,
+)
+from investigator.domain.services.valuation.models.company_profile import (
+    CompanyProfile,
+    DataQualityFlag,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +53,7 @@ class EVEBITDAModel(BaseValuationModel):
         max_multiple: float = 30.0,
         min_multiple: float = 4.0,
         interest_coverage: Optional[float] = None,
+        revenue_growth: Optional[float] = None,
     ) -> None:
         super().__init__(company_profile=company_profile)
         self.ttm_ebitda = ttm_ebitda
@@ -56,6 +63,7 @@ class EVEBITDAModel(BaseValuationModel):
         self.max_multiple = max_multiple
         self.min_multiple = min_multiple
         self.interest_coverage = interest_coverage
+        self.revenue_growth = revenue_growth
 
     def calculate(self, **_: Any) -> ValuationModelResult | ModelNotApplicable:
         if self._is_financial_sector():
@@ -86,6 +94,7 @@ class EVEBITDAModel(BaseValuationModel):
                 diagnostics=diagnostics,
             )
 
+        assert self.ttm_ebitda is not None  # guaranteed by _is_applicable()
         fair_value_ev = float(self.ttm_ebitda) * target_multiple
         equity_value = self._convert_ev_to_equity(fair_value_ev)
         if equity_value is None:
@@ -115,7 +124,9 @@ class EVEBITDAModel(BaseValuationModel):
         metadata: Dict[str, Any] = {}
         if current_price and current_price > 0:
             metadata["current_price"] = current_price
-            metadata["upside_downside_pct"] = round(((fair_value / current_price) - 1) * 100, 2)
+            metadata["upside_downside_pct"] = round(
+                ((fair_value / current_price) - 1) * 100, 2
+            )
 
         assumptions = {
             "ttm_ebitda": self.ttm_ebitda,
@@ -136,9 +147,13 @@ class EVEBITDAModel(BaseValuationModel):
         )
 
     def estimate_confidence(self, raw_output: Dict[str, Any]) -> float:
-        diagnostics = self._build_diagnostics(target_multiple=raw_output.get("target_multiple"))
+        diagnostics = self._build_diagnostics(
+            target_multiple=raw_output.get("target_multiple")
+        )
         return clamp(
-            0.5 * diagnostics.data_quality_score + 0.35 * diagnostics.fit_score + 0.15 * diagnostics.calibration_score,
+            0.5 * diagnostics.data_quality_score
+            + 0.35 * diagnostics.fit_score
+            + 0.15 * diagnostics.calibration_score,
             0.0,
             1.0,
         )
@@ -161,6 +176,19 @@ class EVEBITDAModel(BaseValuationModel):
         if not candidates:
             return None
         multiple = sum(candidates) / len(candidates)
+
+        # Growth adjustment: scale 1.0x at 0% growth to 1.6x at 30%+ growth
+        if self.revenue_growth is not None and self.revenue_growth > 0:
+            growth_factor = clamp(1.0 + self.revenue_growth * 1.5, 1.0, 1.6)
+            logger.info(
+                "EV/EBITDA growth adjustment: revenue_growth=%.1f%%, factor=%.2fx, multiple %.1f→%.1f",
+                self.revenue_growth * 100,
+                growth_factor,
+                multiple,
+                multiple * growth_factor,
+            )
+            multiple *= growth_factor
+
         return clamp(multiple, self.min_multiple, self.max_multiple)
 
     def _convert_ev_to_equity(self, fair_ev: float) -> Optional[float]:
@@ -173,7 +201,11 @@ class EVEBITDAModel(BaseValuationModel):
         profile = self.company_profile
         total_debt = getattr(profile, "total_debt", None)
         cash = getattr(profile, "cash", None)
-        if total_debt is None and profile.net_debt_to_ebitda is not None and self.ttm_ebitda:
+        if (
+            total_debt is None
+            and profile.net_debt_to_ebitda is not None
+            and self.ttm_ebitda
+        ):
             try:
                 return float(profile.net_debt_to_ebitda) * float(self.ttm_ebitda)
             except (TypeError, ValueError):
@@ -195,27 +227,41 @@ class EVEBITDAModel(BaseValuationModel):
         return self.company_profile.current_price
 
     def _build_baseline_diagnostics(self) -> ModelDiagnostics:
-        context = baseline_multiple_context(self.company_profile, data_quality_default=0.55, fit_default=0.5)
+        context = baseline_multiple_context(
+            self.company_profile, data_quality_default=0.55, fit_default=0.5
+        )
         if self.interest_coverage is not None and self.interest_coverage < 1.5:
             context.fit_score = clamp(context.fit_score - 0.1, 0.0, 1.0)
             if DataQualityFlag.OUTLIER_DETECTED.name not in context.flags:
                 context.flags.append(DataQualityFlag.OUTLIER_DETECTED.name)
         return context.to_diagnostics()
 
-    def _build_diagnostics(self, *, target_multiple: Optional[float]) -> ModelDiagnostics:
+    def _build_diagnostics(
+        self, *, target_multiple: Optional[float]
+    ) -> ModelDiagnostics:
         diagnostics = self._build_baseline_diagnostics()
         diagnostics.calibration_score = 0.4
 
         if target_multiple is None:
             return diagnostics
 
-        if self.company_profile.net_debt_to_ebitda and self.company_profile.net_debt_to_ebitda > 3.5:
+        if (
+            self.company_profile.net_debt_to_ebitda
+            and self.company_profile.net_debt_to_ebitda > 3.5
+        ):
             diagnostics.flags.append("HIGH_LEVERAGE")
             diagnostics.fit_score = clamp(diagnostics.fit_score - 0.1, 0.0, 1.0)
 
-        if target_multiple and self.enterprise_value is not None and self.ttm_ebitda not in (None, 0):
+        if (
+            target_multiple
+            and self.enterprise_value is not None
+            and self.ttm_ebitda is not None
+            and self.ttm_ebitda != 0
+        ):
             try:
-                observed_multiple = float(self.enterprise_value) / float(self.ttm_ebitda)
+                observed_multiple = float(self.enterprise_value) / float(
+                    self.ttm_ebitda
+                )
                 delta = abs(observed_multiple - target_multiple) / target_multiple
                 if delta < 0.25:
                     diagnostics.fit_score = clamp(diagnostics.fit_score + 0.1, 0.0, 1.0)
@@ -223,6 +269,8 @@ class EVEBITDAModel(BaseValuationModel):
                     diagnostics.flags.append("EV_EBITDA_DIVERGENCE")
                     diagnostics.fit_score = clamp(diagnostics.fit_score - 0.1, 0.0, 1.0)
             except (TypeError, ValueError, ZeroDivisionError):
-                logger.debug("Unable to compute observed EV/EBITDA multiple for diagnostics")
+                logger.debug(
+                    "Unable to compute observed EV/EBITDA multiple for diagnostics"
+                )
 
         return diagnostics

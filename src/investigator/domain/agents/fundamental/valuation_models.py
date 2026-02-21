@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import math
 from typing import Any, Callable, Dict, Optional, Tuple
 
@@ -73,7 +74,7 @@ def _annual_growth_factor(
     growth = clamp(growth, -0.75, 2.5)
     quarters = _FORWARD_HORIZON_TO_QUARTERS.get(forward_horizon, 4)
     exponent = quarters / 4.0
-    return max((1.0 + growth) ** exponent, 0.1)
+    return float(max((1.0 + growth) ** exponent, 0.1))
 
 
 def _normalize_growth_value(value: Optional[float]) -> Optional[float]:
@@ -105,9 +106,11 @@ def _extract_midpoint(value: Any) -> Tuple[Optional[float], Optional[str]]:
     if not isinstance(value, dict):
         return None, None
     mid = value.get("mid")
-    if mid is None and value.get("low") is not None and value.get("high") is not None:
+    low_val = value.get("low")
+    high_val = value.get("high")
+    if mid is None and low_val is not None and high_val is not None:
         try:
-            mid = (float(value.get("low")) + float(value.get("high"))) / 2.0
+            mid = (float(low_val) + float(high_val)) / 2.0
         except (TypeError, ValueError):
             mid = None
     try:
@@ -185,7 +188,9 @@ def _resolve_guidance_overrides(
         metadata["guidance_revenue_mid"] = revenue_mid
         metadata["guidance_revenue_horizon"] = revenue_horizon
         if base_revenue and base_revenue > 0:
-            annualized_revenue = _annualize_by_horizon(revenue_mid, revenue_horizon)
+            annualized_revenue = _annualize_by_horizon(
+                revenue_mid, revenue_horizon or "1y"
+            )
             implied_growth = (annualized_revenue / float(base_revenue)) - 1.0
             implied_growth = clamp(implied_growth, -0.75, 2.5)
             metadata["guidance_revenue_growth_implied"] = implied_growth
@@ -194,7 +199,7 @@ def _resolve_guidance_overrides(
 
     eps_mid, eps_horizon = _extract_midpoint(guidance_context.get("eps_guidance"))
     if eps_mid is not None:
-        annualized_eps_candidate = _annualize_by_horizon(eps_mid, eps_horizon)
+        annualized_eps_candidate = _annualize_by_horizon(eps_mid, eps_horizon or "1y")
         if _is_plausible_eps_override(
             annualized_eps=annualized_eps_candidate, base_eps=base_eps
         ):
@@ -230,7 +235,7 @@ def _resolve_guidance_overrides(
 
 def _attach_basis_metadata(
     *,
-    model_output: Dict[str, Any],
+    model_output: Any,
     valuation_basis: str,
     forward_horizon: str,
     denominator_label: str,
@@ -250,6 +255,26 @@ def _attach_basis_metadata(
     if isinstance(metadata, dict):
         metadata.setdefault("valuation_basis", valuation_basis)
         metadata.setdefault("forward_horizon", forward_horizon)
+
+
+_logger = logging.getLogger(__name__)
+
+
+def _lookup_industry_ev_ebitda(industry: Optional[str], config: Any) -> Optional[float]:
+    """Look up industry-level EV/EBITDA override from config."""
+    if not industry:
+        return None
+    valuation_settings = getattr(config, "valuation", None)
+    if isinstance(valuation_settings, dict):
+        overrides = valuation_settings.get("ev_ebitda_industry_overrides", {})
+    elif valuation_settings is not None:
+        overrides = getattr(valuation_settings, "ev_ebitda_industry_overrides", {})
+    else:
+        return None
+    if not isinstance(overrides, dict):
+        return None
+    value = overrides.get(industry)
+    return float(value) if value is not None else None
 
 
 def calculate_relative_valuation_models(
@@ -383,7 +408,18 @@ def calculate_relative_valuation_models(
     if sector_median_pe:
         try:
             if revenue_growth is not None:
-                growth_multiplier = clamp(1.0 + float(revenue_growth), 0.8, 1.8)
+                # Use shared GrowthCalculator for consistency
+                try:
+                    from investigator.domain.services.valuation.common import (
+                        GrowthCalculator,
+                    )
+
+                    growth_multiplier = GrowthCalculator.calculate_growth_multiplier_pe(
+                        revenue_growth
+                    )
+                except Exception:
+                    # Fallback to inline calculation
+                    growth_multiplier = clamp(1.0 + float(revenue_growth), 0.8, 2.5)
                 growth_adjusted_pe = sector_median_pe * growth_multiplier
             elif peg_ratio and peg_ratio > 0:
                 peg_clamped = clamp(float(peg_ratio), 0.5, 3.0)
@@ -398,13 +434,44 @@ def calculate_relative_valuation_models(
         or ratios.get("current_price")
     )
 
+    # SBC earnings quality penalty: when SBC is high relative to net income,
+    # reduce earnings_quality_score to lower P/E model confidence in the blend.
+    pe_earnings_quality = company_profile.earnings_quality_score
+    sbc_for_quality = financials.get("stock_based_compensation") or financials.get(
+        "stock_based_compensation_expense"
+    )
+    net_income_for_quality = financials.get("net_income") or financials.get(
+        "net_income_common"
+    )
+    if sbc_for_quality and net_income_for_quality:
+        try:
+            sbc_val = float(sbc_for_quality)
+            ni_val = float(net_income_for_quality)
+            if sbc_val > 0 and ni_val > 0:
+                sbc_to_ni = sbc_val / ni_val
+                if sbc_to_ni > 0.30:
+                    quality_penalty = clamp(sbc_to_ni - 0.30, 0.0, 0.3)
+                    base_quality = (
+                        pe_earnings_quality if pe_earnings_quality is not None else 0.7
+                    )
+                    pe_earnings_quality = max(base_quality - quality_penalty, 0.3)
+                    logger.info(
+                        "%s - SBC earnings quality penalty: SBC/NI=%.1f%%, quality %.2f→%.2f",
+                        symbol,
+                        sbc_to_ni * 100,
+                        base_quality,
+                        pe_earnings_quality,
+                    )
+        except (TypeError, ValueError):
+            pass
+
     pe_model = PEMultipleModel(
         company_profile=company_profile,
         ttm_eps=ttm_eps,
         current_price=current_price,
         sector_median_pe=sector_median_pe,
         growth_adjusted_pe=growth_adjusted_pe,
-        earnings_quality_score=company_profile.earnings_quality_score,
+        earnings_quality_score=pe_earnings_quality,
     )
     normalized_pe = normalize_model_output(pe_model.calculate())
 
@@ -415,6 +482,36 @@ def calculate_relative_valuation_models(
         or ratios.get("ebitda")
         or financials.get("operating_income")
     )
+
+    # SBC add-back: EBITDA should exclude SBC for EV/EBITDA comparability.
+    # Most sell-side comps use adjusted EBITDA (ex-SBC).
+    sbc_annual = (
+        financials.get("stock_based_compensation")
+        or financials.get("stock_based_compensation_expense")
+        or ratios.get("stock_based_compensation")
+    )
+    if base_ttm_ebitda and sbc_annual:
+        try:
+            sbc_float = float(sbc_annual)
+            base_float = float(base_ttm_ebitda)
+            if sbc_float > 0 and base_float > 0:
+                sbc_ratio = sbc_float / base_float
+                # Only add back if SBC is material (>5% of EBITDA)
+                # Cap SBC add-back at 100% of base EBITDA to avoid extreme adjustments
+                if sbc_ratio > 0.05:
+                    sbc_addback = min(sbc_float, base_float)
+                    base_ttm_ebitda = base_float + sbc_addback
+                    logger.info(
+                        "%s - SBC-adjusted EBITDA: base=%.2fB + SBC=%.2fB = %.2fB (SBC ratio=%.1f%%)",
+                        symbol,
+                        base_float / 1e9,
+                        sbc_addback / 1e9,
+                        float(base_ttm_ebitda) / 1e9,
+                        sbc_ratio * 100,
+                    )
+        except (TypeError, ValueError):
+            pass
+
     ebitda_growth = (
         ratios.get("ebitda_growth_yoy")
         or ratios.get("ebitda_growth")
@@ -432,6 +529,7 @@ def calculate_relative_valuation_models(
     sector_ev_ebitda = (
         company_data.get("sector_metrics", {}).get("median_ev_ebitda")
         or company_data.get("sector_data", {}).get("median_ev_ebitda")
+        or _lookup_industry_ev_ebitda(company_profile.industry, config)
         or lookup_sector_multiple(company_profile.sector, "ev_ebitda")
     )
 
@@ -450,6 +548,7 @@ def calculate_relative_valuation_models(
         leverage_adjusted_multiple=leverage_adjusted_multiple,
         interest_coverage=ratios.get("interest_coverage")
         or ratios.get("interest_coverage_ratio"),
+        revenue_growth=_normalize_growth_value(revenue_growth),
     )
     normalized_ev_ebitda = normalize_model_output(ev_ebitda_model.calculate())
 
@@ -483,6 +582,21 @@ def calculate_relative_valuation_models(
         or lookup_sector_multiple(company_profile.sector, "ps")
     )
 
+    # Apply growth adjustment to P/S for consistency with victor_invest
+    try:
+        from investigator.domain.services.valuation.common import (
+            GrowthAdjustedMultiples,
+        )
+
+        growth_adjusted_ps = GrowthAdjustedMultiples.calculate_adjusted_ps(
+            sector=company_profile.sector,
+            industry=company_profile.industry,
+            base_multiple=sector_ps,
+            revenue_growth=revenue_growth,
+        )
+    except Exception:
+        growth_adjusted_ps = sector_ps
+
     valuation_settings = getattr(config, "valuation", None)
     liquidity_floor = 5_000_000
     if isinstance(valuation_settings, dict):
@@ -496,7 +610,7 @@ def calculate_relative_valuation_models(
         company_profile=company_profile,
         revenue_per_share=revenue_per_share,
         current_price=current_price,
-        sector_median_ps=sector_ps,
+        sector_median_ps=growth_adjusted_ps,
         liquidity_floor_usd=liquidity_floor,
     )
     normalized_ps = normalize_model_output(ps_model.calculate())
@@ -550,8 +664,6 @@ def calculate_relative_valuation_models(
             normalized_ps,
             normalized_pb,
         ):
-            if not isinstance(output, dict):
-                continue
             assumptions = output.setdefault("assumptions", {})
             metadata = output.setdefault("metadata", {})
             if isinstance(assumptions, dict):

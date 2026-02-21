@@ -27,16 +27,17 @@ from rich.table import Table
 
 # Victor framework imports (from local wheel)
 try:
-    from victor.core.protocols import OrchestratorProtocol
-    from victor.framework import Agent, Event, EventType
-    from victor.workflows.streaming import WorkflowEventType
-except ImportError:
-    # Fallback for development without victor installed
-    Agent = None
-    Event = None
-    EventType = None
-    OrchestratorProtocol = None
-    WorkflowEventType = None
+    from victor.framework import Agent
+except ImportError as e:
+    # Victor framework is required for victor-invest CLI
+    # This fallback only allows module-level imports for type checking
+    import sys
+
+    click.echo(f"[red]Error: Victor framework not available: {e}[/red]", err=True)
+    click.echo(
+        "[yellow]Install with: pip install 'victor-ai>=0.5.0,<0.6.0'[/yellow]", err=True
+    )
+    sys.exit(1)
 
 from victor_invest import __version__ as VICTOR_INVEST_VERSION
 from victor_invest.framework_bootstrap import create_investment_orchestrator

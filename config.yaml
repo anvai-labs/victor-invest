@@ -409,8 +409,8 @@ valuation:
 
     # EV/EBITDA multiples by sector
     ev_ebitda:
-      Technology: 18
-      Healthcare: 14
+      Technology: 22
+      Healthcare: 15
       Financials: 8
       Consumer Cyclical: 12
       Consumer Discretionary: 12
@@ -421,8 +421,16 @@ valuation:
       Materials: 8
       Real Estate: 18
       Utilities: 10
-      Communication Services: 10
-      Default: 10
+      Communication Services: 12
+      Default: 11
+
+  # Industry-level EV/EBITDA overrides for high-multiple sub-sectors
+  ev_ebitda_industry_overrides:
+    "Internet Content & Information": 28
+    "Internet Retail": 25
+    "Software - Application": 30
+    "Software - Infrastructure": 28
+    "Semiconductors": 22
 
   # =============================================================================
   # CAPM Parameters (Single Source of Truth)

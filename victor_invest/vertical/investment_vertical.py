@@ -78,27 +78,16 @@ DEFAULT_INVESTMENT_TOOL_NAMES = [
 
 
 def _ensure_investment_tool_pack_registered(tool_names: List[str]) -> None:
-    """Register the investment tool pack in Victor's registry (if available)."""
-    try:
-        from victor.framework.tool_packs import ToolPack, get_tool_pack_registry
-    except Exception:
-        return
+    """Register the investment tool pack in Victor's registry (if available).
 
-    registry = get_tool_pack_registry()
-    if registry.get("investment") is not None:
-        return
-
-    try:
-        registry.register(
-            ToolPack(
-                name="investment",
-                tools=tool_names,
-                description="Investment analysis tool pack",
-            )
-        )
-    except ValueError:
-        # Already registered by another import path
-        pass
+    NOTE: The victor.framework.tool_packs module doesn't exist in the current
+    victor-ai package. Tools are registered via victor.tools.registry.ToolRegistry
+    instead. This function is a no-op but kept for API compatibility.
+    """
+    # ToolPacks abstraction never implemented in victor-ai.
+    # Tools are registered via register_investment_tools() in tools/__init__.py
+    # See: victor_invest/tools.register_investment_tools()
+    return
 
 
 class InvestmentVertical(VerticalBase):
@@ -175,15 +164,8 @@ class InvestmentVertical(VerticalBase):
             yaml_tools = [str(tool) for tool in yaml_tools]
 
         _ensure_investment_tool_pack_registered(yaml_tools)
-        try:
-            from victor.framework.tool_packs import resolve_tool_pack
-
-            resolved_tools = resolve_tool_pack("investment")
-            if resolved_tools:
-                result: list[str] = resolved_tools
-                return result
-        except Exception:
-            pass
+        # ToolPacks never implemented in victor-ai; tools registered via ToolRegistry
+        # The yaml_tools list is the source of truth for enabled tools
         return yaml_tools
 
     @classmethod

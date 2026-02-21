@@ -382,17 +382,21 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     sec_tool = SECFilingTool()
                     await sec_tool.initialize()
 
-                    # Get financial metrics from SEC (action is "extract_metrics")
-                    metrics_result = await sec_tool.execute(
+                    # Get quarterly financial data from processed table
+                    quarterly_result = await sec_tool.execute(
                         {},
                         symbol=symbol,
-                        action="extract_metrics",  # _exec_ctx (required)
+                        action="get_quarterly_financials",
+                        num_periods=12,
                     )
 
-                    if metrics_result.success and metrics_result.output:
-                        # SEC data comes in nested format - wrap it in a list
-                        quarterly_metrics = [metrics_result.output]
-                        logger.info(f"Fetched SEC financial metrics for {symbol}")
+                    if quarterly_result.success and quarterly_result.output:
+                        quarterly_metrics = quarterly_result.output.get(
+                            "quarterly_metrics", []
+                        )
+                        logger.info(
+                            f"Fetched {len(quarterly_metrics)} quarterly periods from SEC processed data for {symbol}"
+                        )
 
                 except Exception as e:
                     logger.debug(f"SEC fetch failed for {symbol}: {e}")
@@ -493,8 +497,40 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             has_positive_earnings = None
             ttm_fcf = None
             fcf_margin = None
+            total_debt = None
+            cash = None
+            net_debt_to_ebitda = None
+            total_revenue_val = None
 
             if quarterly_metrics:
+                q = quarterly_metrics[0]
+
+                # Calculate total_debt from processed data
+                long_term_debt = q.get("long_term_debt") or 0
+                short_term_debt = q.get("short_term_debt") or 0
+                total_debt = (
+                    long_term_debt + short_term_debt
+                    if (long_term_debt or short_term_debt)
+                    else None
+                )
+
+                # Get cash
+                cash = q.get("cash_and_equivalents")
+
+                # Get EBITDA for net_debt_to_ebitda calculation
+                ebitda = q.get("ebitda")
+                if (
+                    total_debt is not None
+                    and cash is not None
+                    and ebitda
+                    and ebitda > 0
+                ):
+                    net_debt = total_debt - cash
+                    net_debt_to_ebitda = net_debt / ebitda
+
+                # Get total revenue for margin calculation
+                total_revenue_val = q.get("total_revenue") or q.get("revenue")
+
                 # Handle SEC filing tool format (nested structure)
                 if "income_statement" in quarterly_metrics[0]:
                     sec_data = quarterly_metrics[0]
@@ -508,6 +544,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     total_revenue = (
                         income.get("total_revenue") or income.get("revenue") or 0
                     )
+                    total_revenue_val = total_revenue_val or total_revenue
 
                     has_positive_fcf = total_fcf > 0 if total_fcf else None
                     has_positive_earnings = (
@@ -557,6 +594,24 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                         else None
                     )
 
+            # Calculate shares outstanding for EV/EBITDA model
+            shares_outstanding_val = None
+            revenue_growth_yoy = None
+            if quarterly_metrics:
+                shares_from_q = quarterly_metrics[0].get("shares_outstanding")
+                if shares_from_q:
+                    shares_outstanding_val = float(shares_from_q)
+
+                # Calculate revenue growth using shared GrowthCalculator
+                from investigator.domain.services.valuation.common import (
+                    GrowthCalculator,
+                )
+
+                revenue_growth_yoy = GrowthCalculator.calculate_revenue_growth_ttm(
+                    quarterly_data=quarterly_metrics,
+                    logger=logger,
+                )
+
             return CompanyProfile(
                 symbol=symbol,
                 sector=sector,
@@ -565,6 +620,14 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 has_positive_earnings=has_positive_earnings,
                 ttm_fcf=ttm_fcf,
                 fcf_margin=fcf_margin,
+                total_debt=total_debt,
+                cash=cash,
+                net_debt_to_ebitda=net_debt_to_ebitda,
+                shares_outstanding=shares_outstanding_val,
+                revenue=total_revenue_val,
+                net_income=q.get("net_income") if quarterly_metrics else None,
+                ebitda=q.get("ebitda") if quarterly_metrics else None,
+                revenue_growth_yoy=revenue_growth_yoy,
             )
 
         except ImportError:
@@ -579,6 +642,8 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
         Handles two formats:
         1. Direct quarterly metrics: [{"net_income": x, "revenue": y, ...}]
         2. SEC filing tool format: [{"income_statement": {...}, "balance_sheet": {...}}]
+
+        Uses shared TTMMetrics from valuation.common for standardized calculations.
         """
         result: Dict[str, Optional[float]] = {
             "ttm_eps": None,
@@ -592,7 +657,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
         if not quarterly_metrics:
             return result
 
-        # Handle SEC filing tool format (nested structure)
+        # Handle SEC filing tool format (nested structure) - passthrough
         if quarterly_metrics and "income_statement" in quarterly_metrics[0]:
             sec_data = quarterly_metrics[0]
             income = sec_data.get("income_statement", {})
@@ -623,22 +688,71 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
             return result
 
-        # Handle direct quarterly metrics format (4+ quarters for TTM)
+        # Handle direct quarterly metrics format - use shared TTMMetrics
+        try:
+            from investigator.domain.services.valuation.common import TTMMetrics
+
+            result["ttm_eps"] = TTMMetrics.calculate_ttm_eps(
+                quarterly_data=quarterly_metrics,
+                shares_outstanding=shares_outstanding,
+            )
+            result["ttm_revenue"] = TTMMetrics.calculate_ttm_revenue(
+                quarterly_data=quarterly_metrics
+            )
+            result["ttm_ebitda"] = TTMMetrics.calculate_ttm_ebitda(
+                quarterly_data=quarterly_metrics
+            )
+
+            # Book value and per-share metrics (not in TTMMetrics yet)
+            if quarterly_metrics:
+                most_recent = quarterly_metrics[0]
+                book_value = (
+                    most_recent.get("stockholders_equity")
+                    or most_recent.get("total_stockholders_equity")
+                    or most_recent.get("book_value")
+                )
+                result["book_value"] = book_value
+
+                if shares_outstanding and shares_outstanding > 0:
+                    result["revenue_per_share"] = (
+                        result["ttm_revenue"] / shares_outstanding
+                        if result["ttm_revenue"]
+                        else None
+                    )
+                    result["book_value_per_share"] = (
+                        book_value / shares_outstanding if book_value else None
+                    )
+
+            return result
+
+        except Exception as e:
+            logger.debug(f"Shared TTMMetrics not available, using fallback: {e}")
+
+        # Fallback to inline calculation for direct quarterly metrics format
         if len(quarterly_metrics) < 4:
             # For single quarter data, use as TTM approximation
             q = quarterly_metrics[0]
             ttm_net_income = q.get("net_income", 0) or 0
-            ttm_revenue = q.get("revenue", 0) or 0
+            ttm_revenue = q.get("total_revenue") or q.get("revenue", 0) or 0
             ttm_ebitda = q.get("ebitda", 0) or 0
-            book_value = q.get("total_stockholders_equity") or q.get("book_value")
+            book_value = (
+                q.get("stockholders_equity")
+                or q.get("total_stockholders_equity")
+                or q.get("book_value")
+            )
         else:
             # Sum last 4 quarters for TTM values
             recent_quarters = quarterly_metrics[:4]
             ttm_net_income = sum(q.get("net_income", 0) or 0 for q in recent_quarters)
-            ttm_revenue = sum(q.get("revenue", 0) or 0 for q in recent_quarters)
+            ttm_revenue = sum(
+                q.get("total_revenue") or q.get("revenue", 0) or 0
+                for q in recent_quarters
+            )
             ttm_ebitda = sum(q.get("ebitda", 0) or 0 for q in recent_quarters)
             # Book value from most recent quarter
-            book_value = recent_quarters[0].get("total_stockholders_equity")
+            book_value = recent_quarters[0].get("stockholders_equity")
+            if book_value is None:
+                book_value = recent_quarters[0].get("total_stockholders_equity")
             if book_value is None:
                 book_value = recent_quarters[0].get("book_value")
 
@@ -664,8 +778,8 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
     ) -> Dict[str, float]:
         """Get sector median multiples with industry override.
 
-        Uses shared SectorMultiplesService for config-driven lookups.
-        Falls back to hardcoded defaults only if service is not available.
+        Uses shared SectorMultiples from valuation.common for config-driven lookups.
+        Falls back to SectorMultiplesService or hardcoded defaults if needed.
 
         Args:
             sector: The company's sector (e.g., "Technology", "Financials")
@@ -673,16 +787,37 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
         Returns:
             Dict with pe, ps, pb, ev_ebitda multiples. If industry is provided and
-            has a P/E fallback defined, the pe value will be overridden.
+            has an override defined in config, that value will be used.
         """
-        # Use shared config service if available (single source of truth)
+        # Use new shared SectorMultiples module (consolidated from both CLIs)
+        try:
+            from investigator.domain.services.valuation.common import SectorMultiples
+
+            return {
+                "pe": SectorMultiples.get_multiple_with_override(
+                    sector=sector, industry=industry, metric="pe"
+                ),
+                "ps": SectorMultiples.get_multiple_with_override(
+                    sector=sector, industry=industry, metric="ps"
+                ),
+                "pb": SectorMultiples.get_multiple_with_override(
+                    sector=sector, industry=industry, metric="pb"
+                ),
+                "ev_ebitda": SectorMultiples.get_multiple_with_override(
+                    sector=sector, industry=industry, metric="ev_ebitda"
+                ),
+            }
+        except Exception as e:
+            logger.debug(f"Shared SectorMultiples not available, using fallback: {e}")
+
+        # Fallback to SectorMultiplesService if available
         if self._sector_multiples_service:
             result: dict[str, float] = self._sector_multiples_service.get_multiples(
                 sector, industry
             )
             return result
 
-        # Fallback to hardcoded values if service not initialized
+        # Final fallback to hardcoded values
         logger.debug(
             f"Using fallback sector multiples for {sector} (service not available)"
         )
@@ -977,12 +1112,32 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             sector_multiples = self._get_sector_multiples(sector)
             sector_median_pe = sector_multiples.get("pe", 15.0)
 
+            # Calculate growth-adjusted P/E using shared GrowthAdjustedMultiples
+            growth_adjusted_pe = None
+            if company_profile and company_profile.revenue_growth_yoy is not None:
+                from investigator.domain.services.valuation.common import (
+                    GrowthAdjustedMultiples,
+                )
+
+                industry = (
+                    company_profile.industry
+                    if hasattr(company_profile, "industry")
+                    else None
+                )
+                growth_adjusted_pe = GrowthAdjustedMultiples.calculate_adjusted_pe(
+                    sector=sector,
+                    industry=industry,
+                    revenue_growth=company_profile.revenue_growth_yoy,
+                    sector_pe_override=sector_median_pe,
+                )
+
             # Create model with required arguments
             model = PEMultipleModel(
                 company_profile=company_profile,
                 ttm_eps=ttm_eps,
                 current_price=current_price,
                 sector_median_pe=sector_median_pe,
+                growth_adjusted_pe=growth_adjusted_pe,
             )
 
             result = await loop.run_in_executor(None, model.calculate)
@@ -1027,6 +1182,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             stock_info = await self._get_stock_info(symbol)
             shares_outstanding = stock_info.get("shares_outstanding")
             sector = stock_info.get("sector", "Unknown")
+            industry = stock_info.get("industry")
 
             # Build company profile
             company_profile = self._build_company_profile(
@@ -1044,16 +1200,32 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             )
             revenue_per_share = ttm_metrics.get("revenue_per_share")
 
-            # Get sector multiples
-            sector_multiples = self._get_sector_multiples(sector)
+            # Get sector multiples and apply growth adjustment
+            sector_multiples = self._get_sector_multiples(sector, industry)
             sector_median_ps = sector_multiples.get("ps", 2.0)
 
-            # Create model with required arguments
+            # Apply growth adjustment using shared module
+            try:
+                from investigator.domain.services.valuation.common import (
+                    GrowthAdjustedMultiples,
+                )
+
+                growth_adjusted_ps = GrowthAdjustedMultiples.calculate_adjusted_ps(
+                    sector=sector,
+                    industry=industry,
+                    base_multiple=sector_median_ps,
+                    revenue_growth=company_profile.revenue_growth_yoy,
+                )
+            except Exception as e:
+                logger.debug(f"Growth-adjusted P/S not available, using base: {e}")
+                growth_adjusted_ps = sector_median_ps
+
+            # Create model with growth-adjusted P/S
             model = PSMultipleModel(
                 company_profile=company_profile,
                 revenue_per_share=revenue_per_share,
                 current_price=current_price,
-                sector_median_ps=sector_median_ps,
+                sector_median_ps=growth_adjusted_ps,
             )
 
             result = await loop.run_in_executor(None, model.calculate)
@@ -1073,6 +1245,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     "ps_ratio": result.assumptions.get("target_ps"),
                     "revenue_per_share": revenue_per_share,
                     "sector_ps": sector_median_ps,
+                    "growth_adjusted_ps": growth_adjusted_ps,
                     "confidence": result.confidence_score,
                 },
                 metadata={"model": "ps", "symbol": symbol},
@@ -1169,6 +1342,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             stock_info = await self._get_stock_info(symbol)
             shares_outstanding = stock_info.get("shares_outstanding")
             sector = stock_info.get("sector", "Unknown")
+            industry = stock_info.get("industry")
             market_cap = stock_info.get("market_cap")
 
             # Build company profile
@@ -1201,16 +1375,17 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 else:
                     enterprise_value = market_cap  # Approximate
 
-            # Get sector multiples
-            sector_multiples = self._get_sector_multiples(sector)
+            # Get sector multiples with industry override
+            sector_multiples = self._get_sector_multiples(sector, industry)
             sector_median_ev_ebitda = sector_multiples.get("ev_ebitda", 12.0)
 
-            # Create model with required arguments
+            # Create model with required arguments including revenue growth
             model = EVEBITDAModel(
                 company_profile=company_profile,
                 ttm_ebitda=ttm_ebitda,
                 enterprise_value=enterprise_value,
                 sector_median_ev_ebitda=sector_median_ev_ebitda,
+                revenue_growth=company_profile.revenue_growth_yoy,
             )
 
             result = await loop.run_in_executor(None, model.calculate)
@@ -1231,6 +1406,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     "enterprise_value": enterprise_value,
                     "ebitda_ttm": ttm_ebitda,
                     "sector_ev_ebitda": sector_median_ev_ebitda,
+                    "revenue_growth": company_profile.revenue_growth_yoy,
                     "confidence": result.confidence_score,
                 },
                 metadata={"model": "ev_ebitda", "symbol": symbol},
