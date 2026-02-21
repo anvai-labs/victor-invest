@@ -15,11 +15,33 @@ Uses foreign tables (symbol, tickerdata) in sec_database for efficient joins.
 import sys
 import time
 from pathlib import Path
+from typing import Callable
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import OperationalError, DBAPIError
+
+
+def retry_on_connection_error(
+    func: Callable, max_retries: int = 3, base_delay: float = 2.0
+):
+    """
+    Retry function on database connection errors with exponential backoff.
+    """
+    for attempt in range(max_retries):
+        try:
+            return func()
+        except (OperationalError, DBAPIError) as e:
+            if attempt == max_retries - 1:
+                raise
+            delay = base_delay * (2**attempt)
+            print(f"    Connection error (attempt {attempt + 1}/{max_retries}): {e}")
+            print(f"    Retrying in {delay:.1f} seconds...")
+            time.sleep(delay)
+    return None
+
 
 # Top 2000 stocks by stockid threshold
 MAX_STOCKID_FOR_TOP_2000 = 2674
@@ -39,44 +61,19 @@ def get_symbols_to_process(
 
     Returns list of (ticker, cik) tuples.
     """
-    engine = create_engine(SEC_DB_URL)
 
-    with engine.connect() as conn:
-        interval_str = f"INTERVAL '{exclude_recent_days} days'"
-        query = text(f"""
-            SELECT s.ticker, s.cik
-            FROM symbol s
-            LEFT JOIN sec_companyfacts_processed p
-                ON UPPER(s.ticker) = p.symbol
-                AND p.fiscal_period = 'FY'
-                AND p.filed_date > NOW() - {interval_str}
-            WHERE s.isstock = true
-              AND s.stockid <= :max_stockid
-              AND p.symbol IS NULL
-            ORDER BY s.stockid
-            LIMIT :batch_size OFFSET :offset
-        """)
-
-        result = conn.execute(
-            query,
-            {
-                "batch_size": batch_size,
-                "offset": offset,
-                "max_stockid": MAX_STOCKID_FOR_TOP_2000,
-            },
+    def _query():
+        engine = create_engine(
+            SEC_DB_URL,
+            pool_pre_ping=True,  # Verify connections before using
+            pool_recycle=3600,  # Recycle connections after 1 hour
+            connect_args={"connect_timeout": 10},
         )
-        return [(row[0], row[1]) for row in result]
 
-
-def get_total_symbols_to_process(exclude_recent_days: int = 30) -> int:
-    """Get total count of stock symbols needing processing (top 2000 only)."""
-    engine = create_engine(SEC_DB_URL)
-
-    with engine.connect() as conn:
-        interval_str = f"INTERVAL '{exclude_recent_days} days'"
-        result = conn.execute(
-            text(f"""
-                SELECT COUNT(DISTINCT s.ticker)
+        with engine.connect() as conn:
+            interval_str = f"INTERVAL '{exclude_recent_days} days'"
+            query = text(f"""
+                SELECT s.ticker, s.cik
                 FROM symbol s
                 LEFT JOIN sec_companyfacts_processed p
                     ON UPPER(s.ticker) = p.symbol
@@ -85,11 +82,53 @@ def get_total_symbols_to_process(exclude_recent_days: int = 30) -> int:
                 WHERE s.isstock = true
                   AND s.stockid <= :max_stockid
                   AND p.symbol IS NULL
-            """),
-            {"max_stockid": MAX_STOCKID_FOR_TOP_2000},
+                ORDER BY s.stockid
+                LIMIT :batch_size OFFSET :offset
+            """)
+
+            result = conn.execute(
+                query,
+                {
+                    "batch_size": batch_size,
+                    "offset": offset,
+                    "max_stockid": MAX_STOCKID_FOR_TOP_2000,
+                },
+            )
+            return [(row[0], row[1]) for row in result]
+
+    return retry_on_connection_error(_query)
+
+
+def get_total_symbols_to_process(exclude_recent_days: int = 30) -> int:
+    """Get total count of stock symbols needing processing (top 2000 only)."""
+
+    def _query():
+        engine = create_engine(
+            SEC_DB_URL,
+            pool_pre_ping=True,
+            pool_recycle=3600,
+            connect_args={"connect_timeout": 10},
         )
 
-        return result.fetchone()[0]
+        with engine.connect() as conn:
+            interval_str = f"INTERVAL '{exclude_recent_days} days'"
+            result = conn.execute(
+                text(f"""
+                    SELECT COUNT(DISTINCT s.ticker)
+                    FROM symbol s
+                    LEFT JOIN sec_companyfacts_processed p
+                        ON UPPER(s.ticker) = p.symbol
+                        AND p.fiscal_period = 'FY'
+                        AND p.filed_date > NOW() - {interval_str}
+                    WHERE s.isstock = true
+                      AND s.stockid <= :max_stockid
+                      AND p.symbol IS NULL
+                """),
+                {"max_stockid": MAX_STOCKID_FOR_TOP_2000},
+            )
+            return result.fetchone()[0]
+
+    return retry_on_connection_error(_query)
 
 
 def process_batch(symbols: list, batch_num: int, dry_run: bool = False):
