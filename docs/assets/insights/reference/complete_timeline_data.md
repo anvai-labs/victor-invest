@@ -230,11 +230,16 @@ Utilities                     3.90    4.12    3.79    3.88    4.02    3.45    3.
 ## Representative Symbols by Sector (FY 2025)
 
 ### Technology
-| Symbol | EPS | P/E | P/S | 2016 EPS | EPS Δ | P/E Δ | Story |
-|--------|-----|-----|-----|----------|-------|--------|-------|
-| **NVDA** | $2.97 | 64x | 25x | $1.13 | **+163%** | **+83%** | AI boom drove EPS growth |
-| **AAPL** | $7.49 | 35x | 10x | $8.35 | **-10%** | **+192%** | Quality earned premium despite EPS decline |
-| **META** | $23.98 | 27x | 8x | $3.57 | **+572%** | **-23%** | Ads recovery then optimization |
+| Symbol | EPS | P/E | P/S | 2016 EPS (Split-Adjusted) | EPS Δ | P/E Δ | Story |
+|--------|-----|-----|-----|--------------------------|-------|--------|-------|
+| **NVDA** | $2.97 | 64x | 25x | $0.28 | **+961%** | **+83%** | AI boom drove EPS growth (4:1 split Jul 2021) |
+| **AAPL** | $7.49 | 35x | 10x | $2.09 | **+258%** | **+192%** | Quality earned premium (4:1 split Aug 2020) |
+| **META** | $23.98 | 27x | 8x | $3.57 | **+572%** | **-23%** | Ads recovery then optimization (no splits) |
+
+**Split Adjustment Notes:**
+- NVDA: 2016 raw EPS $1.13 → split-adjusted $0.28 (4:1 split Jul 2021)
+- AAPL: 2016 raw EPS $8.35 → split-adjusted $2.09 (4:1 split Aug 2020)
+- Pre-split and post-split EPS are NOT directly comparable without adjustment
 
 ### Energy
 | Symbol | EPS | P/E | P/S | Dividend | 2022 EPS | EPS Δ | P/E Δ | Story |
@@ -258,9 +263,11 @@ Understanding whether P/E changes came from the numerator (price) or denominator
 
 ### Type 1: Multiple Expansion (Price ↑ faster than Earnings)
 **Example:** AAPL 2016-2025
-- EPS: $8.35 → $7.49 (-10%)
+- EPS (split-adjusted): $2.09 → $7.49 (+258%)
 - P/E: 12x → 35x (+192%)
-- **Interpretation:** Market re-rated AAPL from "hardware" to "ecosystem/services," paying premium for quality despite EPS volatility
+- **Interpretation:** Market re-rated AAPL from "hardware" to "ecosystem/services," paying premium for quality with strong EPS growth
+
+**Note on split adjustment:** AAPL had a 4:1 split in August 2020. 2016 raw EPS of $8.35 is split-adjusted to $2.09 for accurate comparison with 2025 EPS of $7.49.
 
 ### Type 2: Multiple Compression (Earnings ↑ faster than Price)
 **Example:** NVDA 2020-2025
@@ -278,7 +285,7 @@ Understanding whether P/E changes came from the numerator (price) or denominator
 **Example:** JPM 2016-2025
 - EPS: $6.76 → $20.55 (+204%)
 - P/E (sector): 25.3x → 13.5x (-47%)
-- **Interpretation:** Strong earnings growth but P/E compressed from 25.3x to 13.5x. Decade-long value trap where fundamentals improve but valuation refuses to re-rate.
+- **Interpretation:** Strong earnings growth but P/E compressed from 25.3x to 13.5x. Decade-long value trap where fundamentals improve but valuation refuses to re-rate. No splits - raw EPS is accurate.
 
 ---
 

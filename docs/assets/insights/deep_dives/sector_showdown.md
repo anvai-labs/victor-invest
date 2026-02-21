@@ -47,11 +47,16 @@ The market from 2016 to 2024 wasn't one story—it was a collection of vastly di
 | JPM | $6.76 | $12.70 | $20.55 | **+204%** | Consistent earnings growth |
 
 **Technology (The Compression)**
-| Symbol | 2016 EPS | 2022 EPS | 2025 EPS | 2016-2025 Δ | Driver |
-|--------|----------|----------|----------|-------------|--------|
-| META | $3.57 | $8.63 | $23.98 | **+572%** | Ad recovery then optimization |
-| GOOGL | $28.18 | $4.59 | $10.91 | **-61%** | Pre/post-split incomparable |
-| AAPL | $8.35 | $6.15 | $7.49 | **-10%** | Declined then recovered |
+| Symbol | 2016 EPS (Split-Adjusted) | 2022 EPS | 2025 EPS | 2016-2025 Δ | Driver |
+|--------|--------------------------|----------|----------|-------------|--------|
+| META | $3.57 | $8.63 | $23.98 | **+572%** | Ad recovery then optimization (no splits) |
+| GOOGL | $1.41 | $4.59 | $10.91 | **+674%** | 20:1 split Jul 2022 - real growth from $1.41 |
+| AAPL | $2.09 | $6.15 | $7.49 | **+258%** | 4:1 split Aug 2020 - real growth from $2.09 |
+
+**Note on Split Adjustments:**
+- GOOGL: 2016 raw EPS $28.18 → split-adjusted $1.41 (20:1 split Jul 2022)
+- AAPL: 2016 raw EPS $8.35 → split-adjusted $2.09 (4:1 split Aug 2020)
+- Pre-split and post-split EPS are NOT directly comparable without adjustment
 
 **Finance (The Value Trap)**
 | Symbol | 2016 EPS | 2022 EPS | 2025 EPS | 2016-2025 Δ | P/E Trend |

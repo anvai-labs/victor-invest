@@ -42,12 +42,17 @@ The poster child for multiple compression:
 
 **Representative Symbols:**
 
-| Symbol | 2016 P/E | 2024 P/E | Earnings Growth 2016-2024 |
-|--------|----------|----------|-------------------------|
-| AAPL | 12x | 30x | +183% |
-| MSFT | 30x | 35x | +448% |
-| GOOGL | 25x | 25x | +115% |
-| META | 35x | 15x | +273% |
+| Symbol | 2016 P/E | 2024 P/E | Earnings Growth 2016-2024 | Split Notes |
+|--------|----------|----------|-------------------------|-------------|
+| AAPL | 12x | 30x | +258% | 4:1 split Aug 2020 |
+| MSFT | 30x | 35x | +448% | No splits |
+| GOOGL | 25x | 25x | +674% | 20:1 split Jul 2022 |
+| META | 35x | 15x | +273% | No splits |
+
+**Note:** Earnings growth uses split-adjusted EPS for accurate comparison:
+- AAPL: 2016 raw EPS $8.35 → split-adjusted $2.09 (4:1 split Aug 2020)
+- GOOGL: 2016 raw EPS $28.18 → split-adjusted $1.41 (20:1 split Jul 2022)
+- Pre-split and post-split EPS are NOT directly comparable without adjustment
 
 ### 2. **The Inflating Balloon: Multiple Expansion + Moderate Fundamentals**
 *(Most dangerous phase: Can pop anytime)*
@@ -138,16 +143,18 @@ Where:
 ### P/E Decomposition Examples
 
 #### AAPL (2016-2025): The Quality Compound
-| Metric | 2016 | 2024 | 2025 | Change |
-|--------|------|------|------|--------|
-| **EPS** | $8.35 | $6.11 | $7.49 | **-10%** |
+| Metric | 2016 (Split-Adjusted) | 2024 | 2025 | Change |
+|--------|----------------------|------|------|--------|
+| **EPS** | $2.09 | $6.11 | $7.49 | **+258%** |
 | **P/E** | 12x | 30x | 35x | **+192%** |
 
-**What happened:** Earnings declined then recovered, while price grew steadily (multiple re-rating)
-- Fundamental return: -10% (earnings declined from 2016 to 2025)
+**What happened:** Strong earnings growth (4:1 split Aug 2020), price grew steadily (multiple re-rating)
+- Fundamental return: +258% (earnings growth from split-adjusted 2016 to 2025)
 - Multiple effect: +192% (P/E expansion from 12x to 35x)
 
-**Why P/E expanded:** AAPL transformed from a hardware company to a services ecosystem, justifying a higher multiple. Quality compounder earned premium valuation despite earnings volatility.
+**Why P/E expanded:** AAPL transformed from a hardware company to a services ecosystem, justifying a higher multiple. Quality compounder earned premium valuation with strong EPS growth.
+
+**Split adjustment note:** AAPL had a 4:1 split in August 2020. 2016 raw EPS of $8.35 is split-adjusted to $2.09 for accurate comparison with 2025 EPS of $7.49. Pre-split and post-split EPS are NOT directly comparable.
 
 #### XOM (2021-2025): The Earnings Cycle
 | Metric | 2021 | 2022 | 2024 | 2025 | Change |
@@ -184,6 +191,8 @@ Where:
 - Multiple effect: +16% (P/E expansion from 55x to 64x)
 
 **Why volatile:** 2022 crypto mining boom drove EPS to $3.91, then 2024 crash to $1.21, then 2025 AI recovery to $2.97. P/E remained elevated due to growth expectations despite earnings volatility.
+
+**Split adjustment note:** NVDA had a 4:1 split in July 2021. For longer-term comparison (2016-2025), 2016 raw EPS of $1.13 is split-adjusted to $0.28, showing real growth of +961% to $2.97 in 2025.
 
 #### JPM (2020-2024): P/B Contraction Despite Strong Fundamentals
 | Metric | 2020 | 2024 | Change |

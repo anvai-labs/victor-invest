@@ -26,22 +26,28 @@ The Technology sector witnessed one of the most dramatic valuation re-ratings in
 
 ### Representative Symbols: Decomposing P/E Changes
 
-| Symbol | 2016 EPS | 2024 EPS | 2025 EPS | EPS Change (2016-2025) | What Drove P/E |
-|--------|----------|----------|----------|----------------------|----------------|
-| **AAPL** | $8.35 | $6.11 | $7.49 | **-10%** | Earnings declined then recovered, P/E expanded due to quality premium |
-| **NVDA** | $1.13 | $1.21 | $2.97 | **+163%** | Volatile earnings, AI boom drove massive EPS growth |
-| **META** | $3.57 | $24.61 | $23.98 | **+572%** | Ad recession recovery then strong growth |
-| **GOOGL** | $28.18 | $8.13 | $10.91 | **-61%** | Pre-Alphabet split had very different structure |
-| **MSFT** | $2.59 | $11.86 | $13.70 | **+429%** | Consistent earnings growth justified multiple expansion |
+| Symbol | 2016 EPS (Split-Adjusted) | 2024 EPS | 2025 EPS | EPS Change (2016-2025) | What Drove P/E |
+|--------|--------------------------|----------|----------|----------------------|----------------|
+| **AAPL** | $2.09 | $6.11 | $7.49 | **+258%** | 4:1 split Aug 2020. Real growth: $2.09 → $7.49 |
+| **NVDA** | $0.28 | $1.21 | $2.97 | **+961%** | 4:1 split Jul 2021. Real growth: $0.28 → $2.97 |
+| **META** | $3.57 | $24.61 | $23.98 | **+572%** | No splits - raw EPS is accurate |
+| **GOOGL** | $1.41 | $8.13 | $10.91 | **+674%** | 20:1 split Jul 2022. Real growth: $1.41 → $10.91 |
+| **MSFT** | $2.59 | $11.86 | $13.70 | **+429%** | No splits - raw EPS is accurate |
 
-**Note:** GOOGL 2016 EPS of $28.18 reflects pre-Alphabet split structure (Google included all business lines). Post-split GOOGL (2021+) shows much lower EPS as standalone company.
+**Note on Split Adjustments:** Pre-split EPS values have been adjusted to post-split basis for accurate comparison:
+- **AAPL:** 2016 raw EPS $8.35 → split-adjusted $2.09 (4:1 split Aug 2020)
+- **NVDA:** 2016 raw EPS $1.13 → split-adjusted $0.28 (4:1 split Jul 2021)
+- **GOOGL:** 2016 raw EPS $28.18 → split-adjusted $1.41 (20:1 split Jul 2022)
+- **META, MSFT:** No splits, raw EPS is accurate
 
-**Key Insight:** Every symbol tells a different story:
-- **AAPL:** Earnings declined from 2016 ($8.35) to 2020 ($3.31) due to iPhone maturation, then recovered. P/E expansion reflects quality premium.
-- **NVDA:** Extreme volatility with 2022 EPS of $3.91 (crypto boom) then 2024 drop to $1.21 before AI recovery.
-- **META:** Massive EPS growth from $3.57 (2016) to $23.98 (2025) driven by core advertising business optimization.
-- **GOOGL:** Structural change - pre-split vs post-split incomparable. 2021+ shows normalized standalone earnings.
-- **MSFT:** Steady consistent earnings growth from $2.59 (2016) to $13.70 (2025).
+Pre-split and post-split EPS are NOT directly comparable without adjustment. The split-adjusted values show true earnings growth.
+
+**Key Insight:** Every symbol tells a different story (using split-adjusted EPS):
+- **AAPL:** Earnings declined from 2016 ($2.09 split-adjusted) to 2020 ($1.55) due to iPhone maturation, then recovered strongly. P/E expansion reflects quality premium.
+- **NVDA:** Extreme volatility with 2022 EPS of $3.91 (crypto boom) then 2024 drop to $1.21 before AI recovery. Split-adjusted 2016 base was $0.28.
+- **META:** Massive EPS growth from $3.57 (2016) to $23.98 (2025) driven by core advertising business optimization. No splits.
+- **GOOGL:** 20:1 split in July 2022. Split-adjusted 2016 EPS was $1.41, growing to $10.91 (2025). Pre-split raw EPS ($28.18) is not comparable to post-split values.
+- **MSFT:** Steady consistent earnings growth from $2.59 (2016) to $13.70 (2025). No splits.
 
 **Key Insight:** Every symbol tells a different story:
 - **AAPL:** Multiple expansion (12x→29x) - Quality compounder earned premium valuation
