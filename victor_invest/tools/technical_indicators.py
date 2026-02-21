@@ -47,7 +47,7 @@ Example:
 
 import asyncio
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 import pandas as pd
 
@@ -226,8 +226,11 @@ Returns calculated indicators as structured data suitable for analysis.
             if self._market_data_fetcher is None:
                 return None
             loop = asyncio.get_event_loop()
-            df = await loop.run_in_executor(
-                None, self._market_data_fetcher.get_stock_data, symbol, days
+            df = cast(
+                Optional[pd.DataFrame],
+                await loop.run_in_executor(
+                    None, self._market_data_fetcher.get_stock_data, symbol, days
+                ),
             )
             return df
         except Exception as e:
@@ -250,8 +253,11 @@ Returns calculated indicators as structured data suitable for analysis.
             if self._calculator is None:
                 return df
             loop = asyncio.get_event_loop()
-            enhanced_df = await loop.run_in_executor(
-                None, self._calculator.calculate_all_indicators, df, symbol
+            enhanced_df = cast(
+                pd.DataFrame,
+                await loop.run_in_executor(
+                    None, self._calculator.calculate_all_indicators, df, symbol
+                ),
             )
             return enhanced_df
         except Exception as e:

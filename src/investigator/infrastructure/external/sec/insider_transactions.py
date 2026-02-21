@@ -46,7 +46,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 import aiohttp
-import requests  # type: ignore[import-untyped]
+import requests
 
 try:
     import certifi
