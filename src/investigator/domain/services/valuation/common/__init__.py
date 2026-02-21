@@ -64,6 +64,7 @@ from investigator.domain.services.valuation.common.growth_calculator import (
 from investigator.domain.services.valuation.common.sector_multiples import (
     SectorMultiples,
 )
+from investigator.domain.services.valuation.common.symbol_metadata import SymbolMetadata
 from investigator.domain.services.valuation.common.ttm_calculator import (
     TTMMetrics,
 )
@@ -73,4 +74,5 @@ __all__ = [
     "TTMMetrics",
     "SectorMultiples",
     "GrowthAdjustedMultiples",
+    "SymbolMetadata",
 ]
