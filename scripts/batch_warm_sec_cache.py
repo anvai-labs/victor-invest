@@ -8,107 +8,88 @@ ordered by stockid (1-2674), excluding recently processed entries.
 Note: Top 2000 stocks by stockid are established, real companies.
 Stocks beyond stockid > 2674 include penny stocks, microcaps, and
 companies with limited or no market cap data.
+
+Uses foreign tables (symbol, tickerdata) in sec_database for efficient joins.
 """
 
 import sys
 import time
 from pathlib import Path
-from datetime import datetime, timedelta
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from sqlalchemy import text
+from sqlalchemy import create_engine, text
 
-# Top 2000 stocks by stockid threshold (determined from stock.symbol)
+# Top 2000 stocks by stockid threshold
 MAX_STOCKID_FOR_TOP_2000 = 2674
 
-# Database URLs
-STOCK_URL = "postgresql://investigator:investigator@dataserver1.singh.local:5432/stock"
+# SEC database has foreign tables to stock.symbol and stock.tickerdata
 SEC_DB_URL = (
     "postgresql://investigator:investigator@dataserver1.singh.local:5432/sec_database"
 )
 
 
-def get_top_stocks_from_stock_db(max_stockid: int = MAX_STOCKID_FOR_TOP_2000) -> dict:
-    """
-    Get top 2000 stocks (ticker -> cik mapping) from stock.symbol table.
-    Returns dict of ticker -> cik.
-    """
-    from sqlalchemy import create_engine
-
-    stock_engine = create_engine(STOCK_URL)
-
-    with stock_engine.connect() as conn:
-        result = conn.execute(
-            text("""
-            SELECT ticker, cik
-            FROM symbol
-            WHERE isstock = true
-              AND stockid <= :max_stockid
-            ORDER BY stockid
-        """),
-            {"max_stockid": max_stockid},
-        )
-        return {row[0]: row[1] for row in result}
-
-
-def get_recently_processed_symbols(exclude_days: int = 30) -> set:
-    """Get set of symbols processed in the last N days from sec_database."""
-    from sqlalchemy import create_engine
-
-    sec_engine = create_engine(SEC_DB_URL)
-
-    cutoff_date = datetime.now() - timedelta(days=exclude_days)
-
-    with sec_engine.connect() as conn:
-        result = conn.execute(
-            text("""
-            SELECT DISTINCT UPPER(symbol) as symbol
-            FROM sec_companyfacts_processed
-            WHERE fiscal_period = 'FY'
-              AND filed_date > :cutoff_date
-        """),
-            {"cutoff_date": cutoff_date},
-        )
-        return {row[0] for row in result}
-
-
 def get_symbols_to_process(
     batch_size: int = 100, offset: int = 0, exclude_recent_days: int = 30
-):
+) -> list[tuple[str, str | None]]:
     """
     Get stock symbols that need SEC cache warming, ordered by stockid.
     Limited to top 2000 stocks (stockid <= 2674).
+
+    Returns list of (ticker, cik) tuples.
     """
-    # Get all top stocks and recently processed
-    all_stocks = get_top_stocks_from_stock_db()
-    recently_processed = get_recently_processed_symbols(exclude_recent_days)
+    engine = create_engine(SEC_DB_URL)
 
-    # Filter out recently processed
-    pending_stocks = [
-        (ticker, cik)
-        for ticker, cik in all_stocks.items()
-        if ticker.upper() not in recently_processed
-    ]
+    with engine.connect() as conn:
+        interval_str = f"INTERVAL '{exclude_recent_days} days'"
+        query = text(f"""
+            SELECT s.ticker, s.cik
+            FROM symbol s
+            LEFT JOIN sec_companyfacts_processed p
+                ON UPPER(s.ticker) = p.symbol
+                AND p.fiscal_period = 'FY'
+                AND p.filed_date > NOW() - {interval_str}
+            WHERE s.isstock = true
+              AND s.stockid <= :max_stockid
+              AND p.symbol IS NULL
+            ORDER BY s.stockid
+            LIMIT :batch_size OFFSET :offset
+        """)
 
-    # Apply offset and limit
-    end_idx = offset + batch_size
-    batch = pending_stocks[offset:end_idx]
-
-    return batch
+        result = conn.execute(
+            query,
+            {
+                "batch_size": batch_size,
+                "offset": offset,
+                "max_stockid": MAX_STOCKID_FOR_TOP_2000,
+            },
+        )
+        return [(row[0], row[1]) for row in result]
 
 
 def get_total_symbols_to_process(exclude_recent_days: int = 30) -> int:
     """Get total count of stock symbols needing processing (top 2000 only)."""
-    all_stocks = get_top_stocks_from_stock_db()
-    recently_processed = get_recently_processed_symbols(exclude_recent_days)
+    engine = create_engine(SEC_DB_URL)
 
-    pending_count = sum(
-        1 for ticker in all_stocks.keys() if ticker.upper() not in recently_processed
-    )
+    with engine.connect() as conn:
+        interval_str = f"INTERVAL '{exclude_recent_days} days'"
+        result = conn.execute(
+            text(f"""
+                SELECT COUNT(DISTINCT s.ticker)
+                FROM symbol s
+                LEFT JOIN sec_companyfacts_processed p
+                    ON UPPER(s.ticker) = p.symbol
+                    AND p.fiscal_period = 'FY'
+                    AND p.filed_date > NOW() - {interval_str}
+                WHERE s.isstock = true
+                  AND s.stockid <= :max_stockid
+                  AND p.symbol IS NULL
+            """),
+            {"max_stockid": MAX_STOCKID_FOR_TOP_2000},
+        )
 
-    return pending_count
+        return result.fetchone()[0]
 
 
 def process_batch(symbols: list, batch_num: int, dry_run: bool = False):
@@ -197,6 +178,7 @@ def main():
     print(
         f"Note: Excludes penny stocks and microcaps (stockid > {MAX_STOCKID_FOR_TOP_2000})"
     )
+    print("Using foreign tables: symbol, tickerdata in sec_database")
 
     if args.dry_run:
         print("\n=== DRY RUN MODE ===")
