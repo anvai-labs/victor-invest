@@ -96,8 +96,10 @@ def get_symbols_to_process(
                     AND p.fiscal_period = 'FY'
                     AND p.extracted_at > NOW() - {interval_str}
                 WHERE s.isstock = true
-                  AND s.is_sec_filing = true
-                  AND s.stockid <= :max_stockid
+                  AND (
+                    (s.is_sec_filing = true AND s.stockid <= :max_stockid)
+                    OR (s.stockid > :max_stockid)
+                  )
                   AND p.symbol IS NULL
                 ORDER BY s.stockid
                 LIMIT :batch_size OFFSET :offset
@@ -140,8 +142,10 @@ def get_total_symbols_to_process(
                         AND p.fiscal_period = 'FY'
                         AND p.extracted_at > NOW() - {interval_str}
                     WHERE s.isstock = true
-                      AND s.is_sec_filing = true
-                      AND s.stockid <= :max_stockid
+                      AND (
+                        (s.is_sec_filing = true AND s.stockid <= :max_stockid)
+                        OR (s.stockid > :max_stockid)
+                      )
                       AND p.symbol IS NULL
                 """),
                 {"max_stockid": max_stockid},
