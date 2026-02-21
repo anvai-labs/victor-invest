@@ -73,9 +73,8 @@ class SectorMultiples:
             current_file = Path(__file__)
             # Navigate from: src/investigator/domain/services/valuation/common/
             # to: repo_root/config.yaml
-            repo_root = (
-                current_file.parent.parent.parent.parent.parent.parent.parent.parent
-            )
+            # Go up: common/ -> valuation/ -> services/ -> domain/ -> investigator/ -> src/ -> repo_root/
+            repo_root = current_file.parent.parent.parent.parent.parent.parent.parent
             cls._config_path = repo_root / "config.yaml"
 
         if not cls._config_path.exists():
@@ -139,7 +138,24 @@ class SectorMultiples:
         if cls._config is None:
             return None
 
-        # Navigate to sector_multiples section
+        # Handle actual config structure: pe_multiples.sector_defaults.Technology
+        # Try the metric-specific section first (pe_multiples, ps_multiples, etc.)
+        metric_section = cls._config.get(f"{metric}_multiples", {})
+        if metric_section:
+            # Check sector_defaults
+            sector_defaults = metric_section.get("sector_defaults", {})
+            # Case-insensitive lookup
+            for key, value in sector_defaults.items():
+                if key.lower() == sector.lower():
+                    return float(value) if value is not None else None
+
+            # Check industry_overrides if industry was provided
+            industry_overrides = metric_section.get("industry_overrides", {})
+            for key, value in industry_overrides.items():
+                if key.lower() == sector.lower():
+                    return float(value) if value is not None else None
+
+        # Fallback to legacy sector_multiples structure (for backward compatibility)
         sector_multiples = cls._config.get("sector_multiples", {})
         sector_key = sector.lower().replace(" ", "_")
 
@@ -181,7 +197,24 @@ class SectorMultiples:
         if cls._config is None:
             return None
 
-        # Check for industry overrides
+        # Handle actual config structure: pe_multiples.industry_overrides
+        metric_section = cls._config.get(f"{metric}_multiples", {})
+        if metric_section:
+            industry_overrides = metric_section.get("industry_overrides", {})
+            if industry_overrides:
+                # Try exact match first
+                if industry in industry_overrides:
+                    value = industry_overrides[industry]
+                    if value is not None:
+                        return float(value)
+
+                # Try case-insensitive match
+                industry_lower = industry.lower() if industry else ""
+                for key, value in industry_overrides.items():
+                    if key.lower() == industry_lower and value is not None:
+                        return float(value)
+
+        # Fallback to legacy industry_overrides structure
         overrides = cls._config.get("industry_overrides", {})
 
         for metric_key, override_config in overrides.items():

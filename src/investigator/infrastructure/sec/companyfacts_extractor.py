@@ -1274,9 +1274,19 @@ class SECCompanyFactsExtractor:
                 }
 
             # Import tag mapper for comprehensive tag coverage (ALL metrics)
-            from utils.xbrl_tag_aliases import XBRLTagAliasMapper
+            try:
+                from utils.xbrl_tag_aliases import XBRLTagAliasMapper
+            except ImportError:
+                # Fallback if running from different context
+                try:
+                    from investigator.infrastructure.sec.xbrl_tag_aliases import (
+                        XBRLTagAliasMapper,
+                    )
+                except ImportError:
+                    # If tag mapper not available, continue without it
+                    XBRLTagAliasMapper = None
 
-            tag_mapper = XBRLTagAliasMapper()
+            tag_mapper = XBRLTagAliasMapper() if XBRLTagAliasMapper else None
 
             # STEP 1: Determine latest fiscal period FIRST (before extracting any metrics)
             # This ensures ALL metrics come from the SAME fiscal period
@@ -1321,11 +1331,14 @@ class SECCompanyFactsExtractor:
                     Extracted value or None if not found
                 """
                 # If canonical_name provided, use tag mapper to get all aliases
-                if canonical_name:
+                if canonical_name and tag_mapper:
                     concept_names = tag_mapper.get_xbrl_aliases(canonical_name)
                     if not concept_names:
                         # Fallback to original if mapper doesn't have mapping
                         concept_names = [canonical_name]
+                elif canonical_name and not tag_mapper:
+                    # No tag mapper available, use canonical name directly
+                    concept_names = [canonical_name]
 
                 # Convert single string to list for consistent handling
                 if isinstance(concept_names, str):
