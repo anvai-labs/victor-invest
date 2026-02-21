@@ -509,3 +509,211 @@ def trend(ctx, group_name, group_type, start_year, end_year, export):
         # For export, we need to get the raw data and save
         # This would require adding an export method to the service
         click.echo("Export feature coming soon - use database export for now")
+
+
+@sector_multiples.command("timeline")
+@click.option(
+    "--sectors",
+    "-s",
+    help="Comma-separated list of sectors to include (default: Technology)",
+)
+@click.option(
+    "--industries",
+    "-i",
+    help="Comma-separated list of industries to include",
+)
+@click.option(
+    "--years",
+    "-y",
+    default="5",
+    help="Number of years to show (default: 5), or specific range like '2020-2024'",
+)
+@click.option(
+    "--metric",
+    "-m",
+    type=click.Choice(["pe", "ps", "pb", "all"]),
+    default="all",
+    help="Which metric to display (default: all)",
+)
+@click.pass_context
+def timeline(ctx, sectors, industries, years, metric):
+    """Display sector/industry multiples timeline table
+
+    Shows a matrix view with sectors/industries as rows and years as columns.
+    Highlights swelling (expansion) and shrinking (contraction) trends.
+
+    \b
+    Examples:
+        # Show last 5 years for Technology sector
+        investigator sector-multiples timeline --sectors "Technology"
+
+        # Show 10 years for multiple sectors
+        investigator sector-multiples timeline --sectors "Technology,Healthcare,Financials" --years 10
+
+        # Show specific year range
+        investigator sector-multiples timeline --sectors "Technology" --years 2018-2024
+
+        # Show P/E only
+        investigator sector-multiples timeline --sectors "Technology" --metric pe
+
+        # Include industries
+        investigator sector-multiples timeline --sectors "Technology" --industries "Semiconductors,Software"
+    """
+    from sqlalchemy import text
+
+    from investigator.infrastructure.database.db import get_db_manager
+
+    # Parse years
+    year_list = _parse_years(years)
+
+    # Parse sector/industry lists
+    sector_list = [s.strip() for s in sectors.split(",")] if sectors else ["Technology"]
+    industry_list = [i.strip() for i in industries.split(",")] if industries else []
+
+    db_manager = get_db_manager()
+    engine = db_manager.engine
+
+    # Fetch data
+    with engine.connect() as conn:
+        params = {}
+        year_placeholders = ",".join([f":year_{i}" for i in range(len(year_list))])
+        for i, y in enumerate(year_list):
+            params[f"year_{i}"] = y
+
+        group_filters = []
+        if sector_list:
+            sector_placeholders = ",".join([f":sector_{i}" for i in range(len(sector_list))])
+            for i, s in enumerate(sector_list):
+                params[f"sector_{i}"] = s
+            group_filters.append(f"(group_type = 'sector' AND group_name IN ({sector_placeholders}))")
+
+        if industry_list:
+            industry_placeholders = ",".join([f":industry_{i}" for i in range(len(industry_list))])
+            for i, ind in enumerate(industry_list):
+                params[f"industry_{i}"] = ind
+            group_filters.append(f"(group_type = 'industry' AND group_name IN ({industry_placeholders}))")
+
+        where_clause = " OR ".join(group_filters) if group_filters else "1=1"
+
+        query = text(f"""
+            SELECT group_type, group_name, fiscal_year,
+                   pe_multiple, ps_multiple, pb_multiple, sample_size
+            FROM sector_multiples_history
+            WHERE fiscal_year IN ({year_placeholders})
+              AND ({where_clause})
+            ORDER BY group_type, group_name, fiscal_year
+        """)
+
+        result = conn.execute(query, params)
+
+        # Organize data
+        data = {}
+        for row in result:
+            group_type, group_name = row[0], row[1]
+            year = row[2]
+            pe, ps, pb, sample = row[3], row[4], row[5], row[6]
+
+            key = (group_type, group_name)
+            if key not in data:
+                data[key] = {}
+            data[key][year] = {"pe": pe, "ps": ps, "pb": pb, "sample": sample}
+
+    if not data:
+        click.echo("No historical data found for the specified sectors/industries and years.")
+        click.echo("\nTip: Run 'investigator sector-multiples historical' first to populate the database.")
+        return
+
+    # Display timeline
+    metrics_to_show = ["pe", "ps", "pb"] if metric == "all" else [metric]
+
+    for m in metrics_to_show:
+        _print_metric_timeline(data, year_list, m)
+
+
+def _parse_years(years_str: str) -> list:
+    """Parse years string into list of years.
+
+    Examples:
+        "5" -> [2024, 2023, 2022, 2021, 2020]
+        "2018-2024" -> [2018, 2019, 2020, 2021, 2022, 2023, 2024]
+    """
+    from datetime import datetime
+
+    current_year = datetime.now().year
+
+    if "-" in years_str:
+        # Range like 2018-2024
+        start, end = years_str.split("-")
+        return list(range(int(start), int(end) + 1))
+    else:
+        # Number of years back from current
+        try:
+            count = int(years_str)
+            return list(range(current_year - count + 1, current_year + 1))
+        except ValueError:
+            return [current_year]
+
+
+def _print_metric_timeline(data: dict, years: list, metric: str):
+    """Print timeline table for a specific metric."""
+    import sys
+
+    metric_labels = {"pe": "P/E", "ps": "P/S", "pb": "P/B"}
+
+    click.echo("\n" + "=" * 90)
+    click.echo(f"{metric_labels[metric].upper()} MULTIPLE TIMELINE")
+    click.echo("=" * 90)
+
+    # Header
+    name_width = 50
+    header = f"{'SECTOR/INDUSTRY':<{name_width}} │"
+    for year in years:
+        header += f" {year:>6} │"
+    click.echo(header)
+    click.echo("─" * (name_width + 10 * len(years)))
+
+    # Sort and display rows
+    sorted_groups = sorted(data.keys(), key=lambda x: (x[0], x[1]))
+
+    for group_type, group_name in sorted_groups:
+        year_data = data[(group_type, group_name)]
+
+        # Format group name
+        prefix = "🏢 " if group_type == "sector" else "🏭 "
+        name = f"{prefix}{group_name}"
+        row = f"{name:<{name_width}} │"
+
+        # Display values for each year
+        for year in years:
+            if year in year_data and year_data[year].get(metric):
+                val = year_data[year][metric]
+                row += f" {val:>6.1f}x │"
+            else:
+                row += f" {'—':>6} │"
+
+        click.echo(row)
+
+    # Show trend summary
+    if len(years) >= 2:
+        click.echo(f"\n{metric.upper()} TREND SUMMARY ({years[0]} → {years[-1]}):")
+        click.echo("─" * 90)
+
+        for group_type, group_name in sorted_groups:
+            year_data = data[(group_type, group_name)]
+
+            if years[0] in year_data and years[-1] in year_data:
+                start_val = year_data[years[0]].get(metric)
+                end_val = year_data[years[-1]].get(metric)
+
+                if start_val and end_val:
+                    change_pct = ((end_val - start_val) / start_val) * 100
+                    prefix = "🏢" if group_type == "sector" else "🏭"
+                    status = "SWELLING" if change_pct > 5 else "SHRINKING" if change_pct < -5 else "STABLE"
+
+                    click.echo(
+                        f"{prefix} {group_name:<40} │ {start_val:>6.1f}x → {end_val:>6.1f}x │ "
+                        f"{change_pct:+6.1f}% │ {status}"
+                    )
+
+    click.echo("\nLegend: Shows historical multiples for each fiscal year")
+    click.echo("        — = No data available for that year")
