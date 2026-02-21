@@ -30,6 +30,7 @@ Example:
 """
 
 import logging
+from datetime import date
 from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
@@ -48,19 +49,35 @@ class RatioCalculator:
         eps: Optional[float] = None,
         net_income: Optional[float] = None,
         shares: Optional[float] = None,
+        market_cap: Optional[float] = None,
+        symbol: Optional[str] = None,
     ) -> Optional[float]:
         """
         Calculate Price-to-Earnings ratio.
 
+        Prefers enterprise-level P/E (market_cap / net_income) which is split-independent.
+        Falls back to per-share P/E (price / eps) if net_income unavailable.
+
         Args:
             current_price: Current stock price
             eps: Earnings per share (if available)
-            net_income: TTM net income (used if eps not provided)
-            shares: Shares outstanding (used with net_income)
+            net_income: TTM net income (preferred over eps for split-independent calc)
+            shares: Shares outstanding (used with net_income for eps calculation)
+            market_cap: Market cap (used with net_income for split-independent P/E)
+            symbol: Stock symbol (for logging)
 
         Returns:
             P/E ratio or None if not calculable
         """
+        # Prefer enterprise-level P/E (split-independent)
+        if market_cap and net_income and net_income > 0:
+            from investigator.domain.services.valuation_shared.split_adjusted_market_cap import (
+                calculate_enterprise_pe,
+            )
+
+            return calculate_enterprise_pe(symbol or "", market_cap, net_income)
+
+        # Fallback to per-share P/E
         if eps is not None and eps > 0:
             return current_price / eps
 
@@ -77,21 +94,42 @@ class RatioCalculator:
         revenue: Optional[float] = None,
         current_price: Optional[float] = None,
         shares: Optional[float] = None,
+        shares_source: str = "tickerdata",
+        symbol: Optional[str] = None,
+        price_date: Optional[date] = None,
     ) -> Optional[float]:
         """
-        Calculate Price-to-Sales ratio.
+        Calculate Price-to-Sales ratio with split-adjusted market cap support.
 
         Args:
-            market_cap: Market capitalization
+            market_cap: Market capitalization (if already calculated)
             revenue: TTM revenue
             current_price: Current stock price (used if market_cap not provided)
             shares: Shares outstanding (used with current_price)
+            shares_source: "tickerdata" (split-adjusted) or "sec" (actual)
+            symbol: Stock symbol (required for split adjustment if shares from SEC)
+            price_date: Date of price (required for split adjustment if historical)
 
         Returns:
             P/S ratio or None if not calculable
         """
         if market_cap is None and current_price and shares:
-            market_cap = current_price * shares
+            # Calculate market cap with split adjustment if shares from SEC
+            if shares_source == "sec" and symbol:
+                from investigator.domain.services.valuation_shared.split_adjusted_market_cap import (
+                    calculate_market_cap,
+                )
+
+                market_cap = calculate_market_cap(
+                    symbol=symbol,
+                    price=current_price,
+                    shares=shares,
+                    price_date=price_date,
+                    shares_source=shares_source,
+                )
+            else:
+                # Both price and shares are split-adjusted (tickerdata)
+                market_cap = current_price * shares
 
         if market_cap and revenue and revenue > 0:
             return market_cap / revenue
@@ -223,7 +261,9 @@ class RatioCalculator:
 
         return {
             "gross_margin": gross_profit / revenue if gross_profit else None,
-            "operating_margin": operating_income / revenue if operating_income else None,
+            "operating_margin": operating_income / revenue
+            if operating_income
+            else None,
             "net_margin": net_income / revenue if net_income else None,
             "fcf_margin": free_cash_flow / revenue if free_cash_flow else None,
         }
@@ -248,7 +288,11 @@ class RatioCalculator:
         Returns:
             Rule of 40 score
         """
-        margin = fcf_margin_pct if fcf_margin_pct is not None else (operating_margin_pct or 0)
+        margin = (
+            fcf_margin_pct
+            if fcf_margin_pct is not None
+            else (operating_margin_pct or 0)
+        )
         return revenue_growth_pct + margin
 
     def calculate_roe(
@@ -343,7 +387,9 @@ class RatioCalculator:
             cash = balance.get("cash_and_equivalents", 0) or 0
         else:
             # Flat structure
-            revenue = financials.get("total_revenue", 0) or financials.get("revenue", 0) or 0
+            revenue = (
+                financials.get("total_revenue", 0) or financials.get("revenue", 0) or 0
+            )
             net_income = financials.get("net_income", 0) or 0
             gross_profit = financials.get("gross_profit", 0) or 0
             operating_income = financials.get("operating_income", 0) or 0
@@ -358,6 +404,9 @@ class RatioCalculator:
             cash = financials.get("cash_and_equivalents", 0) or 0
 
         # Calculate derived values
+        # Note: market_cap calculation with split adjustment should be done by caller
+        # for SEC data. For tickerdata data (both price and shares split-adjusted),
+        # simple multiplication is correct.
         market_cap = shares * current_price
         total_debt = long_term_debt + short_term_debt
         eps = net_income / shares if shares > 0 else 0
@@ -387,7 +436,9 @@ class RatioCalculator:
             # Valuation ratios
             "pe_ratio": self.calculate_pe_ratio(current_price, eps=eps),
             "ps_ratio": self.calculate_ps_ratio(market_cap=market_cap, revenue=revenue),
-            "pb_ratio": self.calculate_pb_ratio(current_price, book_value_per_share=bvps),
+            "pb_ratio": self.calculate_pb_ratio(
+                current_price, book_value_per_share=bvps
+            ),
             "ev_ebitda": self.calculate_ev_ebitda(
                 market_cap=market_cap,
                 ebitda=ebitda,

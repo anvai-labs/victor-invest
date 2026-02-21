@@ -410,7 +410,7 @@ class SectorMultiplesHistory:
                 # Apply robust fallback logic for missing market_cap and price
                 # Fallback priority:
                 # 1. Use stored market_cap if available and > 0
-                # 2. Calculate from tickerdata (current_price * shares_outstanding)
+                # 2. Calculate from tickerdata (with split adjustment for SEC shares)
                 # 3. Calculate from EPS * P/E (using sector median P/E as fallback)
                 for symbol, metrics in fy_metrics.items():
                     # Skip if we already have both market_cap AND price
@@ -423,7 +423,7 @@ class SectorMultiplesHistory:
                         continue
 
                     # Fallback 1: Try to get price from tickerdata around filed_date
-                    # This uses tickerdata which has historical prices
+                    # This uses tickerdata which has historical prices (split-adjusted)
                     # We need price even if we have market_cap (for P/E and P/B calculations)
                     if "filed_date" in metrics and not metrics.get("price"):
                         filed_date = metrics["filed_date"]
@@ -447,8 +447,9 @@ class SectorMultiplesHistory:
 
                         if price_data:
                             metrics["price"] = price_data
-                            # Recalculate market_cap if missing or zero
+                            # Recalculate market_cap if missing or zero with split adjustment
                             shares = metrics.get("shares_outstanding")
+                            period_end = metrics.get("period_end_date")
                             if (
                                 (
                                     not metrics.get("market_cap")
@@ -457,7 +458,34 @@ class SectorMultiplesHistory:
                                 and shares
                                 and shares > 0
                             ):
-                                metrics["market_cap"] = price_data * shares
+                                # Use split-adjusted market cap calculation
+                                # Shares are from SEC (actual), price is split-adjusted
+                                from investigator.domain.services.valuation_shared.split_adjusted_market_cap import (
+                                    calculate_market_cap,
+                                )
+
+                                # Convert period_end to date if needed
+                                if isinstance(period_end, str):
+                                    from datetime import datetime
+
+                                    period_end = datetime.fromisoformat(
+                                        period_end
+                                    ).date()
+                                elif isinstance(period_end, datetime):
+                                    period_end = period_end.date()
+
+                                mcap = calculate_market_cap(
+                                    symbol=symbol,
+                                    price=price_data,
+                                    shares=shares,
+                                    price_date=period_end,
+                                    shares_source="sec",  # SEC shares are actual
+                                )
+                                if mcap:
+                                    metrics["market_cap"] = mcap
+                                else:
+                                    # Fallback to simple multiplication if split adjustment fails
+                                    metrics["market_cap"] = price_data * shares
                             continue
 
                     # Fallback 2: If we have shares but no price, we can't calculate P/E or P/B

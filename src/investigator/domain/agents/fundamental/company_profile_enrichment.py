@@ -12,6 +12,45 @@ from investigator.domain.services.valuation.models import (
 from .models import QuarterlyData
 
 
+def _calculate_market_cap_with_split_adjustment(
+    symbol: str,
+    current_price: float,
+    shares_outstanding: float,
+    shares_source: str = "tickerdata",
+) -> Optional[float]:
+    """
+    Calculate market cap with proper split adjustment.
+
+    Args:
+        symbol: Stock ticker
+        current_price: Current stock price
+        shares_outstanding: Shares outstanding
+        shares_source: "tickerdata" (split-adjusted) or "sec" (actual)
+
+    Returns:
+        Market cap or None if calculation fails
+    """
+    try:
+        if shares_source == "tickerdata":
+            # Both price and shares are split-adjusted
+            return float(current_price) * float(shares_outstanding)
+        else:
+            # Shares from SEC need split adjustment for historical prices
+            from investigator.domain.services.valuation_shared.split_adjusted_market_cap import (
+                calculate_market_cap,
+            )
+
+            return calculate_market_cap(
+                symbol=symbol,
+                price=current_price,
+                shares=shares_outstanding,
+                price_date=None,  # Current date
+                shares_source=shares_source,
+            )
+    except (TypeError, ValueError):
+        return None
+
+
 def enrich_company_profile(
     *,
     profile: Any,
@@ -28,7 +67,10 @@ def enrich_company_profile(
     ttm_metrics = company_data.get("ttm_metrics", {})
 
     free_cash_flow = (
-        ttm_metrics.get("free_cash_flow") or ttm_metrics.get("FreeCashFlow") or financials.get("free_cash_flow") or 0
+        ttm_metrics.get("free_cash_flow")
+        or ttm_metrics.get("FreeCashFlow")
+        or financials.get("free_cash_flow")
+        or 0
     )
     revenue = (
         ttm_metrics.get("revenues")
@@ -37,7 +79,12 @@ def enrich_company_profile(
         or financials.get("total_revenue")
         or 0
     )
-    net_income = ttm_metrics.get("net_income") or ttm_metrics.get("NetIncomeLoss") or financials.get("net_income") or 0
+    net_income = (
+        ttm_metrics.get("net_income")
+        or ttm_metrics.get("NetIncomeLoss")
+        or financials.get("net_income")
+        or 0
+    )
     ebitda = (
         ttm_metrics.get("ebitda")
         or ttm_metrics.get("operating_income")
@@ -65,7 +112,9 @@ def enrich_company_profile(
     profile.net_income = net_income
     profile.revenue = revenue
 
-    revenue_growth_yoy = ratios.get("revenue_growth") or ratios.get("revenue_growth_yoy")
+    revenue_growth_yoy = ratios.get("revenue_growth") or ratios.get(
+        "revenue_growth_yoy"
+    )
     if revenue_growth_yoy is None:
         quarterly_data = company_data.get("quarterly_data", [])
         if quarterly_data and len(quarterly_data) >= 5:
@@ -75,7 +124,9 @@ def enrich_company_profile(
                     if isinstance(quarter, QuarterlyData):
                         rev = quarter.financial_data.get("revenues", 0)
                     elif isinstance(quarter, dict):
-                        rev = quarter.get("financial_data", {}).get("revenues", 0) or quarter.get("revenues", 0)
+                        rev = quarter.get("financial_data", {}).get(
+                            "revenues", 0
+                        ) or quarter.get("revenues", 0)
                     else:
                         rev = 0
                     revenues.append(float(rev) if rev else 0)
@@ -87,10 +138,14 @@ def enrich_company_profile(
                         revenue_growth_yoy * 100,
                     )
             except Exception as exc:
-                logger.warning("%s - Failed to calculate revenue_growth_yoy: %s", symbol, exc)
+                logger.warning(
+                    "%s - Failed to calculate revenue_growth_yoy: %s", symbol, exc
+                )
 
     profile.revenue_growth_yoy = revenue_growth_yoy
-    profile.earnings_growth_yoy = ratios.get("earnings_growth") or ratios.get("earnings_growth_yoy")
+    profile.earnings_growth_yoy = ratios.get("earnings_growth") or ratios.get(
+        "earnings_growth_yoy"
+    )
     profile.revenue_volatility = ratios.get("revenue_volatility")
     profile.gross_margin_trend = ratios.get("gross_margin_trend")
     profile.gross_margin = ratios.get("gross_margin")
@@ -101,12 +156,18 @@ def enrich_company_profile(
 
     total_debt = financials.get("total_debt") or 0
     cash = financials.get("cash") or 0
-    net_debt = total_debt - cash if total_debt is not None and cash is not None else None
+    net_debt = (
+        total_debt - cash if total_debt is not None and cash is not None else None
+    )
     profile.net_debt_to_ebitda = (
-        (net_debt / ebitda) if ebitda not in (None, 0) and net_debt is not None else ratios.get("net_debt_to_ebitda")
+        (net_debt / ebitda)
+        if ebitda not in (None, 0) and net_debt is not None
+        else ratios.get("net_debt_to_ebitda")
     )
     profile.interest_coverage = ratios.get("interest_coverage")
-    profile.debt_to_equity = ratios.get("debt_to_equity") or ratios.get("debt_to_capital")
+    profile.debt_to_equity = ratios.get("debt_to_equity") or ratios.get(
+        "debt_to_capital"
+    )
 
     dividends_paid = abs(
         ttm_metrics.get("dividends_paid")
@@ -116,7 +177,9 @@ def enrich_company_profile(
         or financials.get("PaymentsOfDividends")
         or 0
     )
-    shares_outstanding = financials.get("shares_outstanding") or market_data.get("shares_outstanding")
+    shares_outstanding = financials.get("shares_outstanding") or market_data.get(
+        "shares_outstanding"
+    )
     profile.pays_dividends = dividends_paid > 0
     profile.dividends_paid = dividends_paid
     logger.info(
@@ -125,8 +188,12 @@ def enrich_company_profile(
         dividends_paid / 1e9,
         profile.pays_dividends,
     )
-    profile.dividend_yield = ratios.get("dividend_yield") or market_data.get("dividend_yield")
-    profile.dividend_payout_ratio = ratios.get("payout_ratio") or ratios.get("dividend_payout_ratio")
+    profile.dividend_yield = ratios.get("dividend_yield") or market_data.get(
+        "dividend_yield"
+    )
+    profile.dividend_payout_ratio = ratios.get("payout_ratio") or ratios.get(
+        "dividend_payout_ratio"
+    )
     profile.dividend_growth_rate = ratios.get("dividend_growth_rate")
 
     profile.book_value_per_share = ratios.get("book_value_per_share")
@@ -151,28 +218,48 @@ def enrich_company_profile(
         financials.get("total_liabilities"),
         market_data.get("total_debt"),
     ]
-    profile.total_debt = next((float(d) for d in debt_candidates if d is not None), None)
+    profile.total_debt = next(
+        (float(d) for d in debt_candidates if d is not None), None
+    )
     profile.current_price = (
         market_data.get("price")
         or market_data.get("close")
         or market_data.get("current_price")
         or ratios.get("current_price")
     )
-    profile.market_cap = market_data.get("market_cap") or market_data.get("market_capitalization")
+    profile.market_cap = market_data.get("market_cap") or market_data.get(
+        "market_capitalization"
+    )
     if not profile.market_cap and profile.current_price and profile.shares_outstanding:
-        try:
-            profile.market_cap = float(profile.current_price) * float(profile.shares_outstanding)
-        except (TypeError, ValueError):
-            profile.market_cap = None
+        # Calculate market cap with split adjustment
+        # Determine shares source: SEC data is actual, tickerdata is split-adjusted
+        shares_source = (
+            "sec"
+            if financials.get("shares_outstanding")
+            or company_data.get("shares_outstanding")
+            else "tickerdata"
+        )
+        profile.market_cap = _calculate_market_cap_with_split_adjustment(
+            symbol=symbol,
+            current_price=float(profile.current_price),
+            shares_outstanding=float(profile.shares_outstanding),
+            shares_source=shares_source,
+        )
 
-    profile.beta = market_data.get("beta") or market_data.get("five_year_beta") or ratios.get("beta")
+    profile.beta = (
+        market_data.get("beta")
+        or market_data.get("five_year_beta")
+        or ratios.get("beta")
+    )
     average_volume = (
         market_data.get("average_daily_volume")
         or market_data.get("avg_daily_volume")
         or market_data.get("three_month_avg_volume")
     )
     if average_volume and profile.current_price:
-        profile.daily_liquidity_usd = float(average_volume) * float(profile.current_price)
+        profile.daily_liquidity_usd = float(average_volume) * float(
+            profile.current_price
+        )
         if profile.daily_liquidity_usd < 5_000_000:
             profile.add_flag(DataQualityFlag.LOW_LIQUIDITY)
 
@@ -193,7 +280,9 @@ def enrich_company_profile(
     profile.rule_of_40_classification = company_data.get("rule_of_40_classification")
     if shares_outstanding:
         profile.dividend_yield = profile.dividend_yield or (
-            (dividends_paid / shares_outstanding) / (profile.current_price or 1) if profile.current_price else None
+            (dividends_paid / shares_outstanding) / (profile.current_price or 1)
+            if profile.current_price
+            else None
         )
 
     revenue_growth = profile.revenue_growth_yoy or 0
