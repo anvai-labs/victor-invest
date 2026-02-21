@@ -670,10 +670,10 @@ Respond ONLY with the JSON object."""
             model = self._get_config().ollama.models.get("synthesis", "gpt-oss:20b")
 
             # OllamaClient.generate() takes (model, prompt, ...) not (prompt, model, ...)
+            # NOTE: Don't use format="json" as it causes issues with some models
             response = await client.generate(
                 model=model,
                 prompt=prompt,
-                format="json",  # Request JSON response format
             )
 
             # Parse JSON response
@@ -715,9 +715,13 @@ Respond ONLY with the JSON object."""
                                     end = i + 1
                                     json_str = response_text[start:end]
                                     result: dict = json.loads(json_str)
-                                    logger.info(f"Successfully parsed LLM synthesis JSON ({len(result)} keys)")
+                                    logger.info(
+                                        f"Successfully parsed LLM synthesis JSON ({len(result)} keys)"
+                                    )
                                     return result
-                logger.warning(f"Could not find complete JSON object in LLM response (first {{ at {start})")
+                logger.warning(
+                    f"Could not find complete JSON object in LLM response (first {{ at {start})"
+                )
             except json.JSONDecodeError as e:
                 logger.warning(f"Could not parse LLM synthesis response as JSON: {e}")
                 # Log first 500 chars of response for debugging
