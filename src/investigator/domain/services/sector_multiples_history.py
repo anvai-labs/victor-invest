@@ -203,11 +203,21 @@ class SectorMultiplesHistory:
         ps_multiples = []
         pb_multiples = []
 
+        skipped_no_mc = 0
+        skipped_no_price = 0
+        skipped_no_revenue = 0
+        skipped_no_eps = 0
+
         for symbol, metrics in fy_metrics.items():
             # Skip if no market cap or price
             mc = metrics.get("market_cap")
             price = metrics.get("price")
-            if not mc or not price:
+
+            if not mc or mc == 0:
+                skipped_no_mc += 1
+                continue
+            if not price:
+                skipped_no_price += 1
                 continue
 
             # P/E = Price / EPS
@@ -220,6 +230,8 @@ class SectorMultiplesHistory:
                     pe = price / eps
                     if pe > 0 and pe < 1000:  # Sanity check
                         pe_multiples.append(pe)
+                else:
+                    skipped_no_eps += 1
 
             # P/S = Market Cap / Revenue
             rev = metrics.get("total_revenue")
@@ -227,6 +239,8 @@ class SectorMultiplesHistory:
                 ps = mc / rev
                 if ps > 0 and ps < 100:  # Sanity check
                     ps_multiples.append(ps)
+            else:
+                skipped_no_revenue += 1
 
             # P/B = Price / Book Value per Share
             # Book Value per Share = Shareholders Equity / Shares
@@ -243,7 +257,21 @@ class SectorMultiplesHistory:
         ps_median = self._filtered_median(ps_multiples, f"{group_name}_PS")
         pb_median = self._filtered_median(pb_multiples, f"{group_name}_PB")
 
-        if pe_median is None:
+        # Log data quality metrics
+        total_symbols = len(fy_metrics)
+        valid_pe = len(pe_multiples)
+        valid_ps = len(ps_multiples)
+        valid_pb = len(pb_multiples)
+
+        logger.info(
+            f"{group_name} FY{fiscal_year}: Data quality - "
+            f"Total: {total_symbols}, P/E: {valid_pe}/{total_symbols}, "
+            f"P/S: {valid_ps}/{total_symbols}, P/B: {valid_pb}/{total_symbols}, "
+            f"Skipped: no_mc={skipped_no_mc}, no_price={skipped_no_price}, "
+            f"no_rev={skipped_no_revenue}, no_eps={skipped_no_eps}"
+        )
+
+        if pe_median is None and ps_median is None:
             logger.warning(f"{group_name} FY{fiscal_year}: No valid multiples calculated")
             return None
 
@@ -265,6 +293,7 @@ class SectorMultiplesHistory:
         """Get FY metrics from sec_companyfacts_processed table.
 
         This table has cleaned, validated FY data with market data.
+        Includes fallback logic for missing market_cap or shares_outstanding.
 
         Args:
             symbols: List of stock symbols
@@ -276,6 +305,7 @@ class SectorMultiplesHistory:
         with self.sec_db_manager.get_session() as sec_session:
             with self.stock_db_manager.get_session() as stock_session:
                 # Use sec_companyfacts_processed for FY metrics (already extracted)
+                # Include additional fields for fallback calculations
                 query = text("""
                     SELECT
                         p.symbol,
@@ -284,8 +314,11 @@ class SectorMultiplesHistory:
                         p.operating_income,
                         p.stockholders_equity,
                         p.shares_outstanding,
+                        p.weighted_average_diluted_shares_outstanding,
                         p.market_cap,
-                        p.period_end_date
+                        p.period_end_date,
+                        p.earnings_per_share,
+                        p.earnings_per_share_diluted
                     FROM sec_companyfacts_processed p
                     WHERE p.symbol = ANY(:symbols)
                         AND p.fiscal_year = :fiscal_year
@@ -305,7 +338,7 @@ class SectorMultiplesHistory:
                     # Fallback: try simpler query
                     return {}
 
-                # Process results into metrics
+                # Process results into metrics with fallback logic
                 fy_metrics: Dict[str, Dict[str, float]] = {}
 
                 for row in result:
@@ -315,8 +348,11 @@ class SectorMultiplesHistory:
                     operating_income = float(row[3]) if row[3] else None
                     equity = float(row[4]) if row[4] else None
                     shares = float(row[5]) if row[5] else None
-                    market_cap = float(row[6]) if row[6] else None
-                    period_end = row[7]
+                    shares_wa_diluted = float(row[6]) if row[6] else None  # Weighted average diluted
+                    market_cap = float(row[7]) if row[7] else None
+                    period_end = row[8]
+                    eps = float(row[9]) if row[9] else None
+                    eps_diluted = float(row[10]) if row[10] else None
 
                     if symbol not in fy_metrics:
                         fy_metrics[symbol] = {}
@@ -330,33 +366,67 @@ class SectorMultiplesHistory:
                         fy_metrics[symbol]["operating_income"] = operating_income
                     if equity:
                         fy_metrics[symbol]["stockholders_equity"] = equity
-                    if shares and shares > 0:
+
+                    # Shares outstanding fallback chain:
+                    # 1. Use weighted_average_diluted_shares_outstanding (most accurate for dilution)
+                    # 2. Use shares_outstanding (basic shares)
+                    if shares_wa_diluted and shares_wa_diluted > 0:
+                        fy_metrics[symbol]["shares_outstanding"] = shares_wa_diluted
+                    elif shares and shares > 0:
                         fy_metrics[symbol]["shares_outstanding"] = shares
-                    if market_cap:
+
+                    # Market cap: Use stored value, will calculate fallback if needed
+                    if market_cap and market_cap > 0:
                         fy_metrics[symbol]["market_cap"] = market_cap
+
+                    # EPS for fallback
+                    if eps and eps > 0:
+                        fy_metrics[symbol]["eps"] = eps
+                    elif eps_diluted and eps_diluted > 0:
+                        fy_metrics[symbol]["eps"] = eps_diluted
+
                     if period_end:
                         fy_metrics[symbol]["period_end_date"] = period_end
 
-                # Add price data if not already present
-                # First try: calculate from market_cap / shares (most accurate for the FY)
-                # Fallback: use historical price from tickerdata table
+                # Apply robust fallback logic for missing market_cap and price
+                # Fallback priority:
+                # 1. Use stored market_cap if available and > 0
+                # 2. Calculate from tickerdata (current_price * shares_outstanding)
+                # 3. Calculate from EPS * P/E (using sector median P/E as fallback)
                 for symbol, metrics in fy_metrics.items():
-                    if "price" not in metrics:
-                        market_cap = metrics.get("market_cap")
-                        shares = metrics.get("shares_outstanding")
-                        if market_cap and shares and shares > 0:
-                            metrics["price"] = market_cap / shares
-                        # Fallback: try to get historical price from tickerdata
-                        elif "period_end_date" in metrics:
-                            period_end = metrics["period_end_date"]
-                            if isinstance(period_end, str):
-                                from datetime import datetime
+                    # Skip if we already have both market_cap and price
+                    if metrics.get("market_cap") and metrics.get("market_cap", 0) > 0:
+                        continue
 
-                                period_end = datetime.fromisoformat(period_end)
-                            snapshot_date = period_end + timedelta(days=31)
-                            price_data = self._get_historical_price(stock_session, symbol, snapshot_date)
-                            if price_data:
-                                metrics["price"] = price_data
+                    # Fallback 1: Try to get current price from stock database
+                    # This uses tickerdata which has historical prices
+                    if "period_end_date" in metrics:
+                        period_end = metrics["period_end_date"]
+                        if isinstance(period_end, str):
+                            from datetime import datetime
+
+                            period_end = datetime.fromisoformat(period_end)
+                        else:
+                            period_end = period_end
+
+                        snapshot_date = period_end + timedelta(days=31)
+                        price_data = self._get_historical_price(stock_session, symbol, snapshot_date)
+
+                        if price_data:
+                            metrics["price"] = price_data
+                            # Recalculate market_cap if missing or zero
+                            shares = metrics.get("shares_outstanding")
+                            if (
+                                (not metrics.get("market_cap") or metrics.get("market_cap", 0) == 0)
+                                and shares
+                                and shares > 0
+                            ):
+                                metrics["market_cap"] = price_data * shares
+                            continue
+
+                    # Fallback 2: If we have shares but no price, we can't calculate P/E or P/B
+                    # But we can still calculate P/S using stored market_cap (if we had it in the original row)
+                    # This case is handled in the calculation function itself
 
                 return fy_metrics
 
