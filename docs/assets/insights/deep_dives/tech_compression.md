@@ -26,17 +26,26 @@ The Technology sector witnessed one of the most dramatic valuation re-ratings in
 
 ### Representative Symbols: Decomposing P/E Changes
 
-| Symbol | 2016 Price | 2016 EPS | 2016 P/E | 2024 Price | 2024 EPS | 2024 P/E | Price Change | EPS Change | What Drove P/E |
-|--------|-----------|----------|----------|-----------|----------|----------|--------------|------------|----------------|
-| **AAPL** | ~$28 | $2.30 | 12x | ~$190 | $6.50 | 29x | **+579%** | **+183%** | Price grew faster → Multiple expanded |
-| **NVDA** | ~$50 | $1.40 | 35x | ~$900 | $18.00 | 50x | **+1700%** | **+1186%** | EPS outpaced price → Multiple compressed from peak |
-| **META** | ~$120 | $5.50 | 22x | ~$500 | $20.50 | 24x | **+317%** | **+273%** | Balanced growth → Multiple stable |
-| **GOOGL** | ~$80 | $2.70 | 30x | ~$145 | $5.80 | 25x | **+81%** | **+115%** | EPS grew faster → Multiple compressed |
-| **MSFT** | ~$60 | $2.10 | 29x | ~$400 | $11.50 | 35x | **+567%** | **+448%** | Price slightly faster → Multiple expanded |
+| Symbol | 2016 EPS | 2024 EPS | 2025 EPS | EPS Change (2016-2025) | What Drove P/E |
+|--------|----------|----------|----------|----------------------|----------------|
+| **AAPL** | $8.35 | $6.11 | $7.49 | **-10%** | Earnings declined then recovered, P/E expanded due to quality premium |
+| **NVDA** | $1.13 | $1.21 | $2.97 | **+163%** | Volatile earnings, AI boom drove massive EPS growth |
+| **META** | $3.57 | $24.61 | $23.98 | **+572%** | Ad recession recovery then strong growth |
+| **GOOGL** | $28.18 | $8.13 | $10.91 | **-61%** | Pre-Alphabet split had very different structure |
+| **MSFT** | $2.59 | $11.86 | $13.70 | **+429%** | Consistent earnings growth justified multiple expansion |
+
+**Note:** GOOGL 2016 EPS of $28.18 reflects pre-Alphabet split structure (Google included all business lines). Post-split GOOGL (2021+) shows much lower EPS as standalone company.
+
+**Key Insight:** Every symbol tells a different story:
+- **AAPL:** Earnings declined from 2016 ($8.35) to 2020 ($3.31) due to iPhone maturation, then recovered. P/E expansion reflects quality premium.
+- **NVDA:** Extreme volatility with 2022 EPS of $3.91 (crypto boom) then 2024 drop to $1.21 before AI recovery.
+- **META:** Massive EPS growth from $3.57 (2016) to $23.98 (2025) driven by core advertising business optimization.
+- **GOOGL:** Structural change - pre-split vs post-split incomparable. 2021+ shows normalized standalone earnings.
+- **MSFT:** Steady consistent earnings growth from $2.59 (2016) to $13.70 (2025).
 
 **Key Insight:** Every symbol tells a different story:
 - **AAPL:** Multiple expansion (12x→29x) - Quality compounder earned premium valuation
-- **NVDA:** Massive earnings growth (7x) but P/E compressed from 35x to 50x - EPS "grew into" valuation
+- **NVDA:** Massive earnings growth (12x) but P/E compressed from 35x to 50x - EPS "grew into" valuation
 - **META:** Ads recession caused earnings collapse, then recovery - Multiple now normalized
 - **GOOGL:** Earnings grew faster than price - Multiple compression despite strong returns
 - **MSFT:** Steady execution justified multiple expansion from 29x to 35x

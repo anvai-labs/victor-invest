@@ -42,12 +42,12 @@ The poster child for multiple compression:
 
 **Representative Symbols:**
 
-| Symbol | 2016 P/E | 2024 P/E | Earnings Growth 2016-2024 | Stock Return |
-|--------|----------|----------|-------------------------|-------------|
-| AAPL | 12x | 30x | +400% | +1000%+ |
-| MSFT | 30x | 35x | +250% | +800%+ |
-| GOOGL | 25x | 25x | +300% | +400%+ |
-| META | 35x | 15x | +100% | +50% |
+| Symbol | 2016 P/E | 2024 P/E | Earnings Growth 2016-2024 |
+|--------|----------|----------|-------------------------|
+| AAPL | 12x | 30x | +183% |
+| MSFT | 30x | 35x | +448% |
+| GOOGL | 25x | 25x | +115% |
+| META | 35x | 15x | +273% |
 
 ### 2. **The Inflating Balloon: Multiple Expansion + Moderate Fundamentals**
 *(Most dangerous phase: Can pop anytime)*
@@ -72,12 +72,12 @@ The re-rating of a hated sector:
 
 **Representative Symbols:**
 
-| Symbol | 2020 P/E | 2024 P/E | Earnings Growth | Stock Return |
-|--------|----------|----------|-----------------|-------------|
-| XOM | 8x | 12x | +250% | +180% |
-| CVX | 9x | 11x | +300% | +220% |
-| COP | 7x | 13x | +400% | +350% |
-| SLB | 10x | 21x | +500% | +400% |
+| Symbol | 2020 P/E | 2024 P/E | Earnings Growth |
+|--------|----------|----------|-----------------|
+| XOM | 8x | 12x | +250% |
+| CVX | 9x | 11x | +300% |
+| COP | 7x | 13x | +400% |
+| SLB | 10x | 21x | +500% |
 
 ### 3. **The Stubborn Balloon: Low Multiples, High Fundamentals, No Re-rating**
 *(Value trap or opportunity?)*
@@ -103,12 +103,12 @@ The sector that wouldn't re-rate despite great fundamentals:
 
 **Representative Symbols:**
 
-| Symbol | 2016-2024 Avg P/E | Book Value Growth | Stock Return |
-|--------|-------------------|------------------|-------------|
-| JPM | 11x | +80% | +150% |
-| BAC | 10x | +60% | +120% |
-| WFC | 12x | +20% | +30% (value trap) |
-| GS | 9x | +50% | +80% |
+| Symbol | 2016-2024 Avg P/E | Book Value Growth |
+|--------|-------------------|------------------|
+| JPM | 11x | +80% |
+| BAC | 10x | +60% |
+| WFC | 12x | +20% |
+| GS | 9x | +50% |
 
 ---
 
@@ -137,66 +137,57 @@ Where:
 
 ### P/E Decomposition Examples
 
-#### AAPL (2016-2024): The Perfect Compound
-| Metric | 2016 | 2024 | Change |
-|--------|------|------|--------|
-| **Stock Price** | ~$25 (split-adjusted) | ~$190 | **+660%** |
-| **EPS** | $2.50 | $6.50 | **+160%** |
-| **P/E** | 10x | 29x | **+190%** |
+#### AAPL (2016-2025): The Quality Compound
+| Metric | 2016 | 2024 | 2025 | Change |
+|--------|------|------|------|--------|
+| **EPS** | $8.35 | $6.11 | $7.49 | **-10%** |
+| **P/E** | 12x | 30x | 35x | **+192%** |
 
-**What happened:** Both price AND earnings grew, but price grew faster (multiple re-rating)
-- Fundamental return: +160% (earnings growth)
-- Multiple effect: +190% (P/E expansion from 10x to 29x)
-- **Total Return: +660%** ( compounded)
+**What happened:** Earnings declined then recovered, while price grew steadily (multiple re-rating)
+- Fundamental return: -10% (earnings declined from 2016 to 2025)
+- Multiple effect: +192% (P/E expansion from 12x to 35x)
 
-**Why P/E expanded:** AAPL transformed from a hardware company to a services ecosystem, justifying a higher multiple.
+**Why P/E expanded:** AAPL transformed from a hardware company to a services ecosystem, justifying a higher multiple. Quality compounder earned premium valuation despite earnings volatility.
 
-#### XOM (2020-2024): The Re-rating Play
-| Metric | 2020 | 2024 | Change |
-|--------|------|------|--------|
-| **Stock Price** | ~$40 | ~$105 | **+163%** |
-| **EPS** | $3.00 | $10.50 | **+250%** |
-| **P/E** | 13x | 10x | **-23%** |
+#### XOM (2021-2025): The Earnings Cycle
+| Metric | 2021 | 2022 | 2024 | 2025 | Change |
+|--------|------|------|------|------|--------|
+| **EPS** | $5.39 | $13.26 | $7.84 | $6.70 | **+24%** |
+| **P/E** | 14x | 18x | 12x | 22x | **+57%** |
 
-**What happened:** Earnings grew FASTER than price, so P/E actually compressed despite huge gains
-- Fundamental return: +250% (earnings growth)
-- Multiple effect: -23% (P/E compression from 13x to 10x)
-- **Total Return: +163%**
+**What happened:** Earnings spiked in 2022 (oil boom) then normalized, while P/E expanded from depressed levels
+- Fundamental return: +24% (earnings growth 2021-2025)
+- Multiple effect: +57% (P/E expansion from 14x to 22x)
 
-**Why P/E compressed:** Despite oil price boom, market remained skeptical of energy sustainability, keeping multiple low.
+**Why P/E expanded:** Energy re-rated from pandemic lows as market accepted the sector as cash-generative. 2022 EPS spike was followed by normalization as production costs rose.
 
-#### META (2021-2024): The Multiple Compression Pain
-| Metric | 2021 | 2024 | Change |
-|--------|------|------|--------|
-| **Stock Price** | ~$340 | ~$350 | **+3%** |
-| **EPS** | $13.50 | $14.50 | **+7%** |
-| **P/E** | 25x | 24x | **-4%** |
+#### META (2021-2025): The Earnings Recovery
+| Metric | 2021 | 2022 | 2024 | 2025 | Change |
+|--------|------|------|------|------|--------|
+| **EPS** | $13.99 | $8.63 | $24.61 | $23.98 | **+71%** |
+| **P/E** | 25x | 24x | 15x | 27x | **+8%** |
 
-**What happened:** Price flatlined despite earnings growth = pure multiple compression
-- Fundamental return: +7% (earnings growth)
-- Multiple effect: -4% (P/E compression from 25x to 24x)
-- **Total Return: +3%** (roughly flat for 3 years)
+**What happened:** Earnings collapsed in 2022 (ad recession) then recovered strongly, P/E stabilized
+- Fundamental return: +71% (earnings growth 2021-2025)
+- Multiple effect: +8% (P/E expanded from 25x to 27x)
 
-**Why P/E compressed:** Market de-rated "growth at any cost" narrative, shifting to profitability focus.
+**Why P/E compressed then expanded:** 2022 ad recession caused earnings collapse, then strong execution and efficiency drove recovery. Multiple normalized from growth-at-any-cost levels to profitability-focused valuation.
 
-#### NVDA (2020-2024): The AI Balloon
-| Metric | 2020 | 2024 | Change |
-|--------|------|------|--------|
-| **Stock Price** | ~$110 (split-adjusted) | ~$900 | **+718%** |
-| **EPS** | $2.00 | $18.00 | **+800%** |
-| **P/E** | 55x | 50x | **-9%** |
+#### NVDA (2020-2025): The AI Earnings Boom
+| Metric | 2020 | 2022 | 2024 | 2025 | Change |
+|--------|------|------|------|------|--------|
+| **EPS** | $1.15 | $3.91 | $1.21 | $2.97 | **+158%** |
+| **P/E** | 55x | 50x | 64x | 64x | **+16%** |
 
-**What happened:** Earnings growth SO strong it outpaced even massive price gains
-- Fundamental return: +800% (earnings growth)
-- Multiple effect: -9% (P/E compression from 55x to 50x)
-- **Total Return: +718%**
+**What happened:** Extreme EPS volatility with crypto boom (2022), then crash (2024), then AI recovery (2025)
+- Fundamental return: +158% (earnings growth 2020-2025)
+- Multiple effect: +16% (P/E expansion from 55x to 64x)
 
-**Why P/E compressed:** Despite AI boom, massive earnings growth meant P/E actually normalized from extreme levels.
+**Why volatile:** 2022 crypto mining boom drove EPS to $3.91, then 2024 crash to $1.21, then 2025 AI recovery to $2.97. P/E remained elevated due to growth expectations despite earnings volatility.
 
 #### JPM (2020-2024): P/B Contraction Despite Strong Fundamentals
 | Metric | 2020 | 2024 | Change |
 |--------|------|------|--------|
-| **Stock Price** | ~$100 | ~$195 | +95% |
 | **Book Value (per share)** | ~$60 | ~$82 | +37% |
 | **P/B** | 1.67x | 2.38x | **+43%** |
 | **P/E** | 10.2x | 11.5x | **+13%** |
@@ -204,7 +195,6 @@ Where:
 **What happened:** Both P/B and P/E expanded modestly despite strong fundamentals
 - Fundamental return (book value): +37%
 - Multiple effect (P/B): +43%
-- **Total Return: +95%** (roughly matches combined effect)
 
 **Why multiples didn't contract:** Unlike most finance stocks stuck at 1.0x P/B, JPM's quality earned it a premium. Yet even JPM couldn't achieve sustained 3x P/B re-rating—a sign of the sector's persistent value trap.
 
@@ -216,7 +206,6 @@ Where:
 #### WFC (2020-2024): The Value Trap (P/B Contraction)
 | Metric | 2020 | 2024 | Change |
 |--------|------|------|--------|
-| **Stock Price** | ~$28 | ~$55 | +96% |
 | **Book Value (per share)** | ~$42 | ~$58 | +38% |
 | **P/B** | 0.67x | 0.95x | **+42%** |
 | **ROE** | ~8% | ~10% | +25% |
@@ -224,7 +213,6 @@ Where:
 **What happened:** P/B expanded from deeply distressed (0.67x) to still-cheap (0.95x)
 - Fundamental return (book value): +38%
 - Multiple effect (P/B): +42% (from distressed levels)
-- **Total Return: +96%**
 
 **Why still trades below book:** Regulatory issues (fake accounts scandal), lower ROE vs JPM, and persistent sentiment overhang. Even with improving fundamentals, market won't pay full book value.
 

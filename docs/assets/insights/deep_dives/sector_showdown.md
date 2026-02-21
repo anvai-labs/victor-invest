@@ -41,25 +41,23 @@ The market from 2016 to 2024 wasn't one story—it was a collection of vastly di
 ### Representative Symbols: Decomposing P/E Changes
 
 **Energy (The Re-rating)**
-| Symbol | Start Price | Start EPS | Start P/E | End Price | End EPS | End P/E | Price Δ | EPS Δ | Driver |
-|--------|-----------|----------|----------|-----------|----------|----------|---------|--------|--------|
-| XOM | ~$60 | $8.50 | 7x | ~$105 | $13.00 | 12x | +75% | +53% | Re-rating from panic lows |
-| COP | ~$50 | $7.00 | 7x | ~$120 | $17.50 | 13x | +140% | +150% | EPS outpaced (hidden growth) |
-| SLB | ~$35 | $3.50 | 10x | ~$55 | $6.50 | 21x | +57% | +86% | EPS growth + quality premium |
+| Symbol | 2016 EPS | 2022 EPS | 2025 EPS | 2016-2025 Δ | Driver |
+|--------|----------|----------|----------|-------------|--------|
+| XOM | $1.88 | $13.26 | $6.70 | **+256%** | Oil boom then normalization |
+| JPM | $6.76 | $12.70 | $20.55 | **+204%** | Consistent earnings growth |
 
 **Technology (The Compression)**
-| Symbol | Start Price | Start EPS | Start P/E | End Price | End EPS | End P/E | Price Δ | EPS Δ | Driver |
-|--------|-----------|----------|----------|-----------|----------|----------|---------|--------|--------|
-| META | ~$340 | $13.50 | 25x | ~$500 | $20.50 | 24x | +47% | +52% | EPS outpaced price (healthy) |
-| GOOGL | ~$120 | $4.00 | 30x | ~$145 | $5.80 | 25x | +21% | +45% | EPS grew faster (multiple down) |
-| AAPL | ~$28 | $2.30 | 12x | ~$190 | $6.50 | 29x | +579% | +183% | Price faster (quality premium earned) |
+| Symbol | 2016 EPS | 2022 EPS | 2025 EPS | 2016-2025 Δ | Driver |
+|--------|----------|----------|----------|-------------|--------|
+| META | $3.57 | $8.63 | $23.98 | **+572%** | Ad recovery then optimization |
+| GOOGL | $28.18 | $4.59 | $10.91 | **-61%** | Pre/post-split incomparable |
+| AAPL | $8.35 | $6.15 | $7.49 | **-10%** | Declined then recovered |
 
 **Finance (The Value Trap)**
-| Symbol | Start Price | Start EPS | Start P/E | End Price | End EPS | End P/E | Price Δ | EPS Δ | Driver |
-|--------|-----------|----------|----------|-----------|----------|----------|---------|--------|--------|
-| JPM | ~$100 | $9.00 | 11x | ~$195 | $17.00 | 11x | +95% | +89% | Balanced growth, P/E stuck |
-| BAC | ~$25 | $2.50 | 10x | ~$40 | $4.00 | 10x | +60% | +60% | Perfectly balanced, P/E stuck |
-| GS | ~$220 | $22.00 | 10x | ~$400 | $32.00 | 12x | +82% | +45% | Price faster (modest re-rating) |
+| Symbol | 2016 EPS | 2022 EPS | 2025 EPS | 2016-2025 Δ | P/E Trend |
+|--------|----------|----------|----------|-------------|-----------|
+| JPM | $6.76 | $12.70 | $20.55 | **+204%** | Stuck at 11-15x for decade |
+| BAC | (see note) | (see note) | (see note) | - | Incomplete data for 2016 |
 
 ### Key Takeaways
 

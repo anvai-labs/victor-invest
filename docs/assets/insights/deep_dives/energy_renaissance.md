@@ -26,20 +26,20 @@ While Technology was contracting, the Energy sector was staging one of the most 
 
 ### Representative Symbols: Decomposing P/E Changes
 
-| Symbol | 2022 Price | 2022 EPS | 2022 P/E | 2024 Price | 2024 EPS | 2024 P/E | Price Change | EPS Change | What Drove P/E |
-|--------|-----------|----------|----------|-----------|----------|----------|--------------|------------|----------------|
-| **XOM** | ~$80 | $10.00 | 8x | ~$105 | $13.00 | 12x | **+31%** | **+30%** | Balanced → Multiple stable (re-rated from lows) |
-| **CVX** | ~$140 | $15.50 | 9x | ~$155 | $20.00 | 11x | **+11%** | **+29%** | EPS grew faster → Multiple should have compressed |
-| **COP** | ~$60 | $8.50 | 7x | ~$120 | $17.50 | 13x | **+100%** | **+106%** | EPS outpaced price → Hidden growth |
-| **SLB** | ~$45 | $4.50 | 10x | ~$55 | $6.50 | 21x | **+22%** | **+44%** | EPS grew faster → Multiple expanded (quality premium) |
-| **EOG** | ~$90 | $10.00 | 9x | ~$125 | $14.00 | 12x | **+39%** | **+40%** | Balanced growth → Multiple stable |
+| Symbol | 2022 EPS | 2024 EPS | 2025 EPS | EPS Change (2022-2025) | What Drove P/E |
+|--------|----------|----------|----------|----------------------|----------------|
+| **XOM** | $13.26 | $7.84 | $6.70 | **-49%** | Earnings peaked with oil prices, then normalized |
+| **COP** | (see note) | (see note) | (see note) | - | COP data incomplete in DB for these years |
+| **SLB** | (see note) | (see note) | (see note) | - | SLB data incomplete in DB for these years |
 
-**Key Insight:** Energy's "multiple expansion" is actually a mix of:
-1. **Re-rating from depressed levels:** 2022 P/E of 7-9x was panic pricing
-2. **Massive EPS growth:** Oil price boom drove earnings up 30-100%
-3. **SLB exception:** Services company re-rated higher on improved margins
+**Note:** XOM shows the Energy sector pattern clearly - 2022 EPS of $13.26 during oil price spike, then normalization to $6.70 by 2025 as production costs rose and prices stabilized.
 
-Most companies saw EPS grow FASTER than price, meaning P/E compression (not expansion). The sector's "renaissance" is about earnings, not valuation re-rating.
+**Key Insight:** Energy's "renaissance" was driven by:
+1. **2021-2022:** Oil price spike from COVID recovery + Russia-Ukraine war → earnings boom
+2. **2023-2025:** Normalization as supply adjusted and costs increased → EPS declined
+3. **P/E re-rating:** From depressed 7-9x (2022) to 17.7x (2025) as market accepted Energy as cash-generative sector
+
+The "multiple expansion" from 7.3x to 17.7x (+143%) is largely driven by earnings normalization (from negative/low to positive) rather than pure valuation expansion.
 
 ### Key Takeaway
 

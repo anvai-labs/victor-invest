@@ -233,7 +233,6 @@ POSITIONS:
 
 #### Example 1: Hidden Growth (NVDA 2020-2024)
 ```
-                Price Growth: +718% ████████████████████████████████████████████
                 EPS Growth:  +800% ██████████████████████████████████████████████
                 P/E Change:   -9%   ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 
@@ -243,7 +242,6 @@ is a POSITIVE signal - earnings are "growing into" the valuation.
 
 #### Example 2: Multiple Expansion (AAPL 2016-2024)
 ```
-                Price Growth: +579% ████████████████████████████████████░░░░░░░░
                 EPS Growth:  +183% ███████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░
                 P/E Change:  +142% ████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 
@@ -253,7 +251,6 @@ multiple as the market re-rated it from "hardware" to "ecosystem."
 
 #### Example 3: Value Trap (JPM 2016-2024)
 ```
-                Price Growth: +179% ████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
                 EPS Growth:  +183% ████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
                 P/E Change:    -4% ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 
@@ -263,7 +260,6 @@ to expand beyond 11x. Decade-long value trap despite strong fundamentals.
 
 #### Example 4: Hidden Decline (META 2021-2022)
 ```
-                Price Change:  -62% ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
                 EPS Change:   -78% ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
                 P/E Change:   +72% ███████████████████████████████░░░░░░░░░░░░░
 
@@ -277,7 +273,6 @@ The same framework applies to Price-to-Sales and Price-to-Book:
 
 #### P/S Example: LLY (2020-2024) - Pure Multiple Expansion
 ```
-                Price Growth:  +241% ██████████████████████████████████░░░░░░
                 Rev/Share Gr:  +80%  ███████████████░░░░░░░░░░░░░░░░░░░░░░░
                 P/S Change:   +90%  ████████████████████████░░░░░░░░░░░░░░░░
 
@@ -287,7 +282,6 @@ to "growth juggernaut" (46x). Unsustainable without continued acceleration.
 
 #### P/B Example: WFC (2020-2024) - Stuck at Book
 ```
-                Price Growth:  +83%  ██████████████░░░░░░░░░░░░░░░░░░░░░░░░░
                 Book/Share Gr: +70%  ████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░
                 P/B Change:    +8%   ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 
@@ -427,10 +421,10 @@ AAPL (Apple): The Quality Compounder
 P/E:   12x ──────► 25x ──────► 30x (FY 2025)
        2016       2020       2025
 
-Stock: $30  ──────► $130 ─────► $240 (FY 2025)
+EPS:   $2.30 ────► $4.50 ─────► $6.50 (FY 2025)
        2016       2020       2025
 
-Return: +700% (earnings +160%, P/E +150%)
+Return: Earnings +183%, P/E +150%
 ─────────────────────────────────────────────────────────────
 
 NVDA (NVIDIA): The AI Bubble
@@ -438,10 +432,10 @@ NVDA (NVIDIA): The AI Bubble
 P/E:  35x ──────► 100x+ ──────► ?
        2016       2021       2025
 
-Stock: $50  ──────► $230 ──────► $230 (FY 2025)
-       2016       2024       2025
+EPS:  $1.40 ────► $8.00 ─────► $18.00 (FY 2025)
+      2016       2021        2025
 
-Return: +360% (P/E expansion + earnings growth)
+Return: Earnings +1186%, P/E compression -9%
 Risk: AI bubble or earnings catch-up?
 ─────────────────────────────────────────────────────────────
 ```
@@ -452,14 +446,14 @@ Risk: AI bubble or earnings catch-up?
 XOM (Exxon): The Dividend King
 ─────────────────────────────────────────────────────────────
 P/E:  N/A ──────► N/A ──────► 12x → 18x (FY 2025)
-       2020       2021       2023   2025
-       (neg       (neg       (recov
+      2020       2021       2023   2025
+      (neg       (neg       (recov
 
-Stock: $30  ──────► $45  ──────► $120 (FY 2025)
-       2020       2021       2025
+EPS:  N/A ──────► $10.00 ────► $13.00 (FY 2025)
+      2020       2021        2025
 
 Dividend: 3.5% (FY 2025)
-Return: +200% (re-rating + earnings growth)
+Return: Earnings +30%, P/E re-rating +50%
 ─────────────────────────────────────────────────────────────
 ```
 
@@ -479,7 +473,6 @@ Return: +200% (re-rating + earnings growth)
                ┌──────────────────────────────────────┐
                │  Earnings:  $10B ──→ $40B (+300%)     │
                │  Multiple:   7x ──→ 18x (+143%)      │
-               │  Stock:     $70 ──→ $240 (+243%)       │
                └──────────────────────────────────────┘
 
                Sector: Energy (FY 2020 → FY 2025)
@@ -494,7 +487,6 @@ Return: +200% (re-rating + earnings growth)
                ┌──────────────────────────────────────┐
                │  Earnings:  $100B ─→ $500B (+400%)     │
                │  Multiple:  59x ──→ 32x (-46%)         │
-               │  Stock:     $1000 ─→ $1600 (+60%)     │
                └──────────────────────────────────────┘
 
                Sector: Technology (FY 2016 → FY 2025)
@@ -509,7 +501,6 @@ Return: +200% (re-rating + earnings growth)
                ┌──────────────────────────────────────┐
                │  Earnings:  $10B ──→ $15B (+50%)       │
                │  Multiple:  15x ──→ 15x (0%)           │
-               │  Stock:     $150 ──→ $225 (+50%)       │
                └──────────────────────────────────────┘
 
                Sector: Finance (FY 2016 → FY 2025)
