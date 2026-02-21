@@ -106,6 +106,7 @@ investigator cache clean --symbol STX --force
 - [Architecture Guide](docs/ARCHITECTURE.md)
 - [Developer Guide](docs/DEVELOPER_GUIDE.adoc)
 - [CLI Commands](docs/CLI_DATA_COMMANDS.md)
+- [Sector Multiples Analysis](docs/SECTOR_MULTIPLES.md) - Track valuation multiples over time
 - [Valuation Models](docs/VALUATION_ASSUMPTIONS.md)
 - [Agent Reference](docs/AGENTS.md)
 
@@ -117,11 +118,19 @@ victor-invest analyze <SYMBOL> [--mode quick|standard|comprehensive]
 victor-invest batch <SYMBOLS...> [--parallel 4]
 victor-invest compare <TARGET> <PEERS...>
 
+# Sector multiples analysis
+investigator sector-multiples refresh [--sectors "Technology"]
+investigator sector-multiples historical --fiscal-year 2024 --sectors "Technology"
+investigator sector-multiples trend "Technology" --start-year 2020
+investigator sector-multiples timeline --sectors "Technology" --years 2020-2024
+
 # Data commands
 investigator data fetch <SYMBOL> --source <SOURCE>
 investigator data status
 
 # Cache management
+investigator cache warm --symbols AAPL --process-raw
+investigator cache clean --symbol AAPL
 victor-invest cache-sizes
 victor-invest clean-cache [--symbol SYMBOL]
 

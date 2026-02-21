@@ -1,0 +1,181 @@
+# Sector Multiples Timeline Analysis (2020-2024)
+
+## Executive Summary
+
+This analysis tracks valuation multiples (P/E, P/S, P/B) across Technology sector and related industries from fiscal year 2020 to 2024, identifying multiple expansion (swelling) and contraction (shrinking) trends.
+
+## Key Findings
+
+### Technology Sector Overview
+
+| Metric | 2020 | 2022 | 2023 | 2024 | 2020→2024 Change | Trend |
+|--------|------|------|------|------|------------------|-------|
+| **P/E** | 73.5x | 55.7x | 66.0x | 53.4x | **-27.3%** | SHRINKING |
+| **P/S** | 11.3x | 9.8x | 9.8x | 8.7x | **-23.0%** | SHRINKING |
+| **P/B** | 11.2x | 10.2x | 9.8x | 9.2x | **-18.0%** | SHRINKING |
+
+**Interpretation**: Technology sector has experienced significant multiple contraction since 2020, with all three metrics showing downward trends. This suggests the sector is becoming more attractive from a valuation perspective compared to pandemic-era peaks.
+
+---
+
+## Industry Breakdown
+
+### 1. Semiconductors
+
+| Metric | 2020 | 2022 | 2023 | 2024 | Change | Trend |
+|--------|------|------|------|------|--------|-------|
+| **P/E** | 103.3x | 63.4x | 63.2x | 87.7x | **-15.2%** | Shrinking |
+| **P/S** | 17.8x | 11.1x | 12.8x | 12.0x | **-32.6%** | Shrinking |
+| **P/B** | 10.7x | 9.2x | 7.4x | 8.2x | **-23.3%** | Shrinking |
+
+**Analysis**: Semiconductors show significant P/S compression (-32.6%) despite recent AI boom. The P/E rebound in 2024 (87.7x from 63.2x) suggests earnings are catching up with valuations. The sector remains expensive on absolute terms but is improving relative to 2020 peaks.
+
+**Notable**: 2023 trough in P/B (7.4x) followed by 2024 recovery (8.2x) indicates cyclical bottom may have passed.
+
+---
+
+### 2. Computer Software: Prepackaged Software
+
+| Metric | 2020 | 2022 | 2023 | 2024 | Change | Trend |
+|--------|------|------|------|------|--------|-------|
+| **P/E** | 80.7x | 62.3x | 80.5x | 42.7x | **-47.2%** | SHRINKING |
+| **P/S** | 10.8x | 10.5x | 9.5x | 8.3x | **-23.0%** | Shrinking |
+| **P/B** | 11.1x | 8.4x | 9.2x | 7.2x | **-35.3%** | Shrinking |
+
+**Analysis**: Software has experienced the most dramatic P/E compression (-47.2%), indicating a major repricing of growth stocks. The 2023 P/E spike (80.5x) followed by 2024 collapse (42.7x) suggests market sentiment shifted from growth-at-all-costs to profitability focus.
+
+**Opportunity**: Current P/E of 42.7x is near 5-year lows, potentially attractive for high-quality names with strong fundamentals.
+
+---
+
+### 3. EDP Services
+
+| Metric | 2020 | 2022 | 2023 | 2024 | Change | Trend |
+|--------|------|------|------|------|--------|-------|
+| **P/E** | 39.1x | 59.5x | 103.1x | 40.5x | **+3.5%** | STABLE |
+| **P/S** | 11.9x | 10.3x | 9.5x | 6.8x | **-42.6%** | SHRINKING |
+| **P/B** | 13.3x | 8.7x | 9.4x | 8.3x | **-37.8%** | Shrinking |
+
+**Analysis**: EDP Services show the most volatility, with P/E exploding to 103.1x in 2023 before normalizing. The massive P/S compression (-42.6%) indicates revenue growth is being re-rated lower.
+
+**Warning**: Extreme P/E volatility suggests this group is highly sensitive to market cycles and earnings surprises.
+
+---
+
+### 4. Electronic Components
+
+| Metric | 2020 | 2022 | 2023 | 2024 | Change | Trend |
+|--------|------|------|------|------|--------|-------|
+| **P/E** | 70.0x | 43.6x | 31.1x | 89.8x | **+28.3%** | SWELLING |
+| **P/S** | 6.6x | 5.4x | 7.8x | 7.4x | **+11.7%** | Swelling |
+| **P/B** | 5.4x | 12.0x | 9.6x | 11.3x | **+111.4%** | SWELLING |
+
+**Analysis**: Electronic Components is the **only group showing significant multiple expansion**. The dramatic P/B surge (+111.4%) and 2024 P/E spike (89.8x) suggest strong investor interest, likely driven by electrification trends and supply chain restructuring.
+
+**Caution**: Swelling multiples indicate the group may be overheating. Consider waiting for normalization before new entries.
+
+---
+
+### 5. Retail: Computer Software & Peripheral Equipment
+
+| Metric | 2020 | 2022 | 2023 | 2024 | Change | Trend |
+|--------|------|------|------|------|--------|-------|
+| **P/E** | 26.0x | 31.0x | 30.3x | 34.2x | **+31.3%** | SWELLING |
+| **P/S** | 7.6x | 8.5x | 9.2x | 8.2x | **+8.3%** | Swelling |
+| **P/B** | 4.3x | 10.2x | 10.6x | 8.7x | **+100.9%** | SWELLING |
+
+**Analysis**: Retail software/peripherals show steady multiple expansion. The lowest P/E (34.2x) among all groups suggests relative value. The massive P/B increase (+100.9%) from 2020 levels indicates the sector was severely depressed post-pandemic.
+
+**Opportunity**: Moderate P/E with swelling trend suggests room for further multiple expansion if earnings continue growing.
+
+---
+
+### 6. Industrial Machinery/Components
+
+| Metric | 2020 | 2022 | 2023 | 2024 | Change | Trend |
+|--------|------|------|------|------|--------|-------|
+| **P/E** | 46.7x | 29.6x | 44.1x | 41.6x | **-11.0%** | STABLE |
+| **P/S** | 6.6x | 5.0x | 7.3x | 6.9x | **+3.5%** | STABLE |
+| **P/B** | 7.3x | 6.6x | 7.5x | 7.1x | **-2.1%** | STABLE |
+
+**Analysis**: Most stable group with minimal multiple changes. P/S showed resilience during 2022-2023 when other groups contracted.
+
+**Opportunity**: Stability suggests defensive characteristics. Suitable for risk-averse investors.
+
+---
+
+## Investment Implications
+
+### Multiple Contraction (Shrinking) - Potential Opportunities
+
+Groups showing significant multiple contraction may present value opportunities if fundamentals remain intact:
+
+1. **Computer Software** (P/E -47.2%)
+   - Growth stocks repriced to more reasonable levels
+   - Focus on companies with strong profitability and cash flow
+
+2. **Semiconductors** (P/S -32.6%)
+   - Cyclical industry showing signs of recovery
+   - AI tailwind supports long-term demand
+
+3. **Technology Sector** (P/E -27.3%, P/S -23.0%)
+   - Broad sector becoming more attractive
+   - Quality large-cap names at reasonable valuations
+
+### Multiple Expansion (Swelling) - Exercise Caution
+
+Groups showing significant multiple expansion may be overheated:
+
+1. **Electronic Components** (P/B +111.4%, P/E +28.3%)
+   - Strong momentum but elevated valuations
+   - Consider waiting for pullback
+
+2. **Retail: Computer Software** (P/B +100.9%)
+   - Recovering from depressed levels
+   - May have further room to run but monitor closely
+
+### Stable Multiples - Defensive Plays
+
+1. **Industrial Machinery/Components**
+   - Minimal multiple change indicates resilience
+   - Suitable for conservative portfolios
+
+2. **EDP Services** (P/E +3.5%)
+   - High volatility but roughly stable long-term
+   - Requires careful timing due to earnings sensitivity
+
+---
+
+## Recommendations
+
+### For Growth Investors
+
+- **Focus**: Computer Software (post-contraction), Semiconductors (cyclically undervalued)
+- **Avoid**: Electronic Components (overheated)
+- **Strategy**: Look for quality companies in contracting multiple groups
+
+### For Value Investors
+
+- **Focus**: Retail Computer Software (lowest P/E with moderate expansion)
+- **Avoid**: EDP Services (volatile, unpredictable)
+- **Strategy**: Patient accumulation during market weakness
+
+### For Defensive Investors
+
+- **Focus**: Industrial Machinery (stable multiples)
+- **Avoid**: High-volatility groups (EDP Services, Semiconductors)
+- **Strategy**: Dividend-paying companies with steady earnings
+
+---
+
+## Conclusion
+
+The Technology sector and related industries have undergone significant multiple re-pricing since 2020. The broad trend shows **multiple contraction** making stocks more attractive from a valuation perspective. However, certain sub-sectors (Electronic Components, Retail Software) show **multiple expansion** indicating investor rotation.
+
+**Key Takeaway**: The current environment favors **selective stock picking** over broad sector exposure. Focus on quality companies in groups with contracted multiples rather than chasing momentum in overheated segments.
+
+---
+
+*Data Source: sector_multiples_history table, FY 2020-2024*
+*Analysis Date: February 2026*
+*Disclaimer: This analysis is for informational purposes only and does not constitute investment advice.*
