@@ -94,7 +94,7 @@ def get_symbols_to_process(
                 LEFT JOIN sec_companyfacts_processed p
                     ON UPPER(s.ticker) = p.symbol
                     AND p.fiscal_period = 'FY'
-                    AND p.filed_date > NOW() - {interval_str}
+                    AND p.extracted_at > NOW() - {interval_str}
                 WHERE s.isstock = true
                   AND s.stockid <= :max_stockid
                   AND p.symbol IS NULL
@@ -137,7 +137,7 @@ def get_total_symbols_to_process(
                     LEFT JOIN sec_companyfacts_processed p
                         ON UPPER(s.ticker) = p.symbol
                         AND p.fiscal_period = 'FY'
-                        AND p.filed_date > NOW() - {interval_str}
+                        AND p.extracted_at > NOW() - {interval_str}
                     WHERE s.isstock = true
                       AND s.stockid <= :max_stockid
                       AND p.symbol IS NULL
