@@ -126,6 +126,49 @@ def load_existing_json_data(
     years = data.get("years", [])
     sectors = data.get("sectors", {})
 
+    # Add P/E data from documentation (the JSON has null for PE)
+    # P/E data from SECTOR_ANALYSIS_COMPLETE_2015_2024.md
+    pe_data = {
+        "Technology": [116, 133, 108, 95, 37, 57, 56, 66, 48, None],
+        "Health Care": [72, 65, 75, 58, 52, 41, 38, 35, 31, None],
+        "Financials": [18, 22, 18, 19, 18, 20, 13, 11, 14, None],
+        "Consumer Discretionary": [82, 75, 68, 72, 65, 52, 45, 38, 29, None],
+        "Consumer Staples": [28, 30, 32, 32, 30, 28, 26, 24, 23, None],
+        "Industrials": [30, 35, 38, 32, 30, 38, 32, 28, 27, None],
+        "Energy": [42, 29, 19, 28, 50, 18, 7, 10, 14, None],
+        "Real Estate": [52, 48, 52, 48, 52, 48, 42, 38, 42, None],
+        "Utilities": [28, 32, 30, 32, 32, 28, 22, 21, 20, None],
+        "Communication Services": [
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        "Materials": [None, None, None, None, None, None, None, None, None, None],
+    }
+
+    # Map sector names from JSON to P/E data keys
+    sector_mapping = {
+        "Basic Materials": "Materials",
+        "Consumer Cyclical": "Consumer Discretionary",  # Approximation
+    }
+
+    # Inject P/E data into sectors
+    for sector_name, pe_values in pe_data.items():
+        if sector_name in sectors:
+            sectors[sector_name]["pe"] = pe_values
+
+    # Handle mapped sectors
+    for json_name, pe_name in sector_mapping.items():
+        if json_name in sectors and pe_name in pe_data:
+            sectors[json_name]["pe"] = pe_data[pe_name]
+
     return years, sectors
 
 
@@ -182,20 +225,34 @@ def generate_svg_chart(
     y_min = max(0, min_val - range_padding)
     y_max = max_val + range_padding
 
-    # Sector colors
-    sector_colors = {
-        "Technology": "#0066CC",
-        "Health Care": "#00CC66",
-        "Financials": "#CC6600",
-        "Energy": "#FFCC00",
-        "Consumer Discretionary": "#CC0066",
-        "Consumer Staples": "#00CCCC",
-        "Industrials": "#9900CC",
-        "Real Estate": "#FF6600",
-        "Utilities": "#669900",
-        "Communication Services": "#CC00CC",
-        "Materials": "#996633",
+    # Sector styles: contrasting colors + line styles
+    # Using colorblind-friendly palette with distinct lightness
+    sector_styles = {
+        "Technology": {"color": "#1f77b4", "dash": "none"},  # Blue, solid
+        "Health Care": {"color": "#ff7f0e", "dash": "5,5"},  # Orange, dashed
+        "Financials": {"color": "#2ca02c", "dash": "none"},  # Green, solid
+        "Energy": {"color": "#d62728", "dash": "10,5,2,5"},  # Red, dash-dot
+        "Consumer Discretionary": {"color": "#9467bd", "dash": "none"},  # Purple, solid
+        "Consumer Staples": {"color": "#8c564b", "dash": "3,3"},  # Brown, dotted
+        "Industrials": {"color": "#e377c2", "dash": "15,5,3,5"},  # Pink, dash-dot-dot
+        "Real Estate": {"color": "#7f7f7f", "dash": "none"},  # Gray, solid
+        "Utilities": {"color": "#bcbd22", "dash": "5,5"},  # Olive, dashed
+        "Communication Services": {"color": "#17becf", "dash": "none"},  # Cyan, solid
+        "Materials": {"color": "#000000", "dash": "2,2,8,2"},  # Black, dotted-dash
+        # Also handle alternative names
+        "Basic Materials": {
+            "color": "#000000",
+            "dash": "2,2,8,2",
+        },  # Black, dotted-dash
+        "Consumer Cyclical": {"color": "#9467bd", "dash": "none"},  # Purple, solid
     }
+
+    # Helper function to get color and dash array
+    def get_sector_style(sector_name: str) -> dict:
+        if sector_name in sector_styles:
+            return sector_styles[sector_name]
+        # Default for unknown sectors
+        return {"color": "#666666", "dash": "none"}
 
     # X-scale mapping
     def x_scale(year_idx: int) -> float:
@@ -265,7 +322,9 @@ def generate_svg_chart(
     # Draw sector lines
     for sector, data in sorted(sectors.items()):
         values = data[multiple_type]
-        color = sector_colors.get(sector, "#999999")
+        style = get_sector_style(sector)
+        color = style["color"]
+        dash_pattern = style["dash"]
 
         # Build path
         points = []
@@ -276,19 +335,29 @@ def generate_svg_chart(
 
         if len(points) >= 2:
             path_data = "M " + " L ".join(points)
+            stroke_dasharray = (
+                f' stroke-dasharray="{dash_pattern}"' if dash_pattern != "none" else ""
+            )
             svg_lines.append(
-                f'<path d="{path_data}" class="sector-line" stroke="{color}" />'
+                f'<path d="{path_data}" class="sector-line" stroke="{color}"{stroke_dasharray} />'
             )
 
-    # Legend
+    # Legend with line styles
     legend_y = margin["top"]
     for i, (sector, _) in enumerate(sorted(sectors.items())):
-        color = sector_colors.get(sector, "#999999")
+        style = get_sector_style(sector)
+        color = style["color"]
+        dash_pattern = style["dash"]
         legend_x = width - margin["right"] + 10
         y_pos = legend_y + i * 20
 
+        # Draw line sample instead of rectangle
+        stroke_dasharray = (
+            f' stroke-dasharray="{dash_pattern}"' if dash_pattern != "none" else ""
+        )
         svg_lines.append(
-            f'<rect x="{legend_x}" y="{y_pos - 8}" width="12" height="12" fill="{color}" rx="2"/>'
+            f'<line x1="{legend_x}" y1="{y_pos}" x2="{legend_x + 15}" y2="{y_pos}" '
+            f'stroke="{color}" stroke-width="3"{stroke_dasharray} />'
         )
         svg_lines.append(
             f'<text x="{legend_x + 20}" y="{y_pos + 4}" class="legend-text">{sector}</text>'
@@ -453,10 +522,13 @@ def generate_html_report(
 
         pe_2016 = sector_aggregates[sector]["pe"][idx_2016] if idx_2016 >= 0 else None
 
+        # Calculate trend: 2016 -> 2024
         trend_str = "N/A"
         if pe_2016 and pe_2024:
             change = ((pe_2024 - pe_2016) / pe_2016) * 100
-            trend_str = f"{change:+.1f}%"
+            trend_str = f"{pe_2016:.0f}→{pe_2024:.0f} ({change:+.0f}%)"
+        elif pe_2016:
+            trend_str = f"{pe_2016:.0f}→N/A"
 
         pe_str = f"{pe_2024:.1f}x" if pe_2024 else "N/A"
         ps_str = f"{ps_2024:.1f}x" if ps_2024 else "N/A"
