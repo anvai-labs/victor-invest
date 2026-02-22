@@ -922,16 +922,160 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     metadata={"symbol": symbol, "warnings": warnings},
                 )
 
-            # Calculate consensus fair value
-            fair_values = [
-                r.get("fair_value_per_share")
-                for r in results.values()
-                if r.get("fair_value_per_share") and r.get("fair_value_per_share") > 0
-            ]
+            # Calculate blended fair value using sector-specific weights
+            # Use DynamicModelWeightingService for tier-based weighting instead of simple average
+            try:
+                import yaml
 
-            consensus = None
-            if fair_values:
-                consensus = sum(fair_values) / len(fair_values)
+                from investigator.domain.services.company_metadata_service import (
+                    CompanyMetadataService,
+                )
+                from investigator.domain.services.dynamic_model_weighting import (
+                    DynamicModelWeightingService,
+                )
+
+                # Load valuation config directly from YAML
+                with open("config.yaml", "r") as f:
+                    config = yaml.safe_load(f)
+                valuation_config = config.get("valuation", {})
+
+                # Initialize metadata service for sector/industry lookup
+                metadata_service = CompanyMetadataService(
+                    sector_normalization=valuation_config.get(
+                        "sector_normalization", {}
+                    )
+                )
+
+                # Get sector/industry from metadata service (database + config lookup)
+                sector, industry = metadata_service.get_sector_industry(symbol)
+                logger.info(
+                    f"{symbol}: Retrieved sector={sector}, industry={industry} from CompanyMetadataService"
+                )
+
+                # Build minimal financials dict for weight calculation
+                # Extract from quarterly_metrics if available
+                financials = {
+                    "net_income": None,
+                    "revenue": None,
+                    "shareholders_equity": None,
+                    "market_cap": None,
+                }
+
+                # Try to extract TTM financials from quarterly_metrics
+                if quarterly_metrics and len(quarterly_metrics) >= 4:
+                    # Get TTM (last 4 quarters)
+                    ttm = quarterly_metrics[:4]
+                    financials["net_income"] = sum(  # type: ignore[assignment]
+                        q.get("net_income", 0) or 0 for q in ttm
+                    )
+                    financials["revenue"] = sum(  # type: ignore[assignment]
+                        q.get("revenue", 0) or 0 for q in ttm
+                    )
+                    # Use latest quarter's shareholders_equity
+                    financials["shareholders_equity"] = ttm[0].get(
+                        "stockholders_equity"
+                    )
+
+                # Calculate market_cap if we have price and shares
+                if current_price and quarterly_metrics:
+                    shares = quarterly_metrics[0].get("shares_outstanding")
+                    if shares:
+                        financials["market_cap"] = current_price * shares
+
+                # Build ratios dict for weight calculation
+                ratios = {
+                    "roe": None,
+                    "payout_ratio": None,
+                    "revenue_growth_yoy": None,
+                    "earnings_growth_yoy": None,
+                    "pe_ratio": None,
+                    "pb_ratio": None,
+                    "dividend_yield": None,
+                }
+
+                # Calculate ROE if we have the data
+                if (
+                    financials.get("net_income")
+                    and financials.get("shareholders_equity")
+                    and financials["shareholders_equity"] > 0
+                ):
+                    ratios["roe"] = (
+                        financials["net_income"]
+                        / financials["shareholders_equity"]
+                        * 100
+                    )
+
+                # Create weighting service
+                weighting_service = DynamicModelWeightingService(
+                    valuation_config=valuation_config
+                )
+
+                # Get tier-based weights
+                weights, tier, audit_trail = weighting_service.determine_weights(
+                    symbol=symbol,
+                    financials=financials,
+                    ratios=ratios,
+                    data_quality=None,
+                    market_context=None,
+                )
+
+                # Apply weights to calculate blended fair value
+                weighted_sum = 0.0
+                total_weight = 0.0
+                applied_weights = {}
+
+                for model_name, model_result in results.items():
+                    # model_result is the output dict directly (from earlier assignment)
+                    fair_value = (
+                        model_result.get("fair_value_per_share")
+                        if isinstance(model_result, dict)
+                        else None
+                    )
+
+                    if fair_value and fair_value > 0:
+                        weight = weights.get(model_name, 0.0)
+                        # Convert percentage to decimal (e.g., 30 -> 0.30)
+                        weight_decimal = weight / 100.0
+                        weighted_sum += fair_value * weight_decimal
+                        total_weight += weight
+                        applied_weights[model_name] = weight
+
+                # If no applicable models, fallback to simple average
+                if total_weight == 0:
+                    logger.warning(
+                        f"{symbol}: All models filtered out by tier-based weights, using simple average"
+                    )
+                    fair_values = [
+                        r.get("output", {}).get("fair_value_per_share")
+                        for r in results.values()
+                        if r.get("success")
+                        and r.get("output", {}).get("fair_value_per_share")
+                    ]
+                    consensus = (
+                        sum(fair_values) / len(fair_values) if fair_values else None
+                    )
+                else:
+                    consensus = weighted_sum
+
+                consensus_str = f"${consensus:.2f}" if consensus is not None else "N/A"
+                logger.info(
+                    f"{symbol}: Using sector-weighted blend (tier={tier}) → "
+                    f"{consensus_str} | Weights: {applied_weights}"
+                )
+
+            except Exception as e:
+                # Fallback to simple average on any error
+                logger.warning(
+                    f"{symbol}: Could not use sector-weighted blend ({e}), using simple average"
+                )
+                fair_values = [
+                    r.get("output", {}).get("fair_value_per_share")
+                    for r in results.values()
+                    if r.get("success")
+                    and r.get("output", {}).get("fair_value_per_share")
+                    if r.get("output", {}).get("fair_value_per_share") > 0
+                ]
+                consensus = sum(fair_values) / len(fair_values) if fair_values else None
 
             return ToolResult.create_success(
                 output={

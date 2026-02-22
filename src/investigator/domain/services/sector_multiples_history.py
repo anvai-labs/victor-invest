@@ -315,41 +315,40 @@ class SectorMultiplesHistory:
             Dict mapping symbol to FY metrics
         """
         with self.sec_db_manager.get_session() as sec_session:
-            with self.stock_db_manager.get_session() as stock_session:
-                # Use sec_companyfacts_processed for FY metrics (already extracted)
-                # Include additional fields for fallback calculations
-                query = text("""
-                    SELECT
-                        p.symbol,
-                        p.total_revenue,
-                        p.net_income,
-                        p.operating_income,
-                        p.stockholders_equity,
-                        p.shares_outstanding,
-                        p.weighted_average_diluted_shares_outstanding,
-                        p.market_cap,
-                        p.period_end_date,
-                        p.filed_date,
-                        p.earnings_per_share,
-                        p.earnings_per_share_diluted
-                    FROM sec_companyfacts_processed p
-                    WHERE p.symbol = ANY(:symbols)
-                        AND p.fiscal_year = :fiscal_year
-                        AND p.fiscal_period = 'FY'
-                """)
+            # Use sec_companyfacts_processed for FY metrics (already extracted)
+            # All required fields are now available including shares_outstanding, market_cap, EPS
+            query = text("""
+                SELECT
+                    p.symbol,
+                    p.total_revenue,
+                    p.net_income,
+                    p.operating_income,
+                    p.stockholders_equity,
+                    p.shares_outstanding,
+                    p.weighted_average_diluted_shares_outstanding,
+                    p.market_cap,
+                    p.period_end_date,
+                    p.filed_date,
+                    p.earnings_per_share,
+                    p.earnings_per_share_diluted
+                FROM sec_companyfacts_processed p
+                WHERE UPPER(p.symbol) IN :symbols
+                    AND p.fiscal_year = :fiscal_year
+                    AND p.fiscal_period = 'FY'
+            """)
 
-                try:
-                    result = sec_session.execute(
-                        query,
-                        {
-                            "symbols": list(symbols),
-                            "fiscal_year": fiscal_year,
-                        },
-                    )
-                except Exception as e:
-                    logger.warning(f"sec_companyfacts_processed query failed: {e}")
-                    # Fallback: try simpler query
-                    return {}
+            try:
+                result = sec_session.execute(
+                    query,
+                    {
+                        "symbols": tuple(s.upper() for s in list(symbols)),
+                        "fiscal_year": fiscal_year,
+                    },
+                )
+            except Exception as e:
+                logger.warning(f"sec_companyfacts_processed query failed: {e}")
+                # Fallback: try simpler query
+                return {}
 
                 # Process results into metrics with fallback logic
                 fy_metrics: Dict[str, Dict[str, float]] = {}
@@ -458,7 +457,7 @@ class SectorMultiplesHistory:
                                 )
                             price_anchor_date = filed_date + timedelta(days=30)
                         price_data = self._get_historical_price(
-                            stock_session, symbol, price_anchor_date
+                            sec_session, symbol, price_anchor_date
                         )
 
                         # Check for splits between period_end and price_anchor_date

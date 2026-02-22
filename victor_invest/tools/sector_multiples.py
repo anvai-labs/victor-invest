@@ -33,7 +33,7 @@ Example:
 """
 
 import logging
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from victor_invest.tools.base import ToolResult
 
@@ -376,7 +376,7 @@ class SectorMultiplesTool:
             result = conn.execute(query, params)
 
             # Organize data
-            data = {}
+            data: dict[tuple[str, str], dict[int, dict[str, Any]]] = {}
             for row in result:
                 group_type, group_name = row[0], row[1]
                 year = row[2]
@@ -482,7 +482,7 @@ class SectorMultiplesTool:
             )
 
         # Format results
-        result_data = {
+        result_data: dict[str, Any] = {
             "action": "trend",
             "group_name": group_name,
             "group_type": group_type,
@@ -493,7 +493,7 @@ class SectorMultiplesTool:
         }
 
         for row in trend_data:
-            result_data["data"].append(
+            result_data["data"].append(  # type: ignore[arg-type]
                 {
                     "fiscal_year": row["fiscal_year"],
                     "snapshot_date": row.get("snapshot_date"),
@@ -502,7 +502,7 @@ class SectorMultiplesTool:
                     "pb": row.get("pb"),
                     "sample_size": row.get("sample_size"),
                 }
-            )
+            )  # type: ignore[arg-type]
 
         # Calculate trend analysis
         if len(trend_data) > 1:
