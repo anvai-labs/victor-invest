@@ -422,6 +422,13 @@ def cli():
     help="Generate PDF investment report using LLM synthesis",
 )
 @click.option(
+    "--detail",
+    "-d",
+    type=click.Choice(["minimal", "standard", "compact", "verbose"]),
+    default="standard",
+    help="Output detail level (compact recommended for web UI integration)",
+)
+@click.option(
     "--beta-source",
     type=click.Choice(["market", "ff6", "fundamental", "blended", "auto"]),
     default="market",
@@ -443,6 +450,7 @@ def analyze(
     model: Optional[str],
     stream: bool,
     report: bool,
+    detail: str,
     beta_source: str,
     beta_horizon_months: int,
 ):
@@ -457,6 +465,7 @@ def analyze(
     console.print("\n[bold blue]Victor Investment Analysis[/bold blue]")
     console.print(f"Symbol: [green]{symbol.upper()}[/green]")
     console.print(f"Mode: [yellow]{mode}[/yellow]")
+    console.print(f"Detail: [cyan]{detail}[/cyan]")
     console.print(f"Provider: [cyan]{provider}[/cyan]")
     if report:
         console.print("Report: [magenta]PDF generation enabled[/magenta]")
@@ -470,7 +479,7 @@ def analyze(
     )
     try:
         asyncio.run(
-            _run_analysis(symbol, mode, output, provider, model, stream, report)
+            _run_analysis(symbol, mode, output, provider, model, stream, report, detail)
         )
     finally:
         if prev_beta_source is None:
@@ -519,6 +528,13 @@ def analyze(
     default=2,
     help="Max concurrent analyses",
 )
+@click.option(
+    "--detail",
+    "-d",
+    type=click.Choice(["minimal", "standard", "compact", "verbose"]),
+    default="standard",
+    help="Output detail level (compact recommended for web UI integration)",
+)
 def batch(
     symbols: tuple[str, ...],
     mode: str,
@@ -526,10 +542,13 @@ def batch(
     provider: str,
     model: Optional[str],
     parallel: int,
+    detail: str,
 ):
     """Run batch investment analysis across multiple symbols."""
     validate_victor_installed()
-    asyncio.run(_run_batch(symbols, mode, output_dir, provider, model, parallel))
+    asyncio.run(
+        _run_batch(symbols, mode, output_dir, provider, model, parallel, detail)
+    )
 
 
 async def _run_batch(
@@ -539,6 +558,7 @@ async def _run_batch(
     provider: str,
     model: Optional[str],
     parallel: int,
+    detail: str = "standard",
 ):
     workflow_provider = InvestmentWorkflowProvider()
     workflow_name = workflow_provider.get_workflow_for_task_type(mode) or mode
@@ -597,21 +617,34 @@ async def _run_batch(
                 / f"{symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
             )
             with open(result_file, "w") as f:
-                json.dump(
-                    {
-                        "symbol": state.symbol,
-                        "mode": state.mode.value,
-                        "fundamental_analysis": state.fundamental_analysis,
-                        "technical_analysis": state.technical_analysis,
-                        "market_context": state.market_context,
-                        "synthesis": state.synthesis,
-                        "recommendation": state.recommendation,
-                        "errors": state.errors,
-                    },
-                    f,
-                    indent=2,
-                    default=str,
-                )
+                # Use compact format if detail=compact
+                if detail == "compact":
+                    from investigator.application import (
+                        OutputDetailLevel,
+                        format_analysis_output,
+                    )
+
+                    agent_format = _convert_state_to_agent_format(state)
+                    formatted_output = format_analysis_output(
+                        agent_format, OutputDetailLevel.COMPACT
+                    )
+                    json.dump(formatted_output, f, indent=2, default=str)
+                else:
+                    json.dump(
+                        {
+                            "symbol": state.symbol,
+                            "mode": state.mode.value,
+                            "fundamental_analysis": state.fundamental_analysis,
+                            "technical_analysis": state.technical_analysis,
+                            "market_context": state.market_context,
+                            "synthesis": state.synthesis,
+                            "recommendation": state.recommendation,
+                            "errors": state.errors,
+                        },
+                        f,
+                        indent=2,
+                        default=str,
+                    )
 
             progress.advance(task)
 
@@ -859,6 +892,7 @@ async def _run_analysis(
     model: Optional[str],
     stream: bool,
     report: bool = False,
+    detail: str = "standard",
 ):
     """Execute the analysis workflow using InvestmentWorkflowProvider.
 
@@ -866,6 +900,7 @@ async def _run_analysis(
     - Compute handlers for data collection (SEC, market data, technicals)
     - Agent nodes for LLM synthesis via Victor's SubAgentOrchestrator
     - Proper provider/model abstraction through Victor framework
+    - Compact format output for web UI integration when detail=compact
     """
     # Initialize workflow provider (loads YAML workflows, registers handlers)
     workflow_provider = InvestmentWorkflowProvider()
@@ -907,7 +942,7 @@ async def _run_analysis(
             return
 
     # Display results
-    _display_results(result, symbol)
+    _display_results(result, symbol, detail)
 
     # Save to file if output specified
     if output:
@@ -916,18 +951,32 @@ async def _run_analysis(
         result_file = output_path / f"{symbol.upper()}_analysis.json"
 
         with open(result_file, "w") as f:
-            # Convert dataclass to dict for JSON serialization
-            result_dict = {
-                "symbol": result.symbol,
-                "mode": result.mode.value,
-                "fundamental_analysis": result.fundamental_analysis,
-                "technical_analysis": result.technical_analysis,
-                "market_context": result.market_context,
-                "synthesis": result.synthesis,
-                "recommendation": result.recommendation,
-                "errors": result.errors,
-            }
-            json.dump(result_dict, f, indent=2, default=str)
+            # Use compact format if detail=compact, otherwise use standard format
+            if detail == "compact":
+                from investigator.application import (
+                    OutputDetailLevel,
+                    format_analysis_output,
+                )
+
+                # Convert result to agent-orchestrator format for compact formatting
+                agent_format = _convert_state_to_agent_format(result)
+                formatted_output = format_analysis_output(
+                    agent_format, OutputDetailLevel.COMPACT
+                )
+                json.dump(formatted_output, f, indent=2, default=str)
+            else:
+                # Convert dataclass to dict for JSON serialization
+                result_dict = {
+                    "symbol": result.symbol,
+                    "mode": result.mode.value,
+                    "fundamental_analysis": result.fundamental_analysis,
+                    "technical_analysis": result.technical_analysis,
+                    "market_context": result.market_context,
+                    "synthesis": result.synthesis,
+                    "recommendation": result.recommendation,
+                    "errors": result.errors,
+                }
+                json.dump(result_dict, f, indent=2, default=str)
 
         console.print(f"\n[green]Results saved to: {result_file}[/green]")
 
@@ -962,9 +1011,36 @@ async def _run_analysis(
             traceback.print_exc()
 
 
-def _display_results(result, symbol: str):
+def _convert_state_to_agent_format(state: AnalysisWorkflowState) -> dict:  # type: ignore
+    """Convert AnalysisWorkflowState to agent orchestrator format for compact output.
+
+    This function uses the shared converter module to ensure consistency
+    between victor-invest and investigator CLIs.
+
+    Args:
+        state: AnalysisWorkflowState from Victor workflow execution
+
+    Returns:
+        Dictionary in agent orchestrator format with agents, timing, metadata
+    """
+    from investigator.application import convert_victor_state_to_agent_format
+
+    return convert_victor_state_to_agent_format(state)
+
+
+def _display_results(result, symbol: str, detail: str = "standard"):
     """Display analysis results in a formatted table."""
     console.print("\n[bold]Analysis Results[/bold]\n")
+
+    # For compact mode, show minimal output
+    if detail == "compact":
+        if result.recommendation:
+            rec = result.recommendation
+            console.print(f"[bold]{rec.get('action', 'N/A')}[/bold]")
+            if "price_target" in rec:
+                console.print(f"  Price Target: ${rec['price_target']}")
+            console.print("  Detail: [cyan]Compact format saved to file[/cyan]")
+        return
 
     # Summary table
     table = Table(title=f"{symbol.upper()} Analysis Summary")
