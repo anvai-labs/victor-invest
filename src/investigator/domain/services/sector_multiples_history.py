@@ -633,7 +633,8 @@ class SectorMultiplesHistory:
         """)
 
         try:
-            with self.stock_db_manager.get_session() as session:
+            # Use sec_db_manager for stock_splits table (it's in sec_database)
+            with self.sec_db_manager.get_session() as session:
                 result = session.execute(
                     query,
                     {

@@ -128,8 +128,53 @@ Tools never raise exceptions to callers — they return `ToolResult.create_failu
 ## Config and Environment
 
 - Main config: `config.yaml` (with `${ENV_VAR:-default}` substitution)
+- **Database credentials:** `~/.investigator/env` - Source this file before running commands or accessing databases
+  ```bash
+  source ~/.investigator/env
+  ```
+  Contains:
+  - `STOCK_DB_*`: Stock/market database (tickerdata, prices, market data)
+  - `SEC_DB_*`: SEC filings database (company facts, fundamentals)
+  - Legacy aliases: `DB_HOST`, `DB_PASSWORD`, `DB_USERNAME`, `DB_DATABASE`
 - Common env keys: `STOCK_DB_*`, `SEC_DB_*`, `OLLAMA_HOST_*`, `DATABASE_URL`
 - Config access: `from investigator.config import get_config; config = get_config()`
+
+**IMPORTANT:** Always source `~/.investigator/env` before:
+- Running `victor-invest` CLI commands that need database access
+- Running Python scripts that query the database directly
+- Running database migrations or manual SQL queries
+
+**Database Connection Examples:**
+
+```bash
+# Source environment variables
+source ~/.investigator/env
+
+# Direct SQL queries
+PGPASSWORD=${SEC_DB_PASSWORD} psql -h ${SEC_DB_HOST} -U ${SEC_DB_USER} -d ${SEC_DB_NAME} -c "SELECT COUNT(*) FROM sec_companyfacts_processed;"
+
+# Run SQL file
+PGPASSWORD=${SEC_DB_PASSWORD} psql -h ${SEC_DB_HOST} -U ${SEC_DB_USER} -d ${SEC_DB_NAME} -f schema/migrations/008_add_stock_splits_table.sql
+
+# Python scripts with database access
+python3 utils/detect_stock_splits.py --export-sql /tmp/splits.sql
+```
+
+**Python Database Connection:**
+
+```python
+from sqlalchemy import create_engine, text
+import os
+
+# Source ~/.investigator/env or use env vars
+db_url = f"postgresql://{os.environ['SEC_DB_USER']}:{os.environ['SEC_DB_PASSWORD']}@{os.environ['SEC_DB_HOST']}:{os.environ['SEC_DB_PORT']}/{os.environ['SEC_DB_NAME']}"
+engine = create_engine(db_url)
+
+with engine.connect() as conn:
+    result = conn.execute(text("SELECT symbol FROM sec_companyfacts_processed LIMIT 10"))
+    for row in result:
+        print(row[0])
+```
 
 ## Testing
 
