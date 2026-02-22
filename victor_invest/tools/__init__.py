@@ -76,7 +76,9 @@ from victor_invest.tools.base import BaseTool, ToolResult
 from victor_invest.tools.cache import CacheTool
 from victor_invest.tools.credit_risk import CreditRiskTool
 from victor_invest.tools.entry_exit_signals import EntryExitSignalTool
+from victor_invest.tools.fair_multiple_calculator import FairMultipleCalculatorTool
 from victor_invest.tools.insider_trading import InsiderTradingTool
+from victor_invest.tools.robust_valuation import RobustValuationTool
 from victor_invest.tools.institutional_holdings import InstitutionalHoldingsTool
 from victor_invest.tools.macro_data import MacroDataTool
 from victor_invest.tools.market_data import MarketDataTool
@@ -108,6 +110,8 @@ TOOL_CLASSES = [
     MarketRegimeTool,
     ValuationSignalsTool,
     SectorMultiplesTool,
+    FairMultipleCalculatorTool,
+    RobustValuationTool,
 ]
 
 # Tool registry mapping names to classes
@@ -247,6 +251,8 @@ __all__ = [
     "MarketRegimeTool",
     "ValuationSignalsTool",
     "SectorMultiplesTool",
+    "FairMultipleCalculatorTool",
+    "RobustValuationTool",
     # Utility functions
     "get_tool",
     "get_all_tools",

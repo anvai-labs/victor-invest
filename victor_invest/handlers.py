@@ -2446,6 +2446,345 @@ class SectorMultiplesTrendHandler(BaseHandler):
         }, 0
 
 
+@handler_decorator(
+    "sector_multiples_trend_adjusted",
+    vertical="investment",
+    description="Calculate trend-adjusted sector multiples for robust valuations",
+)
+@dataclass
+class SectorMultiplesTrendAdjustedHandler(BaseHandler):
+    """Calculate trend-adjusted sector multiples for robust valuations."""
+
+    async def execute(
+        self,
+        node: "ComputeNode",
+        context: "WorkflowContext",
+        tool_registry: "ToolRegistry",
+    ) -> Tuple[Any, int]:
+        """Execute trend-adjusted sector multiples calculation.
+
+        Returns:
+            Tuple of (output_dict, tool_calls_count)
+        """
+        from victor_invest.tools.sector_multiples import SectorMultiplesTool
+
+        # Get parameters from node config or context
+        params = node.params if hasattr(node, "params") else {}
+
+        tool = SectorMultiplesTool()
+        result = await tool.execute(
+            action="trend_adjusted",
+            sectors=params.get("sectors"),
+            industries=params.get("industries"),
+            min_samples=params.get("min_samples", 10),
+            exclude_outliers=params.get("exclude_outliers", True),
+            lookback_years=params.get("lookback_years", 5),
+            adjustment_sensitivity=params.get("adjustment_sensitivity", "medium"),
+            update_trend_config=params.get("update_trend_config", False),
+            dry_run=params.get("dry_run", False),
+        )
+
+        return {
+            "status": "success" if result.success else "error",
+            "data": result.output if result.success else None,
+            "error": result.error if not result.success else None,
+        }, 0
+
+
+@handler_decorator(
+    "calculate_fair_multiple",
+    vertical="investment",
+    description="Calculate company-specific fair value multiples using trend-adjusted sector and company premium history",
+)
+@dataclass
+class CalculateFairMultipleHandler(BaseHandler):
+    """Calculate company-specific fair value multiples."""
+
+    async def execute(
+        self,
+        node: "ComputeNode",
+        context: "WorkflowContext",
+        tool_registry: "ToolRegistry",
+    ) -> Tuple[Any, int]:
+        """Execute fair multiple calculation.
+
+        Returns:
+            Tuple of (output_dict, tool_calls_count)
+        """
+        from victor_invest.tools.fair_multiple_calculator import (
+            FairMultipleCalculatorTool,
+        )
+
+        # Get parameters from node config or context
+        params = node.params if hasattr(node, "params") else {}
+        symbol = params.get("symbol") or context.get("symbol")
+        sector = params.get("sector") or context.get("sector")
+
+        if not symbol or not sector:
+            return {
+                "status": "error",
+                "error": "symbol and sector are required",
+                "data": None,
+            }, 0
+
+        tool = FairMultipleCalculatorTool()
+        result = await tool.execute(
+            action="calculate",
+            symbol=symbol,
+            sector=sector,
+            industry=params.get("industry"),
+            metric=params.get("metric", "all"),
+            lookback_years=params.get("lookback_years", 5),
+            conservative=params.get("conservative", False),
+        )
+
+        return {
+            "status": "success" if result.success else "error",
+            "data": result.output if result.success else None,
+            "error": result.error if not result.success else None,
+        }, 0
+
+
+@handler_decorator(
+    "generate_fair_value_report",
+    vertical="investment",
+    description="Generate comprehensive fair value report with multiple valuation methods",
+)
+@dataclass
+class GenerateFairValueReportHandler(BaseHandler):
+    """Generate comprehensive fair value report."""
+
+    async def execute(
+        self,
+        node: "ComputeNode",
+        context: "WorkflowContext",
+        tool_registry: "ToolRegistry",
+    ) -> Tuple[Any, int]:
+        """Execute fair value report generation.
+
+        Returns:
+            Tuple of (output_dict, tool_calls_count)
+        """
+        from victor_invest.tools.fair_multiple_calculator import (
+            FairMultipleCalculatorTool,
+        )
+
+        # Get parameters from node config or context
+        params = node.params if hasattr(node, "params") else {}
+        symbol = params.get("symbol") or context.get("symbol")
+        sector = params.get("sector") or context.get("sector")
+
+        if not symbol or not sector:
+            return {
+                "status": "error",
+                "error": "symbol and sector are required",
+                "data": None,
+            }, 0
+
+        tool = FairMultipleCalculatorTool()
+        result = await tool.execute(
+            action="report",
+            symbol=symbol,
+            sector=sector,
+            industry=params.get("industry"),
+            current_price=params.get("current_price"),
+            eps=params.get("eps"),
+            revenue_per_share=params.get("revenue_per_share"),
+            book_value_per_share=params.get("book_value_per_share"),
+            lookback_years=params.get("lookback_years", 5),
+            conservative=params.get("conservative", False),
+        )
+
+        return {
+            "status": "success" if result.success else "error",
+            "data": result.output if result.success else None,
+            "error": result.error if not result.success else None,
+        }, 0
+
+
+@handler_decorator(
+    "robust_valuation_analyze",
+    vertical="investment",
+    description="Perform comprehensive robust valuation analysis combining all 3 layers",
+)
+@dataclass
+class RobustValuationAnalyzeHandler(BaseHandler):
+    """Handler for comprehensive robust valuation analysis.
+
+    Combines Layer 1 (trend-adjusted sector multiples), Layer 2 (company premium history),
+    and Layer 3 (peer comparison) for robust fair value estimation.
+    """
+
+    async def execute(
+        self, node: "ComputeNode", context: Dict[str, Any], tool_registry: Any
+    ) -> Tuple[Dict[str, Any], int]:
+        """Execute robust valuation analysis.
+
+        Expected node.params:
+            symbol: Stock symbol (optional, uses context if not provided)
+            sector: Sector name (optional, uses context if not provided)
+            industry: Industry name (optional)
+            lookback_years: Years of historical data (default: 5)
+            conservative: Use conservative adjustments (default: false)
+
+        Returns:
+            Dict with status, data (valuation result), or error
+        """
+        from victor_invest.tools.robust_valuation import RobustValuationTool
+
+        params = node.params or {}
+        symbol = params.get("symbol") or context.get("symbol", "")
+        sector = params.get("sector") or context.get("sector", "")
+
+        if not symbol or not sector:
+            return {
+                "status": "error",
+                "error": "symbol and sector are required",
+                "data": None,
+            }, 0
+
+        tool = RobustValuationTool()
+        result = await tool.execute(
+            action="analyze",
+            symbol=symbol,
+            sector=sector,
+            industry=params.get("industry"),
+            lookback_years=params.get("lookback_years", 5),
+            conservative=params.get("conservative", False),
+        )
+
+        return {
+            "status": "success" if result.success else "error",
+            "data": result.output if result.success else None,
+            "error": result.error if not result.success else None,
+        }, 0
+
+
+@handler_decorator(
+    "peer_compare_analysis",
+    vertical="investment",
+    description="Compare company valuation multiples to industry peers",
+)
+@dataclass
+class PeerCompareAnalysisHandler(BaseHandler):
+    """Handler for peer comparison analysis.
+
+    Compares company's valuation multiples (P/E, P/S, P/B, EV/EBITDA) to
+    industry peers with percentile ranking and relative valuation status.
+    """
+
+    async def execute(
+        self, node: "ComputeNode", context: Dict[str, Any], tool_registry: Any
+    ) -> Tuple[Dict[str, Any], int]:
+        """Execute peer comparison analysis.
+
+        Expected node.params:
+            symbol: Stock symbol (optional, uses context if not provided)
+            sector: Sector name (optional, uses context if not provided)
+            industry: Industry name (optional, uses context if not provided)
+            metric: "pe", "ps", "pb", "ev_ebitda", or "all" (default: "all")
+            min_peers: Minimum number of peers required (default: 3)
+
+        Returns:
+            Dict with status, data (peer comparison), or error
+        """
+        from victor_invest.tools.robust_valuation import RobustValuationTool
+
+        params = node.params or {}
+        symbol = params.get("symbol") or context.get("symbol", "")
+        sector = params.get("sector") or context.get("sector", "")
+        industry = params.get("industry") or context.get("industry")
+
+        if not symbol:
+            return {
+                "status": "error",
+                "error": "symbol is required",
+                "data": None,
+            }, 0
+
+        tool = RobustValuationTool()
+        result = await tool.execute(
+            action="peer_compare",
+            symbol=symbol,
+            sector=sector,
+            industry=industry,
+            metric=params.get("metric", "all"),
+            min_peers=params.get("min_peers", 3),
+        )
+
+        return {
+            "status": "success" if result.success else "error",
+            "data": result.output if result.success else None,
+            "error": result.error if not result.success else None,
+        }, 0
+
+
+@handler_decorator(
+    "generate_robust_valuation_report",
+    vertical="investment",
+    description="Generate comprehensive robust valuation report with fair value estimate",
+)
+@dataclass
+class GenerateRobustValuationReportHandler(BaseHandler):
+    """Handler for comprehensive robust valuation report generation.
+
+    Generates full report including all 3 layers, fair value estimate,
+    recommendation, and confidence level.
+    """
+
+    async def execute(
+        self, node: "ComputeNode", context: Dict[str, Any], tool_registry: Any
+    ) -> Tuple[Dict[str, Any], int]:
+        """Execute robust valuation report generation.
+
+        Expected node.params:
+            symbol: Stock symbol (optional, uses context if not provided)
+            sector: Sector name (optional, uses context if not provided)
+            industry: Industry name (optional, uses context if not provided)
+            current_price: Current stock price (for upside/downside calculation)
+            eps: Earnings per share
+            revenue_per_share: Revenue per share
+            book_value_per_share: Book value per share
+            lookback_years: Years of historical data (default: 5)
+            conservative: Use conservative adjustments (default: false)
+
+        Returns:
+            Dict with status, data (comprehensive report), or error
+        """
+        from victor_invest.tools.robust_valuation import RobustValuationTool
+
+        params = node.params or {}
+        symbol = params.get("symbol") or context.get("symbol", "")
+        sector = params.get("sector") or context.get("sector", "")
+
+        if not symbol or not sector:
+            return {
+                "status": "error",
+                "error": "symbol and sector are required",
+                "data": None,
+            }, 0
+
+        tool = RobustValuationTool()
+        result = await tool.execute(
+            action="report",
+            symbol=symbol,
+            sector=sector,
+            industry=params.get("industry"),
+            current_price=params.get("current_price"),
+            eps=params.get("eps"),
+            revenue_per_share=params.get("revenue_per_share"),
+            book_value_per_share=params.get("book_value_per_share"),
+            lookback_years=params.get("lookback_years", 5),
+            conservative=params.get("conservative", False),
+        )
+
+        return {
+            "status": "success" if result.success else "error",
+            "data": result.output if result.success else None,
+            "error": result.error if not result.success else None,
+        }, 0
+
+
 # =============================================================================
 # Registration (No-op for backward compatibility)
 # =============================================================================
@@ -2485,6 +2824,14 @@ __all__ = [
     "HistoricalSectorMultiplesHandler",
     "SectorMultiplesTimelineHandler",
     "SectorMultiplesTrendHandler",
+    "SectorMultiplesTrendAdjustedHandler",
+    # Fair multiple calculator
+    "CalculateFairMultipleHandler",
+    "GenerateFairValueReportHandler",
+    # Robust valuation
+    "RobustValuationAnalyzeHandler",
+    "PeerCompareAnalysisHandler",
+    "GenerateRobustValuationReportHandler",
     # Helper functions
     "_format_fundamental",
     "_format_technical",

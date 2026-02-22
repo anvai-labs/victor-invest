@@ -50,16 +50,21 @@ class SectorMultiplesTool:
     name = "sector_multiples"
     description = (
         "Calculate sector/industry valuation multiples from database. "
-        "Actions: refresh (current), historical (fiscal year), timeline, trend"
+        "Actions: refresh (current), historical (fiscal year), timeline, trend, "
+        "trend_adjusted (robust valuations with trend analysis)"
     )
+
+    def __init__(self, config=None):
+        """Initialize tool with optional config."""
+        self.config = config
 
     async def execute(self, _exec_ctx=None, **kwargs) -> ToolResult:
         """
         Execute sector multiples operation.
 
         Args:
-            action: Operation to perform - "refresh", "historical", "timeline", "trend"
-            sectors: Comma-separated list of sectors (for refresh, historical, timeline)
+            action: Operation to perform - "refresh", "historical", "timeline", "trend", "trend_adjusted"
+            sectors: Comma-separated list of sectors (for refresh, historical, timeline, trend_adjusted)
             industries: Comma-separated list of industries
             fiscal_year: Fiscal year for historical calculation
             min_samples: Minimum sample size per sector (default: 10 for refresh, 5 for historical)
@@ -74,6 +79,9 @@ class SectorMultiplesTool:
             end_year: End year for trend
             group_type: Group type for trend - "sector" or "industry" (default: "sector")
             group_name: Group name for trend
+            lookback_years: Years of historical data for trend_adjusted (default: 5)
+            adjustment_sensitivity: Sensitivity for trend adjustments - "low", "medium", "high" (default: "medium")
+            update_trend_config: Update config.yaml with trend-adjusted multiples (default: False)
 
         Returns:
             ToolResult with calculated sector multiples or error message
@@ -89,9 +97,11 @@ class SectorMultiplesTool:
                 return await self._timeline(**kwargs)
             elif action == "trend":
                 return await self._trend(**kwargs)
+            elif action == "trend_adjusted":
+                return await self._trend_adjusted(**kwargs)
             else:
                 return ToolResult.create_failure(
-                    f"Unknown action: {action}. Valid actions: refresh, historical, timeline, trend"
+                    f"Unknown action: {action}. Valid actions: refresh, historical, timeline, trend, trend_adjusted"
                 )
 
         except Exception as e:
@@ -528,6 +538,151 @@ class SectorMultiplesTool:
                     }
 
         logger.info(f"Trend data retrieved: {len(trend_data)} years for {group_name}")
+
+        return ToolResult.create_success(result_data)
+
+    async def _trend_adjusted(
+        self,
+        sectors: Optional[str] = None,
+        industries: Optional[str] = None,
+        min_samples: int = 10,
+        exclude_outliers: bool = True,
+        lookback_years: int = 5,
+        adjustment_sensitivity: str = "medium",
+        update_trend_config: bool = False,
+        dry_run: bool = False,
+        **kwargs,
+    ) -> ToolResult:
+        """
+        Calculate trend-adjusted sector multiples for robust valuations.
+
+        Combines current snapshot data with historical trend analysis to adjust
+        for sector expansion/shrinking, market regime changes, and volatility.
+
+        Args:
+            sectors: Comma-separated list of sectors
+            industries: Comma-separated list of industries
+            min_samples: Minimum sample size per sector (default: 10)
+            exclude_outliers: Whether to exclude outliers (default: True)
+            lookback_years: Years of historical data to analyze (default: 5)
+            adjustment_sensitivity: Sensitivity - "low", "medium", "high" (default: "medium")
+            update_trend_config: Update config.yaml with trend-adjusted multiples (default: False)
+            dry_run: Calculate without updating config (default: False)
+
+        Returns:
+            ToolResult with trend-adjusted sector multiples
+        """
+        from investigator.domain.services.sector_multiples_refresh import (
+            SectorMultiplesRefresh,
+        )
+        from investigator.domain.services.sector_multiples_trend_adjusted import (
+            SectorMultiplesTrendAdjusted,
+        )
+
+        # Parse sector/industry lists
+        sector_list: Optional[List[str]] = None
+        industry_list: Optional[List[str]] = None
+
+        if sectors:
+            sector_list = [s.strip() for s in sectors.split(",")]
+            logger.info(
+                f"Calculating trend-adjusted multiples for sectors: {', '.join(sector_list)}"
+            )
+
+        if industries:
+            industry_list = [i.strip() for i in industries.split(",")]
+            logger.info(
+                f"Calculating trend-adjusted multiples for industries: {', '.join(industry_list)}"
+            )
+
+        # Configure outlier filtering
+        percentile_exclude = (0.05, 0.95) if exclude_outliers else (0.0, 1.0)
+
+        # Step 1: Get current snapshot multiples
+        logger.info("Step 1: Calculating current snapshot multiples...")
+        refresh_service = SectorMultiplesRefresh(
+            min_samples=min_samples,
+            percentile_exclude=percentile_exclude,
+        )
+
+        current_multiples = refresh_service.calculate_sector_multiples(
+            sectors=sector_list,
+            industries=industry_list,
+            use_config_overrides=True,
+        )
+
+        if not current_multiples:
+            return ToolResult.create_failure(
+                "No sector multiples calculated (insufficient data)"
+            )
+
+        logger.info(f"Current multiples calculated for {len(current_multiples)} groups")
+
+        # Step 2: Apply trend adjustments
+        logger.info(
+            f"Step 2: Applying trend adjustments (lookback: {lookback_years} years, "
+            f"sensitivity: {adjustment_sensitivity})..."
+        )
+
+        trend_service = SectorMultiplesTrendAdjusted(
+            min_samples=min_samples,
+            percentile_exclude=percentile_exclude,
+            lookback_years=lookback_years,
+            adjustment_sensitivity=adjustment_sensitivity,
+        )
+
+        adjusted_multiples = trend_service.calculate_trend_adjusted_multiples(
+            current_multiples=current_multiples,
+            sectors=sector_list,
+            industries=industry_list,
+        )
+
+        if not adjusted_multiples:
+            return ToolResult.create_failure(
+                "Failed to calculate trend-adjusted multiples"
+            )
+
+        # Step 3: Update config if requested
+        config_updated = False
+        if update_trend_config and not dry_run:
+            logger.info("Step 3: Updating config.yaml with trend-adjusted multiples...")
+            success = refresh_service.update_config_yaml(adjusted_multiples)
+            if success:
+                config_updated = True
+                logger.info("Config updated successfully with trend-adjusted multiples")
+            else:
+                logger.warning("Failed to update config.yaml")
+        elif dry_run:
+            logger.info("Dry run mode - config.yaml not updated")
+
+        # Format results
+        result_data = {
+            "action": "trend_adjusted",
+            "dry_run": dry_run,
+            "config_updated": config_updated,
+            "lookback_years": lookback_years,
+            "adjustment_sensitivity": adjustment_sensitivity,
+            "multiples": {},
+        }
+
+        for name, multiples in sorted(adjusted_multiples.items()):
+            result_data["multiples"][name] = {
+                "sample_size": multiples.get("sample_size"),
+                "trend_analysis": multiples.get("trend_analysis", {}),
+            }
+
+            # Add both raw and adjusted values
+            for metric in ["pe", "ps", "pb", "ev_ebitda"]:
+                if f"{metric}_raw" in multiples:
+                    result_data["multiples"][name][f"{metric}_raw"] = multiples.get(
+                        f"{metric}_raw"
+                    )
+                if metric in multiples:
+                    result_data["multiples"][name][metric] = multiples.get(metric)
+
+        logger.info(
+            f"Trend-adjusted calculation complete: {len(adjusted_multiples)} sector/industry multiples"
+        )
 
         return ToolResult.create_success(result_data)
 

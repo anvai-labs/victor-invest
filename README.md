@@ -1,208 +1,118 @@
-# InvestiGator
+# Victor Invest Documentation
 
-[![CI](https://github.com/vjsingh1984/victor-invest/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/vjsingh1984/victor-invest/actions/workflows/ci-cd.yml)
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![PyPI](https://img.shields.io/pypi/v/victor-invest.svg)](https://pypi.org/project/victor-invest/)
-
-**AI-Powered Investment Analysis Platform**
-
-InvestiGator is an intelligent investment research platform that combines SEC financial data analysis, technical indicators, and multi-agent AI synthesis to provide comprehensive stock evaluations.
-
-## Why Victor-Invest?
-
-Most investment tools provide data. Victor-Invest provides **analysis**:
-
-- **Context-stuffed pipeline**: Raw SEC filings, technicals, and market data are gathered deterministically, then synthesized into a single investment thesis
-- **No black boxes**: Every score, signal, and recommendation traces back to specific data points
-- **Extensible**: YAML-defined workflows let you add new data sources and analysis steps without touching core code
-
-## Features
-
-- **Multi-Agent Analysis**: Coordinated AI agents for SEC filings, technical analysis, fundamental metrics, and market context
-- **SEC Integration**: Direct access to EDGAR filings with automated financial statement extraction
-- **Technical Analysis**: RSI, MACD, Bollinger Bands, moving averages, and custom indicators
-- **Valuation Models**: DCF, P/E, P/S, EV/EBITDA, and Gordon Growth Model with dynamic weighting
-- **Reinforcement Learning**: Adaptive model weighting based on historical prediction accuracy
-- **Workflow Engine**: YAML-based workflow definitions for customizable analysis pipelines
-
-## Quick Start
-
-### Prerequisites
-
-- Python 3.11+
-- PostgreSQL 14+ (or SQLite for testing)
-- 8GB+ RAM recommended
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/vjsingh1984/victor-invest.git
-cd victor-invest
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -e .
-
-# Configure environment
-cp config/.env.example .env
-# Edit .env with your database credentials
-```
-
-### Database Setup
-
-```bash
-# For SQLite (testing/development)
-python -m investigator.infrastructure.database.installer --sqlite investigator.db
-
-# For PostgreSQL (production)
-python -m investigator.infrastructure.database.installer --postgres postgresql://user:pass@host/db
-```
-
-### Running Analysis
-
-```bash
-# Quick analysis (technical + market context)
-victor-invest analyze AAPL --mode quick
-
-# Standard analysis (includes SEC fundamentals)
-victor-invest analyze MSFT --mode standard
-
-# Comprehensive analysis (full synthesis with peer comparison)
-victor-invest analyze GOOGL --mode comprehensive
-```
-
-### Refreshing Latest SEC Filings (Two-Step)
-
-When a symbol appears to be using older filing periods, run this two-step flow with the active `investigator` CLI:
-
-```bash
-# Step 1: Fetch fresh SEC CompanyFacts and ingest into processed table
-investigator cache warm --symbols STX --process-raw --force-refresh
-
-# Step 2: Run analysis against refreshed SEC data
-investigator analyze single STX --mode comprehensive --force-refresh
-```
-
-Optional pre-step (if symbol cache is suspected stale/corrupt):
-
-```bash
-investigator cache clean --symbol STX --force
-```
-
-## Architecture
-
-![Standard Workflow](docs/workflows/standard.svg)
-
-## Documentation
-
-- [Documentation Hub](docs/INDEX.md)
-- [Getting Started](docs/GETTING_STARTED.md)
-- [Deployment Guide](docs/DEPLOYMENT.md)
-- [Architecture Guide](docs/ARCHITECTURE.md)
-- [Developer Guide](docs/DEVELOPER_GUIDE.adoc)
-- [CLI Commands](docs/CLI_DATA_COMMANDS.md)
-- [Sector Multiples Analysis](docs/SECTOR_MULTIPLES.md) - Track valuation multiples over time
-- [Valuation Models](docs/VALUATION_ASSUMPTIONS.md)
-- [Agent Reference](docs/AGENTS.md)
-
-## CLI Commands
-
-```bash
-# Analysis commands
-victor-invest analyze <SYMBOL> [--mode quick|standard|comprehensive]
-victor-invest batch <SYMBOLS...> [--parallel 4]
-victor-invest compare <TARGET> <PEERS...>
-
-# Sector multiples analysis
-investigator sector-multiples refresh [--sectors "Technology"]
-investigator sector-multiples historical --fiscal-year 2024 --sectors "Technology"
-investigator sector-multiples trend "Technology" --start-year 2020
-investigator sector-multiples timeline --sectors "Technology" --years 2020-2024
-
-# Data commands
-investigator data fetch <SYMBOL> --source <SOURCE>
-investigator data status
-
-# Cache management
-investigator cache warm --symbols AAPL --process-raw
-investigator cache clean --symbol AAPL
-victor-invest cache-sizes
-victor-invest clean-cache [--symbol SYMBOL]
-
-# System status
-victor-invest status
-victor-invest metrics --days 7
-victor-invest test-system
-
-# Model management
-victor-invest pull <MODEL>
-```
-
-## Migration Notes
-
-- `victor-invest` is the primary CLI for analysis workflows.
-- `cli_orchestrator.py` remains available for legacy commands and will forward to Victor by default.
-- To force legacy behavior, set `INVESTIGATOR_LEGACY=1` or pass `--legacy` on the legacy CLI.
-
-## Configuration
-
-Configuration is managed through environment variables and `config.yaml`:
-
-```yaml
-# config.yaml
-database:
-  url: ${DATABASE_URL:-postgresql://localhost/investigator}
-  pool_size: 5
-
-llm:
-  provider: ollama
-  model: llama3.2
-
-analysis:
-  default_mode: standard
-  quarters_to_analyze: 8
-```
-
-See [config/.env.example](config/.env.example) for all configuration options.
-
-## Development
-
-```bash
-# Run tests
-pytest tests/
-
-# Format code
-black src/ tests/
-isort src/ tests/
-
-# Type checking
-mypy src/
-
-# Lint
-ruff check src/
-```
-
-## Contributing
-
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-## Security
-
-For security concerns, please see [SECURITY.md](SECURITY.md).
-
-## License
-
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
-
-## Disclaimer
-
-InvestiGator is for informational and educational purposes only. It does not constitute financial advice, investment recommendations, or an offer to buy or sell securities. Always conduct your own research and consult with qualified financial advisors before making investment decisions.
+**Last Updated:** February 2025
 
 ---
 
-Built with Python, SQLAlchemy, and a passion for data-driven investing.
+## Quick Start
+
+1. **[Getting Started](guides/GETTING_STARTED.md)** - Installation and first steps
+2. **[Sector Analysis](assets/insights/SECTOR_ANALYSIS_2015_2024.md)** - 10-year sector valuation analysis
+3. **[Interactive Timeline](assets/visualizations/sector_timeline_2024.html)** - Market multiples visualization
+
+---
+
+## Documentation Structure
+
+```
+docs/
+├── guides/           # Getting started, how-to guides
+├── reference/        # Architecture, API, operations
+├── insights/         # Analysis, findings, playbooks
+├── assets/           # Sector analysis & visualizations
+└── archive/          # Historical/obsolete documentation
+```
+
+---
+
+## Guides
+
+| Document | Purpose |
+|----------|---------|
+| [Getting Started](guides/GETTING_STARTED.md) | Installation, setup, first run |
+| [Fiscal Year Handling](guides/FISCAL_YEAR_HANDLING.md) | FY periods, timing nuances |
+| [Scripts Consolidation](guides/SCRIPTS_CONSOLIDATION_ANALYSIS.md) | Script organization and usage |
+
+---
+
+## Reference
+
+| Document | Purpose |
+|----------|---------|
+| [Architecture](reference/ARCHITECTURE.md) | System design and components |
+| [Victor Framework Migration](reference/MIGRATION_VICTOR_FRAMEWORK.md) | Victor framework overview |
+| [Operations Runbook](reference/OPERATIONS_RUNBOOK.md) | Deployment and operations |
+| [Agents](reference/AGENTS.md) | Agent system documentation |
+| [Sector Multiples](reference/SECTOR_MULTIPLES.md) | Sector multiples tool reference |
+| [UI Dashboard](reference/UI_DASHBOARD.md) | Dashboard documentation |
+
+---
+
+## Insights
+
+| Document | Purpose |
+|----------|---------|
+| [Sector Analysis (2015-2024)](assets/insights/SECTOR_ANALYSIS_2015_2024.md) | Complete 10-year analysis |
+| [Market Regimes](assets/insights/MARKET_REGIMES.md) | Three market regimes (2015-2024) |
+| [Data Quality](assets/insights/DATA_QUALITY.md) | Data verification and metrics |
+
+### Analysis & Playbooks
+- [Valuation Playbook](insights/VALUATION_PLAYBOOK.md) - Valuation frameworks and strategies
+- [Valuation Assumptions](insights/VALUATION_ASSUMPTIONS.md) - Key assumptions and constraints
+- [STX Analysis Issues](insights/STX_ANALYSIS_ISSUES.md) - STX index analysis
+- [Data Pipeline Status](insights/sec_data_pipeline_status.md) - SEC data pipeline
+- [Victor Alignment Review](insights/VICTOR_ALIGNMENT_REVIEW_20260211.md) | Framework alignment
+
+---
+
+## Interactive Visualizations
+
+- **[Sector Timeline 2024](assets/visualizations/sector_timeline_2024.html)** - Interactive scatter plots with market cap bubbles
+
+**Features:**
+- Sector median lines (P/E, P/S, P/B)
+- Individual stock bubbles (500 companies)
+- Hover tooltips with company details
+- Color-coded by sector
+
+---
+
+## Quick Reference
+
+### CLI Commands
+
+```bash
+# Quick analysis
+victor-invest analyze AAPL --mode quick
+
+# Batch analysis
+victor-invest batch AAPL MSFT GOOGL --parallel 4
+
+# Sector multiples
+investor sector-multiples historical --fiscal-year 2024
+
+# Cache management
+investigator cache warm --symbols AAPL,MSFT --force-refresh
+```
+
+### Key Directories
+
+| Directory | Purpose |
+|-----------|---------|
+| `victor_invest/` | Victor framework (workflows, tools) |
+| `src/investigator/` | Legacy engine (domain services, agents) |
+| `scripts/` | Utility scripts |
+| `tests/` | Test suite |
+| `config.yaml` | Main configuration file |
+
+---
+
+## Related Resources
+
+- **Project README:** [../README.md](../README.md)
+- **Architecture:** [reference/ARCHITECTURE.md](reference/ARCHITECTURE.md)
+- **Sector Analysis:** [assets/insights/](assets/insights/)
+
+---
+
+*For CLI help: `victor-invest --help` or `investor --help`*

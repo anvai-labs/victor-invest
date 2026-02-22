@@ -995,7 +995,7 @@ valuation:
         ev_ebitda: 1.0
 pe_multiples:
   sector_defaults:
-    Technology: 33.23
+    Technology: 14.52
     Communication Services: 22.0
     Healthcare: 20.0
     Consumer Discretionary: 20.0
@@ -1011,7 +1011,7 @@ pe_multiples:
     Miscellaneous: 6.46
     Unknown: 9.82
     Basic Materials: 17.68
-    Electrical Products: 14.6
+    Electrical Products: 5.55
     Metal Fabrications: 9.1
     Investment Managers: 12.58
     Major Banks: 30.81
@@ -1047,7 +1047,7 @@ pe_multiples:
     Wholesale Distributors: 7.28
     Water Supply: 15.62
     Oil Refining/Marketing: 5.36
-    Electronic Components: 20.78
+    Electronic Components: 15.59
     Major Chemicals: 4.16
     Specialty Foods: 2.68
     Homebuilding: 5.12
@@ -1059,10 +1059,11 @@ pe_multiples:
     Food Distributors: 1.99
     Fluid Controls: 13.8
     Auto Manufacturing: 4.78
+    Interactive Media: 4.17
   industry_overrides:
     Software - Application: 35.0
     Software - Infrastructure: 32.0
-    Semiconductors: 35.05
+    Semiconductors: 26.6
     Semiconductor Equipment: 18.0
     Semiconductors & Semiconductor Equipment: 18.0
     Computer Hardware: 25.0
@@ -1100,16 +1101,16 @@ pe_multiples:
     Air Freight/Delivery Services: 2.83
     Life Insurance: 3.49
     Diversified Commercial Services: 35.1
-    Industrial Machinery/Components: 15.69
+    Industrial Machinery/Components: 16.23
     Real Estate Investment Trusts: 41.28
     'Biotechnology: In Vitro & In Vivo Diagnostic Substances': 45.61
     Medical/Dental Instruments: 16.11
     'Biotechnology: Biological Products (No Diagnostic Substances)': 49.24
-    EDP Services: 22.74
+    EDP Services: 9.8
     Business Services: 14.34
-    'Retail: Computer Software & Peripheral Equipment': 33.35
+    'Retail: Computer Software & Peripheral Equipment': 12.2
     'Biotechnology: Commercial Physical & Biological Resarch': 21.21
-    'Computer Software: Prepackaged Software': 33.78
+    'Computer Software: Prepackaged Software': 14.93
     Industrial Specialties: 10.32
     Telecommunications Equipment: 12.27
     'Electric Utilities: Central': 8.02
@@ -1118,11 +1119,11 @@ pe_multiples:
     Oilfield Services/Equipment: 5.59
     'Finance: Consumer Services': 9.53
     Medical Specialities: 19.88
-    Radio And Television Broadcasting And Communications Equipment: 291.66
-    Computer peripheral equipment: 40.82
+    Radio And Television Broadcasting And Communications Equipment: 8.61
+    Computer peripheral equipment: 9.54
     Office Equipment/Supplies/Services: 13.47
     Trucking Freight/Courier Services: 8.85
-    Security Systems Services: 22.79
+    Security Systems Services: 10.38
     Construction/Ag Equipment/Trucks: 6.89
     Professional Services: 3.67
   default: 20.0
@@ -1950,6 +1951,9 @@ sector_multiples:
     Natural Gas Distribution: 159.19
     Oil & Gas Production: 77.03
     Restaurants: 1.58
+    Technology: 40.43
+    Interactive Media: 13.04
+    Electronic Components: 60.01
   ev_ebitda_industry_overrides:
     Industrials: 103.08
     Consumer Discretionary: 33.48
@@ -1962,3 +1966,8 @@ sector_multiples:
     Business Services: 43.17
     'Electric Utilities: Central': 105.71
     Trucking Freight/Courier Services: 103.08
+    Semiconductors: 68.12
+    EDP Services: 11.89
+    'Retail: Computer Software & Peripheral Equipment': 47.07
+    'Computer Software: Prepackaged Software': 97.57
+    Computer peripheral equipment: 36.62
