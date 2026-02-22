@@ -411,7 +411,7 @@ class SectorMultiplesHistory:
                 # Fallback priority:
                 # 1. Use stored market_cap if available and > 0
                 # 2. Calculate from tickerdata (with split adjustment for SEC shares)
-                # 3. Calculate from EPS * P/E (using sector median P/E as fallback)
+                # 3. Validate consistency
                 for symbol, metrics in fy_metrics.items():
                     # Skip if we already have both market_cap AND price
                     # (Note: market_cap alone isn't enough - we need price for P/E and P/B)
@@ -422,28 +422,73 @@ class SectorMultiplesHistory:
                     ):
                         continue
 
-                    # Fallback 1: Try to get price from tickerdata around filed_date
+                    # Fallback 1: Try to get price from tickerdata around period_end + buffer
                     # This uses tickerdata which has historical prices (split-adjusted)
                     # We need price even if we have market_cap (for P/E and P/B calculations)
                     if "filed_date" in metrics and not metrics.get("price"):
-                        filed_date = metrics["filed_date"]
                         from datetime import datetime, timedelta, date
 
-                        # Convert filed_date to datetime regardless of input type
-                        if isinstance(filed_date, str):
-                            filed_date = datetime.fromisoformat(filed_date)
-                        elif isinstance(filed_date, date):
-                            filed_date = datetime.combine(
-                                filed_date, datetime.min.time()
-                            )
-                        # If already datetime, use as-is
+                        # Use period_end as base for price anchor (more stable than filed_date)
+                        # Add 90-day buffer to next quarter when market has digested FY results
+                        # This reduces vulnerability to splits between period_end and filing
+                        period_end = metrics.get("period_end_date")
+                        if period_end:
+                            # Convert period_end to datetime regardless of input type
+                            if isinstance(period_end, str):
+                                period_end = datetime.fromisoformat(period_end)
+                            elif isinstance(period_end, date):
+                                period_end = datetime.combine(
+                                    period_end, datetime.min.time()
+                                )
+                            # If already datetime, use as-is
 
-                        # Use filed_date + 1 day (next trading day) as price anchor
-                        # This is when market would have reacted to the earnings
-                        price_anchor_date = filed_date + timedelta(days=1)
+                            # Use period_end + 90 days (next quarter) as price anchor
+                            # This allows time for 10-K filing and market digestion
+                            # Any splits between period_end and period_end+90 will be handled
+                            # by the split adjustment logic in calculate_market_cap()
+                            price_anchor_date = period_end + timedelta(days=90)
+                        else:
+                            # Fallback to filed_date if period_end not available
+                            filed_date = metrics["filed_date"]
+                            if isinstance(filed_date, str):
+                                filed_date = datetime.fromisoformat(filed_date)
+                            elif isinstance(filed_date, date):
+                                filed_date = datetime.combine(
+                                    filed_date, datetime.min.time()
+                                )
+                            price_anchor_date = filed_date + timedelta(days=30)
                         price_data = self._get_historical_price(
                             stock_session, symbol, price_anchor_date
                         )
+
+                        # Check for splits between period_end and price_anchor_date
+                        # This helps identify potentially unreliable data points
+                        period_end_for_check = metrics.get("period_end_date")
+                        if period_end_for_check:
+                            if isinstance(period_end_for_check, str):
+                                period_end_for_check = datetime.fromisoformat(
+                                    period_end_for_check
+                                )
+                            elif isinstance(period_end_for_check, date):
+                                period_end_for_check = datetime.combine(
+                                    period_end_for_check, datetime.min.time()
+                                )
+
+                            splits = self._detect_splits_between_dates(
+                                symbol, period_end_for_check, price_anchor_date
+                            )
+                            if splits:
+                                logger.info(
+                                    f"{symbol} FY{fiscal_year}: {len(splits)} split(s) detected "
+                                    f"between period_end and price_anchor_date"
+                                )
+                                for split in splits:
+                                    logger.info(
+                                        f"  Split on {split['split_date']}: "
+                                        f"{split['split_ratio']}-for-1 ratio"
+                                    )
+                                # Store split info for context (don't skip, just log)
+                                metrics["splits_in_window"] = len(splits)
 
                         if price_data:
                             metrics["price"] = price_data
@@ -484,15 +529,35 @@ class SectorMultiplesHistory:
                                 if mcap:
                                     metrics["market_cap"] = mcap
                                 else:
-                                    # Fallback to simple multiplication if split adjustment fails
-                                    metrics["market_cap"] = price_data * shares
+                                    # Skip this symbol if split adjustment fails
+                                    # Better to have no data than wrong data that distorts sector medians
+                                    logger.warning(
+                                        f"{symbol} FY{fiscal_year}: Split adjustment failed, "
+                                        f"excluding from multiples calculation"
+                                    )
+                                    # Remove from metrics so it will be skipped in calculation
+                                    if symbol in fy_metrics:
+                                        del fy_metrics[symbol]
                             continue
 
                     # Fallback 2: If we have shares but no price, we can't calculate P/E or P/B
                     # But we can still calculate P/S using stored market_cap (if we had it in the original row)
                     # This case is handled in the calculation function itself
 
-                return fy_metrics
+                # Validate market cap consistency for all symbols
+                # This catches split adjustment issues
+                validated_metrics = {}
+                for symbol, metrics in fy_metrics.items():
+                    if self._validate_market_cap_consistency(symbol, metrics):
+                        validated_metrics[symbol] = metrics
+                    else:
+                        # Skip symbols with inconsistent market cap
+                        logger.warning(
+                            f"{symbol}: Excluding from FY{fiscal_year} multiples due to "
+                            f"market cap inconsistency (likely split adjustment issue)"
+                        )
+
+                return validated_metrics
 
     def _get_historical_price(
         self, session: Session, symbol: str, target_date: datetime
@@ -540,6 +605,93 @@ class SectorMultiplesHistory:
             return float(row[1])
 
         return None
+
+    def _detect_splits_between_dates(
+        self, symbol: str, start_date, end_date
+    ) -> List[Dict[str, any]]:
+        """Detect if any stock splits occurred between two dates.
+
+        This is used to identify periods where split adjustment may be unreliable.
+        If splits occurred between period_end and the price anchor date,
+        the price from tickerdata may be on a different split basis than
+        the shares from SEC data.
+
+        Args:
+            symbol: Stock symbol
+            start_date: Start date (period_end_date)
+            end_date: End date (price_anchor_date)
+
+        Returns:
+            List of split events with date and ratio
+        """
+        query = text("""
+            SELECT split_date, split_ratio
+            FROM stock_splits
+            WHERE UPPER(symbol) = UPPER(:symbol)
+              AND split_date BETWEEN :start_date AND :end_date
+            ORDER BY split_date
+        """)
+
+        try:
+            with self.stock_db_manager.get_session() as session:
+                result = session.execute(
+                    query,
+                    {
+                        "symbol": symbol,
+                        "start_date": start_date,
+                        "end_date": end_date,
+                    },
+                )
+                splits = [
+                    {"split_date": str(row[0]), "split_ratio": float(row[1])}
+                    for row in result
+                ]
+                return splits
+        except Exception as e:
+            logger.debug(f"Error detecting splits for {symbol}: {e}")
+            return []
+
+    def _validate_market_cap_consistency(
+        self, symbol: str, metrics: Dict[str, any]
+    ) -> bool:
+        """Validate that market_cap is consistent with price × shares.
+
+        This catches split adjustment issues where:
+        - Price is split-adjusted (tickerdata)
+        - Shares are actual (SEC)
+        - Market cap calculation didn't account for the mismatch
+
+        Args:
+            symbol: Stock symbol
+            metrics: Dict with market_cap, price, shares_outstanding
+
+        Returns:
+            True if consistent (within 20% tolerance), False otherwise
+        """
+        market_cap = metrics.get("market_cap")
+        price = metrics.get("price")
+        shares = metrics.get("shares_outstanding")
+
+        if not all([market_cap, price, shares]):
+            return True  # Can't validate, assume OK
+
+        if market_cap <= 0 or price <= 0 or shares <= 0:
+            return True  # Invalid values, can't validate
+
+        calculated_mc = price * shares
+        diff_pct = abs(market_cap - calculated_mc) / market_cap
+
+        if diff_pct > 0.20:  # More than 20% difference
+            logger.warning(
+                f"{symbol}: Market cap inconsistency detected - "
+                f"Stored: ${market_cap:,.0f}, "
+                f"Calculated (price × shares): ${calculated_mc:,.0f}, "
+                f"Difference: {diff_pct * 100:.1f}% - "
+                f"Possible split adjustment issue"
+            )
+            return False
+
+        return True
 
     def _get_symbols_by_sector_industry(
         self,
