@@ -893,9 +893,13 @@
 
         async function loadData() {
             try {
+                console.log('Loading data...');
+                console.log('Sector data:', Object.keys(SECTOR_DATA.sectors));
+
                 // Sector data is already embedded
-                
+
                 // Try to load symbol scatter data (optional)
+                console.log('Fetching symbol_scatter_data.json...');
                 const response2 = await fetch('symbol_scatter_data.json');
                 if (response2.ok) {
                     SYMBOL_DATA = await response2.json();
@@ -903,13 +907,25 @@
 
                 if (Object.keys(SYMBOL_DATA).length === 0) {
                     // Use representative symbols as fallback
+                    console.log('No symbol data loaded, using fallback');
                     SYMBOL_DATA = generateFallbackSymbolData();
+                }
+
+                console.log('Symbol data:', Object.keys(SYMBOL_DATA).length, 'sectors');
+
+                // Check if Chart is loaded
+                if (typeof Chart === 'undefined') {
+                    console.error('Chart.js is not loaded!');
+                    alert('Chart.js failed to load from CDN. Please check your internet connection.');
+                    return;
                 }
 
                 initializeAllCharts();
                 renderAllLegends();
+                console.log('Charts initialized successfully');
 
             } catch (error) {
+                console.error('Error loading data:', error);
                 console.log('Using fallback symbol data');
                 // Use fallback data
                 SYMBOL_DATA = generateFallbackSymbolData();
@@ -1292,8 +1308,12 @@
             }
         }
 
-        // Initialize
-        loadData();
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadData);
+        } else {
+            loadData();
+        }
     </script>
 </body>
 </html>

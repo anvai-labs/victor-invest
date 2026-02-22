@@ -238,14 +238,17 @@
             'Consumer Cyclical': '#9933CC',
         };
 
-        let SECTOR_DATA = null;  // Will be populated in loadData()
+        let SECTOR_DATA = null;
 
         let charts = {};
         let hiddenSectors = new Set();
 
         function loadData() {
-            // Data is embedded directly - no fetch needed
-            const SECTOR_DATA = {
+            try {
+                console.log('Loading data...');
+
+                // Data is embedded directly - no fetch needed
+                SECTOR_DATA = {
   "years": [
     2016,
     2017,
@@ -793,9 +796,27 @@
     }
   }
 };
-            initializeCharts();
-            renderLegend();
-            renderStats();
+
+                console.log('Data loaded:', SECTOR_DATA);
+                console.log('Years:', SECTOR_DATA.years);
+                console.log('Sectors:', Object.keys(SECTOR_DATA.sectors));
+
+                // Check if Chart is loaded
+                if (typeof Chart === 'undefined') {
+                    console.error('Chart.js is not loaded!');
+                    document.body.innerHTML = '<div style="padding: 40px; text-align: center;"><h1>Error</h1><p>Chart.js failed to load from CDN. Please check your internet connection.</p></div>';
+                    return;
+                }
+
+                initializeCharts();
+                renderLegend();
+                renderStats();
+
+                console.log('Charts initialized successfully');
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.body.innerHTML = '<div style="padding: 40px; text-align: center;"><h1>Error</h1><p>' + error.message + '</p></div>';
+            }
         }
 
         function createChart(canvasId, metricKey, labelText, suggestedMin, suggestedMax) {
@@ -1006,8 +1027,12 @@
             }
         }
 
-        // Load data on page load
-        loadData();
+        // Load data when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadData);
+        } else {
+            loadData();
+        }
     </script>
 </body>
 </html>
