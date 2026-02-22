@@ -100,7 +100,29 @@ class SectorMultiplesHistory:
             )
 
         self.stock_db_manager = stock_db_manager
-        self.sec_db_manager = sec_db_manager or get_db_manager()
+        # Create sec_db_manager with correct connection to dataserver1
+        if sec_db_manager is None:
+            config = get_config()
+            # Build proper connection URL to dataserver1 with credentials
+            # Format: postgresql://user:password@host:port/database
+            sec_db_url = (
+                f"postgresql://investigator:investigator@dataserver1.singh.local:5432/sec_database"
+            )
+
+            from investigator.infrastructure.database.db import DatabaseManager
+
+            sec_db_manager = DatabaseManager(config)
+            # Override engine to connect to dataserver1 with credentials
+            sec_db_manager.engine = create_engine(sec_db_url)
+            from sqlalchemy.orm import sessionmaker
+
+            sec_db_manager.SessionLocal = sessionmaker(
+                autocommit=False, autoflush=False, bind=sec_db_manager.engine
+            )
+        else:
+            sec_db_manager = sec_db_manager
+
+        self.sec_db_manager = sec_db_manager
         self.min_samples = min_samples
         self.percentile_exclude = percentile_exclude
 
@@ -347,216 +369,215 @@ class SectorMultiplesHistory:
                 )
             except Exception as e:
                 logger.warning(f"sec_companyfacts_processed query failed: {e}")
-                # Fallback: try simpler query
                 return {}
 
-                # Process results into metrics with fallback logic
-                fy_metrics: Dict[str, Dict[str, float]] = {}
+            # Process results into metrics with fallback logic
+            fy_metrics: Dict[str, Dict[str, float]] = {}
 
-                for row in result:
-                    symbol = row[0]
-                    total_revenue = float(row[1]) if row[1] else None
-                    net_income = float(row[2]) if row[2] else None
-                    operating_income = float(row[3]) if row[3] else None
-                    equity = float(row[4]) if row[4] else None
-                    shares = float(row[5]) if row[5] else None
-                    shares_wa_diluted = (
-                        float(row[6]) if row[6] else None
-                    )  # Weighted average diluted
-                    market_cap = float(row[7]) if row[7] else None
-                    period_end = row[8]
-                    filed_date = row[9]
-                    eps = float(row[10]) if row[10] else None
-                    eps_diluted = float(row[11]) if row[11] else None
+            for row in result:
+                symbol = row[0]
+                total_revenue = float(row[1]) if row[1] else None
+                net_income = float(row[2]) if row[2] else None
+                operating_income = float(row[3]) if row[3] else None
+                equity = float(row[4]) if row[4] else None
+                shares = float(row[5]) if row[5] else None
+                shares_wa_diluted = (
+                    float(row[6]) if row[6] else None
+                )  # Weighted average diluted
+                market_cap = float(row[7]) if row[7] else None
+                period_end = row[8]
+                filed_date = row[9]
+                eps = float(row[10]) if row[10] else None
+                eps_diluted = float(row[11]) if row[11] else None
 
-                    if symbol not in fy_metrics:
-                        fy_metrics[symbol] = {}
+                if symbol not in fy_metrics:
+                    fy_metrics[symbol] = {}
 
-                    # Map columns to metrics
-                    if total_revenue:
-                        fy_metrics[symbol]["total_revenue"] = total_revenue
-                    if net_income:
-                        fy_metrics[symbol]["net_income"] = net_income
-                    if operating_income:
-                        fy_metrics[symbol]["operating_income"] = operating_income
-                    if equity:
-                        fy_metrics[symbol]["stockholders_equity"] = equity
+                # Map columns to metrics
+                if total_revenue:
+                    fy_metrics[symbol]["total_revenue"] = total_revenue
+                if net_income:
+                    fy_metrics[symbol]["net_income"] = net_income
+                if operating_income:
+                    fy_metrics[symbol]["operating_income"] = operating_income
+                if equity:
+                    fy_metrics[symbol]["stockholders_equity"] = equity
 
-                    # Shares outstanding fallback chain:
-                    # 1. Use weighted_average_diluted_shares_outstanding (most accurate for dilution)
-                    # 2. Use shares_outstanding (basic shares)
-                    if shares_wa_diluted and shares_wa_diluted > 0:
-                        fy_metrics[symbol]["shares_outstanding"] = shares_wa_diluted
-                    elif shares and shares > 0:
-                        fy_metrics[symbol]["shares_outstanding"] = shares
+                # Shares outstanding fallback chain:
+                # 1. Use weighted_average_diluted_shares_outstanding (most accurate for dilution)
+                # 2. Use shares_outstanding (basic shares)
+                if shares_wa_diluted and shares_wa_diluted > 0:
+                    fy_metrics[symbol]["shares_outstanding"] = shares_wa_diluted
+                elif shares and shares > 0:
+                    fy_metrics[symbol]["shares_outstanding"] = shares
 
-                    # Market cap: Use stored value, will calculate fallback if needed
-                    if market_cap and market_cap > 0:
-                        fy_metrics[symbol]["market_cap"] = market_cap
+                # Market cap: Use stored value, will calculate fallback if needed
+                if market_cap and market_cap > 0:
+                    fy_metrics[symbol]["market_cap"] = market_cap
 
-                    # EPS for fallback
-                    if eps and eps > 0:
-                        fy_metrics[symbol]["eps"] = eps
-                    elif eps_diluted and eps_diluted > 0:
-                        fy_metrics[symbol]["eps"] = eps_diluted
+                # EPS for fallback
+                if eps and eps > 0:
+                    fy_metrics[symbol]["eps"] = eps
+                elif eps_diluted and eps_diluted > 0:
+                    fy_metrics[symbol]["eps"] = eps_diluted
 
+                if period_end:
+                    fy_metrics[symbol]["period_end_date"] = period_end
+
+                if filed_date:
+                    fy_metrics[symbol]["filed_date"] = filed_date
+
+            # Apply robust fallback logic for missing market_cap and price
+            # Fallback priority:
+            # 1. Use stored market_cap if available and > 0
+            # 2. Calculate from tickerdata (with split adjustment for SEC shares)
+            # 3. Validate consistency
+            for symbol, metrics in fy_metrics.items():
+                # Skip if we already have both market_cap AND price
+                # (Note: market_cap alone isn't enough - we need price for P/E and P/B)
+                if (
+                    metrics.get("market_cap")
+                    and metrics.get("market_cap", 0) > 0
+                    and metrics.get("price")
+                ):
+                    continue
+
+                # Fallback 1: Try to get price from tickerdata around period_end + buffer
+                # This uses tickerdata which has historical prices (split-adjusted)
+                # We need price even if we have market_cap (for P/E and P/B calculations)
+                if "filed_date" in metrics and not metrics.get("price"):
+                    from datetime import datetime, timedelta, date
+
+                    # Use period_end as base for price anchor (more stable than filed_date)
+                    # Add 90-day buffer to next quarter when market has digested FY results
+                    # This reduces vulnerability to splits between period_end and filing
+                    period_end = metrics.get("period_end_date")
                     if period_end:
-                        fy_metrics[symbol]["period_end_date"] = period_end
+                        # Convert period_end to datetime regardless of input type
+                        if isinstance(period_end, str):
+                            period_end = datetime.fromisoformat(period_end)
+                        elif isinstance(period_end, date):
+                            period_end = datetime.combine(
+                                period_end, datetime.min.time()
+                            )
+                        # If already datetime, use as-is
 
-                    if filed_date:
-                        fy_metrics[symbol]["filed_date"] = filed_date
+                        # Use period_end + 90 days (next quarter) as price anchor
+                        # This allows time for 10-K filing and market digestion
+                        # Any splits between period_end and period_end+90 will be handled
+                        # by the split adjustment logic in calculate_market_cap()
+                        price_anchor_date = period_end + timedelta(days=90)
+                    else:
+                        # Fallback to filed_date if period_end not available
+                        filed_date = metrics["filed_date"]
+                        if isinstance(filed_date, str):
+                            filed_date = datetime.fromisoformat(filed_date)
+                        elif isinstance(filed_date, date):
+                            filed_date = datetime.combine(
+                                filed_date, datetime.min.time()
+                            )
+                        price_anchor_date = filed_date + timedelta(days=30)
+                    price_data = self._get_historical_price(
+                        sec_session, symbol, price_anchor_date
+                    )
 
-                # Apply robust fallback logic for missing market_cap and price
-                # Fallback priority:
-                # 1. Use stored market_cap if available and > 0
-                # 2. Calculate from tickerdata (with split adjustment for SEC shares)
-                # 3. Validate consistency
-                for symbol, metrics in fy_metrics.items():
-                    # Skip if we already have both market_cap AND price
-                    # (Note: market_cap alone isn't enough - we need price for P/E and P/B)
-                    if (
-                        metrics.get("market_cap")
-                        and metrics.get("market_cap", 0) > 0
-                        and metrics.get("price")
-                    ):
+                    # Check for splits between period_end and price_anchor_date
+                    # This helps identify potentially unreliable data points
+                    period_end_for_check = metrics.get("period_end_date")
+                    if period_end_for_check:
+                        if isinstance(period_end_for_check, str):
+                            period_end_for_check = datetime.fromisoformat(
+                                period_end_for_check
+                            )
+                        elif isinstance(period_end_for_check, date):
+                            period_end_for_check = datetime.combine(
+                                period_end_for_check, datetime.min.time()
+                            )
+
+                        splits = self._detect_splits_between_dates(
+                            symbol, period_end_for_check, price_anchor_date
+                        )
+                        if splits:
+                            logger.info(
+                                f"{symbol} FY{fiscal_year}: {len(splits)} split(s) detected "
+                                f"between period_end and price_anchor_date"
+                            )
+                            for split in splits:
+                                logger.info(
+                                    f"  Split on {split['split_date']}: "
+                                    f"{split['split_ratio']}-for-1 ratio"
+                                )
+                            # Store split info for context (don't skip, just log)
+                            metrics["splits_in_window"] = len(splits)
+
+                    if price_data:
+                        metrics["price"] = price_data
+                        # Recalculate market_cap if missing or zero with split adjustment
+                        shares = metrics.get("shares_outstanding")
+                        period_end = metrics.get("period_end_date")
+                        if (
+                            (
+                                not metrics.get("market_cap")
+                                or metrics.get("market_cap", 0) == 0
+                            )
+                            and shares
+                            and shares > 0
+                        ):
+                            # Use split-adjusted market cap calculation
+                            # Shares are from SEC (actual), price is split-adjusted
+                            from investigator.domain.services.valuation_shared.split_adjusted_market_cap import (
+                                calculate_market_cap,
+                            )
+
+                            # Convert period_end to date if needed
+                            if isinstance(period_end, str):
+                                from datetime import datetime
+
+                                period_end = datetime.fromisoformat(
+                                    period_end
+                                ).date()
+                            elif isinstance(period_end, datetime):
+                                period_end = period_end.date()
+
+                            mcap = calculate_market_cap(
+                                symbol=symbol,
+                                price=price_data,
+                                shares=shares,
+                                price_date=period_end,
+                                shares_source="sec",  # SEC shares are actual
+                            )
+                            if mcap:
+                                metrics["market_cap"] = mcap
+                            else:
+                                # Skip this symbol if split adjustment fails
+                                # Better to have no data than wrong data that distorts sector medians
+                                logger.warning(
+                                    f"{symbol} FY{fiscal_year}: Split adjustment failed, "
+                                    f"excluding from multiples calculation"
+                                )
+                                # Remove from metrics so it will be skipped in calculation
+                                if symbol in fy_metrics:
+                                    del fy_metrics[symbol]
                         continue
 
-                    # Fallback 1: Try to get price from tickerdata around period_end + buffer
-                    # This uses tickerdata which has historical prices (split-adjusted)
-                    # We need price even if we have market_cap (for P/E and P/B calculations)
-                    if "filed_date" in metrics and not metrics.get("price"):
-                        from datetime import datetime, timedelta, date
+                # Fallback 2: If we have shares but no price, we can't calculate P/E or P/B
+                # But we can still calculate P/S using stored market_cap (if we had it in the original row)
+                # This case is handled in the calculation function itself
 
-                        # Use period_end as base for price anchor (more stable than filed_date)
-                        # Add 90-day buffer to next quarter when market has digested FY results
-                        # This reduces vulnerability to splits between period_end and filing
-                        period_end = metrics.get("period_end_date")
-                        if period_end:
-                            # Convert period_end to datetime regardless of input type
-                            if isinstance(period_end, str):
-                                period_end = datetime.fromisoformat(period_end)
-                            elif isinstance(period_end, date):
-                                period_end = datetime.combine(
-                                    period_end, datetime.min.time()
-                                )
-                            # If already datetime, use as-is
+            # Validate market cap consistency for all symbols
+            # This catches split adjustment issues
+            validated_metrics = {}
+            for symbol, metrics in fy_metrics.items():
+                if self._validate_market_cap_consistency(symbol, metrics):
+                    validated_metrics[symbol] = metrics
+                else:
+                    # Skip symbols with inconsistent market cap
+                    logger.warning(
+                        f"{symbol}: Excluding from FY{fiscal_year} multiples due to "
+                        f"market cap inconsistency (likely split adjustment issue)"
+                    )
 
-                            # Use period_end + 90 days (next quarter) as price anchor
-                            # This allows time for 10-K filing and market digestion
-                            # Any splits between period_end and period_end+90 will be handled
-                            # by the split adjustment logic in calculate_market_cap()
-                            price_anchor_date = period_end + timedelta(days=90)
-                        else:
-                            # Fallback to filed_date if period_end not available
-                            filed_date = metrics["filed_date"]
-                            if isinstance(filed_date, str):
-                                filed_date = datetime.fromisoformat(filed_date)
-                            elif isinstance(filed_date, date):
-                                filed_date = datetime.combine(
-                                    filed_date, datetime.min.time()
-                                )
-                            price_anchor_date = filed_date + timedelta(days=30)
-                        price_data = self._get_historical_price(
-                            sec_session, symbol, price_anchor_date
-                        )
-
-                        # Check for splits between period_end and price_anchor_date
-                        # This helps identify potentially unreliable data points
-                        period_end_for_check = metrics.get("period_end_date")
-                        if period_end_for_check:
-                            if isinstance(period_end_for_check, str):
-                                period_end_for_check = datetime.fromisoformat(
-                                    period_end_for_check
-                                )
-                            elif isinstance(period_end_for_check, date):
-                                period_end_for_check = datetime.combine(
-                                    period_end_for_check, datetime.min.time()
-                                )
-
-                            splits = self._detect_splits_between_dates(
-                                symbol, period_end_for_check, price_anchor_date
-                            )
-                            if splits:
-                                logger.info(
-                                    f"{symbol} FY{fiscal_year}: {len(splits)} split(s) detected "
-                                    f"between period_end and price_anchor_date"
-                                )
-                                for split in splits:
-                                    logger.info(
-                                        f"  Split on {split['split_date']}: "
-                                        f"{split['split_ratio']}-for-1 ratio"
-                                    )
-                                # Store split info for context (don't skip, just log)
-                                metrics["splits_in_window"] = len(splits)
-
-                        if price_data:
-                            metrics["price"] = price_data
-                            # Recalculate market_cap if missing or zero with split adjustment
-                            shares = metrics.get("shares_outstanding")
-                            period_end = metrics.get("period_end_date")
-                            if (
-                                (
-                                    not metrics.get("market_cap")
-                                    or metrics.get("market_cap", 0) == 0
-                                )
-                                and shares
-                                and shares > 0
-                            ):
-                                # Use split-adjusted market cap calculation
-                                # Shares are from SEC (actual), price is split-adjusted
-                                from investigator.domain.services.valuation_shared.split_adjusted_market_cap import (
-                                    calculate_market_cap,
-                                )
-
-                                # Convert period_end to date if needed
-                                if isinstance(period_end, str):
-                                    from datetime import datetime
-
-                                    period_end = datetime.fromisoformat(
-                                        period_end
-                                    ).date()
-                                elif isinstance(period_end, datetime):
-                                    period_end = period_end.date()
-
-                                mcap = calculate_market_cap(
-                                    symbol=symbol,
-                                    price=price_data,
-                                    shares=shares,
-                                    price_date=period_end,
-                                    shares_source="sec",  # SEC shares are actual
-                                )
-                                if mcap:
-                                    metrics["market_cap"] = mcap
-                                else:
-                                    # Skip this symbol if split adjustment fails
-                                    # Better to have no data than wrong data that distorts sector medians
-                                    logger.warning(
-                                        f"{symbol} FY{fiscal_year}: Split adjustment failed, "
-                                        f"excluding from multiples calculation"
-                                    )
-                                    # Remove from metrics so it will be skipped in calculation
-                                    if symbol in fy_metrics:
-                                        del fy_metrics[symbol]
-                            continue
-
-                    # Fallback 2: If we have shares but no price, we can't calculate P/E or P/B
-                    # But we can still calculate P/S using stored market_cap (if we had it in the original row)
-                    # This case is handled in the calculation function itself
-
-                # Validate market cap consistency for all symbols
-                # This catches split adjustment issues
-                validated_metrics = {}
-                for symbol, metrics in fy_metrics.items():
-                    if self._validate_market_cap_consistency(symbol, metrics):
-                        validated_metrics[symbol] = metrics
-                    else:
-                        # Skip symbols with inconsistent market cap
-                        logger.warning(
-                            f"{symbol}: Excluding from FY{fiscal_year} multiples due to "
-                            f"market cap inconsistency (likely split adjustment issue)"
-                        )
-
-                return validated_metrics
+            return validated_metrics
 
     def _get_historical_price(
         self, session: Session, symbol: str, target_date: datetime

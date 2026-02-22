@@ -657,36 +657,74 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
         if not quarterly_metrics:
             return result
 
-        # Handle SEC filing tool format (nested structure) - passthrough
+        # Handle SEC filing tool format (nested structure) - use shared TTMMetrics
         if quarterly_metrics and "income_statement" in quarterly_metrics[0]:
-            sec_data = quarterly_metrics[0]
-            income = sec_data.get("income_statement", {})
-            balance = sec_data.get("balance_sheet", {})
-            sec_data.get("cash_flow", {})
+            try:
+                from investigator.domain.services.valuation.common import TTMMetrics
 
-            ttm_net_income = income.get("net_income") or income.get("net_income_loss")
-            ttm_revenue = income.get("total_revenue") or income.get("revenue")
-            ttm_ebitda = income.get("ebitda")
-            book_value = balance.get("stockholders_equity") or balance.get(
-                "total_equity"
-            )
-
-            result["ttm_revenue"] = ttm_revenue
-            result["ttm_ebitda"] = ttm_ebitda
-            result["book_value"] = book_value
-
-            if shares_outstanding and shares_outstanding > 0:
-                result["ttm_eps"] = (
-                    ttm_net_income / shares_outstanding if ttm_net_income else None
+                result["ttm_eps"] = TTMMetrics.calculate_ttm_eps(
+                    quarterly_data=quarterly_metrics,
+                    shares_outstanding=shares_outstanding,
                 )
-                result["revenue_per_share"] = (
-                    ttm_revenue / shares_outstanding if ttm_revenue else None
+                result["ttm_revenue"] = TTMMetrics.calculate_ttm_revenue(
+                    quarterly_data=quarterly_metrics
                 )
-                result["book_value_per_share"] = (
-                    book_value / shares_outstanding if book_value else None
+                result["ttm_ebitda"] = TTMMetrics.calculate_ttm_ebitda(
+                    quarterly_data=quarterly_metrics
                 )
 
-            return result
+                # Book value from balance sheet
+                if quarterly_metrics:
+                    sec_data = quarterly_metrics[0]
+                    balance = sec_data.get("balance_sheet", {})
+                    book_value = balance.get("stockholders_equity") or balance.get(
+                        "total_equity"
+                    )
+                    result["book_value"] = book_value
+
+                    if shares_outstanding and shares_outstanding > 0:
+                        result["revenue_per_share"] = (
+                            result["ttm_revenue"] / shares_outstanding
+                            if result["ttm_revenue"]
+                            else None
+                        )
+                        result["book_value_per_share"] = (
+                            book_value / shares_outstanding if book_value else None
+                        )
+
+                return result
+
+            except Exception as e:
+                logger.debug(f"TTMMetrics failed for SEC format, using fallback: {e}")
+
+                # Fallback to direct extraction from nested structure
+                sec_data = quarterly_metrics[0]
+                income = sec_data.get("income_statement", {})
+                balance = sec_data.get("balance_sheet", {})
+
+                ttm_net_income = income.get("net_income") or income.get("net_income_loss")
+                ttm_revenue = income.get("total_revenue") or income.get("revenue")
+                ttm_ebitda = income.get("ebitda")
+                book_value = balance.get("stockholders_equity") or balance.get(
+                    "total_equity"
+                )
+
+                result["ttm_revenue"] = ttm_revenue
+                result["ttm_ebitda"] = ttm_ebitda
+                result["book_value"] = book_value
+
+                if shares_outstanding and shares_outstanding > 0:
+                    result["ttm_eps"] = (
+                        ttm_net_income / shares_outstanding if ttm_net_income else None
+                    )
+                    result["revenue_per_share"] = (
+                        ttm_revenue / shares_outstanding if ttm_revenue else None
+                    )
+                    result["book_value_per_share"] = (
+                        book_value / shares_outstanding if book_value else None
+                    )
+
+                return result
 
         # Handle direct quarterly metrics format - use shared TTMMetrics
         try:
