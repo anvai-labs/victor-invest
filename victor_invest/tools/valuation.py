@@ -997,6 +997,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     "revenue": None,
                     "shareholders_equity": None,
                     "market_cap": None,
+                    "ebitda": None,  # Required for EV/EBITDA model applicability check
                 }
 
                 # Try to extract TTM financials from quarterly_metrics
@@ -1012,6 +1013,12 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     # Use latest quarter's shareholders_equity
                     financials["shareholders_equity"] = ttm[0].get(
                         "stockholders_equity"
+                    )
+                    # Calculate TTM EBITDA from operating_income and depreciation_amortization
+                    financials["ebitda"] = sum(
+                        (q.get("operating_income", 0) or 0) +
+                        (q.get("depreciation_amortization", 0) or 0)
+                        for q in ttm
                     )
 
                 # Calculate market_cap if we have price and shares
