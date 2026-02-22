@@ -2256,6 +2256,197 @@ def _format_technical(technical: dict) -> str:
 
 
 # =============================================================================
+# Sector Multiples Handlers
+# =============================================================================
+
+
+@handler_decorator(
+    "refresh_sector_multiples",
+    vertical="investment",
+    description="Refresh sector/industry valuation multiples from database",
+)
+@dataclass
+class RefreshSectorMultiplesHandler(BaseHandler):
+    """Refresh current sector multiples from database data."""
+
+    async def execute(
+        self,
+        node: "ComputeNode",
+        context: "WorkflowContext",
+        tool_registry: "ToolRegistry",
+    ) -> Tuple[Any, int]:
+        """Execute sector multiples refresh.
+
+        Returns:
+            Tuple of (output_dict, tool_calls_count)
+        """
+        from victor_invest.tools.sector_multiples import SectorMultiplesTool
+
+        # Get parameters from node config or context
+        params = node.params if hasattr(node, "params") else {}
+
+        tool = SectorMultiplesTool()
+        result = await tool.execute(
+            action="refresh",
+            sectors=params.get("sectors"),
+            industries=params.get("industries"),
+            min_samples=params.get("min_samples", 10),
+            exclude_outliers=params.get("exclude_outliers", True),
+            update_config=params.get("update_config", True),
+            dry_run=params.get("dry_run", False),
+        )
+
+        return {
+            "status": "success" if result.success else "error",
+            "data": result.output if result.success else None,
+            "error": result.error if not result.success else None,
+        }, 0
+
+
+@handler_decorator(
+    "historical_sector_multiples",
+    vertical="investment",
+    description="Calculate historical sector multiples for a fiscal year",
+)
+@dataclass
+class HistoricalSectorMultiplesHandler(BaseHandler):
+    """Calculate historical sector multiples for a specific fiscal year."""
+
+    async def execute(
+        self,
+        node: "ComputeNode",
+        context: "WorkflowContext",
+        tool_registry: "ToolRegistry",
+    ) -> Tuple[Any, int]:
+        """Execute historical sector multiples calculation.
+
+        Returns:
+            Tuple of (output_dict, tool_calls_count)
+        """
+        from victor_invest.tools.sector_multiples import SectorMultiplesTool
+
+        # Get parameters from node config or context
+        params = node.params if hasattr(node, "params") else {}
+        fiscal_year = params.get("fiscal_year") or context.get("fiscal_year")
+
+        if not fiscal_year:
+            return {
+                "status": "error",
+                "error": "fiscal_year is required",
+                "data": None,
+            }, 0
+
+        tool = SectorMultiplesTool()
+        result = await tool.execute(
+            action="historical",
+            fiscal_year=fiscal_year,
+            sectors=params.get("sectors"),
+            industries=params.get("industries"),
+            min_samples=params.get("min_samples", 5),
+            exclude_outliers=params.get("exclude_outliers", True),
+            store=params.get("store", True),
+            export=params.get("export"),
+        )
+
+        return {
+            "status": "success" if result.success else "error",
+            "data": result.output if result.success else None,
+            "error": result.error if not result.success else None,
+        }, 0
+
+
+@handler_decorator(
+    "sector_multiples_timeline",
+    vertical="investment",
+    description="Display sector multiples timeline matrix",
+)
+@dataclass
+class SectorMultiplesTimelineHandler(BaseHandler):
+    """Display sector/industry multiples timeline table."""
+
+    async def execute(
+        self,
+        node: "ComputeNode",
+        context: "WorkflowContext",
+        tool_registry: "ToolRegistry",
+    ) -> Tuple[Any, int]:
+        """Execute sector multiples timeline.
+
+        Returns:
+            Tuple of (output_dict, tool_calls_count)
+        """
+        from victor_invest.tools.sector_multiples import SectorMultiplesTool
+
+        # Get parameters from node config or context
+        params = node.params if hasattr(node, "params") else {}
+
+        tool = SectorMultiplesTool()
+        result = await tool.execute(
+            action="timeline",
+            sectors=params.get("sectors", "Technology"),
+            industries=params.get("industries"),
+            years=params.get("years", "5"),
+            metric=params.get("metric", "all"),
+        )
+
+        return {
+            "status": "success" if result.success else "error",
+            "data": result.output if result.success else None,
+            "error": result.error if not result.success else None,
+        }, 0
+
+
+@handler_decorator(
+    "sector_multiples_trend",
+    vertical="investment",
+    description="View historical trend for a sector/industry",
+)
+@dataclass
+class SectorMultiplesTrendHandler(BaseHandler):
+    """View historical trend for a sector or industry."""
+
+    async def execute(
+        self,
+        node: "ComputeNode",
+        context: "WorkflowContext",
+        tool_registry: "ToolRegistry",
+    ) -> Tuple[Any, int]:
+        """Execute sector multiples trend.
+
+        Returns:
+            Tuple of (output_dict, tool_calls_count)
+        """
+        from victor_invest.tools.sector_multiples import SectorMultiplesTool
+
+        # Get parameters from node config or context
+        params = node.params if hasattr(node, "params") else {}
+        group_name = params.get("group_name") or context.get("group_name")
+
+        if not group_name:
+            return {
+                "status": "error",
+                "error": "group_name is required",
+                "data": None,
+            }, 0
+
+        tool = SectorMultiplesTool()
+        result = await tool.execute(
+            action="trend",
+            group_name=group_name,
+            group_type=params.get("group_type", "sector"),
+            start_year=params.get("start_year"),
+            end_year=params.get("end_year"),
+            export=params.get("export"),
+        )
+
+        return {
+            "status": "success" if result.success else "error",
+            "data": result.output if result.success else None,
+            "error": result.error if not result.success else None,
+        }, 0
+
+
+# =============================================================================
 # Registration (No-op for backward compatibility)
 # =============================================================================
 
@@ -2289,6 +2480,11 @@ __all__ = [
     "GenerateLookbackDatesHandler",
     "ProcessBacktestBatchHandler",
     "SaveRLPredictionsHandler",
+    # Sector multiples
+    "RefreshSectorMultiplesHandler",
+    "HistoricalSectorMultiplesHandler",
+    "SectorMultiplesTimelineHandler",
+    "SectorMultiplesTrendHandler",
     # Helper functions
     "_format_fundamental",
     "_format_technical",

@@ -31,6 +31,7 @@ Tools available:
 - ShortInterestTool: FINRA short interest and squeeze risk analysis
 - MarketRegimeTool: Comprehensive market regime detection and investment recommendations
 - ValuationSignalsTool: Integrated valuation signal analysis (credit risk, insider, short interest, regime)
+- SectorMultiplesTool: Sector/industry valuation multiples calculation and management
 
 Base classes:
 - BaseTool: Abstract base class for all tools
@@ -83,6 +84,7 @@ from victor_invest.tools.market_regime import MarketRegimeTool
 from victor_invest.tools.rl_backtest import RLBacktestTool
 from victor_invest.tools.sec_filing import SECFilingTool
 from victor_invest.tools.short_interest import ShortInterestTool
+from victor_invest.tools.sector_multiples import SectorMultiplesTool
 from victor_invest.tools.technical_indicators import TechnicalIndicatorsTool
 from victor_invest.tools.treasury_data import TreasuryDataTool
 from victor_invest.tools.valuation import ValuationTool
@@ -105,6 +107,7 @@ TOOL_CLASSES = [
     ShortInterestTool,
     MarketRegimeTool,
     ValuationSignalsTool,
+    SectorMultiplesTool,
 ]
 
 # Tool registry mapping names to classes
@@ -243,6 +246,7 @@ __all__ = [
     "ShortInterestTool",
     "MarketRegimeTool",
     "ValuationSignalsTool",
+    "SectorMultiplesTool",
     # Utility functions
     "get_tool",
     "get_all_tools",
