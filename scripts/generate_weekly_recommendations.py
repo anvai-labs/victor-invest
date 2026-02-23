@@ -165,8 +165,12 @@ def generate_report(
             "short_opportunities": len(categorized["shorts"]),
             "skipped": len(categorized["skips"]),
         },
-        "top_longs": [format_recommendation(p, tier_perf) for p in categorized["longs"][:top_n]],
-        "top_shorts": [format_recommendation(p, tier_perf) for p in categorized["shorts"][:top_n]],
+        "top_longs": [
+            format_recommendation(p, tier_perf) for p in categorized["longs"][:top_n]
+        ],
+        "top_shorts": [
+            format_recommendation(p, tier_perf) for p in categorized["shorts"][:top_n]
+        ],
         "best_tiers": [
             {
                 "tier": tier,
@@ -174,7 +178,9 @@ def generate_report(
                 "avg_reward": round(info["avg_reward"], 4),
                 "win_rate": round(info["win_rate"], 1),
             }
-            for tier, info in sorted(tier_perf.items(), key=lambda x: x[1]["avg_reward"], reverse=True)[:5]
+            for tier, info in sorted(
+                tier_perf.items(), key=lambda x: x[1]["avg_reward"], reverse=True
+            )[:5]
         ],
     }
 
@@ -218,13 +224,18 @@ def print_report(report: Dict) -> None:
         print("BEST PERFORMING TIERS")
         print("-" * 40)
         for tier in report["best_tiers"]:
-            print(f"  {tier['tier']}: {tier['avg_reward']:+.4f} reward, " f"{tier['win_rate']:.0f}% win rate")
+            print(
+                f"  {tier['tier']}: {tier['avg_reward']:+.4f} reward, "
+                f"{tier['win_rate']:.0f}% win rate"
+            )
 
     print("\n" + "=" * 60)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate weekly stock recommendations from RL predictions")
+    parser = argparse.ArgumentParser(
+        description="Generate weekly stock recommendations from RL predictions"
+    )
     parser.add_argument(
         "--days",
         type=int,

@@ -24,7 +24,6 @@ Tests the comprehensive robust valuation combining all 3 layers:
 import pytest
 from unittest.mock import MagicMock, patch
 from datetime import datetime, timezone
-from decimal import Decimal
 
 from investigator.domain.services.robust_valuation_service import (
     RobustValuationService,

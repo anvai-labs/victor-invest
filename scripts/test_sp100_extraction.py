@@ -69,11 +69,19 @@ for symbol in SP100_SAMPLE:
             continue
 
         # Count extracted metrics
-        metric_count = len([k for k in metrics.keys() if k not in ["symbol", "fiscal_year", "fiscal_period"]])
+        metric_count = len(
+            [
+                k
+                for k in metrics.keys()
+                if k not in ["symbol", "fiscal_year", "fiscal_period"]
+            ]
+        )
 
         # Check critical metrics
         critical = ["total_revenue", "net_income", "total_assets", "total_liabilities"]
-        has_critical = sum(1 for m in critical if m in metrics and metrics[m] is not None)
+        has_critical = sum(
+            1 for m in critical if m in metrics and metrics[m] is not None
+        )
 
         print(f"✓ {metric_count} metrics, {has_critical}/4 critical")
 
@@ -83,10 +91,14 @@ for symbol in SP100_SAMPLE:
                 "symbol": symbol,
                 "total_metrics": metric_count,
                 "critical_count": has_critical,
-                "has_revenue": "total_revenue" in metrics and metrics["total_revenue"] is not None,
-                "has_net_income": "net_income" in metrics and metrics["net_income"] is not None,
-                "has_assets": "total_assets" in metrics and metrics["total_assets"] is not None,
-                "has_liabilities": "total_liabilities" in metrics and metrics["total_liabilities"] is not None,
+                "has_revenue": "total_revenue" in metrics
+                and metrics["total_revenue"] is not None,
+                "has_net_income": "net_income" in metrics
+                and metrics["net_income"] is not None,
+                "has_assets": "total_assets" in metrics
+                and metrics["total_assets"] is not None,
+                "has_liabilities": "total_liabilities" in metrics
+                and metrics["total_liabilities"] is not None,
             }
         )
 
@@ -101,14 +113,24 @@ print("=" * 80)
 
 successful = [s for s in coverage_stats if s["total_metrics"] > 0]
 print(f"Successful extractions: {len(successful)}/{len(SP100_SAMPLE)}")
-print(f"Average metrics per company: {sum(s['total_metrics'] for s in successful) / len(successful):.1f}")
+print(
+    f"Average metrics per company: {sum(s['total_metrics'] for s in successful) / len(successful):.1f}"
+)
 print()
 
 print("Critical Metric Coverage:")
-print(f"  Revenue: {sum(1 for s in coverage_stats if s['has_revenue'])}/{len(coverage_stats)}")
-print(f"  Net Income: {sum(1 for s in coverage_stats if s['has_net_income'])}/{len(coverage_stats)}")
-print(f"  Assets: {sum(1 for s in coverage_stats if s['has_assets'])}/{len(coverage_stats)}")
-print(f"  Liabilities: {sum(1 for s in coverage_stats if s['has_liabilities'])}/{len(coverage_stats)}")
+print(
+    f"  Revenue: {sum(1 for s in coverage_stats if s['has_revenue'])}/{len(coverage_stats)}"
+)
+print(
+    f"  Net Income: {sum(1 for s in coverage_stats if s['has_net_income'])}/{len(coverage_stats)}"
+)
+print(
+    f"  Assets: {sum(1 for s in coverage_stats if s['has_assets'])}/{len(coverage_stats)}"
+)
+print(
+    f"  Liabilities: {sum(1 for s in coverage_stats if s['has_liabilities'])}/{len(coverage_stats)}"
+)
 print()
 
 # Save results
@@ -119,11 +141,15 @@ print(f"Results saved to {output_file}")
 print()
 
 # Show companies with low coverage for investigation
-low_coverage = [s for s in coverage_stats if s["total_metrics"] < 50 or s["critical_count"] < 3]
+low_coverage = [
+    s for s in coverage_stats if s["total_metrics"] < 50 or s["critical_count"] < 3
+]
 if low_coverage:
     print("=" * 80)
     print("COMPANIES WITH LOW COVERAGE (need investigation)")
     print("=" * 80)
     for s in low_coverage:
-        print(f"  {s['symbol']}: {s['total_metrics']} metrics, {s['critical_count']}/4 critical")
+        print(
+            f"  {s['symbol']}: {s['total_metrics']} metrics, {s['critical_count']}/4 critical"
+        )
     print()

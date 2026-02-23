@@ -86,7 +86,9 @@ def load_dual_policy_files() -> DualRLPolicy:
     if not TECHNICAL_POLICY_PATH.exists():
         raise FileNotFoundError(f"Technical policy not found: {TECHNICAL_POLICY_PATH}")
     if not FUNDAMENTAL_POLICY_PATH.exists():
-        raise FileNotFoundError(f"Fundamental policy not found: {FUNDAMENTAL_POLICY_PATH}")
+        raise FileNotFoundError(
+            f"Fundamental policy not found: {FUNDAMENTAL_POLICY_PATH}"
+        )
 
     policy = load_dual_policy(
         technical_path=str(TECHNICAL_POLICY_PATH),
@@ -152,13 +154,17 @@ def validate_policy(policy) -> dict:
             # Validate weights sum to 100
             total = sum(weights.values())
             if abs(total - 100) > 1:
-                results["errors"].append(f"{case['name']}: weights sum to {total}, not 100")
+                results["errors"].append(
+                    f"{case['name']}: weights sum to {total}, not 100"
+                )
                 results["valid"] = False
 
             # Validate all weights are non-negative
             for model, weight in weights.items():
                 if weight < 0:
-                    results["errors"].append(f"{case['name']}: negative weight for {model}")
+                    results["errors"].append(
+                        f"{case['name']}: negative weight for {model}"
+                    )
                     results["valid"] = False
 
             results["predictions"].append(
@@ -256,13 +262,17 @@ def validate_dual_policy(policy: DualRLPolicy) -> dict:
             # Validate weights sum to ~100
             total = sum(weights.values())
             if abs(total - 100) > 1:
-                results["errors"].append(f"{case['name']}: weights sum to {total}, not 100")
+                results["errors"].append(
+                    f"{case['name']}: weights sum to {total}, not 100"
+                )
                 results["valid"] = False
 
             # Validate all weights are non-negative
             for model, weight in weights.items():
                 if weight < 0:
-                    results["errors"].append(f"{case['name']}: negative weight for {model}")
+                    results["errors"].append(
+                        f"{case['name']}: negative weight for {model}"
+                    )
                     results["valid"] = False
 
             pos_label = {1: "LONG", -1: "SHORT", 0: "SKIP"}.get(position, "?")
@@ -412,7 +422,9 @@ def deploy_dual_policy(skip_validation: bool = False) -> bool:
         if validation["valid"]:
             print("   Validation PASSED")
             for pred in validation["predictions"]:
-                print(f"   - {pred['name']}: {pred['position']} ({pred['confidence']}), hold={pred['holding_period']}")
+                print(
+                    f"   - {pred['name']}: {pred['position']} ({pred['confidence']}), hold={pred['holding_period']}"
+                )
         else:
             print("   Validation FAILED:")
             for error in validation["errors"]:
@@ -524,7 +536,9 @@ def show_status():
                 fundamental_path=str(ACTIVE_FUNDAMENTAL_PATH),
             )
             print(f"  Technical Policy:    {policy.technical._update_count:,} updates")
-            print(f"  Fundamental Policy:  {policy.fundamental._update_count:,} updates")
+            print(
+                f"  Fundamental Policy:  {policy.fundamental._update_count:,} updates"
+            )
             print(f"  Ready: {policy.is_ready()}")
         except Exception as e:
             print(f"  ERROR: {e}")
@@ -537,7 +551,9 @@ def show_status():
         try:
             policy = load_dual_policy_files()
             print(f"  Technical Policy:    {policy.technical._update_count:,} updates")
-            print(f"  Fundamental Policy:  {policy.fundamental._update_count:,} updates")
+            print(
+                f"  Fundamental Policy:  {policy.fundamental._update_count:,} updates"
+            )
         except Exception as e:
             print(f"  ERROR: {e}")
     else:
@@ -590,16 +606,24 @@ def show_status():
             print(f"  Fundamental Updates: {log.get('fundamental_updates', 'N/A'):,}")
         else:
             print(f"  Version: {log.get('policy_version', 'N/A')}")
-        print(f"  Validation: {'PASSED' if log.get('validation_passed') else 'SKIPPED'}")
+        print(
+            f"  Validation: {'PASSED' if log.get('validation_passed') else 'SKIPPED'}"
+        )
     else:
         print("  No deployment log")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Deploy RL policy")
-    parser.add_argument("--validate", action="store_true", help="Validate and show results only")
-    parser.add_argument("--skip-validation", action="store_true", help="Skip validation during deploy")
-    parser.add_argument("--rollback", action="store_true", help="Rollback to previous policy")
+    parser.add_argument(
+        "--validate", action="store_true", help="Validate and show results only"
+    )
+    parser.add_argument(
+        "--skip-validation", action="store_true", help="Skip validation during deploy"
+    )
+    parser.add_argument(
+        "--rollback", action="store_true", help="Rollback to previous policy"
+    )
     parser.add_argument("--status", action="store_true", help="Show deployment status")
     parser.add_argument(
         "--legacy",

@@ -31,7 +31,9 @@ class TestPEThresholds:
 
     def test_default_values(self):
         """Test default threshold values for a sector."""
-        thresholds = PEThresholds(extreme_high=200, high=100, moderate=50, low=15, sector="default")
+        thresholds = PEThresholds(
+            extreme_high=200, high=100, moderate=50, low=15, sector="default"
+        )
         assert thresholds.extreme_high == 200
         assert thresholds.high == 100
         assert thresholds.moderate == 50

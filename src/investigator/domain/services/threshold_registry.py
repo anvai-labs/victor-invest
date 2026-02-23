@@ -386,7 +386,9 @@ class ThresholdRegistry:
         if industry_overrides:
             self.industry_overrides.update(industry_overrides)
 
-    def get_pe_thresholds(self, sector: Optional[str] = None, industry: Optional[str] = None) -> PEThresholds:
+    def get_pe_thresholds(
+        self, sector: Optional[str] = None, industry: Optional[str] = None
+    ) -> PEThresholds:
         """
         Get P/E thresholds for a sector/industry.
 
@@ -407,7 +409,9 @@ class ThresholdRegistry:
 
         # Try industry override first (case-insensitive lookup)
         if industry:
-            industry_match = self._find_key_case_insensitive(industry, self.industry_overrides)
+            industry_match = self._find_key_case_insensitive(
+                industry, self.industry_overrides
+            )
             if industry_match:
                 thresholds = self.industry_overrides[industry_match]
                 source_industry = industry_match
@@ -415,7 +419,9 @@ class ThresholdRegistry:
 
         # Fall back to sector (case-insensitive lookup)
         if thresholds is None and sector:
-            sector_match = self._find_key_case_insensitive(sector, self.sector_thresholds)
+            sector_match = self._find_key_case_insensitive(
+                sector, self.sector_thresholds
+            )
             if sector_match:
                 thresholds = self.sector_thresholds[sector_match]
                 logger.debug(f"Using sector thresholds for '{sector_match}'")
@@ -423,7 +429,9 @@ class ThresholdRegistry:
         # Fall back to default
         if thresholds is None:
             thresholds = self.DEFAULT_THRESHOLDS
-            logger.debug(f"Using default thresholds (sector='{sector}', industry='{industry}' not found)")
+            logger.debug(
+                f"Using default thresholds (sector='{sector}', industry='{industry}' not found)"
+            )
 
         return PEThresholds(
             extreme_high=thresholds["extreme"],
@@ -434,7 +442,9 @@ class ThresholdRegistry:
             industry=source_industry,
         )
 
-    def _find_key_case_insensitive(self, key: str, dictionary: Dict[str, Any]) -> Optional[str]:
+    def _find_key_case_insensitive(
+        self, key: str, dictionary: Dict[str, Any]
+    ) -> Optional[str]:
         """Find a key in dictionary case-insensitively."""
         key_lower = key.lower()
         for dict_key in dictionary:

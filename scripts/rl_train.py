@@ -115,7 +115,9 @@ def train_policy(
 
     if resume_from and Path(resume_from).exists():
         # Load existing policy for incremental training
-        logger.info(f"Loading existing policy from {resume_from} for incremental training...")
+        logger.info(
+            f"Loading existing policy from {resume_from} for incremental training..."
+        )
         policy = ContextualBanditPolicy(
             n_features=None,
             prior_variance=1.0,
@@ -221,12 +223,18 @@ def deploy_policy():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Train RL policy on valuation outcomes")
+    parser = argparse.ArgumentParser(
+        description="Train RL policy on valuation outcomes"
+    )
     parser.add_argument("--epochs", type=int, default=20, help="Training epochs")
     parser.add_argument("--batch-size", type=int, default=32, help="Batch size")
-    parser.add_argument("--min-samples", type=int, default=50, help="Minimum samples required")
+    parser.add_argument(
+        "--min-samples", type=int, default=50, help="Minimum samples required"
+    )
     parser.add_argument("--deploy", action="store_true", help="Deploy after training")
-    parser.add_argument("--validation-split", type=float, default=0.15, help="Validation split")
+    parser.add_argument(
+        "--validation-split", type=float, default=0.15, help="Validation split"
+    )
     parser.add_argument(
         "--resume",
         action="store_true",

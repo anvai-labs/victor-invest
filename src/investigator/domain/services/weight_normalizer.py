@@ -35,11 +35,15 @@ class WeightNormalizer:
                                - 1 = round to nearest 1% (0, 1, 2, 3, ...)
         """
         if rounding_increment <= 0 or rounding_increment > 100:
-            raise ValueError(f"Rounding increment must be 1-100, got {rounding_increment}")
+            raise ValueError(
+                f"Rounding increment must be 1-100, got {rounding_increment}"
+            )
 
         self.increment = rounding_increment
 
-    def normalize(self, weights: Dict[str, float], model_order: List[str] = None) -> Dict[str, float]:
+    def normalize(
+        self, weights: Dict[str, float], model_order: List[str] = None
+    ) -> Dict[str, float]:
         """
         Normalize weights to sum to 100% and round to increment.
 
@@ -90,7 +94,8 @@ class WeightNormalizer:
                 # If adjustment makes largest weight negative, redistribute
                 if new_value < 0:
                     logger.warning(
-                        f"Adjustment would make {max_model} negative ({new_value}%), " f"redistributing difference"
+                        f"Adjustment would make {max_model} negative ({new_value}%), "
+                        f"redistributing difference"
                     )
                     # Reset and try equal distribution
                     num_models = len(rounded)
@@ -113,7 +118,10 @@ class WeightNormalizer:
         # Final validation
         final_sum = sum(final.values())
         if abs(final_sum - 100) > 0.01:  # Allow tiny floating point errors
-            logger.warning(f"Final weights sum to {final_sum}% (not exactly 100%), " f"this may cause issues")
+            logger.warning(
+                f"Final weights sum to {final_sum}% (not exactly 100%), "
+                f"this may cause issues"
+            )
 
         return final
 
@@ -180,13 +188,17 @@ class WeightNormalizer:
 
         # If all adjusted weights are zero, fall back to base weights
         if sum(adjusted.values()) == 0:
-            logger.warning("Confidence adjustment resulted in all zero weights, using base weights")
+            logger.warning(
+                "Confidence adjustment resulted in all zero weights, using base weights"
+            )
             adjusted = base_weights
 
         # Normalize
         return self.normalize(adjusted, model_order=model_order)
 
-    def validate_weights(self, weights: Dict[str, float], tolerance: float = 0.01) -> bool:
+    def validate_weights(
+        self, weights: Dict[str, float], tolerance: float = 0.01
+    ) -> bool:
         """
         Validate that weights are properly normalized.
 
@@ -223,6 +235,8 @@ class WeightNormalizer:
 
         parts = [
             f"{model.upper()}={weight:.0f}%"
-            for model, weight in sorted(non_zero.items(), key=lambda x: x[1], reverse=True)
+            for model, weight in sorted(
+                non_zero.items(), key=lambda x: x[1], reverse=True
+            )
         ]
         return ", ".join(parts)

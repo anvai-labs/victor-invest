@@ -84,10 +84,14 @@ def format_integrated_output(data: dict) -> str:
     credit = data.get("credit_risk")
     if credit:
         lines.append("\nCREDIT RISK SIGNAL")
-        lines.append(f"  Distress Tier:    {credit.get('distress_tier', 'N/A').upper().replace('_', ' ')}")
+        lines.append(
+            f"  Distress Tier:    {credit.get('distress_tier', 'N/A').upper().replace('_', ' ')}"
+        )
         lines.append(f"  Discount Applied: {credit.get('discount_pct', 0) * 100:.0f}%")
         if credit.get("altman_zscore"):
-            lines.append(f"  Altman Z-Score:   {credit['altman_zscore']:.2f} ({credit.get('altman_zone', 'N/A')})")
+            lines.append(
+                f"  Altman Z-Score:   {credit['altman_zscore']:.2f} ({credit.get('altman_zone', 'N/A')})"
+            )
         if credit.get("beneish_mscore"):
             flag = " [MANIPULATION RISK]" if credit.get("manipulation_flag") else ""
             lines.append(f"  Beneish M-Score:  {credit['beneish_mscore']:.2f}{flag}")
@@ -130,7 +134,9 @@ def format_integrated_output(data: dict) -> str:
         if short.get("is_contrarian_signal"):
             lines.append("  Contrarian Signal:   YES [BULLISH]")
         if short.get("warning_flag"):
-            lines.append(f"  Warning:             {short.get('interpretation', 'Elevated short interest')}")
+            lines.append(
+                f"  Warning:             {short.get('interpretation', 'Elevated short interest')}"
+            )
 
     # Market Regime
     regime = data.get("market_regime")
@@ -333,7 +339,9 @@ def format_market_regime_output(data: dict) -> str:
     lines.append(f"  Volatility:          {vol}")
     lines.append(f"  Recession Prob:      {rec}")
     lines.append(f"  Fed Policy:          {fed}")
-    lines.append(f"  Risk-Free Rate:      {data.get('risk_free_rate', 0.04) * 100:.2f}%")
+    lines.append(
+        f"  Risk-Free Rate:      {data.get('risk_free_rate', 0.04) * 100:.2f}%"
+    )
 
     lines.append("\nVALUATION ADJUSTMENTS")
     wacc = data.get("wacc_spread_adjustment_bps", 0)
@@ -375,10 +383,18 @@ Examples:
 
     # Action arguments (mutually exclusive)
     action_group = parser.add_mutually_exclusive_group(required=True)
-    action_group.add_argument("--integrate", metavar="SYMBOL", help="Full signal integration for symbol")
-    action_group.add_argument("--credit-risk", metavar="SYMBOL", help="Credit risk signal for symbol")
-    action_group.add_argument("--insider", metavar="SYMBOL", help="Insider sentiment signal for symbol")
-    action_group.add_argument("--short-interest", metavar="SYMBOL", help="Short interest signal for symbol")
+    action_group.add_argument(
+        "--integrate", metavar="SYMBOL", help="Full signal integration for symbol"
+    )
+    action_group.add_argument(
+        "--credit-risk", metavar="SYMBOL", help="Credit risk signal for symbol"
+    )
+    action_group.add_argument(
+        "--insider", metavar="SYMBOL", help="Insider sentiment signal for symbol"
+    )
+    action_group.add_argument(
+        "--short-interest", metavar="SYMBOL", help="Short interest signal for symbol"
+    )
     action_group.add_argument(
         "--market-regime",
         action="store_true",
@@ -391,7 +407,9 @@ Examples:
         type=float,
         help="Base fair value from valuation models (required for --integrate)",
     )
-    parser.add_argument("--price", type=float, help="Current stock price (required for --integrate)")
+    parser.add_argument(
+        "--price", type=float, help="Current stock price (required for --integrate)"
+    )
 
     # Manual credit risk inputs
     parser.add_argument("--altman-z", type=float, help="Altman Z-Score")
@@ -399,7 +417,9 @@ Examples:
     parser.add_argument("--piotroski-f", type=int, help="Piotroski F-Score")
 
     # Output options
-    parser.add_argument("--json", action="store_true", help="Output raw JSON instead of formatted text")
+    parser.add_argument(
+        "--json", action="store_true", help="Output raw JSON instead of formatted text"
+    )
 
     args = parser.parse_args()
 
@@ -433,7 +453,9 @@ Examples:
             kwargs["beneish_mscore"] = args.beneish_m
         if args.piotroski_f is not None:
             kwargs["piotroski_fscore"] = args.piotroski_f
-        result = await tool.execute(action="credit_risk", symbol=args.credit_risk, **kwargs)
+        result = await tool.execute(
+            action="credit_risk", symbol=args.credit_risk, **kwargs
+        )
         formatter = format_credit_risk_output
 
     elif args.insider:

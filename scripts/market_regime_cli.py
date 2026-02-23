@@ -60,9 +60,15 @@ def format_summary_output(data: dict) -> str:
     # Overall Regime
     regime = data.get("overall_regime", {})
     lines.append("\nOVERALL REGIME")
-    lines.append(f"  Credit Cycle Phase:   {regime.get('credit_cycle_phase', 'N/A').upper().replace('_', ' ')}")
-    lines.append(f"  Yield Curve Shape:    {regime.get('yield_curve_shape', 'N/A').upper().replace('_', ' ')}")
-    lines.append(f"  Investment Signal:    {regime.get('investment_signal', 'N/A').upper().replace('_', ' ')}")
+    lines.append(
+        f"  Credit Cycle Phase:   {regime.get('credit_cycle_phase', 'N/A').upper().replace('_', ' ')}"
+    )
+    lines.append(
+        f"  Yield Curve Shape:    {regime.get('yield_curve_shape', 'N/A').upper().replace('_', ' ')}"
+    )
+    lines.append(
+        f"  Investment Signal:    {regime.get('investment_signal', 'N/A').upper().replace('_', ' ')}"
+    )
     lines.append(f"  Confidence:           {regime.get('confidence', 0):.0%}")
 
     # Overall Signal
@@ -76,17 +82,27 @@ def format_summary_output(data: dict) -> str:
     # Key Indicators
     indicators = data.get("indicators", {})
     lines.append("\nKEY INDICATORS")
-    lines.append(f"  BAA Credit Spread:    {indicators.get('baa_credit_spread_bps', 0):.0f} bps")
+    lines.append(
+        f"  BAA Credit Spread:    {indicators.get('baa_credit_spread_bps', 0):.0f} bps"
+    )
     lines.append(f"  VIX Level:            {indicators.get('vix_level', 0):.1f}")
     lines.append(f"  Fed Funds Rate:       {indicators.get('fed_funds_rate', 0):.2f}%")
-    lines.append(f"  10Y-2Y Spread:        {indicators.get('yield_10y_2y_spread_bps', 0):.0f} bps")
+    lines.append(
+        f"  10Y-2Y Spread:        {indicators.get('yield_10y_2y_spread_bps', 0):.0f} bps"
+    )
 
     # Classifications
     classifications = data.get("classifications", {})
     lines.append("\nCLASSIFICATIONS")
-    lines.append(f"  Credit Cycle:         {classifications.get('credit_cycle', 'N/A').upper().replace('_', ' ')}")
-    lines.append(f"  Volatility Regime:    {classifications.get('volatility_regime', 'N/A').upper().replace('_', ' ')}")
-    lines.append(f"  Fed Policy Stance:    {classifications.get('fed_policy_stance', 'N/A').upper().replace('_', ' ')}")
+    lines.append(
+        f"  Credit Cycle:         {classifications.get('credit_cycle', 'N/A').upper().replace('_', ' ')}"
+    )
+    lines.append(
+        f"  Volatility Regime:    {classifications.get('volatility_regime', 'N/A').upper().replace('_', ' ')}"
+    )
+    lines.append(
+        f"  Fed Policy Stance:    {classifications.get('fed_policy_stance', 'N/A').upper().replace('_', ' ')}"
+    )
     lines.append(
         f"  Recession Prob:       {classifications.get('recession_probability', 'N/A').upper().replace('_', ' ')}"
     )
@@ -95,7 +111,9 @@ def format_summary_output(data: dict) -> str:
     val = data.get("valuation_impacts", {})
     lines.append("\nVALUATION IMPACTS")
     lines.append(f"  Risk-Free Rate:       {val.get('risk_free_rate', 0):.2f}%")
-    lines.append(f"  WACC Spread Adj:      {val.get('wacc_spread_adjustment_bps', 0):+.0f} bps")
+    lines.append(
+        f"  WACC Spread Adj:      {val.get('wacc_spread_adjustment_bps', 0):+.0f} bps"
+    )
     equity_adj = val.get("equity_allocation_adjustment", 0)
     lines.append(f"  Equity Allocation:    {equity_adj * 100:+.0f}%")
 
@@ -217,7 +235,9 @@ def format_yield_curve_output(data: dict) -> str:
     # Rates
     lines.append("\nKEY RATES")
     lines.append(f"  Risk-Free Rate:       {data.get('risk_free_rate', 0):.2f}%")
-    lines.append(f"  WACC Spread Adj:      {data.get('wacc_spread_adjustment', 0):+.0f} bps")
+    lines.append(
+        f"  WACC Spread Adj:      {data.get('wacc_spread_adjustment', 0):+.0f} bps"
+    )
 
     # Equity Adjustment
     equity_adj = data.get("equity_adjustment", 0)
@@ -340,8 +360,12 @@ def format_recommendations_output(data: dict) -> str:
     allocation = data.get("allocation_guidance", {})
     lines.append("\nALLOCATION GUIDANCE")
     lines.append(f"  Equity Adjustment:    {allocation.get('equity_adjustment', '0%')}")
-    lines.append(f"  Risk Posture:         {allocation.get('risk_posture', 'Balanced')}")
-    lines.append(f"  Duration Guidance:    {allocation.get('duration_guidance', 'Neutral')}")
+    lines.append(
+        f"  Risk Posture:         {allocation.get('risk_posture', 'Balanced')}"
+    )
+    lines.append(
+        f"  Duration Guidance:    {allocation.get('duration_guidance', 'Neutral')}"
+    )
 
     # Sector Recommendations
     sectors = data.get("sector_recommendations", {})
@@ -428,11 +452,21 @@ Examples:
 
     # Action arguments (mutually exclusive)
     action_group = parser.add_mutually_exclusive_group(required=True)
-    action_group.add_argument("--summary", action="store_true", help="Get comprehensive market regime summary")
-    action_group.add_argument("--credit-cycle", action="store_true", help="Get credit cycle analysis")
-    action_group.add_argument("--yield-curve", action="store_true", help="Get yield curve analysis")
-    action_group.add_argument("--recession", action="store_true", help="Get recession probability assessment")
-    action_group.add_argument("--volatility", action="store_true", help="Get volatility regime analysis")
+    action_group.add_argument(
+        "--summary", action="store_true", help="Get comprehensive market regime summary"
+    )
+    action_group.add_argument(
+        "--credit-cycle", action="store_true", help="Get credit cycle analysis"
+    )
+    action_group.add_argument(
+        "--yield-curve", action="store_true", help="Get yield curve analysis"
+    )
+    action_group.add_argument(
+        "--recession", action="store_true", help="Get recession probability assessment"
+    )
+    action_group.add_argument(
+        "--volatility", action="store_true", help="Get volatility regime analysis"
+    )
     action_group.add_argument(
         "--recommendations",
         action="store_true",
@@ -440,7 +474,9 @@ Examples:
     )
 
     # Options
-    parser.add_argument("--json", action="store_true", help="Output raw JSON instead of formatted text")
+    parser.add_argument(
+        "--json", action="store_true", help="Output raw JSON instead of formatted text"
+    )
 
     args = parser.parse_args()
 

@@ -85,7 +85,9 @@ class UnifiedValuationExecutor:
 
         # Get configuration
         self.config = get_config()
-        self.valuation_config = self.config.valuation if hasattr(self.config, 'valuation') else {}
+        self.valuation_config = (
+            self.config.valuation if hasattr(self.config, "valuation") else {}
+        )
 
         # Initialize services
         self.metadata_service = CompanyMetadataService(
@@ -418,19 +420,18 @@ class UnifiedValuationExecutor:
                 self._extract_metric(q, ["net_income"]) or 0 for q in ttm
             )
             financials["revenue"] = sum(
-                self._extract_metric(q, ["revenue", "total_revenue"]) or 0
-                for q in ttm
+                self._extract_metric(q, ["revenue", "total_revenue"]) or 0 for q in ttm
             )
             financials["shareholders_equity"] = self._extract_metric(
                 self.quarterly_metrics[0],
-                ["stockholders_equity", "total_stockholders_equity"]
+                ["stockholders_equity", "total_stockholders_equity"],
             )
 
         # Calculate market_cap if we have price
         if self.current_price and self.quarterly_metrics:
             shares = self._extract_metric(
                 self.quarterly_metrics[0],
-                ["shares_outstanding", "weighted_average_shares_outstanding"]
+                ["shares_outstanding", "weighted_average_shares_outstanding"],
             )
             if shares:
                 financials["market_cap"] = self.current_price * shares
@@ -453,11 +454,12 @@ class UnifiedValuationExecutor:
 
         # Calculate ROE if we have the data
         if financials.get("net_income") and financials.get("shareholders_equity"):
-            if financials["shareholders_equity"] and financials["shareholders_equity"] > 0:
+            if (
+                financials["shareholders_equity"]
+                and financials["shareholders_equity"] > 0
+            ):
                 ratios["roe"] = (
-                    financials["net_income"]
-                    / financials["shareholders_equity"]
-                    * 100
+                    financials["net_income"] / financials["shareholders_equity"] * 100
                 )
 
         return ratios

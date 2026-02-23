@@ -33,7 +33,6 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
 from investigator.config import get_config
-from investigator.infrastructure.database.db import get_db_manager
 
 logger = logging.getLogger(__name__)
 
@@ -105,9 +104,7 @@ class SectorMultiplesHistory:
             config = get_config()
             # Build proper connection URL to dataserver1 with credentials
             # Format: postgresql://user:password@host:port/database
-            sec_db_url = (
-                f"postgresql://investigator:investigator@dataserver1.singh.local:5432/sec_database"
-            )
+            sec_db_url = "postgresql://investigator:investigator@dataserver1.singh.local:5432/sec_database"
 
             from investigator.infrastructure.database.db import DatabaseManager
 
@@ -533,9 +530,7 @@ class SectorMultiplesHistory:
                             if isinstance(period_end, str):
                                 from datetime import datetime
 
-                                period_end = datetime.fromisoformat(
-                                    period_end
-                                ).date()
+                                period_end = datetime.fromisoformat(period_end).date()
                             elif isinstance(period_end, datetime):
                                 period_end = period_end.date()
 

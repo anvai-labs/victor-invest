@@ -76,7 +76,9 @@ logger.info(f"Logging to: {log_filename}")
 
 def get_db_engine():
     """Get database engine."""
-    return create_engine("postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}/sec_database")
+    return create_engine(
+        "postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}/sec_database"
+    )
 
 
 def get_all_eligible_symbols() -> List[str]:
@@ -185,8 +187,12 @@ async def run_batch_backtest(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run RL backtest using victor workflow (StateGraph)")
-    parser.add_argument("--symbols", nargs="+", help="List of stock symbols to backtest")
+    parser = argparse.ArgumentParser(
+        description="Run RL backtest using victor workflow (StateGraph)"
+    )
+    parser.add_argument(
+        "--symbols", nargs="+", help="List of stock symbols to backtest"
+    )
     parser.add_argument(
         "--all-symbols",
         action="store_true",

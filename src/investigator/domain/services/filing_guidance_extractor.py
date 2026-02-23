@@ -146,7 +146,9 @@ def _extract_eps_range(text: str) -> Optional[Dict[str, Any]]:
         matched_text = match.group(0) or ""
 
         # Guard against matching fiscal years (e.g., "2024 and 2025") as EPS values.
-        has_currency_or_decimal = "$" in matched_text or ("." in low_raw or "." in high_raw)
+        has_currency_or_decimal = "$" in matched_text or (
+            "." in low_raw or "." in high_raw
+        )
         if not has_currency_or_decimal:
             continue
 
@@ -171,7 +173,9 @@ def _extract_eps_range(text: str) -> Optional[Dict[str, Any]]:
 
 
 def _extract_growth_percent(text: str, metric: str) -> Optional[float]:
-    metric_pattern = "revenue|net sales|sales" if metric == "revenue" else "eps|earnings"
+    metric_pattern = (
+        "revenue|net sales|sales" if metric == "revenue" else "eps|earnings"
+    )
     forward_cue = (
         "guidance|outlook|forecast|expect(?:s|ed|ation)?|project(?:s|ed)?|"
         "anticipat(?:e|es|ed)|target(?:s|ed)?|raise(?:d)?|reaffirm(?:ed)?"
@@ -222,7 +226,9 @@ def extract_forward_guidance(
     eps_growth = _extract_growth_percent(normalized, metric="eps")
 
     if revenue_range and revenue_range.get("horizon"):
-        revenue_range["horizon"] = _infer_horizon(revenue_range.get("snippet", ""), form_type)
+        revenue_range["horizon"] = _infer_horizon(
+            revenue_range.get("snippet", ""), form_type
+        )
     if eps_range and eps_range.get("horizon"):
         eps_range["horizon"] = _infer_horizon(eps_range.get("snippet", ""), form_type)
 

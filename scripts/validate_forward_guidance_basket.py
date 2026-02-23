@@ -91,7 +91,9 @@ def _is_analysis_payload(payload: Any) -> bool:
     schema = str(payload.get("schema_version", ""))
     if schema.startswith("analysis.compact."):
         return True
-    return "valuation" in payload and ("price" in payload or "recommendation" in payload)
+    return "valuation" in payload and (
+        "price" in payload or "recommendation" in payload
+    )
 
 
 def _extract_payload_from_stdout(raw: str, symbol: str) -> Optional[Dict[str, Any]]:
@@ -143,7 +145,9 @@ def _load_cached_ui_payload(cache_path: Path) -> Optional[Dict[str, Any]]:
     return payload if _is_analysis_payload(payload) else None
 
 
-def _write_ui_cache(cache_dir: Path, symbol: str, payload: Dict[str, Any], source: str) -> Path:
+def _write_ui_cache(
+    cache_dir: Path, symbol: str, payload: Dict[str, Any], source: str
+) -> Path:
     cache_dir.mkdir(parents=True, exist_ok=True)
     out_path = cache_dir / f"{symbol.upper()}.json"
     record = {
@@ -206,7 +210,9 @@ def _run_command(
             text=True,
             capture_output=True,
         )
-    return subprocess.run(cmd, cwd=str(repo_root), env=env, text=True, capture_output=True)
+    return subprocess.run(
+        cmd, cwd=str(repo_root), env=env, text=True, capture_output=True
+    )
 
 
 def _coerce_float(value: Any) -> Optional[float]:
@@ -249,7 +255,7 @@ def _load_top_per_sector(
                     ORDER BY mktcap DESC NULLS LAST, stockid ASC NULLS LAST
                 ) AS rn
             FROM symbol
-            WHERE {' AND '.join(filters)}
+            WHERE {" AND ".join(filters)}
         )
         SELECT ticker, sector, mktcap
         FROM ranked
@@ -266,11 +272,17 @@ def _load_top_per_sector(
         ticker = str(row[0]).upper()
         sector = str(row[1] or "Unknown")
         mktcap = _coerce_float(row[2])
-        symbols.append(BasketSymbol(ticker=ticker, sector=sector, mktcap=mktcap, sources=["top_per_sector"]))
+        symbols.append(
+            BasketSymbol(
+                ticker=ticker, sector=sector, mktcap=mktcap, sources=["top_per_sector"]
+            )
+        )
     return symbols
 
 
-def _enrich_symbol_metadata(repo: SymbolRepository, symbols: Iterable[str]) -> Dict[str, Tuple[str, Optional[float]]]:
+def _enrich_symbol_metadata(
+    repo: SymbolRepository, symbols: Iterable[str]
+) -> Dict[str, Tuple[str, Optional[float]]]:
     tickers = [s.upper() for s in symbols if s]
     if not tickers:
         return {}
@@ -285,7 +297,9 @@ def _enrich_symbol_metadata(repo: SymbolRepository, symbols: Iterable[str]) -> D
 
     with repo.stock_engine.connect() as conn:
         rows = conn.execute(query, {"tickers": tickers}).fetchall()
-    return {str(r[0]).upper(): (str(r[1] or "Unknown"), _coerce_float(r[2])) for r in rows}
+    return {
+        str(r[0]).upper(): (str(r[1] or "Unknown"), _coerce_float(r[2])) for r in rows
+    }
 
 
 def _merge_basket(
@@ -298,7 +312,12 @@ def _merge_basket(
 ) -> List[BasketSymbol]:
     merged: Dict[str, BasketSymbol] = {}
 
-    def _upsert(symbol: str, source: str, sector: str = "Unknown", mktcap: Optional[float] = None) -> None:
+    def _upsert(
+        symbol: str,
+        source: str,
+        sector: str = "Unknown",
+        mktcap: Optional[float] = None,
+    ) -> None:
         ticker = symbol.upper()
         existing = merged.get(ticker)
         meta_sector, meta_mktcap = metadata_lookup.get(ticker, (sector, mktcap))
@@ -334,7 +353,9 @@ def _contains_markup(snippet: str) -> bool:
     if not snippet:
         return False
     lowered = snippet.lower()
-    return any(token in lowered for token in ("<xbrli:", "<xbrl", "xbrli:", "<div", "<table"))
+    return any(
+        token in lowered for token in ("<xbrli:", "<xbrl", "xbrli:", "<div", "<table")
+    )
 
 
 def _collect_guidance_applied_models(payload: Dict[str, Any]) -> List[str]:
@@ -371,8 +392,14 @@ def _analyze_issues(
     fg = sec.get("forward_guidance") if isinstance(sec, dict) else None
     fg = fg if isinstance(fg, dict) else {}
 
-    revenue_guidance = fg.get("revenue_guidance") if isinstance(fg.get("revenue_guidance"), dict) else None
-    eps_guidance = fg.get("eps_guidance") if isinstance(fg.get("eps_guidance"), dict) else None
+    revenue_guidance = (
+        fg.get("revenue_guidance")
+        if isinstance(fg.get("revenue_guidance"), dict)
+        else None
+    )
+    eps_guidance = (
+        fg.get("eps_guidance") if isinstance(fg.get("eps_guidance"), dict) else None
+    )
     has_any_range = bool(revenue_guidance or eps_guidance)
 
     confidence = _coerce_float(fg.get("confidence_score")) or 0.0
@@ -394,7 +421,9 @@ def _analyze_issues(
             continue
         snippet = str(range_blob.get("snippet", ""))
         if _contains_markup(snippet):
-            issues.append({"severity": "medium", "code": "guidance_snippet_markup_leak"})
+            issues.append(
+                {"severity": "medium", "code": "guidance_snippet_markup_leak"}
+            )
             break
 
     if isinstance(eps_guidance, dict):
@@ -402,7 +431,12 @@ def _analyze_issues(
         high = _coerce_float(eps_guidance.get("high"))
         if high is not None and high > eps_high_cap:
             issues.append({"severity": "high", "code": "eps_guidance_out_of_bounds"})
-        if low is not None and high is not None and low > 0 and (high / max(low, 1e-9)) > 5.0:
+        if (
+            low is not None
+            and high is not None
+            and low > 0
+            and (high / max(low, 1e-9)) > 5.0
+        ):
             issues.append({"severity": "high", "code": "eps_guidance_ratio_outlier"})
 
     guidance_applied_models = _collect_guidance_applied_models(payload)
@@ -410,7 +444,9 @@ def _analyze_issues(
         issues.append({"severity": "high", "code": "guidance_applied_without_payload"})
 
     price = payload.get("price") if isinstance(payload.get("price"), dict) else {}
-    valuation = payload.get("valuation") if isinstance(payload.get("valuation"), dict) else {}
+    valuation = (
+        payload.get("valuation") if isinstance(payload.get("valuation"), dict) else {}
+    )
     current = _coerce_float(price.get("current"))
     target = _coerce_float(valuation.get("blended_fair_value"))
     if current and target and current > 0:
@@ -439,12 +475,16 @@ def _load_symbol_payload(
     source_env_file: Optional[Path],
 ) -> Tuple[str, Optional[Dict[str, Any]], Dict[str, Any]]:
     cache_path = cache_dir / f"{symbol}.json"
-    if args.use_cache_only or (args.skip_cached and cache_path.exists() and not args.force_refresh):
+    if args.use_cache_only or (
+        args.skip_cached and cache_path.exists() and not args.force_refresh
+    ):
         payload = _load_cached_ui_payload(cache_path)
         status = "cache_hit" if payload else "cache_missing_or_invalid"
         return status, payload, {"cache_path": str(cache_path)}
 
-    output_path = validate_run_dir / f"{symbol}_validation_{int(time.time() * 1000)}.json"
+    output_path = (
+        validate_run_dir / f"{symbol}_validation_{int(time.time() * 1000)}.json"
+    )
     cmd = _build_analyze_command(
         python_bin=args.python_bin or sys.executable,
         symbol=symbol,
@@ -489,16 +529,26 @@ def _load_symbol_payload(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Validate forward-guidance robustness on top-sector/FAANG/AI baskets.")
+    parser = argparse.ArgumentParser(
+        description="Validate forward-guidance robustness on top-sector/FAANG/AI baskets."
+    )
     parser.add_argument(
         "--top-per-sector",
         type=int,
         default=5,
         help="Top symbols per sector by market cap (set 0 to disable sector basket).",
     )
-    parser.add_argument("--mode", choices=["quick", "standard", "comprehensive"], default="comprehensive")
-    parser.add_argument("--valuation-basis", choices=["ttm", "forward"], default="forward")
-    parser.add_argument("--forward-horizon", choices=["1q", "2q", "3q", "1y"], default="1y")
+    parser.add_argument(
+        "--mode",
+        choices=["quick", "standard", "comprehensive"],
+        default="comprehensive",
+    )
+    parser.add_argument(
+        "--valuation-basis", choices=["ttm", "forward"], default="forward"
+    )
+    parser.add_argument(
+        "--forward-horizon", choices=["1q", "2q", "3q", "1y"], default="1y"
+    )
     parser.add_argument("--symbols", default="", help="Extra comma-separated symbols.")
     parser.add_argument(
         "--manual-only",
@@ -507,15 +557,36 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--faang-symbols", default=",".join(DEFAULT_FAANG))
     parser.add_argument("--ai-symbols", default=",".join(DEFAULT_AI_TRADE))
-    parser.add_argument("--max-symbols", type=int, default=0, help="Optional cap after basket build.")
-    parser.add_argument("--include-non-us", action="store_true", help="Include non-US filers in sector top list.")
-    parser.add_argument("--skip-cached", action="store_true", default=True, help="Use cached UI payloads when present.")
+    parser.add_argument(
+        "--max-symbols", type=int, default=0, help="Optional cap after basket build."
+    )
+    parser.add_argument(
+        "--include-non-us",
+        action="store_true",
+        help="Include non-US filers in sector top list.",
+    )
+    parser.add_argument(
+        "--skip-cached",
+        action="store_true",
+        default=True,
+        help="Use cached UI payloads when present.",
+    )
     parser.add_argument("--no-skip-cached", dest="skip_cached", action="store_false")
-    parser.add_argument("--use-cache-only", action="store_true", help="Do not run analyses; validate cache only.")
-    parser.add_argument("--force-refresh", action="store_true", help="Force fresh analysis runs.")
-    parser.add_argument("--legacy", action="store_true", default=True, help="Set INVESTIGATOR_LEGACY=1.")
+    parser.add_argument(
+        "--use-cache-only",
+        action="store_true",
+        help="Do not run analyses; validate cache only.",
+    )
+    parser.add_argument(
+        "--force-refresh", action="store_true", help="Force fresh analysis runs."
+    )
+    parser.add_argument(
+        "--legacy", action="store_true", default=True, help="Set INVESTIGATOR_LEGACY=1."
+    )
     parser.add_argument("--no-legacy", dest="legacy", action="store_false")
-    parser.add_argument("--python-bin", default=None, help="Python interpreter for analyze command.")
+    parser.add_argument(
+        "--python-bin", default=None, help="Python interpreter for analyze command."
+    )
     parser.add_argument("--source-env-file", default="~/.investigator/env")
     parser.add_argument("--no-source-env", action="store_true")
     parser.add_argument("--weak-confidence-threshold", type=float, default=0.25)
@@ -523,9 +594,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-target-multiple", type=float, default=10.0)
     parser.add_argument("--min-target-multiple", type=float, default=0.1)
     parser.add_argument(
-        "--fail-on-high-issues", action="store_true", help="Exit non-zero when any high issue is found."
+        "--fail-on-high-issues",
+        action="store_true",
+        help="Exit non-zero when any high issue is found.",
     )
-    parser.add_argument("--keep-validation-outputs", action="store_true", help="Keep per-symbol raw output files.")
+    parser.add_argument(
+        "--keep-validation-outputs",
+        action="store_true",
+        help="Keep per-symbol raw output files.",
+    )
     return parser
 
 
@@ -561,7 +638,10 @@ def run(args: argparse.Namespace) -> int:
                 us_only=not args.include_non_us,
             )
         except Exception as exc:
-            print(f"Warning: failed to load top-per-sector basket from DB: {exc}", flush=True)
+            print(
+                f"Warning: failed to load top-per-sector basket from DB: {exc}",
+                flush=True,
+            )
     if not args.manual_only:
         faang = _normalize_symbol_list(args.faang_symbols)
         ai_trade = _normalize_symbol_list(args.ai_symbols)
@@ -645,15 +725,27 @@ def run(args: argparse.Namespace) -> int:
             result["status"] = status
             result["issues"] = issues
             sec = payload.get("sec") if isinstance(payload.get("sec"), dict) else {}
-            fg = sec.get("forward_guidance") if isinstance(sec.get("forward_guidance"), dict) else {}
-            price = payload.get("price") if isinstance(payload.get("price"), dict) else {}
-            valuation = payload.get("valuation") if isinstance(payload.get("valuation"), dict) else {}
+            fg = (
+                sec.get("forward_guidance")
+                if isinstance(sec.get("forward_guidance"), dict)
+                else {}
+            )
+            price = (
+                payload.get("price") if isinstance(payload.get("price"), dict) else {}
+            )
+            valuation = (
+                payload.get("valuation")
+                if isinstance(payload.get("valuation"), dict)
+                else {}
+            )
             result["guidance"] = {
                 "source": fg.get("source"),
                 "source_form": fg.get("source_form"),
                 "filing_date": fg.get("filing_date"),
                 "confidence_score": fg.get("confidence_score"),
-                "has_revenue_guidance": bool(isinstance(fg.get("revenue_guidance"), dict)),
+                "has_revenue_guidance": bool(
+                    isinstance(fg.get("revenue_guidance"), dict)
+                ),
                 "has_eps_guidance": bool(isinstance(fg.get("eps_guidance"), dict)),
                 "revenue_growth_guidance": fg.get("revenue_growth_guidance"),
                 "earnings_growth_guidance": fg.get("earnings_growth_guidance"),
@@ -720,7 +812,9 @@ def run(args: argparse.Namespace) -> int:
     stamp = started_at.strftime("%Y%m%d_%H%M%S")
     json_path = reports_dir / f"forward_guidance_validation_{stamp}.json"
     csv_path = reports_dir / f"forward_guidance_validation_{stamp}.csv"
-    json_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    json_path.write_text(
+        json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
     with csv_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle)
@@ -745,9 +839,13 @@ def run(args: argparse.Namespace) -> int:
             ]
         )
         for row in results:
-            guidance = row.get("guidance") if isinstance(row.get("guidance"), dict) else {}
+            guidance = (
+                row.get("guidance") if isinstance(row.get("guidance"), dict) else {}
+            )
             valuation_snapshot = (
-                row.get("valuation_snapshot") if isinstance(row.get("valuation_snapshot"), dict) else {}
+                row.get("valuation_snapshot")
+                if isinstance(row.get("valuation_snapshot"), dict)
+                else {}
             )
             issue_codes = ",".join(i.get("code", "") for i in row.get("issues", []))
             writer.writerow(

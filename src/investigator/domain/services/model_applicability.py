@@ -111,7 +111,9 @@ class ModelApplicabilityRules:
             },
         }
 
-    def is_applicable(self, model_name: str, financials: Dict[str, Any]) -> Tuple[bool, str]:
+    def is_applicable(
+        self, model_name: str, financials: Dict[str, Any]
+    ) -> Tuple[bool, str]:
         """
         Check if a model is applicable given financial data.
 
@@ -134,7 +136,9 @@ class ModelApplicabilityRules:
         model_config = self.config.get(model_name)
 
         if not model_config:
-            logger.warning(f"No applicability rules for model '{model_name}', assuming applicable")
+            logger.warning(
+                f"No applicability rules for model '{model_name}', assuming applicable"
+            )
             return True, "No specific rules configured"
 
         # Check model-specific requirements
@@ -154,7 +158,9 @@ class ModelApplicabilityRules:
             logger.warning(f"Unknown model '{model_name}', assuming applicable")
             return True, "Unknown model"
 
-    def _check_dcf_applicability(self, financials: Dict[str, Any], config: Dict[str, Any]) -> Tuple[bool, str]:
+    def _check_dcf_applicability(
+        self, financials: Dict[str, Any], config: Dict[str, Any]
+    ) -> Tuple[bool, str]:
         """
         Check DCF model applicability.
 
@@ -222,7 +228,9 @@ class ModelApplicabilityRules:
 
         return False
 
-    def _check_ggm_applicability(self, financials: Dict[str, Any], config: Dict[str, Any]) -> Tuple[bool, str]:
+    def _check_ggm_applicability(
+        self, financials: Dict[str, Any], config: Dict[str, Any]
+    ) -> Tuple[bool, str]:
         """
         Check Gordon Growth Model applicability.
 
@@ -252,7 +260,11 @@ class ModelApplicabilityRules:
             if total_divs <= 0:
                 market_cap = _to_float(financials.get("market_cap", 0) or 0)
                 dividend_yield = _to_yield_ratio(financials.get("dividend_yield"))
-                inferred_divs = market_cap * dividend_yield if (market_cap > 0 and dividend_yield) else 0.0
+                inferred_divs = (
+                    market_cap * dividend_yield
+                    if (market_cap > 0 and dividend_yield)
+                    else 0.0
+                )
                 if inferred_divs <= 0:
                     return False, "No dividends paid (neither common nor preferred)"
 
@@ -287,7 +299,9 @@ class ModelApplicabilityRules:
 
         net_income = abs(_to_float(financials.get("net_income", 0) or 0))
         common_divs = abs(_to_float(financials.get("dividends_paid", 0) or 0))
-        preferred_divs = abs(_to_float(financials.get("preferred_stock_dividends", 0) or 0))
+        preferred_divs = abs(
+            _to_float(financials.get("preferred_stock_dividends", 0) or 0)
+        )
         total_divs = common_divs + preferred_divs
         if net_income > 0 and total_divs > 0:
             candidates.append(min(total_divs / net_income, 5.0))
@@ -305,7 +319,9 @@ class ModelApplicabilityRules:
         selected = max(strong_candidates) if strong_candidates else max(candidates)
         return min(max(selected, 0.0), 5.0)
 
-    def _check_pe_applicability(self, financials: Dict[str, Any], config: Dict[str, Any]) -> Tuple[bool, str]:
+    def _check_pe_applicability(
+        self, financials: Dict[str, Any], config: Dict[str, Any]
+    ) -> Tuple[bool, str]:
         """
         Check P/E model applicability.
 
@@ -321,7 +337,9 @@ class ModelApplicabilityRules:
 
         return True, "P/E requirements met (positive earnings)"
 
-    def _check_ps_applicability(self, financials: Dict[str, Any], config: Dict[str, Any]) -> Tuple[bool, str]:
+    def _check_ps_applicability(
+        self, financials: Dict[str, Any], config: Dict[str, Any]
+    ) -> Tuple[bool, str]:
         """
         Check P/S model applicability.
 
@@ -337,7 +355,9 @@ class ModelApplicabilityRules:
 
         return True, "P/S requirements met (positive revenue)"
 
-    def _check_pb_applicability(self, financials: Dict[str, Any], config: Dict[str, Any]) -> Tuple[bool, str]:
+    def _check_pb_applicability(
+        self, financials: Dict[str, Any], config: Dict[str, Any]
+    ) -> Tuple[bool, str]:
         """
         Check P/B model applicability.
 
@@ -359,7 +379,9 @@ class ModelApplicabilityRules:
 
         return True, "P/B requirements met (positive book value)"
 
-    def _check_ev_ebitda_applicability(self, financials: Dict[str, Any], config: Dict[str, Any]) -> Tuple[bool, str]:
+    def _check_ev_ebitda_applicability(
+        self, financials: Dict[str, Any], config: Dict[str, Any]
+    ) -> Tuple[bool, str]:
         """
         Check EV/EBITDA model applicability.
 
@@ -375,7 +397,9 @@ class ModelApplicabilityRules:
 
         return True, "EV/EBITDA requirements met (positive EBITDA)"
 
-    def filter_applicable_models(self, models: list[str], financials: Dict[str, Any]) -> Dict[str, Tuple[bool, str]]:
+    def filter_applicable_models(
+        self, models: list[str], financials: Dict[str, Any]
+    ) -> Dict[str, Tuple[bool, str]]:
         """
         Check applicability for multiple models at once.
 
@@ -399,7 +423,9 @@ class ModelApplicabilityRules:
             results[model] = (is_applicable, reason)
         return results
 
-    def get_applicable_models_only(self, models: list[str], financials: Dict[str, Any]) -> list[str]:
+    def get_applicable_models_only(
+        self, models: list[str], financials: Dict[str, Any]
+    ) -> list[str]:
         """
         Get list of only applicable models (convenience method).
 
@@ -418,7 +444,9 @@ class ModelApplicabilityRules:
                 applicable.append(model)
         return applicable
 
-    def get_inapplicable_models_with_reasons(self, models: list[str], financials: Dict[str, Any]) -> Dict[str, str]:
+    def get_inapplicable_models_with_reasons(
+        self, models: list[str], financials: Dict[str, Any]
+    ) -> Dict[str, str]:
         """
         Get dict of inapplicable models with reasons (convenience method).
 

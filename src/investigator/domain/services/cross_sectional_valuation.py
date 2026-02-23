@@ -21,7 +21,7 @@ and percentile rankings. Implements Layer 3 of the robust valuation strategy.
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import statistics
 from sqlalchemy import text

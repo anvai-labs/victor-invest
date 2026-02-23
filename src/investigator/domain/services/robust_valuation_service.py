@@ -27,13 +27,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from investigator.config import get_config
 from investigator.domain.services.company_fair_multiple_calculator import (
     CompanyFairMultipleCalculator,
     FairMultipleResult,
-)
-from investigator.domain.services.company_premium_history import (
-    CompanyPremiumHistory,
 )
 from investigator.domain.services.cross_sectional_valuation import (
     CrossSectionalValuation,

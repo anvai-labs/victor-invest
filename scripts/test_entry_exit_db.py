@@ -53,12 +53,22 @@ def calculate_obv_metrics(df: pd.DataFrame) -> Dict[str, float]:
     volume_trend_val = df["Volume_Trend"].iloc[-1]
 
     # Convert numeric trend to string
-    obv_trend = "bullish" if obv_trend_val == 1 else ("bearish" if obv_trend_val == -1 else "neutral")
-    volume_trend = "increasing" if volume_trend_val == 1 else ("decreasing" if volume_trend_val == -1 else "neutral")
+    obv_trend = (
+        "bullish"
+        if obv_trend_val == 1
+        else ("bearish" if obv_trend_val == -1 else "neutral")
+    )
+    volume_trend = (
+        "increasing"
+        if volume_trend_val == 1
+        else ("decreasing" if volume_trend_val == -1 else "neutral")
+    )
 
     # Get OBV ROC for divergence detection
     obv_roc_20 = df["OBV_ROC_20"].iloc[-1] if "OBV_ROC_20" in df.columns else 0
-    price_change_20d = df["Price_Change_10D"].iloc[-1] * 2 if "Price_Change_10D" in df.columns else 0
+    price_change_20d = (
+        df["Price_Change_10D"].iloc[-1] * 2 if "Price_Change_10D" in df.columns else 0
+    )
 
     # Divergence detection
     divergence = "none"
@@ -102,18 +112,32 @@ def get_support_resistance(df: pd.DataFrame, current_price: float) -> Dict[str, 
         resistance_1 = df.get("BB_Upper", pd.Series([current_price * 1.05])).iloc[-1]
 
     return {
-        "support_1": float(support_1) if not pd.isna(support_1) else current_price * 0.95,
-        "support_2": float(support_2) if not pd.isna(support_2) else current_price * 0.90,
-        "resistance_1": float(resistance_1) if not pd.isna(resistance_1) else current_price * 1.05,
-        "resistance_2": float(resistance_2) if not pd.isna(resistance_2) else current_price * 1.10,
+        "support_1": float(support_1)
+        if not pd.isna(support_1)
+        else current_price * 0.95,
+        "support_2": float(support_2)
+        if not pd.isna(support_2)
+        else current_price * 0.90,
+        "resistance_1": float(resistance_1)
+        if not pd.isna(resistance_1)
+        else current_price * 1.05,
+        "resistance_2": float(resistance_2)
+        if not pd.isna(resistance_2)
+        else current_price * 1.10,
     }
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Test Entry/Exit Engine with database data")
+    parser = argparse.ArgumentParser(
+        description="Test Entry/Exit Engine with database data"
+    )
     parser.add_argument("symbol", type=str, help="Stock symbol to analyze")
-    parser.add_argument("--days", type=int, default=252, help="Days of history (default: 252)")
-    parser.add_argument("--fair-value", type=float, default=None, help="Override fair value")
+    parser.add_argument(
+        "--days", type=int, default=252, help="Days of history (default: 252)"
+    )
+    parser.add_argument(
+        "--fair-value", type=float, default=None, help="Override fair value"
+    )
     args = parser.parse_args()
 
     symbol = args.symbol.upper()
@@ -197,9 +221,15 @@ def main():
         "sma_20": float(df_enhanced["SMA_20"].iloc[-1]),
         "sma_50": float(df_enhanced["SMA_50"].iloc[-1]),
         "sma_200": float(df_enhanced["SMA_200"].iloc[-1]),
-        "bb_upper": float(df_enhanced.get("BB_Upper", pd.Series([current_price * 1.1])).iloc[-1]),
-        "bb_lower": float(df_enhanced.get("BB_Lower", pd.Series([current_price * 0.9])).iloc[-1]),
-        "bb_middle": float(df_enhanced.get("BB_Middle", pd.Series([current_price])).iloc[-1]),
+        "bb_upper": float(
+            df_enhanced.get("BB_Upper", pd.Series([current_price * 1.1])).iloc[-1]
+        ),
+        "bb_lower": float(
+            df_enhanced.get("BB_Lower", pd.Series([current_price * 0.9])).iloc[-1]
+        ),
+        "bb_middle": float(
+            df_enhanced.get("BB_Middle", pd.Series([current_price])).iloc[-1]
+        ),
         "atr_14": float(df_enhanced["ATR_14"].iloc[-1]),
         # OBV metrics
         "obv": obv_metrics["obv"],
@@ -261,9 +291,13 @@ def main():
 
     print(f"\n--- ENTRY SIGNALS ({len(entry_signals)} found) ---")
     for signal in entry_signals:
-        print(f"\n  Type: {signal.signal_type.value if hasattr(signal.signal_type, 'value') else signal.signal_type}")
+        print(
+            f"\n  Type: {signal.signal_type.value if hasattr(signal.signal_type, 'value') else signal.signal_type}"
+        )
         print(f"  Price: ${signal.price_level:.2f}")
-        print(f"  Confidence: {signal.confidence.value if hasattr(signal.confidence, 'value') else signal.confidence}")
+        print(
+            f"  Confidence: {signal.confidence.value if hasattr(signal.confidence, 'value') else signal.confidence}"
+        )
         print(f"  Rationale: {signal.rationale}")
         print(f"  Risk/Reward: {signal.risk_reward_ratio:.1f}:1")
         print(f"  Stop Loss: ${signal.stop_loss:.2f} ({signal.stop_loss_pct:.1f}%)")
@@ -283,9 +317,13 @@ def main():
 
     print(f"\n--- EXIT SIGNALS ({len(exit_signals)} found) ---")
     for signal in exit_signals:
-        print(f"\n  Type: {signal.signal_type.value if hasattr(signal.signal_type, 'value') else signal.signal_type}")
+        print(
+            f"\n  Type: {signal.signal_type.value if hasattr(signal.signal_type, 'value') else signal.signal_type}"
+        )
         print(f"  Price: ${signal.price_level:.2f}")
-        print(f"  Confidence: {signal.confidence.value if hasattr(signal.confidence, 'value') else signal.confidence}")
+        print(
+            f"  Confidence: {signal.confidence.value if hasattr(signal.confidence, 'value') else signal.confidence}"
+        )
         print(f"  Rationale: {signal.rationale}")
         print(f"  Urgency: {signal.urgency}")
 
@@ -308,7 +346,9 @@ def main():
     print(f"  Lower Bound: ${entry_zone.lower_bound:.2f}")
     print(f"  Ideal Entry: ${entry_zone.ideal_entry:.2f}")
     print(f"  Upper Bound: ${entry_zone.upper_bound:.2f}")
-    print(f"  Timing: {entry_zone.timing.value if hasattr(entry_zone.timing, 'value') else entry_zone.timing}")
+    print(
+        f"  Timing: {entry_zone.timing.value if hasattr(entry_zone.timing, 'value') else entry_zone.timing}"
+    )
 
     # OBV-based recommendation
     print("\n--- OBV ANALYSIS ---")
@@ -319,12 +359,20 @@ def main():
         print("  BEARISH DIVERGENCE: Price up but OBV down - potential distribution")
         print("  Consider: Taking profits or reducing position")
     else:
-        if obv_metrics["obv_trend"] == "bullish" and obv_metrics["volume_trend"] == "increasing":
+        if (
+            obv_metrics["obv_trend"] == "bullish"
+            and obv_metrics["volume_trend"] == "increasing"
+        ):
             print("  STRONG BULLISH: OBV trending up with increasing volume")
-        elif obv_metrics["obv_trend"] == "bearish" and obv_metrics["volume_trend"] == "increasing":
+        elif (
+            obv_metrics["obv_trend"] == "bearish"
+            and obv_metrics["volume_trend"] == "increasing"
+        ):
             print("  STRONG BEARISH: OBV trending down with increasing volume")
         else:
-            print(f"  NEUTRAL: OBV {obv_metrics['obv_trend']}, Volume {obv_metrics['volume_trend']}")
+            print(
+                f"  NEUTRAL: OBV {obv_metrics['obv_trend']}, Volume {obv_metrics['volume_trend']}"
+            )
 
     print(f"\n{'=' * 60}")
     print("Analysis complete")

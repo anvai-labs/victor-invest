@@ -26,7 +26,9 @@ class TestBoundConfig:
 
     def test_custom_values(self):
         """Test custom configuration values."""
-        config = BoundConfig(cumulative_floor=0.40, cumulative_ceiling=1.60, per_model_minimum=10.0)
+        config = BoundConfig(
+            cumulative_floor=0.40, cumulative_ceiling=1.60, per_model_minimum=10.0
+        )
         assert config.cumulative_floor == 0.40
         assert config.cumulative_ceiling == 1.60
         assert config.per_model_minimum == 10.0
@@ -52,7 +54,9 @@ class TestBoundedMultiplierApplicator:
 
     def test_no_multipliers(self, applicator, base_weights):
         """Test with no multipliers - weights unchanged."""
-        result = applicator.apply_multipliers(base_weights=base_weights, multiplier_groups={}, symbol="AAPL")
+        result = applicator.apply_multipliers(
+            base_weights=base_weights, multiplier_groups={}, symbol="AAPL"
+        )
 
         assert isinstance(result, BoundedMultiplierResult)
         # Weights should sum to 100
@@ -115,7 +119,9 @@ class TestBoundedMultiplierApplicator:
         for model, weight in result.adjusted_weights.items():
             base = base_weights[model]
             ratio = weight / base if base > 0 else 1.0
-            assert ratio <= applicator.config.cumulative_ceiling * 1.1  # Allow small margin
+            assert (
+                ratio <= applicator.config.cumulative_ceiling * 1.1
+            )  # Allow small margin
 
     def test_multiple_multiplier_groups(self, applicator, base_weights):
         """Test with multiple multiplier groups stacked."""
@@ -168,7 +174,9 @@ class TestBoundedMultiplierApplicator:
 
     def test_custom_config(self):
         """Test with custom configuration."""
-        config = BoundConfig(cumulative_floor=0.25, cumulative_ceiling=2.0, per_model_minimum=2.0)
+        config = BoundConfig(
+            cumulative_floor=0.25, cumulative_ceiling=2.0, per_model_minimum=2.0
+        )
         applicator = BoundedMultiplierApplicator(config=config)
 
         assert applicator.config.cumulative_floor == 0.25
@@ -176,7 +184,9 @@ class TestBoundedMultiplierApplicator:
 
     def test_empty_base_weights(self, applicator):
         """Test with empty base weights."""
-        result = applicator.apply_multipliers(base_weights={}, multiplier_groups={}, symbol="AAPL")
+        result = applicator.apply_multipliers(
+            base_weights={}, multiplier_groups={}, symbol="AAPL"
+        )
         assert result.adjusted_weights == {}
 
     def test_missing_model_in_multipliers(self, applicator, base_weights):

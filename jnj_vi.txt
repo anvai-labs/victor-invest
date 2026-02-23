@@ -1,0 +1,331 @@
+
+Victor Investment Analysis
+Symbol: JNJ
+Mode: comprehensive
+Provider: ollama
+
+Handler sync helpers unavailable; relying on decorator-side registration for executor compatibility
+2026-02-22 06:16:59,735 - victor.core.bootstrap - INFO - Registered event services with backend: in_memory (overflow_policy=drop_newest, queue_maxsize=10000)
+2026-02-22 06:16:59,743 - victor.core.tool_dependency_loader - INFO - Loaded tool dependency config for 'coding' from /Users/vijaysingh/code/codingagent/victor/coding/tool_dependencies.yaml
+2026-02-22 06:16:59,755 - victor.coding.languages.registry - INFO - Discovered 29 language plugins
+2026-02-22 06:16:59,755 - victor.core.bootstrap - INFO - Discovered 29 language plugins at startup
+2026-02-22 06:16:59,760 - victor.agent.service_provider - INFO - Registered all orchestrator services
+2026-02-22 06:16:59,782 - victor.workflows.services.workflow_service_provider - INFO - Registered all workflow services
+2026-02-22 06:16:59,782 - victor.core.verticals.vertical_loader - INFO - Activated vertical: investment
+2026-02-22 06:16:59,783 - victor.core.verticals.base_service_provider - INFO - Registered investment vertical services
+2026-02-22 06:16:59,783 - victor.core.verticals.vertical_loader - INFO - Registered services for vertical: investment
+2026-02-22 06:16:59,783 - victor.core.bootstrap - INFO - Registered vertical services: investment (activated=True, services_registered=True)
+2026-02-22 06:16:59,783 - victor.core.bootstrap - INFO - Bootstrapped service container
+2026-02-22 06:16:59,986 - victor.agent.orchestrator - INFO - Adjusted timeout for ollama/qwen2.5-coder-tools:32b-262K: 300s -> 600s (multiplier: 2.0x)
+2026-02-22 06:16:59,999 - victor.agent.model_switcher - INFO - Current model set to ollama:qwen2.5-coder-tools:32b-262K
+2026-02-22 06:17:00,118 - httpx - INFO - HTTP Request: POST http://localhost:11434/api/show "HTTP/1.1 200 OK"
+2026-02-22 06:17:00,119 - victor.providers.ollama_capability_detector - WARNING - Model 'qwen2.5-coder-tools:32b-262K' has tool support but LOW reliability. Tool calls may fail or produce malformed output. Consider using qwen3-coder-tools for reliable tool calling.
+2026-02-22 06:17:00,119 - victor.agent.provider.tool_adapter_coordinator - INFO - Tool adapter initialized for ollama:qwen2.5-coder-tools:32b-262K: native=True, format=ollama_native
+2026-02-22 06:17:00,119 - victor.agent.provider_manager - INFO - Tool adapter initialized: native=True, format=ollama_native
+2026-02-22 06:17:00,119 - victor.agent.orchestrator_factory - INFO - Tool calling adapter: ollama, native=True, format=ollama_native
+2026-02-22 06:17:00,138 - victor.agent.orchestrator - INFO - TaskCompletionDetector initialized (signal-based completion)
+2026-02-22 06:17:00,140 - victor.agent.orchestrator - INFO - StreamingMetricsCollector initialized via runtime boundary
+2026-02-22 06:17:00,140 - victor.core.database - INFO - DatabaseManager initialized: /Users/vijaysingh/.victor/victor.db
+2026-02-22 06:17:00,142 - victor.framework.rl.coordinator - INFO - RL: Coordinator initialized with unified database at /Users/vijaysingh/.victor/victor.db
+2026-02-22 06:17:00,144 - victor.framework.rl.learners.cache_eviction - INFO - RL: Loaded 14 cache eviction states from database
+2026-02-22 06:17:00,144 - victor.framework.rl.coordinator - INFO - RL: Registered learner 'cache_eviction'
+2026-02-22 06:17:00,146 - victor.storage.cache.tiered_cache - INFO - RL: TieredCache using unified CacheEvictionLearner
+2026-02-22 06:17:00,146 - victor.storage.cache.tiered_cache - INFO - Cache initialized: memory=True, disk=True
+2026-02-22 06:17:01,070 - victor.agent.conversation_memory - INFO - Created session session_bc6216a1a065 for project: /Users/vijaysingh/code/victor-invest [qwen/large]
+2026-02-22 06:17:01,070 - victor.agent.orchestrator_factory - INFO - ConversationStore initialized via factory. Session: session_..., DB: /Users/vijaysingh/code/victor-invest/.victor/conversation.db
+2026-02-22 06:17:01,070 - victor.storage.embeddings.service - INFO - Created EmbeddingService singleton with model: BAAI/bge-small-en-v1.5
+2026-02-22 06:17:01,070 - victor.agent.conversation_memory - INFO - ConversationStore: LanceDB embedding store configured
+2026-02-22 06:17:01,070 - victor.agent.coordinators.session_coordinator - INFO - ConversationEmbeddingStore configured. Message embeddings will sync to LanceDB.
+2026-02-22 06:17:01,295 - victor.agent.shared_tool_registry - INFO - SharedToolRegistry discovered 55 tools (10 classes, 46 decorated)
+2026-02-22 06:17:01,343 - victor.agent.tool_registrar - INFO - Enabled tools: 55/55
+2026-02-22 06:17:01,344 - victor.tools.plugin_registry - INFO - Discovered 0 plugins in 0 directories
+2026-02-22 06:17:01,344 - victor.tools.plugin_registry - INFO - Loaded 0/0 discovered plugins
+2026-02-22 06:17:01,356 - victor.agent.unified_task_tracker - INFO - UnifiedTaskTracker: model settings - multiplier=1.5, patience=10
+2026-02-22 06:17:01,356 - victor.agent.mode_controller - INFO - AgentModeController initialized in build mode
+2026-02-22 06:17:01,356 - victor.agent.unified_task_tracker - INFO - UnifiedTaskTracker: mode_exploration_multiplier=5.0, effective_max=8
+2026-02-22 06:17:01,356 - victor.agent.orchestrator_factory - INFO - Applied mode exploration multiplier: mode=build, multiplier=5.0
+2026-02-22 06:17:01,357 - victor.agent.orchestrator_utils - INFO - Model context: 131,072 tokens -> 367,001 chars limit
+2026-02-22 06:17:01,358 - victor.agent.orchestrator_factory - INFO - ToolDeduplicationTracker initialized (window: 20)
+2026-02-22 06:17:01,358 - victor.agent.orchestrator - INFO - [AgentOrchestrator] Semantic tool result cache enabled
+2026-02-22 06:17:01,366 - victor.agent.orchestrator_factory - INFO - ConversationCheckpointManager created (auto_interval=5, max_per_session=50)
+2026-02-22 06:17:01,370 - victor.agent.capability_registry - INFO - Capability registry initialized with 19 capabilities
+2026-02-22 06:17:01,370 - victor.agent.orchestrator - INFO - Orchestrator initialized with decomposed components: ConversationController, ToolPipeline, StreamingController, StreamingChatHandler, TaskAnalyzer, ContextCompactor, UsageAnalytics, ToolSequenceTracker, ToolOutputFormatter, RecoveryCoordinator, ChunkGenerator, ToolPlanner, TaskCoordinator, ObservabilityIntegration, WorkflowOptimization, VerticalContext, ModeWorkflowTeamCoordinator, CapabilityRegistry
+2026-02-22 06:17:01,389 - victor.workflows.registry - INFO - Registered workflow: investment:rl_backtest
+2026-02-22 06:17:01,389 - victor.workflows.registry - INFO - Registered workflow: investment:comprehensive
+2026-02-22 06:17:01,389 - victor.workflows.registry - INFO - Registered workflow: investment:quick
+2026-02-22 06:17:01,390 - victor.workflows.registry - INFO - Registered workflow: investment:standard
+2026-02-22 06:17:01,390 - victor.workflows.registry - INFO - Registered workflow: investment:peer_comparison
+2026-02-22 06:17:01,396 - victor.framework.vertical_service - INFO - Applied vertical 'investment' via sdk path: tools=6 middleware=0 safety=0 hints=0
+2026-02-22 06:17:01,399 - victor_invest.workflows - WARNING - Tool registration warnings: ['SectorMultiplesTool: SectorMultiplesTool() takes no arguments']
+2026-02-22 06:17:01,399 - victor.workflows.executor - INFO - Starting workflow 'comprehensive' (execution_id=501e66a2, thread_id=501e66a2)
+2026-02-22 06:17:01,399 - victor.agent.conversation_embedding_store - INFO - [ConversationEmbeddingStore] Connecting to LanceDB at /Users/vijaysingh/code/victor-invest/.victor/embeddings/conversations
+2026-02-22 06:17:01,401 - victor.agent.conversation_embedding_store - INFO - [ConversationEmbeddingStore] Table 'conversation_vectors' will be created on first search
+2026-02-22 06:17:01,401 - victor.agent.conversation_embedding_store - INFO - [ConversationEmbeddingStore] Initialized (lazy embedding mode)
+2026-02-22 06:17:01,434 - investigator.infrastructure.database.db - INFO - Database engine initialized successfully
+2026-02-22 06:17:01,563 - investigator.infrastructure.database.ticker_mapper - INFO - Loaded 12084 ticker mappings
+2026-02-22 06:17:01,563 - victor_invest.tools.sec_filing - INFO - SECFilingTool initialized successfully
+2026-02-22 06:17:01,592 - investigator.infrastructure.database.market_data - INFO - Initialized DatabaseMarketDataFetcher with market data database
+2026-02-22 06:17:01,592 - victor_invest.tools.market_data - INFO - MarketDataTool initialized successfully
+2026-02-22 06:17:01,592 - investigator.infrastructure.database.market_data - INFO - Fetching 365 days of market data for JNJ from database
+2026-02-22 06:17:01,869 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 365 days of data for JNJ from database
+2026-02-22 06:17:01,982 - investigator.infrastructure.sec.companyfacts_extractor - INFO - ✓ Using cached data for JNJ (7.2 days old < 90 day threshold)
+2026-02-22 06:17:01,999 - victor.framework.rl.coordinator - INFO - RL: Registered learner 'workflow_execution'
+2026-02-22 06:17:02,062 - investigator.domain.services.valuation_shared.valuation_config_service - INFO - Loaded valuation config from /Users/vijaysingh/code/victor-invest/config.yaml
+2026-02-22 06:17:02,063 - victor_invest.tools.valuation - INFO - ValuationTool initialized successfully
+2026-02-22 06:17:02,066 - victor_invest.tools.sec_filing - INFO - SECFilingTool initialized successfully
+2026-02-22 06:17:02,066 - victor_invest.tools.technical_indicators - INFO - TechnicalIndicatorsTool initialized successfully
+2026-02-22 06:17:02,066 - investigator.infrastructure.database.market_data - INFO - Fetching 365 days of market data for JNJ from database
+2026-02-22 06:17:02,069 - victor_invest.tools.market_regime - INFO - MarketRegimeTool initialized successfully
+2026-02-22 06:17:02,089 - victor_invest.tools.sec_filing - INFO - ✅ Retrieved 15 periods from processed table for JNJ (12 Q periods, 3 FY periods - FY needed for Q4 computation)
+2026-02-22 06:17:02,089 - victor_invest.tools.sec_filing - INFO - Retrieved 15 quarterly periods from legacy pipeline for JNJ
+2026-02-22 06:17:02,089 - victor_invest.tools.valuation - INFO - Fetched 15 quarterly periods from SEC processed data for JNJ
+2026-02-22 06:17:02,108 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 365 days of data for JNJ from database
+2026-02-22 06:17:02,396 - investigator.domain.services.valuation.dcf - INFO - JNJ - Sector: Healthcare
+2026-02-22 06:17:02,396 - investigator.domain.services.valuation.dcf - INFO - JNJ - Using sector-based DCF parameters: Sector=Healthcare, Terminal Growth=3.0%, Projection Years=7
+2026-02-22 06:17:02,405 - investigator.domain.services.quarterly_processor - INFO - [QUARTERLY_CALC_DEBUG] Fiscal periods AFTER normalization: ['Q3', 'Q2', 'Q1', 'FY', 'Q3', 'Q2', 'Q1', 'FY', 'Q3', 'Q2', 'Q1', 'FY', 'Q3', 'Q2', 'Q1']
+2026-02-22 06:17:02,407 - investigator.domain.services.quarterly_processor - INFO - [QUARTERLY_CALC_DEBUG] After separation: 3 FY periods, 12 Q periods
+2026-02-22 06:17:02,407 - investigator.domain.services.quarterly_processor - INFO - [YTD_GROUP] Created 4 fiscal year groups: [(2026, ['Q3', 'Q2', 'Q1']), (2025, ['Q3', 'Q2', 'Q1']), (2024, ['Q3', 'Q2', 'Q1']), (2023, ['Q3', 'Q2', 'Q1'])]
+2026-02-22 06:17:02,408 - investigator.domain.services.quarterly_processor - INFO - YTD to quarterly conversion complete for 4 fiscal year groups
+2026-02-22 06:17:02,408 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Before condition: compute_missing=True, quarterly_periods=12, fy_periods=3
+2026-02-22 06:17:02,408 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Entering Q4 computation block: 3 FY periods, 12 Q periods
+2026-02-22 06:17:02,408 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Current quarters: 12, Target: 12
+2026-02-22 06:17:02,408 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Will attempt to compute Q4 for ALL 3 FY periods where quarterly data available
+2026-02-22 06:17:02,408 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Processing FY 1/3: fiscal_year=2025, period_end=None
+2026-02-22 06:17:02,408 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ❌ FY has invalid date, skipping
+2026-02-22 06:17:02,408 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Processing FY 2/3: fiscal_year=2024, period_end=None
+2026-02-22 06:17:02,408 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ❌ FY has invalid date, skipping
+2026-02-22 06:17:02,408 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Processing FY 3/3: fiscal_year=2023, period_end=None
+2026-02-22 06:17:02,409 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ❌ FY has invalid date, skipping
+2026-02-22 06:17:02,415 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Computed 0 Q4 periods. Total quarterly periods after Q4 computation: 12
+2026-02-22 06:17:02,415 - investigator.domain.services.quarterly_processor - INFO - [TTM_SELECT] After YTD filter and date sort: 12 periods available. Periods: ['Q3-2026 (None)', 'Q2-2026 (None)', 'Q1-2026 (None)', 'Q3-2025 (None)', 'Q2-2025 (None)', 'Q1-2025 (None)', 'Q3-2024 (None)', 'Q2-2024 (None)']
+2026-02-22 06:17:02,415 - investigator.domain.services.quarterly_processor - WARNING - [CONSECUTIVE_CHECK] ⚠️  Could not find 12 consecutive quarters. Best sequence: 3 quarters - ['Q3-2026', 'Q2-2026', 'Q1-2026']
+2026-02-22 06:17:02,415 - investigator.domain.services.quarterly_processor - WARNING - ⚠️  Only 3 consecutive quarters available (requested 12). TTM calculation may be invalid with non-consecutive periods!
+2026-02-22 06:17:02,415 - investigator.domain.services.valuation.dcf - WARNING - JNJ - Need at least 8 quarters for revenue growth, got 3
+2026-02-22 06:17:02,415 - investigator.domain.services.quarterly_processor - INFO - [QUARTERLY_CALC_DEBUG] Fiscal periods AFTER normalization: ['Q3', 'Q2', 'Q1', 'FY', 'Q3', 'Q2', 'Q1', 'FY', 'Q3', 'Q2', 'Q1', 'FY', 'Q3', 'Q2', 'Q1']
+2026-02-22 06:17:02,415 - investigator.domain.services.quarterly_processor - INFO - [QUARTERLY_CALC_DEBUG] After separation: 3 FY periods, 12 Q periods
+2026-02-22 06:17:02,415 - investigator.domain.services.quarterly_processor - INFO - [YTD_GROUP] Created 4 fiscal year groups: [(2026, ['Q3', 'Q2', 'Q1']), (2025, ['Q3', 'Q2', 'Q1']), (2024, ['Q3', 'Q2', 'Q1']), (2023, ['Q3', 'Q2', 'Q1'])]
+2026-02-22 06:17:02,415 - investigator.domain.services.quarterly_processor - INFO - YTD to quarterly conversion complete for 4 fiscal year groups
+2026-02-22 06:17:02,415 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Before condition: compute_missing=True, quarterly_periods=12, fy_periods=3
+2026-02-22 06:17:02,415 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Entering Q4 computation block: 3 FY periods, 12 Q periods
+2026-02-22 06:17:02,415 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Current quarters: 12, Target: 4
+2026-02-22 06:17:02,417 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Will attempt to compute Q4 for ALL 3 FY periods where quarterly data available
+2026-02-22 06:17:02,417 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Processing FY 1/3: fiscal_year=2025, period_end=None
+2026-02-22 06:17:02,417 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ❌ FY has invalid date, skipping
+2026-02-22 06:17:02,418 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Processing FY 2/3: fiscal_year=2024, period_end=None
+2026-02-22 06:17:02,418 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ❌ FY has invalid date, skipping
+2026-02-22 06:17:02,418 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Processing FY 3/3: fiscal_year=2023, period_end=None
+2026-02-22 06:17:02,418 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ❌ FY has invalid date, skipping
+2026-02-22 06:17:02,418 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Computed 0 Q4 periods. Total quarterly periods after Q4 computation: 12
+2026-02-22 06:17:02,418 - investigator.domain.services.quarterly_processor - INFO - [TTM_SELECT] After YTD filter and date sort: 12 periods available. Periods: ['Q3-2026 (None)', 'Q2-2026 (None)', 'Q1-2026 (None)', 'Q3-2025 (None)', 'Q2-2025 (None)', 'Q1-2025 (None)', 'Q3-2024 (None)', 'Q2-2024 (None)']
+2026-02-22 06:17:02,423 - investigator.domain.services.quarterly_processor - WARNING - [CONSECUTIVE_CHECK] ⚠️  Could not find 4 consecutive quarters. Best sequence: 3 quarters - ['Q3-2026', 'Q2-2026', 'Q1-2026']
+2026-02-22 06:17:02,428 - investigator.domain.services.quarterly_processor - WARNING - ⚠️  Only 3 consecutive quarters available (requested 4). TTM calculation may be invalid with non-consecutive periods!
+2026-02-22 06:17:02,431 - investigator.domain.services.valuation.dcf - WARNING - JNJ - TTM revenue is 0, cannot calculate margin
+2026-02-22 06:17:02,431 - investigator.domain.services.valuation.dcf - INFO - JNJ - Rule of 40: 0.0% (Revenue Growth: 0.0%, Profit Margin: 0.0%) → Classification: POOR
+2026-02-22 06:17:02,431 - investigator.domain.services.valuation.dcf - INFO - 🔍 JNJ - DCF FCF CALCULATION START (with median smoothing)
+2026-02-22 06:17:02,431 - investigator.domain.services.valuation.dcf - INFO - 🔍 JNJ - quarterly_metrics type: <class 'list'>
+2026-02-22 06:17:02,431 - investigator.domain.services.valuation.dcf - INFO - 🔍 JNJ - quarterly_metrics length: 15
+2026-02-22 06:17:02,432 - investigator.domain.services.valuation.dcf - INFO - 🔍 JNJ - Sample period keys: ['symbol', 'fiscal_year', 'fiscal_period', 'adsh', 'filed', 'period_end', 'form', 'total_revenue', 'net_income', 'gross_profit']
+2026-02-22 06:17:02,432 - investigator.domain.services.valuation.dcf - INFO - [DCF_INPUT_DEBUG] JNJ - Fiscal periods in quarterly_metrics BEFORE get_cached_ttm_periods: ['Q3', 'Q2', 'Q1', 'FY', 'Q3', 'Q2', 'Q1', 'FY', 'Q3', 'Q2', 'Q1', 'FY', 'Q3', 'Q2', 'Q1']
+2026-02-22 06:17:02,432 - investigator.domain.services.valuation.dcf - INFO - [DCF_INPUT_DEBUG] JNJ - Count: 3 FY periods, 12 Q periods
+2026-02-22 06:17:02,432 - investigator.domain.services.valuation.dcf - WARNING - JNJ - Insufficient data for median smoothing (need 8+ quarters), falling back to TTM
+2026-02-22 06:17:02,432 - investigator.domain.services.valuation.dcf - INFO - 🔍 JNJ - Got 3 TTM periods
+2026-02-22 06:17:02,434 - investigator.domain.services.valuation.dcf - INFO - 🔍 JNJ - Q3-2026: OCF=$0.0M, CapEx=$0.0M
+2026-02-22 06:17:02,435 - investigator.infrastructure.indicators.technical_indicators - INFO - Calculated 104 indicators for JNJ (365 data points)
+2026-02-22 06:17:02,435 - investigator.domain.services.valuation.dcf - INFO - 🔍 JNJ - Q2-2026: OCF=$0.0M, CapEx=$0.0M
+2026-02-22 06:17:02,435 - investigator.domain.services.valuation.dcf - INFO - 🔍 JNJ - Q1-2026: OCF=$0.0M, CapEx=$0.0M
+2026-02-22 06:17:02,435 - investigator.domain.services.valuation.dcf - INFO - JNJ - TTM FCF (fallback) from 3 quarters ['Q3-2026', 'Q2-2026', 'Q1-2026']: OCF=$0.0M, CapEx=$0.0M, FCF=$0.0M (* = computed from FY)
+2026-02-22 06:17:02,436 - investigator.domain.services.valuation.dcf - INFO - JNJ - Latest TTM FCF: $0.0M
+2026-02-22 06:17:02,436 - investigator.domain.services.valuation.dcf - INFO - 🔍 [FCF_GROWTH] JNJ - Data check: multi_year_data=0 years (need >=3 OR >=8 quarters), quarterly_metrics=15 quarters
+2026-02-22 06:17:02,436 - investigator.domain.services.valuation.dcf - INFO - 🔍 [FCF_GROWTH] JNJ - Using quarterly data (15 quarters)
+2026-02-22 06:17:02,436 - investigator.domain.services.valuation.dcf - WARNING - JNJ - Need at least 8 quarters for revenue growth, got 3
+2026-02-22 06:17:02,436 - investigator.domain.services.valuation.dcf - INFO - [FCF_GROWTH_FINAL] JNJ:
+  TTM Revenue Geometric Growth = 0.0%
+  Sector Premium (Healthcare) = 2.0%
+  → Year 1 FCF Growth = 2.0%
+2026-02-22 06:17:02,436 - investigator.domain.services.valuation.dcf - INFO - JNJ - Historical FCF growth rate (final): 2.0%
+2026-02-22 06:17:02,436 - investigator.domain.services.valuation.dcf - INFO - JNJ - Using Healthcare growth caps: min=-5%, max=25%
+2026-02-22 06:17:02,508 - investigator.domain.services.valuation.dcf - INFO - 🔍 JNJ - shares_outstanding debug: top_level=2666500000.0, ratios=None, balance_sheet=None
+2026-02-22 06:17:02,509 - investigator.domain.services.valuation.dcf - INFO - JNJ - Using shares outstanding from quarterly metrics (top-level): 2,666,500,000
+2026-02-22 06:17:02,509 - investigator.domain.services.valuation_shared.split_adjusted_market_cap - WARNING - JNJ: price_date required when shares_source='sec', defaulting to current date (may be incorrect for historical data)
+2026-02-22 06:17:02,509 - investigator.domain.services.valuation.dcf - INFO - JNJ - Fading Growth Parameters:
+  Terminal Growth (perpetuity): 3.0%
+  Base Fade Target (2.0x terminal): 6.0%
+  Historical Floor (60% of historical): 1.2%
+  Final Fade Target (Year 7): 2.2% (max of base target and historical floor, before maturity caps)
+  Historical FCF Growth: 2.0%
+  Industry Median (ceiling only): 20.0%
+  Market Cap: $646.6B
+  Rule of 40: 0.0
+2026-02-22 06:17:02,509 - investigator.domain.services.valuation.dcf - INFO - 📊 [FADING DCF] JNJ - Strategic investor / Healthy company
+  Mode: Fading DCF (realistic deceleration)
+  Revenue Growth: +0.0% | FCF Growth: +2.0% | Rule of 40: 0.0
+  Year 1: 2.0% (company-specific, adjusted for turnarounds)
+  Year 7: 2.2% (fading toward terminal, quality & maturity adjusted)
+  Terminal growth (perpetuity): 3.0% (sector-specific + Rule of 40 adjustment)
+  Method: Linear interpolation from company-specific TOWARD terminal over 7 years
+  Maturity Cap: $646.6B market cap → max Year 7 growth = 2.2%
+  Rationale: Realistic deceleration toward sustainable terminal growth rate
+2026-02-22 06:17:02,509 - investigator.domain.services.valuation.dcf - INFO - JNJ - Projected FCF Year 1: $0.00B (growth 2.00%)
+2026-02-22 06:17:02,509 - investigator.domain.services.valuation.dcf - INFO - JNJ - Projected FCF Year 2: $0.00B (growth 2.03%)
+2026-02-22 06:17:02,509 - investigator.domain.services.valuation.dcf - INFO - JNJ - Projected FCF Year 3: $0.00B (growth 2.07%)
+2026-02-22 06:17:02,509 - investigator.domain.services.valuation.dcf - INFO - JNJ - Projected FCF Year 4: $0.00B (growth 2.10%)
+2026-02-22 06:17:02,509 - investigator.domain.services.valuation.dcf - INFO - JNJ - Projected FCF Year 5: $0.00B (growth 2.13%)
+2026-02-22 06:17:02,509 - investigator.domain.services.valuation.dcf - INFO - JNJ - Projected FCF Year 6: $0.00B (growth 2.17%)
+2026-02-22 06:17:02,509 - investigator.domain.services.valuation.dcf - INFO - JNJ - Projected FCF Year 7: $0.00B (growth 2.20%)
+2026-02-22 06:17:02,509 - investigator.domain.services.valuation.dcf - INFO - JNJ - Projected Year 7 FCF: $0.0M
+2026-02-22 06:17:02,509 - investigator.domain.services.valuation_shared.split_adjusted_market_cap - WARNING - JNJ: price_date required when shares_source='sec', defaulting to current date (may be incorrect for historical data)
+2026-02-22 06:17:02,582 - investigator.domain.services.valuation.dcf - INFO - JNJ - Using unlevered beta from market data: 0.02 (source=market)
+2026-02-22 06:17:02,737 - investigator.domain.services.valuation.dcf - INFO - JNJ - Beta treatment: sector_median_low_r2 - Low R²=0.03%, using Default median beta=1.00
+2026-02-22 06:17:02,767 - victor.config.api_keys - INFO - SECRET_ACCESS: action=loaded provider=service:fred source=keyring success=True key_length=32
+2026-02-22 06:17:02,876 - investigator.infrastructure.external.fred.macro_indicators - INFO - Fetched 1 macro indicators
+2026-02-22 06:17:02,880 - investigator.domain.services.valuation.dcf - INFO - JNJ - Using 10Y Treasury rate from FRED: 4.09% (as of 2026-02-18)
+2026-02-22 06:17:02,880 - investigator.domain.services.valuation.dcf - INFO - 🔍 [DCF_INTEREST] JNJ - Interest expense: $0.01B (nested: $0.00B, flat: $0.01B), Total debt: $0.00B, Cost of debt: 5.50% (default (no debt))
+2026-02-22 06:17:02,880 - investigator.domain.services.valuation.dcf - INFO - JNJ - WACC inputs: Market Cap $646.60B, Debt $0.00B (weights E=1.00, D=0.00)
+2026-02-22 06:17:02,880 - investigator.domain.services.valuation.dcf - INFO - JNJ - Cost of equity: 10.09% (Rf 4.09% + beta 1.00 × ERP 6.00%)
+2026-02-22 06:17:02,880 - investigator.domain.services.valuation.dcf - INFO - JNJ - Cost of debt: 5.50% (interest $0.01B)
+2026-02-22 06:17:02,880 - investigator.domain.services.valuation.dcf - INFO - JNJ - WACC: 10.09% (raw: 10.09%, bounded 7-20%, tax rate 21%)
+2026-02-22 06:17:02,880 - investigator.domain.services.valuation.dcf - INFO - JNJ - WACC: 10.09%
+2026-02-22 06:17:02,880 - investigator.domain.services.valuation.dcf - WARNING - JNJ - Need at least 8 quarters for revenue growth, got 3
+2026-02-22 06:17:02,880 - investigator.domain.services.valuation.dcf - WARNING - JNJ - TTM revenue is 0, cannot calculate margin
+2026-02-22 06:17:02,880 - investigator.domain.services.valuation.dcf - INFO - JNJ - Terminal growth adjustment: +0.00% → Declining/inefficient (Rule of 40: 0.0% <40, FCF margin 0.0%)
+2026-02-22 06:17:02,880 - investigator.domain.services.valuation.dcf - INFO - JNJ - Terminal Growth (internal): base=3.00% + Rule of 40 adj=+0.00% (poor) = 3.00% (within ceiling: 3.0%)
+2026-02-22 06:17:02,881 - investigator.domain.services.valuation_shared.split_adjusted_market_cap - WARNING - JNJ: price_date required when shares_source='sec', defaulting to current date (may be incorrect for historical data)
+2026-02-22 06:17:02,950 - investigator.domain.services.valuation.dcf - INFO - JNJ - Using unlevered beta from market data: 0.02 (source=market)
+2026-02-22 06:17:03,099 - investigator.domain.services.valuation.dcf - INFO - JNJ - Beta treatment: sector_median_low_r2 - Low R²=0.03%, using Default median beta=1.00
+2026-02-22 06:17:03,104 - victor.config.api_keys - INFO - SECRET_ACCESS: action=loaded provider=service:fred source=keyring success=True key_length=32
+2026-02-22 06:17:03,209 - investigator.infrastructure.external.fred.macro_indicators - INFO - Fetched 1 macro indicators
+2026-02-22 06:17:03,212 - investigator.domain.services.valuation.dcf - INFO - JNJ - Using 10Y Treasury rate from FRED: 4.09% (as of 2026-02-18)
+2026-02-22 06:17:03,212 - investigator.domain.services.valuation.dcf - INFO - 🔍 [DCF_INTEREST] JNJ - Interest expense: $0.01B (nested: $0.00B, flat: $0.01B), Total debt: $0.00B, Cost of debt: 5.50% (default (no debt))
+2026-02-22 06:17:03,212 - investigator.domain.services.valuation.dcf - INFO - JNJ - WACC inputs: Market Cap $646.60B, Debt $0.00B (weights E=1.00, D=0.00)
+2026-02-22 06:17:03,212 - investigator.domain.services.valuation.dcf - INFO - JNJ - Cost of equity: 10.09% (Rf 4.09% + beta 1.00 × ERP 6.00%)
+2026-02-22 06:17:03,212 - investigator.domain.services.valuation.dcf - INFO - JNJ - Cost of debt: 5.50% (interest $0.01B)
+2026-02-22 06:17:03,212 - investigator.domain.services.valuation.dcf - INFO - JNJ - WACC: 10.09% (raw: 10.09%, bounded 7-20%, tax rate 21%)
+2026-02-22 06:17:03,212 - investigator.domain.services.valuation.dcf - INFO - JNJ - Terminal Value: $0.00B (growth rate: 3.0%)
+2026-02-22 06:17:03,212 - investigator.domain.services.valuation.dcf - INFO - JNJ - Discount Year 1: FCF $0.00B / (1+WACC)^1 = $0.00B
+2026-02-22 06:17:03,212 - investigator.domain.services.valuation.dcf - INFO - JNJ - Discount Year 2: FCF $0.00B / (1+WACC)^2 = $0.00B
+2026-02-22 06:17:03,212 - investigator.domain.services.valuation.dcf - INFO - JNJ - Discount Year 3: FCF $0.00B / (1+WACC)^3 = $0.00B
+2026-02-22 06:17:03,212 - investigator.domain.services.valuation.dcf - INFO - JNJ - Discount Year 4: FCF $0.00B / (1+WACC)^4 = $0.00B
+2026-02-22 06:17:03,212 - investigator.domain.services.valuation.dcf - INFO - JNJ - Discount Year 5: FCF $0.00B / (1+WACC)^5 = $0.00B
+2026-02-22 06:17:03,212 - investigator.domain.services.valuation.dcf - INFO - JNJ - Discount Year 6: FCF $0.00B / (1+WACC)^6 = $0.00B
+2026-02-22 06:17:03,212 - investigator.domain.services.valuation.dcf - INFO - JNJ - Discount Year 7: FCF $0.00B / (1+WACC)^7 = $0.00B
+2026-02-22 06:17:03,212 - investigator.domain.services.valuation.dcf - INFO - JNJ - PV of FCF: $0.00B, PV of Terminal: $0.00B
+2026-02-22 06:17:03,213 - investigator.domain.services.valuation.dcf - INFO - JNJ - Valuation sum: PV_FCF $0.00B + PV_Terminal $0.00B = Enterprise Value $0.00B
+2026-02-22 06:17:03,213 - investigator.domain.services.valuation.dcf - INFO - JNJ - Enterprise Value: $0.00B, Equity Value: $10.46B
+2026-02-22 06:17:03,213 - investigator.domain.services.valuation.dcf - INFO - JNJ - DCF Fair Share Price: $3.92 (Shares Outstanding: 2,666,500,000)
+2026-02-22 06:17:03,213 - investigator.domain.services.valuation.dcf - INFO - JNJ - Fair Value: $3.92, Current: $242.49, Upside: -98.4%
+2026-02-22 06:17:03,213 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_START] JNJ - Initializing Gordon Growth Model valuation
+2026-02-22 06:17:03,213 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_INPUTS] JNJ - Cost of Equity (r): 8.00%
+2026-02-22 06:17:03,213 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_STAGE_1] JNJ - Checking dividend eligibility...
+2026-02-22 06:17:03,213 - investigator.domain.services.quarterly_processor - INFO - [QUARTERLY_CALC_DEBUG] Fiscal periods AFTER normalization: ['Q3', 'Q2', 'Q1', 'FY', 'Q3', 'Q2', 'Q1', 'FY', 'Q3', 'Q2', 'Q1', 'FY', 'Q3', 'Q2', 'Q1']
+2026-02-22 06:17:03,213 - investigator.domain.services.quarterly_processor - INFO - [QUARTERLY_CALC_DEBUG] After separation: 3 FY periods, 12 Q periods
+2026-02-22 06:17:03,213 - investigator.domain.services.quarterly_processor - INFO - [YTD_GROUP] Created 4 fiscal year groups: [(2026, ['Q3', 'Q2', 'Q1']), (2025, ['Q3', 'Q2', 'Q1']), (2024, ['Q3', 'Q2', 'Q1']), (2023, ['Q3', 'Q2', 'Q1'])]
+2026-02-22 06:17:03,213 - investigator.domain.services.quarterly_processor - INFO - YTD to quarterly conversion complete for 4 fiscal year groups
+2026-02-22 06:17:03,213 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Before condition: compute_missing=True, quarterly_periods=12, fy_periods=3
+2026-02-22 06:17:03,213 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Entering Q4 computation block: 3 FY periods, 12 Q periods
+2026-02-22 06:17:03,213 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Current quarters: 12, Target: 4
+2026-02-22 06:17:03,213 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Will attempt to compute Q4 for ALL 3 FY periods where quarterly data available
+2026-02-22 06:17:03,213 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Processing FY 1/3: fiscal_year=2025, period_end=None
+2026-02-22 06:17:03,213 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ❌ FY has invalid date, skipping
+2026-02-22 06:17:03,213 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Processing FY 2/3: fiscal_year=2024, period_end=None
+2026-02-22 06:17:03,213 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ❌ FY has invalid date, skipping
+2026-02-22 06:17:03,213 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Processing FY 3/3: fiscal_year=2023, period_end=None
+2026-02-22 06:17:03,213 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ❌ FY has invalid date, skipping
+2026-02-22 06:17:03,214 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Computed 0 Q4 periods. Total quarterly periods after Q4 computation: 12
+2026-02-22 06:17:03,214 - investigator.domain.services.quarterly_processor - INFO - [TTM_SELECT] After YTD filter and date sort: 12 periods available. Periods: ['Q3-2026 (None)', 'Q2-2026 (None)', 'Q1-2026 (None)', 'Q3-2025 (None)', 'Q2-2025 (None)', 'Q1-2025 (None)', 'Q3-2024 (None)', 'Q2-2024 (None)']
+2026-02-22 06:17:03,214 - investigator.domain.services.quarterly_processor - WARNING - [CONSECUTIVE_CHECK] ⚠️  Could not find 4 consecutive quarters. Best sequence: 3 quarters - ['Q3-2026', 'Q2-2026', 'Q1-2026']
+2026-02-22 06:17:03,214 - investigator.domain.services.quarterly_processor - WARNING - ⚠️  Only 3 consecutive quarters available (requested 4). TTM calculation may be invalid with non-consecutive periods!
+2026-02-22 06:17:03,214 - investigator.domain.services.valuation.ggm - INFO - JNJ - GGM using shares from quarterly metrics: 2,666,500,000
+2026-02-22 06:17:03,214 - investigator.domain.services.valuation.ggm - INFO - JNJ - TTM dividends: $3132.0M across 3 quarters (shares used: 2,666,500,000)
+2026-02-22 06:17:03,214 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_DIVIDEND] JNJ - ✅ Dividend-paying stock: TTM DPS = $1.1746
+2026-02-22 06:17:03,214 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_STAGE_2] JNJ - Calculating sustainable growth rate...
+2026-02-22 06:17:03,214 - investigator.domain.services.quarterly_processor - INFO - [QUARTERLY_CALC_DEBUG] Fiscal periods AFTER normalization: ['Q3', 'Q2', 'Q1', 'FY', 'Q3', 'Q2', 'Q1', 'FY', 'Q3', 'Q2', 'Q1', 'FY', 'Q3', 'Q2', 'Q1']
+2026-02-22 06:17:03,214 - investigator.domain.services.quarterly_processor - INFO - [QUARTERLY_CALC_DEBUG] After separation: 3 FY periods, 12 Q periods
+2026-02-22 06:17:03,214 - investigator.domain.services.quarterly_processor - INFO - [YTD_GROUP] Created 4 fiscal year groups: [(2026, ['Q3', 'Q2', 'Q1']), (2025, ['Q3', 'Q2', 'Q1']), (2024, ['Q3', 'Q2', 'Q1']), (2023, ['Q3', 'Q2', 'Q1'])]
+2026-02-22 06:17:03,214 - investigator.domain.services.quarterly_processor - INFO - YTD to quarterly conversion complete for 4 fiscal year groups
+2026-02-22 06:17:03,214 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Before condition: compute_missing=True, quarterly_periods=12, fy_periods=3
+2026-02-22 06:17:03,214 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Entering Q4 computation block: 3 FY periods, 12 Q periods
+2026-02-22 06:17:03,214 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Current quarters: 12, Target: 8
+2026-02-22 06:17:03,214 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Will attempt to compute Q4 for ALL 3 FY periods where quarterly data available
+2026-02-22 06:17:03,214 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Processing FY 1/3: fiscal_year=2025, period_end=None
+2026-02-22 06:17:03,214 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ❌ FY has invalid date, skipping
+2026-02-22 06:17:03,214 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Processing FY 2/3: fiscal_year=2024, period_end=None
+2026-02-22 06:17:03,214 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ❌ FY has invalid date, skipping
+2026-02-22 06:17:03,214 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Processing FY 3/3: fiscal_year=2023, period_end=None
+2026-02-22 06:17:03,214 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ❌ FY has invalid date, skipping
+2026-02-22 06:17:03,214 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Computed 0 Q4 periods. Total quarterly periods after Q4 computation: 12
+2026-02-22 06:17:03,214 - investigator.domain.services.quarterly_processor - INFO - [TTM_SELECT] After YTD filter and date sort: 12 periods available. Periods: ['Q3-2026 (None)', 'Q2-2026 (None)', 'Q1-2026 (None)', 'Q3-2025 (None)', 'Q2-2025 (None)', 'Q1-2025 (None)', 'Q3-2024 (None)', 'Q2-2024 (None)']
+2026-02-22 06:17:03,214 - investigator.domain.services.quarterly_processor - WARNING - [CONSECUTIVE_CHECK] ⚠️  Could not find 8 consecutive quarters. Best sequence: 3 quarters - ['Q3-2026', 'Q2-2026', 'Q1-2026']
+2026-02-22 06:17:03,214 - investigator.domain.services.quarterly_processor - WARNING - ⚠️  Only 3 consecutive quarters available (requested 8). TTM calculation may be invalid with non-consecutive periods!
+2026-02-22 06:17:03,214 - investigator.domain.services.valuation.ggm - WARNING - JNJ - Insufficient data, using default growth: 3.00%
+2026-02-22 06:17:03,214 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_GROWTH] JNJ - Sustainable growth rate (g) [internal]: 3.00%
+2026-02-22 06:17:03,214 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_STAGE_3] JNJ - Validating model constraints (g < r)...
+2026-02-22 06:17:03,214 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_CONSTRAINT_PASS] JNJ - ✅ Model constraints satisfied (g=3.00% < r=8.00%)
+2026-02-22 06:17:03,215 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_STAGE_4] JNJ - Calculating expected dividend D₁ = D₀ × (1 + g)
+2026-02-22 06:17:03,215 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_D1_CALC] JNJ - D₁ = $1.1746 × (1 + 3.00%) = $1.2098
+2026-02-22 06:17:03,215 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_STAGE_5] JNJ - Applying GGM formula: Fair Value = D₁ / (r - g)
+2026-02-22 06:17:03,215 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_FORMULA] JNJ - Fair Value = $1.2098 / (8.00% - 3.00%) = $1.2098 / 5.0000% = $24.20
+2026-02-22 06:17:03,215 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_STAGE_6] JNJ - Comparing to current market price...
+2026-02-22 06:17:03,693 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_RESULT] JNJ - Fair Value: $24.20 vs Current: $242.49 | Upside: -90.0% | Assessment: Significantly Overvalued
+2026-02-22 06:17:03,693 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_METRICS] JNJ - Dividend Yield: 0.48% | Growth Rate: 3.00% | Required Return: 8.00%
+2026-02-22 06:17:03,907 - victor_invest.tools.valuation - INFO - Calculated TTM revenue growth: 6.2% (TTM: $92100000000M vs $86700000000M)
+2026-02-22 06:17:04,047 - investigator.domain.services.valuation.common.sector_multiples - INFO - Loaded sector multiples config from /Users/vijaysingh/code/victor-invest/config.yaml
+2026-02-22 06:17:04,048 - investigator.domain.services.valuation.models.pe_multiple - INFO - 🔍 [PE_TRANSPARENCY] JNJ - Target P/E calculation: sources=[sector_median=22.00, growth_adjusted=23.37] → average=22.69
+2026-02-22 06:17:04,059 - victor_invest.tools.valuation - INFO - Calculated TTM revenue growth: 6.2% (TTM: $92100000000M vs $86700000000M)
+2026-02-22 06:17:04,059 - investigator.domain.services.valuation.models.ps_multiple - INFO - PS_GRANULAR - Growth adjustment: +-1.0 (revenue growth: 6.2%)
+2026-02-22 06:17:04,059 - investigator.domain.services.valuation.models.ps_multiple - INFO - PS_GRANULAR - Final P/S: 3.00 (base: 4.0 + growth: -1.0 + stage: 0.0) × quality: 1.00)
+2026-02-22 06:17:04,073 - victor_invest.tools.valuation - INFO - Calculated TTM revenue growth: 6.2% (TTM: $92100000000M vs $86700000000M)
+2026-02-22 06:17:04,085 - victor_invest.tools.valuation - INFO - Calculated TTM revenue growth: 6.2% (TTM: $92100000000M vs $86700000000M)
+2026-02-22 06:17:04,146 - investigator.domain.services.company_metadata_service - INFO - Created default database engine for stock database
+2026-02-22 06:17:04,147 - investigator.domain.services.company_metadata_service - INFO - Loaded 906 symbols from peer group sector mapping
+2026-02-22 06:17:04,148 - investigator.domain.services.company_metadata_service - INFO - Loaded 906 symbols from sector_industry_ticker_map
+2026-02-22 06:17:04,209 - investigator.domain.services.company_metadata_service - INFO - Loaded 25 sector overrides from config.yaml
+2026-02-22 06:17:04,272 - investigator.domain.services.company_metadata_service - INFO - Loaded 2 industry overrides from config.yaml
+2026-02-22 06:17:04,381 - victor_invest.tools.valuation - INFO - JNJ: Retrieved sector=Healthcare, industry=Biotechnology: Pharmaceutical Preparations from CompanyMetadataService
+2026-02-22 06:17:04,382 - investigator.domain.services.company_metadata_service - INFO - Created default database engine for stock database
+2026-02-22 06:17:04,382 - investigator.domain.services.company_metadata_service - INFO - Loaded 906 symbols from peer group sector mapping
+2026-02-22 06:17:04,383 - investigator.domain.services.company_metadata_service - INFO - Loaded 906 symbols from sector_industry_ticker_map
+2026-02-22 06:17:04,448 - investigator.domain.services.company_metadata_service - INFO - Loaded 25 sector overrides from config.yaml
+2026-02-22 06:17:04,510 - investigator.domain.services.company_metadata_service - INFO - Loaded 2 industry overrides from config.yaml
+2026-02-22 06:17:04,620 - investigator.domain.services.dynamic_model_weighting - INFO - JNJ - Known Dividend Aristocrat Johnson & Johnson: Payout ratio 0.0% - dividend_aristocrat_growth
+2026-02-22 06:17:04,620 - investigator.domain.services.dynamic_model_weighting - INFO - JNJ - Tier 'dividend_aristocrat_growth' base weights from config: {'ev_ebitda': 35, 'dcf': 30, 'ggm': 20, 'pe': 15, 'ps': 0, 'pb': 0}
+2026-02-22 06:17:04,620 - investigator.domain.services.dynamic_model_weighting - INFO - EV_EBITDA filtered out: Negative/zero EBITDA: $0
+2026-02-22 06:17:04,621 - investigator.domain.services.dynamic_model_weighting - INFO - DCF filtered out: Insufficient FCF data: 0 quarters < 4 required
+2026-02-22 06:17:04,621 - investigator.domain.services.dynamic_model_weighting - INFO - GGM filtered out: No dividends paid (neither common nor preferred)
+2026-02-22 06:17:04,621 - investigator.domain.services.dynamic_model_weighting - INFO - JNJ - Weights after applicability filters: {'ev_ebitda': 0, 'dcf': 0, 'ggm': 0, 'pe': 15, 'ps': 0, 'pb': 0}
+2026-02-22 06:17:04,621 - investigator.domain.services.dynamic_model_weighting - INFO - 🎯 JNJ - Dynamic Weighting: Tier=dividend_aristocrat_growth | Sector=Healthcare | Industry=Biotechnology: Pharmaceutical Preparations | Size=mega_cap | Stage=transitioning | Weights: PE=100%
+2026-02-22 06:17:04,621 - victor_invest.tools.valuation - INFO - JNJ: Using sector-weighted blend (tier=dividend_aristocrat_growth) → $456.94 | Weights: {'dcf': 0, 'ggm': 0, 'pe': 100, 'ps': 0, 'pb': 0}
+2026-02-22 06:17:29,639 - investigator.infrastructure.external.nyfed.markets_data - WARNING - Could not retrieve GSCPI
+2026-02-22 06:17:38,886 - utils.system_info - INFO - Apple Silicon detected: 64.0GB total, ~44.8GB available for GPU
+2026-02-22 06:17:38,896 - investigator.infrastructure.llm.semaphore - INFO - Auto-detected GPU: 44.8GB total, 38.1GB available for LLM
+2026-02-22 06:17:38,896 - investigator.infrastructure.llm.semaphore - INFO - Loaded 6 model specs: ['gpt-oss:20b', 'deepseek-r1:32b', 'qwen3:30b', 'qwen3:32b', 'llama3.3:70b', 'llama3.1:8b']
+2026-02-22 06:17:38,896 - investigator.infrastructure.llm.semaphore - INFO - Dynamic LLM Semaphore initialized - Available VRAM: 38.08GB
+2026-02-22 06:17:38,896 - investigator.infrastructure.llm.semaphore - INFO - First load of gpt-oss:20b, allocating full model: 13.48GB
+2026-02-22 06:17:38,896 - investigator.infrastructure.llm.semaphore - INFO - ✅ LLM allocated: gpt-oss:20b_text_4793_1771762658.896844 | Model: gpt-oss:20b | VRAM: 13.5GB | Used: 13.5/38.08GB | Concurrent: 1 | Cached: False
+2026-02-22 06:17:38,950 - OllamaClient - INFO - 📤 Sending to Ollama API | server=http://192.168.1.20:11434 | model=gpt-oss:20b | prompt_name=N/A | prompt_chars=4793 | format=text | stream=False
+2026-02-22 06:18:24,317 - OllamaClient - INFO - 📥 Received from Ollama API | server=http://192.168.1.20:11434 | model=gpt-oss:20b | prompt_name=N/A | duration=45.37s | primary_field=response | primary_chars=10144
+2026-02-22 06:18:24,317 - OllamaClient - INFO - 🔍 Ollama response structure | model_type=Standard (response-based) | response_chars=10144 | thinking_chars=2441
+2026-02-22 06:18:24,318 - investigator.infrastructure.llm.semaphore - INFO - 🔓 LLM released: gpt-oss:20b_text_4793_1771762658.896844 | Model: gpt-oss:20b | Duration: 45.42s | VRAM freed: 13.5GB | Remaining: 0.0/38.08GB | Queue: 0 | Concurrent: 0
+2026-02-22 06:18:24,318 - victor_invest.handlers - INFO - Successfully parsed LLM synthesis JSON (attempt 1/3, 18 keys)
+2026-02-22 06:18:24,405 - investigator.infrastructure.reporting.professional_report - INFO - Generated professional report: reports/professional/JNJ_professional_report.pdf
+2026-02-22 06:18:24,405 - victor.workflows.executor - INFO - Workflow 'comprehensive' completed in 83.01s (1 tool calls)
+⠹ Analysis complete!
+
+Analysis Results
+
+           JNJ Analysis Summary           
+┏━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━┓
+┃ Category       ┃ Status ┃ Key Findings ┃
+┡━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━┩
+│ Fundamental    │ ✓      │ Completed    │
+│ Technical      │ ✓      │ Completed    │
+│ Market Context │ ✓      │ Completed    │
+│ Synthesis      │ ✓      │ BUY          │
+└────────────────┴────────┴──────────────┘
+
+Recommendation
+  Action: BUY
+  Confidence: HIGH
+  Price Target: $456.94396142459254
+  Thesis: Johnson & Johnson remains a compelling long‑term play with a robust valuation upside of +88.4% based on its blended fair value of $456.94 versus 
+a current price of $242.49. The company’s solid earnings quality (TTM EPS $20.14) and strong cash‑flow generation underpin a bullish thesis despite the DCF
+and GGM models undervaluing the stock.

@@ -53,7 +53,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from victor_invest.tools import MacroDataTool
 
 # Configure logging
-logging.basicConfig(level=logging.WARNING, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.WARNING, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -116,13 +118,17 @@ def print_indicator_table(indicators: Dict, title: str = "Indicators"):
             continue
 
         name = (
-            (data.get("name", ind_id)[:28] + "..") if len(data.get("name", ind_id)) > 30 else data.get("name", ind_id)
+            (data.get("name", ind_id)[:28] + "..")
+            if len(data.get("name", ind_id)) > 30
+            else data.get("name", ind_id)
         )
         value_str = format_value(data.get("value"), data.get("units"))
         change_str = format_change(data.get("change"))
         date_str = data.get("date", "N/A")[:10] if data.get("date") else "N/A"
 
-        print(f"{ind_id:<20} {name:<30} {value_str:<15} {change_str:<12} {date_str:<12}")
+        print(
+            f"{ind_id:<20} {name:<30} {value_str:<15} {change_str:<12} {date_str:<12}"
+        )
 
 
 def print_buffett_indicator(data: Dict):
@@ -157,7 +163,9 @@ def print_buffett_indicator(data: Dict):
     print(f"    VTI Price: ${components.get('vti_price', 'N/A')}")
     print(f"    VTI Date: {components.get('vti_date', 'N/A')}")
     print(
-        f"    GDP: ${components.get('gdp_billions', 'N/A'):,.0f}B" if components.get("gdp_billions") else "    GDP: N/A"
+        f"    GDP: ${components.get('gdp_billions', 'N/A'):,.0f}B"
+        if components.get("gdp_billions")
+        else "    GDP: N/A"
     )
     print(f"    GDP Date: {components.get('gdp_date', 'N/A')}")
     print(
@@ -184,7 +192,9 @@ def print_time_series(data: Dict):
     time_series = data.get("time_series", [])
 
     print(f"\n  Data Points: {data.get('data_points', 0)}")
-    print(f"  Date Range: {date_range.get('start', 'N/A')} to {date_range.get('end', 'N/A')}")
+    print(
+        f"  Date Range: {date_range.get('start', 'N/A')} to {date_range.get('end', 'N/A')}"
+    )
 
     print("\n  Statistics:")
     print(f"    Latest: {format_value(stats.get('latest'))}")
@@ -213,7 +223,9 @@ def print_categories(data: Dict):
 
     categories = data.get("categories", {})
     for cat_name, cat_info in sorted(categories.items()):
-        print(f"\n  {cat_name.upper()} ({cat_info.get('indicator_count', 0)} indicators):")
+        print(
+            f"\n  {cat_name.upper()} ({cat_info.get('indicator_count', 0)} indicators):"
+        )
         for ind in cat_info.get("indicators", []):
             print(f"    - {ind}")
 
@@ -253,7 +265,9 @@ def print_summary(data: Dict):
     # Buffett Indicator if present
     if "buffett_indicator" in data:
         bi = data["buffett_indicator"]
-        print(f"\n  Buffett Indicator: {bi.get('ratio', 'N/A'):.1f}% - {bi.get('interpretation', 'N/A')}")
+        print(
+            f"\n  Buffett Indicator: {bi.get('ratio', 'N/A'):.1f}% - {bi.get('interpretation', 'N/A')}"
+        )
 
     # Categories
     categories = data.get("categories", {})
@@ -326,8 +340,12 @@ Examples:
         default=1000,
         help="Max data points for time series (default: 1000)",
     )
-    parser.add_argument("--json", action="store_true", help="Output raw JSON instead of formatted table")
-    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
+    parser.add_argument(
+        "--json", action="store_true", help="Output raw JSON instead of formatted table"
+    )
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="Enable verbose logging"
+    )
 
     args = parser.parse_args()
 
@@ -358,7 +376,9 @@ Examples:
             lookback_days=args.lookback_days,
         )
     elif args.time_series:
-        result = await tool.execute(action="get_time_series", indicator_id=args.time_series, limit=args.limit)
+        result = await tool.execute(
+            action="get_time_series", indicator_id=args.time_series, limit=args.limit
+        )
     elif args.list_categories:
         result = await tool.execute(action="list_categories")
 
@@ -381,9 +401,13 @@ Examples:
         elif args.buffett:
             print_buffett_indicator(result.data)
         elif args.category:
-            print_indicator_table(result.data.get("indicators", {}), f"{args.category.upper()} INDICATORS")
+            print_indicator_table(
+                result.data.get("indicators", {}), f"{args.category.upper()} INDICATORS"
+            )
         elif args.indicators:
-            print_indicator_table(result.data.get("indicators", {}), "REQUESTED INDICATORS")
+            print_indicator_table(
+                result.data.get("indicators", {}), "REQUESTED INDICATORS"
+            )
             if result.warnings:
                 print(f"\nWarnings: {result.warnings}")
         elif args.time_series:

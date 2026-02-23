@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sector Multiples Historical Timeline with Representative Stocks (2016-2024)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f7; color: #1d1d1f; padding: 20px; }
+        .container { max-width: 1600px; margin: 0 auto; }
+        h1 { font-size: 2.2rem; margin-bottom: 10px; }
+        .subtitle { color: #6e6e73; margin-bottom: 30px; font-size: 0.95rem; }
+        .chart-container { background: white; border-radius: 12px; padding: 30px; margin-bottom: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .chart-title { font-size: 1.4rem; margin-bottom: 20px; }
+        .plot { width: 100%; height: 600px; }
+        .note { font-size: 0.85rem; color: #8e8e93; margin-top: 10px; font-style: italic; }
+        .meta { font-size: 0.8rem; color: #6e6e73; text-align: center; margin-top: 5px; }
+        .key-events { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; margin-top: 15px; padding: 15px; background: #f9f9fa; border-radius: 8px; }
+        .key-event { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
+        .year-marker { width: 12px; height: 12px; border-radius: 50%; }
+        .legend-info { font-size: 0.8rem; color: #6e6e73; margin-top: 15px; padding: 10px; background: #f9f9fa; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📈 Sector Multiples Historical Timeline with Representative Stocks</h1>
+        <p class="subtitle">
+            13 sectors • 10 years • 54 representative stocks (2024) •
+            Generated: 2026-02-22 20:16:02
+        </p>
+
+        <div class="chart-container">
+            <h2 class="chart-title">P/E Multiple Timeline</h2>
+            <div id="pe-chart" class="plot"></div>
+            <p class="note">Lines show sector medians over time • Bubbles show top 10 stocks by market cap (2024) • Click legend to toggle</p>
+            <div class="meta">Price-to-Earnings ratio by sector over time</div>
+        </div>
+
+        <div class="chart-container">
+            <h2 class="chart-title">P/S Multiple Timeline</h2>
+            <div id="ps-chart" class="plot"></div>
+            <p class="note">Sales multiples normalized across sectors</p>
+            <div class="meta">Price-to-Sales ratio by sector over time</div>
+        </div>
+
+        <div class="chart-container">
+            <h2 class="chart-title">P/B Multiple Timeline</h2>
+            <div id="pb-chart" class="plot"></div>
+            <p class="note">Book value multiples by sector</p>
+            <div class="meta">Price-to-Book ratio by sector over time</div>
+        </div>
+
+        <div class="chart-container">
+            <h2 class="chart-title">Key Events</h2>
+            <div class="key-events">
+                <div class="key-event">
+                    <span class="year-marker" style="background: #FF3B30;"></span>
+                    <span>2020: COVID Crash & Stimulus</span>
+                </div>
+                <div class="key-event">
+                    <span class="year-marker" style="background: #FF9500;"></span>
+                    <span>2022: Rate Hike Cycle Begins</span>
+                </div>
+                <div class="key-event">
+                    <span class="year-marker" style="background: #34C759;"></span>
+                    <span>2024: Market Normalization</span>
+                </div>
+            </div>
+            <div class="legend-info">
+                <strong>Visualization Features:</strong><br>
+                • <strong>Lines:</strong> Show sector median multiples over time (2016-2024)<br>
+                • <strong>Bubbles:</strong> Show top 10 stocks by market cap for each sector in 2024<br>
+                • <strong>Bubble Size:</strong> Proportional to market cap<br>
+                • <strong>Hover:</strong> Shows stock symbol and exact values<br>
+                • <strong>Click Legend:</strong> Toggle sectors on/off
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sector medians data
+        const sectorData = [{"sector":"Communication Services","fiscal_year":2024,"pe":13.98,"ps":1.0,"pb":0.95},{"sector":"Computer Manufacturing","fiscal_year":2024,"pe":18.61,"ps":0.68,"pb":2.55},{"sector":"Consumer Discretionary","fiscal_year":2017,"pe":17.74,"ps":1.82,"pb":4.72},{"sector":"Consumer Discretionary","fiscal_year":2018,"pe":22.7,"ps":2.19,"pb":5.12},{"sector":"Consumer Discretionary","fiscal_year":2020,"pe":31.15,"ps":3.42,"pb":5.8},{"sector":"Consumer Discretionary","fiscal_year":2021,"pe":24.46,"ps":2.81,"pb":8.66},{"sector":"Consumer Discretionary","fiscal_year":2022,"pe":26.06,"ps":2.91,"pb":6.66},{"sector":"Consumer Discretionary","fiscal_year":2023,"pe":25.06,"ps":2.42,"pb":5.52},{"sector":"Consumer Discretionary","fiscal_year":2024,"pe":25.55,"ps":2.07,"pb":5.93},{"sector":"Consumer Staples","fiscal_year":2017,"pe":18.25,"ps":1.24,"pb":2.7},{"sector":"Consumer Staples","fiscal_year":2018,"pe":14.62,"ps":1.79,"pb":2.93},{"sector":"Consumer Staples","fiscal_year":2020,"pe":39.64,"ps":2.8,"pb":4.39},{"sector":"Consumer Staples","fiscal_year":2021,"pe":20.31,"ps":2.26,"pb":5.51},{"sector":"Consumer Staples","fiscal_year":2022,"pe":19.63,"ps":1.67,"pb":3.72},{"sector":"Consumer Staples","fiscal_year":2023,"pe":18.91,"ps":1.55,"pb":3.56},{"sector":"Consumer Staples","fiscal_year":2024,"pe":21.6,"ps":1.59,"pb":3.73},{"sector":"Electronic Components","fiscal_year":2020,"pe":69.96,"ps":6.59,"pb":5.37},{"sector":"Electronic Components","fiscal_year":2021,"pe":55.88,"ps":6.32,"pb":11.97},{"sector":"Electronic Components","fiscal_year":2022,"pe":43.64,"ps":5.42,"pb":11.99},{"sector":"Electronic Components","fiscal_year":2023,"pe":31.11,"ps":7.77,"pb":9.61},{"sector":"Electronic Components","fiscal_year":2024,"pe":37.69,"ps":4.33,"pb":3.84},{"sector":"Energy","fiscal_year":2017,"pe":23.06,"ps":4.57,"pb":2.52},{"sector":"Energy","fiscal_year":2018,"pe":18.37,"ps":2.07,"pb":2.13},{"sector":"Energy","fiscal_year":2021,"pe":18.91,"ps":2.72,"pb":2.84},{"sector":"Energy","fiscal_year":2022,"pe":11.28,"ps":2.03,"pb":2.98},{"sector":"Energy","fiscal_year":2023,"pe":12.65,"ps":2.11,"pb":2.5},{"sector":"Energy","fiscal_year":2024,"pe":23.65,"ps":2.65,"pb":1.8},{"sector":"Financials","fiscal_year":2017,"pe":17.71,"ps":3.83,"pb":2.76},{"sector":"Financials","fiscal_year":2018,"pe":18.54,"ps":3.64,"pb":2.89},{"sector":"Financials","fiscal_year":2020,"pe":24.63,"ps":7.5,"pb":2.45},{"sector":"Financials","fiscal_year":2021,"pe":13.02,"ps":6.83,"pb":2.13},{"sector":"Financials","fiscal_year":2022,"pe":21.84,"ps":5.27,"pb":2.92},{"sector":"Financials","fiscal_year":2023,"pe":24.47,"ps":6.26,"pb":3.69},{"sector":"Financials","fiscal_year":2024,"pe":18.53,"ps":4.93,"pb":2.92},{"sector":"Healthcare","fiscal_year":2017,"pe":30.13,"ps":3.07,"pb":4.81},{"sector":"Healthcare","fiscal_year":2018,"pe":49.32,"ps":5.96,"pb":7.39},{"sector":"Healthcare","fiscal_year":2020,"pe":37.05,"ps":5.49,"pb":5.32},{"sector":"Healthcare","fiscal_year":2021,"pe":30.51,"ps":5.59,"pb":5.1},{"sector":"Healthcare","fiscal_year":2022,"pe":32.65,"ps":6.11,"pb":4.95},{"sector":"Healthcare","fiscal_year":2023,"pe":41.23,"ps":5.83,"pb":6.78},{"sector":"Healthcare","fiscal_year":2024,"pe":32.99,"ps":5.14,"pb":4.92},{"sector":"Industrials","fiscal_year":2017,"pe":16.27,"ps":1.63,"pb":2.4},{"sector":"Industrials","fiscal_year":2018,"pe":16.48,"ps":2.47,"pb":2.48},{"sector":"Industrials","fiscal_year":2020,"pe":31.8,"ps":4.11,"pb":4.9},{"sector":"Industrials","fiscal_year":2021,"pe":25.25,"ps":3.71,"pb":4.92},{"sector":"Industrials","fiscal_year":2022,"pe":25.92,"ps":2.87,"pb":3.12},{"sector":"Industrials","fiscal_year":2023,"pe":26.61,"ps":3.8,"pb":5.08},{"sector":"Industrials","fiscal_year":2024,"pe":27.78,"ps":3.57,"pb":4.59},{"sector":"Interactive Media","fiscal_year":2024,"pe":34.57,"ps":1.58,"pb":3.29},{"sector":"Real Estate","fiscal_year":2017,"pe":35.26,"ps":7.41,"pb":1.65},{"sector":"Real Estate","fiscal_year":2018,"pe":47.06,"ps":8.56,"pb":2.85},{"sector":"Real Estate","fiscal_year":2020,"pe":42.57,"ps":10.44,"pb":2.76},{"sector":"Real Estate","fiscal_year":2021,"pe":32.54,"ps":10.24,"pb":3.04},{"sector":"Real Estate","fiscal_year":2022,"pe":30.06,"ps":8.69,"pb":2.59},{"sector":"Real Estate","fiscal_year":2023,"pe":32.5,"ps":9.19,"pb":3.13},{"sector":"Real Estate","fiscal_year":2024,"pe":43.12,"ps":8.02,"pb":2.98},{"sector":"Technology","fiscal_year":2016,"pe":116.44,"ps":17.16,"pb":15.99},{"sector":"Technology","fiscal_year":2017,"pe":46.19,"ps":5.24,"pb":6.21},{"sector":"Technology","fiscal_year":2018,"pe":33.29,"ps":5.69,"pb":6.5},{"sector":"Technology","fiscal_year":2019,"pe":94.78,"ps":14.14,"pb":11.5},{"sector":"Technology","fiscal_year":2020,"pe":53.91,"ps":9.79,"pb":13.13},{"sector":"Technology","fiscal_year":2021,"pe":46.85,"ps":8.27,"pb":7.39},{"sector":"Technology","fiscal_year":2022,"pe":42.9,"ps":8.28,"pb":9.04},{"sector":"Technology","fiscal_year":2023,"pe":56.07,"ps":6.56,"pb":8.03},{"sector":"Technology","fiscal_year":2024,"pe":32.44,"ps":6.78,"pb":7.67},{"sector":"Technology","fiscal_year":2025,"pe":60.92,"ps":8.44,"pb":8.88},{"sector":"Utilities","fiscal_year":2017,"pe":19.25,"ps":2.81,"pb":2.03},{"sector":"Utilities","fiscal_year":2018,"pe":19.38,"ps":2.91,"pb":2.25},{"sector":"Utilities","fiscal_year":2020,"pe":26.29,"ps":4.98,"pb":2.54},{"sector":"Utilities","fiscal_year":2021,"pe":23.6,"ps":3.98,"pb":2.57},{"sector":"Utilities","fiscal_year":2022,"pe":27.21,"ps":3.19,"pb":2.26},{"sector":"Utilities","fiscal_year":2023,"pe":23.42,"ps":2.8,"pb":3.42},{"sector":"Utilities","fiscal_year":2024,"pe":22.94,"ps":3.35,"pb":2.39}];
+        const medians = JSON.parse(sectorData);
+
+        // Representative stocks data (2024 only)
+        const stocksData = [{"symbol":"AMZN","sector":"Consumer Discretionary","market_cap":2133790268590.90625,"pe_ratio":31.17,"ps_ratio":3.24,"pb_ratio":5.17},{"symbol":"WMT","sector":"Consumer Discretionary","market_cap":770805699426.90625,"pe_ratio":48.01,"ps_ratio":1.56,"pb_ratio":11.11},{"symbol":"MA","sector":"Consumer Discretionary","market_cap":507933803416.5234985352,"pe_ratio":32.66,"ps_ratio":14.76,"pb_ratio":59.83},{"symbol":"NFLX","sector":"Consumer Discretionary","market_cap":504467623407.0703125,"pe_ratio":2.98,"ps_ratio":0.76,"pb_ratio":1.22},{"symbol":"COST","sector":"Consumer Discretionary","market_cap":447454313568.0,"pe_ratio":225.95,"ps_ratio":6.72,"pb_ratio":14.92},{"symbol":"PG","sector":"Consumer Discretionary","market_cap":388865389908.43359375,"pe_ratio":21.41,"ps_ratio":4.34,"pb_ratio":7.02},{"symbol":"HD","sector":"Consumer Discretionary","market_cap":360507616386.962890625,"pe_ratio":25.54,"ps_ratio":2.33,"pb_ratio":32.11},{"symbol":"MCD","sector":"Consumer Discretionary","market_cap":224927943596.73828125,"pe_ratio":26.99,"ps_ratio":8.73,"pb_ratio":0.0},{"symbol":"KO","sector":"Consumer Staples","market_cap":308917430819.33203125,"pe_ratio":24.74,"ps_ratio":7.06,"pb_ratio":10.83},{"symbol":"PEP","sector":"Consumer Staples","market_cap":177335473901.1953125,"pe_ratio":26.32,"ps_ratio":2.58,"pb_ratio":11.13},{"symbol":"SBUX","sector":"Consumer Staples","market_cap":95912161734.0087890625,"pe_ratio":52.88,"ps_ratio":2.84,"pb_ratio":0.0},{"symbol":"MDLZ","sector":"Consumer Staples","market_cap":85639391893.224609375,"pe_ratio":30.71,"ps_ratio":2.18,"pb_ratio":3.14},{"symbol":"MNST","sector":"Consumer Staples","market_cap":61791588169.0029296875,"pe_ratio":43.57,"ps_ratio":9.9,"pb_ratio":10.28},{"symbol":"XOM","sector":"Energy","market_cap":444022223720.96875,"pe_ratio":20.22,"ps_ratio":1.84,"pb_ratio":2.4},{"symbol":"CVX","sector":"Energy","market_cap":236518674754.6777038574,"pe_ratio":26.4,"ps_ratio":1.97,"pb_ratio":1.95},{"symbol":"COP","sector":"Energy","market_cap":107544709619.015625,"pe_ratio":16.13,"ps_ratio":2.66,"pb_ratio":2.14},{"symbol":"EOG","sector":"Energy","market_cap":60134812708.0009765625,"pe_ratio":10.97,"ps_ratio":2.84,"pb_ratio":2.16},{"symbol":"LIN","sector":"Industrials","market_cap":216015240726.9287109375,"pe_ratio":32.73,"ps_ratio":6.74,"pb_ratio":5.86},{"symbol":"RTX","sector":"Industrials","market_cap":176812984301.19140625,"pe_ratio":40.49,"ps_ratio":3.16,"pb_ratio":4.08},{"symbol":"CAT","sector":"Industrials","market_cap":161501477486.5,"pe_ratio":40.56,"ps_ratio":5.62,"pb_ratio":17.02},{"symbol":"BA","sector":"Industrials","market_cap":152580657857.96875,"pe_ratio":81.97,"ps_ratio":2.2,"pb_ratio":33.59},{"symbol":"TMO","sector":"Industrials","market_cap":148604295720.984375,"pe_ratio":35.24,"ps_ratio":5.23,"pb_ratio":4.4},{"symbol":"HON","sector":"Industrials","market_cap":142822356253.494140625,"pe_ratio":24.49,"ps_ratio":3.8,"pb_ratio":9.13},{"symbol":"DE","sector":"Industrials","market_cap":138437432338.328125,"pe_ratio":28.67,"ps_ratio":3.52,"pb_ratio":6.29},{"symbol":"UNP","sector":"Industrials","market_cap":132705387617.150390625,"pe_ratio":22.21,"ps_ratio":6.31,"pb_ratio":8.37},{"symbol":"ETN","sector":"Industrials","market_cap":125630777044.677734375,"pe_ratio":38.13,"ps_ratio":5.65,"pb_ratio":8.02},{"symbol":"LMT","sector":"Industrials","market_cap":109856709624.0234375,"pe_ratio":28.87,"ps_ratio":2.13,"pb_ratio":22.75},{"symbol":"AMT","sector":"Real Estate","market_cap":99179713575.96875,"pe_ratio":88.95,"ps_ratio":99.24,"pb_ratio":22.76},{"symbol":"WELL","sector":"Real Estate","market_cap":97550018642.5781097412,"pe_ratio":108.92,"ps_ratio":19.13,"pb_ratio":3.36},{"symbol":"PLD","sector":"Real Estate","market_cap":96541423554.181640625,"pe_ratio":49.42,"ps_ratio":15.57,"pb_ratio":2.45},{"symbol":"BAM","sector":"Real Estate","market_cap":91213751329.5727539062,"pe_ratio":122.7,"ps_ratio":87.17,"pb_ratio":10.04},{"symbol":"EQIX","sector":"Real Estate","market_cap":84462795889.3432617188,"pe_ratio":67.93,"ps_ratio":10.43,"pb_ratio":6.63},{"symbol":"DLR","sector":"Real Estate","market_cap":56621302620.47265625,"pe_ratio":49.23,"ps_ratio":10.51,"pb_ratio":2.71},{"symbol":"PSA","sector":"Real Estate","market_cap":52050382215.091796875,"pe_ratio":30.86,"ps_ratio":10.99,"pb_ratio":5.7},{"symbol":"SPG","sector":"Real Estate","market_cap":51172393230.4438476562,"pe_ratio":28.48,"ps_ratio":11.15,"pb_ratio":28.74},{"symbol":"O","sector":"Real Estate","market_cap":50148031297.607421875,"pe_ratio":58.53,"ps_ratio":10.8,"pb_ratio":1.55},{"symbol":"CCI","sector":"Real Estate","market_cap":43615575835.978515625,"pe_ratio":86.79,"ps_ratio":182.02,"pb_ratio":0.0},{"symbol":"MSFT","sector":"Technology","market_cap":3345980874791.25,"pe_ratio":25.69,"ps_ratio":9.99,"pb_ratio":7.63},{"symbol":"AAPL","sector":"Technology","market_cap":2916513692320.78125,"pe_ratio":29.84,"ps_ratio":8.26,"pb_ratio":42.85},{"symbol":"META","sector":"Technology","market_cap":1361441363864.140625,"pe_ratio":26.1,"ps_ratio":7.67,"pb_ratio":6.41},{"symbol":"TSLA","sector":"Technology","market_cap":1093000554604.4920654297,"pe_ratio":270.64,"ps_ratio":14.59,"pb_ratio":16.89},{"symbol":"AVGO","sector":"Technology","market_cap":1075429998761.125,"pe_ratio":121.07,"ps_ratio":26.15,"pb_ratio":18.96},{"symbol":"GOOGL","sector":"Technology","market_cap":980495450232.8125,"pe_ratio":29.77,"ps_ratio":9.79,"pb_ratio":8.89},{"symbol":"GOOG","sector":"Technology","market_cap":925791757447.265625,"pe_ratio":29.8,"ps_ratio":9.8,"pb_ratio":8.9},{"symbol":"ORCL","sector":"Technology","market_cap":437375739054.4921875,"pe_ratio":30.37,"ps_ratio":7.78,"pb_ratio":15.36},{"symbol":"NEE","sector":"Utilities","market_cap":139492774281.8681640625,"pe_ratio":73.23,"ps_ratio":24.12,"pb_ratio":3.58},{"symbol":"SO","sector":"Utilities","market_cap":98621026625.77734375,"pe_ratio":19.39,"ps_ratio":3.53,"pb_ratio":2.73},{"symbol":"WM","sector":"Utilities","market_cap":95294237497.55859375,"pe_ratio":34.66,"ps_ratio":3.86,"pb_ratio":9.46},{"symbol":"CEG","sector":"Utilities","market_cap":93238417889.3671875,"pe_ratio":29.15,"ps_ratio":4.14,"pb_ratio":6.27},{"symbol":"DUK","sector":"Utilities","market_cap":90542669065.3598632812,"pe_ratio":31.35,"ps_ratio":5.63,"pb_ratio":1.94},{"symbol":"RSG","sector":"Utilities","market_cap":79017989587.8530273438,"pe_ratio":32.34,"ps_ratio":4.23,"pb_ratio":5.88},{"symbol":"WMB","sector":"Utilities","market_cap":72027384780.9448242188,"pe_ratio":34.1,"ps_ratio":6.27,"pb_ratio":7.05},{"symbol":"EPD","sector":"Utilities","market_cap":67864885989.52734375,"pe_ratio":14.46,"ps_ratio":1.53,"pb_ratio":1.29},{"symbol":"AEP","sector":"Utilities","market_cap":54957980955.8295898438,"pe_ratio":0.43,"ps_ratio":0.08,"pb_ratio":0.06}];
+        const stocks = JSON.parse(stocksData);
+
+        const sectorColors = {"Technology": "#007AFF", "Health Care": "#5856D6", "Healthcare": "#5856D6", "Finance": "#34C759", "Financials": "#34C759", "Consumer Discretionary": "#FF9500", "Telecommunications": "#FF3B30", "Communication Services": "#FF3B30", "Industrials": "#FFCC00", "Consumer Staples": "#8E8E93", "Energy": "#AF52DE", "Utilities": "#32ADE6", "Real Estate": "#FF2D55", "Electronic Components": "#007AFF", "Computer Manufacturing": "#007AFF", "Interactive Media": "#007AFF"};
+        const lineStyles = {"Technology": "solid", "Health Care": "dash", "Healthcare": "dash", "Finance": "dot", "Financials": "dot", "Consumer Discretionary": "dashdot", "Telecommunications": "longdash", "Communication Services": "longdash", "Industrials": "solid", "Consumer Staples": "dash", "Energy": "dot", "Utilities": "dashdot", "Real Estate": "longdash", "Electronic Components": "solid", "Computer Manufacturing": "dash", "Interactive Media": "dot"};
+
+        function createTraces(metric) {
+            const traces = [];
+            const sectors = [...new Set(medians.map(d => d.sector))];
+
+            // Map ratio names
+            const metricMap = {
+                'pe': 'pe_ratio',
+                'ps': 'ps_ratio',
+                'pb': 'pb_ratio'
+            };
+            const stockMetric = metricMap[metric];
+
+            sectors.forEach((sector) => {
+                const sectorMedianData = medians.filter(d => d.sector === sector).sort((a, b) => a.fiscal_year - b.fiscal_year);
+
+                if (sectorMedianData.length === 0) return;
+
+                const x = sectorMedianData.map(d => d.fiscal_year);
+                const y = sectorMedianData.map(d => d[metric]);
+
+                const color = sectorColors[sector] || '#8E8E93';
+                const dash = lineStyles[sector] || 'solid';
+
+                // Main median line
+                traces.push({
+                    x: x,
+                    y: y,
+                    name: sector,
+                    mode: 'lines',
+                    line: {
+                        color: color,
+                        width: 3,
+                        dash: dash
+                    },
+                    connectgaps: true,
+                    legendgroup: sector,
+                    hovertemplate: `<b>${sector}</b><br>Fiscal Year: %{x}<br>${metric.toUpperCase()}: %{y:.2f}x<extra></extra>`
+                });
+
+                // Representative stock bubbles for 2024
+                const sectorStocks = stocks.filter(s => s.sector === sector && s[stockMetric] > 0);
+
+                sectorStocks.forEach(stock => {
+                    // Calculate size based on market cap (log scale)
+                    const minMarketCap = 1e9; // $1B
+                    const maxMarketCap = 3e12; // $3T
+                    const marketCap = Math.max(minMarketCap, stock.market_cap);
+                    const normalizedSize = Math.max(8, Math.min(40, 8 + 32 * (Math.log(marketCap) - Math.log(minMarketCap)) / (Math.log(maxMarketCap) - Math.log(minMarketCap))));
+
+                    traces.push({
+                        x: [2024],
+                        y: [stock[stockMetric]],
+                        name: sector,
+                        mode: 'markers',
+                        marker: {
+                            size: normalizedSize,
+                            symbol: 'circle',
+                            color: color,
+                            opacity: 0.6,
+                            line: {
+                                color: color,
+                                width: 1
+                            }
+                        },
+                        text: [stock.symbol],
+                        hovertemplate: `<b>${stock.symbol}</b> (${sector})<br>Fiscal Year: 2024<br>${metric.toUpperCase()}: %{y:.2f}x<br>Market Cap: ${(stock.market_cap / 1e9).toFixed(1)}B<extra></extra>`,
+                        showlegend: false,
+                        legendgroup: sector
+                    });
+                });
+            });
+
+            return traces;
+        }
+
+        const layout = {
+            title: { text: '' },
+            xaxis: {
+                title: 'Fiscal Year',
+                tickmode: 'linear',
+                dtick: 1,
+                gridcolor: '#e0e0e0',
+                showgrid: true
+            },
+            yaxis: {
+                title: 'Multiple',
+                gridcolor: '#e0e0e0',
+                showgrid: true
+            },
+            hovermode: 'closest',
+            legend: {
+                orientation: 'h',
+                y: -0.15,
+                xanchor: 'center',
+                bgcolor: 'rgba(255,255,255,0.9)',
+                bordercolor: '#e0e0e0',
+                borderwidth: 1
+            },
+            margin: { l: 60, r: 20, t: 40, b: 80 },
+            height: 600,
+            plot_bgcolor: 'white'
+        };
+
+        // Render charts
+        ['pe', 'ps', 'pb'].forEach(metric => {
+            const chartId = metric + '-chart';
+            Plotly.newPlot(chartId, createTraces(metric), layout, { responsive: true });
+        });
+    </script>
+</body>
+</html>

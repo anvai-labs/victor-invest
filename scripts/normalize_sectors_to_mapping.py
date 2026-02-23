@@ -18,7 +18,9 @@ import os
 from sqlalchemy import create_engine, text
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Sector normalization mapping
@@ -61,7 +63,9 @@ def get_stock_engine():
     db_user = "stockuser"
     db_password = os.environ.get("STOCK_DB_PASSWORD", "")
 
-    connection_string = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    connection_string = (
+        f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    )
     return create_engine(connection_string, pool_pre_ping=True)
 
 
@@ -99,7 +103,9 @@ def normalize_sectors(engine, dry_run=False):
         if count == 0:
             continue
 
-        logger.info(f"Normalizing: {old_sector:30s} → {new_sector:30s} ({count:5d} symbols)")
+        logger.info(
+            f"Normalizing: {old_sector:30s} → {new_sector:30s} ({count:5d} symbols)"
+        )
 
         if dry_run:
             continue
@@ -115,7 +121,9 @@ def normalize_sectors(engine, dry_run=False):
         )
 
         with engine.begin() as conn:
-            result = conn.execute(update_query, {"old_sector": old_sector, "new_sector": new_sector})
+            result = conn.execute(
+                update_query, {"old_sector": old_sector, "new_sector": new_sector}
+            )
             updated = result.rowcount
             total_updated += updated
             logger.info(f"  ✅ Updated {updated} symbols")
@@ -208,7 +216,9 @@ def verify_results(engine):
 
     for ticker, sec_sector, yahoo_sector in tier_rows:
         is_canonical = "✅" if sec_sector in canonical_sectors else "❌"
-        logger.info(f"  {is_canonical} {ticker:6s} - {sec_sector:30s} (Yahoo: {yahoo_sector})")
+        logger.info(
+            f"  {is_canonical} {ticker:6s} - {sec_sector:30s} (Yahoo: {yahoo_sector})"
+        )
 
 
 def main():

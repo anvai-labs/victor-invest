@@ -128,9 +128,14 @@ class InvestmentSynthesisEngine:
         if abs(total - 1.0) > 0.01:
             raise ValueError(f"Weights must sum to 1.0, got {total}")
 
-    def calculate_overall_score(self, fundamental_score: float, technical_score: float) -> float:
+    def calculate_overall_score(
+        self, fundamental_score: float, technical_score: float
+    ) -> float:
         """Calculate weighted overall score"""
-        return fundamental_score * self.fundamental_weight + technical_score * self.technical_weight
+        return (
+            fundamental_score * self.fundamental_weight
+            + technical_score * self.technical_weight
+        )
 
     def determine_recommendation(self, overall_score: float) -> str:
         """Determine recommendation based on score"""
@@ -180,7 +185,9 @@ class InvestmentSynthesisEngine:
         else:
             return "SHORT-TERM"
 
-    def calculate_price_target(self, current_price: float, growth_score: float, value_score: float) -> float:
+    def calculate_price_target(
+        self, current_price: float, growth_score: float, value_score: float
+    ) -> float:
         """Calculate price target based on scores"""
         # Simplified calculation - can be made more sophisticated
         upside_potential = ((growth_score + value_score) / 20) * 0.3  # Max 30% upside
@@ -196,7 +203,9 @@ class InvestmentSynthesisEngine:
         percentage = stop_loss_percentages.get(confidence, 0.08)
         return current_price * (1 - percentage)
 
-    def synthesize(self, fundamental_data: Dict[str, Any], technical_data: Dict[str, Any]) -> InvestmentRecommendation:
+    def synthesize(
+        self, fundamental_data: Dict[str, Any], technical_data: Dict[str, Any]
+    ) -> InvestmentRecommendation:
         """
         Synthesize fundamental and technical data into recommendation
         Pure business logic - no external dependencies
@@ -229,11 +238,15 @@ class InvestmentSynthesisEngine:
         time_horizon = self.determine_time_horizon(growth_score, value_score)
 
         # Calculate targets
-        price_target = self.calculate_price_target(current_price, growth_score, value_score)
+        price_target = self.calculate_price_target(
+            current_price, growth_score, value_score
+        )
         stop_loss = self.calculate_stop_loss(current_price, confidence)
 
         # Generate thesis
-        investment_thesis = self._generate_investment_thesis(fundamental_data, technical_data, overall_score)
+        investment_thesis = self._generate_investment_thesis(
+            fundamental_data, technical_data, overall_score
+        )
 
         # Extract insights
         key_catalysts = fundamental_data.get("catalysts", [])
@@ -296,7 +309,9 @@ class InvestmentSynthesisEngine:
 
         return " ".join(thesis_parts) + "."
 
-    def _generate_entry_strategy(self, technical_data: Dict[str, Any], recommendation: str) -> str:
+    def _generate_entry_strategy(
+        self, technical_data: Dict[str, Any], recommendation: str
+    ) -> str:
         """Generate entry strategy"""
         if "BUY" in recommendation:
             if technical_data.get("rsi", 50) < 30:
@@ -362,7 +377,9 @@ class InvestmentSynthesizer:
         technical_data["symbol"] = symbol
 
         # Synthesize recommendation
-        recommendation = self.synthesis_engine.synthesize(fundamental_data, technical_data)
+        recommendation = self.synthesis_engine.synthesize(
+            fundamental_data, technical_data
+        )
 
         # Cache result
         if self.cache:
@@ -375,7 +392,9 @@ class InvestmentSynthesizer:
 
         return recommendation
 
-    def analyze_portfolio(self, symbols: List[str], generate_report: bool = True) -> List[InvestmentRecommendation]:
+    def analyze_portfolio(
+        self, symbols: List[str], generate_report: bool = True
+    ) -> List[InvestmentRecommendation]:
         """
         Analyze multiple symbols
         """
@@ -405,7 +424,9 @@ class InvestmentSynthesizer:
             cache_key = f"synthesis_{symbol}"
             self.cache.set(cache_key, recommendation)
 
-    def _generate_portfolio_report(self, recommendations: List[InvestmentRecommendation]):
+    def _generate_portfolio_report(
+        self, recommendations: List[InvestmentRecommendation]
+    ):
         """Generate portfolio report"""
         # This would be implemented by the report generator
         pass
@@ -536,7 +557,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Investment Synthesizer")
     parser.add_argument("symbol", help="Stock symbol to analyze")
     parser.add_argument("--report", action="store_true", help="Generate PDF report")
-    parser.add_argument("--force", action="store_true", help="Force refresh (bypass cache)")
+    parser.add_argument(
+        "--force", action="store_true", help="Force refresh (bypass cache)"
+    )
 
     args = parser.parse_args()
 
@@ -544,7 +567,9 @@ if __name__ == "__main__":
     synthesizer = create_synthesizer()
 
     # Analyze symbol
-    recommendation = synthesizer.analyze_symbol(args.symbol, force_refresh=args.force, generate_report=args.report)
+    recommendation = synthesizer.analyze_symbol(
+        args.symbol, force_refresh=args.force, generate_report=args.report
+    )
 
     # Print results
     print(f"\nAnalysis for {recommendation.symbol}")

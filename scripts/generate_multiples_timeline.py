@@ -13,7 +13,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from investigator.infrastructure.database.db import get_db_manager
 from sqlalchemy import text
 from typing import Dict, List, Tuple
-import psycopg2.extras
 
 
 def get_timeline_data(
@@ -44,16 +43,24 @@ def get_timeline_data(
         # Build sector/industry filter
         group_filters = []
         if sectors:
-            sector_placeholders = ",".join([f":sector_{i}" for i in range(len(sectors))])
+            sector_placeholders = ",".join(
+                [f":sector_{i}" for i in range(len(sectors))]
+            )
             for i, s in enumerate(sectors):
                 params[f"sector_{i}"] = s
-            group_filters.append(f"(group_type = 'sector' AND group_name IN ({sector_placeholders}))")
+            group_filters.append(
+                f"(group_type = 'sector' AND group_name IN ({sector_placeholders}))"
+            )
 
         if industries:
-            industry_placeholders = ",".join([f":industry_{i}" for i in range(len(industries))])
+            industry_placeholders = ",".join(
+                [f":industry_{i}" for i in range(len(industries))]
+            )
             for i, ind in enumerate(industries):
                 params[f"industry_{i}"] = ind
-            group_filters.append(f"(group_type = 'industry' AND group_name IN ({industry_placeholders}))")
+            group_filters.append(
+                f"(group_type = 'industry' AND group_name IN ({industry_placeholders}))"
+            )
 
         where_clause = " OR ".join(group_filters) if group_filters else "1=1"
 
@@ -138,7 +145,6 @@ def print_timeline_table(
     baseline_year = min(years) if show_trends else None
 
     # Print header
-    metric_name = {"pe": "P/E", "ps": "P/S", "pb": "P/B"}[metric].upper()
     print(f"\n{'SECTOR/INDUSTRY':<50} │", end="")
     for year in years:
         print(f" {year:>6} │", end="")
@@ -153,18 +159,25 @@ def print_timeline_table(
         name = f"{prefix}{group_name}"
         print(f"{name:<50} │", end="")
 
-        baseline = year_data.get(baseline_year, {}).get(metric) if baseline_year else None
+        baseline = (
+            year_data.get(baseline_year, {}).get(metric) if baseline_year else None
+        )
 
         for year in years:
             if year in year_data and year_data[year].get(metric):
                 val = year_data[year][metric]
-                print(f" {format_value(val, baseline if show_trends else None):>6} │", end="")
+                print(
+                    f" {format_value(val, baseline if show_trends else None):>6} │",
+                    end="",
+                )
             else:
                 print(f" {'—':>6} │", end="")
 
         print()
 
-    print("\nLegend: ↑↗ = swelling (expansion), ↓↘ = shrinking (contraction), — = no data")
+    print(
+        "\nLegend: ↑↗ = swelling (expansion), ↓↘ = shrinking (contraction), — = no data"
+    )
 
 
 def print_trend_summary(
@@ -190,7 +203,13 @@ def print_trend_summary(
                 change_pct = ((end_val - start_val) / start_val) * 100
 
                 prefix = "🏢" if group_type == "sector" else "🏭"
-                status = "SWELLING" if change_pct > 5 else "SHRINKING" if change_pct < -5 else "STABLE"
+                status = (
+                    "SWELLING"
+                    if change_pct > 5
+                    else "SHRINKING"
+                    if change_pct < -5
+                    else "STABLE"
+                )
 
                 print(
                     f"{prefix} {group_name:<40} │ {start_val:>6.1f}x → {end_val:>6.1f}x │ "

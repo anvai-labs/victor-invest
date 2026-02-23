@@ -68,11 +68,15 @@ def load_training_data() -> List[Dict[str, Any]]:
     for exp in raw_experiences:
         try:
             # Get context as dict
-            context_dict = exp.context.to_dict() if hasattr(exp.context, "to_dict") else {}
+            context_dict = (
+                exp.context.to_dict() if hasattr(exp.context, "to_dict") else {}
+            )
 
             # Calculate position signal from valuation gap
             if exp.current_price and exp.current_price > 0:
-                val_gap = (exp.blended_fair_value - exp.current_price) / exp.current_price
+                val_gap = (
+                    exp.blended_fair_value - exp.current_price
+                ) / exp.current_price
             else:
                 val_gap = 0
 
@@ -97,7 +101,9 @@ def load_training_data() -> List[Dict[str, Any]]:
                     "context": context_dict,
                     "reward_30d": exp.reward.reward_30d if exp.reward else None,
                     "reward_90d": exp.reward.reward_90d if exp.reward else None,
-                    "reward_180d": exp.reward.reward_365d if exp.reward else None,  # Using 365 as proxy
+                    "reward_180d": exp.reward.reward_365d
+                    if exp.reward
+                    else None,  # Using 365 as proxy
                     "reward_365d": exp.reward.reward_365d if exp.reward else None,
                 }
             )
@@ -225,7 +231,9 @@ def train_technical_policy(
     stats = policy.get_action_stats()
     logger.info("Technical Policy Action Stats:")
     for action, data in stats.items():
-        logger.info(f"  {action}: count={data['count']}, avg_reward={data['avg_reward']:.4f}")
+        logger.info(
+            f"  {action}: count={data['count']}, avg_reward={data['avg_reward']:.4f}"
+        )
 
     return policy
 
@@ -272,7 +280,9 @@ def train_fundamental_policy_batched_mps(
         all_contexts.append((context, exp))  # Store for holding period updates
 
     # Convert to tensors on MPS device
-    features_tensor = torch.tensor(np.array(all_features), dtype=torch.float32, device=MPS_DEVICE)
+    features_tensor = torch.tensor(
+        np.array(all_features), dtype=torch.float32, device=MPS_DEVICE
+    )
     rewards_tensor = torch.tensor(all_rewards, dtype=torch.float32, device=MPS_DEVICE)
 
     n_samples = len(experiences)
@@ -305,7 +315,9 @@ def train_fundamental_policy_batched_mps(
 
             # Sum outer products for batch update
             batch_outer_sum = outer_products.sum(dim=0).cpu().numpy()
-            batch_feature_reward_sum = (batch_features * batch_rewards.unsqueeze(1)).sum(dim=0).cpu().numpy()
+            batch_feature_reward_sum = (
+                (batch_features * batch_rewards.unsqueeze(1)).sum(dim=0).cpu().numpy()
+            )
 
             # Update policy parameters for each model based on weights used
             for i, model in enumerate(["dcf", "pe", "ps", "ev_ebitda", "pb", "ggm"]):
@@ -320,7 +332,9 @@ def train_fundamental_policy_batched_mps(
                 if model_weight_sum > 0:
                     scale = model_weight_sum / len(batch_indices)
                     # Bayesian update with scaled batch outer product
-                    policy.weight_Lambda[i] += batch_outer_sum * scale / policy.noise_variance
+                    policy.weight_Lambda[i] += (
+                        batch_outer_sum * scale / policy.noise_variance
+                    )
                     policy.weight_Sigma[i] = np.linalg.inv(policy.weight_Lambda[i])
                     policy.weight_mu[i] = np.dot(
                         policy.weight_Sigma[i],
@@ -361,13 +375,17 @@ def train_fundamental_policy_batched_mps(
     stats = policy.get_model_stats()
     logger.info("Fundamental Policy Model Stats:")
     for model, data in stats.items():
-        logger.info(f"  {model}: count={data['count']}, avg_reward={data['avg_reward']:.4f}")
+        logger.info(
+            f"  {model}: count={data['count']}, avg_reward={data['avg_reward']:.4f}"
+        )
 
     # Log holding period statistics
     hp_stats = policy.get_holding_period_stats()
     logger.info("Holding Period Stats:")
     for period, data in hp_stats.get("period_stats", {}).items():
-        logger.info(f"  {period}: count={data['count']}, avg_reward={data['avg_reward']:.4f}")
+        logger.info(
+            f"  {period}: count={data['count']}, avg_reward={data['avg_reward']:.4f}"
+        )
 
     return policy
 
@@ -439,13 +457,17 @@ def train_fundamental_policy_numpy(
     stats = policy.get_model_stats()
     logger.info("Fundamental Policy Model Stats:")
     for model, data in stats.items():
-        logger.info(f"  {model}: count={data['count']}, avg_reward={data['avg_reward']:.4f}")
+        logger.info(
+            f"  {model}: count={data['count']}, avg_reward={data['avg_reward']:.4f}"
+        )
 
     # Log holding period statistics
     hp_stats = policy.get_holding_period_stats()
     logger.info("Holding Period Stats:")
     for period, data in hp_stats.get("period_stats", {}).items():
-        logger.info(f"  {period}: count={data['count']}, avg_reward={data['avg_reward']:.4f}")
+        logger.info(
+            f"  {period}: count={data['count']}, avg_reward={data['avg_reward']:.4f}"
+        )
 
     if hp_stats.get("sector_optimal_periods"):
         logger.info("Learned Sector Optimal Periods:")
@@ -514,7 +536,9 @@ def evaluate_dual_policy(
 def main():
     parser = argparse.ArgumentParser(description="Train Dual RL Policy")
     parser.add_argument("--epochs", type=int, default=10, help="Training epochs")
-    parser.add_argument("--eval-split", type=float, default=0.15, help="Evaluation split ratio")
+    parser.add_argument(
+        "--eval-split", type=float, default=0.15, help="Evaluation split ratio"
+    )
     parser.add_argument(
         "--output-dir",
         type=str,

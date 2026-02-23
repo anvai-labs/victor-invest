@@ -33,7 +33,12 @@ with dao.engine.connect() as conn:
     liab = next((r[1] for r in results if r[0] == "Liabilities"), 0)
     equity_simple = next((r[1] for r in results if r[0] == "StockholdersEquity"), 0)
     equity_with_nci = next(
-        (r[1] for r in results if r[0] == "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"),
+        (
+            r[1]
+            for r in results
+            if r[0]
+            == "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"
+        ),
         0,
     )
 
@@ -42,7 +47,9 @@ with dao.engine.connect() as conn:
     print(f"  Liabilities: ${liab:,.0f}")
     print(f"  Equity (simple): ${equity_simple:,.0f}")
     print(f"  Equity (with NCI): ${equity_with_nci:,.0f}")
-    print(f"  Liab + Equity (simple): ${liab + equity_simple:,.0f} (diff: ${assets - (liab + equity_simple):,.0f})")
+    print(
+        f"  Liab + Equity (simple): ${liab + equity_simple:,.0f} (diff: ${assets - (liab + equity_simple):,.0f})"
+    )
     print(
         f"  Liab + Equity (with NCI): ${liab + equity_with_nci:,.0f} (diff: ${assets - (liab + equity_with_nci):,.0f})"
     )
@@ -99,14 +106,20 @@ with dao.engine.connect() as conn:
     liab = next((r[1] for r in results if r[0] == "Liabilities"), 0)
     equity_simple = next((r[1] for r in results if r[0] == "StockholdersEquity"), 0)
     equity_with_nci = next(
-        (r[1] for r in results if r[0] == "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"),
+        (
+            r[1]
+            for r in results
+            if r[0]
+            == "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"
+        ),
         0,
     )
     temp_equity = next(
         (
             r[1]
             for r in results
-            if r[0] == "TemporaryEquityCarryingAmountIncludingPortionAttributableToNoncontrollingInterests"
+            if r[0]
+            == "TemporaryEquityCarryingAmountIncludingPortionAttributableToNoncontrollingInterests"
         ),
         0,
     )
@@ -117,7 +130,9 @@ with dao.engine.connect() as conn:
     print(f"  Equity (simple): ${equity_simple:,.0f}")
     print(f"  Equity (with NCI): ${equity_with_nci:,.0f}")
     print(f"  Temporary Equity: ${temp_equity:,.0f}")
-    print(f"  Liab + Equity (simple): ${liab + equity_simple:,.0f} (diff: ${assets - (liab + equity_simple):,.0f})")
+    print(
+        f"  Liab + Equity (simple): ${liab + equity_simple:,.0f} (diff: ${assets - (liab + equity_simple):,.0f})"
+    )
     if equity_with_nci:
         print(
             f"  Liab + Equity (with NCI): ${liab + equity_with_nci:,.0f} (diff: ${assets - (liab + equity_with_nci):,.0f})"
