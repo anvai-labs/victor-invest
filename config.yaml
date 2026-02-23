@@ -765,19 +765,17 @@ valuation:
   model_applicability:
     ggm:
       required_fields:
-      - dividends
       - net_income
       required_positive:
-      - dividends
       - net_income
-      min_payout_ratio: 0.4
-      max_payout_ratio: 0.9
-      description: Gordon Growth Model requires positive dividends and earnings
+      min_payout_ratio: 0.0
+      max_payout_ratio: 1.0
+      description: Gordon Growth Model requires positive earnings (dividends and payout ratio relaxed for RL training)
     dcf:
       required_fields:
       - free_cash_flow
-      min_quarters_data: 4
-      description: DCF requires at least 4 quarters of FCF data
+      min_quarters_data: 2
+      description: DCF requires at least 2 quarters of FCF data (relaxed from 4 for RL training)
     pe:
       required_fields:
       - net_income
