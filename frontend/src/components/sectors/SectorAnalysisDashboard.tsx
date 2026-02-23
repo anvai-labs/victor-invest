@@ -2,6 +2,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SectorOverview } from "./SectorOverview";
 import { SectorTimeline } from "./SectorTimeline";
+import { SectorComparison } from "./SectorComparison";
+import { SectorStocks } from "./SectorStocks";
+import { SectorTrends } from "./SectorTrends";
 import { useState } from "react";
 
 export function SectorAnalysisDashboard() {
@@ -69,10 +72,7 @@ export function SectorAnalysisDashboard() {
               <p className="text-sm text-muted-foreground">Compare multiples across different sectors</p>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12 text-muted-foreground">
-                <p>Coming soon: Interactive sector comparison tool</p>
-                <p className="text-sm mt-2">Select multiple sectors to compare their multiples side-by-side</p>
-              </div>
+              <SectorComparison />
             </CardContent>
           </Card>
         </TabsContent>
@@ -84,10 +84,7 @@ export function SectorAnalysisDashboard() {
               <p className="text-sm text-muted-foreground">Top stocks by market cap for each sector</p>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12 text-muted-foreground">
-                <p>Coming soon: Representative stocks explorer</p>
-                <p className="text-sm mt-2">Browse top stocks by sector with detailed metrics</p>
-              </div>
+              <SectorStocks />
             </CardContent>
           </Card>
         </TabsContent>
@@ -99,10 +96,7 @@ export function SectorAnalysisDashboard() {
               <p className="text-sm text-muted-foreground">Analyze sector trends and identify patterns</p>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12 text-muted-foreground">
-                <p>Coming soon: Sector trend analysis</p>
-                <p className="text-sm mt-2">Visualize sector performance trends and identify investment opportunities</p>
-              </div>
+              <SectorTrends />
             </CardContent>
           </Card>
         </TabsContent>
