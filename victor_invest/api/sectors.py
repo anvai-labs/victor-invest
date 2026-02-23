@@ -48,15 +48,15 @@ async def get_sector_multiples(
     engine = _get_engine()
 
     where_clauses = ["group_type = 'sector'"]
-    params = {}
+    params_list = []
 
     if fiscal_year:
-        where_clauses.append("fiscal_year = :fiscal_year")
-        params["fiscal_year"] = fiscal_year
+        where_clauses.append("fiscal_year = %s")
+        params_list.append(fiscal_year)
 
     if sector:
-        where_clauses.append("group_name = :sector")
-        params["sector"] = sector
+        where_clauses.append("group_name = %s")
+        params_list.append(sector)
 
     where_sql = " AND ".join(where_clauses)
 
@@ -81,7 +81,7 @@ async def get_sector_multiples(
     with engine.connect() as conn:
         import pandas as pd
 
-        df = pd.read_sql(query, conn, params=params)
+        df = pd.read_sql(query, conn, params=tuple(params_list))
 
         if df.empty:
             return {"data": [], "total": 0}
@@ -125,8 +125,8 @@ async def get_sector_history(
             sample_size
         FROM sector_multiples_history
         WHERE group_type = 'sector'
-            AND group_name = :sector
-            AND fiscal_year BETWEEN :start_year AND :end_year
+            AND group_name = %s
+            AND fiscal_year BETWEEN %s AND %s
         ORDER BY fiscal_year
     """
 
@@ -136,7 +136,7 @@ async def get_sector_history(
         df = pd.read_sql(
             query,
             conn,
-            params={"sector": sector, "start_year": start_year, "end_year": end_year},
+            params=(sector, start_year, end_year),
         )
 
         if df.empty:
@@ -373,8 +373,7 @@ async def compare_sectors(
     sector_list = [s.strip() for s in sectors.split(",")]
     metric_column = f"{metric}_multiple"
 
-    placeholders = ", ".join([f":sector_{i}" for i in range(len(sector_list))])
-    params = {f"sector_{i}": s for i, s in enumerate(sector_list)}
+    placeholders = ", ".join(["%s"] * len(sector_list))
 
     query = f"""
         SELECT
@@ -392,7 +391,7 @@ async def compare_sectors(
     with engine.connect() as conn:
         import pandas as pd
 
-        df = pd.read_sql(query, conn, params=params)
+        df = pd.read_sql(query, conn, params=tuple(sector_list))
 
         if df.empty:
             return {"metric": metric, "sectors": sector_list, "data": {}}
