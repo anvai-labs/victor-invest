@@ -70,6 +70,9 @@ from victor_invest.workflows import (
 )
 from victor_invest.workflows import run_yaml_analysis as run_workflow_analysis
 
+# Include sector analysis router
+from victor_invest.api.sectors import router as sectors_router
+
 logger = logging.getLogger(__name__)
 ALLOWED_API_ANALYSIS_MODES = (
     AnalysisMode.QUICK.value,
@@ -173,6 +176,9 @@ app.add_middleware(
 
 # GZip compression
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# Include sector analysis router
+app.include_router(sectors_router)
 
 # Serve React frontend assets (JS/CSS bundles) if the build directory exists.
 _react_assets = _react_dist_dir() / "assets"
@@ -840,9 +846,7 @@ def _extract_ui_view_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
                     "key_catalysts": (
                         rec.get("key_catalysts") or synth.get("key_catalysts") or []
                     ),
-                    "key_risks": (
-                        rec.get("key_risks") or synth.get("key_risks") or []
-                    ),
+                    "key_risks": (rec.get("key_risks") or synth.get("key_risks") or []),
                 },
                 "fundamental": {
                     "valuation": valuation,
@@ -922,7 +926,11 @@ def _extract_ui_view_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     if isinstance(forward_guidance, dict) and forward_guidance:
         fundamental_view["forward_guidance"] = forward_guidance
 
-    synth = payload.get("synthesis", {}) if isinstance(payload.get("synthesis"), dict) else {}
+    synth = (
+        payload.get("synthesis", {})
+        if isinstance(payload.get("synthesis"), dict)
+        else {}
+    )
     legacy_rec = (
         payload.get("recommendation", {})
         if isinstance(payload.get("recommendation"), dict)
@@ -963,9 +971,7 @@ def _extract_ui_view_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
                     or ""
                 ),
                 "key_catalysts": (
-                    legacy_rec.get("key_catalysts")
-                    or synth.get("key_catalysts")
-                    or []
+                    legacy_rec.get("key_catalysts") or synth.get("key_catalysts") or []
                 ),
                 "key_risks": (
                     legacy_rec.get("key_risks") or synth.get("key_risks") or []
@@ -2443,9 +2449,7 @@ async def ui_refresh_analysis(symbol: str, request: UIRefreshRequest):
 
 
 @app.get("/ui/api/predictions/{symbol}")
-async def ui_predictions(
-    symbol: str, limit: int = Query(50, ge=1, le=200)
-):
+async def ui_predictions(symbol: str, limit: int = Query(50, ge=1, le=200)):
     """Get RL prediction history for a symbol."""
     normalized_symbol = symbol.strip().upper()
     try:

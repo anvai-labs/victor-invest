@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { SymbolSearch } from "@/components/search/SymbolSearch";
 import { SummaryTab } from "@/components/analysis/SummaryTab";
@@ -8,6 +9,7 @@ import { TechnicalTab } from "@/components/analysis/TechnicalTab";
 import { PredictionsTab } from "@/components/analysis/PredictionsTab";
 import { ChartPanel } from "@/components/charts/ChartPanel";
 import { RankingsTab } from "@/components/rankings/RankingsTab";
+import { SectorAnalysisDashboard } from "@/components/sectors/SectorAnalysisDashboard";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -224,8 +226,14 @@ function Dashboard() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Header />
-      <Dashboard />
+      <BrowserRouter>
+        <Header />
+        <Routes>
+          <Route path="/sectors" element={<SectorAnalysisDashboard />} />
+          <Route path="/" element={<Dashboard />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
     </QueryClientProvider>
   );
 }
