@@ -75,6 +75,16 @@ class DCFValuation:
         self._shares_outstanding_cache: Optional[float] = None
         self._current_price_cache: Optional[float] = None
 
+        # DCF metadata for RL context quality assessment
+        self._wacc_raw: Optional[float] = None
+        self._wacc_final: Optional[float] = None
+        self._wacc_was_clipped: bool = False
+        self._terminal_growth: float = self.sector_params["terminal_growth_rate"]
+        self._projection_years: int = self.sector_params["projection_years"]
+        self._fcf_quarters_available: int = 0
+        self._cost_of_debt_source: str = ""
+        self._beta_r_squared: Optional[float] = None
+
         logger.info(
             f"{self.symbol} - Using sector-based DCF parameters: "
             f"Sector={self.sector}, Terminal Growth={self.sector_params['terminal_growth_rate'] * 100:.1f}%, "
@@ -1742,13 +1752,20 @@ class DCFValuation:
             weight_debt * cost_of_debt * (1 - tax_rate)
         )
 
-        # Ensure reasonable bounds (7% minimum, 20% maximum)
-        wacc = max(0.07, min(wacc_raw, 0.20))
+        # Ensure reasonable bounds (5% minimum, 20% maximum)
+        # Lowered floor from 7% to 5% based on RL training feedback - DCF underperforms with 7% floor
+        # Many high-growth tech stocks naturally have WACC < 7%, clipping was over-discounting
+        wacc = max(0.05, min(wacc_raw, 0.20))
+
+        # Track if WACC was clipped for RL context
+        self._wacc_was_clipped = wacc_raw < 0.05 or wacc_raw > 0.20
+        self._wacc_raw = wacc_raw
+        self._wacc_final = wacc
 
         # Log warning if WACC was clipped
-        if wacc_raw < 0.07:
+        if wacc_raw < 0.05:
             logger.warning(
-                "%s - ⚠️  WACC %.2f%% is below minimum 7%%, clipping to 7%%. "
+                "%s - ⚠️  WACC %.2f%% is below minimum 5%%, clipping to 5%%. "
                 "This indicates potentially bad beta data (beta=%.3f, R²=check database). "
                 "Recommend re-running beta calculator with fresh data.",
                 self.symbol,
@@ -1764,7 +1781,7 @@ class DCFValuation:
             )
 
         logger.info(
-            "%s - WACC: %.2f%% (raw: %.2f%%, bounded 7-20%%, tax rate %.0f%%)",
+            "%s - WACC: %.2f%% (raw: %.2f%%, bounded 5-20%%, tax rate %.0f%%)",
             self.symbol,
             wacc * 100,
             wacc_raw * 100,

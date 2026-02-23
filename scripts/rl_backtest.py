@@ -1899,6 +1899,24 @@ class RLBacktester:
                     symbol, analysis_date, num_years=5
                 )
 
+                # CRITICAL FIX: Add fcf_quarters_count to financials for DCF applicability filter
+                # The ModelApplicabilityRules checks financials.get("fcf_quarters_count", 0)
+                # Without this, DCF gets filtered out even when DCF fair value is calculated
+                if self._current_quarterly_metrics:
+                    # Count consecutive quarters with FCF data
+                    fcf_quarters = 0
+                    for period in self._current_quarterly_metrics:
+                        cash_flow = period.get("cash_flow", {})
+                        if cash_flow.get("free_cash_flow") is not None:
+                            fcf_quarters += 1
+                    financials["fcf_quarters_count"] = fcf_quarters
+                    financials["quarters_available"] = (
+                        fcf_quarters  # Also add for RL context
+                    )
+                else:
+                    financials["fcf_quarters_count"] = 0
+                    financials["quarters_available"] = 0
+
                 # Calculate fair values using FULL framework
                 fair_values, tier, audit = self.calculate_fair_values_full_framework(
                     symbol=symbol,

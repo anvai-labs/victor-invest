@@ -488,9 +488,9 @@ valuation:
       description: Auto manufacturers with cyclical earnings and high capex requirements
   tier_base_weights:
     pre_profit_high_growth:
-      ps: 60
-      dcf: 30
-      ev_ebitda: 10
+      ps: 70
+      dcf: 15
+      ev_ebitda: 15
       pe: 0
       pb: 0
       ggm: 0
@@ -509,30 +509,30 @@ valuation:
       pb: 0
       ggm: 0
     dividend_aristocrat_pure:
-      ggm: 60
-      dcf: 20
-      pe: 15
-      ev_ebitda: 5
+      ggm: 80
+      dcf: 10
+      pe: 10
+      ev_ebitda: 0
       ps: 0
       pb: 0
     dividend_aristocrat_growth:
-      ev_ebitda: 35
-      dcf: 30
-      ggm: 20
-      pe: 15
+      ev_ebitda: 30
+      dcf: 20
+      ggm: 40
+      pe: 10
       ps: 0
       pb: 0
     high_dividend_payer_mature:
       ps: 35
       pe: 30
-      dcf: 20
-      ggm: 10
-      ev_ebitda: 5
+      dcf: 15
+      ggm: 20
+      ev_ebitda: 0
       pb: 0
     high_dividend_payer_growth:
-      dcf: 35
+      dcf: 25
       pe: 30
-      ggm: 20
+      ggm: 30
       ev_ebitda: 15
       ps: 0
       pb: 0
