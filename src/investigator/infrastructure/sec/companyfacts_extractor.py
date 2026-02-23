@@ -48,7 +48,7 @@ class SECCompanyFactsExtractor:
         import os
 
         self.db_config = db_config or {
-            "host": os.environ.get("SEC_DB_HOST", os.environ.get("DB_HOST", "localhost")),
+            "host": os.environ.get("SEC_DB_HOST", os.environ.get("DB_HOST", "dataserver1.singh.local")),
             "port": int(os.environ.get("SEC_DB_PORT", os.environ.get("DB_PORT", "5432"))),
             "database": os.environ.get("SEC_DB_NAME", "sec_database"),
             "username": os.environ.get("SEC_DB_USER", "investigator"),

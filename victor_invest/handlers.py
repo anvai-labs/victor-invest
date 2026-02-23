@@ -45,6 +45,15 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Import sector name mapper for use in handlers (available but not required)
+# Handlers that need sector normalization can use this as needed
+try:
+    from investigator.domain.services.sector_name_mapper import SectorIndustryMapper
+    SECTOR_MAPPER_AVAILABLE = True
+except ImportError:
+    SECTOR_MAPPER_AVAILABLE = False
+    SectorIndustryMapper = None  # type: ignore
+
 
 # =============================================================================
 # Data Collection Handlers

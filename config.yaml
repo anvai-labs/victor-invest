@@ -4,7 +4,7 @@ application:
   environment: development
   debug: false
 database:
-  host: ${DB_HOST:-localhost}
+  host: ${DB_HOST:-dataserver1.singh.local}
   port: 5432
   database: ${DB_DATABASE:-sec_database}
   username: ${DB_USERNAME}
@@ -991,6 +991,45 @@ valuation:
         ps: 0.9
         pb: 1.1
         ev_ebitda: 1.0
+
+# ============================================================================
+# Sector/Industry Name Standardization
+# ============================================================================
+# This section documents the canonical mapping between standard sector/industry
+# names and their database variants. This mapping is now centralized in
+# src/investigator/domain/services/sector_name_mapper.py (SectorIndustryMapper).
+#
+# Standard Sector Names and Database Variants:
+#   Communication Services: [Communication Services, Telecommunications]
+#   Technology: [Technology, Information Technology]
+#   Financials: [Financials, Finance, Financial Services]
+#   Healthcare: [Healthcare, Health Care]
+#   Consumer Discretionary: [Consumer Discretionary, Consumer Cyclical]
+#   Consumer Staples: [Consumer Staples, Consumer Defensive]
+#   Industrials: [Industrials, Industrial]
+#   Energy: [Energy]
+#   Real Estate: [Real Estate, REITs]
+#   Utilities: [Utilities]
+#   Materials: [Materials, Basic Materials]
+#
+# Industry to Sector Mapping (for granular lookups):
+#   Semiconductors, Software, Information Technology Services -> Technology
+#   Banks, Asset Management, Insurance -> Financials
+#   Biotechnology, Medical Devices, Pharmaceuticals -> Healthcare
+#   Internet Retail, Restaurants, Auto Manufacturing -> Consumer Discretionary
+#   Packaged Foods, Beverages -> Consumer Staples
+#   Aerospace & Defense -> Industrials
+#   REITs -> Real Estate
+#   Oil & Gas -> Energy
+#   Electric Utilities -> Utilities
+#   Chemicals, Metals & Mining -> Materials
+#
+# All code should use SectorIndustryMapper for normalization:
+#   from investigator.domain.services.sector_name_mapper import SectorIndustryMapper
+#   standard_sector = SectorIndustryMapper.to_standard(database_sector_name)
+#   variants = SectorIndustryMapper.to_database_variants("Technology")
+# ============================================================================
+
 pe_multiples:
   sector_defaults:
     Technology: 14.52

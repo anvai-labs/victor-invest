@@ -368,35 +368,49 @@ def historical(
 
 
 def _is_industry(name: str) -> bool:
-    """Determine if a name is likely an industry vs sector."""
+    """Determine if a name is likely an industry vs sector.
+
+    First checks if the name is a GICS sector (11 standard sectors).
+    Only then checks if it matches industry-specific keywords.
+
+    This prevents misclassifying sector names like "Consumer Discretionary"
+    or "Real Estate" as industries.
+    """
+    from investigator.domain.services.sector_name_mapper import SectorIndustryMapper
+
+    # First check if it's a standard GICS sector
+    if SectorIndustryMapper.is_valid_sector(name):
+        return False
+
+    # Check for industry-specific keywords (substrings)
+    # Note: Avoid words that appear in GICS sector names (Communication, Financial, Industrial, Services, etc.)
     industry_keywords = [
         "Software",
         "Hardware",
         "Semiconductor",
         "Equipment",
-        "Services",
         "Banking",
         "Insurance",
-        "Real Estate",
-        "Telecom",
-        "Utilities",
         "Pharmaceutical",
         "Biotech",
         "Medical",
-        "Industrial",
         "Machinery",
-        "Consumer",
-        "Discretionary",
-        "Staples",
-        "Financial",
-        "Healthcare",
-        "Electrical",
-        "Metal",
-        "Chemical",
-        "Food",
         "Retail",
-        "Energy",
         "Transportation",
+        "Aerospace",
+        "Defense",
+        "Metals",
+        "Mining",
+        "Chemicals",
+        "Oil & Gas",
+        "Electric",
+        "Auto",
+        "Food",
+        "Beverages",
+        "Tobacco",
+        "Apparel",
+        "Luxury",
+        "REIT",  # Industry-level REITs, not Real Estate sector
     ]
     name_lower = name.lower()
     return any(keyword.lower() in name_lower for keyword in industry_keywords)

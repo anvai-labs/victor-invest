@@ -111,6 +111,9 @@ from investigator.domain.services.valuation_shared import (
     ValuationConfigService,
 )
 
+# Sector name mapper for normalization
+from investigator.domain.services.sector_name_mapper import SectorIndustryMapper
+
 # Database and config
 from investigator.infrastructure.database.db import get_db_manager, safe_json_dumps
 
@@ -723,6 +726,7 @@ class RLBacktester:
         ratios: Dict[str, float],
         metadata: Dict[str, Any],
         current_price: float,
+        analysis_date: Optional[datetime] = None,
     ) -> Tuple[Dict[str, Optional[float]], str, Dict[str, Any]]:
         """
         Calculate fair values using FULL valuation framework.
@@ -731,6 +735,15 @@ class RLBacktester:
         - Sector-specific valuation (banks, REITs, biotech, etc.)
         - Growth-adjusted valuation
         - All valuation models (DCF, GGM, PE, PS, PB, EV/EBITDA)
+        - Historical sector multiples (if analysis_date provided)
+
+        Args:
+            symbol: Stock symbol
+            financials: Financial data
+            ratios: Financial ratios
+            metadata: Symbol metadata (sector, industry, beta)
+            current_price: Current stock price
+            analysis_date: Analysis date for historical sector multiples (optional)
 
         Returns:
             Tuple of (fair_values dict, tier classification, audit trail)
@@ -746,6 +759,11 @@ class RLBacktester:
         dividends = abs(financials.get("dividends_paid", 0) or 0)
         financials.get("net_income", 0) or 0
         market_cap = ratios.get("market_cap", 0)
+
+        # Normalize sector and industry names
+        normalized = SectorIndustryMapper.normalize_metadata(sector, industry)
+        sector = normalized["sector"] or "Unknown"
+        industry = normalized["industry"] or "Unknown"
 
         fair_values = {}
         audit = {"sector_specific": False, "models_used": []}
@@ -853,7 +871,7 @@ class RLBacktester:
                     audit["models_used"].append("growth_adjusted_pe")
             except Exception:
                 # Fallback to simple P/E
-                pe_multiple = self._get_sector_pe_multiple(sector)
+                pe_multiple = self._get_sector_pe_multiple(sector, analysis_date)
                 fair_values["pe"] = eps * pe_multiple
                 audit["models_used"].append("simple_pe")
         else:
@@ -861,7 +879,7 @@ class RLBacktester:
 
         # P/S valuation
         if revenue > 0:
-            ps_multiple = self._get_sector_ps_multiple(sector)
+            ps_multiple = self._get_sector_ps_multiple(sector, analysis_date)
             fair_values["ps"] = (revenue / shares) * ps_multiple
             audit["models_used"].append("ps")
         else:
@@ -869,13 +887,13 @@ class RLBacktester:
 
         # P/B valuation (if not already set by sector-specific)
         if "pb" not in fair_values and bvps > 0:
-            pb_multiple = self._get_sector_pb_multiple(sector)
+            pb_multiple = self._get_sector_pb_multiple(sector, analysis_date)
             fair_values["pb"] = bvps * pb_multiple
             audit["models_used"].append("pb")
 
         # EV/EBITDA valuation
         if ebitda > 0:
-            ev_multiple = self._get_sector_ev_multiple(sector)
+            ev_multiple = self._get_sector_ev_multiple(sector, analysis_date)
             ev = ebitda * ev_multiple
             debt = (financials.get("long_term_debt", 0) or 0) + (
                 financials.get("short_term_debt", 0) or 0
@@ -1022,21 +1040,125 @@ class RLBacktester:
 
         return sanitized_fvs, tier, audit
 
-    def _get_sector_pe_multiple(self, sector: str) -> float:
-        """Get sector-appropriate P/E multiple from config."""
-        return self.sector_multiples_service.get_pe(sector)
+    def _get_sector_pe_multiple(self, sector: str, analysis_date: Optional[datetime] = None) -> float:
+        """Get sector-appropriate P/E multiple from historical data or config.
 
-    def _get_sector_ps_multiple(self, sector: str) -> float:
-        """Get sector-appropriate P/S multiple from config."""
-        return self.sector_multiples_service.get_ps(sector)
+        Args:
+            sector: Raw sector name from database
+            analysis_date: Date of analysis for historical lookup (None = use config default)
 
-    def _get_sector_pb_multiple(self, sector: str) -> float:
-        """Get sector-appropriate P/B multiple from config."""
-        return self.sector_multiples_service.get_pb(sector)
+        Returns:
+            P/E multiple value
+        """
+        # Normalize sector name
+        standard_sector = SectorIndustryMapper.to_standard(sector)
 
-    def _get_sector_ev_multiple(self, sector: str) -> float:
-        """Get sector-appropriate EV/EBITDA multiple from config."""
-        return self.sector_multiples_service.get_ev_ebitda(sector)
+        # Try historical lookup first if analysis date provided
+        if analysis_date:
+            try:
+                historical_pe = self.sector_multiples_service.get_historical_median_multiple(
+                    sector=standard_sector,
+                    metric="pe",
+                    fiscal_year=analysis_date.year,
+                    lookback_years=3,
+                )
+                if historical_pe is not None:
+                    return historical_pe
+            except Exception as e:
+                logger.debug(f"Historical P/E lookup failed for {standard_sector}: {e}")
+
+        # Fall back to config static value
+        return self.sector_multiples_service.get_pe(standard_sector)
+
+    def _get_sector_ps_multiple(self, sector: str, analysis_date: Optional[datetime] = None) -> float:
+        """Get sector-appropriate P/S multiple from historical data or config.
+
+        Args:
+            sector: Raw sector name from database
+            analysis_date: Date of analysis for historical lookup (None = use config default)
+
+        Returns:
+            P/S multiple value
+        """
+        # Normalize sector name
+        standard_sector = SectorIndustryMapper.to_standard(sector)
+
+        # Try historical lookup first if analysis date provided
+        if analysis_date:
+            try:
+                historical_ps = self.sector_multiples_service.get_historical_median_multiple(
+                    sector=standard_sector,
+                    metric="ps",
+                    fiscal_year=analysis_date.year,
+                    lookback_years=3,
+                )
+                if historical_ps is not None:
+                    return historical_ps
+            except Exception as e:
+                logger.debug(f"Historical P/S lookup failed for {standard_sector}: {e}")
+
+        # Fall back to config static value
+        return self.sector_multiples_service.get_ps(standard_sector)
+
+    def _get_sector_pb_multiple(self, sector: str, analysis_date: Optional[datetime] = None) -> float:
+        """Get sector-appropriate P/B multiple from historical data or config.
+
+        Args:
+            sector: Raw sector name from database
+            analysis_date: Date of analysis for historical lookup (None = use config default)
+
+        Returns:
+            P/B multiple value
+        """
+        # Normalize sector name
+        standard_sector = SectorIndustryMapper.to_standard(sector)
+
+        # Try historical lookup first if analysis date provided
+        if analysis_date:
+            try:
+                historical_pb = self.sector_multiples_service.get_historical_median_multiple(
+                    sector=standard_sector,
+                    metric="pb",
+                    fiscal_year=analysis_date.year,
+                    lookback_years=3,
+                )
+                if historical_pb is not None:
+                    return historical_pb
+            except Exception as e:
+                logger.debug(f"Historical P/B lookup failed for {standard_sector}: {e}")
+
+        # Fall back to config static value
+        return self.sector_multiples_service.get_pb(standard_sector)
+
+    def _get_sector_ev_multiple(self, sector: str, analysis_date: Optional[datetime] = None) -> float:
+        """Get sector-appropriate EV/EBITDA multiple from historical data or config.
+
+        Args:
+            sector: Raw sector name from database
+            analysis_date: Date of analysis for historical lookup (None = use config default)
+
+        Returns:
+            EV/EBITDA multiple value
+        """
+        # Normalize sector name
+        standard_sector = SectorIndustryMapper.to_standard(sector)
+
+        # Try historical lookup first if analysis date provided
+        if analysis_date:
+            try:
+                historical_ev = self.sector_multiples_service.get_historical_median_multiple(
+                    sector=standard_sector,
+                    metric="ev_ebitda",
+                    fiscal_year=analysis_date.year,
+                    lookback_years=3,
+                )
+                if historical_ev is not None:
+                    return historical_ev
+            except Exception as e:
+                logger.debug(f"Historical EV/EBITDA lookup failed for {standard_sector}: {e}")
+
+        # Fall back to config static value
+        return self.sector_multiples_service.get_ev_ebitda(standard_sector)
 
     def calculate_blended_fair_value(
         self,
@@ -1244,7 +1366,7 @@ class RLBacktester:
         return ValuationContext(
             symbol=symbol,
             analysis_date=analysis_date,
-            sector=metadata.get("sector", "Unknown"),
+            sector=self._normalize_sector_name(metadata.get("sector", "Unknown")),
             industry=metadata.get("industry", "Unknown"),
             growth_stage=growth_stage,
             company_size=company_size,
@@ -1345,6 +1467,17 @@ class RLBacktester:
         if buy_value >= sell_value:
             return 1.0
         return -1.0
+
+    def _normalize_sector_name(self, sector: str) -> str:
+        """Normalize sector name using SectorIndustryMapper.
+
+        Args:
+            sector: Raw sector name from metadata (may contain database variants)
+
+        Returns:
+            Standard GICS sector name
+        """
+        return SectorIndustryMapper.to_standard(sector)
 
     def _calculate_net_margin(
         self, financials: Dict[str, Any], ratios: Dict[str, float]
@@ -1924,6 +2057,7 @@ class RLBacktester:
                     ratios=ratios,
                     metadata=metadata,
                     current_price=price_at_prediction,
+                    analysis_date=analysis_date,
                 )
 
                 # Get weights from audit

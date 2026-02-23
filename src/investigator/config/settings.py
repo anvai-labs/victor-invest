@@ -50,7 +50,7 @@ class DatabaseSettings(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="DB_")
 
-    host: str = Field(default="localhost")
+    host: str = Field(default="dataserver1.singh.local")
     port: int = Field(default=5432)
     database: str = Field(default="sec_database")
     username: str = Field(default="investigator")

@@ -33,6 +33,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
 from investigator.config import get_config
+from investigator.domain.services.sector_name_mapper import SectorIndustryMapper
 
 logger = logging.getLogger(__name__)
 
@@ -163,14 +164,16 @@ class SectorMultiplesHistory:
 
         results = {}
 
-        # Group by sector first
+        # Group by sector first (standardizing names)
         sector_groups: Dict[str, List[str]] = {}
         industry_groups: Dict[str, List[str]] = {}
 
         for symbol, sector, industry in symbol_classification:
-            if sector not in sector_groups:
-                sector_groups[sector] = []
-            sector_groups[sector].append(symbol)
+            # Standardize sector name
+            standard_sector = self._standardize_sector_name(sector)
+            if standard_sector not in sector_groups:
+                sector_groups[standard_sector] = []
+            sector_groups[standard_sector].append(symbol)
 
             if industry:
                 if industry not in industry_groups:
@@ -308,9 +311,9 @@ class SectorMultiplesHistory:
         snapshot_date = datetime(fiscal_year, 12, 31) + timedelta(days=31)
 
         return {
-            "pe": round(pe_median, 2),
-            "ps": round(ps_median, 2) if ps_median else None,
-            "pb": round(pb_median, 2) if pb_median else None,
+            "pe": round(pe_median, 2) if pe_median is not None else None,
+            "ps": round(ps_median, 2) if ps_median is not None else None,
+            "pb": round(pb_median, 2) if pb_median is not None else None,
             "fiscal_year": fiscal_year,
             "snapshot_date": snapshot_date.isoformat(),
             "sample_size": len(fy_metrics),
@@ -709,6 +712,18 @@ class SectorMultiplesHistory:
 
         return True
 
+    # Note: Sector name mapping is now centralized in SectorIndustryMapper
+    # Use SectorIndustryMapper.to_standard() for normalization
+    # and SectorIndustryMapper.to_database_variants() for expansion
+
+    def _normalize_sector_names(self, sectors: List[str]) -> List[str]:
+        """Expand sector names to include all database variants."""
+        return SectorIndustryMapper.expand_sectors_for_query(sectors)
+
+    def _standardize_sector_name(self, sector_name: str) -> str:
+        """Convert database sector name to standard name."""
+        return SectorIndustryMapper.to_standard(sector_name)
+
     def _get_symbols_by_sector_industry(
         self,
         *,
@@ -729,7 +744,8 @@ class SectorMultiplesHistory:
                     filters.append("ticker = ANY(:override_symbols)")
                     params["override_symbols"] = override_symbols
 
-                sector_list = [s.title() for s in sectors]
+                # Expand sector names to include database variants
+                sector_list = self._normalize_sector_names(sectors)
                 filters.append(
                     "COALESCE(NULLIF(\"Sector\", ''), '') = ANY(:sectors) OR \"Sector\" = ANY(:sectors)"
                 )

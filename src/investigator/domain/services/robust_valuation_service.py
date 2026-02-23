@@ -38,6 +38,7 @@ from investigator.domain.services.cross_sectional_valuation import (
 from investigator.domain.services.sector_multiples_trend_adjusted import (
     SectorMultiplesTrendAdjusted,
 )
+from investigator.domain.services.sector_name_mapper import SectorIndustryMapper
 from investigator.infrastructure.database.db import get_db_manager
 
 logger = logging.getLogger(__name__)
@@ -175,8 +176,8 @@ class RobustValuationService:
 
         Args:
             symbol: Stock symbol
-            sector: Sector name
-            industry: Industry name (optional)
+            sector: Sector name (will be normalized)
+            industry: Industry name (optional, will be normalized)
             current_price: Current stock price
             eps: Earnings per share
             revenue_per_share: Revenue per share
@@ -185,7 +186,12 @@ class RobustValuationService:
         Returns:
             RobustValuationResult or None if insufficient data
         """
-        logger.info(f"Calculating robust valuation for {symbol}...")
+        # Normalize sector and industry names
+        normalized = SectorIndustryMapper.normalize_metadata(sector, industry)
+        sector = normalized["sector"] or "Unknown"
+        industry = normalized["industry"]
+
+        logger.info(f"Calculating robust valuation for {symbol} (sector: {sector}, industry: {industry})...")
 
         # Step 1: Get trend-adjusted sector multiples (Layer 1)
         layer1_data = self._get_layer1_data(sector)

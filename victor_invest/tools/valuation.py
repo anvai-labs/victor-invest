@@ -57,6 +57,9 @@ from investigator.domain.services.market_data import (
     SymbolMetadataService,
 )
 
+# Sector name mapper for normalization
+from investigator.domain.services.sector_name_mapper import SectorIndustryMapper
+
 # Shared valuation config services (single source of truth for sector multiples, CAPM, GGM)
 from investigator.domain.services.valuation_shared import (
     SectorMultiplesService,
@@ -816,55 +819,95 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
     ) -> Dict[str, float]:
         """Get sector median multiples with industry override.
 
-        Uses shared SectorMultiples from valuation.common for config-driven lookups.
-        Falls back to SectorMultiplesService or hardcoded defaults if needed.
+        Uses normalized sector/industry names and tries historical median lookups first.
+        Falls back to config static values if historical data not available.
 
         Args:
-            sector: The company's sector (e.g., "Technology", "Financials")
+            sector: The company's sector (will be normalized, e.g., "Information Technology" -> "Technology")
             industry: The company's specific industry (e.g., "Semiconductors", "Major Banks")
 
         Returns:
             Dict with pe, ps, pb, ev_ebitda multiples. If industry is provided and
-            has an override defined in config, that value will be used.
+            has historical data or override defined in config, that value will be used.
         """
-        # Use new shared SectorMultiples module (consolidated from both CLIs)
+        # Normalize sector and industry names
+        normalized = SectorIndustryMapper.normalize_metadata(sector, industry)
+        standard_sector = normalized["sector"] or "Unknown"
+        standard_industry = normalized["industry"]
+
+        # Try historical median lookups first using SectorMultiplesService
+        if self._sector_multiples_service:
+            try:
+                # Try industry-specific historical lookup first
+                if standard_industry:
+                    industry_pe = self._sector_multiples_service._get_industry_historical_multiple(
+                        industry=standard_industry,
+                        metric="pe",
+                        lookback_years=3,
+                    )
+                    if industry_pe is not None:
+                        # Got industry-specific historical data, use it for all multiples
+                        return {
+                            "pe": industry_pe,
+                            "ps": self._sector_multiples_service.get_ps(standard_sector, standard_industry),
+                            "pb": self._sector_multiples_service.get_pb(standard_sector, standard_industry),
+                            "ev_ebitda": self._sector_multiples_service.get_ev_ebitda(standard_sector, standard_industry),
+                        }
+
+                # Try sector-level historical lookup
+                historical_pe = self._sector_multiples_service.get_historical_median_multiple(
+                    sector=standard_sector,
+                    metric="pe",
+                    lookback_years=3,
+                )
+                if historical_pe is not None:
+                    # Got historical sector data, use it
+                    return {
+                        "pe": historical_pe,
+                        "ps": self._sector_multiples_service.get_ps(standard_sector, standard_industry),
+                        "pb": self._sector_multiples_service.get_pb(standard_sector, standard_industry),
+                        "ev_ebitda": self._sector_multiples_service.get_ev_ebitda(standard_sector, standard_industry),
+                    }
+            except Exception as e:
+                logger.debug(f"Historical median lookup failed for {standard_sector}: {e}")
+
+            # Fall back to config static values
+            result: dict[str, float] = self._sector_multiples_service.get_multiples(
+                standard_sector, standard_industry
+            )
+            return result
+
+        # Fallback to shared SectorMultiples module if available
         try:
             from investigator.domain.services.valuation.common import SectorMultiples
 
             return {
                 "pe": SectorMultiples.get_multiple_with_override(
-                    sector=sector, industry=industry, metric="pe"
+                    sector=standard_sector, industry=standard_industry, metric="pe"
                 ),
                 "ps": SectorMultiples.get_multiple_with_override(
-                    sector=sector, industry=industry, metric="ps"
+                    sector=standard_sector, industry=standard_industry, metric="ps"
                 ),
                 "pb": SectorMultiples.get_multiple_with_override(
-                    sector=sector, industry=industry, metric="pb"
+                    sector=standard_sector, industry=standard_industry, metric="pb"
                 ),
                 "ev_ebitda": SectorMultiples.get_multiple_with_override(
-                    sector=sector, industry=industry, metric="ev_ebitda"
+                    sector=standard_sector, industry=standard_industry, metric="ev_ebitda"
                 ),
             }
         except Exception as e:
             logger.debug(f"Shared SectorMultiples not available, using fallback: {e}")
 
-        # Fallback to SectorMultiplesService if available
-        if self._sector_multiples_service:
-            result: dict[str, float] = self._sector_multiples_service.get_multiples(
-                sector, industry
-            )
-            return result
-
         # Final fallback to hardcoded values
         logger.debug(
-            f"Using fallback sector multiples for {sector} (service not available)"
+            f"Using fallback sector multiples for {standard_sector} (service not available)"
         )
         base = DEFAULT_SECTOR_MULTIPLES.get(
-            sector, DEFAULT_SECTOR_MULTIPLES.get("Industrials", {})
+            standard_sector, DEFAULT_SECTOR_MULTIPLES.get("Industrials", {})
         )
-        if industry and industry in INDUSTRY_PE_FALLBACKS:
+        if standard_industry and standard_industry in INDUSTRY_PE_FALLBACKS:
             base = base.copy()
-            base["pe"] = INDUSTRY_PE_FALLBACKS[industry]
+            base["pe"] = INDUSTRY_PE_FALLBACKS[standard_industry]
         return base
 
     async def _run_all_models(

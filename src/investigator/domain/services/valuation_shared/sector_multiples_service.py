@@ -27,7 +27,7 @@ Example:
 """
 
 import logging
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from .valuation_config_service import ValuationConfigService
 
@@ -261,6 +261,280 @@ class SectorMultiplesService:
             return self.get_ev_ebitda(sector, industry)
         else:
             raise ValueError(f"Unknown multiple type: {multiple_type}. " f"Use one of: pe, ps, pb, ev_ebitda")
+
+    # ============================================================================
+    # Historical Median Methods (from sector_multiples_history table)
+    # ============================================================================
+
+    def get_historical_median_multiple(
+        self,
+        sector: str,
+        metric: str,
+        fiscal_year: Optional[int] = None,
+        lookback_years: int = 3,
+    ) -> Optional[float]:
+        """Get median multiple for a sector over historical period.
+
+        Queries the sector_multiples_history table for historical sector multiples
+        and returns the median value over the specified period.
+
+        Args:
+            sector: Sector name (will be normalized to standard name)
+            metric: 'pe', 'ps', 'pb', 'ev_ebitda'
+            fiscal_year: Specific year to get (None = median over lookback period)
+            lookback_years: Number of years to include in median (default: 3)
+
+        Returns:
+            Median multiple value or None if no data found
+
+        Examples:
+            >>> service = SectorMultiplesService()
+            >>> # Get median P/E over last 3 years
+            >>> pe = service.get_historical_median_multiple("Technology", "pe")
+            >>> # Get P/S for specific fiscal year
+            >>> ps = service.get_historical_median_multiple("Financials", "ps", fiscal_year=2023)
+        """
+        from investigator.infrastructure.database.migrations.versions.create_sector_multiples_history import (
+            SectorMultiplesHistory as SectorMultiplesHistoryModel,
+        )
+        from investigator.domain.services.sector_name_mapper import SectorIndustryMapper
+
+        # Normalize sector name
+        standard_sector = SectorIndustryMapper.to_standard(sector)
+
+        # Map metric to column name
+        metric_column_map = {
+            "pe": "pe_multiple",
+            "ps": "ps_multiple",
+            "pb": "pb_multiple",
+            "ev_ebitda": "ev_ebitda_multiple",
+        }
+
+        column_name = metric_column_map.get(metric.lower())
+        if not column_name:
+            logger.warning(f"Unknown metric: {metric}")
+            return None
+
+        from investigator.infrastructure.database.db import get_db_manager
+
+        db_manager = get_db_manager()
+
+        with db_manager.get_session() as session:
+            query = (
+                session.query(
+                    getattr(SectorMultiplesHistoryModel, column_name),
+                    SectorMultiplesHistoryModel.fiscal_year,
+                )
+                .filter_by(group_name=standard_sector, group_type="sector")
+                .filter(getattr(SectorMultiplesHistoryModel, column_name).isnot(None))
+            )
+
+            # Filter by fiscal year range
+            if fiscal_year:
+                # Get specific year
+                end_year = fiscal_year
+                start_year = fiscal_year - lookback_years + 1
+                query = query.filter(
+                    SectorMultiplesHistoryModel.fiscal_year >= start_year,
+                    SectorMultiplesHistoryModel.fiscal_year <= end_year,
+                )
+            else:
+                # Get recent years up to current year
+                from datetime import datetime
+
+                current_year = datetime.now().year
+                start_year = current_year - lookback_years
+                query = query.filter(
+                    SectorMultiplesHistoryModel.fiscal_year >= start_year,
+                )
+
+            results = query.order_by(SectorMultiplesHistoryModel.fiscal_year.desc()).all()
+
+            if not results:
+                logger.warning(
+                    f"No historical {metric} data found for sector: {standard_sector}"
+                )
+                return None
+
+            # Extract values and calculate median
+            values = [float(row[0]) for row in results if row[0] is not None]
+            if not values:
+                return None
+
+            # Calculate median
+            sorted_values = sorted(values)
+            n = len(sorted_values)
+            if n == 0:
+                return None
+            elif n % 2 == 0:
+                median = (sorted_values[n // 2 - 1] + sorted_values[n // 2]) / 2
+            else:
+                median = sorted_values[n // 2]
+
+            logger.info(
+                f"Historical {metric} median for {standard_sector}: {median:.2f} "
+                f"(from {len(values)} data points over {len(results)} years)"
+            )
+
+            return median
+
+    def get_sector_industry_multiple(
+        self,
+        sector: Optional[str] = None,
+        industry: Optional[str] = None,
+        metric: str = "pe",
+        fiscal_year: Optional[int] = None,
+        lookback_years: int = 3,
+    ) -> Optional[float]:
+        """Get multiple for sector or industry, with industry-specific override.
+
+        Priority order:
+        1. Industry-specific historical multiple (if industry provided)
+        2. Sector-specific historical multiple
+        3. Sector-specific static config value (fallback)
+
+        Args:
+            sector: Sector name (will be normalized)
+            industry: Industry name (for more specific lookup)
+            metric: 'pe', 'ps', 'pb', 'ev_ebitda'
+            fiscal_year: Specific fiscal year (None = median over lookback)
+            lookback_years: Years of history to median (default: 3)
+
+        Returns:
+            Multiple value or None if not found
+
+        Examples:
+            >>> service = SectorMultiplesService()
+            >>> # Industry-specific (more accurate)
+            >>> pe = service.get_sector_industry_multiple(
+            ...     sector="Technology",
+            ...     industry="Semiconductors",
+            ...     metric="pe"
+            ... )
+            >>> # Sector-level only
+            >>> pe = service.get_sector_industry_multiple(sector="Financials", metric="pe")
+        """
+        from investigator.domain.services.sector_name_mapper import SectorIndustryMapper
+
+        # Normalize sector name
+        standard_sector = None
+        if sector:
+            standard_sector = SectorIndustryMapper.to_standard(sector)
+
+        # Try industry-specific first
+        if industry:
+            industry_multiple = self._get_industry_historical_multiple(
+                industry, metric, fiscal_year, lookback_years
+            )
+            if industry_multiple is not None:
+                return industry_multiple
+
+        # Fall back to sector-level
+        if standard_sector:
+            sector_multiple = self.get_historical_median_multiple(
+                standard_sector, metric, fiscal_year, lookback_years
+            )
+            if sector_multiple is not None:
+                return sector_multiple
+
+        # Final fallback to config static values
+        logger.warning(
+            f"No historical data found for sector={standard_sector}, industry={industry}. "
+            f"Using config static value for {metric}."
+        )
+        return self.get_multiple(metric, standard_sector or "Unknown", industry)
+
+    def _get_industry_historical_multiple(
+        self,
+        industry: str,
+        metric: str,
+        fiscal_year: Optional[int] = None,
+        lookback_years: int = 3,
+    ) -> Optional[float]:
+        """Get historical multiple for an industry from sector_multiples_history.
+
+        Args:
+            industry: Industry name
+            metric: 'pe', 'ps', 'pb', 'ev_ebitda'
+            fiscal_year: Specific fiscal year (None = median over lookback)
+            lookback_years: Years of history to median
+
+        Returns:
+            Industry multiple value or None if not found
+        """
+        from investigator.infrastructure.database.migrations.versions.create_sector_multiples_history import (
+            SectorMultiplesHistory as SectorMultiplesHistoryModel,
+        )
+
+        # Map metric to column name
+        metric_column_map = {
+            "pe": "pe_multiple",
+            "ps": "ps_multiple",
+            "pb": "pb_multiple",
+            "ev_ebitda": "ev_ebitda_multiple",
+        }
+
+        column_name = metric_column_map.get(metric.lower())
+        if not column_name:
+            return None
+
+        from investigator.infrastructure.database.db import get_db_manager
+
+        db_manager = get_db_manager()
+
+        with db_manager.get_session() as session:
+            query = (
+                session.query(
+                    getattr(SectorMultiplesHistoryModel, column_name),
+                    SectorMultiplesHistoryModel.fiscal_year,
+                )
+                .filter_by(group_name=industry, group_type="industry")
+                .filter(getattr(SectorMultiplesHistoryModel, column_name).isnot(None))
+            )
+
+            # Filter by fiscal year range
+            if fiscal_year:
+                end_year = fiscal_year
+                start_year = fiscal_year - lookback_years + 1
+                query = query.filter(
+                    SectorMultiplesHistoryModel.fiscal_year >= start_year,
+                    SectorMultiplesHistoryModel.fiscal_year <= end_year,
+                )
+            else:
+                from datetime import datetime
+
+                current_year = datetime.now().year
+                start_year = current_year - lookback_years
+                query = query.filter(
+                    SectorMultiplesHistoryModel.fiscal_year >= start_year,
+                )
+
+            results = query.order_by(SectorMultiplesHistoryModel.fiscal_year.desc()).all()
+
+            if not results:
+                return None
+
+            # Extract values and calculate median
+            values = [float(row[0]) for row in results if row[0] is not None]
+            if not values:
+                return None
+
+            # Calculate median
+            sorted_values = sorted(values)
+            n = len(sorted_values)
+            if n == 0:
+                return None
+            elif n % 2 == 0:
+                median = (sorted_values[n // 2 - 1] + sorted_values[n // 2]) / 2
+            else:
+                median = sorted_values[n // 2]
+
+            logger.info(
+                f"Historical {metric} median for industry {industry}: {median:.2f} "
+                f"(from {len(values)} data points)"
+            )
+
+            return median
 
 
 # Convenience functions for backward compatibility

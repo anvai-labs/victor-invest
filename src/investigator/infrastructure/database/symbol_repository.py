@@ -52,7 +52,7 @@ class SymbolRepository:
 
     def _create_stock_engine(self) -> Engine:
         """Create stock database engine from environment variables."""
-        host = os.environ.get("STOCK_DB_HOST", "localhost")
+        host = os.environ.get("STOCK_DB_HOST", "dataserver1.singh.local")
         password = os.environ.get("STOCK_DB_PASSWORD", "")
         user = os.environ.get("STOCK_DB_USER", "stockuser")
         db = os.environ.get("STOCK_DB_NAME", "stock")
@@ -67,7 +67,7 @@ class SymbolRepository:
 
     def _create_sec_engine(self) -> Engine:
         """Create SEC database engine from environment variables."""
-        host = os.environ.get("SEC_DB_HOST", "localhost")
+        host = os.environ.get("SEC_DB_HOST", "dataserver1.singh.local")
         password = os.environ.get("SEC_DB_PASSWORD", "")
         user = os.environ.get("SEC_DB_USER", "investigator")
         db = os.environ.get("SEC_DB_NAME", "sec_database")
