@@ -35,9 +35,15 @@ def _build_model_mock(result):
 @patch("investigator.domain.agents.fundamental.valuation_models.PSMultipleModel")
 @patch("investigator.domain.agents.fundamental.valuation_models.EVEBITDAModel")
 @patch("investigator.domain.agents.fundamental.valuation_models.PEMultipleModel")
-def test_calculate_relative_valuation_models_returns_all_models(pe_cls, ev_cls, ps_cls, pb_cls, _normalize):
-    pe_cls.return_value = _build_model_mock({"model": "pe", "fair_value_per_share": 110})
-    ev_cls.return_value = _build_model_mock({"model": "ev_ebitda", "fair_value_per_share": 120})
+def test_calculate_relative_valuation_models_returns_all_models(
+    pe_cls, ev_cls, ps_cls, pb_cls, _normalize
+):
+    pe_cls.return_value = _build_model_mock(
+        {"model": "pe", "fair_value_per_share": 110}
+    )
+    ev_cls.return_value = _build_model_mock(
+        {"model": "ev_ebitda", "fair_value_per_share": 120}
+    )
     ps_cls.return_value = _build_model_mock({"model": "ps", "fair_value_per_share": 90})
     pb_cls.return_value = _build_model_mock({"model": "pb", "fair_value_per_share": 95})
 
@@ -78,9 +84,15 @@ def test_calculate_relative_valuation_models_returns_all_models(pe_cls, ev_cls, 
 @patch("investigator.domain.agents.fundamental.valuation_models.PSMultipleModel")
 @patch("investigator.domain.agents.fundamental.valuation_models.EVEBITDAModel")
 @patch("investigator.domain.agents.fundamental.valuation_models.PEMultipleModel")
-def test_calculate_relative_valuation_models_applies_insurance_pb_override(pe_cls, ev_cls, ps_cls, pb_cls, _normalize):
-    pe_cls.return_value = _build_model_mock({"model": "pe", "fair_value_per_share": 110})
-    ev_cls.return_value = _build_model_mock({"model": "ev_ebitda", "fair_value_per_share": 120})
+def test_calculate_relative_valuation_models_applies_insurance_pb_override(
+    pe_cls, ev_cls, ps_cls, pb_cls, _normalize
+):
+    pe_cls.return_value = _build_model_mock(
+        {"model": "pe", "fair_value_per_share": 110}
+    )
+    ev_cls.return_value = _build_model_mock(
+        {"model": "ev_ebitda", "fair_value_per_share": 120}
+    )
     ps_cls.return_value = _build_model_mock({"model": "ps", "fair_value_per_share": 90})
     pb_cls.return_value = _build_model_mock({"model": "pb", "fair_value_per_share": 95})
 
@@ -123,9 +135,15 @@ def test_calculate_relative_valuation_models_applies_insurance_pb_override(pe_cl
 @patch("investigator.domain.agents.fundamental.valuation_models.PSMultipleModel")
 @patch("investigator.domain.agents.fundamental.valuation_models.EVEBITDAModel")
 @patch("investigator.domain.agents.fundamental.valuation_models.PEMultipleModel")
-def test_calculate_relative_valuation_models_prefers_ttm_ratio_inputs(pe_cls, ev_cls, ps_cls, pb_cls, _normalize):
-    pe_cls.return_value = _build_model_mock({"model": "pe", "fair_value_per_share": 110})
-    ev_cls.return_value = _build_model_mock({"model": "ev_ebitda", "fair_value_per_share": 120})
+def test_calculate_relative_valuation_models_prefers_ttm_ratio_inputs(
+    pe_cls, ev_cls, ps_cls, pb_cls, _normalize
+):
+    pe_cls.return_value = _build_model_mock(
+        {"model": "pe", "fair_value_per_share": 110}
+    )
+    ev_cls.return_value = _build_model_mock(
+        {"model": "ev_ebitda", "fair_value_per_share": 120}
+    )
     ps_cls.return_value = _build_model_mock({"model": "ps", "fair_value_per_share": 90})
     pb_cls.return_value = _build_model_mock({"model": "pb", "fair_value_per_share": 95})
 
@@ -169,8 +187,12 @@ def test_calculate_relative_valuation_models_prefers_ttm_ratio_inputs(pe_cls, ev
 def test_calculate_relative_valuation_models_uses_revenue_growth_for_pe_adjustment(
     pe_cls, ev_cls, ps_cls, pb_cls, _normalize
 ):
-    pe_cls.return_value = _build_model_mock({"model": "pe", "fair_value_per_share": 110})
-    ev_cls.return_value = _build_model_mock({"model": "ev_ebitda", "fair_value_per_share": 120})
+    pe_cls.return_value = _build_model_mock(
+        {"model": "pe", "fair_value_per_share": 110}
+    )
+    ev_cls.return_value = _build_model_mock(
+        {"model": "ev_ebitda", "fair_value_per_share": 120}
+    )
     ps_cls.return_value = _build_model_mock({"model": "ps", "fair_value_per_share": 90})
     pb_cls.return_value = _build_model_mock({"model": "pb", "fair_value_per_share": 95})
 
@@ -209,9 +231,15 @@ def test_calculate_relative_valuation_models_uses_revenue_growth_for_pe_adjustme
 @patch("investigator.domain.agents.fundamental.valuation_models.PSMultipleModel")
 @patch("investigator.domain.agents.fundamental.valuation_models.EVEBITDAModel")
 @patch("investigator.domain.agents.fundamental.valuation_models.PEMultipleModel")
-def test_calculate_relative_valuation_models_forward_1y_scales_denominators(pe_cls, ev_cls, ps_cls, pb_cls, _normalize):
-    pe_cls.return_value = _build_model_mock({"model": "pe", "fair_value_per_share": 110})
-    ev_cls.return_value = _build_model_mock({"model": "ev_ebitda", "fair_value_per_share": 120})
+def test_calculate_relative_valuation_models_forward_1y_scales_denominators(
+    pe_cls, ev_cls, ps_cls, pb_cls, _normalize
+):
+    pe_cls.return_value = _build_model_mock(
+        {"model": "pe", "fair_value_per_share": 110}
+    )
+    ev_cls.return_value = _build_model_mock(
+        {"model": "ev_ebitda", "fair_value_per_share": 120}
+    )
     ps_cls.return_value = _build_model_mock({"model": "ps", "fair_value_per_share": 90})
     pb_cls.return_value = _build_model_mock({"model": "pb", "fair_value_per_share": 95})
 
@@ -262,8 +290,12 @@ def test_calculate_relative_valuation_models_forward_1y_scales_denominators(pe_c
 def test_calculate_relative_valuation_models_forward_2q_uses_partial_growth_scaling(
     pe_cls, ev_cls, ps_cls, pb_cls, _normalize
 ):
-    pe_cls.return_value = _build_model_mock({"model": "pe", "fair_value_per_share": 110})
-    ev_cls.return_value = _build_model_mock({"model": "ev_ebitda", "fair_value_per_share": 120})
+    pe_cls.return_value = _build_model_mock(
+        {"model": "pe", "fair_value_per_share": 110}
+    )
+    ev_cls.return_value = _build_model_mock(
+        {"model": "ev_ebitda", "fair_value_per_share": 120}
+    )
     ps_cls.return_value = _build_model_mock({"model": "ps", "fair_value_per_share": 90})
     pb_cls.return_value = _build_model_mock({"model": "pb", "fair_value_per_share": 95})
 
@@ -298,4 +330,6 @@ def test_calculate_relative_valuation_models_forward_2q_uses_partial_growth_scal
     growth_factor = (1.2) ** 0.5
     assert pe_cls.call_args.kwargs["ttm_eps"] == pytest.approx(5.0 * growth_factor)
     assert ev_cls.call_args.kwargs["ttm_ebitda"] == pytest.approx(300.0 * growth_factor)
-    assert ps_cls.call_args.kwargs["revenue_per_share"] == pytest.approx(40.0 * growth_factor)
+    assert ps_cls.call_args.kwargs["revenue_per_share"] == pytest.approx(
+        40.0 * growth_factor
+    )

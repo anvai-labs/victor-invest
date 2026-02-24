@@ -174,7 +174,9 @@ class FundamentalRLPolicy(RLPolicy):
         self.n_industries = len(INDUSTRY_CATEGORIES) if use_industry_granularity else 0
         self.n_volatility = len(VOLATILITY_LEVELS) if use_industry_granularity else 0
         self.n_orientation = len(ORIENTATION_TYPES) if use_industry_granularity else 0
-        self.n_industry_flags = 2 if use_industry_granularity else 0  # cyclical, is_known_industry
+        self.n_industry_flags = (
+            2 if use_industry_granularity else 0
+        )  # cyclical, is_known_industry
 
         # Total features: fundamentals + sector + stage + size + industry + volatility + orientation + flags
         self.n_features = (
@@ -203,15 +205,27 @@ class FundamentalRLPolicy(RLPolicy):
         # Bayesian parameters for model weight adjustments
         # Each model has its own weight adjustment learned
         self.weight_mu = np.zeros((self.n_models, self.n_features))
-        self.weight_Lambda = np.array([np.eye(self.n_features) / prior_variance for _ in range(self.n_models)])
-        self.weight_Sigma = np.array([np.eye(self.n_features) * prior_variance for _ in range(self.n_models)])
+        self.weight_Lambda = np.array(
+            [np.eye(self.n_features) / prior_variance for _ in range(self.n_models)]
+        )
+        self.weight_Sigma = np.array(
+            [np.eye(self.n_features) * prior_variance for _ in range(self.n_models)]
+        )
 
         # Bayesian parameters for holding period
         self.holding_mu = np.zeros((self.n_holding_periods, self.n_features))
         self.holding_Lambda = np.array(
-            [np.eye(self.n_features) / prior_variance for _ in range(self.n_holding_periods)]
+            [
+                np.eye(self.n_features) / prior_variance
+                for _ in range(self.n_holding_periods)
+            ]
         )
-        self.holding_Sigma = np.array([np.eye(self.n_features) * prior_variance for _ in range(self.n_holding_periods)])
+        self.holding_Sigma = np.array(
+            [
+                np.eye(self.n_features) * prior_variance
+                for _ in range(self.n_holding_periods)
+            ]
+        )
 
         # Statistics tracking
         self.model_update_counts = np.zeros(self.n_models)
@@ -270,8 +284,16 @@ class FundamentalRLPolicy(RLPolicy):
             )
             sector = context.sector
             industry = getattr(context, "industry", "Unknown")
-            stage = context.growth_stage.value if hasattr(context.growth_stage, "value") else context.growth_stage
-            size = context.company_size.value if hasattr(context.company_size, "value") else context.company_size
+            stage = (
+                context.growth_stage.value
+                if hasattr(context.growth_stage, "value")
+                else context.growth_stage
+            )
+            size = (
+                context.company_size.value
+                if hasattr(context.company_size, "value")
+                else context.company_size
+            )
 
         # One-hot encode sector
         sector_onehot = np.zeros(self.n_sectors)
@@ -300,34 +322,46 @@ class FundamentalRLPolicy(RLPolicy):
             # One-hot encode industry category
             industry_onehot = np.zeros(self.n_industries)
             if industry_category.value in INDUSTRY_CATEGORIES:
-                industry_onehot[INDUSTRY_CATEGORIES.index(industry_category.value)] = 1.0
+                industry_onehot[INDUSTRY_CATEGORIES.index(industry_category.value)] = (
+                    1.0
+                )
 
             # One-hot encode volatility
             volatility_onehot = np.zeros(self.n_volatility)
             if industry_profile.volatility in VOLATILITY_LEVELS:
-                volatility_onehot[VOLATILITY_LEVELS.index(industry_profile.volatility)] = 1.0
+                volatility_onehot[
+                    VOLATILITY_LEVELS.index(industry_profile.volatility)
+                ] = 1.0
 
             # One-hot encode orientation
             orientation_onehot = np.zeros(self.n_orientation)
             if industry_profile.orientation in ORIENTATION_TYPES:
-                orientation_onehot[ORIENTATION_TYPES.index(industry_profile.orientation)] = 1.0
+                orientation_onehot[
+                    ORIENTATION_TYPES.index(industry_profile.orientation)
+                ] = 1.0
 
             # Binary flags
             industry_flags = np.array(
                 [
                     1.0 if industry_profile.cyclical else 0.0,
-                    1.0 if industry_category != IndustryCategory.UNKNOWN else 0.0,  # is_known_industry
+                    1.0
+                    if industry_category != IndustryCategory.UNKNOWN
+                    else 0.0,  # is_known_industry
                 ]
             )
 
-            base_features.extend([industry_onehot, volatility_onehot, orientation_onehot, industry_flags])
+            base_features.extend(
+                [industry_onehot, volatility_onehot, orientation_onehot, industry_flags]
+            )
 
         # Concatenate all features
         features = np.concatenate(base_features)
 
         return features
 
-    def _get_industry_info(self, context: ValuationContext) -> Tuple[str, str, IndustryCategory]:
+    def _get_industry_info(
+        self, context: ValuationContext
+    ) -> Tuple[str, str, IndustryCategory]:
         """Extract industry information from context."""
         if isinstance(context, dict):
             sector = context.get("sector", "Unknown")
@@ -497,11 +531,14 @@ class FundamentalRLPolicy(RLPolicy):
                 model_reward = reward * (weight / 100.0)
 
                 # Bayesian update
-                self.weight_Lambda[i] += np.outer(features, features) / self.noise_variance
+                self.weight_Lambda[i] += (
+                    np.outer(features, features) / self.noise_variance
+                )
                 self.weight_Sigma[i] = np.linalg.inv(self.weight_Lambda[i])
                 self.weight_mu[i] = np.dot(
                     self.weight_Sigma[i],
-                    np.dot(self.weight_Lambda[i], self.weight_mu[i]) + features * model_reward / self.noise_variance,
+                    np.dot(self.weight_Lambda[i], self.weight_mu[i])
+                    + features * model_reward / self.noise_variance,
                 )
 
                 self.model_update_counts[i] += 1
@@ -531,7 +568,9 @@ class FundamentalRLPolicy(RLPolicy):
         period_idx = HOLDING_PERIODS.index(holding_period_used)
 
         # Bayesian update for holding period
-        self.holding_Lambda[period_idx] += np.outer(features, features) / self.noise_variance
+        self.holding_Lambda[period_idx] += (
+            np.outer(features, features) / self.noise_variance
+        )
         self.holding_Sigma[period_idx] = np.linalg.inv(self.holding_Lambda[period_idx])
         self.holding_mu[period_idx] = np.dot(
             self.holding_Sigma[period_idx],
@@ -623,7 +662,9 @@ class FundamentalRLPolicy(RLPolicy):
             }
 
         # Get top/bottom performing industries
-        sorted_industries = sorted(industry_stats.items(), key=lambda x: x[1]["avg_reward"], reverse=True)
+        sorted_industries = sorted(
+            industry_stats.items(), key=lambda x: x[1]["avg_reward"], reverse=True
+        )
 
         return {
             "enabled": True,
@@ -631,14 +672,18 @@ class FundamentalRLPolicy(RLPolicy):
             "total_industry_categories": len(INDUSTRY_CATEGORIES),
             "industry_stats": industry_stats,
             "top_5_industries": sorted_industries[:5],
-            "bottom_5_industries": sorted_industries[-5:] if len(sorted_industries) >= 5 else [],
+            "bottom_5_industries": sorted_industries[-5:]
+            if len(sorted_industries) >= 5
+            else [],
             "industry_optimal_weights": self._industry_optimal_weights,
         }
 
     def save(self, path: str) -> bool:
         """Save policy state."""
         try:
-            os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
+            os.makedirs(
+                os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True
+            )
 
             state = {
                 "name": self.name,
@@ -723,11 +768,15 @@ class FundamentalRLPolicy(RLPolicy):
                     f"current={self.n_features}. Keeping new dimensions (retraining needed)."
                 )
 
-            self.model_update_counts = state.get("model_update_counts", self.model_update_counts)
+            self.model_update_counts = state.get(
+                "model_update_counts", self.model_update_counts
+            )
             self.model_rewards = state.get("model_rewards", self.model_rewards)
 
             # Holding period parameters
-            self.holding_update_counts = state.get("holding_update_counts", self.holding_update_counts)
+            self.holding_update_counts = state.get(
+                "holding_update_counts", self.holding_update_counts
+            )
             self.holding_rewards = state.get("holding_rewards", self.holding_rewards)
             self._sector_optimal_periods = state.get("sector_optimal_periods", {})
             self._sector_period_rewards = state.get("sector_period_rewards", {})

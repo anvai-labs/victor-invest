@@ -134,7 +134,9 @@ class RecessionAssessment:
             EconomicPhase.RECOVERY: InvestmentPosture.AGGRESSIVE,
             EconomicPhase.UNKNOWN: InvestmentPosture.BALANCED,
         }
-        self.investment_posture = posture_map.get(self.phase, InvestmentPosture.BALANCED)
+        self.investment_posture = posture_map.get(
+            self.phase, InvestmentPosture.BALANCED
+        )
 
         # Adjust for supply chain stress
         if self.gscpi_stress and self.investment_posture == InvestmentPosture.GROWTH:
@@ -215,7 +217,9 @@ class RecessionAssessment:
                 "Consider increasing equity, favor cyclicals."
             ),
         }
-        return interpretations.get(self.phase, "Economic conditions uncertain. Maintain balanced positioning.")
+        return interpretations.get(
+            self.phase, "Economic conditions uncertain. Maintain balanced positioning."
+        )
 
     @property
     def equity_allocation_range(self) -> tuple:
@@ -332,7 +336,9 @@ class RecessionIndicator:
                 assessment.inversion_days = curve_analysis.days_inverted
 
             # Build leading indicators summary
-            assessment.leading_indicators = self._build_leading_indicators(recession_prob, gscpi, curve_analysis)
+            assessment.leading_indicators = self._build_leading_indicators(
+                recession_prob, gscpi, curve_analysis
+            )
 
             # Recalculate derived values after setting all inputs
             assessment._classify_phase()
@@ -346,7 +352,9 @@ class RecessionIndicator:
             assessment.warnings.append(f"Assessment error: {str(e)}")
             return assessment
 
-    def _build_leading_indicators(self, recession_prob, gscpi, curve_analysis) -> Dict[str, str]:
+    def _build_leading_indicators(
+        self, recession_prob, gscpi, curve_analysis
+    ) -> Dict[str, str]:
         """Build leading indicators summary."""
         indicators = {}
 
@@ -409,7 +417,9 @@ class RecessionIndicator:
             "economic_phase": assessment.phase.value,
             "investment_posture": assessment.investment_posture.value,
             "recession_assessment": assessment.to_dict(),
-            "yield_curve_analysis": curve_analysis.to_dict() if curve_analysis else None,
+            "yield_curve_analysis": curve_analysis.to_dict()
+            if curve_analysis
+            else None,
             "allocation_guidance": {
                 "equity_range": assessment.equity_allocation_range,
                 "sector_recommendations": assessment.sector_recommendations,

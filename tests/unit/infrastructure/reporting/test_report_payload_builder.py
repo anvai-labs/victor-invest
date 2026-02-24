@@ -1,6 +1,8 @@
 """Unit tests for ReportPayloadBuilder."""
 
-from investigator.infrastructure.reporting.report_payload_builder import ReportPayloadBuilder
+from investigator.infrastructure.reporting.report_payload_builder import (
+    ReportPayloadBuilder,
+)
 
 
 def test_build_unwraps_response_json_string():

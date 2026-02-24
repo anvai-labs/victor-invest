@@ -162,11 +162,15 @@ def calculate_cash_runway(
         dilution_warning = False
     elif months >= 12:
         risk = CashRunwayRisk.HIGH
-        risk_description = f"Short runway ({months:.1f} months) - financing likely needed soon"
+        risk_description = (
+            f"Short runway ({months:.1f} months) - financing likely needed soon"
+        )
         dilution_warning = True
     else:
         risk = CashRunwayRisk.CRITICAL
-        risk_description = f"Critical runway ({months:.1f} months) - imminent financing required"
+        risk_description = (
+            f"Critical runway ({months:.1f} months) - imminent financing required"
+        )
         dilution_warning = True
 
     logger.info(
@@ -437,7 +441,9 @@ def calculate_comparables_benchmark(
     """
     # Classify therapeutic area
     therapeutic_area = classify_therapeutic_area(indication, company_name, pipeline)
-    benchmarks = THERAPEUTIC_AREA_BENCHMARKS.get(therapeutic_area, THERAPEUTIC_AREA_BENCHMARKS["default"])
+    benchmarks = THERAPEUTIC_AREA_BENCHMARKS.get(
+        therapeutic_area, THERAPEUTIC_AREA_BENCHMARKS["default"]
+    )
 
     # Determine most advanced phase in pipeline
     most_advanced_phase = "preclinical"
@@ -478,7 +484,9 @@ def calculate_comparables_benchmark(
     total_value = ev_mid + cash
 
     # Calculate per-share
-    fair_value_per_share = total_value / shares_outstanding if shares_outstanding > 0 else 0
+    fair_value_per_share = (
+        total_value / shares_outstanding if shares_outstanding > 0 else 0
+    )
 
     logger.info(
         f"Comparable benchmark: area={therapeutic_area}, phase={most_advanced_phase}, "
@@ -565,13 +573,17 @@ def calculate_pipeline_value(
         else:
             prob = PHASE_SUCCESS_PROBABILITIES.get(phase, 0.05)
             if phase not in PHASE_SUCCESS_PROBABILITIES:
-                warnings.append(f"Unknown phase '{phase}' for {drug_name}, using 5% probability")
+                warnings.append(
+                    f"Unknown phase '{phase}' for {drug_name}, using 5% probability"
+                )
 
         # Calculate probability-weighted value
         pw_sales = peak_sales * prob * market_discount
 
         # For early-stage drugs, apply time discount
-        time_years = BIOTECH_PRE_REVENUE_TIER["parameters"]["development_time_years"].get(phase, 5)
+        time_years = BIOTECH_PRE_REVENUE_TIER["parameters"][
+            "development_time_years"
+        ].get(phase, 5)
         discount_rate = BIOTECH_PRE_REVENUE_TIER["parameters"]["discount_rate"]
         time_discount = 1 / ((1 + discount_rate) ** time_years)
 
@@ -802,7 +814,9 @@ def value_biotech(
         operating_cf = financials.get("operating_cash_flow", 0)
         if operating_cf < 0:
             quarterly_burn = abs(operating_cf) / 4  # Annualize and quarterly
-            warnings.append(f"Estimated quarterly burn from OCF: ${quarterly_burn / 1e6:.1f}M")
+            warnings.append(
+                f"Estimated quarterly burn from OCF: ${quarterly_burn / 1e6:.1f}M"
+            )
         else:
             # Fallback: assume typical biotech burn
             quarterly_burn = cash * 0.08  # ~32% annual burn rate
@@ -874,12 +888,18 @@ def value_biotech(
         # Full weighting when pipeline data available
         pipeline_contribution = pipeline_value * (weights["pipeline_value"] / 100)
         cash_contribution = adjusted_cash * (weights["cash_runway"] / 100)
-        comparables_contribution = comparables_value * (weights["comparable_deals"] / 100)
+        comparables_contribution = comparables_value * (
+            weights["comparable_deals"] / 100
+        )
         total_ev = pipeline_contribution + cash_contribution + comparables_contribution
 
         # Normalize to ensure we're not double-counting
         # The weights should reflect relative importance, not absolute sum
-        total_weight = weights["pipeline_value"] + weights["cash_runway"] + weights["comparable_deals"]
+        total_weight = (
+            weights["pipeline_value"]
+            + weights["cash_runway"]
+            + weights["comparable_deals"]
+        )
         total_ev = total_ev * (100 / total_weight)
     else:
         # No pipeline - use comparables and cash only (reweight to 60/40)

@@ -163,7 +163,9 @@ def _format_minimal(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
     # Log extraction audit for debugging if issues occur
     audit = extractor.get_audit()
     if audit:
-        missing_fields = [name for name, result in audit.extractions.items() if not result.has_value]
+        missing_fields = [
+            name for name, result in audit.extractions.items() if not result.has_value
+        ]
         if missing_fields:
             logger.debug(f"Summary extraction missing fields: {missing_fields}")
             audit.log_summary()
@@ -246,42 +248,86 @@ def _format_compact(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
     src = copy.deepcopy(analysis_results or {})
     agents = src.get("agents", {}) if isinstance(src.get("agents"), dict) else {}
 
-    fundamental = agents.get("fundamental", {}) if isinstance(agents.get("fundamental"), dict) else {}
-    technical = agents.get("technical", {}) if isinstance(agents.get("technical"), dict) else {}
-    synthesis = agents.get("synthesis", {}) if isinstance(agents.get("synthesis"), dict) else {}
-    market_context = agents.get("market_context", {}) if isinstance(agents.get("market_context"), dict) else {}
+    fundamental = (
+        agents.get("fundamental", {})
+        if isinstance(agents.get("fundamental"), dict)
+        else {}
+    )
+    technical = (
+        agents.get("technical", {}) if isinstance(agents.get("technical"), dict) else {}
+    )
+    synthesis = (
+        agents.get("synthesis", {}) if isinstance(agents.get("synthesis"), dict) else {}
+    )
+    market_context = (
+        agents.get("market_context", {})
+        if isinstance(agents.get("market_context"), dict)
+        else {}
+    )
     sec = agents.get("sec", {}) if isinstance(agents.get("sec"), dict) else {}
 
-    valuation = fundamental.get("valuation", {}) if isinstance(fundamental.get("valuation"), dict) else {}
-    methods = valuation.get("valuation_methods", {}) if isinstance(valuation.get("valuation_methods"), dict) else {}
+    valuation = (
+        fundamental.get("valuation", {})
+        if isinstance(fundamental.get("valuation"), dict)
+        else {}
+    )
+    methods = (
+        valuation.get("valuation_methods", {})
+        if isinstance(valuation.get("valuation_methods"), dict)
+        else {}
+    )
     multi_model = (
         methods.get("multi_model")
         if isinstance(methods.get("multi_model"), dict)
         else (
-            fundamental.get("multi_model_summary") if isinstance(fundamental.get("multi_model_summary"), dict) else {}
+            fundamental.get("multi_model_summary")
+            if isinstance(fundamental.get("multi_model_summary"), dict)
+            else {}
         )
     )
-    ratios = fundamental.get("ratios", {}) if isinstance(fundamental.get("ratios"), dict) else {}
-    data_quality = fundamental.get("data_quality", {}) if isinstance(fundamental.get("data_quality"), dict) else {}
+    ratios = (
+        fundamental.get("ratios", {})
+        if isinstance(fundamental.get("ratios"), dict)
+        else {}
+    )
+    data_quality = (
+        fundamental.get("data_quality", {})
+        if isinstance(fundamental.get("data_quality"), dict)
+        else {}
+    )
 
     basis, horizon = _extract_basis_and_horizon(methods)
-    current_price = valuation.get("current_price") or ratios.get("current_price") or technical.get("current_price")
-    blended_fair_value = valuation.get("fair_value_estimate") or valuation.get("fair_value")
+    current_price = (
+        valuation.get("current_price")
+        or ratios.get("current_price")
+        or technical.get("current_price")
+    )
+    blended_fair_value = valuation.get("fair_value_estimate") or valuation.get(
+        "fair_value"
+    )
     expected_return_pct = _calculate_expected_return(blended_fair_value, current_price)
 
     compact_models = _compact_valuation_models(methods)
 
-    synthesis_payload = synthesis.get("synthesis", {}) if isinstance(synthesis.get("synthesis"), dict) else {}
+    synthesis_payload = (
+        synthesis.get("synthesis", {})
+        if isinstance(synthesis.get("synthesis"), dict)
+        else {}
+    )
     recommendation_payload = (
-        synthesis.get("recommendation", {}) if isinstance(synthesis.get("recommendation"), dict) else {}
+        synthesis.get("recommendation", {})
+        if isinstance(synthesis.get("recommendation"), dict)
+        else {}
     )
     final_recommendation = (
         recommendation_payload.get("final_recommendation")
         or fundamental.get("recommendation")
         or valuation.get("recommendation")
     )
-    aligned_recommendation, recommendation_adjustment = _align_recommendation_with_expected_return(
-        final_recommendation, expected_return_pct
+    aligned_recommendation, recommendation_adjustment = (
+        _align_recommendation_with_expected_return(
+            final_recommendation, expected_return_pct
+        )
     )
 
     output = {
@@ -309,7 +355,9 @@ def _format_compact(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
                 or synthesis.get("confidence")
                 or fundamental.get("confidence", {}).get("confidence_score")
             ),
-            "investment_grade": (valuation.get("investment_grade") or fundamental.get("investment_grade")),
+            "investment_grade": (
+                valuation.get("investment_grade") or fundamental.get("investment_grade")
+            ),
         },
         "quality": {
             "data_quality_score": data_quality.get("data_quality_score"),
@@ -362,14 +410,22 @@ def _format_compact(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
                 else None
             ),
             "data_cached": sec.get("data_cached"),
-            "forward_guidance": sec.get("forward_guidance") if isinstance(sec.get("forward_guidance"), dict) else None,
+            "forward_guidance": sec.get("forward_guidance")
+            if isinstance(sec.get("forward_guidance"), dict)
+            else None,
         },
-        "notes": (multi_model.get("notes") if isinstance(multi_model.get("notes"), list) else []),
+        "notes": (
+            multi_model.get("notes")
+            if isinstance(multi_model.get("notes"), list)
+            else []
+        ),
         "trace": {
             "source_detail_level": src.get("detail_level"),
             "compact_generated": True,
             "synthesis_report_mode": (
-                synthesis_payload.get("report_mode") if isinstance(synthesis_payload, dict) else None
+                synthesis_payload.get("report_mode")
+                if isinstance(synthesis_payload, dict)
+                else None
             ),
             "recommendation_adjusted_for_valuation_consistency": recommendation_adjustment,
         },
@@ -480,7 +536,9 @@ def _consolidate_duplicates(result: Dict[str, Any]) -> None:
                 _remove_keys(synth_data, ["company_data", "market_data"])
 
                 # Keep only references in response, not full data
-                if "response" in synth_data and isinstance(synth_data["response"], dict):
+                if "response" in synth_data and isinstance(
+                    synth_data["response"], dict
+                ):
                     synth_response = synth_data["response"]
                     _remove_keys(
                         synth_response,
@@ -497,7 +555,9 @@ def _consolidate_duplicates(result: Dict[str, Any]) -> None:
         fundamental = agents["fundamental"]
         if isinstance(fundamental, dict):
             # Duplicate of valuation.multi_model / valuation_methods
-            _remove_keys(fundamental, ["multi_model_summary", "llm_fair_value_estimate"])
+            _remove_keys(
+                fundamental, ["multi_model_summary", "llm_fair_value_estimate"]
+            )
 
 
 def _extract_agent_statuses(agents: Dict[str, Any]) -> Dict[str, Any]:
@@ -516,10 +576,24 @@ def _extract_basis_and_horizon(methods: Dict[str, Any]) -> tuple[str, Optional[s
     for model in (methods or {}).values():
         if not isinstance(model, dict):
             continue
-        assumptions = model.get("assumptions", {}) if isinstance(model.get("assumptions"), dict) else {}
-        metadata = model.get("metadata", {}) if isinstance(model.get("metadata"), dict) else {}
-        basis = assumptions.get("valuation_basis") or metadata.get("valuation_basis") or basis
-        horizon = assumptions.get("forward_horizon") or metadata.get("forward_horizon") or horizon
+        assumptions = (
+            model.get("assumptions", {})
+            if isinstance(model.get("assumptions"), dict)
+            else {}
+        )
+        metadata = (
+            model.get("metadata", {}) if isinstance(model.get("metadata"), dict) else {}
+        )
+        basis = (
+            assumptions.get("valuation_basis")
+            or metadata.get("valuation_basis")
+            or basis
+        )
+        horizon = (
+            assumptions.get("forward_horizon")
+            or metadata.get("forward_horizon")
+            or horizon
+        )
         if basis and horizon:
             break
 
@@ -640,7 +714,9 @@ def _remove_empty_values(data: Any) -> Any:
             cleaned[k] = _remove_empty_values(v)
         return cleaned
     elif isinstance(data, list):
-        return [_remove_empty_values(item) for item in data if not _is_empty_value(item)]
+        return [
+            _remove_empty_values(item) for item in data if not _is_empty_value(item)
+        ]
     elif isinstance(data, np.ndarray):
         # Convert numpy arrays to lists for JSON serialization
         return data.tolist() if data.size > 0 else []
@@ -648,7 +724,9 @@ def _remove_empty_values(data: Any) -> Any:
         return data
 
 
-def _calculate_expected_return(target_price: Optional[float], current_price: Optional[float]) -> Optional[float]:
+def _calculate_expected_return(
+    target_price: Optional[float], current_price: Optional[float]
+) -> Optional[float]:
     """Calculate expected return percentage."""
     if target_price and current_price and current_price > 0:
         return round((target_price - current_price) / current_price * 100, 2)
@@ -736,7 +814,12 @@ def _align_recommendation_with_expected_return(
     norm_score = _action_score(normalized)
     imp_score = _action_score(implied)
 
-    if norm_pol and imp_pol and norm_pol != imp_pol and abs(expected_return_pct or 0) >= 10:
+    if (
+        norm_pol
+        and imp_pol
+        and norm_pol != imp_pol
+        and abs(expected_return_pct or 0) >= 10
+    ):
         return implied, True
     if (
         norm_score is not None

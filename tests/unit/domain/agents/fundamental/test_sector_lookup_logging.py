@@ -17,7 +17,9 @@ class _Loader:
 
 def _make_agent(loader):
     agent = SimpleNamespace()
-    agent.logger = logging.getLogger("investigator.domain.agents.fundamental.test_sector_lookup")
+    agent.logger = logging.getLogger(
+        "investigator.domain.agents.fundamental.test_sector_lookup"
+    )
     agent._sector_multiples_loader = loader
     agent.config = SimpleNamespace(valuation={"sector_multiples": {}})
     return agent
@@ -30,11 +32,15 @@ def test_lookup_sector_multiple_debug_logs_not_warning_for_normal_lookup(caplog)
         logging.DEBUG,
         logger="investigator.domain.agents.fundamental.test_sector_lookup",
     ):
-        value = FundamentalAnalysisAgent._lookup_sector_multiple(agent, "Technology", "pe")
+        value = FundamentalAnalysisAgent._lookup_sector_multiple(
+            agent, "Technology", "pe"
+        )
 
     assert value == 25.0
     # Should get value from loader (priority 2), not from shared SectorMultiples
-    debug_messages = [record.message for record in caplog.records if record.levelno == logging.DEBUG]
+    debug_messages = [
+        record.message for record in caplog.records if record.levelno == logging.DEBUG
+    ]
     assert any("Returning value from loader" in message for message in debug_messages)
 
 
@@ -50,10 +56,17 @@ def test_lookup_sector_multiple_warns_when_loader_raises(caplog):
         logging.DEBUG,
         logger="investigator.domain.agents.fundamental.test_sector_lookup",
     ):
-        value = FundamentalAnalysisAgent._lookup_sector_multiple(agent, "Technology", "pe")
+        value = FundamentalAnalysisAgent._lookup_sector_multiple(
+            agent, "Technology", "pe"
+        )
 
     # Shared SectorMultiples provides a fallback (default 15.0 for pe)
     assert value is not None and value > 0
     # Should log that it's using shared SectorMultiples as fallback
-    debug_messages = [record.message for record in caplog.records if record.levelno == logging.DEBUG]
-    assert any("Returning value from shared SectorMultiples" in message for message in debug_messages)
+    debug_messages = [
+        record.message for record in caplog.records if record.levelno == logging.DEBUG
+    ]
+    assert any(
+        "Returning value from shared SectorMultiples" in message
+        for message in debug_messages
+    )

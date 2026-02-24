@@ -34,7 +34,9 @@ class RecommendationBuilder:
         Args:
             logger: Optional logger instance
         """
-        self.logger = logger or logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self.logger = logger or logging.getLogger(
+            f"{__name__}.{self.__class__.__name__}"
+        )
 
     def determine_final_recommendation(
         self,
@@ -122,7 +124,9 @@ class RecommendationBuilder:
         """
         # Try to extract from structured AI recommendation first
         if "investment_recommendation" in ai_recommendation:
-            target_data = ai_recommendation["investment_recommendation"].get("target_price", {})
+            target_data = ai_recommendation["investment_recommendation"].get(
+                "target_price", {}
+            )
             if target_data.get("12_month_target"):
                 return target_data["12_month_target"]
 
@@ -133,13 +137,17 @@ class RecommendationBuilder:
 
         # Use current price passed in, fallback to reasonable default if price is 0
         if current_price <= 0:
-            self.logger.warning(f"No current price available for {symbol}, using placeholder for target calculation")
+            self.logger.warning(
+                f"No current price available for {symbol}, using placeholder for target calculation"
+            )
             current_price = 100  # Fallback only as last resort
 
         # Extract overall score from different possible locations
         overall_score = 5.0  # Default
         if "composite_scores" in ai_recommendation:
-            overall_score = ai_recommendation["composite_scores"].get("overall_score", 5.0)
+            overall_score = ai_recommendation["composite_scores"].get(
+                "overall_score", 5.0
+            )
         elif "overall_score" in ai_recommendation:
             overall_score = ai_recommendation.get("overall_score", 5.0)
 
@@ -178,7 +186,9 @@ class RecommendationBuilder:
             Position size string (LARGE, MODERATE, or SMALL)
         """
         if "investment_recommendation" in ai_recommendation:
-            pos_sizing = ai_recommendation["investment_recommendation"].get("position_sizing", {})
+            pos_sizing = ai_recommendation["investment_recommendation"].get(
+                "position_sizing", {}
+            )
             weight = pos_sizing.get("recommended_weight", 0.0)
             if weight >= 0.05:
                 return "LARGE"

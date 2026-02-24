@@ -138,7 +138,10 @@ class FinancialData:
     @property
     def free_cash_flow(self) -> Optional[float]:
         """Free Cash Flow = Operating Cash Flow - CapEx."""
-        if self.operating_cash_flow is not None and self.capital_expenditures is not None:
+        if (
+            self.operating_cash_flow is not None
+            and self.capital_expenditures is not None
+        ):
             return self.operating_cash_flow - abs(self.capital_expenditures)
         return None
 
@@ -224,7 +227,9 @@ class CreditScoreResult:
             "score": self.score,
             "score_name": self.score_name,
             "interpretation": self.interpretation,
-            "calculation_date": str(self.calculation_date) if self.calculation_date else None,
+            "calculation_date": str(self.calculation_date)
+            if self.calculation_date
+            else None,
             "data_date": str(self.data_date) if self.data_date else None,
             "components": self.components,
             "warnings": self.warnings,

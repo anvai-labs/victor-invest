@@ -93,7 +93,9 @@ def test_recommendation_structure_helpers():
 
 
 def test_extract_priority_insights_collects_key_phrases_and_markdown_highlights():
-    thinking = "A key driver is pricing power. Another important factor is cash conversion."
+    thinking = (
+        "A key driver is pricing power. Another important factor is cash conversion."
+    )
     details = "## Upside path\n**Critical catalyst** is operating leverage."
     insights = extract_priority_insights(thinking, details)
     assert any("key driver" in item.lower() for item in insights)

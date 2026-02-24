@@ -140,7 +140,9 @@ def analyze_sec_cache_patterns():
                     result = cache_manager.get(CacheType.QUARTERLY_METRICS, key)
                     if result:
                         results["quarterly_metrics"]["hits"] += 1
-                        print(f"✅ HIT  - {symbol} {quarter} with key type {type(key).__name__}")
+                        print(
+                            f"✅ HIT  - {symbol} {quarter} with key type {type(key).__name__}"
+                        )
                         break  # Don't test other formats if we got a hit
                     else:
                         results["quarterly_metrics"]["misses"] += 1
@@ -193,8 +195,12 @@ def analyze_sec_cache_patterns():
             print(f"\n{cache_type.upper()}:")
             print(f"  Total Operations: {total_ops}")
             print(f"  Hits: {stats['hits']} ({stats['hits'] / total_ops * 100:.1f}%)")
-            print(f"  Misses: {stats['misses']} ({stats['misses'] / total_ops * 100:.1f}%)")
-            print(f"  Errors: {stats['errors']} ({stats['errors'] / total_ops * 100:.1f}%)")
+            print(
+                f"  Misses: {stats['misses']} ({stats['misses'] / total_ops * 100:.1f}%)"
+            )
+            print(
+                f"  Errors: {stats['errors']} ({stats['errors'] / total_ops * 100:.1f}%)"
+            )
             print(f"  Hit Ratio: {hit_ratio:.1f}%")
 
             total_hits += stats["hits"]
@@ -206,7 +212,11 @@ def analyze_sec_cache_patterns():
     print("OVERALL SEC CACHE STATISTICS:")
     total_all = total_hits + total_misses + total_errors
     if total_all > 0:
-        overall_hit_ratio = (total_hits / (total_hits + total_misses)) * 100 if (total_hits + total_misses) > 0 else 0
+        overall_hit_ratio = (
+            (total_hits / (total_hits + total_misses)) * 100
+            if (total_hits + total_misses) > 0
+            else 0
+        )
         print(f"  Total Operations: {total_all}")
         print(f"  Total Hits: {total_hits} ({total_hits / total_all * 100:.1f}%)")
         print(f"  Total Misses: {total_misses} ({total_misses / total_all * 100:.1f}%)")
@@ -245,8 +255,12 @@ def analyze_sec_cache_patterns():
                     print("  Handlers:")
                     for handler, h_stats in stats["handlers"].items():
                         if h_stats["hits"] + h_stats["misses"] > 0:
-                            h_ratio = (h_stats["hits"] / (h_stats["hits"] + h_stats["misses"])) * 100
-                            print(f"    {handler}: {h_ratio:.1f}% hit ratio, {h_stats['total_time_ms']:.1f}ms total")
+                            h_ratio = (
+                                h_stats["hits"] / (h_stats["hits"] + h_stats["misses"])
+                            ) * 100
+                            print(
+                                f"    {handler}: {h_ratio:.1f}% hit ratio, {h_stats['total_time_ms']:.1f}ms total"
+                            )
 
     # Check cache directories
     print("\n" + "=" * 80)
@@ -264,7 +278,9 @@ def analyze_sec_cache_patterns():
         if path.exists():
             # Count files
             files = list(path.rglob("*"))
-            data_files = [f for f in files if f.is_file() and not f.name.startswith(".")]
+            data_files = [
+                f for f in files if f.is_file() and not f.name.startswith(".")
+            ]
             total_size = sum(f.stat().st_size for f in data_files)
 
             print(f"\n{name} ({path}):")
@@ -274,10 +290,14 @@ def analyze_sec_cache_patterns():
             # Sample some files
             if data_files:
                 print("  Recent files:")
-                recent_files = sorted(data_files, key=lambda f: f.stat().st_mtime, reverse=True)[:5]
+                recent_files = sorted(
+                    data_files, key=lambda f: f.stat().st_mtime, reverse=True
+                )[:5]
                 for f in recent_files:
                     size_kb = f.stat().st_size / 1024
-                    mod_time = datetime.fromtimestamp(f.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
+                    mod_time = datetime.fromtimestamp(f.stat().st_mtime).strftime(
+                        "%Y-%m-%d %H:%M"
+                    )
                     print(f"    {f.name:<50} {size_kb:>8.1f} KB  {mod_time}")
 
     # Configuration check
@@ -310,9 +330,15 @@ def analyze_sec_cache_patterns():
         "test_results": results,
         "performance_stats": perf_stats,
         "config": {
-            "cache_enabled": cache_control.use_cache if hasattr(config, "cache_control") else None,
+            "cache_enabled": cache_control.use_cache
+            if hasattr(config, "cache_control")
+            else None,
             "ttl_settings": (
-                {ct: cache_control.cache_types[ct].ttl_hours for ct in sec_types if ct in cache_control.cache_types}
+                {
+                    ct: cache_control.cache_types[ct].ttl_hours
+                    for ct in sec_types
+                    if ct in cache_control.cache_types
+                }
                 if hasattr(config, "cache_control")
                 else {}
             ),

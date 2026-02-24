@@ -21,9 +21,10 @@ Tests the Layer 3 peer comparison functionality including:
 - Status determination (expensive/fair/cheap)
 """
 
-import pytest
-from unittest.mock import MagicMock, patch
 from datetime import datetime, timezone
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from investigator.domain.services.cross_sectional_valuation import (
     CrossSectionalValuation,

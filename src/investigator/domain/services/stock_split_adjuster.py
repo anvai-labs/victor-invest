@@ -39,7 +39,6 @@ from sqlalchemy.engine import Engine
 
 from investigator.infrastructure.database.db import get_database_engine
 
-
 logger = logging.getLogger(__name__)
 
 

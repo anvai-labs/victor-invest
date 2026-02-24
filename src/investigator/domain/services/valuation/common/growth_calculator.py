@@ -43,7 +43,9 @@ class GrowthCalculator:
     """
 
     @staticmethod
-    def calculate_revenue_growth_ttm(*, quarterly_data: List[Any], logger: Any = logger) -> Optional[float]:
+    def calculate_revenue_growth_ttm(
+        *, quarterly_data: List[Any], logger: Any = logger
+    ) -> Optional[float]:
         """Calculate revenue growth using TTM (Trailing Twelve Months) comparison.
 
         Primary method: TTM Revenue Growth
@@ -88,7 +90,12 @@ class GrowthCalculator:
                 period = getattr(entry, "fiscal_period", None)
                 fiscal_year = getattr(entry, "fiscal_year", 0)
 
-            if period and isinstance(period, str) and period.startswith("Q") and period not in ["QFY", "FY"]:
+            if (
+                period
+                and isinstance(period, str)
+                and period.startswith("Q")
+                and period not in ["QFY", "FY"]
+            ):
                 quarterly_only.append((entry, fiscal_year, period))
 
         if not quarterly_only:

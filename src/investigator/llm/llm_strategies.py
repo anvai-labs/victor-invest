@@ -46,19 +46,31 @@ class ComprehensiveLLMStrategy(ILLMStrategy):
     def get_model_for_task(self, task_type: LLMTaskType) -> str:
         """Get appropriate model for each task type"""
         model_mapping = {
-            LLMTaskType.FUNDAMENTAL_ANALYSIS: self.config.ollama.models.get("fundamental_analysis", "deepseek-r1:32b"),
-            LLMTaskType.TECHNICAL_ANALYSIS: self.config.ollama.models.get("technical_analysis", "deepseek-r1:32b"),
-            LLMTaskType.SYNTHESIS: self.config.ollama.models.get("synthesis", "deepseek-r1:32b"),
-            LLMTaskType.QUARTERLY_SUMMARY: self.config.ollama.models.get("quarterly_analysis", "deepseek-r1:32b"),
+            LLMTaskType.FUNDAMENTAL_ANALYSIS: self.config.ollama.models.get(
+                "fundamental_analysis", "deepseek-r1:32b"
+            ),
+            LLMTaskType.TECHNICAL_ANALYSIS: self.config.ollama.models.get(
+                "technical_analysis", "deepseek-r1:32b"
+            ),
+            LLMTaskType.SYNTHESIS: self.config.ollama.models.get(
+                "synthesis", "deepseek-r1:32b"
+            ),
+            LLMTaskType.QUARTERLY_SUMMARY: self.config.ollama.models.get(
+                "quarterly_analysis", "deepseek-r1:32b"
+            ),
             LLMTaskType.COMPREHENSIVE_ANALYSIS: self.config.ollama.models.get(
                 "comprehensive_analysis", "deepseek-r1:32b"
             ),
-            LLMTaskType.RISK_ASSESSMENT: self.config.ollama.models.get("risk_assessment", "deepseek-r1:32b"),
+            LLMTaskType.RISK_ASSESSMENT: self.config.ollama.models.get(
+                "risk_assessment", "deepseek-r1:32b"
+            ),
         }
 
         return model_mapping.get(task_type, "deepseek-r1:32b")
 
-    def prepare_request(self, task_type: LLMTaskType, data: Dict[str, Any]) -> LLMRequest:
+    def prepare_request(
+        self, task_type: LLMTaskType, data: Dict[str, Any]
+    ) -> LLMRequest:
         """Prepare detailed LLM request based on task type"""
         symbol = data.get("symbol", "UNKNOWN")
         model = self.get_model_for_task(task_type)
@@ -138,7 +150,9 @@ class ComprehensiveLLMStrategy(ILLMStrategy):
             },
         )
 
-    def _prepare_technical_request(self, symbol: str, data: Dict[str, Any], model: str, request_id: str) -> LLMRequest:
+    def _prepare_technical_request(
+        self, symbol: str, data: Dict[str, Any], model: str, request_id: str
+    ) -> LLMRequest:
         """Prepare technical analysis request"""
         price_data = data.get("price_data", {})
         indicators = data.get("indicators", {})
@@ -196,7 +210,9 @@ class ComprehensiveLLMStrategy(ILLMStrategy):
             },
         )
 
-    def _prepare_synthesis_request(self, symbol: str, data: Dict[str, Any], model: str, request_id: str) -> LLMRequest:
+    def _prepare_synthesis_request(
+        self, symbol: str, data: Dict[str, Any], model: str, request_id: str
+    ) -> LLMRequest:
         """Prepare synthesis request combining multiple analyses"""
         fundamental_result = data.get("fundamental_analysis", {})
         technical_result = data.get("technical_analysis", {})
@@ -254,7 +270,9 @@ class ComprehensiveLLMStrategy(ILLMStrategy):
             },
         )
 
-    def _prepare_quarterly_request(self, symbol: str, data: Dict[str, Any], model: str, request_id: str) -> LLMRequest:
+    def _prepare_quarterly_request(
+        self, symbol: str, data: Dict[str, Any], model: str, request_id: str
+    ) -> LLMRequest:
         """Prepare quarterly summary request"""
         quarter_data = data.get("quarter_data", {})
 
@@ -386,7 +404,9 @@ class ComprehensiveLLMStrategy(ILLMStrategy):
             },
         )
 
-    def _prepare_risk_request(self, symbol: str, data: Dict[str, Any], model: str, request_id: str) -> LLMRequest:
+    def _prepare_risk_request(
+        self, symbol: str, data: Dict[str, Any], model: str, request_id: str
+    ) -> LLMRequest:
         """Prepare risk assessment request using J2 template"""
         # Import prompt manager locally to avoid circular imports
         from investigator.application.prompts import get_prompt_manager
@@ -408,8 +428,12 @@ class ComprehensiveLLMStrategy(ILLMStrategy):
             "symbol": symbol,
             "analysis_date": datetime.utcnow().strftime("%Y-%m-%d"),
             "current_price": current_price,
-            "fundamental_analysis": json.dumps(data.get("fundamental_analysis", {}), indent=2),
-            "technical_analysis": json.dumps(data.get("technical_analysis", {}), indent=2),
+            "fundamental_analysis": json.dumps(
+                data.get("fundamental_analysis", {}), indent=2
+            ),
+            "technical_analysis": json.dumps(
+                data.get("technical_analysis", {}), indent=2
+            ),
             "market_data": json.dumps(data.get("market_data", {}), indent=2),
             "historical_data": json.dumps(data.get("historical_data", {}), indent=2),
         }
@@ -420,7 +444,9 @@ class ComprehensiveLLMStrategy(ILLMStrategy):
             prompt = prompt_manager.render_risk_assessment_prompt(**template_vars)
         except Exception as e:
             # Fallback to basic prompt if template fails
-            self.logger.warning(f"Failed to render risk assessment template: {e}, using fallback")
+            self.logger.warning(
+                f"Failed to render risk assessment template: {e}, using fallback"
+            )
             prompt = f"""
             Assess investment risks for {symbol}:
             
@@ -465,7 +491,9 @@ class ComprehensiveLLMStrategy(ILLMStrategy):
             },
         )
 
-    def process_response(self, response: LLMResponse, task_type: LLMTaskType) -> Dict[str, Any]:
+    def process_response(
+        self, response: LLMResponse, task_type: LLMTaskType
+    ) -> Dict[str, Any]:
         """Process LLM response into structured data using common processor"""
         try:
             # Handle error responses
@@ -473,18 +501,24 @@ class ComprehensiveLLMStrategy(ILLMStrategy):
                 return {"error": response.error}
 
             # Use common processor to handle response content
-            processed_content, metadata = self.response_processor.process_response(response.content, from_cache=False)
+            processed_content, metadata = self.response_processor.process_response(
+                response.content, from_cache=False
+            )
 
             # Try to parse as JSON
             result = self.response_processor.extract_json_from_text(processed_content)
 
             if result is None:
                 # If JSON extraction failed, return text response
-                self.logger.warning(f"Failed to extract JSON from response for {task_type}")
+                self.logger.warning(
+                    f"Failed to extract JSON from response for {task_type}"
+                )
                 return {
                     "error": "Failed to parse JSON response",
                     "raw_response": (
-                        processed_content[:500] + "..." if len(processed_content) > 500 else processed_content
+                        processed_content[:500] + "..."
+                        if len(processed_content) > 500
+                        else processed_content
                     ),
                     "thinking": metadata.get("thinking_content", ""),
                 }
@@ -499,15 +533,21 @@ class ComprehensiveLLMStrategy(ILLMStrategy):
                 if remaining_text:
                     # If remaining text looks like JSON, don't add it to avoid duplication
                     remaining_clean = remaining_text.strip()
-                    if remaining_clean.startswith("{") and remaining_clean.endswith("}"):
+                    if remaining_clean.startswith("{") and remaining_clean.endswith(
+                        "}"
+                    ):
                         # Try to parse it - if it's valid JSON and similar to our result, skip it
                         try:
                             remaining_json = json.loads(remaining_clean)
                             # If it's the same data, skip adding to detail to avoid duplication
                             if remaining_json.get("overall_score") == result.get(
                                 "overall_score"
-                            ) and remaining_json.get("recommendation") == result.get("recommendation"):
-                                self.logger.debug("Skipping duplicate JSON content in detail field")
+                            ) and remaining_json.get("recommendation") == result.get(
+                                "recommendation"
+                            ):
+                                self.logger.debug(
+                                    "Skipping duplicate JSON content in detail field"
+                                )
                                 remaining_text = ""
                         except json.JSONDecodeError:
                             # If it's not valid JSON, keep it as text detail
@@ -515,13 +555,17 @@ class ComprehensiveLLMStrategy(ILLMStrategy):
 
                     if remaining_text.strip():
                         # Clean up the remaining text by removing embedded JSON blocks and excessive escaping
-                        cleaned_detail = self._clean_detail_content(remaining_text.strip())
+                        cleaned_detail = self._clean_detail_content(
+                            remaining_text.strip()
+                        )
                         if cleaned_detail:
                             result["detail"] = cleaned_detail
 
             # Add thinking content if present (properly escaped)
             if metadata.get("thinking_content"):
-                result["thinking"] = self.response_processor.escape_for_json(metadata["thinking_content"])
+                result["thinking"] = self.response_processor.escape_for_json(
+                    metadata["thinking_content"]
+                )
 
             # Add processing metadata
             result["processing_metadata"] = {
@@ -530,7 +574,9 @@ class ComprehensiveLLMStrategy(ILLMStrategy):
                 "processing_time_ms": response.processing_time_ms,
                 "tokens_used": response.tokens_used,
                 "request_id": response.request_id,
-                "timestamp": response.timestamp.isoformat() if response.timestamp else None,
+                "timestamp": response.timestamp.isoformat()
+                if response.timestamp
+                else None,
             }
 
             # Add token details if available in metadata
@@ -564,9 +610,13 @@ class ComprehensiveLLMStrategy(ILLMStrategy):
         import re
 
         # Remove ```json...``` blocks
-        detail_text = re.sub(r"```json\s*\n(.*?)\n```", "", detail_text, flags=re.DOTALL)
+        detail_text = re.sub(
+            r"```json\s*\n(.*?)\n```", "", detail_text, flags=re.DOTALL
+        )
         # Remove ``` blocks without language specification that contain JSON
-        detail_text = re.sub(r"```\s*\n(\{.*?\})\s*\n```", "", detail_text, flags=re.DOTALL)
+        detail_text = re.sub(
+            r"```\s*\n(\{.*?\})\s*\n```", "", detail_text, flags=re.DOTALL
+        )
 
         # Step 2: Remove standalone JSON objects (not in code blocks)
         # Look for standalone JSON objects that start with { and end with }
@@ -664,7 +714,9 @@ class QuickLLMStrategy(ILLMStrategy):
         """Use faster, smaller models for quick analysis"""
         return self.config.ollama.models.get("quick_analysis", "deepseek-r1:32b")
 
-    def prepare_request(self, task_type: LLMTaskType, data: Dict[str, Any]) -> LLMRequest:
+    def prepare_request(
+        self, task_type: LLMTaskType, data: Dict[str, Any]
+    ) -> LLMRequest:
         """Prepare simplified request for quick analysis"""
         symbol = data.get("symbol", "UNKNOWN")
         model = self.get_model_for_task(task_type)
@@ -697,7 +749,9 @@ class QuickLLMStrategy(ILLMStrategy):
             },
         )
 
-    def process_response(self, response: LLMResponse, task_type: LLMTaskType) -> Dict[str, Any]:
+    def process_response(
+        self, response: LLMResponse, task_type: LLMTaskType
+    ) -> Dict[str, Any]:
         """Process quick analysis response"""
         if response.error:
             return {"error": response.error}
@@ -737,8 +791,10 @@ class LLMCacheStrategy(ILLMCacheStrategy):
         """TTL values aligned with cache manager specifications"""
         ttl_mapping = {
             LLMTaskType.QUARTERLY_SUMMARY: 86400 * 30,  # 30 days - fundamental analysis
-            LLMTaskType.COMPREHENSIVE_ANALYSIS: 86400 * 30,  # 30 days - fundamental analysis
-            LLMTaskType.FUNDAMENTAL_ANALYSIS: 86400 * 30,  # 30 days - fundamental analysis
+            LLMTaskType.COMPREHENSIVE_ANALYSIS: 86400
+            * 30,  # 30 days - fundamental analysis
+            LLMTaskType.FUNDAMENTAL_ANALYSIS: 86400
+            * 30,  # 30 days - fundamental analysis
             LLMTaskType.TECHNICAL_ANALYSIS: 86400 * 7,  # 7 days - technical analysis
             LLMTaskType.SYNTHESIS: 86400 * 7,  # 7 days - synthesis
             LLMTaskType.RISK_ASSESSMENT: 86400 * 30,  # 30 days - part of fundamental

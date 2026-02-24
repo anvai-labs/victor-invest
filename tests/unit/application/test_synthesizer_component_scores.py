@@ -32,14 +32,28 @@ def mock_synthesizer():
     mock = MagicMock(spec=InvestmentSynthesizer)
 
     # Bind the real methods to the mock
-    mock._extract_income_score = InvestmentSynthesizer._extract_income_score.__get__(mock)
-    mock._extract_cashflow_score = InvestmentSynthesizer._extract_cashflow_score.__get__(mock)
-    mock._extract_balance_score = InvestmentSynthesizer._extract_balance_score.__get__(mock)
-    mock._extract_growth_score = InvestmentSynthesizer._extract_growth_score.__get__(mock)
+    mock._extract_income_score = InvestmentSynthesizer._extract_income_score.__get__(
+        mock
+    )
+    mock._extract_cashflow_score = (
+        InvestmentSynthesizer._extract_cashflow_score.__get__(mock)
+    )
+    mock._extract_balance_score = InvestmentSynthesizer._extract_balance_score.__get__(
+        mock
+    )
+    mock._extract_growth_score = InvestmentSynthesizer._extract_growth_score.__get__(
+        mock
+    )
     mock._extract_value_score = InvestmentSynthesizer._extract_value_score.__get__(mock)
-    mock._extract_business_quality_score = InvestmentSynthesizer._extract_business_quality_score.__get__(mock)
-    mock._analyze_quarterly_business_quality = InvestmentSynthesizer._analyze_quarterly_business_quality.__get__(mock)
-    mock._calculate_consistency_bonus = InvestmentSynthesizer._calculate_consistency_bonus.__get__(mock)
+    mock._extract_business_quality_score = (
+        InvestmentSynthesizer._extract_business_quality_score.__get__(mock)
+    )
+    mock._analyze_quarterly_business_quality = (
+        InvestmentSynthesizer._analyze_quarterly_business_quality.__get__(mock)
+    )
+    mock._calculate_consistency_bonus = (
+        InvestmentSynthesizer._calculate_consistency_bonus.__get__(mock)
+    )
 
     # Mock the _calculate_fundamental_score method (dependency)
     mock._calculate_fundamental_score = MagicMock(return_value=7.0)
@@ -55,7 +69,9 @@ class TestExtractIncomeScore:
         llm_responses = {}
         ai_recommendation = {"income_statement_score": 8.5}
 
-        result = mock_synthesizer._extract_income_score(llm_responses, ai_recommendation)
+        result = mock_synthesizer._extract_income_score(
+            llm_responses, ai_recommendation
+        )
 
         assert result == 8.5
 
@@ -78,7 +94,9 @@ class TestExtractIncomeScore:
         }
         ai_recommendation = {}
 
-        result = mock_synthesizer._extract_income_score(llm_responses, ai_recommendation)
+        result = mock_synthesizer._extract_income_score(
+            llm_responses, ai_recommendation
+        )
 
         # Average margin = (0.35 + 0.20 + 0.15) / 3 = 0.233
         # Score = min(10, max(1, 0.233 * 100 / 3)) = min(10, max(1, 7.78)) = 7.78
@@ -89,7 +107,9 @@ class TestExtractIncomeScore:
         llm_responses = {"fundamental": {"other": {}}}
         ai_recommendation = {}
 
-        result = mock_synthesizer._extract_income_score(llm_responses, ai_recommendation)
+        result = mock_synthesizer._extract_income_score(
+            llm_responses, ai_recommendation
+        )
 
         # 7.0 * 0.9 = 6.3
         assert result == pytest.approx(6.3, rel=0.1)
@@ -100,7 +120,9 @@ class TestExtractIncomeScore:
         llm_responses = {}
         ai_recommendation = {}
 
-        result = mock_synthesizer._extract_income_score(llm_responses, ai_recommendation)
+        result = mock_synthesizer._extract_income_score(
+            llm_responses, ai_recommendation
+        )
 
         assert result == 0.0
 
@@ -121,17 +143,23 @@ class TestExtractCashflowScore:
         }
         ai_recommendation = {}
 
-        result = mock_synthesizer._extract_cashflow_score(llm_responses, ai_recommendation)
+        result = mock_synthesizer._extract_cashflow_score(
+            llm_responses, ai_recommendation
+        )
 
         # Base 7.0 + adjustment (keywords found: cash flow, fcf, working capital, cash, liquidity)
         assert result >= 7.0
 
     def test_adjusts_down_for_no_cashflow_keywords(self, mock_synthesizer):
         """Should adjust score down when no cashflow keywords found."""
-        llm_responses = {"fundamental": {"Q1": {"content": "Revenue and expenses analysis."}}}
+        llm_responses = {
+            "fundamental": {"Q1": {"content": "Revenue and expenses analysis."}}
+        }
         ai_recommendation = {}
 
-        result = mock_synthesizer._extract_cashflow_score(llm_responses, ai_recommendation)
+        result = mock_synthesizer._extract_cashflow_score(
+            llm_responses, ai_recommendation
+        )
 
         # Base 7.0 - 0.5 adjustment
         assert result <= 7.0
@@ -151,7 +179,9 @@ class TestExtractCashflowScore:
         }
         ai_recommendation = {}
 
-        result = mock_synthesizer._extract_cashflow_score(llm_responses, ai_recommendation)
+        result = mock_synthesizer._extract_cashflow_score(
+            llm_responses, ai_recommendation
+        )
 
         # Should find keywords in JSON string
         assert result >= 7.0
@@ -162,7 +192,9 @@ class TestExtractCashflowScore:
         llm_responses = {"fundamental": {"Q1": {"content": "cash flow analysis"}}}
         ai_recommendation = {}
 
-        result = mock_synthesizer._extract_cashflow_score(llm_responses, ai_recommendation)
+        result = mock_synthesizer._extract_cashflow_score(
+            llm_responses, ai_recommendation
+        )
 
         assert result == 0.0
 
@@ -183,17 +215,23 @@ class TestExtractBalanceScore:
         }
         ai_recommendation = {}
 
-        result = mock_synthesizer._extract_balance_score(llm_responses, ai_recommendation)
+        result = mock_synthesizer._extract_balance_score(
+            llm_responses, ai_recommendation
+        )
 
         # Base 7.0 + adjustment for multiple keywords
         assert result >= 7.0
 
     def test_adjusts_down_for_no_balance_keywords(self, mock_synthesizer):
         """Should adjust score down when no balance keywords found."""
-        llm_responses = {"fundamental": {"Q1": {"content": "Revenue growth is strong."}}}
+        llm_responses = {
+            "fundamental": {"Q1": {"content": "Revenue growth is strong."}}
+        }
         ai_recommendation = {}
 
-        result = mock_synthesizer._extract_balance_score(llm_responses, ai_recommendation)
+        result = mock_synthesizer._extract_balance_score(
+            llm_responses, ai_recommendation
+        )
 
         # Base 7.0 - 0.5 adjustment
         assert result <= 7.0
@@ -204,19 +242,29 @@ class TestExtractGrowthScore:
 
     def test_returns_comprehensive_growth_score(self, mock_synthesizer):
         """Should return growth_prospects_score from comprehensive analysis."""
-        llm_responses = {"fundamental": {"comprehensive": {"content": {"growth_prospects_score": 8.5}}}}
+        llm_responses = {
+            "fundamental": {
+                "comprehensive": {"content": {"growth_prospects_score": 8.5}}
+            }
+        }
         ai_recommendation = {}
 
-        result = mock_synthesizer._extract_growth_score(llm_responses, ai_recommendation)
+        result = mock_synthesizer._extract_growth_score(
+            llm_responses, ai_recommendation
+        )
 
         assert result == 8.5
 
     def test_returns_ai_recommendation_growth_score(self, mock_synthesizer):
         """Should extract growth score from AI recommendation."""
         llm_responses = {"fundamental": {}}
-        ai_recommendation = {"fundamental_assessment": {"growth_prospects": {"score": 7.8}}}
+        ai_recommendation = {
+            "fundamental_assessment": {"growth_prospects": {"score": 7.8}}
+        }
 
-        result = mock_synthesizer._extract_growth_score(llm_responses, ai_recommendation)
+        result = mock_synthesizer._extract_growth_score(
+            llm_responses, ai_recommendation
+        )
 
         assert result == 7.8
 
@@ -234,7 +282,9 @@ class TestExtractGrowthScore:
         }
         ai_recommendation = {}
 
-        result = mock_synthesizer._extract_growth_score(llm_responses, ai_recommendation)
+        result = mock_synthesizer._extract_growth_score(
+            llm_responses, ai_recommendation
+        )
 
         # Base 7.0 + adjustment for growth keywords
         assert result >= 7.0
@@ -293,30 +343,46 @@ class TestExtractBusinessQualityScore:
 
     def test_returns_direct_business_quality_score(self, mock_synthesizer):
         """Should return business_quality_score from comprehensive analysis."""
-        llm_responses = {"fundamental": {"comprehensive": {"business_quality_score": 8.0}}}
+        llm_responses = {
+            "fundamental": {"comprehensive": {"business_quality_score": 8.0}}
+        }
         ai_recommendation = {}
 
-        result = mock_synthesizer._extract_business_quality_score(llm_responses, ai_recommendation)
+        result = mock_synthesizer._extract_business_quality_score(
+            llm_responses, ai_recommendation
+        )
 
         assert result == 8.0
 
     def test_returns_nested_content_score(self, mock_synthesizer):
         """Should extract from nested content dict."""
-        llm_responses = {"fundamental": {"comprehensive": {"content": {"business_quality_score": 7.5}}}}
+        llm_responses = {
+            "fundamental": {
+                "comprehensive": {"content": {"business_quality_score": 7.5}}
+            }
+        }
         ai_recommendation = {}
 
-        result = mock_synthesizer._extract_business_quality_score(llm_responses, ai_recommendation)
+        result = mock_synthesizer._extract_business_quality_score(
+            llm_responses, ai_recommendation
+        )
 
         assert result == 7.5
 
     def test_returns_score_from_dict_format(self, mock_synthesizer):
         """Should handle score in dict format with 'score' key."""
         llm_responses = {
-            "fundamental": {"comprehensive": {"business_quality_score": {"score": 6.8, "confidence": "high"}}}
+            "fundamental": {
+                "comprehensive": {
+                    "business_quality_score": {"score": 6.8, "confidence": "high"}
+                }
+            }
         }
         ai_recommendation = {}
 
-        result = mock_synthesizer._extract_business_quality_score(llm_responses, ai_recommendation)
+        result = mock_synthesizer._extract_business_quality_score(
+            llm_responses, ai_recommendation
+        )
 
         assert result == 6.8
 
@@ -336,7 +402,9 @@ class TestExtractBusinessQualityScore:
         }
         ai_recommendation = {}
 
-        result = mock_synthesizer._extract_business_quality_score(llm_responses, ai_recommendation)
+        result = mock_synthesizer._extract_business_quality_score(
+            llm_responses, ai_recommendation
+        )
 
         # Should calculate from quarterly data with consistency bonus
         assert 1.0 <= result <= 10.0
@@ -346,7 +414,9 @@ class TestExtractBusinessQualityScore:
         llm_responses = {"fundamental": {}}
         ai_recommendation = {}
 
-        result = mock_synthesizer._extract_business_quality_score(llm_responses, ai_recommendation)
+        result = mock_synthesizer._extract_business_quality_score(
+            llm_responses, ai_recommendation
+        )
 
         assert result == 0.0
 
@@ -356,7 +426,9 @@ class TestAnalyzeQuarterlyBusinessQuality:
 
     def test_baseline_score_for_minimal_content(self, mock_synthesizer):
         """Should return base score for content with few indicators."""
-        result = mock_synthesizer._analyze_quarterly_business_quality("Some general text about the company.", "Q1_2024")
+        result = mock_synthesizer._analyze_quarterly_business_quality(
+            "Some general text about the company.", "Q1_2024"
+        )
 
         # Should return a score between 1 and 10
         assert 1.0 <= result <= 10.0
@@ -369,7 +441,9 @@ class TestAnalyzeQuarterlyBusinessQuality:
             "Margin expansion and operating leverage. Capital allocation focused on shareholder value."
         )
 
-        result = mock_synthesizer._analyze_quarterly_business_quality(content, "Q1_2024")
+        result = mock_synthesizer._analyze_quarterly_business_quality(
+            content, "Q1_2024"
+        )
 
         # Score based on keyword category matches - actual behavior returns ~4.3
         # This is a weighted average across 4 categories with limited keyword matches
@@ -379,7 +453,9 @@ class TestAnalyzeQuarterlyBusinessQuality:
         """Should match keywords case-insensitively."""
         content = "RECURRING REVENUE and COMPETITIVE ADVANTAGE are strong."
 
-        result = mock_synthesizer._analyze_quarterly_business_quality(content, "Q1_2024")
+        result = mock_synthesizer._analyze_quarterly_business_quality(
+            content, "Q1_2024"
+        )
 
         # Method returns minimum 1.0 - even with keywords, limited matches yield low score
         # The algorithm divides keyword count by total keywords in category, so few matches = low score
@@ -411,7 +487,9 @@ class TestCalculateConsistencyBonus:
 
     def test_bonus_capped_at_one(self, mock_synthesizer):
         """Bonus should never exceed 1.0."""
-        result = mock_synthesizer._calculate_consistency_bonus([5.0, 5.0, 5.0, 5.0, 5.0])
+        result = mock_synthesizer._calculate_consistency_bonus(
+            [5.0, 5.0, 5.0, 5.0, 5.0]
+        )
 
         # Perfect consistency
         assert result <= 1.0

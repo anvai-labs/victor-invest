@@ -48,7 +48,9 @@ class PromptManager:
 
             self.response_processor = get_llm_response_processor()
         except ImportError:
-            logger.warning("Could not import llm_response_processor, JSON escaping may not work properly")
+            logger.warning(
+                "Could not import llm_response_processor, JSON escaping may not work properly"
+            )
             self.response_processor = None
 
         if not JINJA2_AVAILABLE:
@@ -104,7 +106,9 @@ class PromptManager:
         # Add from_json filter for parsing JSON strings in templates
         self.env.filters["from_json"] = json.loads
 
-        logger.info(f"Prompt manager initialized with templates from: {self.templates_dir}")
+        logger.info(
+            f"Prompt manager initialized with templates from: {self.templates_dir}"
+        )
 
     def render_template(self, template_name: str, **kwargs) -> str:
         """
@@ -136,7 +140,11 @@ class PromptManager:
             Rendered prompt string with calendar year context and filing date details
         """
         # Ensure period_key is in standardized format
-        if "period_key" in kwargs and "fiscal_year" in kwargs and "fiscal_period" in kwargs:
+        if (
+            "period_key" in kwargs
+            and "fiscal_year" in kwargs
+            and "fiscal_period" in kwargs
+        ):
             period_key = kwargs["period_key"]
             fiscal_year = kwargs["fiscal_year"]
             fiscal_period = kwargs["fiscal_period"]
@@ -147,11 +155,15 @@ class PromptManager:
                 import os
                 import sys
 
-                sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                sys.path.append(
+                    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                )
                 try:
                     from sec_fundamental import standardize_period
 
-                    kwargs["period_key"] = standardize_period(fiscal_year, fiscal_period)
+                    kwargs["period_key"] = standardize_period(
+                        fiscal_year, fiscal_period
+                    )
                 except ImportError:
                     # Fallback if import fails
                     if fiscal_period == "FY":
@@ -412,7 +424,9 @@ Please provide your synthesis in JSON format with the following structure:
 
 Respond with valid JSON only."""
 
-    def validate_json_response(self, response: Dict, metadata: Dict[str, Any] = None) -> Dict[str, Any]:
+    def validate_json_response(
+        self, response: Dict, metadata: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
         """
         Enhanced JSON response validation with standardized response format
 
@@ -555,7 +569,9 @@ Respond with valid JSON only."""
         except Exception as e:
             logger.debug(f"Partial JSON extraction failed: {e}")
 
-        logger.error(f"All JSON parsing strategies failed for content (first 200 chars): {content[:200]}...")
+        logger.error(
+            f"All JSON parsing strategies failed for content (first 200 chars): {content[:200]}..."
+        )
         return None
 
     def _preprocess_json_content(self, content: str) -> str:
@@ -672,7 +688,9 @@ Respond with valid JSON only."""
             if "confidence_level" not in extracted:
                 extracted["confidence_level"] = "LOW"
             if "investment_thesis" not in extracted:
-                extracted["investment_thesis"] = "Analysis incomplete due to parsing issues"
+                extracted["investment_thesis"] = (
+                    "Analysis incomplete due to parsing issues"
+                )
 
             return extracted
 

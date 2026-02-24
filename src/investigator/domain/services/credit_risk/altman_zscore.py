@@ -275,8 +275,14 @@ class AltmanZScoreCalculator:
             components["X3_ebit_ratio"] = None
 
         # X4: Market Value of Equity / Total Liabilities
-        if data.market_cap is not None and data.total_liabilities and data.total_liabilities > 0:
-            components["X4_equity_liability_ratio"] = data.market_cap / data.total_liabilities
+        if (
+            data.market_cap is not None
+            and data.total_liabilities
+            and data.total_liabilities > 0
+        ):
+            components["X4_equity_liability_ratio"] = (
+                data.market_cap / data.total_liabilities
+            )
         else:
             components["X4_equity_liability_ratio"] = None
 
@@ -319,7 +325,13 @@ class AltmanZScoreCalculator:
         x4 = x4 or 0
         x5 = x5 or 0
 
-        z_score = self.COEF_X1 * x1 + self.COEF_X2 * x2 + self.COEF_X3 * x3 + self.COEF_X4 * x4 + self.COEF_X5 * x5
+        z_score = (
+            self.COEF_X1 * x1
+            + self.COEF_X2 * x2
+            + self.COEF_X3 * x3
+            + self.COEF_X4 * x4
+            + self.COEF_X5 * x5
+        )
 
         return z_score
 
@@ -375,7 +387,9 @@ class AltmanZScoreCalculator:
         else:
             return AltmanZone.GREY
 
-    def _get_interpretation(self, zone: Optional[AltmanZone], score: Optional[float]) -> str:
+    def _get_interpretation(
+        self, zone: Optional[AltmanZone], score: Optional[float]
+    ) -> str:
         """Generate human-readable interpretation of the score."""
         if zone is None or score is None:
             return "Unable to calculate Z-Score due to missing data"

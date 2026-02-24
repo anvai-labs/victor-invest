@@ -110,7 +110,9 @@ class DCFFactory:
                 model_enum = model_type
         except ValueError:
             valid_types = [t.value for t in DCFModelType]
-            raise ValueError(f"Unknown model type: {model_type}. Valid types: {valid_types}")
+            raise ValueError(
+                f"Unknown model type: {model_type}. Valid types: {valid_types}"
+            )
 
         model_class = cls._model_registry.get(model_enum)
         if model_class is None:
@@ -124,7 +126,10 @@ class DCFFactory:
 
         elif model_enum == DCFModelType.STANDARD:
             # Standard DCF requires different initialization
-            raise ValueError("Standard DCF requires legacy initialization. " "Use DCFFactory.create_legacy() instead.")
+            raise ValueError(
+                "Standard DCF requires legacy initialization. "
+                "Use DCFFactory.create_legacy() instead."
+            )
 
         return model_class(**kwargs)
 
@@ -212,13 +217,19 @@ class DCFFactory:
             # Modern model preferred when profile available
             if not has_positive_fcf:
                 # Damodaran has revenue bridge for negative FCF
-                logger.info("Auto-selected Damodaran DCF (negative FCF, revenue bridge)")
-                return cls.create(DCFModelType.DAMODARAN, company_profile=company_profile)
+                logger.info(
+                    "Auto-selected Damodaran DCF (negative FCF, revenue bridge)"
+                )
+                return cls.create(
+                    DCFModelType.DAMODARAN, company_profile=company_profile
+                )
 
             if prefer_monte_carlo:
                 # Damodaran has built-in Monte Carlo
                 logger.info("Auto-selected Damodaran DCF (Monte Carlo requested)")
-                return cls.create(DCFModelType.DAMODARAN, company_profile=company_profile)
+                return cls.create(
+                    DCFModelType.DAMODARAN, company_profile=company_profile
+                )
 
             # Default to Damodaran for modern architecture
             logger.info("Auto-selected Damodaran DCF (modern architecture)")
@@ -303,7 +314,9 @@ class DCFFactory:
                 ],
             },
         }
-        return descriptions.get(model_type.lower(), {"error": f"Unknown model: {model_type}"})
+        return descriptions.get(
+            model_type.lower(), {"error": f"Unknown model: {model_type}"}
+        )
 
 
 # Convenience functions for common use cases

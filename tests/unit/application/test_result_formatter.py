@@ -221,7 +221,9 @@ class TestFormatAnalysisOutput:
 
     def test_standard_handles_numpy_arrays(self):
         """Standard mode should handle numpy arrays without crashing."""
-        data = {"fundamental": {"prices": np.array([100.0, 101.5]), "recommendation": "BUY"}}
+        data = {
+            "fundamental": {"prices": np.array([100.0, 101.5]), "recommendation": "BUY"}
+        }
         # Should not raise ValueError
         result = format_analysis_output(data, OutputDetailLevel.STANDARD)
         assert "fundamental" in result
@@ -276,18 +278,31 @@ class TestFormatAnalysisOutput:
                         },
                     },
                     "ratios": {"current_price": 200.0},
-                    "data_quality": {"data_quality_score": 75.0, "quality_grade": "Good"},
-                    "confidence": {"confidence_level": "HIGH", "confidence_score": 80.0},
+                    "data_quality": {
+                        "data_quality_score": 75.0,
+                        "quality_grade": "Good",
+                    },
+                    "confidence": {
+                        "confidence_level": "HIGH",
+                        "confidence_score": 80.0,
+                    },
                 },
                 "technical": {
                     "status": "success",
                     "recommendation": "neutral",
                     "technical_rating": 0.0,
-                    "levels": {"pivot_point": 201.0, "support_1": 190.0, "resistance_1": 210.0},
+                    "levels": {
+                        "pivot_point": 201.0,
+                        "support_1": 190.0,
+                        "resistance_1": 210.0,
+                    },
                 },
                 "synthesis": {
                     "status": "success",
-                    "recommendation": {"final_recommendation": "hold", "confidence": 70.0},
+                    "recommendation": {
+                        "final_recommendation": "hold",
+                        "confidence": 70.0,
+                    },
                     "synthesis": {"report_mode": "deterministic"},
                 },
                 "market_context": {
@@ -298,7 +313,10 @@ class TestFormatAnalysisOutput:
                 },
                 "sec": {
                     "status": "success",
-                    "companyfacts_summary": {"entityName": "Seagate", "fact_count": 1000},
+                    "companyfacts_summary": {
+                        "entityName": "Seagate",
+                        "fact_count": 1000,
+                    },
                     "forward_guidance": {
                         "source": "sec_filing_regex",
                         "source_form": "8-K",
@@ -314,7 +332,10 @@ class TestFormatAnalysisOutput:
         assert result["valuation"]["basis"] == "forward"
         assert result["valuation"]["forward_horizon"] == "2q"
         assert result["valuation"]["models"]["pe"]["fair_value_per_share"] == 260.0
-        assert result["valuation"]["models"]["pe"]["assumptions"]["guidance_applied"] is True
+        assert (
+            result["valuation"]["models"]["pe"]["assumptions"]["guidance_applied"]
+            is True
+        )
         assert result["sec"]["forward_guidance"]["source_form"] == "8-K"
 
     def test_compact_preserves_non_applicable_reason_for_models(self):
@@ -341,8 +362,14 @@ class TestFormatAnalysisOutput:
                         },
                     },
                     "ratios": {"current_price": 200.0},
-                    "data_quality": {"data_quality_score": 70.0, "quality_grade": "Good"},
-                    "confidence": {"confidence_level": "HIGH", "confidence_score": 80.0},
+                    "data_quality": {
+                        "data_quality_score": 70.0,
+                        "quality_grade": "Good",
+                    },
+                    "confidence": {
+                        "confidence_level": "HIGH",
+                        "confidence_score": 80.0,
+                    },
                 },
                 "technical": {"status": "success"},
                 "synthesis": {"status": "success"},

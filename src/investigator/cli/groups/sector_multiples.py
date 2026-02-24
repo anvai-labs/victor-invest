@@ -72,7 +72,9 @@ def sector_multiples(ctx):
     help="Calculate without updating config.yaml",
 )
 @click.pass_context
-def refresh(ctx, sectors, industries, min_samples, exclude_outliers, update_config, dry_run):
+def refresh(
+    ctx, sectors, industries, min_samples, exclude_outliers, update_config, dry_run
+):
     """Refresh sector/industry multiples from database data
 
     Calculates median valuation multiples (P/E, P/S, EV/EBITDA, P/B) from
@@ -488,7 +490,9 @@ def trend(ctx, group_name, group_type, start_year, end_year, export):
     click.echo("=" * 80)
 
     # Header
-    click.echo(f"{'FY':<6} {'Snapshot':<12} {'P/E':<10} {'P/S':<10} {'P/B':<10} {'Sample':<8}")
+    click.echo(
+        f"{'FY':<6} {'Snapshot':<12} {'P/E':<10} {'P/S':<10} {'P/B':<10} {'Sample':<8}"
+    )
     click.echo("-" * 80)
 
     for row in trend_data:
@@ -510,10 +514,14 @@ def trend(ctx, group_name, group_type, start_year, end_year, export):
         if first_pe and last_pe:
             if last_pe > first_pe:
                 pct_change = ((last_pe - first_pe) / first_pe) * 100
-                click.echo(f"  P/E Swelling: {first_pe:.2f}x → {last_pe:.2f}x (+{pct_change:.1f}%)")
+                click.echo(
+                    f"  P/E Swelling: {first_pe:.2f}x → {last_pe:.2f}x (+{pct_change:.1f}%)"
+                )
             else:
                 pct_change = ((first_pe - last_pe) / first_pe) * 100
-                click.echo(f"  P/E Shrinking: {first_pe:.2f}x → {last_pe:.2f}x (-{pct_change:.1f}%)")
+                click.echo(
+                    f"  P/E Shrinking: {first_pe:.2f}x → {last_pe:.2f}x (-{pct_change:.1f}%)"
+                )
 
     click.echo("=" * 80)
 
@@ -596,16 +604,24 @@ def timeline(ctx, sectors, industries, years, metric):
 
         group_filters = []
         if sector_list:
-            sector_placeholders = ",".join([f":sector_{i}" for i in range(len(sector_list))])
+            sector_placeholders = ",".join(
+                [f":sector_{i}" for i in range(len(sector_list))]
+            )
             for i, s in enumerate(sector_list):
                 params[f"sector_{i}"] = s
-            group_filters.append(f"(group_type = 'sector' AND group_name IN ({sector_placeholders}))")
+            group_filters.append(
+                f"(group_type = 'sector' AND group_name IN ({sector_placeholders}))"
+            )
 
         if industry_list:
-            industry_placeholders = ",".join([f":industry_{i}" for i in range(len(industry_list))])
+            industry_placeholders = ",".join(
+                [f":industry_{i}" for i in range(len(industry_list))]
+            )
             for i, ind in enumerate(industry_list):
                 params[f"industry_{i}"] = ind
-            group_filters.append(f"(group_type = 'industry' AND group_name IN ({industry_placeholders}))")
+            group_filters.append(
+                f"(group_type = 'industry' AND group_name IN ({industry_placeholders}))"
+            )
 
         where_clause = " OR ".join(group_filters) if group_filters else "1=1"
 
@@ -633,8 +649,12 @@ def timeline(ctx, sectors, industries, years, metric):
             data[key][year] = {"pe": pe, "ps": ps, "pb": pb, "sample": sample}
 
     if not data:
-        click.echo("No historical data found for the specified sectors/industries and years.")
-        click.echo("\nTip: Run 'investigator sector-multiples historical' first to populate the database.")
+        click.echo(
+            "No historical data found for the specified sectors/industries and years."
+        )
+        click.echo(
+            "\nTip: Run 'investigator sector-multiples historical' first to populate the database."
+        )
         return
 
     # Display timeline
@@ -670,7 +690,6 @@ def _parse_years(years_str: str) -> list:
 
 def _print_metric_timeline(data: dict, years: list, metric: str):
     """Print timeline table for a specific metric."""
-    import sys
 
     metric_labels = {"pe": "P/E", "ps": "P/S", "pb": "P/B"}
 
@@ -722,7 +741,13 @@ def _print_metric_timeline(data: dict, years: list, metric: str):
                 if start_val and end_val:
                     change_pct = ((end_val - start_val) / start_val) * 100
                     prefix = "🏢" if group_type == "sector" else "🏭"
-                    status = "SWELLING" if change_pct > 5 else "SHRINKING" if change_pct < -5 else "STABLE"
+                    status = (
+                        "SWELLING"
+                        if change_pct > 5
+                        else "SHRINKING"
+                        if change_pct < -5
+                        else "STABLE"
+                    )
 
                     click.echo(
                         f"{prefix} {group_name:<40} │ {start_val:>6.1f}x → {end_val:>6.1f}x │ "

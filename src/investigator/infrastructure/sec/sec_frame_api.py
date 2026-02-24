@@ -207,12 +207,16 @@ class SECFrameAPI:
             try:
                 self._rate_limit()
 
-                company_data = self.get_company_frame_data(cik, concept, unit, year, period)
+                company_data = self.get_company_frame_data(
+                    cik, concept, unit, year, period
+                )
                 if company_data:
                     found_data[concept] = company_data
 
             except Exception as e:
-                self.main_logger.error(f"Error searching concept {concept} for CIK {cik}: {e}")
+                self.main_logger.error(
+                    f"Error searching concept {concept} for CIK {cik}: {e}"
+                )
                 continue
 
         return found_data
@@ -231,10 +235,14 @@ class SECFrameAPI:
             if response.status_code == 200:
                 return response.json()
             elif response.status_code == 404:
-                self.main_logger.debug(f"Frame data not found: {request.concept} {request.year}")
+                self.main_logger.debug(
+                    f"Frame data not found: {request.concept} {request.year}"
+                )
                 return None
             else:
-                self.main_logger.warning(f"Frame API request failed: {response.status_code}")
+                self.main_logger.warning(
+                    f"Frame API request failed: {response.status_code}"
+                )
                 return None
 
         except requests.exceptions.RequestException as e:
@@ -274,7 +282,9 @@ class SECFrameAPI:
                 "fetched_at": datetime.utcnow().isoformat(),
             }
 
-            self.cache_manager.set(CacheType.SEC_RESPONSE, cache_key, {"data": data, "metadata": metadata})
+            self.cache_manager.set(
+                CacheType.SEC_RESPONSE, cache_key, {"data": data, "metadata": metadata}
+            )
 
         except Exception as e:
             self.main_logger.error(f"Error caching frame data: {e}")
@@ -286,7 +296,9 @@ class SECFrameAPI:
 
         if time_since_last < self.min_request_interval:
             sleep_time = self.min_request_interval - time_since_last
-            self.main_logger.debug(f"Rate limiting: sleeping for {sleep_time:.2f} seconds")
+            self.main_logger.debug(
+                f"Rate limiting: sleeping for {sleep_time:.2f} seconds"
+            )
             time.sleep(sleep_time)
 
         self.last_request_time = time.time()

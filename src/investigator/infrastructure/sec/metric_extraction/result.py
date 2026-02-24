@@ -88,7 +88,9 @@ class ExtractionAudit:
 
         if successful:
             first_success = successful[0]
-            lines.append(f"  Matched via: {first_success.strategy_name} using tag '{first_success.tag_name}'")
+            lines.append(
+                f"  Matched via: {first_success.strategy_name} using tag '{first_success.tag_name}'"
+            )
 
         if failed and not successful:
             lines.append(f"  Failed strategies: {[a.strategy_name for a in failed]}")

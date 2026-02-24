@@ -191,7 +191,9 @@ class RobustValuationService:
         sector = normalized["sector"] or "Unknown"
         industry = normalized["industry"]
 
-        logger.info(f"Calculating robust valuation for {symbol} (sector: {sector}, industry: {industry})...")
+        logger.info(
+            f"Calculating robust valuation for {symbol} (sector: {sector}, industry: {industry})..."
+        )
 
         # Step 1: Get trend-adjusted sector multiples (Layer 1)
         layer1_data = self._get_layer1_data(sector)

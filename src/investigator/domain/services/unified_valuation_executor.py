@@ -224,9 +224,9 @@ class UnifiedValuationExecutor:
         from investigator.domain.services.valuation.models import (
             EVEBITDAModel,
             GordonGrowthModel,
+            PBRatioModel,
             PERatioModel,
             PSRatioModel,
-            PBRatioModel,
         )
 
         results = {}

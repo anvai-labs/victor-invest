@@ -25,8 +25,10 @@ class TestCalculateFundamentalScore:
 
         # Create a minimal mock that has the method we want to test
         mock = MagicMock(spec=InvestmentSynthesizer)
-        mock._calculate_fundamental_score = InvestmentSynthesizer._calculate_fundamental_score.__get__(
-            mock, InvestmentSynthesizer
+        mock._calculate_fundamental_score = (
+            InvestmentSynthesizer._calculate_fundamental_score.__get__(
+                mock, InvestmentSynthesizer
+            )
         )
         return mock
 
@@ -43,27 +45,47 @@ class TestCalculateFundamentalScore:
     def test_comprehensive_dict_financial_health_score(self, mock_synthesizer):
         """Should extract financial_health_score from comprehensive dict response."""
         llm_responses = {
-            "fundamental": {"comprehensive": {"content": {"financial_health_score": 7.5, "other_data": "value"}}}
+            "fundamental": {
+                "comprehensive": {
+                    "content": {"financial_health_score": 7.5, "other_data": "value"}
+                }
+            }
         }
         result = mock_synthesizer._calculate_fundamental_score(llm_responses)
         assert result == 7.5
 
     def test_comprehensive_dict_overall_score(self, mock_synthesizer):
         """Should fallback to overall_score if financial_health_score missing."""
-        llm_responses = {"fundamental": {"comprehensive": {"content": {"overall_score": 8.0, "other_data": "value"}}}}
+        llm_responses = {
+            "fundamental": {
+                "comprehensive": {
+                    "content": {"overall_score": 8.0, "other_data": "value"}
+                }
+            }
+        }
         result = mock_synthesizer._calculate_fundamental_score(llm_responses)
         assert result == 8.0
 
     def test_comprehensive_string_json_response(self, mock_synthesizer):
         """Should parse JSON string response."""
-        llm_responses = {"fundamental": {"comprehensive": {"content": json.dumps({"financial_health_score": 6.5})}}}
+        llm_responses = {
+            "fundamental": {
+                "comprehensive": {
+                    "content": json.dumps({"financial_health_score": 6.5})
+                }
+            }
+        }
         result = mock_synthesizer._calculate_fundamental_score(llm_responses)
         assert result == 6.5
 
     def test_comprehensive_string_regex_fallback(self, mock_synthesizer):
         """Should extract score via regex from unstructured text."""
         llm_responses = {
-            "fundamental": {"comprehensive": {"content": "The Financial Health Score: 7.2/10 based on analysis..."}}
+            "fundamental": {
+                "comprehensive": {
+                    "content": "The Financial Health Score: 7.2/10 based on analysis..."
+                }
+            }
         }
         result = mock_synthesizer._calculate_fundamental_score(llm_responses)
         assert result == 7.2
@@ -112,8 +134,10 @@ class TestCalculateTechnicalScore:
         from investigator.application.synthesizer import InvestmentSynthesizer
 
         mock = MagicMock(spec=InvestmentSynthesizer)
-        mock._calculate_technical_score = InvestmentSynthesizer._calculate_technical_score.__get__(
-            mock, InvestmentSynthesizer
+        mock._calculate_technical_score = (
+            InvestmentSynthesizer._calculate_technical_score.__get__(
+                mock, InvestmentSynthesizer
+            )
         )
         return mock
 
@@ -129,7 +153,11 @@ class TestCalculateTechnicalScore:
 
     def test_dict_content_with_score_dict(self, mock_synthesizer):
         """Should extract score from nested dict format."""
-        llm_responses = {"technical": {"content": {"technical_score": {"score": 7.5, "confidence": "high"}}}}
+        llm_responses = {
+            "technical": {
+                "content": {"technical_score": {"score": 7.5, "confidence": "high"}}
+            }
+        }
         result = mock_synthesizer._calculate_technical_score(llm_responses)
         assert result == 7.5
 
@@ -141,7 +169,9 @@ class TestCalculateTechnicalScore:
 
     def test_string_json_content(self, mock_synthesizer):
         """Should parse JSON string content."""
-        llm_responses = {"technical": {"content": json.dumps({"technical_score": {"score": 6.5}})}}
+        llm_responses = {
+            "technical": {"content": json.dumps({"technical_score": {"score": 6.5}})}
+        }
         result = mock_synthesizer._calculate_technical_score(llm_responses)
         assert result == 6.5
 
@@ -157,7 +187,11 @@ timestamp: 2024-01-01
 
     def test_regex_fallback_for_legacy_format(self, mock_synthesizer):
         """Should extract score via regex for legacy format."""
-        llm_responses = {"technical": {"content": "Analysis complete. TECHNICAL_SCORE: 6.8 out of 10"}}
+        llm_responses = {
+            "technical": {
+                "content": "Analysis complete. TECHNICAL_SCORE: 6.8 out of 10"
+            }
+        }
         result = mock_synthesizer._calculate_technical_score(llm_responses)
         assert result == 6.8
 
@@ -177,8 +211,10 @@ class TestCalculateWeightedScore:
         from investigator.application.synthesizer import InvestmentSynthesizer
 
         mock = MagicMock(spec=InvestmentSynthesizer)
-        mock._calculate_weighted_score = InvestmentSynthesizer._calculate_weighted_score.__get__(
-            mock, InvestmentSynthesizer
+        mock._calculate_weighted_score = (
+            InvestmentSynthesizer._calculate_weighted_score.__get__(
+                mock, InvestmentSynthesizer
+            )
         )
         # Mock config with analysis weights
         mock.config = MagicMock()
@@ -230,11 +266,15 @@ class TestExtractTechnicalIndicators:
         from investigator.application.synthesizer import InvestmentSynthesizer
 
         mock = MagicMock(spec=InvestmentSynthesizer)
-        mock._extract_technical_indicators = InvestmentSynthesizer._extract_technical_indicators.__get__(
-            mock, InvestmentSynthesizer
+        mock._extract_technical_indicators = (
+            InvestmentSynthesizer._extract_technical_indicators.__get__(
+                mock, InvestmentSynthesizer
+            )
         )
-        mock._extract_momentum_signals = InvestmentSynthesizer._extract_momentum_signals.__get__(
-            mock, InvestmentSynthesizer
+        mock._extract_momentum_signals = (
+            InvestmentSynthesizer._extract_momentum_signals.__get__(
+                mock, InvestmentSynthesizer
+            )
         )
         mock.main_logger = MagicMock()
         return mock
@@ -322,8 +362,10 @@ class TestExtractMomentumSignals:
         from investigator.application.synthesizer import InvestmentSynthesizer
 
         mock = MagicMock(spec=InvestmentSynthesizer)
-        mock._extract_momentum_signals = InvestmentSynthesizer._extract_momentum_signals.__get__(
-            mock, InvestmentSynthesizer
+        mock._extract_momentum_signals = (
+            InvestmentSynthesizer._extract_momentum_signals.__get__(
+                mock, InvestmentSynthesizer
+            )
         )
         return mock
 
@@ -366,7 +408,9 @@ class TestStopLossCalculation:
         from investigator.application.synthesizer import InvestmentSynthesizer
 
         mock = MagicMock(spec=InvestmentSynthesizer)
-        mock._calculate_stop_loss = InvestmentSynthesizer._calculate_stop_loss.__get__(mock, InvestmentSynthesizer)
+        mock._calculate_stop_loss = InvestmentSynthesizer._calculate_stop_loss.__get__(
+            mock, InvestmentSynthesizer
+        )
         return mock
 
     def test_basic_stop_loss(self, mock_synthesizer):
@@ -375,7 +419,9 @@ class TestStopLossCalculation:
         recommendation = {"recommendation": "HOLD"}
         overall_score = 7.0
 
-        result = mock_synthesizer._calculate_stop_loss(current_price, recommendation, overall_score)
+        result = mock_synthesizer._calculate_stop_loss(
+            current_price, recommendation, overall_score
+        )
 
         # Stop loss should be below current price (HOLD = 8%)
         assert result < current_price
@@ -388,7 +434,9 @@ class TestStopLossCalculation:
         recommendation = {"recommendation": "BUY"}
         overall_score = 7.0
 
-        result = mock_synthesizer._calculate_stop_loss(current_price, recommendation, overall_score)
+        result = mock_synthesizer._calculate_stop_loss(
+            current_price, recommendation, overall_score
+        )
         assert result == 90.0  # 100 * (1 - 0.10)
 
     def test_low_score_tighter_stop(self, mock_synthesizer):
@@ -397,7 +445,9 @@ class TestStopLossCalculation:
         recommendation = {"recommendation": "HOLD"}
 
         # Low score (< 4.0) triggers 0.5x multiplier
-        low_score_stop = mock_synthesizer._calculate_stop_loss(current_price, recommendation, 3.0)
+        low_score_stop = mock_synthesizer._calculate_stop_loss(
+            current_price, recommendation, 3.0
+        )
         # HOLD = 8%, but low score halves it to 4%
         assert low_score_stop == 96.0  # 100 * (1 - 0.04)
 
@@ -412,7 +462,9 @@ class TestStopLossCalculation:
         recommendation = {"recommendation": "SELL"}
         overall_score = 7.0
 
-        result = mock_synthesizer._calculate_stop_loss(current_price, recommendation, overall_score)
+        result = mock_synthesizer._calculate_stop_loss(
+            current_price, recommendation, overall_score
+        )
         assert result == 95.0  # 100 * (1 - 0.05)
 
 
@@ -425,7 +477,9 @@ class TestDataQualityAssessment:
         from investigator.application.synthesizer import InvestmentSynthesizer
 
         mock = MagicMock(spec=InvestmentSynthesizer)
-        mock._assess_data_quality = InvestmentSynthesizer._assess_data_quality.__get__(mock, InvestmentSynthesizer)
+        mock._assess_data_quality = InvestmentSynthesizer._assess_data_quality.__get__(
+            mock, InvestmentSynthesizer
+        )
         return mock
 
     def test_empty_data_low_quality(self, mock_synthesizer):
@@ -463,8 +517,10 @@ class TestParseSynthesisResponse:
         from investigator.application.synthesizer import InvestmentSynthesizer
 
         mock = MagicMock(spec=InvestmentSynthesizer)
-        mock._parse_synthesis_response = InvestmentSynthesizer._parse_synthesis_response.__get__(
-            mock, InvestmentSynthesizer
+        mock._parse_synthesis_response = (
+            InvestmentSynthesizer._parse_synthesis_response.__get__(
+                mock, InvestmentSynthesizer
+            )
         )
         mock.main_logger = MagicMock()
         return mock

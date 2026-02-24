@@ -446,7 +446,7 @@ class SectorMultiplesHistory:
                 # This uses tickerdata which has historical prices (split-adjusted)
                 # We need price even if we have market_cap (for P/E and P/B calculations)
                 if "filed_date" in metrics and not metrics.get("price"):
-                    from datetime import datetime, timedelta, date
+                    from datetime import date, datetime, timedelta
 
                     # Use period_end as base for price anchor (more stable than filed_date)
                     # Add 90-day buffer to next quarter when market has digested FY results

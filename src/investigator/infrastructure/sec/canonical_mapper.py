@@ -69,7 +69,10 @@ class CanonicalKeyMapper:
         # Path resolution: src/investigator/infrastructure/sec/ → project root (5 levels up)
         project_root = Path(__file__).parent.parent.parent.parent.parent
         comprehensive_with_derivations_path = (
-            project_root / "resources" / "xbrl_mappings" / "comprehensive_canonical_mappings_with_derivations.json"
+            project_root
+            / "resources"
+            / "xbrl_mappings"
+            / "comprehensive_canonical_mappings_with_derivations.json"
         )
         if comprehensive_with_derivations_path.exists():
             logger.info(
@@ -79,9 +82,16 @@ class CanonicalKeyMapper:
                 return json.load(f)
 
         # Try to load comprehensive mappings (without derivations) from resources
-        comprehensive_path = project_root / "resources" / "xbrl_mappings" / "comprehensive_canonical_mappings.json"
+        comprehensive_path = (
+            project_root
+            / "resources"
+            / "xbrl_mappings"
+            / "comprehensive_canonical_mappings.json"
+        )
         if comprehensive_path.exists():
-            logger.info(f"Loading comprehensive canonical mappings from {comprehensive_path}")
+            logger.info(
+                f"Loading comprehensive canonical mappings from {comprehensive_path}"
+            )
             with open(comprehensive_path, "r") as f:
                 return json.load(f)
 
@@ -115,13 +125,20 @@ class CanonicalKeyMapper:
         # Try to load from resources directory
         # Path resolution: src/investigator/infrastructure/sec/ → project root (5 levels up)
         project_root = Path(__file__).parent.parent.parent.parent.parent
-        default_path = project_root / "resources" / "xbrl_mappings" / "sector_specific_mappings.json"
+        default_path = (
+            project_root
+            / "resources"
+            / "xbrl_mappings"
+            / "sector_specific_mappings.json"
+        )
         if default_path.exists():
             logger.info(f"Loading sector-specific mappings from {default_path}")
             with open(default_path, "r") as f:
                 return json.load(f)
 
-        logger.warning("Sector-specific mappings not found - sector/industry exclusions won't be applied")
+        logger.warning(
+            "Sector-specific mappings not found - sector/industry exclusions won't be applied"
+        )
         return {}
 
     def _get_default_mappings(self) -> Dict:
@@ -331,7 +348,8 @@ class CanonicalKeyMapper:
         # If no tags found anywhere
         if not tags:
             logger.warning(
-                f"No tags found for canonical key '{canonical_key}' " f"(sector={sector}, industry={industry})"
+                f"No tags found for canonical key '{canonical_key}' "
+                f"(sector={sector}, industry={industry})"
             )
             return []
 
@@ -430,14 +448,18 @@ class CanonicalKeyMapper:
                     if i > 0:
                         self.stats["fallbacks_used"] += 1
                         logger.debug(
-                            f"🎯 Fallback SUCCESS: {canonical_key} → {tag} " f"(tried {i} tags before success)"
+                            f"🎯 Fallback SUCCESS: {canonical_key} → {tag} "
+                            f"(tried {i} tags before success)"
                         )
 
                     return (float(value), tag)
 
         # No value found in any fallback
         self.stats["failures"] += 1
-        logger.warning(f"⚠️  Failed to extract {canonical_key} for sector {sector}. " f"Tried tags: {tags}")
+        logger.warning(
+            f"⚠️  Failed to extract {canonical_key} for sector {sector}. "
+            f"Tried tags: {tags}"
+        )
         return (None, None)
 
     def extract_from_bulk_table(
@@ -477,7 +499,10 @@ class CanonicalKeyMapper:
                 )
                 if i > 0:
                     self.stats["fallbacks_used"] += 1
-                    logger.debug(f"🎯 Bulk table fallback SUCCESS: {canonical_key} → {tag} " f"(tried {i} tags)")
+                    logger.debug(
+                        f"🎯 Bulk table fallback SUCCESS: {canonical_key} → {tag} "
+                        f"(tried {i} tags)"
+                    )
 
                 return (float(value), tag)
 
@@ -489,7 +514,9 @@ class CanonicalKeyMapper:
         )
         return (None, None)
 
-    def _parse_formula(self, formula: str, values_dict: Dict[str, float]) -> Optional[float]:
+    def _parse_formula(
+        self, formula: str, values_dict: Dict[str, float]
+    ) -> Optional[float]:
         """
         Parse and evaluate a formula string using provided values
 
@@ -511,9 +538,15 @@ class CanonicalKeyMapper:
                     formula_eval = formula_eval.replace(key, str(value))
 
             # Check if all variables were replaced (no remaining canonical keys)
-            if any(key in formula_eval for key in values_dict.keys() if key in self.mappings):
+            if any(
+                key in formula_eval
+                for key in values_dict.keys()
+                if key in self.mappings
+            ):
                 # Still has unresolved canonical keys
-                logger.debug(f"Cannot evaluate formula '{formula}' - missing required values")
+                logger.debug(
+                    f"Cannot evaluate formula '{formula}' - missing required values"
+                )
                 return None
 
             # Evaluate the formula
@@ -524,7 +557,9 @@ class CanonicalKeyMapper:
             logger.debug(f"Formula evaluation failed for '{formula}': {e}")
             return None
 
-    def calculate_derived_value(self, canonical_key: str, values_dict: Dict[str, float]) -> Optional[float]:
+    def calculate_derived_value(
+        self, canonical_key: str, values_dict: Dict[str, float]
+    ) -> Optional[float]:
         """
         Calculate derived value using formula from mapping
 
@@ -556,7 +591,9 @@ class CanonicalKeyMapper:
                 )
             result = self._parse_formula(formula, values_dict)
             if result is not None:
-                logger.debug(f"✓ Derived {canonical_key} using formula: {formula} = {result}")
+                logger.debug(
+                    f"✓ Derived {canonical_key} using formula: {formula} = {result}"
+                )
                 return result
 
         # Try alternative formula
@@ -571,10 +608,14 @@ class CanonicalKeyMapper:
                 )
             result = self._parse_formula(formula_alt, values_dict)
             if result is not None:
-                logger.debug(f"✓ Derived {canonical_key} using alt formula: {formula_alt} = {result}")
+                logger.debug(
+                    f"✓ Derived {canonical_key} using alt formula: {formula_alt} = {result}"
+                )
                 return result
 
-        logger.debug(f"Cannot derive {canonical_key} - formulas failed or missing required fields")
+        logger.debug(
+            f"Cannot derive {canonical_key} - formulas failed or missing required fields"
+        )
         return None
 
     def extract_with_derivation(
@@ -608,7 +649,9 @@ class CanonicalKeyMapper:
         """
         # Try direct extraction first
         if json_data:
-            value, tag = self.extract_from_json(canonical_key, json_data, sector, fiscal_year, fiscal_period)
+            value, tag = self.extract_from_json(
+                canonical_key, json_data, sector, fiscal_year, fiscal_period
+            )
             if value is not None:
                 return (value, tag)
 
@@ -621,7 +664,11 @@ class CanonicalKeyMapper:
         if existing_values:
             derived_value = self.calculate_derived_value(canonical_key, existing_values)
             if derived_value is not None:
-                formula = self.mappings[canonical_key].get("derived", {}).get("formula", "unknown")
+                formula = (
+                    self.mappings[canonical_key]
+                    .get("derived", {})
+                    .get("formula", "unknown")
+                )
                 return (derived_value, f"derived:{formula}")
 
         return (None, None)
@@ -677,13 +724,19 @@ class CanonicalKeyMapper:
             if results[canonical_key][0] is None:  # Not extracted in Pass 1
                 derived_value = self.calculate_derived_value(canonical_key, values_dict)
                 if derived_value is not None:
-                    formula = self.mappings.get(canonical_key, {}).get("derived", {}).get("formula", "unknown")
+                    formula = (
+                        self.mappings.get(canonical_key, {})
+                        .get("derived", {})
+                        .get("formula", "unknown")
+                    )
                     results[canonical_key] = (derived_value, f"derived:{formula}")
                     values_dict[canonical_key] = derived_value
 
         return results
 
-    def is_metric_excluded(self, canonical_key: str, sector: Optional[str] = None) -> bool:
+    def is_metric_excluded(
+        self, canonical_key: str, sector: Optional[str] = None
+    ) -> bool:
         """
         Check if a metric should be excluded for a given sector
 
@@ -733,7 +786,9 @@ class CanonicalKeyMapper:
 
         return (True, reason, alternatives)
 
-    def get_sector_specific_metrics(self, sector: Optional[str] = None, industry: Optional[str] = None) -> List[str]:
+    def get_sector_specific_metrics(
+        self, sector: Optional[str] = None, industry: Optional[str] = None
+    ) -> List[str]:
         """
         Get sector/industry-specific metrics that should be included in analysis
 
@@ -757,7 +812,9 @@ class CanonicalKeyMapper:
         # Fall back to sector default
         return sector_metrics.get("_default", [])
 
-    def get_all_tags_for_extraction(self, canonical_keys: List[str], sector: Optional[str] = None) -> List[str]:
+    def get_all_tags_for_extraction(
+        self, canonical_keys: List[str], sector: Optional[str] = None
+    ) -> List[str]:
         """
         Get unique list of ALL tags needed for a set of canonical keys
 
@@ -783,7 +840,9 @@ class CanonicalKeyMapper:
         total = self.stats["extractions"] + self.stats["failures"]
         success_rate = (self.stats["extractions"] / total * 100) if total > 0 else 0
         fallback_rate = (
-            (self.stats["fallbacks_used"] / self.stats["extractions"] * 100) if self.stats["extractions"] > 0 else 0
+            (self.stats["fallbacks_used"] / self.stats["extractions"] * 100)
+            if self.stats["extractions"] > 0
+            else 0
         )
 
         return {

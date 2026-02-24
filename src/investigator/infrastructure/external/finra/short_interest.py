@@ -57,7 +57,9 @@ FINRA_SHORT_INTEREST_ENDPOINT = "/group/otcMarket/name/shortInterest"
 FINRA_SHORT_VOLUME_ENDPOINT = "/group/otcMarket/name/regShoDaily"
 
 # Alternative data sources
-NASDAQ_SHORT_INTEREST_URL = "https://www.nasdaq.com/market-activity/stocks/{symbol}/short-interest"
+NASDAQ_SHORT_INTEREST_URL = (
+    "https://www.nasdaq.com/market-activity/stocks/{symbol}/short-interest"
+)
 
 
 @dataclass
@@ -96,15 +98,21 @@ class ShortInterestData:
             "short_interest": self.short_interest,
             "avg_daily_volume": self.avg_daily_volume,
             "days_to_cover": round(self.days_to_cover, 2),
-            "short_percent_float": round(self.short_percent_float, 2) if self.short_percent_float else None,
+            "short_percent_float": round(self.short_percent_float, 2)
+            if self.short_percent_float
+            else None,
             "short_percent_outstanding": (
-                round(self.short_percent_outstanding, 2) if self.short_percent_outstanding else None
+                round(self.short_percent_outstanding, 2)
+                if self.short_percent_outstanding
+                else None
             ),
             "previous": (
                 {
                     "short_interest": self.previous_short_interest,
                     "change": self.change_from_previous,
-                    "change_percent": round(self.change_percent, 2) if self.change_percent else None,
+                    "change_percent": round(self.change_percent, 2)
+                    if self.change_percent
+                    else None,
                 }
                 if self.previous_short_interest
                 else None
@@ -245,7 +253,9 @@ class ShortInterestFetcher:
         try:
             from sqlalchemy import create_engine, text
 
-            engine = create_engine("postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database")
+            engine = create_engine(
+                "postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database"
+            )
 
             query = text("""
                 SELECT
@@ -320,7 +330,9 @@ class ShortInterestFetcher:
                 current = data[0]
                 previous = data[1] if len(data) > 1 else None
 
-                settlement_date = datetime.strptime(current.get("settlementDate", ""), "%Y-%m-%d").date()
+                settlement_date = datetime.strptime(
+                    current.get("settlementDate", ""), "%Y-%m-%d"
+                ).date()
 
                 short_interest = current.get("shortInterest", 0)
                 avg_volume = current.get("avgDailyShareVolume", 0)
@@ -328,7 +340,11 @@ class ShortInterestFetcher:
 
                 prev_short = previous.get("shortInterest") if previous else None
                 change = short_interest - prev_short if prev_short else None
-                change_pct = (change / prev_short * 100) if prev_short and prev_short > 0 else None
+                change_pct = (
+                    (change / prev_short * 100)
+                    if prev_short and prev_short > 0
+                    else None
+                )
 
                 return ShortInterestData(
                     symbol=symbol,
@@ -377,7 +393,9 @@ class ShortInterestFetcher:
 
         return None  # Return None if no real data available
 
-    async def get_short_interest_history(self, symbol: str, periods: int = 12) -> List[ShortInterestData]:
+    async def get_short_interest_history(
+        self, symbol: str, periods: int = 12
+    ) -> List[ShortInterestData]:
         """Get historical short interest data.
 
         Args:
@@ -392,7 +410,9 @@ class ShortInterestFetcher:
         try:
             from sqlalchemy import create_engine, text
 
-            engine = create_engine("postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database")
+            engine = create_engine(
+                "postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database"
+            )
 
             query = text("""
                 SELECT
@@ -409,7 +429,9 @@ class ShortInterestFetcher:
             """)
 
             with engine.connect() as conn:
-                results = conn.execute(query, {"symbol": symbol, "periods": periods}).fetchall()
+                results = conn.execute(
+                    query, {"symbol": symbol, "periods": periods}
+                ).fetchall()
 
                 history = []
                 prev_short = None
@@ -443,7 +465,9 @@ class ShortInterestFetcher:
             logger.error(f"Error getting short interest history: {e}")
             return []
 
-    async def get_short_volume(self, symbol: str, days: int = 30) -> List[ShortVolumeData]:
+    async def get_short_volume(
+        self, symbol: str, days: int = 30
+    ) -> List[ShortVolumeData]:
         """Get daily short volume data.
 
         Args:
@@ -458,7 +482,9 @@ class ShortInterestFetcher:
         try:
             from sqlalchemy import create_engine, text
 
-            engine = create_engine("postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database")
+            engine = create_engine(
+                "postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database"
+            )
 
             query = text("""
                 SELECT
@@ -474,7 +500,9 @@ class ShortInterestFetcher:
             """)
 
             with engine.connect() as conn:
-                results = conn.execute(query, {"symbol": symbol, "days": days}).fetchall()
+                results = conn.execute(
+                    query, {"symbol": symbol, "days": days}
+                ).fetchall()
 
                 return [
                     ShortVolumeData(
@@ -483,7 +511,9 @@ class ShortInterestFetcher:
                         short_volume=row[2] or 0,
                         short_exempt_volume=row[3] or 0,
                         total_volume=row[4] or 0,
-                        short_percent=(row[2] / row[4] * 100) if row[4] and row[4] > 0 else 0.0,
+                        short_percent=(row[2] / row[4] * 100)
+                        if row[4] and row[4] > 0
+                        else 0.0,
                     )
                     for row in results
                 ]
@@ -566,21 +596,31 @@ class ShortInterestFetcher:
 
         # Factor 3: Short interest trend (0-25 points)
         if len(history) >= 3:
-            changes = [h.change_percent for h in history[-3:] if h.change_percent is not None]
+            changes = [
+                h.change_percent for h in history[-3:] if h.change_percent is not None
+            ]
             if changes:
                 avg_change = sum(changes) / len(changes)
                 if avg_change > 20:
                     score += 25
-                    factors.append(f"Rapidly increasing short interest (+{avg_change:.1f}% avg)")
+                    factors.append(
+                        f"Rapidly increasing short interest (+{avg_change:.1f}% avg)"
+                    )
                 elif avg_change > 10:
                     score += 18
-                    factors.append(f"Increasing short interest (+{avg_change:.1f}% avg)")
+                    factors.append(
+                        f"Increasing short interest (+{avg_change:.1f}% avg)"
+                    )
                 elif avg_change > 5:
                     score += 10
-                    factors.append(f"Slightly increasing short interest (+{avg_change:.1f}% avg)")
+                    factors.append(
+                        f"Slightly increasing short interest (+{avg_change:.1f}% avg)"
+                    )
                 elif avg_change < -10:
                     score -= 10
-                    factors.append(f"Short covering in progress ({avg_change:.1f}% avg)")
+                    factors.append(
+                        f"Short covering in progress ({avg_change:.1f}% avg)"
+                    )
                 elif avg_change < -5:
                     score -= 5
                     factors.append(f"Slight short covering ({avg_change:.1f}% avg)")
@@ -589,13 +629,17 @@ class ShortInterestFetcher:
         if current.change_percent:
             if current.change_percent > 30:
                 score += 20
-                factors.append(f"Massive short increase: +{current.change_percent:.1f}%")
+                factors.append(
+                    f"Massive short increase: +{current.change_percent:.1f}%"
+                )
             elif current.change_percent > 20:
                 score += 15
                 factors.append(f"Large short increase: +{current.change_percent:.1f}%")
             elif current.change_percent > 10:
                 score += 10
-                factors.append(f"Notable short increase: +{current.change_percent:.1f}%")
+                factors.append(
+                    f"Notable short increase: +{current.change_percent:.1f}%"
+                )
 
         # Determine risk level
         score = max(0, min(100, score))  # Clamp to 0-100
@@ -652,7 +696,9 @@ class ShortInterestFetcher:
         try:
             from sqlalchemy import create_engine, text
 
-            engine = create_engine("postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database")
+            engine = create_engine(
+                "postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database"
+            )
 
             query = text("""
                 SELECT DISTINCT ON (symbol)
@@ -670,7 +716,9 @@ class ShortInterestFetcher:
                 results = conn.execute(query).fetchall()
 
                 # Sort by short percent of float descending
-                sorted_results = sorted(results, key=lambda x: x[4] if x[4] else 0, reverse=True)[:limit]
+                sorted_results = sorted(
+                    results, key=lambda x: x[4] if x[4] else 0, reverse=True
+                )[:limit]
 
                 return [
                     {

@@ -201,7 +201,9 @@ class ClusterActivity:
             "period": {
                 "start_date": str(self.start_date) if self.start_date else None,
                 "end_date": str(self.end_date) if self.end_date else None,
-                "days": (self.end_date - self.start_date).days + 1 if self.start_date and self.end_date else 0,
+                "days": (self.end_date - self.start_date).days + 1
+                if self.start_date and self.end_date
+                else 0,
             },
             "activity": {
                 "insider_count": self.insider_count,
@@ -259,10 +261,14 @@ class InsiderActivityService:
 
             # Get aggregated sentiment data from DAO
             loop = asyncio.get_event_loop()
-            raw_sentiment = await loop.run_in_executor(None, dao.get_insider_sentiment, symbol, days)
+            raw_sentiment = await loop.run_in_executor(
+                None, dao.get_insider_sentiment, symbol, days
+            )
 
             # Get key insider transactions
-            key_transactions = await loop.run_in_executor(None, dao.get_key_insider_transactions, symbol, days)
+            key_transactions = await loop.run_in_executor(
+                None, dao.get_key_insider_transactions, symbol, days
+            )
 
             # Build sentiment result
             sentiment = InsiderSentiment(
@@ -302,17 +308,23 @@ class InsiderActivityService:
                     sentiment.cluster_type = ClusterType.MIXED_CLUSTER
 
             # Calculate confidence score
-            sentiment.confidence = self._calculate_confidence(sentiment, key_transactions)
+            sentiment.confidence = self._calculate_confidence(
+                sentiment, key_transactions
+            )
 
             return sentiment
 
         except Exception as e:
             logger.error(f"Error analyzing sentiment for {symbol}: {e}")
-            sentiment = InsiderSentiment(symbol=symbol.upper(), analysis_period_days=days)
+            sentiment = InsiderSentiment(
+                symbol=symbol.upper(), analysis_period_days=days
+            )
             sentiment.warnings.append(f"Analysis error: {str(e)}")
             return sentiment
 
-    def _calculate_confidence(self, sentiment: InsiderSentiment, key_transactions: List[Dict]) -> float:
+    def _calculate_confidence(
+        self, sentiment: InsiderSentiment, key_transactions: List[Dict]
+    ) -> float:
         """Calculate confidence score for sentiment signal.
 
         Confidence is based on:
@@ -370,7 +382,9 @@ class InsiderActivityService:
 
         return min(confidence, 1.0)
 
-    async def detect_cluster_activity(self, symbol: str, days: int = 30, window_days: int = 7) -> List[ClusterActivity]:
+    async def detect_cluster_activity(
+        self, symbol: str, days: int = 30, window_days: int = 7
+    ) -> List[ClusterActivity]:
         """Detect clusters of coordinated insider activity.
 
         A cluster is defined as multiple insiders transacting
@@ -407,12 +421,16 @@ class InsiderActivityService:
             sells = [f for f in filings if f.get("transaction_code") == "S"]
 
             # Detect buying clusters
-            buy_cluster = self._find_cluster(symbol, buys, window_days, ClusterType.BUYING_CLUSTER)
+            buy_cluster = self._find_cluster(
+                symbol, buys, window_days, ClusterType.BUYING_CLUSTER
+            )
             if buy_cluster:
                 clusters.append(buy_cluster)
 
             # Detect selling clusters
-            sell_cluster = self._find_cluster(symbol, sells, window_days, ClusterType.SELLING_CLUSTER)
+            sell_cluster = self._find_cluster(
+                symbol, sells, window_days, ClusterType.SELLING_CLUSTER
+            )
             if sell_cluster:
                 clusters.append(sell_cluster)
 
@@ -466,23 +484,29 @@ class InsiderActivityService:
             window_filings = [
                 f
                 for f in sorted_filings
-                if f.get("filing_date") and start_date_str <= f.get("filing_date") <= str(end_date)
+                if f.get("filing_date")
+                and start_date_str <= f.get("filing_date") <= str(end_date)
             ]
 
             # Get unique insiders in window
-            insiders = set(f.get("owner_name") for f in window_filings if f.get("owner_name"))
+            insiders = set(
+                f.get("owner_name") for f in window_filings if f.get("owner_name")
+            )
 
             if len(insiders) >= self.CLUSTER_MIN_INSIDERS:
                 total_value = sum(abs(f.get("total_value", 0)) for f in window_filings)
 
                 if len(insiders) > best_count or (
-                    len(insiders) == best_count and total_value > (best_cluster.total_value if best_cluster else 0)
+                    len(insiders) == best_count
+                    and total_value > (best_cluster.total_value if best_cluster else 0)
                 ):
                     best_count = len(insiders)
 
                     # Find actual end date
                     actual_end = max(
-                        date.fromisoformat(f.get("filing_date")) for f in window_filings if f.get("filing_date")
+                        date.fromisoformat(f.get("filing_date"))
+                        for f in window_filings
+                        if f.get("filing_date")
                     )
 
                     best_cluster = ClusterActivity(
@@ -499,7 +523,9 @@ class InsiderActivityService:
 
         return best_cluster
 
-    async def get_key_insider_summary(self, symbol: str, days: int = 180) -> Dict[str, Any]:
+    async def get_key_insider_summary(
+        self, symbol: str, days: int = 180
+    ) -> Dict[str, Any]:
         """Get summary of key insider (C-suite, directors) activity.
 
         Args:
@@ -513,7 +539,9 @@ class InsiderActivityService:
             dao = self._get_dao()
 
             loop = asyncio.get_event_loop()
-            transactions = await loop.run_in_executor(None, dao.get_key_insider_transactions, symbol, days)
+            transactions = await loop.run_in_executor(
+                None, dao.get_key_insider_transactions, symbol, days
+            )
 
             if not transactions:
                 return {
@@ -556,7 +584,11 @@ class InsiderActivityService:
                 "key_insiders": sorted_insiders,
                 "total_transactions": len(transactions),
                 "net_value": total_net,
-                "direction": "buying" if total_net > 0 else "selling" if total_net < 0 else "neutral",
+                "direction": "buying"
+                if total_net > 0
+                else "selling"
+                if total_net < 0
+                else "neutral",
             }
 
         except Exception as e:

@@ -10,7 +10,9 @@ These columns are needed for sector multiples historical calculation:
 """
 
 import logging
+
 from sqlalchemy import text
+
 from investigator.infrastructure.database.db import get_db_manager
 
 logger = logging.getLogger(__name__)

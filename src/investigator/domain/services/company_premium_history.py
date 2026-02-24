@@ -19,10 +19,10 @@ to identify mean reversion opportunities and consistent premium/discount pattern
 """
 
 import logging
+import statistics
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-import statistics
 from sqlalchemy import create_engine, text
 
 from investigator.config import get_config
@@ -641,11 +641,11 @@ class CompanyPremiumHistory:
                         industry=premium_data.get("industry"),
                         fiscal_year=premium_data["fiscal_year"],
                         fiscal_period=premium_data["fiscal_period"],
-                        snapshot_date=datetime.fromisoformat(
-                            premium_data["snapshot_date"]
-                        )
-                        if premium_data.get("snapshot_date")
-                        else datetime.utcnow(),
+                        snapshot_date=(
+                            datetime.fromisoformat(premium_data["snapshot_date"])
+                            if premium_data.get("snapshot_date")
+                            else datetime.utcnow()
+                        ),
                     )
 
                     # Set all premium fields

@@ -66,7 +66,9 @@ async def test_async_cache_concurrent_writes(cache_manager):
         cache_manager.set_async(
             CacheType.LLM_RESPONSE,
             {"symbol": f"TEST{i}", "llm_type": "test"},
-            {"response": {"data": f"value_{i}" * 1000}},  # Proper structure with response key
+            {
+                "response": {"data": f"value_{i}" * 1000}
+            },  # Proper structure with response key
         )
         for i in range(10)
     ]
@@ -100,7 +102,10 @@ async def test_async_cache_concurrent_reads(cache_manager):
 
     # Concurrent cache reads
     tasks = [
-        cache_manager.get_async(CacheType.LLM_RESPONSE, {"symbol": f"TEST{i}", "llm_type": "test"}) for i in range(10)
+        cache_manager.get_async(
+            CacheType.LLM_RESPONSE, {"symbol": f"TEST{i}", "llm_type": "test"}
+        )
+        for i in range(10)
     ]
 
     results = await asyncio.gather(*tasks)
@@ -137,7 +142,11 @@ async def test_async_cache_mixed_operations(cache_manager):
 
     # 5 reads of existing data
     for i in range(5):
-        tasks.append(cache_manager.get_async(CacheType.LLM_RESPONSE, {"symbol": f"EXISTING{i}", "llm_type": "test"}))
+        tasks.append(
+            cache_manager.get_async(
+                CacheType.LLM_RESPONSE, {"symbol": f"EXISTING{i}", "llm_type": "test"}
+            )
+        )
 
     # 5 writes of new data with proper structure
     for i in range(5):
@@ -190,7 +199,9 @@ async def test_async_cache_doesnt_block_event_loop(cache_manager):
             await cache_manager.set_async(
                 CacheType.LLM_RESPONSE,
                 {"symbol": f"HEAVY{i}", "llm_type": "test"},
-                {"response": {"data": "x" * 10000, "analysis": "heavy"}},  # Large payload with proper structure
+                {
+                    "response": {"data": "x" * 10000, "analysis": "heavy"}
+                },  # Large payload with proper structure
             )
 
     # Run both concurrently - heartbeat should not be starved
@@ -198,7 +209,9 @@ async def test_async_cache_doesnt_block_event_loop(cache_manager):
 
     # Verify event loop was not blocked
     assert not event_loop_blocked, "Event loop was blocked during cache I/O"
-    assert heartbeat_count >= 15, f"Heartbeat starved (count={heartbeat_count}, expected ≥15)"
+    assert heartbeat_count >= 15, (
+        f"Heartbeat starved (count={heartbeat_count}, expected ≥15)"
+    )
     print(f"✅ Event loop remained responsive (heartbeat_count={heartbeat_count}/20)")
 
 
@@ -236,7 +249,9 @@ async def test_backward_compatibility_sync_methods(cache_manager):
     assert success, "Sync write should succeed"
 
     # Sync read
-    result = cache_manager.get(CacheType.LLM_RESPONSE, {"symbol": "SYNC_TEST", "llm_type": "test"})
+    result = cache_manager.get(
+        CacheType.LLM_RESPONSE, {"symbol": "SYNC_TEST", "llm_type": "test"}
+    )
     assert result is not None, "Sync read should return data"
     assert result["response"]["data"] == "sync_value"
 

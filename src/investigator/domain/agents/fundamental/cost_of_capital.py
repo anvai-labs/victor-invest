@@ -24,7 +24,10 @@ def hydrate_cost_of_capital_inputs(
 
     if getattr(profile, "beta", None) is None:
         fallback_beta = (
-            ratios.get("beta") or market_data.get("beta") or company_data.get("beta") or stock_info.get("beta")
+            ratios.get("beta")
+            or market_data.get("beta")
+            or company_data.get("beta")
+            or stock_info.get("beta")
         )
         try:
             if fallback_beta is not None:
@@ -44,7 +47,9 @@ def hydrate_cost_of_capital_inputs(
             profile.total_debt = total_debt
 
     if getattr(profile, "interest_coverage", None) is None:
-        coverage = ratios.get("interest_coverage") or company_data.get("interest_coverage")
+        coverage = ratios.get("interest_coverage") or company_data.get(
+            "interest_coverage"
+        )
         if coverage is not None:
             profile.interest_coverage = coverage
 

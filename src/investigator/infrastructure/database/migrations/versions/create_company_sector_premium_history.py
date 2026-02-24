@@ -141,6 +141,7 @@ class CompanySectorPremiumHistory(Base):
 def upgrade():
     """Create the company_sector_premium_history table."""
     from sqlalchemy import create_engine
+
     from investigator.config import get_config
 
     config = get_config()
@@ -161,34 +162,28 @@ def upgrade():
     with engine.connect() as conn:
         # Composite index for symbol+period lookups
         conn.execute(
-            text(
-                """
+            text("""
             CREATE INDEX IF NOT EXISTS ix_company_premium_symbol_period
             ON company_sector_premium_history(symbol, fiscal_year, fiscal_period)
-        """
-            )
+        """)
         )
 
         # Index for sector-level queries
         conn.execute(
-            text(
-                """
+            text("""
             CREATE INDEX IF NOT EXISTS ix_company_premium_sector_period
             ON company_sector_premium_history(sector, fiscal_year, fiscal_period)
-        """
-            )
+        """)
         )
 
         # Index for premium/discount analysis (PostgreSQL doesn't support partial indexes with IF NOT EXISTS in all versions)
         try:
             conn.execute(
-                text(
-                    """
+                text("""
                 CREATE INDEX ix_company_premium_pe_pct
                 ON company_sector_premium_history(pe_premium_pct)
                 WHERE pe_premium_pct IS NOT NULL
-            """
-                )
+            """)
             )
         except Exception:
             # Index might already exist
@@ -200,6 +195,7 @@ def upgrade():
 def downgrade():
     """Drop the company_sector_premium_history table."""
     from sqlalchemy import create_engine
+
     from investigator.config import get_config
 
     config = get_config()

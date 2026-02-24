@@ -477,14 +477,16 @@ class ValuationOutcomesDAO:
                         "reward_548d": reward_548d,
                         "reward_730d": reward_730d,
                         "reward_1095d": reward_1095d,
-                        "multi_period_rewards": safe_json_dumps(
-                            multi_period_rewards_clean
-                        )
-                        if multi_period_rewards_clean
-                        else None,
-                        "per_model_rewards": safe_json_dumps(per_model_rewards_clean)
-                        if per_model_rewards_clean
-                        else None,
+                        "multi_period_rewards": (
+                            safe_json_dumps(multi_period_rewards_clean)
+                            if multi_period_rewards_clean
+                            else None
+                        ),
+                        "per_model_rewards": (
+                            safe_json_dumps(per_model_rewards_clean)
+                            if per_model_rewards_clean
+                            else None
+                        ),
                         "ab_test_group": ab_test_group,
                         "policy_version": policy_version,
                         "position_type": position_type,

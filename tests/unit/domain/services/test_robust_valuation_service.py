@@ -21,19 +21,20 @@ Tests the comprehensive robust valuation combining all 3 layers:
 - Synthesis and recommendation logic
 """
 
-import pytest
-from unittest.mock import MagicMock, patch
 from datetime import datetime, timezone
+from unittest.mock import MagicMock, patch
 
-from investigator.domain.services.robust_valuation_service import (
-    RobustValuationService,
-    RobustValuationResult,
-)
+import pytest
+
 from investigator.domain.services.company_fair_multiple_calculator import (
     FairMultipleResult,
 )
 from investigator.domain.services.cross_sectional_valuation import (
     PeerComparisonResult,
+)
+from investigator.domain.services.robust_valuation_service import (
+    RobustValuationResult,
+    RobustValuationService,
 )
 
 

@@ -12,4 +12,7 @@ def test_ci_pipeline_has_performance_benchmark_gate():
 
 def test_build_job_depends_on_performance_benchmark_gate():
     ci_yaml = Path(".github/workflows/ci-cd.yml").read_text(encoding="utf-8")
-    assert "needs: [test, security, victor-compat, performance-benchmark, frontend]" in ci_yaml
+    assert (
+        "needs: [test, security, victor-compat, performance-benchmark, frontend]"
+        in ci_yaml
+    )

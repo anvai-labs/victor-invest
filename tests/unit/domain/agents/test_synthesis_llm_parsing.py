@@ -75,7 +75,10 @@ def test_parse_llm_response_repairs_malformed_json():
 
     agent = _build_agent_stub()
 
-    malformed = '{"final_recommendation":"buy","key_reasons_for_recommendation":' '["line one\nline two"],}'
+    malformed = (
+        '{"final_recommendation":"buy","key_reasons_for_recommendation":'
+        '["line one\nline two"],}'
+    )
     wrapped = {"response": malformed, "model_info": {}, "metadata": {}}
 
     parsed = agent._parse_llm_response(wrapped)
@@ -118,7 +121,9 @@ async def test_deterministic_scenario_generation_bypasses_llm():
     agent = _configure_deterministic(_build_agent_stub())
     synthesis_input = SynthesisInput(
         symbol="TST",
-        fundamental_analysis={"valuation": {"current_price": 100.0, "fair_value": 120.0}},
+        fundamental_analysis={
+            "valuation": {"current_price": 100.0, "fair_value": 120.0}
+        },
         technical_analysis={},
     )
 
@@ -211,14 +216,19 @@ async def test_deterministic_action_plan_generation_uses_technical_levels():
     )
 
     assert result["model_info"]["model"] == "deterministic-action_plan"
-    assert result["response"]["entry_strategy"]["ideal_entry_price_range"] == [95.0, 100.0]
+    assert result["response"]["entry_strategy"]["ideal_entry_price_range"] == [
+        95.0,
+        100.0,
+    ]
 
 
 @pytest.mark.asyncio
 async def test_deterministic_report_generation_bypasses_llm():
     agent = _configure_deterministic(_build_agent_stub())
 
-    result = await agent._create_synthesis_report({"symbol": "TST", "recommendation": {"final_recommendation": "hold"}})
+    result = await agent._create_synthesis_report(
+        {"symbol": "TST", "recommendation": {"final_recommendation": "hold"}}
+    )
 
     assert result["model_info"]["model"] == "deterministic-synthesis_report"
     assert result["response"]["report_mode"] == "deterministic"

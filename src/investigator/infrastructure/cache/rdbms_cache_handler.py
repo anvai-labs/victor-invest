@@ -74,7 +74,9 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
             # MARKET_CONTEXT not stored in RDBMS - better suited for file/parquet cache
             # Market-wide data doesn't benefit from relational storage
             self.dao = None
-            logger.debug("MARKET_CONTEXT cache type initialized (RDBMS storage disabled)")
+            logger.debug(
+                "MARKET_CONTEXT cache type initialized (RDBMS storage disabled)"
+            )
         else:
             raise ValueError(f"Unsupported cache type for RDBMS: {cache_type}")
 
@@ -92,7 +94,9 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
 
             if self.cache_type == CacheType.SEC_RESPONSE:
                 symbol = key_dict.get("symbol")
-                form_type = key_dict.get("form_type") or key_dict.get("filing_type") or "10-K"
+                form_type = (
+                    key_dict.get("form_type") or key_dict.get("filing_type") or "10-K"
+                )
                 category = key_dict.get("category") or "filing"
                 period_key = key_dict.get("period")
 
@@ -104,10 +108,14 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
                     if period_key:
                         fiscal_year, fiscal_period = self._parse_period_key(period_key)
                         if fiscal_year is not None and fiscal_period is not None:
-                            result = self.dao.get_response(symbol, form_type, fiscal_year, fiscal_period, category)
+                            result = self.dao.get_response(
+                                symbol, form_type, fiscal_year, fiscal_period, category
+                            )
 
                     if result is None:
-                        result = self.dao.get_latest_response(symbol, form_type, category)
+                        result = self.dao.get_latest_response(
+                            symbol, form_type, category
+                        )
 
                     if result:
                         payload = result.get("response_data", {}) or {}
@@ -122,7 +130,9 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
                 period = key_dict.get("period", "N/A")
 
                 if symbol and llm_type:
-                    result = self.dao.get_llm_response(symbol, form_type, period, llm_type)
+                    result = self.dao.get_llm_response(
+                        symbol, form_type, period, llm_type
+                    )
                     if result:
                         logger.debug(f"Cache hit (RDBMS): LLM response for {symbol}")
                         return result
@@ -244,12 +254,17 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
             if self.cache_type == CacheType.SEC_RESPONSE:
                 symbol = key_dict.get("symbol") or value.get("symbol")
                 form_type = (
-                    key_dict.get("form_type") or key_dict.get("filing_type") or value.get("filing_type") or "10-K"
+                    key_dict.get("form_type")
+                    or key_dict.get("filing_type")
+                    or value.get("filing_type")
+                    or "10-K"
                 )
                 category = key_dict.get("category") or "filing"
                 period_key = key_dict.get("period")
 
-                fiscal_year, fiscal_period = self._derive_fiscal_period(form_type, period_key, value)
+                fiscal_year, fiscal_period = self._derive_fiscal_period(
+                    form_type, period_key, value
+                )
 
                 if not (symbol and fiscal_year and fiscal_period):
                     logger.debug(
@@ -376,7 +391,9 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
                         if lookup_cik:
                             cik = f"{int(lookup_cik):010d}"
                         else:
-                            logger.warning(f"Could not resolve CIK for {symbol}, skipping RDBMS storage")
+                            logger.warning(
+                                f"Could not resolve CIK for {symbol}, skipping RDBMS storage"
+                            )
                             return False
 
                     company_name = companyfacts.get("entityName", "")
@@ -390,7 +407,9 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
                     )
 
                     if success:
-                        logger.debug(f"Stored company facts for {symbol} with CIK {cik}")
+                        logger.debug(
+                            f"Stored company facts for {symbol} with CIK {cik}"
+                        )
                     return success
 
             elif self.cache_type == CacheType.QUARTERLY_METRICS:
@@ -438,7 +457,9 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
             logger.error(f"Error writing to RDBMS cache: {e}")
             return False
 
-    def _parse_period_key(self, period_key: Optional[str]) -> Tuple[Optional[int], Optional[str]]:
+    def _parse_period_key(
+        self, period_key: Optional[str]
+    ) -> Tuple[Optional[int], Optional[str]]:
         """Parse canonical period strings like '2024-Q1' or '2023-FY'."""
         if not period_key:
             return None, None
@@ -550,7 +571,9 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
 
             else:
                 # For other cache types that don't need deletion
-                logger.debug(f"Delete operation not needed for cache type: {self.cache_type}")
+                logger.debug(
+                    f"Delete operation not needed for cache type: {self.cache_type}"
+                )
                 return False
 
         except Exception as e:
@@ -576,7 +599,9 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
             # DAO methods already log the deletion, so we don't log again here
             if self.cache_type == CacheType.LLM_RESPONSE and self.dao:
                 # Delete all LLM responses for this symbol across all form types
-                deleted_count = self.dao.delete_llm_responses_by_pattern(symbol_pattern=symbol, form_type_pattern="%")
+                deleted_count = self.dao.delete_llm_responses_by_pattern(
+                    symbol_pattern=symbol, form_type_pattern="%"
+                )
 
             elif self.cache_type == CacheType.SUBMISSION_DATA:
                 # Delete submission data for this symbol
@@ -600,7 +625,9 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
 
             elif self.cache_type == CacheType.QUARTERLY_METRICS:
                 # DEPRECATED: quarterly_metrics table - use sec_companyfacts_processed instead
-                logger.info("Symbol cleanup [RDBMS-QM]: DEPRECATED - skipping (use sec_companyfacts_processed cleanup)")
+                logger.info(
+                    "Symbol cleanup [RDBMS-QM]: DEPRECATED - skipping (use sec_companyfacts_processed cleanup)"
+                )
                 # # Delete quarterly metrics for this symbol
                 # from investigator.infrastructure.database.db import get_quarterly_metrics_dao
                 #
@@ -612,7 +639,9 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
                 #     )
 
             else:
-                logger.debug(f"Symbol deletion not implemented for cache type: {self.cache_type}")
+                logger.debug(
+                    f"Symbol deletion not implemented for cache type: {self.cache_type}"
+                )
                 return 0
 
             return deleted_count
@@ -634,7 +663,9 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
                 )
                 return deleted_count
             else:
-                logger.warning(f"Delete by pattern operation not implemented for cache type: {self.cache_type}")
+                logger.warning(
+                    f"Delete by pattern operation not implemented for cache type: {self.cache_type}"
+                )
                 return 0
 
         except Exception as e:
@@ -647,11 +678,15 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
             # Use DAO methods for deletion based on cache type
             if self.cache_type == CacheType.LLM_RESPONSE and self.dao:
                 # Delete all LLM responses using wildcard pattern
-                deleted_count = self.dao.delete_llm_responses_by_pattern(symbol_pattern="%", form_type_pattern="%")
+                deleted_count = self.dao.delete_llm_responses_by_pattern(
+                    symbol_pattern="%", form_type_pattern="%"
+                )
                 logger.info(f"Cleared all RDBMS cache data ({deleted_count} entries)")
                 return True
             else:
-                logger.warning(f"Clear all operation not implemented for cache type: {self.cache_type}")
+                logger.warning(
+                    f"Clear all operation not implemented for cache type: {self.cache_type}"
+                )
                 return False
 
         except Exception as e:

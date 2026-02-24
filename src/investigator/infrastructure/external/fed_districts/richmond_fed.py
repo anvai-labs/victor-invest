@@ -145,7 +145,9 @@ class RichmondFedClient:
             logger.warning(f"Failed to fetch Richmond services survey: {e}")
             return None
 
-    def _parse_survey_excel(self, content: bytes, survey_type: str) -> Optional[FifthDistrictSurvey]:
+    def _parse_survey_excel(
+        self, content: bytes, survey_type: str
+    ) -> Optional[FifthDistrictSurvey]:
         try:
             import io
 

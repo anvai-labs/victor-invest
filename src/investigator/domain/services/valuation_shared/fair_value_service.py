@@ -272,7 +272,9 @@ class FairValueService:
             dividends = abs(cash_flow.get("dividends_paid", 0) or 0)
 
             equity = balance.get("stockholders_equity", 0) or 0
-            total_debt = (balance.get("long_term_debt", 0) or 0) + (balance.get("short_term_debt", 0) or 0)
+            total_debt = (balance.get("long_term_debt", 0) or 0) + (
+                balance.get("short_term_debt", 0) or 0
+            )
             cash = balance.get("cash_and_equivalents", 0) or 0
         else:
             revenue = financials.get("total_revenue", 0) or 0
@@ -280,12 +282,16 @@ class FairValueService:
             ebitda = financials.get("ebitda", 0) or 0
             dividends = abs(financials.get("dividends_paid", 0) or 0)
             equity = financials.get("stockholders_equity", 0) or 0
-            total_debt = (financials.get("long_term_debt", 0) or 0) + (financials.get("short_term_debt", 0) or 0)
+            total_debt = (financials.get("long_term_debt", 0) or 0) + (
+                financials.get("short_term_debt", 0) or 0
+            )
             cash = financials.get("cash_and_equivalents", 0) or 0
 
         # Per-share metrics
         eps = ratios.get("ttm_eps") or (net_income / shares if shares > 0 else 0)
-        bvps = ratios.get("book_value_per_share") or (equity / shares if shares > 0 else 0)
+        bvps = ratios.get("book_value_per_share") or (
+            equity / shares if shares > 0 else 0
+        )
         revenue_per_share = revenue / shares if shares > 0 else 0
         dps = dividends / shares if shares > 0 else 0
 
@@ -293,7 +299,9 @@ class FairValueService:
         fair_values["pe"] = self.calculate_pe_fair_value(eps, sector, industry)
 
         # P/S Fair Value
-        fair_values["ps"] = self.calculate_ps_fair_value(revenue_per_share, sector, industry)
+        fair_values["ps"] = self.calculate_ps_fair_value(
+            revenue_per_share, sector, industry
+        )
 
         # P/B Fair Value
         fair_values["pb"] = self.calculate_pb_fair_value(bvps, sector, industry)
@@ -342,16 +350,26 @@ class FairValueService:
         # Tier-aware upside caps (growth stocks get more leeway)
         if tier:
             tier_lower = tier.lower()
-            if any(t in tier_lower for t in ["high_growth", "pre_profit", "early_stage"]):
-                max_upside_multiple = max(max_upside_multiple, 5.0)  # 400% max for growth
-            elif any(t in tier_lower for t in ["mature", "dividend", "stable", "balanced"]):
-                max_upside_multiple = min(max_upside_multiple, 3.0)  # 200% max for mature
+            if any(
+                t in tier_lower for t in ["high_growth", "pre_profit", "early_stage"]
+            ):
+                max_upside_multiple = max(
+                    max_upside_multiple, 5.0
+                )  # 400% max for growth
+            elif any(
+                t in tier_lower for t in ["mature", "dividend", "stable", "balanced"]
+            ):
+                max_upside_multiple = min(
+                    max_upside_multiple, 3.0
+                )  # 200% max for mature
 
         # Special handling for PS model on low-margin businesses
         # If PS fair value is >10x other models, it's likely a low-margin business
         # where P/S is not a meaningful metric (e.g., managed care, retail)
         ps_fv = fair_values.get("ps")
-        other_fvs = [v for k, v in fair_values.items() if k != "ps" and v is not None and v > 0]
+        other_fvs = [
+            v for k, v in fair_values.items() if k != "ps" and v is not None and v > 0
+        ]
         if ps_fv and other_fvs:
             median_other = sorted(other_fvs)[len(other_fvs) // 2]
             if ps_fv > median_other * 5:  # PS is 5x more than median of other models
@@ -417,7 +435,11 @@ class FairValueService:
             "blended_fair_value": blended,
             "total_weight": total_weight,
             "models_used": models_used,
-            "models_skipped": [m for m in weights if fair_values.get(m) is None or fair_values.get(m) <= 0],
+            "models_skipped": [
+                m
+                for m in weights
+                if fair_values.get(m) is None or fair_values.get(m) <= 0
+            ],
             "models_capped": models_capped,
         }
 

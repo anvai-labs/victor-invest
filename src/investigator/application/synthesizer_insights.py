@@ -59,7 +59,9 @@ def extract_decision_process(thinking_content: str) -> Dict[str, Any]:
         return {}
 
     return {
-        "has_structured_approach": bool(re.search(r"first|then|next|finally", thinking_content, re.IGNORECASE)),
+        "has_structured_approach": bool(
+            re.search(r"first|then|next|finally", thinking_content, re.IGNORECASE)
+        ),
         "considers_alternatives": bool(
             re.search(
                 r"but|however|alternatively|on the other hand",
@@ -67,11 +69,19 @@ def extract_decision_process(thinking_content: str) -> Dict[str, Any]:
                 re.IGNORECASE,
             )
         ),
-        "weighs_factors": bool(re.search(r"weight|balance|consider|factor", thinking_content, re.IGNORECASE)),
-        "mentions_uncertainty": bool(
-            re.search(r"uncertain|unclear|maybe|might|could", thinking_content, re.IGNORECASE)
+        "weighs_factors": bool(
+            re.search(
+                r"weight|balance|consider|factor", thinking_content, re.IGNORECASE
+            )
         ),
-        "shows_confidence": bool(re.search(r"confident|certain|sure|clear", thinking_content, re.IGNORECASE)),
+        "mentions_uncertainty": bool(
+            re.search(
+                r"uncertain|unclear|maybe|might|could", thinking_content, re.IGNORECASE
+            )
+        ),
+        "shows_confidence": bool(
+            re.search(r"confident|certain|sure|clear", thinking_content, re.IGNORECASE)
+        ),
     }
 
 
@@ -115,7 +125,9 @@ def extract_numerical_insights(content: str) -> List[Dict[str, Any]]:
     for pattern, num_type in patterns:
         matches = re.findall(pattern, content)
         for match in matches:
-            numbers.append({"type": num_type, "value": match, "context": "content_extraction"})
+            numbers.append(
+                {"type": num_type, "value": match, "context": "content_extraction"}
+            )
 
     return numbers[:10]
 
@@ -147,7 +159,9 @@ def analyze_field_completeness(ai_recommendation: Dict[str, Any]) -> Dict[str, A
         else:
             completeness["missing_fields"].append(field)
 
-    completeness["completeness_ratio"] = len(completeness["present_fields"]) / len(standard_fields)
+    completeness["completeness_ratio"] = len(completeness["present_fields"]) / len(
+        standard_fields
+    )
     return completeness
 
 
@@ -182,10 +196,16 @@ def recommend_report_sections(
     if additional_details and len(additional_details) > 100:
         sections.append("additional_insights")
 
-    if ai_recommendation.get("key_catalysts") and len(ai_recommendation["key_catalysts"]) > 2:
+    if (
+        ai_recommendation.get("key_catalysts")
+        and len(ai_recommendation["key_catalysts"]) > 2
+    ):
         sections.append("catalyst_analysis")
 
-    if ai_recommendation.get("downside_risks") and len(ai_recommendation["downside_risks"]) > 2:
+    if (
+        ai_recommendation.get("downside_risks")
+        and len(ai_recommendation["downside_risks"]) > 2
+    ):
         sections.append("risk_assessment")
 
     if ai_recommendation.get("processing_metadata"):
@@ -194,7 +214,9 @@ def recommend_report_sections(
     return sections
 
 
-def extract_priority_insights(thinking_content: str, additional_details: str) -> List[str]:
+def extract_priority_insights(
+    thinking_content: str, additional_details: str
+) -> List[str]:
     """Extract high-priority insights for report highlighting."""
     insights = []
 
@@ -220,7 +242,9 @@ def suggest_visualizations(ai_recommendation: Dict[str, Any]) -> List[str]:
     if ai_recommendation.get("overall_score"):
         suggestions.append("score_gauge_chart")
 
-    if ai_recommendation.get("key_catalysts") and ai_recommendation.get("downside_risks"):
+    if ai_recommendation.get("key_catalysts") and ai_recommendation.get(
+        "downside_risks"
+    ):
         suggestions.append("risk_catalyst_matrix")
 
     if ai_recommendation.get("time_horizon"):

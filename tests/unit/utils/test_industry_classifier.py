@@ -21,6 +21,10 @@ def test_classify_unclassified_logs_info_not_warning(caplog):
 
     assert sector is None
     assert industry is None
-    matching = [r for r in caplog.records if "Unable to classify TEST - no SIC code or profile data" in r.message]
+    matching = [
+        r
+        for r in caplog.records
+        if "Unable to classify TEST - no SIC code or profile data" in r.message
+    ]
     assert any(r.levelno == logging.INFO for r in matching)
     assert not any(r.levelno >= logging.WARNING for r in matching)

@@ -90,7 +90,9 @@ async def calculate_valuation_extensions(
 ) -> float:
     """Populate extension valuation models and return payout ratio used for synthesis context."""
     common_divs = abs(_to_float(financials.get("dividends_paid", 0) or 0))
-    profile_common_divs = abs(_to_float(getattr(company_profile, "dividends_paid", None) or 0))
+    profile_common_divs = abs(
+        _to_float(getattr(company_profile, "dividends_paid", None) or 0)
+    )
     if profile_common_divs > common_divs:
         common_divs = profile_common_divs
     preferred_divs = abs(_to_float(financials.get("preferred_stock_dividends", 0) or 0))
@@ -120,7 +122,9 @@ async def calculate_valuation_extensions(
         if pct is not None:
             payout_ratio_candidates.append((pct, source))
 
-    payout_ratio_from_ratios = max((pct for pct, _ in payout_ratio_candidates), default=None)
+    payout_ratio_from_ratios = max(
+        (pct for pct, _ in payout_ratio_candidates), default=None
+    )
     if len(payout_ratio_candidates) >= 2:
         min_pct = min(pct for pct, _ in payout_ratio_candidates)
         max_pct = max(pct for pct, _ in payout_ratio_candidates)
@@ -128,7 +132,9 @@ async def calculate_valuation_extensions(
             logger.warning(
                 "%s - Payout ratio source mismatch detected: %s. Using highest plausible value %.1f%%",
                 symbol,
-                ", ".join([f"{src}={pct:.1f}%" for pct, src in payout_ratio_candidates]),
+                ", ".join(
+                    [f"{src}={pct:.1f}%" for pct, src in payout_ratio_candidates]
+                ),
                 max_pct,
             )
 
@@ -177,10 +183,14 @@ async def calculate_valuation_extensions(
         else None
     )
     payout_ratio_from_cashflow = (
-        (dividends_paid / net_income * 100) if (net_income > 0 and dividends_paid > 0) else None
+        (dividends_paid / net_income * 100)
+        if (net_income > 0 and dividends_paid > 0)
+        else None
     )
 
-    reference_payout = max(payout_ratio_from_ratios or 0.0, payout_ratio_from_yield or 0.0) or None
+    reference_payout = (
+        max(payout_ratio_from_ratios or 0.0, payout_ratio_from_yield or 0.0) or None
+    )
 
     # If payout ratio from ratios/yield is much higher than cashflow-derived ratio, treat this
     # as a likely scale/period mismatch in extracted dividends and trust normalized ratio.
@@ -207,7 +217,11 @@ async def calculate_valuation_extensions(
             )
         payout_ratio = reference_payout
     else:
-        payout_ratio = payout_ratio_from_cashflow if payout_ratio_from_cashflow is not None else (reference_payout or 0)
+        payout_ratio = (
+            payout_ratio_from_cashflow
+            if payout_ratio_from_cashflow is not None
+            else (reference_payout or 0)
+        )
 
     payout_ratio_ratio = _to_ratio(payout_ratio)
     if payout_ratio_ratio is not None:
@@ -222,8 +236,12 @@ async def calculate_valuation_extensions(
 
     if is_significant_dividend_stock:
         cost_of_equity = calculate_cost_of_equity(symbol)
-        logger.info("%s - GGM cost_of_equity passed: %.2f%%", symbol, cost_of_equity * 100)
-        ggm_result = await calculate_ggm(symbol, cost_of_equity, quarterly_data, company_profile)
+        logger.info(
+            "%s - GGM cost_of_equity passed: %.2f%%", symbol, cost_of_equity * 100
+        )
+        ggm_result = await calculate_ggm(
+            symbol, cost_of_equity, quarterly_data, company_profile
+        )
         ggm_result = dict(ggm_result or {})
         ggm_result["model"] = "ggm"
         valuation_results["ggm"] = ggm_result
@@ -235,9 +253,7 @@ async def calculate_valuation_extensions(
         log_model_result(logger, symbol, "GGM", ggm_result)
     else:
         if dividends_paid > 0 and payout_ratio < 20.0:
-            reason = (
-                f"Low payout ratio ({payout_ratio:.1f}%) - token dividend, not meaningful dividend policy (need ≥20%)"
-            )
+            reason = f"Low payout ratio ({payout_ratio:.1f}%) - token dividend, not meaningful dividend policy (need ≥20%)"
         elif dividends_paid == 0:
             reason = "No dividends paid - GGM requires dividend-paying stock"
         else:
@@ -260,7 +276,9 @@ async def calculate_valuation_extensions(
             current_fcf=financials.get("free_cash_flow") or financials.get("fcf"),
             revenue_growth=company_profile.revenue_growth_yoy,
             fcf_margin=ratios.get("fcf_margin") or ratios.get("free_cash_flow_margin"),
-            current_revenue=financials.get("revenues") or financials.get("revenue") or financials.get("total_revenue"),
+            current_revenue=financials.get("revenues")
+            or financials.get("revenue")
+            or financials.get("total_revenue"),
             shares_outstanding=company_profile.shares_outstanding,
         )
         normalized_damodaran = normalize_model_output(damodaran_result)
@@ -276,20 +294,28 @@ async def calculate_valuation_extensions(
 
     is_saas_company = bool(
         company_profile.industry
-        and any(kw in company_profile.industry.lower() for kw in ["software", "saas", "cloud", "internet"])
+        and any(
+            kw in company_profile.industry.lower()
+            for kw in ["software", "saas", "cloud", "internet"]
+        )
     )
-    is_growth_company = bool(company_profile.revenue_growth_yoy and company_profile.revenue_growth_yoy > 0.10)
+    is_growth_company = bool(
+        company_profile.revenue_growth_yoy and company_profile.revenue_growth_yoy > 0.10
+    )
 
     if is_saas_company or is_growth_company:
         try:
             rule_of_40_model = RuleOf40Valuation(company_profile)
             rule_of_40_result = rule_of_40_model.calculate(
                 revenue_growth=company_profile.revenue_growth_yoy,
-                fcf_margin=ratios.get("fcf_margin") or ratios.get("free_cash_flow_margin"),
+                fcf_margin=ratios.get("fcf_margin")
+                or ratios.get("free_cash_flow_margin"),
                 current_revenue=financials.get("revenues")
                 or financials.get("revenue")
                 or financials.get("total_revenue"),
-                current_price=market_data.get("price") or market_data.get("close") or market_data.get("current_price"),
+                current_price=market_data.get("price")
+                or market_data.get("close")
+                or market_data.get("current_price"),
                 shares_outstanding=company_profile.shares_outstanding,
             )
             normalized_rule_of_40 = normalize_model_output(rule_of_40_result)
@@ -317,12 +343,16 @@ async def calculate_valuation_extensions(
                 current_revenue=financials.get("revenues")
                 or financials.get("revenue")
                 or financials.get("total_revenue"),
-                current_price=market_data.get("price") or market_data.get("close") or market_data.get("current_price"),
+                current_price=market_data.get("price")
+                or market_data.get("close")
+                or market_data.get("current_price"),
                 shares_outstanding=company_profile.shares_outstanding,
-                gross_margin=ratios.get("gross_margin") or ratios.get("gross_profit_margin"),
+                gross_margin=ratios.get("gross_margin")
+                or ratios.get("gross_profit_margin"),
                 nrr=ratios.get("net_revenue_retention") or ratios.get("nrr"),
                 ltv_cac=ratios.get("ltv_cac") or ratios.get("ltv_cac_ratio"),
-                fcf_margin=ratios.get("fcf_margin") or ratios.get("free_cash_flow_margin"),
+                fcf_margin=ratios.get("fcf_margin")
+                or ratios.get("free_cash_flow_margin"),
             )
             normalized_saas = normalize_model_output(saas_result)
             valuation_results["saas"] = normalized_saas

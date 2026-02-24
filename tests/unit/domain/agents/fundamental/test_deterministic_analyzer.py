@@ -82,7 +82,9 @@ class TestAnalyzeFinancialHealth:
 
         result = await analyzer.analyze_financial_health(company_data, ratios, "TEST")
 
-        assert result["response"]["capital_structure_quality"]["assessment"] == "Net Cash"
+        assert (
+            result["response"]["capital_structure_quality"]["assessment"] == "Net Cash"
+        )
 
     @pytest.mark.asyncio
     async def test_efficient_working_capital(self, analyzer):
@@ -97,7 +99,10 @@ class TestAnalyzeFinancialHealth:
 
         result = await analyzer.analyze_financial_health(company_data, ratios, "TEST")
 
-        assert result["response"]["working_capital_management"]["assessment"] == "Efficient"
+        assert (
+            result["response"]["working_capital_management"]["assessment"]
+            == "Efficient"
+        )
 
     @pytest.mark.asyncio
     async def test_risk_factors_populated(self, analyzer):
@@ -133,7 +138,9 @@ class TestAnalyzeGrowth:
 
         result = await analyzer.analyze_growth(company_data, "TEST")
 
-        assert result["response"]["revenue_growth_sustainability"]["assessment"] == "High"
+        assert (
+            result["response"]["revenue_growth_sustainability"]["assessment"] == "High"
+        )
 
     @pytest.mark.asyncio
     async def test_moderate_growth(self, analyzer):
@@ -146,7 +153,10 @@ class TestAnalyzeGrowth:
 
         result = await analyzer.analyze_growth(company_data, "TEST")
 
-        assert result["response"]["revenue_growth_sustainability"]["assessment"] == "Moderate"
+        assert (
+            result["response"]["revenue_growth_sustainability"]["assessment"]
+            == "Moderate"
+        )
 
     @pytest.mark.asyncio
     async def test_contracting_growth(self, analyzer):
@@ -159,7 +169,10 @@ class TestAnalyzeGrowth:
 
         result = await analyzer.analyze_growth(company_data, "TEST")
 
-        assert result["response"]["revenue_growth_sustainability"]["assessment"] == "Contracting"
+        assert (
+            result["response"]["revenue_growth_sustainability"]["assessment"]
+            == "Contracting"
+        )
 
     @pytest.mark.asyncio
     async def test_growth_drivers_momentum(self, analyzer):
@@ -172,7 +185,10 @@ class TestAnalyzeGrowth:
 
         result = await analyzer.analyze_growth(company_data, "TEST")
 
-        assert "Product demand momentum" in result["response"]["growth_drivers_and_catalysts"]
+        assert (
+            "Product demand momentum"
+            in result["response"]["growth_drivers_and_catalysts"]
+        )
 
     @pytest.mark.asyncio
     async def test_cyclical_risk(self, analyzer):
@@ -195,7 +211,10 @@ class TestAnalyzeGrowth:
 
         result = await analyzer.analyze_growth(company_data, "TEST")
 
-        assert result["response"]["revenue_growth_sustainability"]["assessment"] == "Unknown"
+        assert (
+            result["response"]["revenue_growth_sustainability"]["assessment"]
+            == "Unknown"
+        )
 
 
 class TestAnalyzeProfitability:
@@ -224,7 +243,9 @@ class TestAnalyzeProfitability:
 
         result = await analyzer.analyze_profitability(company_data, ratios, "TEST")
 
-        assert result["response"]["competitive_advantages_moat"]["assessment"] == "Healthy"
+        assert (
+            result["response"]["competitive_advantages_moat"]["assessment"] == "Healthy"
+        )
 
     @pytest.mark.asyncio
     async def test_thin_margin(self, analyzer):
@@ -244,7 +265,9 @@ class TestAnalyzeProfitability:
 
         result = await analyzer.analyze_profitability(company_data, ratios, "TEST")
 
-        assert result["response"]["return_on_capital_efficiency"]["assessment"] == "High"
+        assert (
+            result["response"]["return_on_capital_efficiency"]["assessment"] == "High"
+        )
 
     @pytest.mark.asyncio
     async def test_lean_cost_structure(self, analyzer):
@@ -269,12 +292,17 @@ class TestAnalyzeProfitability:
     @pytest.mark.asyncio
     async def test_margin_trend_expanding(self, analyzer):
         """Should detect expanding margin trend."""
-        company_data = {"trend_analysis": {"margins": {"net_margin_trend": "expanding"}}}
+        company_data = {
+            "trend_analysis": {"margins": {"net_margin_trend": "expanding"}}
+        }
         ratios = {}
 
         result = await analyzer.analyze_profitability(company_data, ratios, "TEST")
 
-        assert result["response"]["margin_trends_and_sustainability"]["assessment"] == "Expanding"
+        assert (
+            result["response"]["margin_trends_and_sustainability"]["assessment"]
+            == "Expanding"
+        )
 
     @pytest.mark.asyncio
     async def test_profitability_score_range(self, analyzer):

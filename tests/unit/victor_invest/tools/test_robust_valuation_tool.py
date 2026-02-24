@@ -21,9 +21,10 @@ Tests the Victor tool wrapping for robust valuation including:
 - Error handling
 """
 
-import pytest
-from unittest.mock import MagicMock, patch
 from datetime import datetime, timezone
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from victor_invest.tools.robust_valuation import RobustValuationTool
 

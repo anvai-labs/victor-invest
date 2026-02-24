@@ -43,7 +43,11 @@ def estimate_model_vram_requirement(
     """
 
     # Extract model weights (supports both dict and object)
-    weights_gb = float(get_spec_value(model_spec, "weights_vram_gb", get_spec_value(model_spec, "memory_gb", 16.0)))
+    weights_gb = float(
+        get_spec_value(
+            model_spec, "weights_vram_gb", get_spec_value(model_spec, "memory_gb", 16.0)
+        )
+    )
 
     if not include_kv_cache:
         return {
@@ -57,8 +61,12 @@ def estimate_model_vram_requirement(
     # EMPIRICAL VALUE: Based on qwen3:30b actual measurements from ollama ps:
     # 4K context = 20GB, 16K context = 21GB → 12K token difference
     # Conservative estimate: 2GB for 12K tokens = 170 MB/1K (was 120 MB - too high, 85 MB - too low)
-    kv_cache_mb_per_1k = float(get_spec_value(model_spec, "kv_cache_mb_per_1k_tokens", 170.0))
-    kv_cache_overhead_pct = float(get_spec_value(model_spec, "kv_cache_overhead_pct", 0.15))
+    kv_cache_mb_per_1k = float(
+        get_spec_value(model_spec, "kv_cache_mb_per_1k_tokens", 170.0)
+    )
+    kv_cache_overhead_pct = float(
+        get_spec_value(model_spec, "kv_cache_overhead_pct", 0.15)
+    )
     context_window = int(get_spec_value(model_spec, "context_window", 32768))
 
     # Determine total tokens for KV cache calculation
@@ -108,7 +116,9 @@ def get_spec_value(spec: Any, key: str, default: Any) -> Any:
     return getattr(spec, key, default)
 
 
-def estimate_kv_cache_only(model_spec: Dict[str, Any], prompt_tokens: int = 0, response_tokens: int = 0) -> float:
+def estimate_kv_cache_only(
+    model_spec: Dict[str, Any], prompt_tokens: int = 0, response_tokens: int = 0
+) -> float:
     """
     Estimate only KV cache VRAM (without model weights)
 

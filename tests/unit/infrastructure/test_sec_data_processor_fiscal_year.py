@@ -62,7 +62,9 @@ class TestCalendarYearEndCompanies:
         else:
             expected_fy = fy
 
-        assert expected_fy == 2025, "Q1 ending Dec 2023 should be FY 2025 for AAPL (Sep FYE)"
+        assert expected_fy == 2025, (
+            "Q1 ending Dec 2023 should be FY 2025 for AAPL (Sep FYE)"
+        )
 
     def test_msft_calendar_year_aligned(self):
         """
@@ -92,7 +94,9 @@ class TestCalendarYearEndCompanies:
         else:
             expected_fy = 2023
 
-        assert expected_fy == 2024, "Q1 ending Sep 2023 should be FY 2024 for MSFT (Jun FYE)"
+        assert expected_fy == 2024, (
+            "Q1 ending Sep 2023 should be FY 2024 for MSFT (Jun FYE)"
+        )
 
 
 class TestNonCalendarYearEndCompanies:
@@ -139,7 +143,9 @@ class TestNonCalendarYearEndCompanies:
         else:
             expected_fy = 2024
 
-        assert expected_fy == 2025, "Q1 ending Oct 2024 should be FY 2025 for ZS (Jul FYE)"
+        assert expected_fy == 2025, (
+            "Q1 ending Oct 2024 should be FY 2025 for ZS (Jul FYE)"
+        )
 
     def test_zs_q2_fiscal_year_no_adjustment(self):
         """
@@ -183,7 +189,9 @@ class TestNonCalendarYearEndCompanies:
         else:
             expected_fy = 2023
 
-        assert expected_fy == 2024, "Q1 ending Nov 2023 should be FY 2024 for COST (Aug FYE)"
+        assert expected_fy == 2024, (
+            "Q1 ending Nov 2023 should be FY 2024 for COST (Aug FYE)"
+        )
 
 
 class TestDurationBasedClassification:
@@ -287,8 +295,14 @@ class TestYTDGroupingLogic:
         assert groups[2024] == ["Q3", "Q2", "Q1"], "FY 2024 should have Q3, Q2, Q1"
 
         # Verify Q1 dates are in correct fiscal year
-        q1_2025 = [q for q in quarters if q["fiscal_year"] == 2025 and q["fiscal_period"] == "Q1"][0]
-        assert q1_2025["period_end_date"] == date(2024, 10, 31), "Q1 FY2025 should end 2024-10-31"
+        q1_2025 = [
+            q
+            for q in quarters
+            if q["fiscal_year"] == 2025 and q["fiscal_period"] == "Q1"
+        ][0]
+        assert q1_2025["period_end_date"] == date(2024, 10, 31), (
+            "Q1 FY2025 should end 2024-10-31"
+        )
 
     def test_ytd_grouping_prevents_collisions(self):
         """
@@ -301,7 +315,9 @@ class TestYTDGroupingLogic:
         from collections import defaultdict as dd
 
         old_groups = dd(list)
-        old_groups[2023].extend(["Q3", "Q1"])  # COLLISION: Q3-2023 (Apr) and Q1-2024 (Oct in same calendar year)
+        old_groups[2023].extend(
+            ["Q3", "Q1"]
+        )  # COLLISION: Q3-2023 (Apr) and Q1-2024 (Oct in same calendar year)
 
         # Simulate NEW behavior (grouping by fiscal_year)
         new_groups = dd(list)
@@ -309,7 +325,9 @@ class TestYTDGroupingLogic:
         new_groups[2023] = ["Q3"]  # Q3-2023 (2023-04-30, stays in FY 2023)
 
         assert len(old_groups[2023]) == 2, "Old grouping has collision"
-        assert len(new_groups[2024]) == 1 and len(new_groups[2023]) == 1, "New grouping prevents collision"
+        assert len(new_groups[2024]) == 1 and len(new_groups[2023]) == 1, (
+            "New grouping prevents collision"
+        )
 
 
 class TestSectorSpecificFiscalYearEnds:
@@ -348,9 +366,9 @@ class TestSectorSpecificFiscalYearEnds:
 
         needs_adjustment = q1_end_month > fye_month
 
-        assert (
-            needs_adjustment == expected_adjustment
-        ), f"{company} ({symbol}): Q1 ending month {q1_end_month} vs FYE month {fye_month} - adjustment should be {expected_adjustment}"
+        assert needs_adjustment == expected_adjustment, (
+            f"{company} ({symbol}): Q1 ending month {q1_end_month} vs FYE month {fye_month} - adjustment should be {expected_adjustment}"
+        )
 
 
 class TestConsecutiveQuarterValidation:
@@ -442,8 +460,12 @@ class TestEdgeCases:
         if len(group) == 1:
             selected_entry = group[0]
 
-        assert selected_entry["duration_days"] == 91, "Duration must be calculated before single-entry return"
-        assert selected_entry["duration_days"] < 330, "91 days should NOT be classified as FY"
+        assert selected_entry["duration_days"] == 91, (
+            "Duration must be calculated before single-entry return"
+        )
+        assert selected_entry["duration_days"] < 330, (
+            "91 days should NOT be classified as FY"
+        )
 
 
 class TestRegressionTests:
@@ -497,7 +519,9 @@ class TestRegressionTests:
 
         assert len(fiscal_groups[2024]) == 1, "FY 2024 should only have Q1"
         assert len(fiscal_groups[2023]) == 1, "FY 2023 should only have Q3"
-        assert fiscal_groups[2024] != fiscal_groups[2023], "No collision between fiscal years"
+        assert fiscal_groups[2024] != fiscal_groups[2023], (
+            "No collision between fiscal years"
+        )
 
 
 # Test execution summary

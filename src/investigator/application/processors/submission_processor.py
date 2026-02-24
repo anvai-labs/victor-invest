@@ -90,7 +90,9 @@ class SubmissionProcessor:
             Structured submission data with parsed filings
         """
         try:
-            self.logger.debug(f"Starting to parse submissions data, size: {len(str(submissions_data))}")
+            self.logger.debug(
+                f"Starting to parse submissions data, size: {len(str(submissions_data))}"
+            )
             # Extract company information
             parsed_data = {
                 "cik": submissions_data.get("cik", ""),
@@ -101,7 +103,9 @@ class SubmissionProcessor:
                 "tickers": submissions_data.get("tickers", []),
                 "exchanges": submissions_data.get("exchanges", []),
                 "fiscal_year_end": submissions_data.get("fiscalYearEnd", ""),
-                "state_of_incorporation": submissions_data.get("stateOfIncorporation", ""),
+                "state_of_incorporation": submissions_data.get(
+                    "stateOfIncorporation", ""
+                ),
                 "website": submissions_data.get("website", ""),
                 "investor_website": submissions_data.get("investorWebsite", ""),
                 "category": submissions_data.get("category", ""),
@@ -123,7 +127,9 @@ class SubmissionProcessor:
     def _parse_filings(self, filings_data: Dict) -> Dict:
         """Parse filings section of submissions data"""
         try:
-            self.logger.debug(f"Parsing filings data, filings count: {len(filings_data)}")
+            self.logger.debug(
+                f"Parsing filings data, filings count: {len(filings_data)}"
+            )
             recent_filings = filings_data.get("recent", {})
             self.logger.debug("Got recent filings, processing arrays")
 
@@ -141,8 +147,12 @@ class SubmissionProcessor:
                     filing = Filing(
                         form_type=form_types[i] if i < len(form_types) else "",
                         filing_date=filing_dates[i] if i < len(filing_dates) else "",
-                        accession_number=accession_numbers[i] if i < len(accession_numbers) else "",
-                        primary_document=primary_documents[i] if i < len(primary_documents) else "",
+                        accession_number=accession_numbers[i]
+                        if i < len(accession_numbers)
+                        else "",
+                        primary_document=primary_documents[i]
+                        if i < len(primary_documents)
+                        else "",
                         report_date=report_dates[i] if i < len(report_dates) else None,
                     )
                     all_filings.append(filing)
@@ -192,9 +202,13 @@ class SubmissionProcessor:
             earnings_filings.sort(key=lambda f: f.filing_date, reverse=True)
             result = earnings_filings[:limit]
 
-            self.logger.info(f"Found {len(result)} recent earnings filings (simplified logic)")
+            self.logger.info(
+                f"Found {len(result)} recent earnings filings (simplified logic)"
+            )
             for filing in result[:5]:  # Log first 5 filings
-                self.logger.debug(f"  - {filing.form_type} {filing.period_key} filed {filing.filing_date}")
+                self.logger.debug(
+                    f"  - {filing.form_type} {filing.period_key} filed {filing.filing_date}"
+                )
 
             return result
 

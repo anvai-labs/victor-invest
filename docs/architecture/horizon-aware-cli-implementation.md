@@ -82,8 +82,10 @@ victor-invest analyze AAPL  # Uses default 730d
 
 ### JPM (Financials - Traditional Bank)
 
+**Tier:** `financial_traditional_bank` (1,522 samples in 730d training)
+
 Regardless of horizon, JPM consistently gets bank-appropriate weights:
-- **P/B: 30-45%** (Book value is KEY for banks)
+- **P/B: 30-52%** (Book value is KEY for banks)
 - **P/E: 21-40%** (Earnings power)
 - **DCF: 13-20%** (Cash flow less important)
 - **P/S: 0%** (Revenue multiples don't apply to banks)
@@ -92,15 +94,51 @@ Regardless of horizon, JPM consistently gets bank-appropriate weights:
 
 ### AAPL (Technology - Large Cap Mature)
 
-- **90d:** DCF (30%) + P/E (25%) focus
-- **365d:** P/E (35%) + EV/EBITDA (30%) balanced
-- **730d:** P/E (35%) + P/S (20%) + EV/EBITDA (30%)
+**Tier:** `balanced_default` (10,035 samples in 730d training)
+
+**dual_rl_skip Weights:**
+- DCF: 35-38%
+- P/E: 23-24%
+- P/S: 15-16%
+- EV/EBITDA: 14%
+- P/B: 5-6%
+- GGM: 5-6%
+
+**balanced_default Weights:**
+- P/E: 35%
+- EV/EBITDA: 30%
+- P/S: 20%
+- P/B: 15%
+
+**Pattern:** BALANCED - Uses earnings (P/E), cash flow (DCF), enterprise value (EV/EBITDA), and revenue (P/S)
 
 ### MSFT (Technology - SaaS Maturing)
 
-- **90d:** EV/EBITDA (40%) + DCF (30%)
-- **365d:** EV/EBITDA (55%) + P/E (30%)
-- **730d:** P/S becomes more significant
+**Tier:** `saas_maturing` (3,104 samples in 730d training)
+
+**dual_rl_skip Weights:**
+- DCF: 33%
+- P/E: 27%
+- EV/EBITDA: 18%
+- P/S: 12%
+- P/B: 6%
+- GGM: 5%
+
+**saas_maturing Weights:**
+- EV/EBITDA: 40-55%
+- P/E: 20-30%
+- P/S: 10-15%
+- DCF: 0-30% (varies)
+
+**Pattern:** ENTERPRISE-FOCUSED - Heavy EV/EBITDA for SaaS cash flow valuation, minimal P/B (intangible assets)
+
+### Key Insight: Different Sectors = Different Valuation Models
+
+| Sector | Primary Models | Why |
+|--------|---------------|-----|
+| **Technology (AAPL, MSFT)** | DCF (33-38%), P/S (12-20%), EV/EBITDA | Future cash flow from growth, revenue growth, enterprise value |
+| **Financials (JPM)** | P/B (30-52%), P/E (21-40%) | Asset-based valuation, earnings power |
+| **SaaS (MSFT specific)** | EV/EBITDA (40-55%) | Cash flow valuation for recurring revenue |
 
 ## Policy Metadata
 

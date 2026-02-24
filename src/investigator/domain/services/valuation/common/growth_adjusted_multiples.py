@@ -90,10 +90,14 @@ class GrowthAdjustedMultiples:
         if sector_pe_override is not None:
             sector_pe = sector_pe_override
         else:
-            sector_pe = SectorMultiples.get_multiple_with_override(sector=sector, industry=industry, metric="pe")
+            sector_pe = SectorMultiples.get_multiple_with_override(
+                sector=sector, industry=industry, metric="pe"
+            )
 
         # Calculate growth multiplier
-        growth_multiplier = GrowthCalculator.calculate_growth_multiplier_pe(revenue_growth)
+        growth_multiplier = GrowthCalculator.calculate_growth_multiplier_pe(
+            revenue_growth
+        )
 
         adjusted_pe = sector_pe * growth_multiplier
 
@@ -138,10 +142,14 @@ class GrowthAdjustedMultiples:
         """
         # Get sector P/S multiple if no base provided
         if base_multiple is None:
-            base_multiple = SectorMultiples.get_multiple_with_override(sector=sector, industry=industry, metric="ps")
+            base_multiple = SectorMultiples.get_multiple_with_override(
+                sector=sector, industry=industry, metric="ps"
+            )
 
         # Calculate growth adjustment
-        growth_adjustment = GrowthCalculator.calculate_growth_multiplier_ps(revenue_growth)
+        growth_adjustment = GrowthCalculator.calculate_growth_multiplier_ps(
+            revenue_growth
+        )
 
         adjusted_ps = base_multiple + growth_adjustment
 
@@ -199,7 +207,9 @@ class GrowthAdjustedMultiples:
             base_multiple = leverage_adjusted_multiple
 
         # Calculate growth factor
-        growth_factor = GrowthCalculator.calculate_ev_ebitda_growth_factor(revenue_growth)
+        growth_factor = GrowthCalculator.calculate_ev_ebitda_growth_factor(
+            revenue_growth
+        )
 
         adjusted_multiple = base_multiple * growth_factor
         final_multiple = min(adjusted_multiple, max_multiple)

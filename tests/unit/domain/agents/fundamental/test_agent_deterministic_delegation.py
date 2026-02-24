@@ -28,7 +28,9 @@ from investigator.domain.agents.fundamental.agent import FundamentalAnalysisAgen
         ),
     ],
 )
-async def test_deterministic_methods_delegate_to_deterministic_analyzer(agent_method, analyzer_method, args):
+async def test_deterministic_methods_delegate_to_deterministic_analyzer(
+    agent_method, analyzer_method, args
+):
     """Each deterministic agent method should forward work to DeterministicAnalyzer."""
     agent = MagicMock(spec=FundamentalAnalysisAgent)
     agent._get_deterministic_analyzer = MagicMock()
@@ -55,7 +57,9 @@ def test_get_deterministic_analyzer_caches_per_agent_instance():
     agent = MagicMock(spec=FundamentalAnalysisAgent)
     agent.agent_id = "agent-test"
     agent.logger = MagicMock()
-    agent._get_deterministic_analyzer = FundamentalAnalysisAgent._get_deterministic_analyzer.__get__(agent)
+    agent._get_deterministic_analyzer = (
+        FundamentalAnalysisAgent._get_deterministic_analyzer.__get__(agent)
+    )
 
     analyzer = MagicMock()
     with patch(
@@ -100,20 +104,26 @@ def test_build_deterministic_forecast_payload_has_required_sections():
 def test_build_deterministic_fundamental_report_payload_derives_recommendation():
     agent = MagicMock(spec=FundamentalAnalysisAgent)
     agent._coerce_float = FundamentalAnalysisAgent._coerce_float
-    agent._build_deterministic_fundamental_report_payload = (
-        FundamentalAnalysisAgent._build_deterministic_fundamental_report_payload.__get__(agent)
+    agent._build_deterministic_fundamental_report_payload = FundamentalAnalysisAgent._build_deterministic_fundamental_report_payload.__get__(
+        agent
     )
 
     buy_payload = agent._build_deterministic_fundamental_report_payload(
         {
-            "valuation": {"fair_value_estimate": 120.0, "valuation_stance": "Undervalued"},
+            "valuation": {
+                "fair_value_estimate": 120.0,
+                "valuation_stance": "Undervalued",
+            },
             "ratios": {"current_price": 100.0},
             "company_data": {},
         }
     )
     sell_payload = agent._build_deterministic_fundamental_report_payload(
         {
-            "valuation": {"fair_value_estimate": 80.0, "valuation_stance": "Overvalued"},
+            "valuation": {
+                "fair_value_estimate": 80.0,
+                "valuation_stance": "Overvalued",
+            },
             "ratios": {"current_price": 100.0},
             "company_data": {},
         }

@@ -209,7 +209,9 @@ class ValuationConfigService:
         Returns:
             P/E multiple for the sector, or default if not found
         """
-        multiples = self._get_nested("valuation.sector_multiples.pe", self.DEFAULT_SECTOR_MULTIPLES["pe"])
+        multiples = self._get_nested(
+            "valuation.sector_multiples.pe", self.DEFAULT_SECTOR_MULTIPLES["pe"]
+        )
         return multiples.get(sector, multiples.get("Default", 18))
 
     def get_sector_ps_multiple(self, sector: str) -> float:
@@ -222,7 +224,9 @@ class ValuationConfigService:
         Returns:
             P/S multiple for the sector
         """
-        multiples = self._get_nested("valuation.sector_multiples.ps", self.DEFAULT_SECTOR_MULTIPLES["ps"])
+        multiples = self._get_nested(
+            "valuation.sector_multiples.ps", self.DEFAULT_SECTOR_MULTIPLES["ps"]
+        )
         return multiples.get(sector, multiples.get("Default", 2))
 
     def get_sector_pb_multiple(self, sector: str) -> float:
@@ -235,7 +239,9 @@ class ValuationConfigService:
         Returns:
             P/B multiple for the sector
         """
-        multiples = self._get_nested("valuation.sector_multiples.pb", self.DEFAULT_SECTOR_MULTIPLES["pb"])
+        multiples = self._get_nested(
+            "valuation.sector_multiples.pb", self.DEFAULT_SECTOR_MULTIPLES["pb"]
+        )
         return multiples.get(sector, multiples.get("Default", 2.5))
 
     def get_sector_ev_ebitda_multiple(self, sector: str) -> float:
@@ -343,7 +349,9 @@ class ValuationConfigService:
         Returns:
             Dict with forward_eps_growth_pct
         """
-        return self._get_nested("valuation.growth_assumptions", self.DEFAULT_GROWTH_ASSUMPTIONS)
+        return self._get_nested(
+            "valuation.growth_assumptions", self.DEFAULT_GROWTH_ASSUMPTIONS
+        )
 
     def get_forward_eps_growth(self) -> float:
         """Get default forward EPS growth rate (default: 10%)."""
@@ -384,7 +392,9 @@ class ValuationConfigService:
         Returns:
             Dict with terminal_growth_rate, projection_years, rationale
         """
-        sector_params = self._get_nested(f"dcf_valuation.sector_based_parameters.{sector}", None)
+        sector_params = self._get_nested(
+            f"dcf_valuation.sector_based_parameters.{sector}", None
+        )
         if sector_params:
             return sector_params
 

@@ -99,9 +99,15 @@ class _ExecuteCallVisitor(ast.NodeVisitor):
         if isinstance(node.func, ast.Attribute) and node.func.attr == "execute":
             tool_ctor = self._resolve_tool_ctor(node.func.value)
             if tool_ctor:
-                action_kw = next((kw for kw in node.keywords if kw.arg == "action"), None)
+                action_kw = next(
+                    (kw for kw in node.keywords if kw.arg == "action"), None
+                )
                 action_literal = None
-                if action_kw and isinstance(action_kw.value, ast.Constant) and isinstance(action_kw.value.value, str):
+                if (
+                    action_kw
+                    and isinstance(action_kw.value, ast.Constant)
+                    and isinstance(action_kw.value.value, str)
+                ):
                     action_literal = action_kw.value.value
 
                 self.calls.append(
@@ -178,7 +184,9 @@ def test_runtime_execute_calls_follow_tool_action_contracts():
     for path in RUNTIME_FILES:
         execute_calls.extend(_collect_execute_calls(path, known_tools))
 
-    assert len(execute_calls) >= 14, "Expected to discover runtime execute calls for contract coverage"
+    assert len(execute_calls) >= 14, (
+        "Expected to discover runtime execute calls for contract coverage"
+    )
 
     violations: list[str] = []
 
@@ -192,6 +200,8 @@ def test_runtime_execute_calls_follow_tool_action_contracts():
             continue
 
         if call.tool_ctor in NON_ACTION_TOOLS and call.has_action_keyword:
-            violations.append(f"{call.path}:{call.lineno} should not pass action=... to {call.tool_ctor}")
+            violations.append(
+                f"{call.path}:{call.lineno} should not pass action=... to {call.tool_ctor}"
+            )
 
     assert not violations, "Tool action contract violations:\n" + "\n".join(violations)

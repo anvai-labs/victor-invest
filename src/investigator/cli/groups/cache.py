@@ -276,7 +276,11 @@ def warm(ctx, symbols, symbols_file, parallel, process_raw, force_refresh):
         symbol_list = [s.strip().upper() for s in symbols.split(",")]
     elif symbols_file:
         with open(symbols_file) as f:
-            symbol_list = [line.strip().upper() for line in f if line.strip() and not line.startswith("#")]
+            symbol_list = [
+                line.strip().upper()
+                for line in f
+                if line.strip() and not line.startswith("#")
+            ]
     else:
         click.echo("Provide --symbols or --file", err=True)
         sys.exit(1)
@@ -315,7 +319,10 @@ def warm(ctx, symbols, symbols_file, parallel, process_raw, force_refresh):
                         force_refresh=force_refresh,
                     )
                     results.append((symbol, True, ""))
-                    click.echo(f"  Cached: {symbol}" f"{' (processed)' if process_raw else ' (raw-only)'}")
+                    click.echo(
+                        f"  Cached: {symbol}"
+                        f"{' (processed)' if process_raw else ' (raw-only)'}"
+                    )
                 except Exception as e:
                     results.append((symbol, False, str(e)))
                     click.echo(f"  Failed: {symbol} - {e}")

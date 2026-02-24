@@ -14,14 +14,19 @@ from investigator.infrastructure.formatters import ValuationTableFormatter
 from .models import QuarterlyData
 
 
-def log_data_quality_issues(logger: logging.Logger, symbol: str, company_data: Dict, ratios: Dict) -> None:
+def log_data_quality_issues(
+    logger: logging.Logger, symbol: str, company_data: Dict, ratios: Dict
+) -> None:
     """Emit standardized data-quality warnings for downstream monitoring."""
     issues: List[str] = []
 
     if company_data.get("market_cap", 0) == 0:
         issues.append("market_cap_zero")
 
-    if ratios.get("operating_cash_flow", 0) == 0 and ratios.get("free_cash_flow", 0) == 0:
+    if (
+        ratios.get("operating_cash_flow", 0) == 0
+        and ratios.get("free_cash_flow", 0) == 0
+    ):
         issues.append("no_cash_flow_data")
 
     if ratios.get("debt_to_equity", 0) > 0 and ratios.get("debt_to_assets", 0) == 0:
@@ -54,7 +59,11 @@ def format_trend_context(company_data: Dict[str, Any]) -> str:
     quality_rating = (
         "EXCELLENT"
         if quality_score >= 90
-        else "GOOD" if quality_score >= 75 else "FAIR" if quality_score >= 60 else "POOR"
+        else "GOOD"
+        if quality_score >= 75
+        else "FAIR"
+        if quality_score >= 60
+        else "POOR"
     )
 
     return (
@@ -208,7 +217,9 @@ def log_valuation_snapshot(
     logger.debug("valuation_results keys = %s", list(valuation_results.keys()))
 
     if "multi_model" in valuation_results:
-        logger.debug("multi_model keys = %s", list(valuation_results["multi_model"].keys()))
+        logger.debug(
+            "multi_model keys = %s", list(valuation_results["multi_model"].keys())
+        )
         if "models" in valuation_results["multi_model"]:
             models_preview = valuation_results["multi_model"]["models"]
             logger.debug("multi_model['models'] type = %s", type(models_preview))
@@ -218,8 +229,12 @@ def log_valuation_snapshot(
                     logger.debug("models[%s] preview = %s", i, model)
 
     with open("/tmp/valuation_snapshot_debug.log", "a", encoding="utf-8") as handle:
-        handle.write(f"{datetime.datetime.now()} - METHOD ENTRY: log_valuation_snapshot for {symbol}\n")
-        handle.write(f"{datetime.datetime.now()} - valuation_results keys: {list(valuation_results.keys())}\n")
+        handle.write(
+            f"{datetime.datetime.now()} - METHOD ENTRY: log_valuation_snapshot for {symbol}\n"
+        )
+        handle.write(
+            f"{datetime.datetime.now()} - valuation_results keys: {list(valuation_results.keys())}\n"
+        )
         if "multi_model" in valuation_results:
             handle.write(
                 f"{datetime.datetime.now()} - multi_model structure: {json.dumps(valuation_results['multi_model'], indent=2, default=str)}\n"
@@ -278,7 +293,9 @@ def log_valuation_snapshot(
         if isinstance(multi_model.get("models"), list):
             models_list = multi_model.get("models", [])
             logger.debug("%s - models list length = %s", symbol, len(models_list))
-            logger.info("📊 %s - Found models list with %s entries", symbol, len(models_list))
+            logger.info(
+                "📊 %s - Found models list with %s entries", symbol, len(models_list)
+            )
             for idx, model in enumerate(models_list):
                 if logger.isEnabledFor(logging.DEBUG):
                     logger.debug(
@@ -289,7 +306,9 @@ def log_valuation_snapshot(
                         isinstance(model, dict),
                     )
                 if isinstance(model, dict):
-                    model_name = model.get("model") or model.get("methodology", "unknown")
+                    model_name = model.get("model") or model.get(
+                        "methodology", "unknown"
+                    )
                     if logger.isEnabledFor(logging.DEBUG):
                         logger.debug(
                             "%s - Model %s name=%s applicable=%s",
@@ -307,7 +326,9 @@ def log_valuation_snapshot(
                             len(all_models_data),
                         )
         else:
-            logger.info("📊 %s - No models list found, using fallback extraction", symbol)
+            logger.info(
+                "📊 %s - No models list found, using fallback extraction", symbol
+            )
             for key, model_name in [
                 ("dcf_professional", "DCF"),
                 ("ggm", "GGM"),
@@ -321,10 +342,14 @@ def log_valuation_snapshot(
                     _append_model_entry(all_models_data, model_data, model_name)
 
         if logger.isEnabledFor(logging.DEBUG):
-            logger.debug("%s - FINAL all_models_data length = %s", symbol, len(all_models_data))
+            logger.debug(
+                "%s - FINAL all_models_data length = %s", symbol, len(all_models_data)
+            )
 
         try:
-            logger.info("📊 %s - Collected %s model entries", symbol, len(all_models_data))
+            logger.info(
+                "📊 %s - Collected %s model entries", symbol, len(all_models_data)
+            )
         except Exception as logger_ex:  # pragma: no cover - defensive
             logger.debug("LOGGER EXCEPTION while logging model count: %s", logger_ex)
 
@@ -335,24 +360,34 @@ def log_valuation_snapshot(
                 all_models=all_models_data,
                 dynamic_weights={
                     entry["name"].lower(): (
-                        entry.get("weight", 0) / 100.0 if isinstance(entry.get("weight"), (int, float)) else 0
+                        entry.get("weight", 0) / 100.0
+                        if isinstance(entry.get("weight"), (int, float))
+                        else 0
                     )
                     for entry in all_models_data
                 },
                 blended_fair_value=blended_fair_value or 0,
                 current_price=current_price or 0,
                 tier=tier_classification,
-                notes=(multi_model.get("notes") if isinstance(multi_model, dict) else None),
+                notes=(
+                    multi_model.get("notes") if isinstance(multi_model, dict) else None
+                ),
             )
             logger.info(valuation_table)
             logger.info("📊 %s - ✅ Valuation table logged successfully", symbol)
         else:
-            logger.warning("%s - No valuation models available for table formatting", symbol)
+            logger.warning(
+                "%s - No valuation models available for table formatting", symbol
+            )
 
     except Exception as exc:  # pragma: no cover - defensive
-        logger.exception("%s - ❌ Failed to format valuation summary table: %s", symbol, exc)
+        logger.exception(
+            "%s - ❌ Failed to format valuation summary table: %s", symbol, exc
+        )
         if valuation_results.get("multi_model"):
-            logger.info("%s - Multi-model summary: %s", symbol, valuation_results["multi_model"])
+            logger.info(
+                "%s - Multi-model summary: %s", symbol, valuation_results["multi_model"]
+            )
 
 
 def _append_model_entry(
@@ -360,14 +395,25 @@ def _append_model_entry(
     model_dict: Dict[str, Any],
     display_name: Optional[str] = None,
 ) -> None:
-    resolved_name = display_name or model_dict.get("model") or model_dict.get("methodology") or "UNKNOWN"
+    resolved_name = (
+        display_name
+        or model_dict.get("model")
+        or model_dict.get("methodology")
+        or "UNKNOWN"
+    )
     resolved_name = str(resolved_name).upper()
 
     fair_value_raw = model_dict.get("fair_value_per_share")
-    fair_value_value = fair_value_raw if isinstance(fair_value_raw, (int, float)) else None
+    fair_value_value = (
+        fair_value_raw if isinstance(fair_value_raw, (int, float)) else None
+    )
     confidence_pct = _to_percent(model_dict.get("confidence_score"))
     weight_pct = _to_percent(model_dict.get("weight"))
-    applicable_flag = bool(model_dict.get("applicable", True)) and fair_value_value is not None and weight_pct > 0
+    applicable_flag = (
+        bool(model_dict.get("applicable", True))
+        and fair_value_value is not None
+        and weight_pct > 0
+    )
 
     collector.append(
         {
@@ -420,7 +466,9 @@ def _format_percent(value: Any) -> str:
 
 
 def _format_table(headers: List[str], rows: List[List[str]]) -> str:
-    string_rows = [[str(cell) if cell not in (None, "") else "-" for cell in row] for row in rows]
+    string_rows = [
+        [str(cell) if cell not in (None, "") else "-" for cell in row] for row in rows
+    ]
     widths = [len(header) for header in headers]
     for row in string_rows:
         for idx, cell in enumerate(row):
@@ -445,7 +493,9 @@ def _extract_model_notes(model: Dict[str, Any]) -> str:
         wacc = assumptions.get("wacc")
         if wacc is not None:
             extras.append(f"WACC {_format_percent(wacc)}")
-        terminal_growth_rate = assumptions.get("terminal_growth") or assumptions.get("terminal_growth_rate")
+        terminal_growth_rate = assumptions.get("terminal_growth") or assumptions.get(
+            "terminal_growth_rate"
+        )
         if terminal_growth_rate is not None:
             extras.append(f"Terminal growth {_format_percent(terminal_growth_rate)}")
         rule = metadata.get("rule_of_40")
@@ -453,7 +503,9 @@ def _extract_model_notes(model: Dict[str, Any]) -> str:
             score = rule.get("score")
             classification = (rule.get("classification") or "").upper()
             if isinstance(score, (int, float)):
-                extras.append(f"Rule of 40 {round_for_prompt(score, 1):.1f} ({classification})")
+                extras.append(
+                    f"Rule of 40 {round_for_prompt(score, 1):.1f} ({classification})"
+                )
             elif classification:
                 extras.append(f"Rule of 40 ({classification})")
 

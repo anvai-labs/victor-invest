@@ -25,7 +25,9 @@ class TestCacheManager:
         ]  # Actual method name
 
         for method in required_methods:
-            assert hasattr(CacheManager, method), f"CacheManager missing method: {method}"
+            assert hasattr(CacheManager, method), (
+                f"CacheManager missing method: {method}"
+            )
 
     def test_cache_manager_singleton_pattern(self):
         """Test CacheManager follows singleton pattern if applicable."""

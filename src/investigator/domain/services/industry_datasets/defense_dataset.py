@@ -180,7 +180,9 @@ class DefenseDataset(BaseIndustryDataset):
             ),
         ]
 
-    def extract_metrics(self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs) -> IndustryMetrics:
+    def extract_metrics(
+        self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs
+    ) -> IndustryMetrics:
         """Extract defense-specific metrics from XBRL data and financials."""
         metrics = IndustryMetrics(
             industry="defense",
@@ -212,7 +214,9 @@ class DefenseDataset(BaseIndustryDataset):
             warnings.append("Backlog-to-revenue estimated at 2.5x")
 
         # Extract Book-to-Bill
-        btb = self._extract_from_xbrl(xbrl_data, "book_to_bill", ["BookToOrderRatio", "OrdersToRevenue"])
+        btb = self._extract_from_xbrl(
+            xbrl_data, "book_to_bill", ["BookToOrderRatio", "OrdersToRevenue"]
+        )
         if btb:
             metrics.metrics["book_to_bill"] = btb
         else:
@@ -220,7 +224,9 @@ class DefenseDataset(BaseIndustryDataset):
             warnings.append("Book-to-bill estimated at 1.0x")
 
         # Extract Operating Margin
-        op_margin = financials.get("operating_margin") or financials.get("operatingMargin")
+        op_margin = financials.get("operating_margin") or financials.get(
+            "operatingMargin"
+        )
         if op_margin:
             metrics.metrics["operating_margin"] = op_margin
         else:
