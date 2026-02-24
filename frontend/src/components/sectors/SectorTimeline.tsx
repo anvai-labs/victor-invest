@@ -56,11 +56,22 @@ const SECTOR_COLORS: { [key: string]: string } = {
   "Real Estate": "#FF2D55",
 };
 
+const METRIC_LABELS: { [key: string]: string } = {
+  "pe": "P/E",
+  "ps": "P/S",
+  "pb": "P/B",
+};
+
 export function SectorTimeline({ selectedSectors }: SectorTimelineProps) {
   const [timelineData, setTimelineData] = useState<TimelineResponse | null>(null);
   const [stockData, setStockData] = useState<StockResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const plotRef = useRef<HTMLDivElement>(null);
+  const [activeTab, setActiveTab] = useState<string>("pe");
+  const plotRefs = {
+    pe: useRef<HTMLDivElement>(null),
+    ps: useRef<HTMLDivElement>(null),
+    pb: useRef<HTMLDivElement>(null),
+  };
 
   useEffect(() => {
     fetchData();
@@ -95,24 +106,29 @@ export function SectorTimeline({ selectedSectors }: SectorTimelineProps) {
   };
 
   useEffect(() => {
-    if (timelineData && plotRef.current) {
-      renderPlot();
+    if (timelineData) {
+      // Render all plots when data loads
+      ["pe", "ps", "pb"].forEach((metric) => {
+        if (plotRefs[metric as keyof typeof plotRefs].current) {
+          renderPlotForMetric(metric);
+        }
+      });
     }
   }, [timelineData, stockData]);
 
-  const renderPlot = () => {
-    if (!timelineData || !plotRef.current) return;
+  const renderPlotForMetric = (metric: string) => {
+    const ref = plotRefs[metric as keyof typeof plotRefs];
+    if (!timelineData || !ref.current) return;
 
     // Dynamically import Plotly
     import("plotly.js-dist-min").then((Plotly) => {
       const traces: any[] = [];
-      const metric = "pe"; // Default to P/E multiple
 
       // Add sector lines
       Object.entries(timelineData.data).forEach(([sector, info]) => {
         const color = SECTOR_COLORS[sector] || "#8E8E93";
         const years = info.data.map((d) => d.fiscal_year);
-        const values = info.data.map((d) => d[metric]);
+        const values = info.data.map((d) => d[metric as keyof SectorData]);
 
         traces.push({
           x: years,
@@ -121,7 +137,7 @@ export function SectorTimeline({ selectedSectors }: SectorTimelineProps) {
           name: sector,
           line: { color, width: 2 },
           marker: { size: 6 },
-          hovertemplate: `<b>${sector}</b><br>Year: %{x}<br>${metric.toUpperCase()}: %{y:.2f}x<extra></extra>`,
+          hovertemplate: `<b>${sector}</b><br>Year: %{x}<br>${METRIC_LABELS[metric]}: %{y:.2f}x<extra></extra>`,
         });
       });
 
@@ -131,16 +147,17 @@ export function SectorTimeline({ selectedSectors }: SectorTimelineProps) {
           const color = SECTOR_COLORS[sector] || "#8E8E93";
           info.stocks.forEach((stock) => {
             const stockMetric = metric === "pe" ? "pe_ratio" : metric === "ps" ? "ps_ratio" : "pb_ratio";
-            if (stock[stockMetric] && stock[stockMetric] > 0) {
+            const metricValue = stock[stockMetric as keyof StockData];
+            if (typeof metricValue === "number" && metricValue > 0) {
               const size = Math.max(10, Math.min(40, 10 + 20 * Math.log(stock.market_cap / 1e12)));
               traces.push({
                 x: [2024],
-                y: [stock[stockMetric]],
+                y: [metricValue],
                 mode: "markers",
                 name: sector,
                 marker: { size, color, opacity: 0.5 },
                 text: [stock.symbol],
-                hovertemplate: `<b>${stock.symbol}</b><br>${sector}<br>Year: 2024<br>${metric.toUpperCase()}: %{y:.2f}x<br>MCap: $${(stock.market_cap / 1e9).toFixed(0)}B<extra></extra>`,
+                hovertemplate: `<b>${stock.symbol}</b><br>${sector}<br>Year: 2024<br>${METRIC_LABELS[metric]}: %{y:.2f}x<br>MCap: $${(stock.market_cap / 1e9).toFixed(0)}B<extra></extra>`,
                 showlegend: false,
               });
             }
@@ -149,7 +166,7 @@ export function SectorTimeline({ selectedSectors }: SectorTimelineProps) {
       }
 
       const layout = {
-        title: `Sector ${metric.toUpperCase()} Multiples Timeline`,
+        title: `Sector ${METRIC_LABELS[metric]} Multiples Timeline`,
         xaxis: { title: "Fiscal Year" },
         yaxis: { title: "Multiple" },
         hovermode: "closest",
@@ -158,18 +175,19 @@ export function SectorTimeline({ selectedSectors }: SectorTimelineProps) {
         height: 500,
       };
 
-      Plotly.newPlot(plotRef.current, traces, layout, { responsive: true });
+      Plotly.newPlot(ref.current, traces, layout, { responsive: true });
     });
   };
 
   const exportChart = () => {
-    if (!plotRef.current) return;
+    const ref = plotRefs[activeTab as keyof typeof plotRefs];
+    if (!ref.current) return;
     import("plotly.js-dist-min").then((Plotly) => {
-      Plotly.downloadImage(plotRef.current, {
+      Plotly.downloadImage(ref.current, {
         format: "png",
         width: 1600,
         height: 900,
-        filename: `sector_timeline_pe_${new Date().toISOString().split("T")[0]}.png`,
+        filename: `sector_timeline_${activeTab}_${new Date().toISOString().split("T")[0]}.png`,
       });
     });
   };
@@ -201,12 +219,18 @@ export function SectorTimeline({ selectedSectors }: SectorTimelineProps) {
       <CardContent>
         <Tabs defaultValue="pe">
           <TabsList className="grid w-full max-w-md grid-cols-3">
-            <TabsTrigger value="pe">P/E Multiple</TabsTrigger>
-            <TabsTrigger value="ps">P/S Multiple</TabsTrigger>
-            <TabsTrigger value="pb">P/B Multiple</TabsTrigger>
+            <TabsTrigger value="pe" onClick={() => setActiveTab("pe")}>P/E Multiple</TabsTrigger>
+            <TabsTrigger value="ps" onClick={() => setActiveTab("ps")}>P/S Multiple</TabsTrigger>
+            <TabsTrigger value="pb" onClick={() => setActiveTab("pb")}>P/B Multiple</TabsTrigger>
           </TabsList>
           <TabsContent value="pe" className="mt-4">
-            <div ref={plotRef} className="w-full" style={{ minHeight: "500px" }} />
+            <div ref={plotRefs.pe} className="w-full" style={{ minHeight: "500px" }} />
+          </TabsContent>
+          <TabsContent value="ps" className="mt-4">
+            <div ref={plotRefs.ps} className="w-full" style={{ minHeight: "500px" }} />
+          </TabsContent>
+          <TabsContent value="pb" className="mt-4">
+            <div ref={plotRefs.pb} className="w-full" style={{ minHeight: "500px" }} />
           </TabsContent>
         </Tabs>
         {stockData && (

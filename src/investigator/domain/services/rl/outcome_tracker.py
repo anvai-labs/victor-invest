@@ -36,6 +36,7 @@ import logging
 from datetime import date, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
+import numpy as np
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -56,6 +57,35 @@ from investigator.infrastructure.database.db import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _convert_numpy_types(obj: Any) -> Any:
+    """Convert NumPy types to native Python types for database storage.
+
+    NumPy types like np.float64, np.int64, etc. are not compatible with
+    PostgreSQL parameter binding. This function recursively converts them
+    to native Python types.
+
+    Args:
+        obj: Any object that may contain NumPy types
+
+    Returns:
+        Object with NumPy types converted to native Python types
+    """
+    if isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, dict):
+        return {k: _convert_numpy_types(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return type(obj)(_convert_numpy_types(v) for v in obj)
+    elif isinstance(obj, bool):
+        # Handle np.bool_ (inherits from bool but check before bool)
+        return bool(obj)
+    return obj
 
 
 class ValuationOutcomesDAO:
@@ -100,6 +130,24 @@ class ValuationOutcomesDAO:
         """
         # Default entry_date to analysis_date
         effective_entry_date = entry_date or analysis_date
+
+        # Convert NumPy types to native Python types
+        logger.debug(
+            f"Before conversion: blended_fair_value type={type(blended_fair_value)}"
+        )
+        blended_fair_value = _convert_numpy_types(blended_fair_value)
+        current_price = _convert_numpy_types(current_price)
+        predicted_upside_pct = _convert_numpy_types(predicted_upside_pct)
+        logger.debug(
+            f"After conversion: blended_fair_value type={type(blended_fair_value)}, value={blended_fair_value}"
+        )
+
+        # Convert model fair values
+        model_fair_values_clean = {}
+        for k, v in model_fair_values.items():
+            if v is not None:
+                model_fair_values_clean[k] = _convert_numpy_types(v)
+
         try:
             with self.db.get_session() as session:
                 result = session.execute(
@@ -150,12 +198,12 @@ class ValuationOutcomesDAO:
                         "blended_fair_value": blended_fair_value,
                         "current_price": current_price,
                         "predicted_upside_pct": predicted_upside_pct,
-                        "dcf_fair_value": model_fair_values.get("dcf"),
-                        "pe_fair_value": model_fair_values.get("pe"),
-                        "ps_fair_value": model_fair_values.get("ps"),
-                        "evebitda_fair_value": model_fair_values.get("ev_ebitda"),
-                        "pb_fair_value": model_fair_values.get("pb"),
-                        "ggm_fair_value": model_fair_values.get("ggm"),
+                        "dcf_fair_value": model_fair_values_clean.get("dcf"),
+                        "pe_fair_value": model_fair_values_clean.get("pe"),
+                        "ps_fair_value": model_fair_values_clean.get("ps"),
+                        "evebitda_fair_value": model_fair_values_clean.get("ev_ebitda"),
+                        "pb_fair_value": model_fair_values_clean.get("pb"),
+                        "ggm_fair_value": model_fair_values_clean.get("ggm"),
                         "model_weights": safe_json_dumps(model_weights),
                         "tier_classification": tier_classification,
                         "context_features": safe_json_dumps(context_features),
@@ -165,6 +213,289 @@ class ValuationOutcomesDAO:
                         "entry_date": effective_entry_date,
                         "exit_date_30d": exit_date_30d,
                         "exit_date_90d": exit_date_90d,
+                    },
+                )
+                row = result.fetchone()
+                session.commit()
+
+                record_id = row[0] if row else None
+                logger.info(
+                    f"Recorded prediction for {symbol} on {analysis_date}: "
+                    f"FV=${blended_fair_value:.2f}, price=${current_price:.2f}, "
+                    f"upside={predicted_upside_pct:.1f}%"
+                )
+                return record_id
+
+        except SQLAlchemyError as e:
+            logger.error(f"Failed to insert prediction for {symbol}: {e}")
+            return None
+
+    def insert_prediction_with_outcomes(
+        self,
+        symbol: str,
+        analysis_date: date,
+        fiscal_period: Optional[str],
+        blended_fair_value: float,
+        current_price: float,
+        predicted_upside_pct: float,
+        model_fair_values: Dict[str, float],
+        model_weights: Dict[str, float],
+        tier_classification: str,
+        context_features: Dict[str, Any],
+        actual_price_30d: Optional[float] = None,
+        actual_price_90d: Optional[float] = None,
+        actual_price_180d: Optional[float] = None,
+        actual_price_365d: Optional[float] = None,
+        actual_price_548d: Optional[float] = None,
+        actual_price_730d: Optional[float] = None,
+        actual_price_1095d: Optional[float] = None,
+        reward_30d: Optional[float] = None,
+        reward_90d: Optional[float] = None,
+        reward_180d: Optional[float] = None,
+        reward_365d: Optional[float] = None,
+        reward_548d: Optional[float] = None,
+        reward_730d: Optional[float] = None,
+        reward_1095d: Optional[float] = None,
+        multi_period_rewards: Optional[Dict[str, Dict[str, float]]] = None,
+        per_model_rewards: Optional[Dict[str, Any]] = None,
+        ab_test_group: Optional[str] = None,
+        policy_version: Optional[str] = None,
+        position_type: str = "inferred",
+        entry_date: Optional[date] = None,
+        exit_date_30d: Optional[date] = None,
+        exit_date_90d: Optional[date] = None,
+        exit_date_180d: Optional[date] = None,
+        exit_date_365d: Optional[date] = None,
+        exit_date_548d: Optional[date] = None,
+        exit_date_730d: Optional[date] = None,
+        exit_date_1095d: Optional[date] = None,
+    ) -> Optional[int]:
+        """
+        Insert prediction record with outcome data for RL backtest.
+
+        This method includes actual outcomes and rewards that are already
+        known from historical backtesting.
+
+        Args:
+            entry_date: Date when position was entered (defaults to analysis_date)
+            exit_date_30d, exit_date_90d, ..., exit_date_1095d: Exit dates for each holding period
+            multi_period_rewards: Consolidated rewards dict with all periods
+
+        Returns:
+            Record ID if successful, None otherwise.
+        """
+        # Default entry_date to analysis_date
+        effective_entry_date = entry_date or analysis_date
+
+        # Convert NumPy types to native Python types
+        blended_fair_value = _convert_numpy_types(blended_fair_value)
+        current_price = _convert_numpy_types(current_price)
+        predicted_upside_pct = _convert_numpy_types(predicted_upside_pct)
+
+        # Convert model fair values
+        model_fair_values_clean = {}
+        for k, v in model_fair_values.items():
+            if v is not None:
+                model_fair_values_clean[k] = _convert_numpy_types(v)
+
+        # Convert outcome/reward data (all horizons)
+        actual_price_30d = (
+            _convert_numpy_types(actual_price_30d)
+            if actual_price_30d is not None
+            else None
+        )
+        actual_price_90d = (
+            _convert_numpy_types(actual_price_90d)
+            if actual_price_90d is not None
+            else None
+        )
+        actual_price_180d = (
+            _convert_numpy_types(actual_price_180d)
+            if actual_price_180d is not None
+            else None
+        )
+        actual_price_365d = (
+            _convert_numpy_types(actual_price_365d)
+            if actual_price_365d is not None
+            else None
+        )
+        actual_price_548d = (
+            _convert_numpy_types(actual_price_548d)
+            if actual_price_548d is not None
+            else None
+        )
+        actual_price_730d = (
+            _convert_numpy_types(actual_price_730d)
+            if actual_price_730d is not None
+            else None
+        )
+        actual_price_1095d = (
+            _convert_numpy_types(actual_price_1095d)
+            if actual_price_1095d is not None
+            else None
+        )
+
+        reward_30d = (
+            _convert_numpy_types(reward_30d) if reward_30d is not None else None
+        )
+        reward_90d = (
+            _convert_numpy_types(reward_90d) if reward_90d is not None else None
+        )
+        reward_180d = (
+            _convert_numpy_types(reward_180d) if reward_180d is not None else None
+        )
+        reward_365d = (
+            _convert_numpy_types(reward_365d) if reward_365d is not None else None
+        )
+        reward_548d = (
+            _convert_numpy_types(reward_548d) if reward_548d is not None else None
+        )
+        reward_730d = (
+            _convert_numpy_types(reward_730d) if reward_730d is not None else None
+        )
+        reward_1095d = (
+            _convert_numpy_types(reward_1095d) if reward_1095d is not None else None
+        )
+
+        per_model_rewards_clean = (
+            _convert_numpy_types(per_model_rewards)
+            if per_model_rewards is not None
+            else None
+        )
+        multi_period_rewards_clean = (
+            _convert_numpy_types(multi_period_rewards)
+            if multi_period_rewards is not None
+            else None
+        )
+
+        try:
+            with self.db.get_session() as session:
+                result = session.execute(
+                    text("""
+                        INSERT INTO valuation_outcomes (
+                            symbol, analysis_date, fiscal_period,
+                            blended_fair_value, current_price, predicted_upside_pct,
+                            dcf_fair_value, pe_fair_value, ps_fair_value,
+                            evebitda_fair_value, pb_fair_value, ggm_fair_value,
+                            model_weights, tier_classification, context_features,
+                            actual_price_30d, actual_price_90d, actual_price_180d,
+                            actual_price_365d, actual_price_548d, actual_price_730d,
+                            actual_price_1095d,
+                            reward_30d, reward_90d, reward_180d, reward_365d,
+                            reward_548d, reward_730d, reward_1095d,
+                            multi_period_rewards, per_model_rewards,
+                            outcome_updated_at, ab_test_group, policy_version, position_type,
+                            entry_date, exit_date_30d, exit_date_90d, exit_date_180d,
+                            exit_date_365d, exit_date_548d, exit_date_730d, exit_date_1095d
+                        ) VALUES (
+                            :symbol, :analysis_date, :fiscal_period,
+                            :blended_fair_value, :current_price, :predicted_upside_pct,
+                            :dcf_fair_value, :pe_fair_value, :ps_fair_value,
+                            :evebitda_fair_value, :pb_fair_value, :ggm_fair_value,
+                            :model_weights, :tier_classification, :context_features,
+                            :actual_price_30d, :actual_price_90d, :actual_price_180d,
+                            :actual_price_365d, :actual_price_548d, :actual_price_730d,
+                            :actual_price_1095d,
+                            :reward_30d, :reward_90d, :reward_180d, :reward_365d,
+                            :reward_548d, :reward_730d, :reward_1095d,
+                            :multi_period_rewards, :per_model_rewards,
+                            CURRENT_TIMESTAMP, :ab_test_group, :policy_version, :position_type,
+                            :entry_date, :exit_date_30d, :exit_date_90d, :exit_date_180d,
+                            :exit_date_365d, :exit_date_548d, :exit_date_730d, :exit_date_1095d
+                        )
+                        ON CONFLICT (symbol, analysis_date, position_type) DO UPDATE SET
+                            fiscal_period = EXCLUDED.fiscal_period,
+                            blended_fair_value = EXCLUDED.blended_fair_value,
+                            current_price = EXCLUDED.current_price,
+                            predicted_upside_pct = EXCLUDED.predicted_upside_pct,
+                            dcf_fair_value = EXCLUDED.dcf_fair_value,
+                            pe_fair_value = EXCLUDED.pe_fair_value,
+                            ps_fair_value = EXCLUDED.ps_fair_value,
+                            evebitda_fair_value = EXCLUDED.evebitda_fair_value,
+                            pb_fair_value = EXCLUDED.pb_fair_value,
+                            ggm_fair_value = EXCLUDED.ggm_fair_value,
+                            model_weights = EXCLUDED.model_weights,
+                            tier_classification = EXCLUDED.tier_classification,
+                            context_features = EXCLUDED.context_features,
+                            actual_price_30d = EXCLUDED.actual_price_30d,
+                            actual_price_90d = EXCLUDED.actual_price_90d,
+                            actual_price_180d = EXCLUDED.actual_price_180d,
+                            actual_price_365d = EXCLUDED.actual_price_365d,
+                            actual_price_548d = EXCLUDED.actual_price_548d,
+                            actual_price_730d = EXCLUDED.actual_price_730d,
+                            actual_price_1095d = EXCLUDED.actual_price_1095d,
+                            reward_30d = EXCLUDED.reward_30d,
+                            reward_90d = EXCLUDED.reward_90d,
+                            reward_180d = EXCLUDED.reward_180d,
+                            reward_365d = EXCLUDED.reward_365d,
+                            reward_548d = EXCLUDED.reward_548d,
+                            reward_730d = EXCLUDED.reward_730d,
+                            reward_1095d = EXCLUDED.reward_1095d,
+                            multi_period_rewards = EXCLUDED.multi_period_rewards,
+                            per_model_rewards = EXCLUDED.per_model_rewards,
+                            ab_test_group = EXCLUDED.ab_test_group,
+                            policy_version = EXCLUDED.policy_version,
+                            entry_date = EXCLUDED.entry_date,
+                            exit_date_30d = EXCLUDED.exit_date_30d,
+                            exit_date_90d = EXCLUDED.exit_date_90d,
+                            exit_date_180d = EXCLUDED.exit_date_180d,
+                            exit_date_365d = EXCLUDED.exit_date_365d,
+                            exit_date_548d = EXCLUDED.exit_date_548d,
+                            exit_date_730d = EXCLUDED.exit_date_730d,
+                            exit_date_1095d = EXCLUDED.exit_date_1095d,
+                            outcome_updated_at = CURRENT_TIMESTAMP,
+                            updated_at = CURRENT_TIMESTAMP
+                        RETURNING id
+                    """),
+                    {
+                        "symbol": symbol,
+                        "analysis_date": analysis_date,
+                        "fiscal_period": fiscal_period,
+                        "blended_fair_value": blended_fair_value,
+                        "current_price": current_price,
+                        "predicted_upside_pct": predicted_upside_pct,
+                        "dcf_fair_value": model_fair_values_clean.get("dcf"),
+                        "pe_fair_value": model_fair_values_clean.get("pe"),
+                        "ps_fair_value": model_fair_values_clean.get("ps"),
+                        "evebitda_fair_value": model_fair_values_clean.get("ev_ebitda"),
+                        "pb_fair_value": model_fair_values_clean.get("pb"),
+                        "ggm_fair_value": model_fair_values_clean.get("ggm"),
+                        "model_weights": safe_json_dumps(model_weights),
+                        "tier_classification": tier_classification,
+                        "context_features": safe_json_dumps(context_features),
+                        "actual_price_30d": actual_price_30d,
+                        "actual_price_90d": actual_price_90d,
+                        "actual_price_180d": actual_price_180d,
+                        "actual_price_365d": actual_price_365d,
+                        "actual_price_548d": actual_price_548d,
+                        "actual_price_730d": actual_price_730d,
+                        "actual_price_1095d": actual_price_1095d,
+                        "reward_30d": reward_30d,
+                        "reward_90d": reward_90d,
+                        "reward_180d": reward_180d,
+                        "reward_365d": reward_365d,
+                        "reward_548d": reward_548d,
+                        "reward_730d": reward_730d,
+                        "reward_1095d": reward_1095d,
+                        "multi_period_rewards": safe_json_dumps(
+                            multi_period_rewards_clean
+                        )
+                        if multi_period_rewards_clean
+                        else None,
+                        "per_model_rewards": safe_json_dumps(per_model_rewards_clean)
+                        if per_model_rewards_clean
+                        else None,
+                        "ab_test_group": ab_test_group,
+                        "policy_version": policy_version,
+                        "position_type": position_type,
+                        "entry_date": effective_entry_date,
+                        "exit_date_30d": exit_date_30d,
+                        "exit_date_90d": exit_date_90d,
+                        "exit_date_180d": exit_date_180d,
+                        "exit_date_365d": exit_date_365d,
+                        "exit_date_548d": exit_date_548d,
+                        "exit_date_730d": exit_date_730d,
+                        "exit_date_1095d": exit_date_1095d,
                     },
                 )
                 row = result.fetchone()
@@ -198,13 +529,15 @@ class ValuationOutcomesDAO:
 
                 if actual_price_30d is not None:
                     updates.append("actual_price_30d = :actual_price_30d")
-                    params["actual_price_30d"] = actual_price_30d
+                    params["actual_price_30d"] = _convert_numpy_types(actual_price_30d)
                 if actual_price_90d is not None:
                     updates.append("actual_price_90d = :actual_price_90d")
-                    params["actual_price_90d"] = actual_price_90d
+                    params["actual_price_90d"] = _convert_numpy_types(actual_price_90d)
                 if actual_price_365d is not None:
                     updates.append("actual_price_365d = :actual_price_365d")
-                    params["actual_price_365d"] = actual_price_365d
+                    params["actual_price_365d"] = _convert_numpy_types(
+                        actual_price_365d
+                    )
 
                 if not updates:
                     return True  # Nothing to update
@@ -240,16 +573,20 @@ class ValuationOutcomesDAO:
 
                 if reward_30d is not None:
                     updates.append("reward_30d = :reward_30d")
-                    params["reward_30d"] = reward_30d
+                    params["reward_30d"] = _convert_numpy_types(reward_30d)
                 if reward_90d is not None:
                     updates.append("reward_90d = :reward_90d")
-                    params["reward_90d"] = reward_90d
+                    params["reward_90d"] = _convert_numpy_types(reward_90d)
                 if reward_365d is not None:
                     updates.append("reward_365d = :reward_365d")
-                    params["reward_365d"] = reward_365d
+                    params["reward_365d"] = _convert_numpy_types(reward_365d)
                 if per_model_rewards is not None:
                     updates.append("per_model_rewards = :per_model_rewards")
-                    params["per_model_rewards"] = safe_json_dumps(per_model_rewards)
+                    # Convert NumPy types in nested dict before JSON serialization
+                    per_model_rewards_clean = _convert_numpy_types(per_model_rewards)
+                    params["per_model_rewards"] = safe_json_dumps(
+                        per_model_rewards_clean
+                    )
 
                 if not updates:
                     return True
@@ -365,13 +702,33 @@ class ValuationOutcomesDAO:
 
     def get_training_ready_experiences(
         self,
-        limit: int = 10000,
+        limit: Optional[int] = 10000,
         exclude_used: bool = True,
+        horizon: str = "90d",
     ) -> List[Dict[str, Any]]:
-        """Get experiences ready for training (have 90d outcomes)."""
+        """Get experiences ready for training for a specific horizon.
+
+        Args:
+            limit: Maximum number of experiences to return. None = no limit.
+            exclude_used: If True, exclude experiences already used for training.
+            horizon: Which reward horizon to filter by (e.g., "90d", "180d", "365d", "730d").
+                     Only returns experiences where reward for this horizon is NOT NULL.
+        """
         try:
             with self.db.get_session() as session:
                 used_clause = "AND used_for_training = FALSE" if exclude_used else ""
+
+                # Extract days from horizon string (e.g., "90d" -> "90")
+                horizon_days = horizon.rstrip("d")
+
+                # Build query with or without limit
+                if limit is None:
+                    limit_clause = ""
+                    params = {}
+                else:
+                    limit_clause = "LIMIT :limit"
+                    params = {"limit": limit}
+
                 results = session.execute(
                     text(f"""
                         SELECT id, symbol, analysis_date, fiscal_period,
@@ -379,16 +736,19 @@ class ValuationOutcomesDAO:
                                dcf_fair_value, pe_fair_value, ps_fair_value,
                                evebitda_fair_value, pb_fair_value, ggm_fair_value,
                                model_weights, tier_classification, context_features,
-                               actual_price_30d, actual_price_90d, actual_price_365d,
-                               reward_30d, reward_90d, reward_365d,
+                               actual_price_30d, actual_price_90d, actual_price_180d,
+                               actual_price_365d, actual_price_548d, actual_price_730d,
+                               actual_price_1095d,
+                               reward_30d, reward_90d, reward_180d, reward_365d,
+                               reward_548d, reward_730d, reward_1095d,
                                per_model_rewards, ab_test_group, policy_version
                         FROM valuation_outcomes
-                        WHERE reward_90d IS NOT NULL
+                        WHERE reward_{horizon_days}d IS NOT NULL
                               {used_clause}
                         ORDER BY analysis_date DESC
-                        LIMIT :limit
+                        {limit_clause}
                     """),
-                    {"limit": limit},
+                    params,
                 ).fetchall()
 
                 return [self._row_to_dict(r) for r in results]
@@ -431,35 +791,88 @@ class ValuationOutcomesDAO:
 
     def _row_to_dict(self, row: tuple) -> Dict[str, Any]:
         """Convert database row to dictionary."""
-        return {
-            "id": row[0],
-            "symbol": row[1],
-            "analysis_date": row[2],
-            "fiscal_period": row[3],
-            "blended_fair_value": float(row[4]) if row[4] else None,
-            "current_price": float(row[5]) if row[5] else None,
-            "predicted_upside_pct": float(row[6]) if row[6] else None,
-            "model_fair_values": {
-                "dcf": float(row[7]) if row[7] else None,
-                "pe": float(row[8]) if row[8] else None,
-                "ps": float(row[9]) if row[9] else None,
-                "ev_ebitda": float(row[10]) if row[10] else None,
-                "pb": float(row[11]) if row[11] else None,
-                "ggm": float(row[12]) if row[12] else None,
-            },
-            "model_weights": safe_json_loads(row[13]) if row[13] else {},
-            "tier_classification": row[14],
-            "context_features": safe_json_loads(row[15]) if row[15] else {},
-            "actual_price_30d": float(row[16]) if row[16] else None,
-            "actual_price_90d": float(row[17]) if row[17] else None,
-            "actual_price_365d": float(row[18]) if row[18] else None,
-            "reward_30d": float(row[19]) if row[19] else None,
-            "reward_90d": float(row[20]) if row[20] else None,
-            "reward_365d": float(row[21]) if row[21] else None,
-            "per_model_rewards": safe_json_loads(row[22]) if row[22] else {},
-            "ab_test_group": row[23],
-            "policy_version": row[24],
-        }
+        # Handle both old (25 columns) and new (33 columns) row structures
+        # Old: backtest_v3_dual_position (25 cols)
+        # New: backtest_v4_multi_period (33 cols) with all horizon rewards
+
+        if len(row) <= 25:
+            # Old format (25 columns)
+            return {
+                "id": row[0],
+                "symbol": row[1],
+                "analysis_date": row[2],
+                "fiscal_period": row[3],
+                "blended_fair_value": float(row[4]) if row[4] else None,
+                "current_price": float(row[5]) if row[5] else None,
+                "predicted_upside_pct": float(row[6]) if row[6] else None,
+                "model_fair_values": {
+                    "dcf": float(row[7]) if row[7] else None,
+                    "pe": float(row[8]) if row[8] else None,
+                    "ps": float(row[9]) if row[9] else None,
+                    "ev_ebitda": float(row[10]) if row[10] else None,
+                    "pb": float(row[11]) if row[11] else None,
+                    "ggm": float(row[12]) if row[12] else None,
+                },
+                "model_weights": safe_json_loads(row[13]) if row[13] else {},
+                "tier_classification": row[14],
+                "context_features": safe_json_loads(row[15]) if row[15] else {},
+                "actual_price_30d": float(row[16]) if row[16] else None,
+                "actual_price_90d": float(row[17]) if row[17] else None,
+                "actual_price_365d": float(row[18]) if row[18] else None,
+                "reward_30d": float(row[19]) if row[19] else None,
+                "reward_90d": float(row[20]) if row[20] else None,
+                "reward_365d": float(row[21]) if row[21] else None,
+                "per_model_rewards": safe_json_loads(row[22]) if row[22] else {},
+                "ab_test_group": row[23],
+                "policy_version": row[24],
+                "actual_price_180d": None,
+                "actual_price_548d": None,
+                "actual_price_730d": None,
+                "actual_price_1095d": None,
+                "reward_180d": None,
+                "reward_548d": None,
+                "reward_730d": None,
+                "reward_1095d": None,
+            }
+        else:
+            # New format (33 columns) with all horizon rewards
+            return {
+                "id": row[0],
+                "symbol": row[1],
+                "analysis_date": row[2],
+                "fiscal_period": row[3],
+                "blended_fair_value": float(row[4]) if row[4] else None,
+                "current_price": float(row[5]) if row[5] else None,
+                "predicted_upside_pct": float(row[6]) if row[6] else None,
+                "model_fair_values": {
+                    "dcf": float(row[7]) if row[7] else None,
+                    "pe": float(row[8]) if row[8] else None,
+                    "ps": float(row[9]) if row[9] else None,
+                    "ev_ebitda": float(row[10]) if row[10] else None,
+                    "pb": float(row[11]) if row[11] else None,
+                    "ggm": float(row[12]) if row[12] else None,
+                },
+                "model_weights": safe_json_loads(row[13]) if row[13] else {},
+                "tier_classification": row[14],
+                "context_features": safe_json_loads(row[15]) if row[15] else {},
+                "actual_price_30d": float(row[16]) if row[16] else None,
+                "actual_price_90d": float(row[17]) if row[17] else None,
+                "actual_price_180d": float(row[18]) if row[18] else None,
+                "actual_price_365d": float(row[19]) if row[19] else None,
+                "actual_price_548d": float(row[20]) if row[20] else None,
+                "actual_price_730d": float(row[21]) if row[21] else None,
+                "actual_price_1095d": float(row[22]) if row[22] else None,
+                "reward_30d": float(row[23]) if row[23] else None,
+                "reward_90d": float(row[24]) if row[24] else None,
+                "reward_180d": float(row[25]) if row[25] else None,
+                "reward_365d": float(row[26]) if row[26] else None,
+                "reward_548d": float(row[27]) if row[27] else None,
+                "reward_730d": float(row[28]) if row[28] else None,
+                "reward_1095d": float(row[29]) if row[29] else None,
+                "per_model_rewards": safe_json_loads(row[30]) if row[30] else {},
+                "ab_test_group": row[31],
+                "policy_version": row[32],
+            }
 
 
 class OutcomeTracker:
@@ -536,11 +949,15 @@ class OutcomeTracker:
         # Calculate predicted upside
         predicted_upside_pct = 0.0
         if current_price and current_price > 0:
-            predicted_upside_pct = ((blended_fair_value - current_price) / current_price) * 100
+            predicted_upside_pct = (
+                (blended_fair_value - current_price) / current_price
+            ) * 100
 
         # Convert context to dict if needed
         context_dict = (
-            context_features.to_dict() if isinstance(context_features, ValuationContext) else context_features
+            context_features.to_dict()
+            if isinstance(context_features, ValuationContext)
+            else context_features
         )
 
         # Get AB test group string
@@ -565,6 +982,135 @@ class OutcomeTracker:
             exit_date_90d=exit_date_90d,
         )
 
+    def record_prediction_with_outcomes(
+        self,
+        symbol: str,
+        analysis_date: date,
+        blended_fair_value: float,
+        current_price: float,
+        model_fair_values: Dict[str, float],
+        model_weights: Dict[str, float],
+        tier_classification: str,
+        context_features: ValuationContext,
+        fiscal_period: Optional[str] = None,
+        actual_price_30d: Optional[float] = None,
+        actual_price_90d: Optional[float] = None,
+        actual_price_180d: Optional[float] = None,
+        actual_price_365d: Optional[float] = None,
+        actual_price_548d: Optional[float] = None,
+        actual_price_730d: Optional[float] = None,
+        actual_price_1095d: Optional[float] = None,
+        reward_30d: Optional[float] = None,
+        reward_90d: Optional[float] = None,
+        reward_180d: Optional[float] = None,
+        reward_365d: Optional[float] = None,
+        reward_548d: Optional[float] = None,
+        reward_730d: Optional[float] = None,
+        reward_1095d: Optional[float] = None,
+        multi_period_rewards: Optional[Dict[str, Dict[str, float]]] = None,
+        per_model_rewards: Optional[Dict[str, Dict[str, Any]]] = None,
+        ab_test_group: Optional[ABTestGroup] = None,
+        policy_version: Optional[str] = None,
+        position_type: str = "inferred",
+        entry_date: Optional[date] = None,
+        exit_date_30d: Optional[date] = None,
+        exit_date_90d: Optional[date] = None,
+        exit_date_180d: Optional[date] = None,
+        exit_date_365d: Optional[date] = None,
+        exit_date_548d: Optional[date] = None,
+        exit_date_730d: Optional[date] = None,
+        exit_date_1095d: Optional[date] = None,
+    ) -> Optional[int]:
+        """
+        Record a valuation prediction with outcome data for RL backtest.
+
+        This method is used by the RL backtest script to record predictions
+        along with their actual outcomes and rewards. Unlike the standard
+        record_prediction method, this includes outcome data that is already
+        known (from historical backtesting).
+
+        Args:
+            symbol: Stock ticker symbol.
+            analysis_date: Date of the analysis.
+            blended_fair_value: Final blended fair value prediction.
+            current_price: Current stock price at analysis time.
+            model_fair_values: Fair values from each valuation model.
+            model_weights: Weights used for each model.
+            tier_classification: Tier classification used.
+            context_features: ValuationContext with all features.
+            fiscal_period: Fiscal period being analyzed.
+            actual_price_30d: Actual price 30 days after analysis (from backtest).
+            actual_price_90d: Actual price 90 days after analysis (from backtest).
+            reward_30d: Reward calculated for 30-day period.
+            reward_90d: Reward calculated for 90-day period.
+            per_model_rewards: Detailed rewards for each model.
+            ab_test_group: A/B test group assignment.
+            policy_version: RL policy version if RL was used.
+            position_type: Position signal type ('LONG', 'SHORT', or 'inferred').
+            entry_date: Date when position was entered (defaults to analysis_date).
+            exit_date_30d: Date 30 days after entry.
+            exit_date_90d: Date 90 days after entry.
+
+        Returns:
+            Database record ID if successful, None otherwise.
+        """
+        # Calculate predicted upside
+        predicted_upside_pct = 0.0
+        if current_price and current_price > 0:
+            predicted_upside_pct = (
+                (blended_fair_value - current_price) / current_price
+            ) * 100
+
+        # Convert context to dict if needed
+        context_dict = (
+            context_features.to_dict()
+            if isinstance(context_features, ValuationContext)
+            else context_features
+        )
+
+        # Get AB test group string
+        ab_group_str = ab_test_group.value if ab_test_group else None
+
+        return self.dao.insert_prediction_with_outcomes(
+            symbol=symbol,
+            analysis_date=analysis_date,
+            fiscal_period=fiscal_period,
+            blended_fair_value=blended_fair_value,
+            current_price=current_price,
+            predicted_upside_pct=predicted_upside_pct,
+            model_fair_values=model_fair_values,
+            model_weights=model_weights,
+            tier_classification=tier_classification,
+            context_features=context_dict,
+            actual_price_30d=actual_price_30d,
+            actual_price_90d=actual_price_90d,
+            actual_price_180d=actual_price_180d,
+            actual_price_365d=actual_price_365d,
+            actual_price_548d=actual_price_548d,
+            actual_price_730d=actual_price_730d,
+            actual_price_1095d=actual_price_1095d,
+            reward_30d=reward_30d,
+            reward_90d=reward_90d,
+            reward_180d=reward_180d,
+            reward_365d=reward_365d,
+            reward_548d=reward_548d,
+            reward_730d=reward_730d,
+            reward_1095d=reward_1095d,
+            multi_period_rewards=multi_period_rewards,
+            per_model_rewards=per_model_rewards,
+            ab_test_group=ab_group_str,
+            policy_version=policy_version,
+            position_type=position_type,
+            entry_date=entry_date,
+            exit_date_30d=exit_date_30d,
+            exit_date_90d=exit_date_90d,
+            exit_date_180d=exit_date_180d,
+            exit_date_365d=exit_date_365d,
+            exit_date_548d=exit_date_548d,
+            exit_date_730d=exit_date_730d,
+            exit_date_1095d=exit_date_1095d,
+        )
+
     async def update_outcomes(
         self,
         lookback_days: int = 90,
@@ -583,7 +1129,9 @@ class OutcomeTracker:
             Tuple of (updated_count, error_count).
         """
         if not self.price_service:
-            logger.warning("No price history service configured, skipping outcome update")
+            logger.warning(
+                "No price history service configured, skipping outcome update"
+            )
             return 0, 0
 
         updated_count = 0
@@ -594,7 +1142,9 @@ class OutcomeTracker:
         for record in pending_30d:
             try:
                 target_date = record["analysis_date"] + timedelta(days=30)
-                price = await self.price_service.get_price_on_date(record["symbol"], target_date)
+                price = await self.price_service.get_price_on_date(
+                    record["symbol"], target_date
+                )
                 if price:
                     self.dao.update_outcome_prices(record["id"], actual_price_30d=price)
                     updated_count += 1
@@ -607,7 +1157,9 @@ class OutcomeTracker:
         for record in pending_90d:
             try:
                 target_date = record["analysis_date"] + timedelta(days=90)
-                price = await self.price_service.get_price_on_date(record["symbol"], target_date)
+                price = await self.price_service.get_price_on_date(
+                    record["symbol"], target_date
+                )
                 if price:
                     self.dao.update_outcome_prices(record["id"], actual_price_90d=price)
 
@@ -629,7 +1181,9 @@ class OutcomeTracker:
                 logger.error(f"Error updating 90d outcome for {record['symbol']}: {e}")
                 error_count += 1
 
-        logger.info(f"Outcome update complete: {updated_count} updated, {error_count} errors")
+        logger.info(
+            f"Outcome update complete: {updated_count} updated, {error_count} errors"
+        )
         return updated_count, error_count
 
     def _calculate_rewards(
@@ -693,7 +1247,11 @@ class OutcomeTracker:
             reward_30d = result_30d.reward
 
         # Calculate error for reporting
-        error_90d = abs(blended_fair_value - actual_price_90d) / actual_price_90d if actual_price_90d > 0 else 0
+        error_90d = (
+            abs(blended_fair_value - actual_price_90d) / actual_price_90d
+            if actual_price_90d > 0
+            else 0
+        )
 
         return {
             "reward_90d": round(result_90d.reward, 4),
@@ -707,33 +1265,45 @@ class OutcomeTracker:
 
     def get_training_experiences(
         self,
-        limit: int = 10000,
+        limit: Optional[int] = 10000,
         exclude_used: bool = True,
+        horizon: str = "90d",
     ) -> List[Experience]:
         """
         Get experiences ready for training.
 
-        Returns experiences that have 90-day outcomes and calculated rewards.
+        Returns experiences that have outcomes for the specified horizon.
 
         Args:
-            limit: Maximum number of experiences to return.
+            limit: Maximum number of experiences to return (None = no limit).
             exclude_used: If True, exclude experiences already used for training.
+            horizon: Which reward horizon to use (e.g., "90d", "180d", "365d", "730d").
+                     Only returns experiences where reward for this horizon is NOT NULL.
 
         Returns:
             List of Experience objects ready for training.
         """
-        records = self.dao.get_training_ready_experiences(limit=limit, exclude_used=exclude_used)
+        records = self.dao.get_training_ready_experiences(
+            limit=limit, exclude_used=exclude_used, horizon=horizon
+        )
 
         experiences = []
         for record in records:
             try:
                 context = ValuationContext.from_dict(record["context_features"])
 
+                # Extract all available rewards
                 reward = RewardSignal(
-                    reward_30d=record["reward_30d"],
-                    reward_90d=record["reward_90d"],
-                    reward_365d=record["reward_365d"],
-                    direction_correct_90d=record.get("per_model_rewards", {}).get("direction_correct"),
+                    reward_30d=record.get("reward_30d"),
+                    reward_90d=record.get("reward_90d"),
+                    reward_180d=record.get("reward_180d"),
+                    reward_365d=record.get("reward_365d"),
+                    reward_548d=record.get("reward_548d"),
+                    reward_730d=record.get("reward_730d"),
+                    reward_1095d=record.get("reward_1095d"),
+                    direction_correct_90d=record.get("per_model_rewards", {}).get(
+                        "direction_correct"
+                    ),
                 )
 
                 experience = Experience(
@@ -752,6 +1322,10 @@ class OutcomeTracker:
             except Exception as e:
                 logger.warning(f"Failed to parse experience {record['id']}: {e}")
 
+        logger.info(
+            f"Loaded {len(experiences)} experiences for {horizon} horizon "
+            f"(limit={limit}, exclude_used={exclude_used})"
+        )
         return experiences
 
     def mark_experiences_used(

@@ -42,7 +42,15 @@ export function SectorOverview({ onSectorSelect }: SectorOverviewProps) {
     }
   };
 
-  const sortedData = [...data].sort((a, b) => b[sortMetric] - a[sortMetric]);
+  const sortedData = [...data].sort((a, b) => {
+    const aValue = a[sortMetric];
+    const bValue = b[sortMetric];
+    // Handle null values - sort them last
+    if (aValue == null && bValue == null) return 0;
+    if (aValue == null) return 1;
+    if (bValue == null) return -1;
+    return bValue - aValue;
+  });
 
   const getTrendIcon = (value: number) => {
     if (value > 25) return <TrendingUp className="h-4 w-4 text-red-500" />;
@@ -115,12 +123,12 @@ export function SectorOverview({ onSectorSelect }: SectorOverviewProps) {
                   <td className="p-2 font-medium">{sector.sector}</td>
                   <td className="p-2 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      {sector.pe.toFixed(2)}
-                      {getTrendIcon(sector.pe)}
+                      {sector.pe != null ? sector.pe.toFixed(2) : "N/A"}
+                      {sector.pe != null && getTrendIcon(sector.pe)}
                     </div>
                   </td>
-                  <td className="p-2 text-right">{sector.ps.toFixed(2)}</td>
-                  <td className="p-2 text-right">{sector.pb.toFixed(2)}</td>
+                  <td className="p-2 text-right">{sector.ps != null ? sector.ps.toFixed(2) : "N/A"}</td>
+                  <td className="p-2 text-right">{sector.pb != null ? sector.pb.toFixed(2) : "N/A"}</td>
                   <td className="p-2 text-right text-sm text-muted-foreground">{sector.sample_size}</td>
                   <td className="p-2 text-right text-sm text-muted-foreground">{sector.fiscal_year}</td>
                 </tr>

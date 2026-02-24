@@ -58,6 +58,19 @@ class RLModelWeightingService:
     for seamless integration.
     """
 
+    # Horizon-specific policy mapping
+    HORIZON_POLICY_MAP = {
+        "90d": "data/rl_models/policy.pkl",
+        "365d": "data/rl_models/policy_365d.pkl",
+        "730d": "data/rl_models/policy_730d.pkl",
+    }
+
+    HORIZON_NORMALIZER_MAP = {
+        "90d": "data/rl_models/normalizer.pkl",
+        "365d": "data/rl_models/normalizer_365d.pkl",
+        "730d": "data/rl_models/normalizer_730d.pkl",
+    }
+
     def __init__(
         self,
         rl_enabled: bool = True,
@@ -72,6 +85,8 @@ class RLModelWeightingService:
         use_dual_policy: bool = True,
         technical_policy_path: str = "data/rl_models/active_technical_policy.pkl",
         fundamental_policy_path: str = "data/rl_models/active_fundamental_policy.pkl",
+        # Horizon-aware policy selection
+        horizon: str = "730d",
     ):
         """
         Initialize RL model weighting service.
@@ -80,23 +95,28 @@ class RLModelWeightingService:
             rl_enabled: Whether to use RL policy.
             fallback_service: DynamicModelWeightingService for fallback.
             policy: Pre-created RL policy (optional).
-            policy_path: Path to load policy from (legacy single policy).
-            normalizer_path: Path to load normalizer from.
+            policy_path: Path to load policy from (legacy single policy, overridden by horizon).
+            normalizer_path: Path to load normalizer from (overridden by horizon).
             outcome_tracker: OutcomeTracker for recording predictions.
             ab_test_enabled: Whether to run A/B test.
             ab_test_rl_fraction: Fraction of requests to use RL.
             use_dual_policy: Whether to use dual policy (Technical + Fundamental).
             technical_policy_path: Path to technical policy for dual mode.
             fundamental_policy_path: Path to fundamental policy for dual mode.
+            horizon: Investment holding period (90d, 365d, 730d) for policy selection.
         """
         self.rl_enabled = rl_enabled
         self.fallback_service = fallback_service
         self.policy = policy
-        self.policy_path = policy_path
-        self.normalizer_path = normalizer_path
-        self.outcome_tracker = outcome_tracker or OutcomeTracker()
+        self.horizon = horizon
         self.ab_test_enabled = ab_test_enabled
         self.ab_test_rl_fraction = ab_test_rl_fraction
+
+        # Map horizon to policy/normalizer paths
+        self.policy_path = self.HORIZON_POLICY_MAP.get(horizon, policy_path)
+        self.normalizer_path = self.HORIZON_NORMALIZER_MAP.get(horizon, normalizer_path)
+
+        self.outcome_tracker = outcome_tracker or OutcomeTracker()
 
         # Dual policy support
         self.use_dual_policy = use_dual_policy
@@ -152,7 +172,9 @@ class RLModelWeightingService:
             if self.policy is None:
                 if self.fallback_service:
                     # Use hybrid policy
-                    adjustment_policy = ContextualBanditPolicy(normalizer=self.normalizer)
+                    adjustment_policy = ContextualBanditPolicy(
+                        normalizer=self.normalizer
+                    )
                     self.policy = HybridPolicy(
                         base_weighting_service=self.fallback_service,
                         adjustment_policy=adjustment_policy,
@@ -174,9 +196,39 @@ class RLModelWeightingService:
             logger.warning(f"Failed to load RL policy: {e}")
             return False
 
+    def set_horizon(self, horizon: str) -> bool:
+        """Update the holding period horizon and reload the appropriate policy.
+
+        Args:
+            horizon: Investment holding period (90d, 365d, 730d)
+
+        Returns:
+            True if policy was successfully reloaded, False otherwise
+        """
+        if horizon not in self.HORIZON_POLICY_MAP:
+            logger.warning(
+                f"Invalid horizon: {horizon}. Valid options: {list(self.HORIZON_POLICY_MAP.keys())}"
+            )
+            return False
+
+        self.horizon = horizon
+        self.policy_path = self.HORIZON_POLICY_MAP[horizon]
+        self.normalizer_path = self.HORIZON_NORMALIZER_MAP[horizon]
+
+        logger.info(
+            f"Setting horizon to {horizon}, loading policy from {self.policy_path}"
+        )
+
+        # Reload policy with new horizon
+        return self._load_policy()
+
     def is_dual_policy_active(self) -> bool:
         """Check if dual policy is loaded and active."""
         return self.dual_policy is not None
+
+    def get_active_horizon(self) -> str:
+        """Get the currently active investment horizon."""
+        return self.horizon
 
     def determine_weights(
         self,
@@ -208,14 +260,20 @@ class RLModelWeightingService:
         use_dual = self.dual_policy is not None
         use_single = self.policy is not None and self.policy.is_ready()
         use_rl = (
-            self.rl_enabled and (use_dual or use_single) and (not self.ab_test_enabled or ab_group == ABTestGroup.RL)
+            self.rl_enabled
+            and (use_dual or use_single)
+            and (not self.ab_test_enabled or ab_group == ABTestGroup.RL)
         )
 
         if use_rl:
-            weights, tier, audit = self._predict_with_rl(symbol, financials, ratios, data_quality, market_context)
+            weights, tier, audit = self._predict_with_rl(
+                symbol, financials, ratios, data_quality, market_context
+            )
             self._rl_predictions += 1
         else:
-            weights, tier, audit = self._predict_with_fallback(symbol, financials, ratios, data_quality, market_context)
+            weights, tier, audit = self._predict_with_fallback(
+                symbol, financials, ratios, data_quality, market_context
+            )
             self._fallback_predictions += 1
 
         # Record prediction for outcome tracking
@@ -284,7 +342,9 @@ class RLModelWeightingService:
 
         except Exception as e:
             logger.warning(f"RL prediction failed for {symbol}, using fallback: {e}")
-            return self._predict_with_fallback(symbol, financials, ratios, data_quality, market_context)
+            return self._predict_with_fallback(
+                symbol, financials, ratios, data_quality, market_context
+            )
 
     def _predict_with_fallback(
         self,
@@ -379,7 +439,9 @@ class RLModelWeightingService:
             )
 
             # Get current price from ratios or financials
-            current_price = ratios.get("current_price") or financials.get("current_price") or 0.0
+            current_price = (
+                ratios.get("current_price") or financials.get("current_price") or 0.0
+            )
 
             # Placeholder for blended fair value (will be updated by caller)
             blended_fair_value = 0.0

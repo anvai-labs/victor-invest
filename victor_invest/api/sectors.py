@@ -231,7 +231,7 @@ async def get_representative_stocks(
 
     Args:
         sector: Optional sector filter
-        fiscal_year: Year to select stocks from
+        fiscal_year: Year to select stocks from (currently not used, kept for API compatibility)
         limit: Max stocks per sector
 
     Returns:
@@ -239,50 +239,71 @@ async def get_representative_stocks(
     """
     engine = _get_engine()
 
-    where_clauses = [f"scp.fiscal_year = {fiscal_year}"]
-
+    # Build query with parameters - use %s placeholders for pandas.read_sql
     if sector:
-        where_clauses.append(f"s.\"Sector\" = '{sector}'")
-
-    where_sql = " AND ".join(where_clauses)
-
-    query = f"""
-        WITH ranked_stocks AS (
+        query = """
+            WITH ranked_stocks AS (
+                SELECT
+                    s.ticker as symbol,
+                    s."Sector" as sector,
+                    s.mktcap as market_cap,
+                    s.pe_ratio,
+                    s.ps_ratio,
+                    s.pb_ratio,
+                    ROW_NUMBER() OVER (PARTITION BY s."Sector" ORDER BY s.mktcap DESC NULLS LAST) as rank_in_sector
+                FROM symbol s
+                WHERE s.mktcap > 0 AND s."Sector" IS NOT NULL AND s."Sector" = %s
+            )
             SELECT
-                s.ticker as symbol,
-                s.\"Sector\" as sector,
-                s.mktcap as market_cap,
-                s.pe_ratio,
-                s.ps_ratio,
-                s.pb_ratio,
-                ROW_NUMBER() OVER (PARTITION BY s.\"Sector\" ORDER BY s.mktcap DESC NULLS LAST) as rank_in_sector
-            FROM symbol s
-            INNER JOIN sec_companyfacts_processed scp ON s.ticker = scp.symbol
-            WHERE {where_sql}
-                AND s.mktcap > 0
-                AND s.\"Sector\" IS NOT NULL
-        )
-        SELECT
-            symbol,
-            sector,
-            market_cap,
-            pe_ratio,
-            ps_ratio,
-            pb_ratio,
-            rank_in_sector
-        FROM ranked_stocks
-        WHERE rank_in_sector <= {limit}
-            AND (pe_ratio > 0 OR ps_ratio > 0 OR pb_ratio > 0)
-        ORDER BY sector, rank_in_sector
-    """
+                symbol,
+                sector,
+                market_cap,
+                pe_ratio,
+                ps_ratio,
+                pb_ratio,
+                rank_in_sector
+            FROM ranked_stocks
+            WHERE rank_in_sector <= %s
+                AND (pe_ratio > 0 OR ps_ratio > 0 OR pb_ratio > 0)
+            ORDER BY sector, rank_in_sector
+        """
+        params = (sector, limit)
+    else:
+        query = """
+            WITH ranked_stocks AS (
+                SELECT
+                    s.ticker as symbol,
+                    s."Sector" as sector,
+                    s.mktcap as market_cap,
+                    s.pe_ratio,
+                    s.ps_ratio,
+                    s.pb_ratio,
+                    ROW_NUMBER() OVER (PARTITION BY s."Sector" ORDER BY s.mktcap DESC NULLS LAST) as rank_in_sector
+                FROM symbol s
+                WHERE s.mktcap > 0 AND s."Sector" IS NOT NULL
+            )
+            SELECT
+                symbol,
+                sector,
+                market_cap,
+                pe_ratio,
+                ps_ratio,
+                pb_ratio,
+                rank_in_sector
+            FROM ranked_stocks
+            WHERE rank_in_sector <= %s
+                AND (pe_ratio > 0 OR ps_ratio > 0 OR pb_ratio > 0)
+            ORDER BY sector, rank_in_sector
+        """
+        params = (limit,)
 
     with engine.connect() as conn:
         import pandas as pd
 
-        df = pd.read_sql(query, conn)
+        df = pd.read_sql(query, conn, params=params)
 
         if df.empty:
-            return {"data": [], "sectors": [], "total": 0}
+            return {"data": {}, "sectors": [], "total": 0}
 
         # Group by sector
         sector_data = {}

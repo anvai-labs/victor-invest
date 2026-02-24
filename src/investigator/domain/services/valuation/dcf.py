@@ -2467,6 +2467,7 @@ class DCFValuation:
 
             # Debug: show what values exist at each location
             top_level_value = latest.get("shares_outstanding")
+            diluted_value = latest.get("weighted_average_diluted_shares_outstanding")
             ratios_dict = latest.get("ratios", {})
             ratios_value = (
                 ratios_dict.get("shares_outstanding") if ratios_dict else None
@@ -2477,27 +2478,45 @@ class DCFValuation:
                 if balance_sheet_dict
                 else None
             )
+            # Check income_statement for diluted shares
+            income_stmt_dict = latest.get("income_statement", {})
+            income_stmt_diluted = None
+            if income_stmt_dict:
+                income_stmt_diluted = income_stmt_dict.get("shares_outstanding_diluted")
+                if income_stmt_diluted and isinstance(income_stmt_diluted, dict):
+                    income_stmt_diluted = income_stmt_diluted.get("value")
 
             logger.info(
-                f"🔍 {self.symbol} - shares_outstanding debug: top_level={top_level_value}, ratios={ratios_value}, balance_sheet={balance_sheet_value}"
+                f"🔍 {self.symbol} - shares_outstanding debug: diluted={diluted_value}, income_stmt_diluted={income_stmt_diluted}, top_level={top_level_value}, ratios={ratios_value}, balance_sheet={balance_sheet_value}"
             )
 
-            # Try multiple locations (priority order):
-            # 1. Top level (backward compatibility)
-            shares = top_level_value
-            location = "top-level"
+            # For dual-class companies (e.g., GOOGL), prioritize diluted shares:
+            # 1. income_statement.shares_outstanding_diluted (most reliable)
+            # 2. weighted_average_diluted_shares_outstanding (top-level)
+            # 3. shares_outstanding (basic - may be single class for dual-class companies)
+            shares = None
+            location = None
 
-            # 2. Nested in ratios subdictionary
-            if not shares or shares <= 0:
-                if ratios_value and ratios_value > 0:
-                    shares = ratios_value
-                    location = "ratios subdictionary"
-
-            # 3. Nested in balance_sheet subdictionary
-            if not shares or shares <= 0:
-                if balance_sheet_value and balance_sheet_value > 0:
-                    shares = balance_sheet_value
-                    location = "balance_sheet subdictionary"
+            # Priority 1: income_statement.shares_outstanding_diluted (calculated from XBRL)
+            if income_stmt_diluted and income_stmt_diluted > 0:
+                shares = income_stmt_diluted
+                location = "income_statement.shares_outstanding_diluted"
+            # Priority 2: weighted_average_diluted_shares_outstanding (top-level from SEC)
+            elif diluted_value and diluted_value > 0:
+                shares = diluted_value
+                location = "top-level diluted"
+            # Priority 3: Top level basic shares (backward compatibility, may be single class)
+            elif top_level_value and top_level_value > 0:
+                shares = top_level_value
+                location = "top-level basic"
+            # Priority 4: Nested in ratios subdictionary
+            elif ratios_value and ratios_value > 0:
+                shares = ratios_value
+                location = "ratios subdictionary"
+            # Priority 5: Nested in balance_sheet subdictionary
+            elif balance_sheet_value and balance_sheet_value > 0:
+                shares = balance_sheet_value
+                location = "balance_sheet subdictionary"
 
             if shares and shares > 0:
                 shares_value = float(shares)
@@ -2510,6 +2529,47 @@ class DCFValuation:
                         shares_value,
                     )
                     shares_value *= 1_000_000.0
+
+                # Sanity check: For known dual-class companies, verify against database
+                # if shares are suspiciously low (< 1B for large-cap tech companies)
+                known_dual_class = {
+                    "GOOGL",
+                    "GOOG",
+                    "META",
+                    "FOX",
+                    "FOXA",
+                    "LYV",
+                    "NWS",
+                    "NWSA",
+                }
+                if self.symbol in known_dual_class and shares_value < 1_000_000_000:
+                    logger.warning(
+                        "%s - Suspiciously low shares_outstanding (%.0f) for known dual-class company; checking database",
+                        self.symbol,
+                        shares_value,
+                    )
+                    try:
+                        from investigator.config import get_config
+                        from investigator.infrastructure.database.market_data import (
+                            get_market_data_fetcher,
+                        )
+
+                        config = get_config()
+                        fetcher = get_market_data_fetcher(config)
+                        market_data = fetcher.get_stock_info(self.symbol)
+                        shares_from_db = market_data.get("shares_outstanding")
+                        if (
+                            shares_from_db and shares_from_db > shares_value * 2
+                        ):  # DB has significantly more shares
+                            logger.info(
+                                f"{self.symbol} - Using database shares_outstanding ({shares_from_db:,.0f}) instead of cached ({shares_value:,.0f})"
+                            )
+                            shares_value = float(shares_from_db)
+                            location = "database (dual-class override)"
+                    except Exception as e:
+                        logger.warning(
+                            f"{self.symbol} - Could not fetch shares from database: {e}"
+                        )
 
                 logger.info(
                     f"{self.symbol} - Using shares outstanding from quarterly metrics ({location}): {shares_value:,.0f}"

@@ -442,6 +442,14 @@ def cli():
     show_default=True,
     help="Lookback horizon in months for beta source selection",
 )
+@click.option(
+    "--holding-period",
+    "-h",
+    type=click.Choice(["90d", "365d", "730d"], case_sensitive=False),
+    default="730d",
+    show_default=True,
+    help="Investment holding period for RL policy selection (90d=3mo, 365d=1yr, 730d=2yr)",
+)
 def analyze(
     symbol: str,
     mode: str,
@@ -453,6 +461,7 @@ def analyze(
     detail: str,
     beta_source: str,
     beta_horizon_months: int,
+    holding_period: str,
 ):
     """Run investment analysis on a stock symbol.
 
@@ -467,19 +476,32 @@ def analyze(
     console.print(f"Mode: [yellow]{mode}[/yellow]")
     console.print(f"Detail: [cyan]{detail}[/cyan]")
     console.print(f"Provider: [cyan]{provider}[/cyan]")
+    console.print(f"Holding Period: [cyan]{holding_period}[/cyan]")
     if report:
         console.print("Report: [magenta]PDF generation enabled[/magenta]")
     console.print()
 
     prev_beta_source = os.environ.get("INVESTIGATOR_BETA_SOURCE")
     prev_beta_horizon = os.environ.get("INVESTIGATOR_BETA_HORIZON_MONTHS")
+    prev_holding_period = os.environ.get("INVESTIGATOR_HOLDING_PERIOD")
     os.environ["INVESTIGATOR_BETA_SOURCE"] = beta_source
     os.environ["INVESTIGATOR_BETA_HORIZON_MONTHS"] = str(
         max(1, int(beta_horizon_months))
     )
+    os.environ["INVESTIGATOR_HOLDING_PERIOD"] = holding_period
     try:
         asyncio.run(
-            _run_analysis(symbol, mode, output, provider, model, stream, report, detail)
+            _run_analysis(
+                symbol,
+                mode,
+                output,
+                provider,
+                model,
+                stream,
+                report,
+                detail,
+                holding_period,
+            )
         )
     finally:
         if prev_beta_source is None:
@@ -491,6 +513,11 @@ def analyze(
             os.environ.pop("INVESTIGATOR_BETA_HORIZON_MONTHS", None)
         else:
             os.environ["INVESTIGATOR_BETA_HORIZON_MONTHS"] = prev_beta_horizon
+
+        if prev_holding_period is None:
+            os.environ.pop("INVESTIGATOR_HOLDING_PERIOD", None)
+        else:
+            os.environ["INVESTIGATOR_HOLDING_PERIOD"] = prev_holding_period
 
 
 @cli.command()
@@ -893,6 +920,7 @@ async def _run_analysis(
     stream: bool,
     report: bool = False,
     detail: str = "standard",
+    holding_period: str = "730d",
 ):
     """Execute the analysis workflow using InvestmentWorkflowProvider.
 
@@ -920,7 +948,10 @@ async def _run_analysis(
             # Uses Victor's SubAgentOrchestrator for LLM synthesis
             workflow_result = await workflow_provider.run_agentic_workflow(
                 workflow_name,
-                context={"symbol": symbol.upper()},
+                context={
+                    "symbol": symbol.upper(),
+                    "holding_period": holding_period,
+                },
                 provider=provider,
                 model=model,
                 timeout=300.0,

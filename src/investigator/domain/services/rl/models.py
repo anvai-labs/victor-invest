@@ -196,9 +196,13 @@ class ValuationContext:
     empire_state_mfg: float = 0.0  # NY Fed Empire State Manufacturing (-50 to +50)
     # CBOE Volatility Data
     vix: float = 18.0  # VIX level (typical: 12-35)
-    vix_term_structure: float = 1.0  # VIX3M/VIX ratio (>1 = contango, <1 = backwardation)
+    vix_term_structure: float = (
+        1.0  # VIX3M/VIX ratio (>1 = contango, <1 = backwardation)
+    )
     skew: float = 120.0  # CBOE SKEW index (typical: 100-150, >130 = elevated)
-    volatility_regime: int = 2  # 0=very_low, 1=low, 2=normal, 3=elevated, 4=high, 5=extreme
+    volatility_regime: int = (
+        2  # 0=very_low, 1=low, 2=normal, 3=elevated, 4=high, 5=extreme
+    )
     is_backwardation: bool = False  # VIX term structure inverted (fear signal)
 
     # Valuation Gap Features (for position filtering)
@@ -207,7 +211,9 @@ class ValuationContext:
     position_signal: int = 0  # 1 = Long, -1 = Short, 0 = Skip/No position
 
     # Optimal Holding Period (learned from backtest outcomes)
-    optimal_holding_period: Optional[str] = None  # "1m", "3m", "6m", "12m", "18m", "24m", "36m"
+    optimal_holding_period: Optional[str] = (
+        None  # "1m", "3m", "6m", "12m", "18m", "24m", "36m"
+    )
     optimal_holding_reward: float = 0.0  # Best reward achieved at optimal period
 
     # Model Applicability Flags
@@ -400,7 +406,11 @@ class RewardSignal:
     Attributes:
         reward_30d: Reward based on 30-day outcome (-1 to 1)
         reward_90d: Reward based on 90-day outcome (-1 to 1)
+        reward_180d: Reward based on 180-day outcome (-1 to 1)
         reward_365d: Reward based on 365-day outcome (-1 to 1)
+        reward_548d: Reward based on 548-day outcome (-1 to 1)
+        reward_730d: Reward based on 730-day outcome (-1 to 1)
+        reward_1095d: Reward based on 1095-day outcome (-1 to 1)
         direction_correct_30d: Did we predict direction correctly at 30d?
         direction_correct_90d: Did we predict direction correctly at 90d?
         error_pct_30d: Absolute percentage error at 30d
@@ -413,7 +423,11 @@ class RewardSignal:
 
     reward_30d: Optional[float] = None
     reward_90d: Optional[float] = None
+    reward_180d: Optional[float] = None
     reward_365d: Optional[float] = None
+    reward_548d: Optional[float] = None
+    reward_730d: Optional[float] = None
+    reward_1095d: Optional[float] = None
     direction_correct_30d: Optional[bool] = None
     direction_correct_90d: Optional[bool] = None
     error_pct_30d: Optional[float] = None
@@ -591,7 +605,10 @@ class ABTestResults:
     @property
     def is_significant(self) -> bool:
         """Check if RL improvement is statistically significant (p < 0.05)."""
-        return self.reward_p_value < 0.05 and self.rl_mean_reward > self.baseline_mean_reward
+        return (
+            self.reward_p_value < 0.05
+            and self.rl_mean_reward > self.baseline_mean_reward
+        )
 
     @property
     def recommendation(self) -> str:

@@ -44,40 +44,59 @@ logger = logging.getLogger(__name__)
 # Paths
 MODEL_DIR = Path("data/rl_models")
 CHECKPOINT_DIR = MODEL_DIR / "checkpoints"
-POLICY_PATH = MODEL_DIR / "policy.pkl"
-NORMALIZER_PATH = MODEL_DIR / "normalizer.pkl"
-TRAINING_LOG_PATH = MODEL_DIR / "training_log.json"
 
 
-def load_experiences(min_samples: int = 50) -> list:
-    """Load training experiences from database."""
-    logger.info("Loading training experiences...")
+def load_experiences(min_samples: int = 50, horizon: str = "90d") -> list:
+    """Load training experiences from database for a specific horizon.
+
+    Args:
+        min_samples: Minimum number of samples required
+        horizon: Which reward horizon to use (e.g., "90d", "180d", "365d", "730d")
+                 Only loads experiences where reward for this horizon is NOT NULL.
+    """
+    logger.info(f"Loading training experiences for {horizon} horizon...")
     tracker = OutcomeTracker()
-    experiences = tracker.get_training_experiences(limit=50000, exclude_used=False)
+
+    # Load ALL available experiences for the specified horizon (no limit)
+    experiences = tracker.get_training_experiences(
+        limit=None, exclude_used=False, horizon=horizon
+    )
 
     if len(experiences) < min_samples:
         logger.error(f"Not enough experiences: {len(experiences)} < {min_samples}")
         sys.exit(1)
 
-    logger.info(f"Loaded {len(experiences)} experiences")
+    logger.info(f"Loaded {len(experiences)} experiences for {horizon} horizon")
     return experiences
 
 
-def analyze_experiences(experiences: list) -> dict:
-    """Analyze experience distribution."""
+def analyze_experiences(experiences: list, horizon: str = "90d") -> dict:
+    """Analyze experience distribution for a specific horizon.
+
+    Args:
+        experiences: List of Experience objects
+        horizon: Which reward horizon to analyze (e.g., "90d", "180d", "365d")
+    """
     tier_counts = {}
     tier_rewards = {}
+
+    # Extract the horizon days (e.g., "90d" -> "90")
+    horizon_days = horizon.rstrip("d")
+    reward_attr = f"reward_{horizon_days}"
 
     for exp in experiences:
         tier = exp.tier_classification
         tier_counts[tier] = tier_counts.get(tier, 0) + 1
         if tier not in tier_rewards:
             tier_rewards[tier] = []
-        if exp.reward.primary_reward is not None:
-            tier_rewards[tier].append(exp.reward.primary_reward)
+        # Get the specific horizon reward
+        horizon_reward = getattr(exp.reward, reward_attr, None)
+        if horizon_reward is not None:
+            tier_rewards[tier].append(horizon_reward)
 
     analysis = {
         "total_experiences": len(experiences),
+        "horizon": horizon,
         "tier_distribution": {},
     }
 
@@ -118,10 +137,22 @@ def train_policy(
         logger.info(
             f"Loading existing policy from {resume_from} for incremental training..."
         )
+
+        # Calculate adaptive noise variance based on dataset size
+        # For large datasets, we need higher noise variance to prevent posterior collapse
+        # Formula: noise_variance = 0.1 * sqrt(n_samples / 50000)
+        # This scales the noise variance with the square root of dataset size
+        n_samples = len(experiences)
+        adaptive_noise_variance = 0.1 * np.sqrt(n_samples / 50000)
+        adaptive_noise_variance = min(adaptive_noise_variance, 10.0)  # Cap at 10.0
+        logger.info(
+            f"Adaptive noise_variance: {adaptive_noise_variance:.4f} (based on {n_samples} samples)"
+        )
+
         policy = ContextualBanditPolicy(
             n_features=None,
             prior_variance=1.0,
-            noise_variance=0.1,
+            noise_variance=adaptive_noise_variance,
             exploration_weight=0.5,  # Lower exploration for fine-tuning
             normalizer=normalizer,
         )
@@ -135,10 +166,18 @@ def train_policy(
         logger.info("Resuming training from existing policy (incremental learning)")
     else:
         # Create new policy from scratch
+        # Calculate adaptive noise variance based on dataset size
+        n_samples = len(experiences)
+        adaptive_noise_variance = 0.1 * np.sqrt(n_samples / 50000)
+        adaptive_noise_variance = min(adaptive_noise_variance, 10.0)  # Cap at 10.0
+        logger.info(
+            f"Adaptive noise_variance: {adaptive_noise_variance:.4f} (based on {n_samples} samples)"
+        )
+
         policy = ContextualBanditPolicy(
             n_features=None,
             prior_variance=1.0,
-            noise_variance=0.1,
+            noise_variance=adaptive_noise_variance,
             exploration_weight=1.0,
             normalizer=normalizer,
         )
@@ -166,18 +205,34 @@ def train_policy(
     return policy, normalizer, metrics, eval_metrics
 
 
-def save_policy(policy, normalizer, metrics, eval_metrics, analysis: dict):
-    """Save trained policy and training log."""
+def save_policy(
+    policy, normalizer, metrics, eval_metrics, analysis: dict, horizon: str = "90d"
+):
+    """Save trained policy and training log.
+
+    Args:
+        policy: Trained policy
+        normalizer: Feature normalizer
+        metrics: Training metrics
+        eval_metrics: Evaluation metrics
+        analysis: Experience analysis
+        horizon: Which horizon this policy is trained for (e.g., "90d", "365d")
+    """
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Save policy and normalizer
-    policy.save(str(POLICY_PATH))
-    normalizer.save(str(NORMALIZER_PATH))
-    logger.info(f"Saved policy to {POLICY_PATH}")
-    logger.info(f"Saved normalizer to {NORMALIZER_PATH}")
+    # Save policy and normalizer with horizon suffix
+    policy_path = MODEL_DIR / f"policy_{horizon}.pkl"
+    normalizer_path = MODEL_DIR / f"normalizer_{horizon}.pkl"
+    training_log_path = MODEL_DIR / f"training_log_{horizon}.json"
+
+    policy.save(str(policy_path))
+    normalizer.save(str(normalizer_path))
+    logger.info(f"Saved policy to {policy_path}")
+    logger.info(f"Saved normalizer to {normalizer_path}")
 
     # Save training log
     training_log = {
+        "horizon": horizon,
         "training_date": datetime.now().isoformat(),
         "num_experiences": analysis["total_experiences"],
         "tier_distribution": analysis["tier_distribution"],
@@ -197,34 +252,40 @@ def save_policy(policy, normalizer, metrics, eval_metrics, analysis: dict):
         "action_stats": policy.get_action_stats(),
     }
 
-    with open(TRAINING_LOG_PATH, "w") as f:
+    with open(training_log_path, "w") as f:
         json.dump(training_log, f, indent=2)
-    logger.info(f"Saved training log to {TRAINING_LOG_PATH}")
+    logger.info(f"Saved training log to {training_log_path}")
 
     return training_log
 
 
-def deploy_policy():
-    """Deploy the trained policy (copy to active location)."""
+def deploy_policy(horizon: str = "90d"):
+    """Deploy the trained policy (copy to active location).
+
+    Args:
+        horizon: Which horizon policy to deploy (e.g., "90d", "365d")
+    """
+    policy_path = MODEL_DIR / f"policy_{horizon}.pkl"
+    normalizer_path = MODEL_DIR / f"normalizer_{horizon}.pkl"
     active_policy_path = MODEL_DIR / "active_policy.pkl"
     active_normalizer_path = MODEL_DIR / "active_normalizer.pkl"
 
-    if not POLICY_PATH.exists():
-        logger.error(f"No trained policy found at {POLICY_PATH}")
+    if not policy_path.exists():
+        logger.error(f"No trained policy found at {policy_path}")
         return False
 
     import shutil
 
-    shutil.copy(POLICY_PATH, active_policy_path)
-    shutil.copy(NORMALIZER_PATH, active_normalizer_path)
+    shutil.copy(policy_path, active_policy_path)
+    shutil.copy(normalizer_path, active_normalizer_path)
 
-    logger.info(f"Deployed policy to {active_policy_path}")
+    logger.info(f"Deployed policy from {policy_path} to {active_policy_path}")
     return True
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Train RL policy on valuation outcomes"
+        description="Train RL policy on valuation outcomes for specific holding period"
     )
     parser.add_argument("--epochs", type=int, default=20, help="Training epochs")
     parser.add_argument("--batch-size", type=int, default=32, help="Batch size")
@@ -234,6 +295,13 @@ def main():
     parser.add_argument("--deploy", action="store_true", help="Deploy after training")
     parser.add_argument(
         "--validation-split", type=float, default=0.15, help="Validation split"
+    )
+    parser.add_argument(
+        "--horizon",
+        type=str,
+        default="90d",
+        choices=["30d", "90d", "180d", "365d", "548d", "730d", "1095d"],
+        help="Which holding period to train policy for (default: 90d)",
     )
     parser.add_argument(
         "--resume",
@@ -248,16 +316,18 @@ def main():
     )
     args = parser.parse_args()
 
+    horizon = args.horizon
+
     print("=" * 70)
-    print("RL POLICY TRAINING")
+    print(f"RL POLICY TRAINING - {horizon.upper()} HORIZON")
     print(f"Started: {datetime.now().isoformat()}")
     print("=" * 70)
 
-    # Load and analyze experiences
-    experiences = load_experiences(args.min_samples)
-    analysis = analyze_experiences(experiences)
+    # Load and analyze experiences for the specified horizon
+    experiences = load_experiences(args.min_samples, horizon=horizon)
+    analysis = analyze_experiences(experiences, horizon=horizon)
 
-    print("\nExperience Distribution (top 10):")
+    print(f"\nExperience Distribution for {horizon} horizon (top 10):")
     for tier, data in list(analysis["tier_distribution"].items())[:10]:
         print(f"  {tier}: {data['count']} samples, avg_reward={data['avg_reward']}")
 
@@ -279,12 +349,12 @@ def main():
         resume_from=resume_path,
     )
 
-    # Save results
-    save_policy(policy, normalizer, metrics, eval_metrics, analysis)
+    # Save results with horizon suffix
+    save_policy(policy, normalizer, metrics, eval_metrics, analysis, horizon=horizon)
 
     # Print summary
     print("\n" + "=" * 70)
-    print("TRAINING SUMMARY")
+    print(f"TRAINING SUMMARY - {horizon.upper()} HORIZON")
     print("=" * 70)
     print(f"Epochs completed: {metrics.epochs_completed}")
     print(f"Early stopped: {metrics.early_stopped}")
@@ -296,14 +366,14 @@ def main():
     # Deploy if requested
     if args.deploy:
         print("\nDeploying trained policy...")
-        if deploy_policy():
+        if deploy_policy(horizon=horizon):
             print("Policy deployed successfully!")
         else:
             print("Deployment failed!")
             sys.exit(1)
 
     print("\n" + "=" * 70)
-    print("TRAINING COMPLETE")
+    print(f"TRAINING COMPLETE - Policy saved to data/rl_models/policy_{horizon}.pkl")
     print("=" * 70)
 
 

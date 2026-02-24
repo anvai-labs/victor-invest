@@ -1,6 +1,4 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface TrendData {
   sector: string;
@@ -17,16 +15,6 @@ interface TrendData {
   volatility: number;
 }
 
-interface SectorHistoryData {
-  sector: string;
-  data: Array<{
-    fiscal_year: number;
-    pe: number | null;
-    ps: number | null;
-    pb: number | null;
-  }>;
-}
-
 export function SectorTrends() {
   const [availableSectors, setAvailableSectors] = useState<string[]>([]);
   const [trendData, setTrendData] = useState<TrendData[]>([]);
@@ -34,7 +22,6 @@ export function SectorTrends() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch available sectors
   useEffect(() => {
     fetch("/ui/api/sectors/multiples")
       .then((res) => res.json())
@@ -43,15 +30,13 @@ export function SectorTrends() {
           setAvailableSectors(data.sectors);
         }
       })
-      .catch((err) => setError("Failed to load sectors"));
+      .catch(() => setError("Failed to load sectors"));
   }, []);
 
-  // Fetch and calculate trend data
   useEffect(() => {
     setLoading(true);
     setError(null);
 
-    // Fetch history data for all sectors
     Promise.all(
       availableSectors.map((sector) =>
         fetch(`/ui/api/sectors/history?sector=${encodeURIComponent(sector)}&start_year=2019&end_year=2024`)
@@ -63,12 +48,12 @@ export function SectorTrends() {
         const trends = results
           .filter(({ data }) => data.data && data.data.length > 0)
           .map(({ sector, data }) => calculateTrendMetrics(sector, data.data))
-          .filter((trend) => trend !== null) as TrendData[];
+          .filter((trend): trend is TrendData => trend !== null)
 
         setTrendData(trends);
         setLoading(false);
       })
-      .catch((err) => {
+      .catch(() => {
         setError("Failed to load trend data");
         setLoading(false);
       });
@@ -81,24 +66,20 @@ export function SectorTrends() {
 
     if (!latest || !latest.pe) return null;
 
-    // Calculate averages
     const avgPe = last3years.reduce((sum, d) => sum + (d.pe || 0), 0) / last3years.filter((d) => d.pe).length;
     const avgPs = last3years.reduce((sum, d) => sum + (d.ps || 0), 0) / last3years.filter((d) => d.ps).length;
     const avgPb = last3years.reduce((sum, d) => sum + (d.pb || 0), 0) / last3years.filter((d) => d.pb).length;
 
-    // Calculate change percentage
     const peChange = avgPe > 0 ? ((latest.pe - avgPe) / avgPe) * 100 : 0;
     const psChange = avgPs > 0 ? ((latest.ps - avgPs) / avgPs) * 100 : 0;
     const pbChange = avgPb > 0 ? ((latest.pb - avgPb) / avgPb) * 100 : 0;
 
-    // Calculate volatility (standard deviation of PE over period)
     const peValues = sortedData.filter((d) => d.pe).map((d) => d.pe);
     const peMean = peValues.reduce((sum, v) => sum + v, 0) / peValues.length;
     const volatility = Math.sqrt(peValues.reduce((sum, v) => sum + Math.pow(v - peMean, 2), 0) / peValues.length);
     const volatilityPct = peMean > 0 ? (volatility / peMean) * 100 : 0;
 
-    // Determine trend direction
-    let trend: "improving" | "declining" | "stable";
+    let trend: TrendData["trend"];
     if (peChange > 5) {
       trend = "improving";
     } else if (peChange < -5) {
@@ -125,9 +106,9 @@ export function SectorTrends() {
 
   const getTrendBadge = (trend: TrendData["trend"]) => {
     const styles = {
-      improving: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-      declining: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-      stable: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200",
+      improving: "bg-green-100 text-green-800",
+      declining: "bg-red-100 text-red-800",
+      stable: "bg-gray-100 text-gray-800",
     };
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[trend]}`}>
@@ -146,44 +127,43 @@ export function SectorTrends() {
     ? trendData
     : trendData.filter((t) => t.sector === selectedSector);
 
+  if (error) {
+    return (
+      <div className="bg-destructive/10 text-destructive p-4 rounded-md">
+        {error}
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        Loading trend analysis...
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      {/* Controls */}
       <div className="flex items-center gap-4">
         <div>
-          <label className="text-sm font-medium mb-1 block">Filter by Sector</label>
-          <Select value={selectedSector} onValueChange={setSelectedSector}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Sectors</SelectItem>
-              {availableSectors.map((sector) => (
-                <SelectItem key={sector} value={sector}>
-                  {sector}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <label className="text-sm font-medium mb-2 block">Filter by Sector</label>
+          <select
+            value={selectedSector}
+            onChange={(e) => setSelectedSector(e.target.value)}
+            className="flex h-9 w-[200px] rounded-md border border-slate-300 bg-transparent px-3 py-1 text-sm"
+          >
+            <option value="all">All Sectors</option>
+            {availableSectors.map((sector) => (
+              <option key={sector} value={sector}>
+                {sector}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
-      {/* Error State */}
-      {error && (
-        <div className="bg-destructive/10 text-destructive p-4 rounded-md">
-          {error}
-        </div>
-      )}
-
-      {/* Loading State */}
-      {loading && (
-        <div className="text-center py-8 text-muted-foreground">
-          Loading trend analysis...
-        </div>
-      )}
-
-      {/* Trends Table */}
-      {!loading && filteredData.length > 0 && (
+      {filteredData.length > 0 && (
         <div className="border rounded-lg overflow-hidden">
           <table className="w-full">
             <thead className="bg-muted">
@@ -202,16 +182,16 @@ export function SectorTrends() {
                 .map((trend) => (
                   <tr key={trend.sector} className="border-t hover:bg-muted/50">
                     <td className="px-4 py-3 font-medium">{trend.sector}</td>
-                    <td className="px-4 py-3 text-right">{trend.current_pe.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-right">{trend.current_pe?.toFixed(2) ?? "N/A"}</td>
                     <td className="px-4 py-3 text-right text-muted-foreground">
-                      {trend.avg_pe_3yr.toFixed(2)}
+                      {trend.avg_pe_3yr?.toFixed(2) ?? "N/A"}
                     </td>
                     <td className={`px-4 py-3 text-right font-medium ${getChangeColor(trend.pe_change_pct)}`}>
                       {trend.pe_change_pct > 0 ? "+" : ""}
-                      {trend.pe_change_pct.toFixed(1)}%
+                      {trend.pe_change_pct?.toFixed(1) ?? "N/A"}%
                     </td>
                     <td className="px-4 py-3 text-center">{getTrendBadge(trend.trend)}</td>
-                    <td className="px-4 py-3 text-right">{trend.volatility.toFixed(1)}%</td>
+                    <td className="px-4 py-3 text-right">{trend.volatility?.toFixed(1) ?? "N/A"}%</td>
                   </tr>
                 ))}
             </tbody>
@@ -219,14 +199,11 @@ export function SectorTrends() {
         </div>
       )}
 
-      {/* Legend */}
-      {!loading && filteredData.length > 0 && (
-        <div className="text-sm text-muted-foreground space-y-1">
-          <p><strong>Trend Analysis:</strong> Based on P/E multiple changes vs 3-year average</p>
-          <p><strong>Volatility:</strong> Standard deviation of P/E over historical period (as % of mean)</p>
-          <p className="text-xs mt-2">Data source: sector_multiples_history (2019-2024)</p>
-        </div>
-      )}
+      <div className="text-sm text-muted-foreground space-y-1">
+        <p><strong>Trend Analysis:</strong> Based on P/E multiple changes vs 3-year average</p>
+        <p><strong>Volatility:</strong> Standard deviation of P/E over historical period (as % of mean)</p>
+        <p className="text-xs mt-2">Data source: sector_multiples_history (2019-2024)</p>
+      </div>
     </div>
   );
 }

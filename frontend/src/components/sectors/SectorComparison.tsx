@@ -1,7 +1,4 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 
 interface ComparisonData {
   [year: string]: {
@@ -24,7 +21,6 @@ export function SectorComparison() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Metric options
   const metrics = [
     { value: "pe", label: "P/E Ratio" },
     { value: "ps", label: "P/S Ratio" },
@@ -32,7 +28,6 @@ export function SectorComparison() {
     { value: "ev_ebitda", label: "EV/EBITDA" },
   ];
 
-  // Fetch available sectors
   useEffect(() => {
     fetch("/ui/api/sectors/multiples")
       .then((res) => res.json())
@@ -41,13 +36,11 @@ export function SectorComparison() {
           setAvailableSectors(data.sectors);
         }
       })
-      .catch((err) => setError("Failed to load sectors"));
+      .catch(() => setError("Failed to load sectors"));
   }, []);
 
-  // Fetch comparison data when sectors or metric changes
   useEffect(() => {
     if (selectedSectors.length < 2) return;
-
     setLoading(true);
     setError(null);
 
@@ -58,7 +51,7 @@ export function SectorComparison() {
         setComparisonData(data);
         setLoading(false);
       })
-      .catch((err) => {
+      .catch(() => {
         setError("Failed to load comparison data");
         setLoading(false);
       });
@@ -67,79 +60,115 @@ export function SectorComparison() {
   const handleSectorToggle = (sector: string) => {
     if (selectedSectors.includes(sector)) {
       setSelectedSectors(selectedSectors.filter((s) => s !== sector));
-    } else {
-      if (selectedSectors.length < 5) {
-        setSelectedSectors([...selectedSectors, sector]);
-      }
+    } else if (selectedSectors.length < 5) {
+      setSelectedSectors([...selectedSectors, sector]);
     }
   };
 
-  const getMetricLabel = (value: string) => {
-    return metrics.find((m) => m.value === value)?.label || value;
-  };
+  if (error) {
+    return (
+      <div className="bg-destructive/10 text-destructive p-4 rounded-md">
+        {error}
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        Loading comparison data...
+      </div>
+    );
+  }
+
+  if (selectedSectors.length < 2) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-4">
+          <div>
+            <label className="text-sm font-medium mb-2 block">Metric</label>
+            <select
+              value={metric}
+              onChange={(e) => setMetric(e.target.value)}
+              className="flex h-9 w-[200px] rounded-md border border-slate-300 bg-transparent px-3 py-1 text-sm"
+            >
+              {metrics.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-sm font-medium mb-2 block">
+              Select Sectors (2-5) <span className="text-muted-foreground">({selectedSectors.length} selected)</span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {availableSectors.slice(0, 15).map((sector) => (
+                <button
+                  key={sector}
+                  type="button"
+                  onClick={() => handleSectorToggle(sector)}
+                  className={`px-3 py-1.5 text-sm rounded-md border ${
+                    selectedSectors.includes(sector)
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "border-slate-300 hover:bg-slate-100"
+                  }`}
+                >
+                  {sector}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="text-center py-12 text-muted-foreground">
+          Select 2-5 sectors to compare their multiples
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      {/* Controls */}
       <div className="flex flex-wrap gap-4 items-center">
-        <div className="flex-1 min-w-[200px]">
-          <label className="text-sm font-medium mb-1 block">Metric</label>
-          <Select value={metric} onValueChange={setMetric}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {metrics.map((m) => (
-                <SelectItem key={m.value} value={m.value}>
-                  {m.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div>
+          <label className="text-sm font-medium mb-2 block">Metric</label>
+          <select
+            value={metric}
+            onChange={(e) => setMetric(e.target.value)}
+            className="flex h-9 w-[200px] rounded-md border border-slate-300 bg-transparent px-3 py-1 text-sm"
+          >
+            {metrics.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </select>
         </div>
-
-        <div className="flex-2 min-w-[300px]">
-          <label className="text-sm font-medium mb-1 block">
-            Select Sectors (2-5) <span className="text-muted-foreground">({selectedSectors.length} selected)</span>
+        <div>
+          <label className="text-sm font-medium mb-2 block">
+            Selected Sectors: {selectedSectors.join(", ")}
           </label>
           <div className="flex flex-wrap gap-2">
             {availableSectors.slice(0, 15).map((sector) => (
-              <Button
+              <button
                 key={sector}
-                variant={selectedSectors.includes(sector) ? "default" : "outline"}
-                size="sm"
+                type="button"
                 onClick={() => handleSectorToggle(sector)}
+                className={`px-3 py-1.5 text-sm rounded-md border ${
+                  selectedSectors.includes(sector)
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-slate-300 hover:bg-slate-100"
+                }`}
               >
                 {sector}
-              </Button>
+              </button>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Error State */}
-      {error && (
-        <div className="bg-destructive/10 text-destructive p-4 rounded-md">
-          {error}
-        </div>
-      )}
-
-      {/* Loading State */}
-      {loading && (
-        <div className="text-center py-8 text-muted-foreground">
-          Loading comparison data...
-        </div>
-      )}
-
-      {/* Prompt State */}
-      {!loading && selectedSectors.length < 2 && (
-        <div className="text-center py-12 text-muted-foreground">
-          <p>Select 2-5 sectors to compare their {getMetricLabel(metric)}</p>
-        </div>
-      )}
-
-      {/* Comparison Table */}
-      {!loading && comparisonData && selectedSectors.length >= 2 && (
+      {comparisonData && (
         <div className="border rounded-lg overflow-hidden">
           <table className="w-full">
             <thead className="bg-muted">
@@ -171,13 +200,9 @@ export function SectorComparison() {
         </div>
       )}
 
-      {/* Legend */}
-      {comparisonData && (
-        <div className="text-sm text-muted-foreground">
-          <p>Comparing {getMetricLabel(metric)} across {selectedSectors.length} sectors</p>
-          <p className="text-xs mt-1">Data source: sector_multiples_history table</p>
-        </div>
-      )}
+      <div className="text-sm text-muted-foreground">
+        Comparing {metrics.find((m) => m.value === metric)?.label || metric} across {selectedSectors.length} sectors
+      </div>
     </div>
   );
 }

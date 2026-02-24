@@ -1,7 +1,4 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 
 interface Stock {
   symbol: string;
@@ -35,7 +32,6 @@ export function SectorStocks() {
   const [searchTerm, setSearchTerm] = useState("");
   const [fiscalYear, setFiscalYear] = useState<number>(2024);
 
-  // Fetch available sectors
   useEffect(() => {
     fetch("/ui/api/sectors/multiples")
       .then((res) => res.json())
@@ -44,10 +40,9 @@ export function SectorStocks() {
           setAvailableSectors(data.sectors);
         }
       })
-      .catch((err) => setError("Failed to load sectors"));
+      .catch(() => setError("Failed to load sectors"));
   }, []);
 
-  // Fetch representative stocks
   useEffect(() => {
     setLoading(true);
     setError(null);
@@ -67,7 +62,7 @@ export function SectorStocks() {
         setStocksData(data);
         setLoading(false);
       })
-      .catch((err) => {
+      .catch(() => {
         setError("Failed to load stocks data");
         setLoading(false);
       });
@@ -89,7 +84,6 @@ export function SectorStocks() {
 
   const renderStockTable = (sector: string, data: SectorStocksData) => {
     const filteredStocks = filterStocks(data.stocks);
-
     if (filteredStocks.length === 0) return null;
 
     return (
@@ -134,95 +128,90 @@ export function SectorStocks() {
     );
   };
 
+  if (error) {
+    return (
+      <div className="bg-destructive/10 text-destructive p-4 rounded-md">
+        {error}
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        Loading representative stocks...
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      {/* Controls */}
       <div className="flex flex-wrap gap-4 items-center">
         <div>
-          <label className="text-sm font-medium mb-1 block">Sector</label>
-          <Select value={selectedSector} onValueChange={setSelectedSector}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Sectors</SelectItem>
-              {availableSectors.map((sector) => (
-                <SelectItem key={sector} value={sector}>
-                  {sector}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <label className="text-sm font-medium mb-2 block">Sector</label>
+          <select
+            value={selectedSector}
+            onChange={(e) => setSelectedSector(e.target.value)}
+            className="flex h-9 w-[200px] rounded-md border border-slate-300 bg-transparent px-3 py-1 text-sm"
+          >
+            <option value="all">All Sectors</option>
+            {availableSectors.map((sector) => (
+              <option key={sector} value={sector}>
+                {sector}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div>
-          <label className="text-sm font-medium mb-1 block">Fiscal Year</label>
-          <Select value={fiscalYear.toString()} onValueChange={(v) => setFiscalYear(parseInt(v))}>
-            <SelectTrigger className="w-[120px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016].map((year) => (
-                <SelectItem key={year} value={year.toString()}>
-                  {year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <label className="text-sm font-medium mb-2 block">Fiscal Year</label>
+          <select
+            value={fiscalYear}
+            onChange={(e) => setFiscalYear(parseInt(e.target.value))}
+            className="flex h-9 w-[120px] rounded-md border border-slate-300 bg-transparent px-3 py-1 text-sm"
+          >
+            {[2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016].map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="flex-1 min-w-[200px]">
-          <label className="text-sm font-medium mb-1 block">Search Symbols</label>
-          <Input
+          <label className="text-sm font-medium mb-2 block">Search Symbols</label>
+          <input
+            type="text"
             placeholder="Filter by symbol..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            className="flex h-9 w-full rounded-md border border-slate-300 bg-transparent px-3 py-1 text-sm"
           />
         </div>
       </div>
 
-      {/* Error State */}
-      {error && (
-        <div className="bg-destructive/10 text-destructive p-4 rounded-md">
-          {error}
+      {!stocksData || stocksData.total === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          No representative stocks found for the selected criteria
         </div>
-      )}
-
-      {/* Loading State */}
-      {loading && (
-        <div className="text-center py-8 text-muted-foreground">
-          Loading representative stocks...
-        </div>
-      )}
-
-      {/* Results */}
-      {!loading && stocksData && (
-        <div>
-          {stocksData.total === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <p>No representative stocks found for the selected criteria</p>
-            </div>
+      ) : (
+        <>
+          {selectedSector === "all" ? (
+            Object.entries(stocksData.data).map(([sector, data]) =>
+              renderStockTable(sector, data)
+            )
           ) : (
-            <>
-              {selectedSector === "all" ? (
-                Object.entries(stocksData.data).map(([sector, data]) =>
-                  renderStockTable(sector, data)
-                )
-              ) : (
-                stocksData.data[selectedSector] &&
-                renderStockTable(selectedSector, stocksData.data[selectedSector])
-              )}
-            </>
+            stocksData.data[selectedSector] &&
+            renderStockTable(selectedSector, stocksData.data[selectedSector])
           )}
-        </div>
+        </>
       )}
 
-      {/* Footer */}
       {stocksData && stocksData.total > 0 && (
         <div className="text-sm text-muted-foreground border-t pt-4">
           <p>Total: {stocksData.total} stocks across {stocksData.sectors.length} sectors</p>
           <p className="text-xs mt-1">
-            Top {selectedSector === "all" ? "15" : "15"} stocks by market cap for FY{fiscalYear}
+            Top 15 stocks by market cap for FY{fiscalYear}
           </p>
         </div>
       )}

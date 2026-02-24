@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from investigator.domain.services.valuation.models import (
     CompanyArchetype,
@@ -177,8 +177,11 @@ def enrich_company_profile(
         or financials.get("PaymentsOfDividends")
         or 0
     )
-    shares_outstanding = financials.get("shares_outstanding") or market_data.get(
-        "shares_outstanding"
+    # Use diluted shares for dual-class companies (e.g., GOOGL)
+    shares_outstanding = (
+        financials.get("shares_outstanding_diluted")
+        or financials.get("shares_outstanding")
+        or market_data.get("shares_outstanding")
     )
     profile.pays_dividends = dividends_paid > 0
     profile.dividends_paid = dividends_paid
@@ -197,9 +200,13 @@ def enrich_company_profile(
     profile.dividend_growth_rate = ratios.get("dividend_growth_rate")
 
     profile.book_value_per_share = ratios.get("book_value_per_share")
+    # For dual-class companies (e.g., GOOGL), use diluted shares to capture all classes
+    # Otherwise DCF valuation divides by too few shares, inflating per-share value
     profile.shares_outstanding = (
-        financials.get("shares_outstanding")
-        or financials.get("shares_outstanding_diluted")
+        financials.get("shares_outstanding_diluted")  # PRIORITY 1: Total diluted shares
+        or financials.get(
+            "shares_outstanding"
+        )  # PRIORITY 2: Basic shares (may be single class)
         or ratios.get("shares_outstanding")
         or company_data.get("shares_outstanding")
         or market_data.get("shares_outstanding")

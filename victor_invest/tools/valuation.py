@@ -705,7 +705,9 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 income = sec_data.get("income_statement", {})
                 balance = sec_data.get("balance_sheet", {})
 
-                ttm_net_income = income.get("net_income") or income.get("net_income_loss")
+                ttm_net_income = income.get("net_income") or income.get(
+                    "net_income_loss"
+                )
                 ttm_revenue = income.get("total_revenue") or income.get("revenue")
                 ttm_ebitda = income.get("ebitda")
                 book_value = balance.get("stockholders_equity") or balance.get(
@@ -849,27 +851,43 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                         # Got industry-specific historical data, use it for all multiples
                         return {
                             "pe": industry_pe,
-                            "ps": self._sector_multiples_service.get_ps(standard_sector, standard_industry),
-                            "pb": self._sector_multiples_service.get_pb(standard_sector, standard_industry),
-                            "ev_ebitda": self._sector_multiples_service.get_ev_ebitda(standard_sector, standard_industry),
+                            "ps": self._sector_multiples_service.get_ps(
+                                standard_sector, standard_industry
+                            ),
+                            "pb": self._sector_multiples_service.get_pb(
+                                standard_sector, standard_industry
+                            ),
+                            "ev_ebitda": self._sector_multiples_service.get_ev_ebitda(
+                                standard_sector, standard_industry
+                            ),
                         }
 
                 # Try sector-level historical lookup
-                historical_pe = self._sector_multiples_service.get_historical_median_multiple(
-                    sector=standard_sector,
-                    metric="pe",
-                    lookback_years=3,
+                historical_pe = (
+                    self._sector_multiples_service.get_historical_median_multiple(
+                        sector=standard_sector,
+                        metric="pe",
+                        lookback_years=3,
+                    )
                 )
                 if historical_pe is not None:
                     # Got historical sector data, use it
                     return {
                         "pe": historical_pe,
-                        "ps": self._sector_multiples_service.get_ps(standard_sector, standard_industry),
-                        "pb": self._sector_multiples_service.get_pb(standard_sector, standard_industry),
-                        "ev_ebitda": self._sector_multiples_service.get_ev_ebitda(standard_sector, standard_industry),
+                        "ps": self._sector_multiples_service.get_ps(
+                            standard_sector, standard_industry
+                        ),
+                        "pb": self._sector_multiples_service.get_pb(
+                            standard_sector, standard_industry
+                        ),
+                        "ev_ebitda": self._sector_multiples_service.get_ev_ebitda(
+                            standard_sector, standard_industry
+                        ),
                     }
             except Exception as e:
-                logger.debug(f"Historical median lookup failed for {standard_sector}: {e}")
+                logger.debug(
+                    f"Historical median lookup failed for {standard_sector}: {e}"
+                )
 
             # Fall back to config static values
             result: dict[str, float] = self._sector_multiples_service.get_multiples(
@@ -892,7 +910,9 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     sector=standard_sector, industry=standard_industry, metric="pb"
                 ),
                 "ev_ebitda": SectorMultiples.get_multiple_with_override(
-                    sector=standard_sector, industry=standard_industry, metric="ev_ebitda"
+                    sector=standard_sector,
+                    industry=standard_industry,
+                    metric="ev_ebitda",
                 ),
             }
         except Exception as e:
@@ -1003,8 +1023,8 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     metadata={"symbol": symbol, "warnings": warnings},
                 )
 
-            # Calculate blended fair value using sector-specific weights
-            # Use DynamicModelWeightingService for tier-based weighting instead of simple average
+            # Calculate blended fair value using shared MultiModelValuationOrchestrator
+            # This ensures victor-invest produces identical results to investigator CLI
             try:
                 import yaml
 
@@ -1013,6 +1033,9 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 )
                 from investigator.domain.services.dynamic_model_weighting import (
                     DynamicModelWeightingService,
+                )
+                from investigator.domain.services.valuation.orchestrator import (
+                    MultiModelValuationOrchestrator,
                 )
 
                 # Load valuation config directly from YAML
@@ -1033,8 +1056,20 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     f"{symbol}: Retrieved sector={sector}, industry={industry} from CompanyMetadataService"
                 )
 
+                # Build CompanyProfile using existing helper method
+                stock_info = await self._get_stock_info(symbol)
+                stock_info["sector"] = (
+                    sector  # Ensure sector is set from metadata service
+                )
+                stock_info["industry"] = industry  # Ensure industry is set
+
+                company_profile = self._build_company_profile(
+                    symbol, stock_info, quarterly_metrics
+                )
+                if company_profile is None:
+                    raise ValueError("Could not build company profile")
+
                 # Build minimal financials dict for weight calculation
-                # Extract from quarterly_metrics if available
                 financials = {
                     "net_income": None,
                     "revenue": None,
@@ -1059,8 +1094,8 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     )
                     # Calculate TTM EBITDA from operating_income and depreciation_amortization
                     financials["ebitda"] = sum(
-                        (q.get("operating_income", 0) or 0) +
-                        (q.get("depreciation_amortization", 0) or 0)
+                        (q.get("operating_income", 0) or 0)
+                        + (q.get("depreciation_amortization", 0) or 0)
                         for q in ttm
                     )
 
@@ -1093,12 +1128,12 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                         * 100
                     )
 
-                # Create weighting service
+                # Create weighting service to determine tier weights
                 weighting_service = DynamicModelWeightingService(
                     valuation_config=valuation_config
                 )
 
-                # Get tier-based weights
+                # Get tier-based weights (these will be passed as fallback_weights to orchestrator)
                 weights, tier, audit_trail = weighting_service.determine_weights(
                     symbol=symbol,
                     financials=financials,
@@ -1107,77 +1142,113 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     market_context=None,
                 )
 
-                # Apply weights to calculate blended fair value
-                weighted_sum = 0.0
-                total_weight = 0.0
-                applied_weights = {}
-
+                # Convert results dict to model_outputs format for orchestrator
+                model_outputs = []
                 for model_name, model_result in results.items():
-                    # model_result is the output dict directly (from earlier assignment)
-                    fair_value = (
-                        model_result.get("fair_value_per_share")
-                        if isinstance(model_result, dict)
-                        else None
-                    )
+                    if isinstance(model_result, dict) and model_result.get(
+                        "fair_value_per_share"
+                    ):
+                        model_outputs.append(
+                            {
+                                "model": model_name,
+                                "fair_value_per_share": model_result[
+                                    "fair_value_per_share"
+                                ],
+                                "confidence_score": model_result.get(
+                                    "confidence_score", 0.7
+                                ),
+                                "applicable": True,
+                            }
+                        )
 
-                    if fair_value and fair_value > 0:
-                        weight = weights.get(model_name, 0.0)
-                        # Convert percentage to decimal (e.g., 30 -> 0.30)
-                        weight_decimal = weight / 100.0
-                        weighted_sum += fair_value * weight_decimal
-                        total_weight += weight
-                        applied_weights[model_name] = weight
+                # Initialize shared orchestrator with same config as investigator CLI
+                orchestrator = MultiModelValuationOrchestrator(
+                    divergence_threshold=valuation_config.get("agreement", {}).get(
+                        "divergence_threshold", 0.35
+                    ),
+                    agreement_config=valuation_config.get("agreement", {}),
+                    bounds_config=valuation_config.get("bounds_validation", {}),
+                )
 
-                # If no applicable models, fallback to simple average
-                if total_weight == 0:
-                    logger.warning(
-                        f"{symbol}: All models filtered out by tier-based weights, using simple average"
-                    )
-                    fair_values = [
-                        r.get("output", {}).get("fair_value_per_share")
-                        for r in results.values()
-                        if r.get("success")
-                        and r.get("output", {}).get("fair_value_per_share")
-                    ]
-                    consensus = (
-                        sum(fair_values) / len(fair_values) if fair_values else None
-                    )
-                else:
-                    consensus = weighted_sum
+                # Use shared orchestrator for blending (ensures parity with investigator CLI)
+                orchestrator_result = orchestrator.combine(
+                    company_profile=company_profile,
+                    model_outputs=model_outputs,
+                    fallback_weights=weights,
+                    tier_classification=tier,
+                )
 
+                consensus = orchestrator_result["blended_fair_value"]
+                overall_confidence = orchestrator_result.get("overall_confidence", 0.7)
+                model_agreement_score = orchestrator_result.get("model_agreement_score")
+                divergence_flag = orchestrator_result.get("divergence_flag", False)
+
+                # Log orchestrator diagnostics
                 consensus_str = f"${consensus:.2f}" if consensus is not None else "N/A"
                 logger.info(
-                    f"{symbol}: Using sector-weighted blend (tier={tier}) → "
-                    f"{consensus_str} | Weights: {applied_weights}"
+                    f"{symbol}: Using MultiModelValuationOrchestrator (tier={tier}) → "
+                    f"{consensus_str} | Agreement: {model_agreement_score:.2f} | "
+                    f"Divergence: {divergence_flag} | Confidence: {overall_confidence:.2f}"
                 )
+
+                # Update model results with weights applied by orchestrator
+                for model in orchestrator_result.get("models", []):
+                    model_name = model.get("model")
+                    if model_name and model_name in results:
+                        results[model_name]["weight"] = model.get("weight", 0.0)
 
             except Exception as e:
                 # Fallback to simple average on any error
                 logger.warning(
-                    f"{symbol}: Could not use sector-weighted blend ({e}), using simple average"
+                    f"{symbol}: Could not use MultiModelValuationOrchestrator ({e}), using simple average"
                 )
                 fair_values = [
-                    r.get("output", {}).get("fair_value_per_share")
+                    r.get("fair_value_per_share")
                     for r in results.values()
-                    if r.get("success")
-                    and r.get("output", {}).get("fair_value_per_share")
-                    if r.get("output", {}).get("fair_value_per_share") > 0
+                    if isinstance(r, dict) and r.get("fair_value_per_share")
                 ]
                 consensus = sum(fair_values) / len(fair_values) if fair_values else None
 
+            # Build output with orchestrator results if available
+            output_dict = {
+                "symbol": symbol,
+                "current_price": current_price,
+                "models": results,
+                "models_applied": list(results.keys()),
+                "consensus_fair_value": consensus,
+                "consensus_upside": (
+                    ((consensus / current_price) - 1) * 100
+                    if consensus and current_price
+                    else None
+                ),
+            }
+
+            # Add orchestrator-specific outputs if available
+            if "orchestrator_result" in locals():
+                output_dict.update(
+                    {
+                        "overall_confidence": orchestrator_result.get(
+                            "overall_confidence"
+                        ),
+                        "model_agreement_score": orchestrator_result.get(
+                            "model_agreement_score"
+                        ),
+                        "divergence_flag": orchestrator_result.get("divergence_flag"),
+                        "agreement_level": orchestrator_result.get("agreement_level"),
+                        "outlier_models": orchestrator_result.get("outlier_models"),
+                        "tier_classification": orchestrator_result.get(
+                            "tier_classification"
+                        ),
+                        "bounds_valid": orchestrator_result.get("bounds_valid"),
+                        "dispersion_ratio": orchestrator_result.get("dispersion_ratio"),
+                    }
+                )
+                # Add notes from orchestrator
+                if orchestrator_result.get("notes"):
+                    warnings.extend(orchestrator_result["notes"])
+
             return ToolResult.create_success(
-                output={
-                    "symbol": symbol,
-                    "current_price": current_price,
-                    "models": results,
-                    "models_applied": list(results.keys()),
-                    "consensus_fair_value": consensus,
-                    "consensus_upside": (
-                        ((consensus / current_price) - 1) * 100
-                        if consensus and current_price
-                        else None
-                    ),
-                },
+                output=output_dict,
                 metadata={"model_count": len(results), "warnings": warnings},
             )
 

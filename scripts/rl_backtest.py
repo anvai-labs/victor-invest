@@ -115,7 +115,7 @@ from investigator.domain.services.valuation_shared import (
 from investigator.domain.services.sector_name_mapper import SectorIndustryMapper
 
 # Database and config
-from investigator.infrastructure.database.db import get_db_manager, safe_json_dumps
+from investigator.infrastructure.database.db import get_db_manager
 
 # Shared symbol repository for consistent ticker fetching
 from investigator.infrastructure.database.symbol_repository import SymbolRepository
@@ -1040,7 +1040,9 @@ class RLBacktester:
 
         return sanitized_fvs, tier, audit
 
-    def _get_sector_pe_multiple(self, sector: str, analysis_date: Optional[datetime] = None) -> float:
+    def _get_sector_pe_multiple(
+        self, sector: str, analysis_date: Optional[datetime] = None
+    ) -> float:
         """Get sector-appropriate P/E multiple from historical data or config.
 
         Args:
@@ -1056,11 +1058,13 @@ class RLBacktester:
         # Try historical lookup first if analysis date provided
         if analysis_date:
             try:
-                historical_pe = self.sector_multiples_service.get_historical_median_multiple(
-                    sector=standard_sector,
-                    metric="pe",
-                    fiscal_year=analysis_date.year,
-                    lookback_years=3,
+                historical_pe = (
+                    self.sector_multiples_service.get_historical_median_multiple(
+                        sector=standard_sector,
+                        metric="pe",
+                        fiscal_year=analysis_date.year,
+                        lookback_years=3,
+                    )
                 )
                 if historical_pe is not None:
                     return historical_pe
@@ -1070,7 +1074,9 @@ class RLBacktester:
         # Fall back to config static value
         return self.sector_multiples_service.get_pe(standard_sector)
 
-    def _get_sector_ps_multiple(self, sector: str, analysis_date: Optional[datetime] = None) -> float:
+    def _get_sector_ps_multiple(
+        self, sector: str, analysis_date: Optional[datetime] = None
+    ) -> float:
         """Get sector-appropriate P/S multiple from historical data or config.
 
         Args:
@@ -1086,11 +1092,13 @@ class RLBacktester:
         # Try historical lookup first if analysis date provided
         if analysis_date:
             try:
-                historical_ps = self.sector_multiples_service.get_historical_median_multiple(
-                    sector=standard_sector,
-                    metric="ps",
-                    fiscal_year=analysis_date.year,
-                    lookback_years=3,
+                historical_ps = (
+                    self.sector_multiples_service.get_historical_median_multiple(
+                        sector=standard_sector,
+                        metric="ps",
+                        fiscal_year=analysis_date.year,
+                        lookback_years=3,
+                    )
                 )
                 if historical_ps is not None:
                     return historical_ps
@@ -1100,7 +1108,9 @@ class RLBacktester:
         # Fall back to config static value
         return self.sector_multiples_service.get_ps(standard_sector)
 
-    def _get_sector_pb_multiple(self, sector: str, analysis_date: Optional[datetime] = None) -> float:
+    def _get_sector_pb_multiple(
+        self, sector: str, analysis_date: Optional[datetime] = None
+    ) -> float:
         """Get sector-appropriate P/B multiple from historical data or config.
 
         Args:
@@ -1116,11 +1126,13 @@ class RLBacktester:
         # Try historical lookup first if analysis date provided
         if analysis_date:
             try:
-                historical_pb = self.sector_multiples_service.get_historical_median_multiple(
-                    sector=standard_sector,
-                    metric="pb",
-                    fiscal_year=analysis_date.year,
-                    lookback_years=3,
+                historical_pb = (
+                    self.sector_multiples_service.get_historical_median_multiple(
+                        sector=standard_sector,
+                        metric="pb",
+                        fiscal_year=analysis_date.year,
+                        lookback_years=3,
+                    )
                 )
                 if historical_pb is not None:
                     return historical_pb
@@ -1130,7 +1142,9 @@ class RLBacktester:
         # Fall back to config static value
         return self.sector_multiples_service.get_pb(standard_sector)
 
-    def _get_sector_ev_multiple(self, sector: str, analysis_date: Optional[datetime] = None) -> float:
+    def _get_sector_ev_multiple(
+        self, sector: str, analysis_date: Optional[datetime] = None
+    ) -> float:
         """Get sector-appropriate EV/EBITDA multiple from historical data or config.
 
         Args:
@@ -1146,16 +1160,20 @@ class RLBacktester:
         # Try historical lookup first if analysis date provided
         if analysis_date:
             try:
-                historical_ev = self.sector_multiples_service.get_historical_median_multiple(
-                    sector=standard_sector,
-                    metric="ev_ebitda",
-                    fiscal_year=analysis_date.year,
-                    lookback_years=3,
+                historical_ev = (
+                    self.sector_multiples_service.get_historical_median_multiple(
+                        sector=standard_sector,
+                        metric="ev_ebitda",
+                        fiscal_year=analysis_date.year,
+                        lookback_years=3,
+                    )
                 )
                 if historical_ev is not None:
                     return historical_ev
             except Exception as e:
-                logger.debug(f"Historical EV/EBITDA lookup failed for {standard_sector}: {e}")
+                logger.debug(
+                    f"Historical EV/EBITDA lookup failed for {standard_sector}: {e}"
+                )
 
         # Fall back to config static value
         return self.sector_multiples_service.get_ev_ebitda(standard_sector)
@@ -1695,21 +1713,41 @@ class RLBacktester:
         context_features: ValuationContext,
         actual_price_30d: Optional[float],
         actual_price_90d: Optional[float],
+        actual_price_180d: Optional[float],
+        actual_price_365d: Optional[float],
+        actual_price_548d: Optional[float],
+        actual_price_730d: Optional[float],
+        actual_price_1095d: Optional[float],
         reward_30d: Optional[float],
         reward_90d: Optional[float],
+        reward_180d: Optional[float],
+        reward_365d: Optional[float],
+        reward_548d: Optional[float],
+        reward_730d: Optional[float],
+        reward_1095d: Optional[float],
+        multi_period_rewards: Optional[Dict[str, Dict[str, float]]],
         per_model_rewards: Dict[str, Dict[str, Any]],
         position_type: str = "inferred",
         entry_date: Optional[date] = None,
         exit_date_30d: Optional[date] = None,
         exit_date_90d: Optional[date] = None,
+        exit_date_180d: Optional[date] = None,
+        exit_date_365d: Optional[date] = None,
+        exit_date_548d: Optional[date] = None,
+        exit_date_730d: Optional[date] = None,
+        exit_date_1095d: Optional[date] = None,
     ) -> Optional[int]:
-        """Record prediction to database.
+        """Record prediction to database using shared OutcomeTracker service.
+
+        This method delegates to the centralized OutcomeTracker class to avoid
+        code duplication and ensure consistent NumPy type handling across all
+        prediction recording operations.
 
         Args:
             position_type: 'LONG', 'SHORT', or 'inferred' (legacy behavior based on FV vs Price)
             entry_date: Date when position was entered (defaults to analysis_date)
-            exit_date_30d: Date 30 days after entry (when 30d price was measured)
-            exit_date_90d: Date 90 days after entry (when 90d price was measured)
+            exit_date_*: Exit dates for each holding period
+            multi_period_rewards: Consolidated rewards for all holding periods
 
         Returns:
             Primary key of inserted record, or None if validation failed
@@ -1721,101 +1759,48 @@ class RLBacktester:
             )
             return None
 
-        try:
-            predicted_upside_pct = (
-                ((blended_fair_value - current_price) / current_price * 100)
-                if current_price > 0
-                else 0
-            )
+        # Use shared OutcomeTracker service for consistent database operations
+        from investigator.domain.services.rl.outcome_tracker import OutcomeTracker
 
-            # Default entry_date to analysis_date if not provided
-            effective_entry_date = entry_date or analysis_date
-
-            with self.db.get_session() as session:
-                result = session.execute(
-                    text(
-                        """
-                        INSERT INTO valuation_outcomes (
-                            symbol, analysis_date, fiscal_period,
-                            blended_fair_value, current_price, predicted_upside_pct,
-                            dcf_fair_value, pe_fair_value, ps_fair_value,
-                            evebitda_fair_value, pb_fair_value, ggm_fair_value,
-                            model_weights, tier_classification, context_features,
-                            actual_price_30d, actual_price_90d,
-                            reward_30d, reward_90d, per_model_rewards,
-                            outcome_updated_at, ab_test_group, policy_version, position_type,
-                            entry_date, exit_date_30d, exit_date_90d
-                        ) VALUES (
-                            :symbol, :analysis_date, :fiscal_period,
-                            :blended_fair_value, :current_price, :predicted_upside_pct,
-                            :dcf_fair_value, :pe_fair_value, :ps_fair_value,
-                            :evebitda_fair_value, :pb_fair_value, :ggm_fair_value,
-                            :model_weights, :tier_classification, :context_features,
-                            :actual_price_30d, :actual_price_90d,
-                            :reward_30d, :reward_90d, :per_model_rewards,
-                            CURRENT_TIMESTAMP, 'backtest', 'backtest_v3_dual_position', :position_type,
-                            :entry_date, :exit_date_30d, :exit_date_90d
-                        )
-                        ON CONFLICT (symbol, analysis_date, position_type) DO UPDATE SET
-                            blended_fair_value = EXCLUDED.blended_fair_value,
-                            current_price = EXCLUDED.current_price,
-                            predicted_upside_pct = EXCLUDED.predicted_upside_pct,
-                            dcf_fair_value = EXCLUDED.dcf_fair_value,
-                            pe_fair_value = EXCLUDED.pe_fair_value,
-                            ps_fair_value = EXCLUDED.ps_fair_value,
-                            evebitda_fair_value = EXCLUDED.evebitda_fair_value,
-                            pb_fair_value = EXCLUDED.pb_fair_value,
-                            ggm_fair_value = EXCLUDED.ggm_fair_value,
-                            model_weights = EXCLUDED.model_weights,
-                            tier_classification = EXCLUDED.tier_classification,
-                            context_features = EXCLUDED.context_features,
-                            actual_price_30d = EXCLUDED.actual_price_30d,
-                            actual_price_90d = EXCLUDED.actual_price_90d,
-                            reward_30d = EXCLUDED.reward_30d,
-                            reward_90d = EXCLUDED.reward_90d,
-                            per_model_rewards = EXCLUDED.per_model_rewards,
-                            entry_date = EXCLUDED.entry_date,
-                            exit_date_30d = EXCLUDED.exit_date_30d,
-                            exit_date_90d = EXCLUDED.exit_date_90d,
-                            outcome_updated_at = CURRENT_TIMESTAMP,
-                            updated_at = CURRENT_TIMESTAMP
-                        RETURNING id
-                    """
-                    ),
-                    {
-                        "symbol": symbol,
-                        "analysis_date": analysis_date,
-                        "fiscal_period": fiscal_period,
-                        "blended_fair_value": blended_fair_value,
-                        "current_price": current_price,
-                        "predicted_upside_pct": predicted_upside_pct,
-                        "dcf_fair_value": fair_values.get("dcf"),
-                        "pe_fair_value": fair_values.get("pe"),
-                        "ps_fair_value": fair_values.get("ps"),
-                        "evebitda_fair_value": fair_values.get("ev_ebitda"),
-                        "pb_fair_value": fair_values.get("pb"),
-                        "ggm_fair_value": fair_values.get("ggm"),
-                        "model_weights": safe_json_dumps(weights),
-                        "tier_classification": tier_classification,
-                        "context_features": safe_json_dumps(context_features.to_dict()),
-                        "actual_price_30d": actual_price_30d,
-                        "actual_price_90d": actual_price_90d,
-                        "reward_30d": reward_30d,
-                        "reward_90d": reward_90d,
-                        "per_model_rewards": safe_json_dumps(per_model_rewards),
-                        "position_type": position_type,
-                        "entry_date": effective_entry_date,
-                        "exit_date_30d": exit_date_30d,
-                        "exit_date_90d": exit_date_90d,
-                    },
-                )
-                row = result.fetchone()
-                session.commit()
-                return row[0] if row else None
-
-        except Exception as e:
-            logger.error(f"Error recording prediction for {symbol}: {e}")
-            return None
+        tracker = OutcomeTracker()
+        return tracker.record_prediction_with_outcomes(
+            symbol=symbol,
+            analysis_date=analysis_date,
+            blended_fair_value=blended_fair_value,
+            current_price=current_price,
+            model_fair_values=fair_values,
+            model_weights=weights,
+            tier_classification=tier_classification,
+            context_features=context_features,
+            fiscal_period=fiscal_period,
+            actual_price_30d=actual_price_30d,
+            actual_price_90d=actual_price_90d,
+            actual_price_180d=actual_price_180d,
+            actual_price_365d=actual_price_365d,
+            actual_price_548d=actual_price_548d,
+            actual_price_730d=actual_price_730d,
+            actual_price_1095d=actual_price_1095d,
+            reward_30d=reward_30d,
+            reward_90d=reward_90d,
+            reward_180d=reward_180d,
+            reward_365d=reward_365d,
+            reward_548d=reward_548d,
+            reward_730d=reward_730d,
+            reward_1095d=reward_1095d,
+            multi_period_rewards=multi_period_rewards,
+            per_model_rewards=per_model_rewards,
+            ab_test_group=None,  # Backtest doesn't use A/B testing
+            policy_version="backtest_v4_multi_period",
+            position_type=position_type,
+            entry_date=entry_date,
+            exit_date_30d=exit_date_30d,
+            exit_date_90d=exit_date_90d,
+            exit_date_180d=exit_date_180d,
+            exit_date_365d=exit_date_365d,
+            exit_date_548d=exit_date_548d,
+            exit_date_730d=exit_date_730d,
+            exit_date_1095d=exit_date_1095d,
+        )
 
     def calculate_position_rewards(
         self,
@@ -2125,8 +2110,6 @@ class RLBacktester:
                 multi_period_prices = self.get_multi_period_prices(
                     symbol, analysis_date
                 )
-                actual_price_30d = multi_period_prices.get("1m")
-                actual_price_90d = multi_period_prices.get("3m")
 
                 # Get beta for risk-adjusted reward calculation
                 stock_beta = metadata.get("beta", 1.0)
@@ -2140,6 +2123,7 @@ class RLBacktester:
 
                 # Calculate per-model rewards (direction-agnostic, based on fair value prediction)
                 per_model_rewards = {}
+                actual_price_90d = multi_period_prices.get("3m")
                 if actual_price_90d:
                     per_model_rewards = self.calculate_per_model_rewards(
                         fair_values,
@@ -2191,20 +2175,41 @@ class RLBacktester:
                     economic_indicators=economic_indicators,
                 )
 
-                # Calculate DUAL-POSITION rewards for balanced training
-                position_rewards = self.calculate_position_rewards(
-                    current_price=price_at_prediction,
-                    actual_price_30d=actual_price_30d,
-                    actual_price_90d=actual_price_90d,
-                    beta=stock_beta,
-                )
-
                 # Calculate exit dates for position tracking
                 exit_date_30d = (
-                    analysis_date + timedelta(days=30) if actual_price_30d else None
+                    analysis_date + timedelta(days=30)
+                    if multi_period_prices.get("1m")
+                    else None
                 )
                 exit_date_90d = (
-                    analysis_date + timedelta(days=90) if actual_price_90d else None
+                    analysis_date + timedelta(days=90)
+                    if multi_period_prices.get("3m")
+                    else None
+                )
+                exit_date_180d = (
+                    analysis_date + timedelta(days=180)
+                    if multi_period_prices.get("6m")
+                    else None
+                )
+                exit_date_365d = (
+                    analysis_date + timedelta(days=365)
+                    if multi_period_prices.get("12m")
+                    else None
+                )
+                exit_date_548d = (
+                    analysis_date + timedelta(days=548)
+                    if multi_period_prices.get("18m")
+                    else None
+                )
+                exit_date_730d = (
+                    analysis_date + timedelta(days=730)
+                    if multi_period_prices.get("24m")
+                    else None
+                )
+                exit_date_1095d = (
+                    analysis_date + timedelta(days=1095)
+                    if multi_period_prices.get("36m")
+                    else None
                 )
 
                 # Record BOTH LONG and SHORT positions for balanced RL training
@@ -2220,21 +2225,37 @@ class RLBacktester:
                         weights=weights,
                         tier_classification=tier,
                         context_features=context_features,
-                        actual_price_30d=actual_price_30d,
-                        actual_price_90d=actual_price_90d,
-                        reward_30d=position_rewards[position_type]["reward_30d"],
-                        reward_90d=position_rewards[position_type]["reward_90d"],
+                        actual_price_30d=multi_period_prices.get("1m"),
+                        actual_price_90d=multi_period_prices.get("3m"),
+                        actual_price_180d=multi_period_prices.get("6m"),
+                        actual_price_365d=multi_period_prices.get("12m"),
+                        actual_price_548d=multi_period_prices.get("18m"),
+                        actual_price_730d=multi_period_prices.get("24m"),
+                        actual_price_1095d=multi_period_prices.get("36m"),
+                        reward_30d=multi_period_rewards[position_type].get("1m"),
+                        reward_90d=multi_period_rewards[position_type].get("3m"),
+                        reward_180d=multi_period_rewards[position_type].get("6m"),
+                        reward_365d=multi_period_rewards[position_type].get("12m"),
+                        reward_548d=multi_period_rewards[position_type].get("18m"),
+                        reward_730d=multi_period_rewards[position_type].get("24m"),
+                        reward_1095d=multi_period_rewards[position_type].get("36m"),
+                        multi_period_rewards=multi_period_rewards,
                         per_model_rewards=per_model_rewards,
                         position_type=position_type,
                         entry_date=analysis_date,
                         exit_date_30d=exit_date_30d,
                         exit_date_90d=exit_date_90d,
+                        exit_date_180d=exit_date_180d,
+                        exit_date_365d=exit_date_365d,
+                        exit_date_548d=exit_date_548d,
+                        exit_date_730d=exit_date_730d,
+                        exit_date_1095d=exit_date_1095d,
                     )
                     record_ids.append(record_id)
 
                 # Get rewards for logging
-                long_reward_90d = position_rewards["LONG"]["reward_90d"]
-                short_reward_90d = position_rewards["SHORT"]["reward_90d"]
+                long_reward_90d = multi_period_rewards["LONG"].get("3m")
+                short_reward_90d = multi_period_rewards["SHORT"].get("3m")
 
                 # Position signal label (must be defined before results append)
                 pos_label = {1: "LONG", -1: "SHORT", 0: "SKIP"}.get(

@@ -226,7 +226,7 @@ function Dashboard() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <BrowserRouter basename="/ui">
         <Header />
         <Routes>
           <Route path="/sectors" element={<SectorAnalysisDashboard />} />
