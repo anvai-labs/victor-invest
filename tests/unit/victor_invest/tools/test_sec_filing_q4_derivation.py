@@ -109,7 +109,7 @@ class TestQ4Derivation:
         result = self.tool._derive_missing_q4_quarters(quarters_data, self.symbol)
 
         # Verify Q4 was derived and FY was removed
-        assert len(result) == 3  # Q1, Q2, Q3, Q4 (FY removed)
+        assert len(result) == 4  # Q1, Q2, Q3, Q4 (FY replaced with Q4)
 
         fiscal_periods = [q["fiscal_period"] for q in result]
         assert "Q4" in fiscal_periods
@@ -166,18 +166,18 @@ class TestQ4Derivation:
 
         result = self.tool._derive_missing_q4_quarters(quarters_data, self.symbol)
 
-        # Verify ordering by period_end_date (most recent first)
-        assert result[0]["fiscal_period"] == "Q1"
-        assert result[0]["period_end"] == "2024-09-27"
+        # Verify ordering by period_end_date (descending - most recent first)
+        assert result[0]["fiscal_period"] == "Q4"
+        assert result[0]["period_end"] == "2025-06-27"
 
-        assert result[1]["fiscal_period"] == "Q2"
-        assert result[1]["period_end"] == "2024-12-27"
+        assert result[1]["fiscal_period"] == "Q3"
+        assert result[1]["period_end"] == "2025-03-27"
 
-        assert result[2]["fiscal_period"] == "Q3"
-        assert result[2]["period_end"] == "2025-03-27"
+        assert result[2]["fiscal_period"] == "Q2"
+        assert result[2]["period_end"] == "2024-12-27"
 
-        assert result[3]["fiscal_period"] == "Q4"
-        assert result[3]["period_end"] == "2025-06-27"
+        assert result[3]["fiscal_period"] == "Q1"
+        assert result[3]["period_end"] == "2024-09-27"
 
     def test_q4_derivation_with_cash_flow_metrics(self):
         """Test Q4 derivation includes cash flow metrics."""
