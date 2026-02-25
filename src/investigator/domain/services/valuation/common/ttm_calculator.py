@@ -65,7 +65,7 @@ class TTMMetrics:
                     except (ValueError, TypeError):
                         continue
 
-            # Try nested financial_data
+            # Try nested financial_data (legacy format)
             financial_data = entry.get("financial_data", {})
             if financial_data:
                 for key in keys:
@@ -75,6 +75,81 @@ class TTMMetrics:
                             return float(value)
                         except (ValueError, TypeError):
                             continue
+
+            # Try nested SEC filing format (income_statement, balance_sheet, cash_flow)
+            # Map keys to their nested locations
+            nested_paths = {
+                "net_income": [
+                    "income_statement",
+                    "income_statement.net_income",
+                    "income_statement.net_income_loss",
+                ],
+                "net_income_loss": [
+                    "income_statement",
+                    "income_statement.net_income",
+                    "income_statement.net_income_loss",
+                ],
+                "net_income_common": [
+                    "income_statement",
+                    "income_statement.net_income",
+                ],
+                "total_revenue": ["income_statement", "income_statement.total_revenue"],
+                "revenue": [
+                    "income_statement",
+                    "income_statement.revenue",
+                    "income_statement.total_revenue",
+                ],
+                "revenues": ["income_statement", "income_statement.revenues"],
+                "operating_income": [
+                    "income_statement",
+                    "income_statement.operating_income",
+                ],
+                "depreciation_amortization": [
+                    "income_statement",
+                    "income_statement.depreciation_amortization",
+                ],
+                "stockholders_equity": [
+                    "balance_sheet",
+                    "balance_sheet.stockholders_equity",
+                    "balance_sheet.total_equity",
+                ],
+                "total_equity": ["balance_sheet", "balance_sheet.total_equity"],
+                "operating_cash_flow": ["cash_flow", "cash_flow.operating_cash_flow"],
+                "capital_expenditures": ["cash_flow", "cash_flow.capital_expenditures"],
+                "free_cash_flow": ["cash_flow", "cash_flow.free_cash_flow"],
+            }
+
+            for key in keys:
+                if key in nested_paths:
+                    paths = nested_paths[key]
+                    # First try direct nested structure access
+                    for path in paths:
+                        if "." in path:
+                            parts = path.split(".")
+                            value = entry
+                            for part in parts:
+                                if isinstance(value, dict):
+                                    value = value.get(part)
+                                else:
+                                    value = None
+                                    break
+                            if value is not None:
+                                try:
+                                    return float(value)
+                                except (ValueError, TypeError):
+                                    continue
+                        else:
+                            # Single-level nested key (e.g., "income_statement")
+                            nested_section = entry.get(path)
+                            if nested_section and isinstance(nested_section, dict):
+                                # Get the value from the nested section using the original key
+                                nested_value = nested_section.get(key)
+                                if nested_value is not None:
+                                    try:
+                                        return float(nested_value)
+                                    except (ValueError, TypeError):
+                                        continue
+
         else:
             # Object format (QuarterlyData)
             financial_data = getattr(entry, "financial_data", {}) or {}

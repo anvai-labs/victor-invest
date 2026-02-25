@@ -115,6 +115,9 @@ class SharesService:
         """
         Get shares outstanding from SEC filing.
 
+        Uses weighted_average_diluted_shares_outstanding (industry standard for EPS
+        calculations), with fallback to shares_outstanding (actual shares at period end).
+
         Args:
             symbol: Stock ticker
             as_of_date: Get shares as of this date (default: most recent)
@@ -125,11 +128,15 @@ class SharesService:
         with self.sec_engine.connect() as conn:
             if as_of_date:
                 query = text("""
-                    SELECT shares_outstanding
+                    SELECT COALESCE(
+                        weighted_average_diluted_shares_outstanding,
+                        shares_outstanding
+                    ) as shares_outstanding
                     FROM sec_companyfacts_processed
                     WHERE symbol = :symbol
                       AND filed_date <= :as_of_date
-                      AND shares_outstanding IS NOT NULL
+                      AND (weighted_average_diluted_shares_outstanding IS NOT NULL
+                           OR shares_outstanding IS NOT NULL)
                     ORDER BY filed_date DESC
                     LIMIT 1
                 """)
@@ -138,10 +145,14 @@ class SharesService:
                 ).fetchone()
             else:
                 query = text("""
-                    SELECT shares_outstanding
+                    SELECT COALESCE(
+                        weighted_average_diluted_shares_outstanding,
+                        shares_outstanding
+                    ) as shares_outstanding
                     FROM sec_companyfacts_processed
                     WHERE symbol = :symbol
-                      AND shares_outstanding IS NOT NULL
+                      AND (weighted_average_diluted_shares_outstanding IS NOT NULL
+                           OR shares_outstanding IS NOT NULL)
                     ORDER BY filed_date DESC
                     LIMIT 1
                 """)

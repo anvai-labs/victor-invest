@@ -562,16 +562,35 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
                 elif len(quarterly_metrics) >= 4:
                     # Sum last 4 quarters for TTM values
+                    # Handle both nested format (income_statement/cash_flow) and flat format
                     recent_quarters = quarterly_metrics[:4]
-                    total_fcf = sum(
-                        q.get("free_cash_flow", 0) or 0 for q in recent_quarters
-                    )
-                    total_earnings = sum(
-                        q.get("net_income", 0) or 0 for q in recent_quarters
-                    )
-                    total_revenue = sum(
-                        q.get("revenue", 0) or 0 for q in recent_quarters
-                    )
+
+                    # Check if data is in nested format
+                    if "income_statement" in recent_quarters[0]:
+                        total_fcf = sum(
+                            q.get("cash_flow", {}).get("free_cash_flow") or 0
+                            for q in recent_quarters
+                        )
+                        total_earnings = sum(
+                            q.get("income_statement", {}).get("net_income") or 0
+                            for q in recent_quarters
+                        )
+                        total_revenue = sum(
+                            q.get("income_statement", {}).get("total_revenue") or 0
+                            for q in recent_quarters
+                        )
+                    else:
+                        # Flat format
+                        total_fcf = sum(
+                            q.get("free_cash_flow", 0) or 0 for q in recent_quarters
+                        )
+                        total_earnings = sum(
+                            q.get("net_income", 0) or 0 for q in recent_quarters
+                        )
+                        total_revenue = sum(
+                            q.get("revenue", 0) or q.get("total_revenue", 0) or 0
+                            for q in recent_quarters
+                        )
 
                     has_positive_fcf = total_fcf > 0
                     has_positive_earnings = total_earnings > 0
@@ -582,9 +601,23 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 else:
                     # Single quarter - use as approximation
                     q = quarterly_metrics[0]
-                    total_fcf = q.get("free_cash_flow", 0) or 0
-                    total_earnings = q.get("net_income", 0) or 0
-                    total_revenue = q.get("revenue", 0) or 0
+
+                    # Handle nested format
+                    if "income_statement" in q:
+                        total_fcf = q.get("cash_flow", {}).get("free_cash_flow") or 0
+                        total_earnings = (
+                            q.get("income_statement", {}).get("net_income") or 0
+                        )
+                        total_revenue = (
+                            q.get("income_statement", {}).get("total_revenue") or 0
+                        )
+                    else:
+                        # Flat format
+                        total_fcf = q.get("free_cash_flow", 0) or 0
+                        total_earnings = q.get("net_income", 0) or 0
+                        total_revenue = (
+                            q.get("revenue", 0) or q.get("total_revenue", 0) or 0
+                        )
 
                     has_positive_fcf = total_fcf > 0 if total_fcf else None
                     has_positive_earnings = (
@@ -665,16 +698,38 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             try:
                 from investigator.domain.services.valuation.common import TTMMetrics
 
-                result["ttm_eps"] = TTMMetrics.calculate_ttm_eps(
-                    quarterly_data=quarterly_metrics,
-                    shares_outstanding=shares_outstanding,
-                )
-                result["ttm_revenue"] = TTMMetrics.calculate_ttm_revenue(
-                    quarterly_data=quarterly_metrics
-                )
-                result["ttm_ebitda"] = TTMMetrics.calculate_ttm_ebitda(
-                    quarterly_data=quarterly_metrics
-                )
+                # CRITICAL FIX: Filter out FY (full year) periods to avoid double-counting
+                # FY periods contain Q1+Q2+Q3+Q4 data and should not be included in TTM sum
+                quarterly_only = [
+                    q
+                    for q in quarterly_metrics
+                    if q.get("fiscal_period") in ["Q1", "Q2", "Q3", "Q4"]
+                ]
+
+                # Ensure we have at least 4 quarterly periods (not FY)
+                if len(quarterly_only) >= 4:
+                    result["ttm_eps"] = TTMMetrics.calculate_ttm_eps(
+                        quarterly_data=quarterly_only,
+                        shares_outstanding=shares_outstanding,
+                    )
+                    result["ttm_revenue"] = TTMMetrics.calculate_ttm_revenue(
+                        quarterly_data=quarterly_only
+                    )
+                    result["ttm_ebitda"] = TTMMetrics.calculate_ttm_ebitda(
+                        quarterly_data=quarterly_only
+                    )
+                else:
+                    # Fallback to all quarters if not enough Q periods
+                    result["ttm_eps"] = TTMMetrics.calculate_ttm_eps(
+                        quarterly_data=quarterly_metrics,
+                        shares_outstanding=shares_outstanding,
+                    )
+                    result["ttm_revenue"] = TTMMetrics.calculate_ttm_revenue(
+                        quarterly_data=quarterly_metrics
+                    )
+                    result["ttm_ebitda"] = TTMMetrics.calculate_ttm_ebitda(
+                        quarterly_data=quarterly_metrics
+                    )
 
                 # Book value from balance sheet
                 if quarterly_metrics:
@@ -1082,22 +1137,64 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 if quarterly_metrics and len(quarterly_metrics) >= 4:
                     # Get TTM (last 4 quarters)
                     ttm = quarterly_metrics[:4]
-                    financials["net_income"] = sum(  # type: ignore[assignment]
-                        q.get("net_income", 0) or 0 for q in ttm
-                    )
-                    financials["revenue"] = sum(  # type: ignore[assignment]
-                        q.get("revenue", 0) or 0 for q in ttm
-                    )
+
+                    # Helper function to extract metric from nested or flat format
+                    def extract_ttm_metric(keys: List[str]) -> float:
+                        """Extract TTM metric from quarterly data, handling both nested and flat formats."""
+                        total = 0.0
+                        for q in ttm:
+                            # Try nested format first (income_statement.total_revenue)
+                            if "income_statement" in q:
+                                for key in keys:
+                                    val = q.get("income_statement", {}).get(key)
+                                    if val is not None:
+                                        total += val or 0
+                                        break
+                            # Try flat format
+                            else:
+                                for key in keys:
+                                    val = q.get(key)
+                                    if val is not None:
+                                        total += val or 0
+                                        break
+                        return total
+
+                    financials["net_income"] = extract_ttm_metric(
+                        ["net_income", "net_income_loss"]
+                    )  # type: ignore[assignment]
+                    financials["revenue"] = extract_ttm_metric(
+                        ["total_revenue", "revenue"]
+                    )  # type: ignore[assignment]
+
                     # Use latest quarter's shareholders_equity
-                    financials["shareholders_equity"] = ttm[0].get(
-                        "stockholders_equity"
-                    )
+                    latest_q = ttm[0]
+                    if "balance_sheet" in latest_q:
+                        financials["shareholders_equity"] = latest_q.get(
+                            "balance_sheet", {}
+                        ).get("stockholders_equity") or latest_q.get(
+                            "shareholders_equity", 0
+                        )
+                    else:
+                        financials["shareholders_equity"] = latest_q.get(
+                            "stockholders_equity",
+                            latest_q.get("shareholders_equity", 0),
+                        )
+
                     # Calculate TTM EBITDA from operating_income and depreciation_amortization
-                    financials["ebitda"] = sum(
-                        (q.get("operating_income", 0) or 0)
-                        + (q.get("depreciation_amortization", 0) or 0)
-                        for q in ttm
-                    )
+                    ebitda_total = 0.0
+                    for q in ttm:
+                        if "income_statement" in q:
+                            inc_stmt = q.get("income_statement", {})
+                            operating_income = inc_stmt.get("operating_income", 0) or 0
+                            depr_amort = (
+                                inc_stmt.get("depreciation_amortization", 0) or 0
+                            )
+                            ebitda_total += operating_income + depr_amort
+                        else:
+                            operating_income = q.get("operating_income", 0) or 0
+                            depr_amort = q.get("depreciation_amortization", 0) or 0
+                            ebitda_total += operating_income + depr_amort
+                    financials["ebitda"] = ebitda_total
 
                 # Calculate market_cap if we have price and shares
                 if current_price and quarterly_metrics:

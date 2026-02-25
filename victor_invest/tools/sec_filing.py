@@ -340,9 +340,10 @@ Parameters:
                 )
 
             # Convert raw quarters data to dict format compatible with valuation models
-            # This matches the format expected by valuation tools
+            # This matches the QuarterlyData.to_dict() nested format expected by DCF and other models
             quarterly_metrics = []
             for q in quarters_data:
+                # Build nested structure to match investigator CLI format
                 metric_dict = {
                     "symbol": q.get("symbol"),
                     "fiscal_year": q.get("fiscal_year"),
@@ -350,46 +351,70 @@ Parameters:
                     "adsh": q.get("adsh"),
                     "filed": q.get("filed"),
                     "period_end": q.get("period_end"),
+                    "period_end_date": q.get(
+                        "period_end"
+                    ),  # Alias for quarterly_processor compatibility
+                    "filed_date": q.get(
+                        "filed"
+                    ),  # Alias for quarterly_processor compatibility
                     "form": q.get("form"),
-                    # Income statement
+                    # Shares outstanding - prefer weighted average diluted for EPS calculations
+                    # This is the industry standard for per-share calculations
+                    "shares_outstanding": q.get(
+                        "weighted_average_diluted_shares_outstanding"
+                    )
+                    or q.get("shares_outstanding"),
+                    # Actual shares outstanding (for EV/market cap calculations)
+                    "actual_shares_outstanding": q.get("shares_outstanding"),
+                    # Nested structures (matching QuarterlyData.to_dict() format)
+                    "cash_flow": {
+                        "operating_cash_flow": q.get("operating_cash_flow"),
+                        "capital_expenditures": q.get("capital_expenditures"),
+                        "free_cash_flow": q.get("free_cash_flow"),
+                        "dividends_paid": q.get("dividends_paid"),
+                        "is_ytd": q.get("is_ytd_cashflow", False),
+                        "value_type": "quarterly",
+                    },
+                    "income_statement": {
+                        "total_revenue": q.get("total_revenue"),
+                        "net_income": q.get("net_income"),
+                        "gross_profit": q.get("gross_profit"),
+                        "operating_income": q.get("operating_income"),
+                        "interest_expense": q.get("interest_expense"),
+                        "income_tax_expense": q.get("income_tax_expense"),
+                        "cost_of_revenue": q.get("cost_of_revenue"),
+                        "depreciation_amortization": q.get("depreciation_amortization"),
+                        "stock_based_compensation": q.get("stock_based_compensation"),
+                        "research_and_development_expense": q.get(
+                            "research_and_development_expense"
+                        ),
+                        "selling_general_administrative_expense": q.get(
+                            "selling_general_administrative_expense"
+                        ),
+                    },
+                    "balance_sheet": {
+                        "total_assets": q.get("total_assets"),
+                        "total_liabilities": q.get("total_liabilities"),
+                        "stockholders_equity": q.get("stockholders_equity"),
+                        "current_assets": q.get("current_assets"),
+                        "current_liabilities": q.get("current_liabilities"),
+                        "accounts_receivable": q.get("accounts_receivable"),
+                        "inventory": q.get("inventory"),
+                        "cash_and_equivalents": q.get("cash_and_equivalents"),
+                        "long_term_debt": q.get("long_term_debt"),
+                        "short_term_debt": q.get("short_term_debt"),
+                        "total_debt": q.get("total_debt"),
+                    },
+                    # Additional calculated metrics (flat for compatibility)
+                    "weighted_average_diluted_shares_outstanding": q.get(
+                        "weighted_average_diluted_shares_outstanding"
+                    )
+                    or q.get("shares_outstanding"),
+                    # Also include flat fields for backward compatibility with DynamicModelWeightingService
                     "total_revenue": q.get("total_revenue"),
                     "net_income": q.get("net_income"),
                     "gross_profit": q.get("gross_profit"),
                     "operating_income": q.get("operating_income"),
-                    "interest_expense": q.get("interest_expense"),
-                    "income_tax_expense": q.get("income_tax_expense"),
-                    "cost_of_revenue": q.get("cost_of_revenue"),
-                    # Balance sheet
-                    "total_assets": q.get("total_assets"),
-                    "total_liabilities": q.get("total_liabilities"),
-                    "stockholders_equity": q.get("stockholders_equity"),
-                    "current_assets": q.get("current_assets"),
-                    "current_liabilities": q.get("current_liabilities"),
-                    "accounts_receivable": q.get("accounts_receivable"),
-                    "inventory": q.get("inventory"),
-                    "cash_and_equivalents": q.get("cash_and_equivalents"),
-                    "long_term_debt": q.get("long_term_debt"),
-                    "short_term_debt": q.get("short_term_debt"),
-                    "total_debt": q.get("total_debt"),
-                    "shares_outstanding": q.get("shares_outstanding"),
-                    "weighted_average_diluted_shares_outstanding": q.get(
-                        "shares_outstanding"
-                    ),
-                    # Cash flow
-                    "operating_cash_flow": q.get("operating_cash_flow"),
-                    "capital_expenditures": q.get("capital_expenditures"),
-                    "free_cash_flow": q.get("free_cash_flow"),
-                    "dividends_paid": q.get("dividends_paid"),
-                    # Additional metrics
-                    "depreciation_amortization": q.get("depreciation_amortization"),
-                    "stock_based_compensation": q.get("stock_based_compensation"),
-                    "research_and_development_expense": q.get(
-                        "research_and_development_expense"
-                    ),
-                    "selling_general_administrative_expense": q.get(
-                        "selling_general_administrative_expense"
-                    ),
-                    # Calculated EBITDA if not directly available
                     "ebitda": q.get("ebitda")
                     or (
                         (q.get("operating_income", 0) or 0)
@@ -398,6 +423,10 @@ Parameters:
                         and q.get("depreciation_amortization")
                         else None
                     ),
+                    "operating_cash_flow": q.get("operating_cash_flow"),
+                    "capital_expenditures": q.get("capital_expenditures"),
+                    "free_cash_flow": q.get("free_cash_flow"),
+                    "dividends_paid": q.get("dividends_paid"),
                 }
                 quarterly_metrics.append(metric_dict)
 
