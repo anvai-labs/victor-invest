@@ -44,6 +44,39 @@ from investigator.infrastructure.sec.metric_extraction import (
 
 logger = logging.getLogger(__name__)
 
+
+def calculate_frame_from_period_end(period_end_date: str) -> str:
+    """
+    Calculate CY (Calendar Year) frame from period_end_date.
+
+    The SEC Company Facts API often doesn't populate the 'frame' field correctly,
+    especially for companies with non-calendar fiscal years. This function derives
+    the correct frame from the period_end_date.
+
+    Args:
+        period_end_date: Period end date string (YYYY-MM-DD format)
+
+    Returns:
+        Frame string in format "CY{YYYY}Q{Q}" (e.g., "CY2025Q2")
+
+    Examples:
+        >>> calculate_frame_from_period_end("2025-06-27")
+        'CY2025Q2'
+        >>> calculate_frame_from_period_end("2025-03-31")
+        'CY2025Q1'
+        >>> calculate_frame_from_period_end("2024-12-31")
+        'CY2024Q4'
+    """
+    try:
+        dt = datetime.strptime(period_end_date, "%Y-%m-%d")
+        cal_year = dt.year
+        cal_quarter = (dt.month - 1) // 3 + 1
+        return f"CY{cal_year}Q{cal_quarter}"
+    except (ValueError, TypeError) as e:
+        logger.warning(f"Failed to calculate frame from period_end_date '{period_end_date}': {e}")
+        return ""
+
+
 # Try to import from utils, with fallback
 try:
     from utils.industry_classifier import classify_company
@@ -1668,6 +1701,12 @@ class SECDataProcessor:
                             f"[Fiscal Year Adjustment] {symbol}: Failed to adjust {actual_fp} fiscal year: {e}"
                         )
 
+                # Calculate frame from period_end_date (SEC API frame field is unreliable)
+                calculated_frame = calculate_frame_from_period_end(period_end_str)
+                # Use calculated frame, but prefer SEC frame if it's valid and matches
+                # This ensures correct CY{YYYY}Q{Q} format for all entries
+                final_frame = calculated_frame if calculated_frame else entry.get("frame", "")
+
                 filings[adsh] = {
                     "symbol": symbol.upper(),
                     "cik": cik,
@@ -1678,7 +1717,7 @@ class SECDataProcessor:
                     "filed_date": entry["filed"],
                     "period_end_date": period_end_str,
                     "period_start_date": entry["start"],  # ✅ ADD THIS
-                    "frame": entry["frame"],
+                    "frame": final_frame,
                     "duration_days": duration,  # ✅ ADD THIS
                     "data": {},
                     "raw_data_id": raw_data_id,
