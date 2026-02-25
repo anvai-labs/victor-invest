@@ -700,11 +700,11 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
                 # CRITICAL FIX: Filter out FY (full year) periods to avoid double-counting
                 # FY periods contain Q1+Q2+Q3+Q4 data and should not be included in TTM sum
-                quarterly_only = [
-                    q
-                    for q in quarterly_metrics
-                    if q.get("fiscal_period") in ["Q1", "Q2", "Q3", "Q4"]
-                ]
+                from investigator.domain.services.valuation_shared.q4_derivation import (
+                    filter_quarters_only,
+                )
+
+                quarterly_only = filter_quarters_only(quarterly_metrics)
 
                 # Ensure we have at least 4 quarterly periods (not FY)
                 if len(quarterly_only) >= 4:

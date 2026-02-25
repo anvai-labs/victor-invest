@@ -149,7 +149,30 @@ def query_recent_processed_periods(
         q_count,
         fy_count,
     )
-    if len(quarters_data) < num_quarters:
+
+    # CRITICAL: Apply Q4 derivation from FY filings when Q4 is missing
+    # This uses the shared q4_derivation module to ensure consistency
+    # between victor-invest and investigator CLI
+    from investigator.domain.services.valuation_shared.q4_derivation import (
+        derive_q4_from_fy,
+    )
+
+    quarters_data = derive_q4_from_fy(quarters_data, symbol)
+
+    # Filter to only Q1-Q4 periods (exclude FY) for TTM calculations
+    from investigator.domain.services.valuation_shared.q4_derivation import (
+        filter_quarters_only,
+    )
+
+    quarters_only = filter_quarters_only(quarters_data)
+    logger.info(
+        "🔄 [Q4 Derivation] Applied derivation for %s: %s total periods → %s Q-only periods",
+        symbol,
+        len(quarters_data),
+        len(quarters_only),
+    )
+
+    if len(quarters_only) < num_quarters:
         logger.warning(
             "Only %s quarters available for %s (target: %s). "
             "Company may be newly public or have incomplete filing history.",

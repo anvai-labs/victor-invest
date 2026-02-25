@@ -179,9 +179,14 @@ def enrich_company_profile(
     )
     # Use diluted shares for dual-class companies (e.g., GOOGL)
     shares_outstanding = (
-        financials.get("shares_outstanding_diluted")
-        or financials.get("shares_outstanding")
-        or market_data.get("shares_outstanding")
+        financials.get(
+            "weighted_average_diluted_shares_outstanding"
+        )  # PRIORITY 1: Industry standard for EPS
+        or financials.get(
+            "shares_outstanding_diluted"
+        )  # PRIORITY 2: Legacy field (doesn't exist in DB)
+        or financials.get("shares_outstanding")  # PRIORITY 3: Basic shares
+        or market_data.get("shares_outstanding")  # PRIORITY 4: Market data fallback
     )
     profile.pays_dividends = dividends_paid > 0
     profile.dividends_paid = dividends_paid
@@ -202,11 +207,17 @@ def enrich_company_profile(
     profile.book_value_per_share = ratios.get("book_value_per_share")
     # For dual-class companies (e.g., GOOGL), use diluted shares to capture all classes
     # Otherwise DCF valuation divides by too few shares, inflating per-share value
+    # CRITICAL: Use weighted_average_diluted_shares_outstanding for accurate EPS calculations
     profile.shares_outstanding = (
-        financials.get("shares_outstanding_diluted")  # PRIORITY 1: Total diluted shares
+        financials.get(
+            "weighted_average_diluted_shares_outstanding"
+        )  # PRIORITY 1: Industry standard for EPS
+        or financials.get(
+            "shares_outstanding_diluted"
+        )  # PRIORITY 2: Legacy field (doesn't exist in DB)
         or financials.get(
             "shares_outstanding"
-        )  # PRIORITY 2: Basic shares (may be single class)
+        )  # PRIORITY 3: Basic shares (may be single class)
         or ratios.get("shares_outstanding")
         or company_data.get("shares_outstanding")
         or market_data.get("shares_outstanding")
