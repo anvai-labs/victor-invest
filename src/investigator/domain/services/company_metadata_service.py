@@ -364,7 +364,7 @@ class CompanyMetadataService:
 
     def _normalize_sector_name(self, raw_sector: str) -> str:
         """
-        Normalize sector name using configured mappings.
+        Normalize sector name using SectorIndustryMapper.
 
         Args:
             raw_sector: Raw sector name from database or JSON
@@ -375,13 +375,45 @@ class CompanyMetadataService:
         if not raw_sector:
             return "Unknown"
 
-        # Check if it matches any variant in normalization config
-        for canonical, variants in self.sector_normalization.items():
-            if raw_sector in variants:
-                return canonical
+        # Use SectorIndustryMapper for normalization (single source of truth)
+        from investigator.domain.services.sector_name_mapper import SectorIndustryMapper
 
-        # If no match, return as-is (might already be canonical)
-        return raw_sector
+        return SectorIndustryMapper.to_standard(raw_sector)
+
+    def _normalize_industry_and_infer_sector(
+        self, raw_industry: Optional[str], raw_sector: Optional[str] = None
+    ) -> Tuple[Optional[str], str]:
+        """
+        Normalize industry name and ensure sector is inferred if needed.
+
+        Args:
+            raw_industry: Raw industry name from database or JSON
+            raw_sector: Raw sector name (used for validation)
+
+        Returns:
+            (normalized_industry, normalized_sector) tuple
+        """
+        from investigator.domain.services.sector_name_mapper import SectorIndustryMapper
+
+        # Normalize sector first
+        normalized_sector = (
+            self._normalize_sector_name(raw_sector) if raw_sector else "Unknown"
+        )
+
+        # If industry is provided, validate it maps to the sector
+        if raw_industry:
+            # Check if industry maps to a different sector than what we have
+            industry_sector = SectorIndustryMapper.get_sector_for_industry(raw_industry)
+            if industry_sector and industry_sector != "Unknown":
+                # Industry provides authoritative sector mapping
+                if (
+                    normalized_sector == "Unknown"
+                    or normalized_sector != industry_sector
+                ):
+                    normalized_sector = industry_sector
+            return raw_industry, normalized_sector
+
+        return None, normalized_sector
 
     def get_sector(self, symbol: str, use_cache: bool = True) -> str:
         """

@@ -18,8 +18,14 @@ from investigator.domain.services.valuation.models.base import (
     ModelNotApplicable,
     ValuationModelResult,
 )
-from investigator.domain.services.valuation.models.common import baseline_multiple_context, clamp
-from investigator.domain.services.valuation.models.company_profile import CompanyProfile, DataQualityFlag
+from investigator.domain.services.valuation.models.common import (
+    baseline_multiple_context,
+    clamp,
+)
+from investigator.domain.services.valuation.models.company_profile import (
+    CompanyProfile,
+    DataQualityFlag,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +76,34 @@ class PEMultipleModel(BaseValuationModel):
             )
 
         fair_value = float(self.ttm_eps) * target_pe
+
+        # Sanity check: Reject absurdly high fair values caused by unit mismatches
+        # A reasonable P/E fair value should be within 0.01x to 1000x of current price
+        # If current_price is available, use it for validation
+        if self.current_price and self.current_price > 0:
+            ratio = fair_value / self.current_price
+            if ratio > 1000 or ratio < 0.001:
+                # Fair value is more than 1000x or less than 0.001x of current price
+                # This indicates a data quality issue (likely EPS unit mismatch)
+                symbol = (
+                    self.company_profile.symbol
+                    if hasattr(self.company_profile, "symbol")
+                    else "UNKNOWN"
+                )
+                logger.warning(
+                    f"⚠️  [PE_DATA_QUALITY] {symbol} - Implausible fair value: ${fair_value:,.2f} "
+                    f"(ttm_eps=${self.ttm_eps:.4f}, target_pe={target_pe:.2f}, current_price=${self.current_price:.2f}) "
+                    f"→ ratio={ratio:.1f}x, rejecting as unit mismatch error"
+                )
+                diagnostics = self._build_baseline_diagnostics()
+                diagnostics.flags.append("UNIT_MISMATCH")
+                diagnostics.data_quality_score = 0.0
+                return ModelNotApplicable(
+                    model_name=self.model_name,
+                    reason="unit_mismatch_implausible_fair_value",
+                    diagnostics=diagnostics,
+                )
+
         confidence = self.estimate_confidence({"target_pe": target_pe})
         diagnostics = self._build_diagnostics(target_pe=target_pe)
 
@@ -107,13 +141,20 @@ class PEMultipleModel(BaseValuationModel):
     def _is_applicable(self) -> bool:
         if self.ttm_eps is None or self.ttm_eps <= 0:
             return False
-        if self.earnings_quality_score is not None and self.earnings_quality_score < 0.5:
+        if (
+            self.earnings_quality_score is not None
+            and self.earnings_quality_score < 0.5
+        ):
             return False
         return True
 
     def _determine_target_pe(self) -> Optional[float]:
         # Get symbol for logging (defined once at the beginning)
-        symbol = self.company_profile.symbol if hasattr(self.company_profile, "symbol") else "UNKNOWN"
+        symbol = (
+            self.company_profile.symbol
+            if hasattr(self.company_profile, "symbol")
+            else "UNKNOWN"
+        )
 
         candidates = []
         sources = []
@@ -196,11 +237,16 @@ class PEMultipleModel(BaseValuationModel):
                 return None
 
             # Priority 1: Industry override
-            if hasattr(self.company_profile, "industry") and self.company_profile.industry:
+            if (
+                hasattr(self.company_profile, "industry")
+                and self.company_profile.industry
+            ):
                 industry_overrides = pe_config.get("industry_overrides", {})
                 if self.company_profile.industry in industry_overrides:
                     pe_value = float(industry_overrides[self.company_profile.industry])
-                    logger.debug(f"P/E fallback: industry={self.company_profile.industry}, pe={pe_value}")
+                    logger.debug(
+                        f"P/E fallback: industry={self.company_profile.industry}, pe={pe_value}"
+                    )
                     return pe_value
 
             # Priority 2: Sector default
@@ -208,7 +254,9 @@ class PEMultipleModel(BaseValuationModel):
                 sector_defaults = pe_config.get("sector_defaults", {})
                 if self.company_profile.sector in sector_defaults:
                     pe_value = float(sector_defaults[self.company_profile.sector])
-                    logger.debug(f"P/E fallback: sector={self.company_profile.sector}, pe={pe_value}")
+                    logger.debug(
+                        f"P/E fallback: sector={self.company_profile.sector}, pe={pe_value}"
+                    )
                     return pe_value
 
             # Priority 3: Global default
@@ -224,7 +272,9 @@ class PEMultipleModel(BaseValuationModel):
             return None
 
     def _build_baseline_diagnostics(self) -> ModelDiagnostics:
-        context = baseline_multiple_context(self.company_profile, data_quality_default=0.6, fit_default=0.55)
+        context = baseline_multiple_context(
+            self.company_profile, data_quality_default=0.6, fit_default=0.55
+        )
         if self.earnings_quality_score is not None:
             context.fit_score = clamp(self.earnings_quality_score, 0.0, 1.0)
         return context.to_diagnostics()
@@ -235,7 +285,10 @@ class PEMultipleModel(BaseValuationModel):
         if target_pe is None:
             return diagnostics
 
-        if self.company_profile.revenue_growth_yoy is not None and self.company_profile.revenue_growth_yoy > 0.15:
+        if (
+            self.company_profile.revenue_growth_yoy is not None
+            and self.company_profile.revenue_growth_yoy > 0.15
+        ):
             diagnostics.fit_score = clamp(diagnostics.fit_score + 0.1, 0.0, 1.0)
 
         if self.current_price and self.ttm_eps:

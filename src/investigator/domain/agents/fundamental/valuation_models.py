@@ -96,9 +96,20 @@ def _normalize_share_count(value: Any) -> Optional[float]:
         return None
     if shares <= 0:
         return None
+
+    original_shares = shares
     # Guard against SEC payloads that encode shares in millions.
     if shares < 100_000:
         shares *= 1_000_000.0
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.info(
+            "[SHARES_NORMALIZE] Shares value < 100,000 (%s) - multiplying by 1M: %s -> %s",
+            format(original_shares, ",.0f"),
+            format(original_shares, ",.0f"),
+            format(shares, ",.0f"),
+        )
     return shares
 
 
@@ -316,6 +327,16 @@ def calculate_relative_valuation_models(
     except (TypeError, ValueError):
         base_eps = None
 
+    # DEBUG: Log EPS source and value
+    logger.info(
+        "[VALUATION_EPS_DEBUG] %s - EPS from ratios: eps=$%.2f, eps_basic=$%.2f, eps_diluted=$%.2f -> selected=$%.2f",
+        symbol,
+        ratios.get("eps") or 0,
+        ratios.get("eps_basic") or 0,
+        ratios.get("eps_diluted") or 0,
+        base_eps or 0,
+    )
+
     # Guard against unit-mismatched EPS values (e.g., shares encoded in millions).
     if base_eps is not None and abs(base_eps) > 500:
         net_income_candidate = (
@@ -331,6 +352,18 @@ def calculate_relative_valuation_models(
                 )
             except (TypeError, ValueError, ZeroDivisionError):
                 recomputed_eps = None
+
+        logger.info(
+            "[VALUATION_EPS_RECOMPUTE] %s - Implausible EPS=$%.2f. Attempting recompute: "
+            "net_income=$%s, shares=%s -> recomputed=$%.2f",
+            symbol,
+            base_eps,
+            format(net_income_candidate, ",.0f") if net_income_candidate else "N/A",
+            format(normalized_shares_outstanding, ",.0f")
+            if normalized_shares_outstanding
+            else "N/A",
+            recomputed_eps or 0,
+        )
 
         if (
             recomputed_eps is not None

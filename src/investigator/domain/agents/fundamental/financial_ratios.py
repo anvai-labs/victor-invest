@@ -272,7 +272,40 @@ def apply_valuation_ratios(
 
     if earnings > 0 and market_cap > 0:
         ratios["pe_ratio"] = float(market_cap) / float(earnings)
-        ratios["eps"] = float(earnings) / float(shares) if shares > 0 else 0
+        calculated_eps = float(earnings) / float(shares) if shares > 0 else 0
+        ratios["eps"] = calculated_eps
+
+        # DEBUG: Log detailed EPS calculation with unit validation
+        logger.info(
+            "[EPS_DEBUG] %s - EPS Calculation: earnings=$%s, shares=%s, eps=$%.2f, "
+            "market_cap=$%s",
+            symbol,
+            format(earnings, ",.0f"),
+            format(shares, ",.0f"),
+            calculated_eps,
+            format(market_cap, ",.0f"),
+        )
+
+        # Warn if EPS looks suspicious (too high or too low)
+        if calculated_eps > 1000:
+            logger.warning(
+                "[EPS_SUSPICIOUS] %s - EPS seems too high ($%.2f) - possible unit mismatch. "
+                "earnings=$%s, shares=%s. Expected EPS < $100 for normal companies.",
+                symbol,
+                calculated_eps,
+                format(earnings, ",.0f"),
+                format(shares, ",.0f"),
+            )
+        elif calculated_eps < 0.01 and calculated_eps > 0:
+            logger.warning(
+                "[EPS_SUSPICIOUS] %s - EPS seems too low ($%.4f) - possible unit mismatch. "
+                "earnings=$%s, shares=%s.",
+                symbol,
+                calculated_eps,
+                format(earnings, ",.0f"),
+                format(shares, ",.0f"),
+            )
+
         if ttm_net_income > 0:
             quarterly_ni = financials.get("net_income") or 0
             logger.info(
@@ -298,9 +331,39 @@ def apply_valuation_ratios(
     revenue = ttm_revenue if ttm_revenue > 0 else (financials.get("revenues") or 0)
     if revenue > 0 and market_cap > 0:
         ratios["price_to_sales"] = float(market_cap) / float(revenue)
-        ratios["revenue_per_share"] = (
-            float(revenue) / float(shares) if shares > 0 else 0
+        calculated_rps = float(revenue) / float(shares) if shares > 0 else 0
+        ratios["revenue_per_share"] = calculated_rps
+
+        # DEBUG: Log detailed revenue_per_share calculation with unit validation
+        logger.info(
+            "[RPS_DEBUG] %s - Revenue Per Share Calculation: revenue=$%s, shares=%s, rps=$%.2f, "
+            "market_cap=$%s",
+            symbol,
+            format(revenue, ",.0f"),
+            format(shares, ",.0f"),
+            calculated_rps,
+            format(market_cap, ",.0f"),
         )
+
+        # Warn if RPS looks suspicious (too high or too low)
+        if calculated_rps > 10000:
+            logger.warning(
+                "[RPS_SUSPICIOUS] %s - Revenue per share seems too high ($%.2f) - possible unit mismatch. "
+                "revenue=$%s, shares=%s. Expected RPS < $1000 for normal companies.",
+                symbol,
+                calculated_rps,
+                format(revenue, ",.0f"),
+                format(shares, ",.0f"),
+            )
+        elif calculated_rps < 0.01 and calculated_rps > 0:
+            logger.warning(
+                "[RPS_SUSPICIOUS] %s - Revenue per share seems too low ($%.4f) - possible unit mismatch. "
+                "revenue=$%s, shares=%s.",
+                symbol,
+                calculated_rps,
+                format(revenue, ",.0f"),
+                format(shares, ",.0f"),
+            )
 
     growth_rate = calculate_growth_rate(financials, "net_income")
     if ratios.get("pe_ratio") and growth_rate > 0:
