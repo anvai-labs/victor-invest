@@ -43,6 +43,16 @@ __author__ = "Vijaykumar Singh"
 __email__ = "singhvjd@gmail.com"
 __license__ = "Apache-2.0"
 
+# Enhanced features with new coordinators (imported here, added to __all__ below)
+from victor_invest.safety_enhanced import (  # noqa: F401
+    InvestmentSafetyRules,
+    EnhancedInvestSafetyExtension,
+)
+from victor_invest.conversation_enhanced import (  # noqa: F401
+    InvestmentContext,
+    EnhancedInvestConversationManager,
+)
+
 # Use lazy imports to avoid import errors when victor package has issues
 
 
@@ -133,4 +143,9 @@ __all__ = [
     "get_tool",
     "get_all_tools",
     "get_tool_names",
+    # Enhanced features
+    "InvestmentSafetyRules",
+    "EnhancedInvestSafetyExtension",
+    "InvestmentContext",
+    "EnhancedInvestConversationManager",
 ]
