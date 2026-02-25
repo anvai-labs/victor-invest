@@ -458,10 +458,19 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     if self._shares_service:
                         sec_shares = self._shares_service.get_sec_shares(symbol)
 
+                    # Normalize shares outstanding (handle millions-based reporting)
+                    shares = sec_shares or metadata.shares_outstanding
+                    if shares and shares < 100_000:
+                        logger.info(
+                            f"[SHARES_NORMALIZE] {symbol} - Shares {shares:,.0f} < 100,000, "
+                            f"multiplying by 1M → {shares * 1_000_000:,.0f}"
+                        )
+                        shares *= 1_000_000
+
                     return {
                         "sector": metadata.sector,
                         "industry": metadata.industry,
-                        "shares_outstanding": sec_shares or metadata.shares_outstanding,
+                        "shares_outstanding": shares,
                         "market_cap": metadata.market_cap,
                         "beta": metadata.beta,
                     }
@@ -637,6 +646,14 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 shares_from_q = quarterly_metrics[0].get("shares_outstanding")
                 if shares_from_q:
                     shares_outstanding_val = float(shares_from_q)
+                    # Normalize shares if reported in millions (SEC data issue)
+                    # If shares < 100,000, they're likely in millions
+                    if shares_outstanding_val < 100_000:
+                        logger.info(
+                            f"[SHARES_NORMALIZE] {symbol} - Shares value {shares_outstanding_val:,.0f} < 100,000, "
+                            f"multiplying by 1M to get {shares_outstanding_val * 1_000_000:,.0f}"
+                        )
+                        shares_outstanding_val *= 1_000_000
 
                 # Calculate revenue growth using shared GrowthCalculator
                 from investigator.domain.services.valuation.common import (
@@ -693,6 +710,17 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
         if not quarterly_metrics:
             return result
 
+        # DEBUG: Log input data for unit analysis
+        symbol = (
+            quarterly_metrics[0].get("symbol", "UNKNOWN")
+            if isinstance(quarterly_metrics[0], dict)
+            else "UNKNOWN"
+        )
+        logger.info(
+            f"[TTM_DEBUG] {symbol} - Input: {len(quarterly_metrics)} quarters, "
+            f"shares_outstanding={shares_outstanding or 0:,.0f}"
+        )
+
         # Handle SEC filing tool format (nested structure) - use shared TTMMetrics
         if quarterly_metrics and "income_statement" in quarterly_metrics[0]:
             try:
@@ -702,6 +730,23 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 # FY periods contain Q1+Q2+Q3+Q4 data and should not be included in TTM sum
                 from investigator.domain.services.valuation_shared.q4_derivation import (
                     filter_quarters_only,
+                )
+
+                # DEBUG: Inspect first quarter data for unit analysis
+                first_q = quarterly_metrics[0]
+                income_stmt = first_q.get("income_statement", {})
+                sample_revenue = (
+                    income_stmt.get("revenues")
+                    or income_stmt.get("total_revenue")
+                    or income_stmt.get("revenue")
+                )
+                sample_ni = (
+                    income_stmt.get("net_income")
+                    or income_stmt.get("net_income_loss")
+                )
+                logger.info(
+                    f"[TTM_DEBUG] {symbol} - Sample quarter data: "
+                    f"revenue=${sample_revenue or 0:,.0f}, net_income=${sample_ni or 0:,.0f}"
                 )
 
                 quarterly_only = filter_quarters_only(quarterly_metrics)
@@ -730,6 +775,12 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     result["ttm_ebitda"] = TTMMetrics.calculate_ttm_ebitda(
                         quarterly_data=quarterly_metrics
                     )
+
+                # DEBUG: Log computed TTM values
+                logger.info(
+                    f"[TTM_DEBUG] {symbol} - Computed: ttm_eps=${result['ttm_eps'] or 0:.4f}, "
+                    f"ttm_revenue=${result['ttm_revenue'] or 0:,.0f}"
+                )
 
                 # Book value from balance sheet
                 if quarterly_metrics:
