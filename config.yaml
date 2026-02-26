@@ -149,6 +149,39 @@ ollama:
     synthesis: true
     market_context: false
     valuation: false
+
+# Victor framework-compatible LLM configuration
+# Environment variables take precedence:
+# VICTOR_PROVIDER, VICTOR_MODEL, VICTOR_API_KEY
+victor_llm:
+  # Default provider (used if VICTOR_PROVIDER env var not set)
+  provider: ollama
+
+  # Default model (used if VICTOR_MODEL env var not set)
+  model: gpt-oss:20b
+
+  # Provider-specific configurations
+  anthropic:
+    model: claude-sonnet-4-20250514
+    api_key_env: ANTHROPIC_AUTH_TOKEN
+    base_url_env: ANTHROPIC_BASE_URL
+    max_tokens: 8192
+    temperature: 0.3
+
+  openai:
+    model: gpt-4o
+    api_key_env: OPENAI_API_KEY
+    base_url: https://api.openai.com/v1
+    max_tokens: 4096
+    temperature: 0.3
+
+  ollama:
+    model: gpt-oss:20b
+    base_url: http://192.168.1.20:11434
+    timeout: 1800
+    max_tokens: 4096
+    temperature: 0.3
+
 cache_control:
   read_from_cache: true
   write_to_cache: true

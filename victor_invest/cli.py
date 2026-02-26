@@ -67,15 +67,49 @@ def _get_ollama_base_url() -> str:
     )
 
 
+def _display_provider_info(provider: Optional[str], model: Optional[str]) -> tuple:
+    """Resolve and display provider/model information from environment variables.
+
+    Returns:
+        Tuple of (resolved_provider, resolved_model) for use in analysis
+    """
+    from victor_invest.framework_bootstrap import (
+        resolve_provider_from_env,
+        resolve_model_from_env,
+    )
+
+    # Resolve provider from env or CLI param
+    resolved_provider = resolve_provider_from_env(fallback=provider or "ollama")
+    resolved_model = resolve_model_from_env(resolved_provider, model)
+
+    # Display which provider/model is being used
+    model_display = resolved_model or "(provider default)"
+    if provider is None:
+        source = "$VICTOR_PROVIDER" if os.getenv("VICTOR_PROVIDER") else "default"
+        console.print(f"Provider: [cyan]{resolved_provider}[/cyan] ([dim]{source}[/dim])")
+    else:
+        console.print(f"Provider: [cyan]{resolved_provider}[/cyan] ([dim]CLI override[/dim])")
+
+    if model is None:
+        if os.getenv("VICTOR_MODEL"):
+            console.print(f"Model: [cyan]{model_display}[/cyan] ([dim]$VICTOR_MODEL[/dim])")
+        else:
+            console.print(f"Model: [cyan]{model_display}[/cyan] ([dim]provider default[/dim])")
+    else:
+        console.print(f"Model: [cyan]{model_display}[/cyan] ([dim]CLI override[/dim])")
+
+    return resolved_provider, resolved_model
+
+
 async def _create_workflow_executor(
-    provider: str, model: Optional[str], timeout: float
+    provider: Optional[str], model: Optional[str], timeout: float
 ):
     from victor.workflows.executor import WorkflowExecutor
 
     from victor_invest.workflows import ensure_handlers_registered
 
     orchestrator = await create_investment_orchestrator(
-        provider=provider,
+        provider=provider,  # Will be resolved from env in create_investment_orchestrator
         model=model,
         ensure_handlers=ensure_handlers_registered,
         warning_callback=lambda msg: console.print(f"[yellow]{msg}[/yellow]"),
@@ -401,14 +435,14 @@ def cli():
     "--provider",
     "-p",
     type=str,
-    default="ollama",
-    help="LLM provider (ollama, anthropic, openai)",
+    default=None,
+    help="LLM provider (ollama, anthropic, openai). Default: $VICTOR_PROVIDER or 'ollama'",
 )
 @click.option(
     "--model",
     type=str,
     default=None,
-    help="Model name (default: provider-specific)",
+    help="Model name. Default: $VICTOR_MODEL or provider-specific",
 )
 @click.option(
     "--stream/--no-stream",
@@ -475,7 +509,10 @@ def analyze(
     console.print(f"Symbol: [green]{symbol.upper()}[/green]")
     console.print(f"Mode: [yellow]{mode}[/yellow]")
     console.print(f"Detail: [cyan]{detail}[/cyan]")
-    console.print(f"Provider: [cyan]{provider}[/cyan]")
+
+    # Resolve and display provider/model from environment variables
+    resolved_provider, resolved_model = _display_provider_info(provider, model)
+
     console.print(f"Holding Period: [cyan]{holding_period}[/cyan]")
     if report:
         console.print("Report: [magenta]PDF generation enabled[/magenta]")
@@ -495,8 +532,8 @@ def analyze(
                 symbol,
                 mode,
                 output,
-                provider,
-                model,
+                resolved_provider,  # Use resolved provider from env
+                resolved_model,  # Use resolved model from env
                 stream,
                 report,
                 detail,
@@ -540,14 +577,14 @@ def analyze(
     "--provider",
     "-p",
     type=str,
-    default="ollama",
-    help="LLM provider (ollama, anthropic, openai)",
+    default=None,
+    help="LLM provider (ollama, anthropic, openai). Default: $VICTOR_PROVIDER or 'ollama'",
 )
 @click.option(
     "--model",
     type=str,
     default=None,
-    help="Model name (default: provider-specific)",
+    help="Model name. Default: $VICTOR_MODEL or provider-specific",
 )
 @click.option(
     "--parallel",
@@ -566,15 +603,28 @@ def batch(
     symbols: tuple[str, ...],
     mode: str,
     output_dir: str,
-    provider: str,
+    provider: Optional[str],  # Changed to Optional
     model: Optional[str],
     parallel: int,
     detail: str,
 ):
     """Run batch investment analysis across multiple symbols."""
     validate_victor_installed()
+
+    # Resolve provider/model from environment variables
+    from victor_invest.framework_bootstrap import (
+        resolve_provider_from_env,
+        resolve_model_from_env,
+    )
+
+    resolved_provider = resolve_provider_from_env(fallback=provider or "ollama")
+    resolved_model = resolve_model_from_env(resolved_provider, model)
+
+    console.print(f"Provider: [cyan]{resolved_provider}[/cyan]")
+    console.print(f"Model: [cyan]{resolved_model or '(provider default)'}[/cyan]")
+
     asyncio.run(
-        _run_batch(symbols, mode, output_dir, provider, model, parallel, detail)
+        _run_batch(symbols, mode, output_dir, resolved_provider, resolved_model, parallel, detail)
     )
 
 
@@ -582,7 +632,7 @@ async def _run_batch(
     symbols: tuple[str, ...],
     mode: str,
     output_dir: str,
-    provider: str,
+    provider: Optional[str],  # Changed to Optional
     model: Optional[str],
     parallel: int,
     detail: str = "standard",
@@ -706,25 +756,38 @@ async def _run_batch(
     "--provider",
     "-p",
     type=str,
-    default="ollama",
-    help="LLM provider (ollama, anthropic, openai)",
+    default=None,
+    help="LLM provider (ollama, anthropic, openai). Default: $VICTOR_PROVIDER or 'ollama'",
 )
 @click.option(
     "--model",
     type=str,
     default=None,
-    help="Model name (default: provider-specific)",
+    help="Model name. Default: $VICTOR_MODEL or provider-specific",
 )
 def compare(
     target: str,
     peers: tuple[str, ...],
     output: Optional[str],
-    provider: str,
+    provider: Optional[str],  # Changed to Optional
     model: Optional[str],
 ):
     """Compare a target company against peers."""
     validate_victor_installed()
-    asyncio.run(_run_compare(target, peers, output, provider, model))
+
+    # Resolve provider/model from environment variables
+    from victor_invest.framework_bootstrap import (
+        resolve_provider_from_env,
+        resolve_model_from_env,
+    )
+
+    resolved_provider = resolve_provider_from_env(fallback=provider or "ollama")
+    resolved_model = resolve_model_from_env(resolved_provider, model)
+
+    console.print(f"Provider: [cyan]{resolved_provider}[/cyan]")
+    console.print(f"Model: [cyan]{resolved_model or '(provider default)'}[/cyan]")
+
+    asyncio.run(_run_compare(target, peers, output, resolved_provider, resolved_model))
 
 
 @cli.command("beta-refresh")
@@ -849,7 +912,7 @@ async def _run_compare(
     target: str,
     peers: tuple[str, ...],
     output: Optional[str],
-    provider: str,
+    provider: Optional[str],  # Changed to Optional
     model: Optional[str],
 ):
     workflow_provider = InvestmentWorkflowProvider()
@@ -915,7 +978,7 @@ async def _run_analysis(
     symbol: str,
     mode: str,
     output: Optional[str],
-    provider: str,
+    provider: Optional[str],  # Changed to Optional to support env var default
     model: Optional[str],
     stream: bool,
     report: bool = False,

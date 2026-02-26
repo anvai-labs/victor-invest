@@ -28,8 +28,24 @@ def test_resolve_model_explicit():
     )
 
 
-def test_resolve_model_non_ollama_defaults_to_none():
-    assert framework_bootstrap.resolve_investment_model("anthropic", None) is None
+def test_resolve_model_non_ollama_defaults_to_provider_specific():
+    # Updated behavior: non-ollama providers now have default models
+
+    # First, ensure VICTOR_MODEL is not set
+    import os
+    if "VICTOR_MODEL" in os.environ:
+        del os.environ["VICTOR_MODEL"]
+
+    result = framework_bootstrap.resolve_investment_model("anthropic", None)
+    assert result == "claude-sonnet-4-20250514"
+
+    # OpenAI has its own default
+    result = framework_bootstrap.resolve_investment_model("openai", None)
+    assert result == "gpt-4o"
+
+    # Ollama still uses config or default
+    result = framework_bootstrap.resolve_investment_model("ollama", None)
+    assert result == "gpt-oss:20b"  # Default from PROVIDER_DEFAULT_MODELS
 
 
 def test_prepare_orchestrator_registers_tools_and_enables_vertical_tools(monkeypatch):
