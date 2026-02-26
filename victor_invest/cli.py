@@ -70,33 +70,44 @@ def _get_ollama_base_url() -> str:
 def _display_provider_info(provider: Optional[str], model: Optional[str]) -> tuple:
     """Resolve and display provider/model information from environment variables.
 
+    Priority: CLI param > VICTOR_PROVIDER env var > fallback
+
     Returns:
         Tuple of (resolved_provider, resolved_model) for use in analysis
     """
     from victor_invest.framework_bootstrap import (
-        resolve_provider_from_env,
         resolve_model_from_env,
     )
 
-    # Resolve provider from env or CLI param
-    resolved_provider = resolve_provider_from_env(fallback=provider or "ollama")
+    # Resolve provider with correct priority: CLI param > env var > fallback
+    if provider:
+        # CLI parameter takes highest priority
+        resolved_provider = provider
+        source = "CLI override"
+    elif os.getenv("VICTOR_PROVIDER"):
+        # Environment variable second
+        resolved_provider = os.getenv("VICTOR_PROVIDER", "").strip().lower()
+        source = "$VICTOR_PROVIDER"
+    else:
+        # Fallback to default
+        resolved_provider = "ollama"
+        source = "default"
+
+    # Resolve model with correct priority: CLI param > VICTOR_MODEL > provider default
     resolved_model = resolve_model_from_env(resolved_provider, model)
 
     # Display which provider/model is being used
     model_display = resolved_model or "(provider default)"
-    if provider is None:
-        source = "$VICTOR_PROVIDER" if os.getenv("VICTOR_PROVIDER") else "default"
-        console.print(f"Provider: [cyan]{resolved_provider}[/cyan] ([dim]{source}[/dim])")
-    else:
-        console.print(f"Provider: [cyan]{resolved_provider}[/cyan] ([dim]CLI override[/dim])")
+    console.print(f"Provider: [cyan]{resolved_provider}[/cyan] ([dim]{source}[/dim])")
 
-    if model is None:
-        if os.getenv("VICTOR_MODEL"):
-            console.print(f"Model: [cyan]{model_display}[/cyan] ([dim]$VICTOR_MODEL[/dim])")
-        else:
-            console.print(f"Model: [cyan]{model_display}[/cyan] ([dim]provider default[/dim])")
-    else:
+    if model:
         console.print(f"Model: [cyan]{model_display}[/cyan] ([dim]CLI override[/dim])")
+    elif os.getenv("VICTOR_MODEL"):
+        console.print(f"Model: [cyan]{model_display}[/cyan] ([dim]$VICTOR_MODEL[/dim])")
+    else:
+        console.print(
+            f"Model: [cyan]{model_display}[/cyan] ([dim]provider default[/dim])"
+        )
 
     return resolved_provider, resolved_model
 
@@ -624,7 +635,15 @@ def batch(
     console.print(f"Model: [cyan]{resolved_model or '(provider default)'}[/cyan]")
 
     asyncio.run(
-        _run_batch(symbols, mode, output_dir, resolved_provider, resolved_model, parallel, detail)
+        _run_batch(
+            symbols,
+            mode,
+            output_dir,
+            resolved_provider,
+            resolved_model,
+            parallel,
+            detail,
+        )
     )
 
 
@@ -1014,6 +1033,8 @@ async def _run_analysis(
                 context={
                     "symbol": symbol.upper(),
                     "holding_period": holding_period,
+                    "llm_provider": provider,  # Pass provider for LLM synthesis
+                    "llm_model": model,  # Pass model for LLM synthesis
                 },
                 provider=provider,
                 model=model,
@@ -1132,8 +1153,90 @@ def _display_results(result, symbol: str, detail: str = "standard"):
             rec = result.recommendation
             console.print(f"[bold]{rec.get('action', 'N/A')}[/bold]")
             if "price_target" in rec:
-                console.print(f"  Price Target: ${rec['price_target']}")
-            console.print("  Detail: [cyan]Compact format saved to file[/cyan]")
+                price = rec["price_target"]
+                if isinstance(price, (int, float)):
+                    console.print(f"  Price Target: ${price:.2f}")
+                else:
+                    console.print(f"  Price Target: ${price}")
+            if "confidence" in rec:
+                console.print(f"  Confidence: {rec.get('confidence', 'N/A')}")
+
+        # Multi-tier technical summary (if available)
+        if result.technical_analysis:
+            tech = result.technical_analysis
+            summary = tech.get("summary") if isinstance(tech, dict) else None
+            if summary and isinstance(summary, dict):
+                strategic = summary.get("strategic_trend")
+                tactical = summary.get("tactical_signal")
+                overall = summary.get("overall_bias")
+                if strategic or tactical or overall:
+                    console.print("\n[dim]Technical Signals:[/dim]")
+                    if strategic:
+                        console.print(
+                            f"  [cyan]Strategic (Weekly):[/cyan] {strategic.upper()}"
+                        )
+                    if tactical:
+                        console.print(
+                            f"  [cyan]Tactical (Daily):[/cyan] {tactical.upper()}"
+                        )
+                    if overall:
+                        console.print(
+                            f"  [cyan]Overall Bias:[/cyan] {overall.upper().replace('_', ' ')}"
+                        )
+
+        # Add cache status information for key data sources
+        console.print("\n[dim]Cache Status:[/dim]")
+
+        # Check if there's cache info in the state
+        from pathlib import Path
+        import time
+
+        cache_root = Path("data/cache")
+        symbol_upper = symbol.upper() if symbol else ""
+
+        # Check SEC filings cache
+        sec_cache = Path("data/sec_cache/submissions") / symbol_upper
+        if sec_cache.exists():
+            cache_files = list(sec_cache.glob("submissions.json.gz"))
+            if cache_files:
+                latest_cache = max(cache_files, key=lambda p: p.stat().st_mtime)
+                mtime = latest_cache.stat().st_mtime
+                age_hours = (time.time() - mtime) / 3600
+                if age_hours < 1:
+                    time_str = f"{int(age_hours * 60)} min ago"
+                else:
+                    time_str = f"{int(age_hours)} hours ago"
+                console.print(f"  [cyan]SEC Filings:[/cyan] ✓ Cached ({time_str})")
+            else:
+                console.print("  [cyan]SEC Filings:[/cyan] ✗ Not cached")
+        else:
+            console.print("  [cyan]SEC Filings:[/cyan] ✗ Not cached")
+
+        # Check market data cache
+        if cache_root.exists():
+            market_cache = cache_root / symbol.lower()
+            if market_cache.exists():
+                try:
+                    cache_files = list(market_cache.glob("*.parquet")) + list(
+                        market_cache.glob("*.json")
+                    )
+                    if cache_files:
+                        latest_cache = max(cache_files, key=lambda p: p.stat().st_mtime)
+                        mtime = latest_cache.stat().st_mtime
+                        age_hours = (time.time() - mtime) / 3600
+                        if age_hours < 1:
+                            time_str = f"{int(age_hours * 60)} min ago"
+                        else:
+                            time_str = f"{int(age_hours)} hours ago"
+                        console.print(
+                            f"  [cyan]Market Data:[/cyan] ✓ Cached ({time_str})"
+                        )
+                    else:
+                        console.print("  [cyan]Market Data:[/cyan] ✗ Not cached")
+                except Exception:
+                    console.print("  [cyan]Market Data:[/cyan] ✗ Not cached")
+
+        console.print("  Detail: [cyan]Compact format saved to file[/cyan]")
         return
 
     # Summary table

@@ -384,6 +384,8 @@ def _format_compact(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
             "recommendation": technical.get("recommendation"),
             "rating": technical.get("technical_rating"),
             "levels": _compact_levels(technical.get("levels")),
+            # Multi-tier analysis (weekly strategic + daily tactical)
+            "multi_tier": _compact_multi_tier_technical(technical),
         },
         "market": {
             "sector": market_context.get("sector"),
@@ -410,15 +412,37 @@ def _format_compact(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
                 else None
             ),
             "data_cached": sec.get("data_cached"),
-            "forward_guidance": sec.get("forward_guidance")
-            if isinstance(sec.get("forward_guidance"), dict)
-            else None,
+            "forward_guidance": (
+                sec.get("forward_guidance")
+                if isinstance(sec.get("forward_guidance"), dict)
+                else (
+                    fundamental.get("sec_data", {}).get("forward_guidance")
+                    if isinstance(fundamental.get("sec_data"), dict)
+                    else None
+                )
+            ),
+            # Quarterly metrics summary (for UI display)
+            "quarterly_metrics": (
+                fundamental.get("sec_data", {}).get("quarterly_metrics", [])[:4]
+                if isinstance(fundamental.get("sec_data"), dict)
+                else []
+            ),
+            "recent_filings": (
+                sec.get("recent_filings", [])[:5]
+                if isinstance(sec.get("recent_filings"), list)
+                else (
+                    fundamental.get("sec_data", {}).get("recent_filings", [])[:5]
+                    if isinstance(fundamental.get("sec_data"), dict)
+                    else []
+                )
+            ),
         },
         "notes": (
             multi_model.get("notes")
             if isinstance(multi_model.get("notes"), list)
             else []
         ),
+        "cache_status": _compact_cache_status(src),
         "trace": {
             "source_detail_level": src.get("detail_level"),
             "compact_generated": True,
@@ -678,8 +702,122 @@ def _compact_levels(levels: Any) -> Dict[str, Any]:
         "resistance_1",
         "support_2",
         "resistance_2",
+        # Weekly levels (strategic)
+        "weekly_support_1",
+        "weekly_resistance_1",
+        "weekly_support_2",
+        "weekly_resistance_2",
+        # Daily levels (tactical)
+        "daily_support_1",
+        "daily_resistance_1",
+        "daily_support_2",
+        "daily_resistance_2",
+        # 52-week range
+        "high_52w",
+        "low_52w",
     ]
     return {k: levels.get(k) for k in keep if k in levels}
+
+
+def _compact_multi_tier_technical(technical: Any) -> Dict[str, Any]:
+    """Extract multi-tier technical analysis summary.
+
+    Returns:
+        Dict with strategic_trend, tactical_signal, overall_bias
+    """
+    if not isinstance(technical, dict):
+        return {}
+
+    # Check if multi-tier summary is available
+    summary = technical.get("summary")
+    if isinstance(summary, dict):
+        return {
+            "strategic_trend": summary.get("strategic_trend"),
+            "tactical_signal": summary.get("tactical_signal"),
+            "overall_bias": summary.get("overall_bias"),
+        }
+
+    # Fallback: try to derive from data
+    # Check if weekly/daily data exists
+    has_weekly = isinstance(technical.get("weekly"), dict)
+    has_daily = isinstance(technical.get("daily"), dict)
+
+    if not has_weekly and not has_daily:
+        return {}
+
+    # Return structure even if empty (indicates multi-tier analysis ran)
+    return {
+        "strategic_trend": None,
+        "tactical_signal": None,
+        "overall_bias": None,
+        "multi_tier_analysis": True,
+    }
+
+
+def _compact_cache_status(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
+    """Extract cache status information from analysis results.
+
+    Returns:
+        Dict with cache status for SEC filings, market data, and other sources
+    """
+    from pathlib import Path
+
+    cache_info = {}
+
+    # Get symbol from results
+    symbol = analysis_results.get("symbol", "").upper()
+    if not symbol:
+        return cache_info
+
+    # Check SEC filings cache
+    sec_cache_path = Path("data/sec_cache/submissions") / symbol
+    if sec_cache_path.exists():
+        cache_files = list(sec_cache_path.glob("submissions.json.gz"))
+        if cache_files:
+            import time
+
+            latest_cache = max(cache_files, key=lambda p: p.stat().st_mtime)
+            mtime = latest_cache.stat().st_mtime
+            age_hours = (time.time() - mtime) / 3600
+            cache_info["sec_filings"] = {
+                "cached": True,
+                "age_hours": round(age_hours, 1),
+                "age_readable": f"{int(age_hours)}h ago"
+                if age_hours >= 1
+                else f"{int(age_hours * 60)}m ago",
+            }
+        else:
+            cache_info["sec_filings"] = {"cached": False}
+    else:
+        cache_info["sec_filings"] = {"cached": False}
+
+    # Check market data cache
+    market_cache_path = Path("data/cache") / symbol.lower() if symbol else None
+    if market_cache_path and market_cache_path.exists():
+        import time
+
+        try:
+            # Get most recent file in market cache
+            cache_files = list(market_cache_path.glob("*.parquet")) + list(
+                market_cache_path.glob("*.json")
+            )
+            if cache_files:
+                latest_cache = max(cache_files, key=lambda p: p.stat().st_mtime)
+                mtime = latest_cache.stat().st_mtime
+                age_hours = (time.time() - mtime) / 3600
+                cache_info["market_data"] = {
+                    "cached": True,
+                    "age_hours": round(age_hours, 1),
+                    "age_readable": f"{int(age_hours)}h ago"
+                    if age_hours >= 1
+                    else f"{int(age_hours * 60)}m ago",
+                }
+            else:
+                cache_info["market_data"] = {"cached": False}
+        except Exception:
+            cache_info["market_data"] = {"cached": False}
+
+    return cache_info
 
 
 def _remove_keys(data: Dict[str, Any], keys: List[str]) -> None:

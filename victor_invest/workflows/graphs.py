@@ -536,6 +536,8 @@ async def _run_llm_synthesis(
     market_context: dict,
     composite_score: float,
     rule_based_recommendation: str,
+    provider: Optional[str] = None,
+    model: Optional[str] = None,
 ) -> Optional[dict]:
     """Use LLM to generate intelligent investment synthesis.
 
@@ -546,6 +548,8 @@ async def _run_llm_synthesis(
         market_context: Market context data
         composite_score: Rule-based composite score
         rule_based_recommendation: Rule-based recommendation
+        provider: LLM provider (ollama, anthropic, openai). If None, uses config default
+        model: Model identifier. If None, uses provider default
 
     Returns:
         LLM synthesis dict with executive_summary, catalysts, risks, etc.
@@ -554,43 +558,60 @@ async def _run_llm_synthesis(
     import json
 
     try:
-        from investigator.config import get_config
-        from investigator.infrastructure.llm import OllamaClient
+        # Use Victor framework's provider API if provider specified, otherwise use legacy
+        if provider and provider != "ollama":
+            # Use Victor's provider registry for non-Ollama providers
+            from victor.providers.registry import ProviderRegistry
+            from victor_invest.framework_bootstrap import (
+                resolve_model_from_env,
+                PROVIDER_DEFAULT_MODELS,
+            )
+            from investigator.config import get_config
 
-        config = get_config()
-        client = OllamaClient(config)
+            config = get_config()
 
-        # Extract key technical data
-        trend = technical.get("trend", {})
-        current_price = trend.get("current_price", "N/A")
-        overall_signal = trend.get("overall_signal", "neutral")
-        signal_pcts = trend.get("signal_percentages", {})
+            # Resolve model if not specified
+            resolved_model = model or resolve_model_from_env(provider, None)
+            if not resolved_model:
+                resolved_model = PROVIDER_DEFAULT_MODELS.get(provider, "gpt-oss:20b")
 
-        sr = technical.get("support_resistance", {})
-        week_52 = sr.get("52_week", {})
-        support = sr.get("support_levels", {}).get("support_1", "N/A")
-        resistance = sr.get("resistance_levels", {}).get("resistance_1", "N/A")
+            # Get provider class and create instance
+            provider_class = ProviderRegistry.get(provider)
+            provider_instance = provider_class(
+                model=resolved_model,
+                temperature=0.3,
+                max_tokens=4096,
+            )
 
-        # Extract market context
-        sector = market_context.get("sector", "Unknown")
-        rel_perf = market_context.get("relative_performance_vs_spy", 0)
-        beta = market_context.get("beta", 1.0)
+            # Extract key technical data (same as before)
+            trend = technical.get("trend", {})
+            current_price = trend.get("current_price", "N/A")
+            overall_signal = trend.get("overall_signal", "neutral")
+            signal_pcts = trend.get("signal_percentages", {})
 
-        # Format fundamental data
-        fund_summary = "Fundamental data not available."
-        if fundamental and fundamental.get("status") == "success":
-            valuation = fundamental.get("valuation_models", {})
-            if valuation.get("composite_fair_value"):
-                fund_summary = (
-                    f"Composite Fair Value: ${valuation['composite_fair_value']:.2f}"
-                )
-            if valuation.get("composite_upside_percent"):
-                fund_summary += (
-                    f", Upside: {valuation['composite_upside_percent']:.1f}%"
-                )
+            sr = technical.get("support_resistance", {})
+            week_52 = sr.get("52_week", {})
+            support = sr.get("support_levels", {}).get("support_1", "N/A")
+            resistance = sr.get("resistance_levels", {}).get("resistance_1", "N/A")
 
-        # Build prompt
-        prompt = f"""You are an expert investment analyst. Synthesize the following analysis data for {symbol} into a coherent investment recommendation.
+            # Extract market context
+            sector = market_context.get("sector", "Unknown")
+            rel_perf = market_context.get("relative_performance_vs_spy", 0)
+            beta = market_context.get("beta", 1.0)
+
+            # Format fundamental data
+            fund_summary = "Fundamental data not available."
+            if fundamental and fundamental.get("status") == "success":
+                valuation = fundamental.get("valuation_models", {})
+                if valuation.get("composite_fair_value"):
+                    fund_summary = f"Composite Fair Value: ${valuation['composite_fair_value']:.2f}"
+                if valuation.get("composite_upside_percent"):
+                    fund_summary += (
+                        f", Upside: {valuation['composite_upside_percent']:.1f}%"
+                    )
+
+            # Build prompt (same as before)
+            prompt = f"""You are an expert investment analyst. Synthesize the following analysis data for {symbol} into a coherent investment recommendation.
 
 ## Technical Analysis
 - Current Price: ${current_price}
@@ -625,23 +646,111 @@ Based on this analysis, provide a JSON response with:
 
 Respond ONLY with the JSON object, no other text."""
 
-        model = config.ollama.models.get("synthesis", "gpt-oss:20b")
+            # Use Victor provider's generate method
+            response = await provider_instance.generate(
+                prompt=prompt,
+            )
 
-        response = await client.generate(
-            prompt=prompt,
-            model=model,
-            options={"temperature": 0.3, "num_predict": 1024},
-        )
+            response_text = (
+                response.content if hasattr(response, "content") else str(response)
+            )
 
-        response_text = response.get("response", "")
+            # Parse JSON response
+            start = response_text.find("{")
+            end = response_text.rfind("}") + 1
+            if start >= 0 and end > start:
+                json_str = response_text[start:end]
+                result: dict[Any, Any] | None = json.loads(json_str)
+                return result
 
-        # Parse JSON response
-        start = response_text.find("{")
-        end = response_text.rfind("}") + 1
-        if start >= 0 and end > start:
-            json_str = response_text[start:end]
-            result: dict[Any, Any] | None = json.loads(json_str)
-            return result
+        else:
+            # Legacy path for Ollama or when provider not specified
+            from investigator.config import get_config
+            from investigator.infrastructure.llm import OllamaClient
+
+            config = get_config()
+            client = OllamaClient(config)
+
+            # Extract key technical data
+            trend = technical.get("trend", {})
+            current_price = trend.get("current_price", "N/A")
+            overall_signal = trend.get("overall_signal", "neutral")
+            signal_pcts = trend.get("signal_percentages", {})
+
+            sr = technical.get("support_resistance", {})
+            week_52 = sr.get("52_week", {})
+            support = sr.get("support_levels", {}).get("support_1", "N/A")
+            resistance = sr.get("resistance_levels", {}).get("resistance_1", "N/A")
+
+            # Extract market context
+            sector = market_context.get("sector", "Unknown")
+            rel_perf = market_context.get("relative_performance_vs_spy", 0)
+            beta = market_context.get("beta", 1.0)
+
+            # Format fundamental data
+            fund_summary = "Fundamental data not available."
+            if fundamental and fundamental.get("status") == "success":
+                valuation = fundamental.get("valuation_models", {})
+                if valuation.get("composite_fair_value"):
+                    fund_summary = f"Composite Fair Value: ${valuation['composite_fair_value']:.2f}"
+                if valuation.get("composite_upside_percent"):
+                    fund_summary += (
+                        f", Upside: {valuation['composite_upside_percent']:.1f}%"
+                    )
+
+            # Build prompt
+            prompt = f"""You are an expert investment analyst. Synthesize the following analysis data for {symbol} into a coherent investment recommendation.
+
+## Technical Analysis
+- Current Price: ${current_price}
+- Overall Signal: {overall_signal}
+- Bullish Signals: {signal_pcts.get("bullish_pct", 0):.0f}%
+- Bearish Signals: {signal_pcts.get("bearish_pct", 0):.0f}%
+- Support Level: ${support}
+- Resistance Level: ${resistance}
+- 52-Week Range: ${week_52.get("low", "N/A")} - ${week_52.get("high", "N/A")}
+
+## Market Context
+- Sector: {sector}
+- Relative Performance vs SPY: {rel_perf:.1f}%
+- Beta: {beta:.2f}
+
+## Fundamental Analysis
+{fund_summary}
+
+## Rule-Based Analysis
+- Composite Score: {composite_score:.1f}/100
+- Initial Recommendation: {rule_based_recommendation}
+
+Based on this analysis, provide a JSON response with:
+{{
+    "executive_summary": "2-3 sentence investment thesis explaining the recommendation",
+    "recommendation": "BUY/HOLD/SELL",
+    "confidence": "HIGH/MEDIUM/LOW",
+    "key_catalysts": ["catalyst 1", "catalyst 2", "catalyst 3"],
+    "key_risks": ["risk 1", "risk 2", "risk 3"],
+    "reasoning": "Brief explanation of the recommendation"
+}}
+
+Respond ONLY with the JSON object, no other text."""
+
+            llm_model = model or config.ollama.models.get("synthesis", "gpt-oss:20b")
+
+            response = await client.generate(
+                prompt=prompt,
+                model=llm_model,
+                options={"temperature": 0.3, "num_predict": 1024},
+            )
+
+            response_text = response.get("response", "")
+
+            # Parse JSON response
+            start = response_text.find("{")
+            end = response_text.rfind("}") + 1
+            if start >= 0 and end > start:
+                json_str = response_text[start:end]
+                result: dict[Any, Any] | None = json.loads(json_str)
+                return result
 
         return None
 
@@ -776,6 +885,8 @@ async def run_synthesis(state_input) -> dict:
                 state.market_context or {},
                 composite_score,
                 recommendation_action,
+                state.llm_provider,  # Pass provider from state
+                state.llm_model,  # Pass model from state
             )
         except Exception as e:
             logger.warning(f"LLM synthesis failed, using rule-based: {e}")

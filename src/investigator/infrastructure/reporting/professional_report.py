@@ -461,7 +461,6 @@ class ScoreRadarChart(Flowable):
         return (self.width, self.height)
 
     def draw(self):
-
         cx = self.width / 2
         cy = self.height / 2 + 5
         radius = min(self.width, self.height) * 0.35
@@ -599,7 +598,7 @@ class ValuationBarChart(Flowable):
         self.canv.setFillColor(colors.HexColor("#dc2626"))
         self.canv.setFont("Helvetica-Bold", 8)
         self.canv.drawCentredString(
-            current_x, total_height + 10, f"Current ${self.current_price:.0f}"
+            current_x, total_height + 10, f"Current ${self.current_price:.2f}"
         )
 
         # Draw bars from top to bottom
@@ -625,7 +624,9 @@ class ValuationBarChart(Flowable):
             self.canv.setFillColor(colors.HexColor("#1f2937"))
             self.canv.setFont("Helvetica-Bold", 9)
             label_x = chart_left + bar_width + 8
-            self.canv.drawString(label_x, y + 6, f"${fv:.0f}")
+            self.canv.drawString(
+                label_x, y + 6, f"${fv:.0f}"
+            )  # Keep integer for bar labels (cleaner look)
 
 
 class PriceTargetChart(Flowable):
@@ -1188,6 +1189,18 @@ class ProfessionalReportGenerator:
 
         styles.add(
             ParagraphStyle(
+                "SubsectionHeader",
+                parent=styles["Heading3"],
+                fontSize=11,
+                textColor=colors.HexColor("#4b5563"),
+                spaceBefore=10,
+                spaceAfter=6,
+                fontName="Helvetica-Bold",
+            )
+        )
+
+        styles.add(
+            ParagraphStyle(
                 "ReportBody",
                 parent=styles["Normal"],
                 fontSize=10,
@@ -1209,6 +1222,186 @@ class ProfessionalReportGenerator:
         )
 
         return styles
+
+    def _add_formatted_thinking_section(self, story, thinking_text: str) -> None:
+        """Add formatted thinking section with proper paragraph and heading rendering.
+
+        Args:
+            story: Story list to append flowables to
+            thinking_text: Raw thinking text from LLM
+        """
+        if not thinking_text:
+            return
+
+        # Format using the same logic as synthesis text
+        sections = self._format_synthesis_text(thinking_text)
+
+        for section in sections:
+            if section["type"] == "header":
+                # Section header (e.g., "FINANCIAL OVERVIEW", "GROWTH DRIVERS")
+                story.append(
+                    Paragraph(
+                        section["text"],
+                        self.styles["SubsectionHeader"],
+                    )
+                )
+                story.append(Spacer(1, 3))
+            elif section["type"] == "content":
+                # Content paragraph
+                cleaned = section["text"]
+                # Clean up markdown artifacts
+                cleaned = cleaned.replace("- ", "").replace("* ", "")
+                cleaned = cleaned.strip("'\"")
+                story.append(Paragraph(cleaned, self.styles["ReportBody"]))
+
+    def _clean_paragraph_text(self, text: str) -> str:
+        """Clean up paragraph text by fixing common formatting issues.
+
+        Args:
+            text: Raw paragraph text
+
+        Returns:
+            Cleaned paragraph text
+        """
+        # Remove markdown-style bullet points (-) and replace with proper bullets if needed
+        # But for paragraphs within thinking sections, we just clean up the formatting
+
+        # Remove "Example:" prefix if present
+        if text.startswith("Example:"):
+            text = text[8:].strip()
+
+        # Clean up quotes within the text
+        text = text.strip("'\"")
+
+        # Replace remaining markdown bullets with plain text
+        text = text.replace("- ", "").replace("* ", "")
+
+        return text.strip()
+
+    def _format_synthesis_text(self, text: str) -> List[Dict[str, Any]]:
+        """Format LLM synthesis text with proper section breaks and structure.
+
+        Parses the synthesis text to identify ALL CAPS section headers and
+        formats them as separate sections with proper spacing.
+
+        Args:
+            text: Raw synthesis text from LLM
+
+        Returns:
+            List of dicts with 'type' and 'text' keys for formatting
+        """
+        import re
+
+        sections = []
+
+        # Known section headers that should be recognized
+        # Common headers in LLM synthesis responses
+        known_headers = [
+            # Valuation headers
+            "VALUATION SYNTHESIS",
+            "GROWTH DRIVERS",
+            "COMPETITIVE POSITIONING",
+            "FINANCIAL HEALTH",
+            "FINANCIAL OVERVIEW",
+            "BUSINESS QUALITY",
+            "BUSINESS QUALITY & COMPETITIVE POSITIONING",
+            "GROWTH TRAJECTORY",
+            "GROWTH TRAJECTORY & SUSTAINABILITY",
+            "CASH FLOW",
+            "CASH FLOW & CAPITAL ALLOCATION",
+            "BALANCE SHEET STRENGTH",
+            "QUARTERLY PERFORMANCE",
+            "QUARTERLY PERFORMANCE & OUTLOOK",
+            "RISK/REWARD",
+            "TIMING",
+            "KEY CATALYSTS",
+            "KEY RISKS",
+            "RECOMMENDATION",
+            # Technical analysis headers
+            "PRICE & TREND ANALYSIS",
+            "MOMENTUM INDICATORS",
+            "SUPPORT & RESISTANCE LEVELS",
+            "VOLUME & FLOW ANALYSIS",
+            "ENTRY/EXIT STRATEGY",
+            "TECHNICAL VERDICT",
+            "TECHNICAL ANALYSIS",
+        ]
+
+        # Build pattern from known headers (more reliable than generic ALL CAPS detection)
+        # Match "HEADER: " at the beginning or after newlines
+        header_pattern = r"\b(" + "|".join(known_headers) + r"):\s*"
+
+        # Split text by section headers
+        parts = re.split(header_pattern, text)
+
+        # First part is usually empty or intro text before first header
+        if parts[0].strip():
+            sections.append({"type": "content", "text": parts[0].strip()})
+
+        # Process each section (header + content pairs)
+        for i in range(1, len(parts), 2):
+            if i + 1 < len(parts):
+                # parts[i] might be empty (matched group), get the header name from context
+                # The actual header name is in parts[i], but we need to reconstruct it
+                # Actually, with named groups we'd get the header, but with split we lose it
+                # Let's use finditer to preserve header names
+                pass
+
+        # Use finditer instead to preserve header names
+        last_end = 0
+        for match in re.finditer(header_pattern, text):
+            # Add content before this header
+            before_content = text[last_end : match.start()].strip()
+            if before_content:
+                sections.append({"type": "content", "text": before_content})
+
+            # Add the header
+            header_name = match.group(1).strip()
+            sections.append({"type": "header", "text": header_name})
+
+            last_end = match.end()
+
+        # Add remaining content after last header
+        if last_end < len(text):
+            remaining = text[last_end:].strip()
+            if remaining:
+                sections.append({"type": "content", "text": remaining})
+
+        # Now process each content section to add paragraph breaks
+        final_sections = []
+        for section in sections:
+            if section["type"] == "header":
+                final_sections.append(section)
+            else:
+                # Split content into paragraphs at sentence boundaries
+                # But group related sentences together
+                content = section["text"]
+
+                # Split by periods followed by space (sentences)
+                sentences = re.split(r"(?<=[.!?])\s+(?=[A-Z])", content)
+
+                # Group 2-3 sentences per paragraph for better readability
+                paragraph_group = []
+                for sentence in sentences:
+                    sentence = sentence.strip()
+                    if not sentence:
+                        continue
+                    paragraph_group.append(sentence)
+
+                    # Start new paragraph after 2-3 sentences
+                    if len(paragraph_group) >= 3:
+                        final_sections.append(
+                            {"type": "content", "text": " ".join(paragraph_group)}
+                        )
+                        paragraph_group = []
+
+                # Add remaining sentences as final paragraph
+                if paragraph_group:
+                    final_sections.append(
+                        {"type": "content", "text": " ".join(paragraph_group)}
+                    )
+
+        return final_sections
 
     def generate_report(self, data: Dict[str, Any]) -> str:
         """
@@ -1363,8 +1556,18 @@ class ProfessionalReportGenerator:
         reasoning = data.get("reasoning", "")
         if reasoning and isinstance(reasoning, str):
             story.append(Paragraph("Analysis Rationale", self.styles["SectionHeader"]))
-            story.append(Paragraph(reasoning, self.styles["ReportBody"]))
-            story.append(Spacer(1, 12))
+            # Format with proper section breaks like synthesis text
+            formatted_sections = self._format_synthesis_text(reasoning)
+            for section in formatted_sections:
+                if section["type"] == "header":
+                    story.append(
+                        Paragraph(section["text"], self.styles["SubsectionHeader"])
+                    )
+                    story.append(Spacer(1, 3))
+                elif section["type"] == "content":
+                    story.append(Paragraph(section["text"], self.styles["ReportBody"]))
+                    story.append(Spacer(1, 6))
+            story.append(Spacer(1, 6))
 
         # Key catalysts and risks in two columns
         catalysts = data.get("key_catalysts", [])
@@ -1588,11 +1791,8 @@ class ProfessionalReportGenerator:
                     self.styles["SectionHeader"],
                 )
             )
-            # Split into paragraphs for better readability
-            paragraphs = fundamental_thinking.split("\n\n")
-            for para in paragraphs:
-                if para.strip():
-                    story.append(Paragraph(para.strip(), self.styles["ReportBody"]))
+            # Process paragraphs with improved formatting
+            self._add_formatted_thinking_section(story, fundamental_thinking)
             story.append(Spacer(1, 16))
 
         # Technical Analysis Thinking section
@@ -1604,11 +1804,8 @@ class ProfessionalReportGenerator:
                     self.styles["SectionHeader"],
                 )
             )
-            # Split into paragraphs for better readability
-            paragraphs = technical_thinking.split("\n\n")
-            for para in paragraphs:
-                if para.strip():
-                    story.append(Paragraph(para.strip(), self.styles["ReportBody"]))
+            # Process paragraphs with improved formatting
+            self._add_formatted_thinking_section(story, technical_thinking)
             story.append(Spacer(1, 16))
 
         # Key Technical Signals
@@ -1811,7 +2008,22 @@ class ProfessionalReportGenerator:
         val_summary = data.get("valuation_summary", "")
         if val_summary:
             story.append(Paragraph("Valuation Summary", self.styles["SectionHeader"]))
-            story.append(Paragraph(val_summary, self.styles["ReportBody"]))
+
+            # Format the synthesis text with proper section breaks
+            formatted_sections = self._format_synthesis_text(val_summary)
+
+            # Add each section as a separate paragraph for better readability
+            for section in formatted_sections:
+                if section["type"] == "header":
+                    # Section header (e.g., "VALUATION SYNTHESIS")
+                    story.append(Spacer(1, 6))
+                    story.append(
+                        Paragraph(section["text"], self.styles["SubsectionHeader"])
+                    )
+                elif section["type"] == "content":
+                    # Content paragraph
+                    story.append(Paragraph(section["text"], self.styles["ReportBody"]))
+
             story.append(Spacer(1, 12))
 
         # Peer Comparison section with visual chart

@@ -19,6 +19,7 @@ investigator infrastructure for use with the Victor agent framework.
 
 Tools available:
 - SECFilingTool: SEC EDGAR filing retrieval and XBRL parsing
+- SECFilingTextTool: SEC filing text extraction (MD&A, guidance, developments)
 - ValuationTool: Multi-model valuation (DCF, GGM, P/E, P/S, P/B, EV/EBITDA)
 - TechnicalIndicatorsTool: Technical analysis indicators
 - MarketDataTool: Market data and stock information
@@ -32,6 +33,7 @@ Tools available:
 - MarketRegimeTool: Comprehensive market regime detection and investment recommendations
 - ValuationSignalsTool: Integrated valuation signal analysis (credit risk, insider, short interest, regime)
 - SectorMultiplesTool: Sector/industry valuation multiples calculation and management
+- WebSearchTool: Web search for real-time company news and events
 
 Base classes:
 - BaseTool: Abstract base class for all tools
@@ -85,16 +87,19 @@ from victor_invest.tools.market_data import MarketDataTool
 from victor_invest.tools.market_regime import MarketRegimeTool
 from victor_invest.tools.rl_backtest import RLBacktestTool
 from victor_invest.tools.sec_filing import SECFilingTool
+from victor_invest.tools.sec_filing_text import SECFilingTextTool
 from victor_invest.tools.short_interest import ShortInterestTool
 from victor_invest.tools.sector_multiples import SectorMultiplesTool
 from victor_invest.tools.technical_indicators import TechnicalIndicatorsTool
 from victor_invest.tools.treasury_data import TreasuryDataTool
 from victor_invest.tools.valuation import ValuationTool
 from victor_invest.tools.valuation_signals import ValuationSignalsTool
+from victor_invest.tools.web_search import WebSearchTool
 
 # All tool classes
 TOOL_CLASSES = [
     SECFilingTool,
+    SECFilingTextTool,
     ValuationTool,
     TechnicalIndicatorsTool,
     MarketDataTool,
@@ -112,6 +117,7 @@ TOOL_CLASSES = [
     SectorMultiplesTool,
     FairMultipleCalculatorTool,
     RobustValuationTool,
+    WebSearchTool,
 ]
 
 # Tool registry mapping names to classes
@@ -236,6 +242,7 @@ __all__ = [
     "ToolResult",
     # Tool implementations
     "SECFilingTool",
+    "SECFilingTextTool",
     "ValuationTool",
     "TechnicalIndicatorsTool",
     "MarketDataTool",
@@ -253,6 +260,7 @@ __all__ = [
     "SectorMultiplesTool",
     "FairMultipleCalculatorTool",
     "RobustValuationTool",
+    "WebSearchTool",
     # Utility functions
     "get_tool",
     "get_all_tools",

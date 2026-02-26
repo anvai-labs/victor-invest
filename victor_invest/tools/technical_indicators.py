@@ -137,6 +137,7 @@ Returns calculated indicators as structured data suitable for analysis.
         days: int = 365,
         recent_days: int = 30,
         period: int = 14,
+        granularity: str = "daily",
         **kwargs,
     ) -> ToolResult:
         """Execute technical indicator calculation.
@@ -152,9 +153,10 @@ Returns calculated indicators as structured data suitable for analysis.
                 - "get_support_resistance": Pivot, Fib, S/R levels
                 - "get_recent": Recent data with indicators
                 - "get_summary": Technical analysis summary
-            days: Historical data lookback period
-            recent_days: Days to return for get_recent action
+            days: Historical data lookback period (weeks for weekly granularity)
+            recent_days: Days/weeks to return for get_recent action
             period: Indicator calculation period
+            granularity: "daily" (default) or "weekly" for strategic analysis
             **kwargs: Additional parameters
 
         Returns:
@@ -168,13 +170,18 @@ Returns calculated indicators as structured data suitable for analysis.
                 return ToolResult.create_failure("Symbol is required")
 
             action = action.lower().strip()
+            granularity = granularity.lower().strip()
 
             # Fetch market data first
-            df = await self._fetch_market_data(symbol, days)
+            df = await self._fetch_market_data(symbol, days, granularity)
             if df is None or df.empty:
                 return ToolResult.create_failure(
-                    f"No market data available for {symbol}",
-                    metadata={"symbol": symbol, "days": days},
+                    f"No market data available for {symbol} ({granularity})",
+                    metadata={
+                        "symbol": symbol,
+                        "days": days,
+                        "granularity": granularity,
+                    },
                 )
 
             # Calculate all indicators on full dataset
@@ -211,13 +218,14 @@ Returns calculated indicators as structured data suitable for analysis.
             )
 
     async def _fetch_market_data(
-        self, symbol: str, days: int
+        self, symbol: str, days: int, granularity: str = "daily"
     ) -> Optional[pd.DataFrame]:
         """Fetch market data for technical analysis.
 
         Args:
             symbol: Stock ticker
-            days: Number of days
+            days: Number of days (or weeks for weekly granularity)
+            granularity: "daily" or "weekly"
 
         Returns:
             DataFrame with OHLCV data or None
@@ -226,12 +234,25 @@ Returns calculated indicators as structured data suitable for analysis.
             if self._market_data_fetcher is None:
                 return None
             loop = asyncio.get_event_loop()
-            df = cast(
-                Optional[pd.DataFrame],
-                await loop.run_in_executor(
-                    None, self._market_data_fetcher.get_stock_data, symbol, days
-                ),
-            )
+
+            # Choose fetch method based on granularity
+            if granularity == "weekly":
+                df = cast(
+                    Optional[pd.DataFrame],
+                    await loop.run_in_executor(
+                        None,
+                        self._market_data_fetcher.get_stock_data_weekly,
+                        symbol,
+                        days,
+                    ),
+                )
+            else:  # daily (default)
+                df = cast(
+                    Optional[pd.DataFrame],
+                    await loop.run_in_executor(
+                        None, self._market_data_fetcher.get_stock_data, symbol, days
+                    ),
+                )
             return df
         except Exception as e:
             logger.error(f"Error fetching market data for {symbol}: {e}")

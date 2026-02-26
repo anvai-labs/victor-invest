@@ -31,12 +31,57 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
-from victor.agent.coordinators.safety_coordinator import (
-    SafetyAction,
-    SafetyCategory,
-    SafetyCoordinator,
-    SafetyRule,
-)
+# SafetyCoordinator was removed in Victor 0.5.6, make import optional
+try:
+    from victor.agent.coordinators.safety_coordinator import (
+        SafetyAction,
+        SafetyCategory,
+        SafetyCoordinator,
+        SafetyRule,
+    )
+
+    SAFETY_COORDINATOR_AVAILABLE = True
+except ImportError:
+    # SafetyCoordinator not available in this version of Victor
+    # Provide stub types for compatibility
+    SAFETY_COORDINATOR_AVAILABLE = False
+
+    from enum import Enum
+    from dataclasses import dataclass
+
+    class SafetyAction(str, Enum):
+        BLOCK = "block"
+        REQUIRE_CONFIRMATION = "require_confirmation"
+        ALLOW = "allow"
+        WARN = "warn"
+
+    class SafetyCategory(str, Enum):
+        SHELL = "shell"
+        FILE_WRITE = "file_write"
+        NETWORK = "network"
+        DATA_ACCESS = "data_access"
+
+    @dataclass
+    class SafetyRule:
+        rule_id: str
+        category: SafetyCategory
+        pattern: str
+        description: str
+        action: SafetyAction
+        severity: int
+        tool_names: List[str]
+        confirmation_prompt: Optional[str] = None
+
+    class SafetyCoordinator:
+        """Stub implementation when SafetyCoordinator is not available."""
+
+        @staticmethod
+        def register_rule(rule: SafetyRule) -> None:
+            logger.debug(
+                f"SafetyCoordinator not available, skipping rule: {rule.rule_id}"
+            )
+
+
 from victor.core.verticals.protocols import SafetyExtensionProtocol, SafetyPattern
 
 logger = logging.getLogger(__name__)

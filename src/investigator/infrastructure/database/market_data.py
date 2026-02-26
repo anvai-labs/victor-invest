@@ -210,6 +210,123 @@ class DatabaseMarketDataFetcher:
             logger.error(f"Error fetching data for {symbol} from database: {e}")
             return pd.DataFrame()
 
+    def get_stock_data_weekly(self, symbol: str, weeks: int = 104) -> pd.DataFrame:
+        """
+        Fetch weekly OHLCV data by resampling daily data.
+
+        Args:
+            symbol: Stock ticker symbol
+            weeks: Number of weeks of historical data
+
+        Returns:
+            DataFrame with weekly OHLCV data indexed by date
+        """
+        # Fetch daily data (2x weeks to account for weekends)
+        daily_days = weeks * 7
+        daily_df = self.get_stock_data(symbol, days=daily_days)
+
+        if daily_df.empty:
+            return pd.DataFrame()
+
+        # Resample to weekly (Monday as week start)
+        weekly_df = (
+            daily_df.resample("W-MON", label="left")
+            .agg(
+                {
+                    "Open": "first",
+                    "High": "max",
+                    "Low": "min",
+                    "Close": "last",
+                    "Volume": "sum",
+                }
+            )
+            .dropna()
+        )
+
+        # Take last N weeks
+        weekly_df = weekly_df.tail(weeks)
+
+        logger.info(
+            "Successfully fetched %d weeks of data for %s (resampled from daily)",
+            len(weekly_df),
+            symbol,
+        )
+
+        return weekly_df
+
+    def get_stock_data_hourly(self, symbol: str, hours: int = 120) -> pd.DataFrame:
+        """
+        Fetch hourly OHLCV data from tickerbar table.
+
+        Args:
+            symbol: Stock ticker symbol
+            hours: Number of hours of historical data
+
+        Returns:
+            DataFrame with hourly OHLCV data indexed by datetime
+        """
+        try:
+            logger.info(
+                f"Fetching {hours} hours of intraday data for {symbol} from database"
+            )
+
+            # Check if tickerbar table exists and has data
+            query = text("""
+                SELECT
+                    timestamp,
+                    open,
+                    high,
+                    low,
+                    close,
+                    volume
+                FROM tickerbar
+                WHERE ticker = :symbol
+                ORDER BY timestamp DESC
+                LIMIT :limit_hours
+            """)
+
+            with self.engine.connect() as conn:
+                df = pd.read_sql_query(
+                    query,
+                    conn,
+                    params={"symbol": symbol.upper(), "limit_hours": hours},
+                    index_col="timestamp",
+                    parse_dates=["timestamp"],
+                )
+
+            if df.empty:
+                logger.warning(
+                    f"No hourly data returned for {symbol} - tickerbar may be empty"
+                )
+                return pd.DataFrame()
+
+            # Reverse order
+            df = df.sort_index(ascending=True)
+
+            # Rename columns
+            df.columns = ["Open", "High", "Low", "Close", "Volume"]
+
+            # Convert numeric columns
+            numeric_cols = ["Open", "High", "Low", "Close"]
+            for col in numeric_cols:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+
+            df["Volume"] = (
+                pd.to_numeric(df["Volume"], errors="coerce").fillna(0).astype(np.int64)
+            )
+
+            logger.info(
+                "Successfully fetched %d hours of data for %s from tickerbar",
+                len(df),
+                symbol,
+            )
+
+            return df
+
+        except Exception as e:
+            logger.warning(f"Hourly data unavailable for {symbol}: {e}")
+            return pd.DataFrame()
+
     def _expected_history_rows(self, requested_days: int) -> int:
         """
         Determine how many rows we reasonably expect from the database for a given request.

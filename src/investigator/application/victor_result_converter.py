@@ -145,8 +145,30 @@ def _extract_fundamental_data(
     consensus_upside = fundamental.get("consensus_upside", 0)
     overall_score = fundamental.get("overall_score", 70)
 
+    # Extract SEC data - check top-level first (new handler structure), then nested
+    sec_data = {}
+    if fundamental_analysis.get("sec_data"):
+        # New handler structure - sec_data at top level
+        sec_data = fundamental_analysis.get("sec_data", {})
+    elif fundamental.get("sec_data"):
+        # Old structure - sec_data nested in data
+        sec_data = fundamental.get("sec_data", {})
+    elif isinstance(sec_data, dict):
+        # Fallback to empty dict if not found
+        sec_data = {}
+
+    quarterly_metrics = (
+        sec_data.get("quarterly_metrics", []) if isinstance(sec_data, dict) else []
+    )
+    forward_guidance = (
+        sec_data.get("forward_guidance") if isinstance(sec_data, dict) else None
+    )
+    recent_filings = (
+        sec_data.get("recent_filings", []) if isinstance(sec_data, dict) else []
+    )
+
     # Transform to expected format with valuation section
-    return {
+    result = {
         "valuation": {
             "current_price": fundamental.get("current_price"),
             "fair_value": consensus_fair_value,
@@ -200,13 +222,26 @@ def _extract_fundamental_data(
             "model_agreement_score": 0.7,
             "applicable_models": fundamental.get("models_applied", []),
         },
+        # Include SEC data for UI consumption
+        "sec_data": {
+            "quarterly_metrics_count": len(quarterly_metrics)
+            if quarterly_metrics
+            else 0,
+            "forward_guidance": forward_guidance,
+            "recent_filings_count": len(recent_filings) if recent_filings else 0,
+        },
     }
+
+    return result
 
 
 def _extract_technical_data(
     technical_analysis: Dict[str, Any],
 ) -> Optional[Dict[str, Any]]:
     """Extract technical analysis data in agent orchestrator format.
+
+    Handles both old structure (indicators/trend/support_resistance) and
+    new multi-tier structure (weekly/daily/summary).
 
     Args:
         technical_analysis: Technical analysis from victor-invest
@@ -217,6 +252,30 @@ def _extract_technical_data(
     if not isinstance(technical_analysis, dict):  # type: ignore
         return None
 
+    # Handle new multi-tier structure directly (no 'data' wrapper)
+    if technical_analysis.get("status") == "success":
+        # New handler-based structure
+        result = {
+            "current_price": technical_analysis.get("current_price"),
+            "recommendation": technical_analysis.get("recommendation"),
+            "technical_rating": technical_analysis.get("rating"),
+            # Multi-tier analysis (weekly strategic + daily tactical)
+            "summary": technical_analysis.get("summary"),
+            "weekly": technical_analysis.get("weekly"),
+            "daily": technical_analysis.get("daily"),
+        }
+
+        # Extract levels from weekly/daily if available, otherwise from support_resistance
+        if technical_analysis.get("support_resistance"):
+            result["levels"] = technical_analysis["support_resistance"]
+        elif technical_analysis.get("daily", {}).get("latest", {}).get("levels"):
+            result["levels"] = technical_analysis["daily"]["latest"]["levels"]
+        elif technical_analysis.get("weekly", {}).get("latest", {}).get("levels"):
+            result["levels"] = technical_analysis["weekly"]["latest"]["levels"]
+
+        return result
+
+    # Handle old structure with 'data' wrapper (for backward compatibility)
     technical = (
         technical_analysis.get("data", {})
         if isinstance(technical_analysis.get("data"), dict)
@@ -230,4 +289,8 @@ def _extract_technical_data(
         "recommendation": technical.get("recommendation"),
         "technical_rating": technical.get("rating"),
         "levels": technical.get("levels", {}),
+        # Multi-tier analysis (weekly strategic + daily tactical)
+        "summary": technical.get("summary"),
+        "weekly": technical.get("weekly"),
+        "daily": technical.get("daily"),
     }
