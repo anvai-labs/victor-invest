@@ -801,7 +801,7 @@ class DataSourceFacade:
         return None
 
     def _fetch_cboe_data_sync(self, as_of_date: date) -> Dict[str, Any]:
-        """Fetch CBOE volatility data from database or cache (synchronous).
+        """Fetch CBOE volatility data from stock database macro_indicator_values table.
 
         Returns:
         - VIX: Current volatility level
@@ -811,20 +811,30 @@ class DataSourceFacade:
         - Volatility regime classification
         """
         try:
-            from sqlalchemy import text
+            from sqlalchemy import create_engine, text
+            from investigator.config import get_config
 
-            from investigator.infrastructure.database.db import get_db_manager
+            config = get_config()
+            db_config = config.database
 
-            db = get_db_manager()
-            with db.get_session() as session:
-                # First try regional_fed_indicators (where CBOE data is stored)
-                result = session.execute(
+            # Build connection URL for stock database where macro indicators are stored
+            stock_db_url = (
+                f"postgresql://{db_config.username}:{db_config.password}"
+                f"@{db_config.host}:{db_config.port}/stock"
+            )
+
+            engine = create_engine(stock_db_url)
+
+            with engine.connect() as conn:
+                # Fetch VIX, VIX3M, and SKEW from macro_indicator_values
+                result = conn.execute(
                     text("""
-                        SELECT indicator_name, indicator_data, observation_date
-                        FROM regional_fed_indicators
-                        WHERE district = 'cboe'
-                          AND observation_date <= :as_of_date
-                        ORDER BY indicator_name, observation_date DESC
+                        SELECT indicator_id, value, date
+                        FROM macro_indicator_values
+                        WHERE indicator_id IN ('VIXCLS', 'VIX3M', 'SKEW')
+                          AND is_current = true
+                          AND date <= :as_of_date
+                        ORDER BY indicator_id, date DESC
                     """),
                     {"as_of_date": as_of_date},
                 )
@@ -835,20 +845,17 @@ class DataSourceFacade:
                 for row in rows:
                     indicator = row[0]
                     if indicator not in seen:
-                        data = row[1]
-                        if isinstance(data, str):
-                            import json
-
-                            data = json.loads(data)
-
-                        # Extract value
-                        value = data.get("value") if isinstance(data, dict) else data
-                        cboe_data[indicator] = {
-                            "value": value,
+                        # Map FRED indicator IDs to our naming
+                        name_map = {
+                            "VIXCLS": "vix",
+                            "VIX3M": "vix3m",
+                            "SKEW": "skew",
+                        }
+                        name = name_map.get(indicator, indicator.lower())
+                        cboe_data[name] = {
+                            "value": float(row[1]),
                             "date": row[2].isoformat() if row[2] else None,
                         }
-                        if isinstance(data, dict) and "ohlcv" in data:
-                            cboe_data[indicator]["ohlcv"] = data["ohlcv"]
                         seen.add(indicator)
 
                 # Extract key values for RL features
