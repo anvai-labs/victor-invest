@@ -268,22 +268,28 @@ class CreditCycleAnalyzer:
         return analysis
 
     async def _get_credit_spread(self) -> Optional[Dict[str, Any]]:
-        """Get BAA-10Y credit spread from FRED."""
+        """Get BAA-10Y credit spread from stock database macro_indicator_values table."""
         try:
             from sqlalchemy import create_engine, text
+            from investigator.config import get_config
 
-            engine = create_engine(
-                "postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database"
+            config = get_config()
+            db_config = config.database
+
+            # Build connection URL for stock database where macro indicators are stored
+            stock_db_url = (
+                f"postgresql://{db_config.username}:{db_config.password}"
+                f"@{db_config.host}:{db_config.port}/stock"
             )
+
+            engine = create_engine(stock_db_url)
 
             # Get BAA10Y spread (BAA corporate bond yield minus 10Y Treasury)
             query = text("""
-                SELECT value, series_date
+                SELECT value, date
                 FROM macro_indicator_values
-                WHERE indicator_id = (
-                    SELECT id FROM macro_indicators WHERE series_id = 'BAA10Y'
-                )
-                ORDER BY series_date DESC
+                WHERE indicator_id = 'BAMLH0A0HYM2' AND is_current = true
+                ORDER BY date DESC
                 LIMIT 1
             """)
 
@@ -298,10 +304,9 @@ class CreditCycleAnalyzer:
                         SELECT
                             COUNT(*) FILTER (WHERE value < :current) * 100.0 / COUNT(*)
                         FROM macro_indicator_values
-                        WHERE indicator_id = (
-                            SELECT id FROM macro_indicators WHERE series_id = 'BAA10Y'
-                        )
-                        AND series_date >= CURRENT_DATE - INTERVAL '10 years'
+                        WHERE indicator_id = 'BAMLH0A0HYM2'
+                        AND is_current = true
+                        AND date >= CURRENT_DATE - INTERVAL '10 years'
                     """)
                     percentile_result = conn.execute(
                         percentile_query, {"current": spread_pct}
@@ -323,21 +328,28 @@ class CreditCycleAnalyzer:
         return None
 
     async def _get_vix(self) -> Optional[Dict[str, Any]]:
-        """Get VIX level from FRED."""
+        """Get VIX level from stock database macro_indicator_values table."""
         try:
             from sqlalchemy import create_engine, text
+            from investigator.config import get_config
+            import os
 
-            engine = create_engine(
-                "postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database"
+            config = get_config()
+            db_config = config.database
+
+            # Build connection URL for stock database where macro indicators are stored
+            stock_db_url = (
+                f"postgresql://{db_config.username}:{db_config.password}"
+                f"@{db_config.host}:{db_config.port}/stock"
             )
 
+            engine = create_engine(stock_db_url)
+
             query = text("""
-                SELECT value, series_date
+                SELECT value, date
                 FROM macro_indicator_values
-                WHERE indicator_id = (
-                    SELECT id FROM macro_indicators WHERE series_id = 'VIXCLS'
-                )
-                ORDER BY series_date DESC
+                WHERE indicator_id = 'VIXCLS' AND is_current = true
+                ORDER BY date DESC
                 LIMIT 1
             """)
 
@@ -355,22 +367,28 @@ class CreditCycleAnalyzer:
         return None
 
     async def _get_fed_funds(self) -> Optional[Dict[str, Any]]:
-        """Get Fed funds rate from FRED."""
+        """Get Fed funds rate from stock database macro_indicator_values table."""
         try:
             from sqlalchemy import create_engine, text
+            from investigator.config import get_config
 
-            engine = create_engine(
-                "postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database"
+            config = get_config()
+            db_config = config.database
+
+            # Build connection URL for stock database where macro indicators are stored
+            stock_db_url = (
+                f"postgresql://{db_config.username}:{db_config.password}"
+                f"@{db_config.host}:{db_config.port}/stock"
             )
+
+            engine = create_engine(stock_db_url)
 
             # Get current and historical rates
             query = text("""
-                SELECT value, series_date
+                SELECT value, date
                 FROM macro_indicator_values
-                WHERE indicator_id = (
-                    SELECT id FROM macro_indicators WHERE series_id = 'FEDFUNDS'
-                )
-                ORDER BY series_date DESC
+                WHERE indicator_id = 'FEDFUNDS' AND is_current = true
+                ORDER BY date DESC
                 LIMIT 13
             """)
 
