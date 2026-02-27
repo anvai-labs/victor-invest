@@ -1013,149 +1013,32 @@ Provide your response as a JSON object with this exact structure:
             fundamental: Fundamental analysis data
             market_context: Market context data
             peer_data: Optional peer comparison data
-            llm_provider: LLM provider (ollama, anthropic, openai)
+            llm_provider: LLM provider (ollama, anthropic, openai, or None for default)
             llm_model: Model identifier
 
         Returns LLM-generated synthesis dict or None if unavailable after retries.
+
+        Note: Always uses Victor's provider framework for proper retry logic and error handling.
+        The legacy OllamaClient path has been removed to ensure consistent behavior.
         """
-        # Use Victor's provider API if non-Ollama provider specified
-        if llm_provider and llm_provider != "ollama":
-            return await self._llm_synthesis_victor(
-                symbol,
-                technical,
-                fundamental,
-                market_context,
-                peer_data,
-                llm_provider,
-                llm_model,
-            )
+        # Resolve provider: use provided, or default to env var
+        from victor_invest.framework_bootstrap import resolve_model_from_env
 
-        # Legacy path for Ollama or when provider not specified
+        if not llm_provider:
+            # No provider specified - resolve from environment
+            llm_provider, llm_model = resolve_model_from_env(llm_model)
 
-        # Fetch real-time data for LLM synthesis
-        management_discussion = None
-        company_news = None
-
-        try:
-            from victor_invest.tools.sec_filing_text import SECFilingTextTool
-
-            sec_text_tool = SECFilingTextTool()
-            mda_result = await sec_text_tool.execute(
-                {},  # _exec_ctx
-                symbol=symbol,
-                action="get_management_discussion",
-                max_chars=12000,
-            )
-            if mda_result.success:
-                management_discussion = {"status": "success", "data": mda_result.output}
-                logger.info(f"Retrieved management discussion for {symbol}")
-        except Exception as e:
-            logger.warning(f"Failed to fetch management discussion for {symbol}: {e}")
-
-        try:
-            from victor_invest.tools.web_search import WebSearchTool
-
-            web_search_tool = WebSearchTool()
-            news_result = await web_search_tool.execute(
-                {},  # _exec_ctx
-                symbol=symbol,
-                company_name="",
-                action="comprehensive_search",
-                max_results=5,
-                days_back=30,
-            )
-            if news_result.success:
-                company_news = {"status": "success", "data": news_result.output}
-                logger.info(f"Retrieved company news for {symbol}")
-        except Exception as e:
-            logger.warning(f"Failed to fetch company news for {symbol}: {e}")
-
-        client = self._get_llm_client()
-        if not client:
-            return None
-
-        model = llm_model or self._get_config().ollama.models.get(
-            "synthesis", "gpt-oss:20b"
+        # Always use Victor's provider framework (ollama, anthropic, openai, etc.)
+        # This gives us proper retry logic, error handling, and re-request capabilities
+        return await self._llm_synthesis_victor(
+            symbol,
+            technical,
+            fundamental,
+            market_context,
+            peer_data,
+            llm_provider,
+            llm_model,
         )
-        max_retries = 3
-
-        for attempt in range(max_retries):
-            try:
-                # Build prompt - add retry instructions if this is not the first attempt
-                if attempt == 0:
-                    prompt = self._build_synthesis_prompt(
-                        symbol,
-                        technical,
-                        fundamental,
-                        market_context,
-                        peer_data,
-                        management_discussion,
-                        company_news,
-                    )
-                else:
-                    prompt = self._build_synthesis_prompt(
-                        symbol,
-                        technical,
-                        fundamental,
-                        market_context,
-                        peer_data,
-                        management_discussion,
-                        company_news,
-                    )
-                    # Add retry instructions
-                    prompt += (
-                        "\n\n**IMPORTANT**: Your previous response was not valid JSON. "
-                    )
-                    prompt += "You must respond ONLY with a valid JSON object. "
-                    prompt += (
-                        "Do NOT include any explanatory text before or after the JSON. "
-                    )
-                    prompt += "The response must start with '{' and end with '}'."
-
-                response = await client.generate(
-                    model=model,
-                    prompt=prompt,
-                )
-
-                # Parse JSON response
-                if isinstance(response, dict):
-                    response_text = response.get("response", "")
-                else:
-                    response_text = str(response)
-
-                # Try to extract and validate JSON
-                result = self._extract_and_validate_json(response_text, symbol)
-                if result:
-                    logger.info(
-                        f"Successfully parsed LLM synthesis JSON (attempt {attempt + 1}/{max_retries}, {len(result)} keys)"
-                    )
-                    return result
-                else:
-                    logger.warning(
-                        f"Attempt {attempt + 1}/{max_retries}: Failed to parse JSON from LLM response"
-                    )
-                    if attempt < max_retries - 1:
-                        logger.info(
-                            "Retrying with stronger JSON formatting instructions..."
-                        )
-                    continue
-
-            except Exception as e:
-                logger.warning(
-                    f"LLM synthesis attempt {attempt + 1}/{max_retries} failed: {e}"
-                )
-                if attempt < max_retries - 1:
-                    continue
-                else:
-                    logger.error(
-                        f"LLM synthesis failed after {max_retries} attempts: {e}"
-                    )
-                    return None
-
-        logger.warning(
-            f"LLM synthesis failed after {max_retries} attempts, falling back to rule-based"
-        )
-        return None
 
     async def _llm_synthesis_victor(
         self,
@@ -1164,10 +1047,16 @@ Provide your response as a JSON object with this exact structure:
         fundamental: dict,
         market_context: dict,
         peer_data: dict | None = None,
-        provider: str = "openai",
+        provider: str = "ollama",
         model: str | None = None,
     ) -> dict | None:
-        """Use Victor's provider API for LLM synthesis (non-Ollama providers).
+        """Use Victor's provider API for LLM synthesis (all providers).
+
+        Uses ProviderRegistry.create() which leverages:
+        - Built-in retry logic and re-request on failure
+        - Victor's default profile when provider not specified
+        - Provider-specific error handling
+        - Automatic API key retrieval from keyring
 
         Args:
             symbol: Stock symbol
@@ -1175,8 +1064,8 @@ Provide your response as a JSON object with this exact structure:
             fundamental: Fundamental analysis data
             market_context: Market context data
             peer_data: Optional peer comparison data
-            provider: LLM provider (anthropic, openai, etc.)
-            model: Model identifier
+            provider: LLM provider (ollama, anthropic, openai, etc.)
+            model: Model identifier (uses default profile if not specified)
 
         Returns LLM-generated synthesis dict or None if unavailable.
         """

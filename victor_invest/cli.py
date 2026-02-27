@@ -1028,6 +1028,8 @@ async def _run_analysis(
         try:
             # Execute YAML workflow with full agent node support
             # Uses Victor's SubAgentOrchestrator for LLM synthesis
+            # Use longer timeout for comprehensive mode (600s) vs standard/quick (300s)
+            timeout = 600.0 if mode == "comprehensive" else 300.0
             workflow_result = await workflow_provider.run_agentic_workflow(
                 workflow_name,
                 context={
@@ -1038,7 +1040,7 @@ async def _run_analysis(
                 },
                 provider=provider,
                 model=model,
-                timeout=300.0,
+                timeout=timeout,
             )
             progress.update(task, description="Analysis complete!")
 
