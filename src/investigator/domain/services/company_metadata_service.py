@@ -521,6 +521,18 @@ class CompanyMetadataService:
         self._cache.clear()
         logger.info("Cleared company metadata cache")
 
+    def reload_sector_map(self):
+        """Reload the sector map from file and clear related cache.
+
+        Use this to pick up changes to sector_industry_ticker_map.txt
+        without restarting the process.
+        """
+        self.extended_sector_mapping = self._load_sector_map_txt()
+        logger.info("Reloaded sector map from file")
+        # Clear the cache so new values will be used
+        self._cache.clear()
+        logger.info("Cleared cache after sector map reload")
+
     def get_cache_stats(self) -> Dict[str, int]:
         """
         Get cache statistics.
