@@ -87,10 +87,19 @@ class SectorMultiplesHistory:
         """
         # Create stock database manager if not provided
         if stock_db_manager is None:
-            config = get_config()
-            stock_db_url = config.database.url.replace("/sec_database", "/stock")
+            import os
+
+            # Use stock database credentials from environment
+            stock_user = os.environ.get("STOCK_DB_USER", "stockuser")
+            stock_password = os.environ.get("STOCK_DB_PASSWORD", "Am1nt0r")
+            stock_host = os.environ.get("STOCK_DB_HOST", "dataserver1.singh.local")
+            stock_port = os.environ.get("STOCK_DB_PORT", "5432")
+            stock_db_name = os.environ.get("STOCK_DB_NAME", "stock")
+            stock_db_url = f"postgresql://{stock_user}:{stock_password}@{stock_host}:{stock_port}/{stock_db_name}"
+
             from investigator.infrastructure.database.db import DatabaseManager
 
+            config = get_config()
             stock_db_manager = DatabaseManager(config)
             stock_db_manager.engine = create_engine(stock_db_url)
             from sqlalchemy.orm import sessionmaker
@@ -102,13 +111,19 @@ class SectorMultiplesHistory:
         self.stock_db_manager = stock_db_manager
         # Create sec_db_manager with correct connection to dataserver1
         if sec_db_manager is None:
-            config = get_config()
-            # Build proper connection URL to dataserver1 with credentials
-            # Format: postgresql://user:password@host:port/database
-            sec_db_url = "postgresql://investigator:investigator@dataserver1.singh.local:5432/sec_database"
+            import os
+
+            # Use SEC database credentials from environment
+            sec_user = os.environ.get("SEC_DB_USER", "investigator")
+            sec_password = os.environ.get("SEC_DB_PASSWORD", "investigator")
+            sec_host = os.environ.get("SEC_DB_HOST", "dataserver1.singh.local")
+            sec_port = os.environ.get("SEC_DB_PORT", "5432")
+            sec_db_name = os.environ.get("SEC_DB_NAME", "sec_database")
+            sec_db_url = f"postgresql://{sec_user}:{sec_password}@{sec_host}:{sec_port}/{sec_db_name}"
 
             from investigator.infrastructure.database.db import DatabaseManager
 
+            config = get_config()
             sec_db_manager = DatabaseManager(config)
             # Override engine to connect to dataserver1 with credentials
             sec_db_manager.engine = create_engine(sec_db_url)

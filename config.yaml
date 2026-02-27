@@ -619,24 +619,29 @@ valuation:
       ps: 0
       ggm: 0
     insurance_high_quality:
-      pb: 60
-      pe: 25
-      dcf: 10
-      ev_ebitda: 5
+      # Updated 2026-02: Managed healthcare companies should use PE as primary metric
+      # DCF has limited applicability for insurance due to premium liability matching
+      # EV/EBITDA provides capital structure neutrality
+      pe: 60
+      ev_ebitda: 30
+      pb: 10
+      dcf: 0
       ps: 0
       ggm: 0
     insurance_average:
-      pb: 65
-      pe: 25
-      dcf: 10
-      ev_ebitda: 0
+      # Updated 2026-02: Similar to high_quality but with lower PE weight
+      pe: 55
+      pb: 25
+      ev_ebitda: 20
+      dcf: 0
       ps: 0
       ggm: 0
     insurance_challenged:
-      pb: 70
-      pe: 20
-      dcf: 10
-      ev_ebitda: 0
+      # Updated 2026-02: Challenged insurers rely more on book value
+      pb: 50
+      pe: 30
+      ev_ebitda: 20
+      dcf: 0
       ps: 0
       ggm: 0
     reit_premium_growth:

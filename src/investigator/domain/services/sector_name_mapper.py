@@ -94,6 +94,10 @@ class SectorIndustryMapper:
         "Drug Manufacturers - General": "Healthcare",
         "Healthcare Providers": "Healthcare",
         "Healthcare Plans": "Healthcare",
+        "Managed Health Care": "Healthcare",
+        "Medical Specialities": "Healthcare",
+        "Medical/Dental Instruments": "Healthcare",
+        "Medical/Nursing Services": "Healthcare",
         # Consumer industries
         "Internet Retail": "Consumer Discretionary",
         "Specialty Retail": "Consumer Discretionary",
@@ -326,7 +330,7 @@ class SectorIndustryMapper:
             >>> SectorIndustryMapper.normalize_metadata(None, "Banks")
             {'sector': 'Financials', 'industry': 'Banks'}
         """
-        result = {"sector": None, "industry": None}
+        result: dict[str, str | None] = {"sector": None, "industry": None}
 
         # Normalize sector
         if sector:
