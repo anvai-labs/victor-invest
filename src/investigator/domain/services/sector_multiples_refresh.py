@@ -306,7 +306,9 @@ class SectorMultiplesRefresh:
             # Odd number of values: middle value
             median = sorted_values[n // 2]
 
-        logger.debug(f"{name}: median={median:.2f} from {n} values (range: {sorted_values[0]:.2f} - {sorted_values[-1]:.2f})")
+        logger.debug(
+            f"{name}: median={median:.2f} from {n} values (range: {sorted_values[0]:.2f} - {sorted_values[-1]:.2f})"
+        )
 
         return float(median)
 
