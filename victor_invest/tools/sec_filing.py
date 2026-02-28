@@ -211,9 +211,7 @@ Parameters:
         try:
             if self._sec_client is None:
                 return ToolResult.create_failure("SEC client not initialized")
-            filing_data = await self._sec_client.get_filing_by_symbol(
-                symbol=symbol, form_type=form_type, period=period
-            )
+            filing_data = await self._sec_client.get_filing_by_symbol(symbol=symbol, form_type=form_type, period=period)
 
             if not filing_data:
                 return ToolResult.create_failure(
@@ -230,9 +228,7 @@ Parameters:
                     "form_url": filing_data.get("form_url"),
                     "xbrl_url": filing_data.get("xbrl_url"),
                     "cik": filing_data.get("cik"),
-                    "text": filing_data.get("text", "")[
-                        :50000
-                    ],  # Truncate large filings
+                    "text": filing_data.get("text", "")[:50000],  # Truncate large filings
                 },
                 metadata={
                     "source": "sec_edgar",
@@ -261,9 +257,7 @@ Parameters:
 
             # Run synchronous method in thread pool
             loop = asyncio.get_event_loop()
-            facts_data = await loop.run_in_executor(
-                None, self._facts_extractor.get_company_facts, symbol
-            )
+            facts_data = await loop.run_in_executor(None, self._facts_extractor.get_company_facts, symbol)
 
             if not facts_data:
                 return ToolResult.create_failure(
@@ -311,9 +305,7 @@ Parameters:
 
         return derive_q4_from_fy(quarters_data, symbol)
 
-    async def _get_quarterly_financials(
-        self, symbol: str, num_periods: int = 12
-    ) -> ToolResult:
+    async def _get_quarterly_financials(self, symbol: str, num_periods: int = 12) -> ToolResult:
         """Get quarterly financial data using the legacy pipeline.
 
         This method uses the same data pipeline as the legacy CLI to ensure
@@ -375,18 +367,12 @@ Parameters:
                     "adsh": q.get("adsh"),
                     "filed": q.get("filed"),
                     "period_end": q.get("period_end"),
-                    "period_end_date": q.get(
-                        "period_end"
-                    ),  # Alias for quarterly_processor compatibility
-                    "filed_date": q.get(
-                        "filed"
-                    ),  # Alias for quarterly_processor compatibility
+                    "period_end_date": q.get("period_end"),  # Alias for quarterly_processor compatibility
+                    "filed_date": q.get("filed"),  # Alias for quarterly_processor compatibility
                     "form": q.get("form"),
                     # Shares outstanding - prefer weighted average diluted for EPS calculations
                     # This is the industry standard for per-share calculations
-                    "shares_outstanding": q.get(
-                        "weighted_average_diluted_shares_outstanding"
-                    )
+                    "shares_outstanding": q.get("weighted_average_diluted_shares_outstanding")
                     or q.get("shares_outstanding"),
                     # Actual shares outstanding (for EV/market cap calculations)
                     "actual_shares_outstanding": q.get("shares_outstanding"),
@@ -409,12 +395,8 @@ Parameters:
                         "cost_of_revenue": q.get("cost_of_revenue"),
                         "depreciation_amortization": q.get("depreciation_amortization"),
                         "stock_based_compensation": q.get("stock_based_compensation"),
-                        "research_and_development_expense": q.get(
-                            "research_and_development_expense"
-                        ),
-                        "selling_general_administrative_expense": q.get(
-                            "selling_general_administrative_expense"
-                        ),
+                        "research_and_development_expense": q.get("research_and_development_expense"),
+                        "selling_general_administrative_expense": q.get("selling_general_administrative_expense"),
                     },
                     "balance_sheet": {
                         "total_assets": q.get("total_assets"),
@@ -430,24 +412,18 @@ Parameters:
                         "total_debt": q.get("total_debt"),
                     },
                     # Additional calculated metrics (flat for compatibility)
-                    "weighted_average_diluted_shares_outstanding": q.get(
-                        "weighted_average_diluted_shares_outstanding"
-                    )
+                    "weighted_average_diluted_shares_outstanding": q.get("weighted_average_diluted_shares_outstanding")
                     or q.get("shares_outstanding"),
                     # Also include flat fields for backward compatibility with DynamicModelWeightingService
-                    "_derived": q.get(
-                        "_derived"
-                    ),  # Flag for derived Q4 entries (important for TTM filtering)
+                    "_derived": q.get("_derived"),  # Flag for derived Q4 entries (important for TTM filtering)
                     "total_revenue": q.get("total_revenue"),
                     "net_income": q.get("net_income"),
                     "gross_profit": q.get("gross_profit"),
                     "operating_income": q.get("operating_income"),
                     "ebitda": q.get("ebitda")
                     or (
-                        (q.get("operating_income", 0) or 0)
-                        + (q.get("depreciation_amortization", 0) or 0)
-                        if q.get("operating_income")
-                        and q.get("depreciation_amortization")
+                        (q.get("operating_income", 0) or 0) + (q.get("depreciation_amortization", 0) or 0)
+                        if q.get("operating_income") and q.get("depreciation_amortization")
                         else None
                     ),
                     "operating_cash_flow": q.get("operating_cash_flow"),
@@ -457,9 +433,7 @@ Parameters:
                 }
                 quarterly_metrics.append(metric_dict)
 
-            logger.info(
-                f"Retrieved {len(quarterly_metrics)} quarterly periods from legacy pipeline for {symbol}"
-            )
+            logger.info(f"Retrieved {len(quarterly_metrics)} quarterly periods from legacy pipeline for {symbol}")
 
             return ToolResult.create_success(
                 output={
@@ -479,13 +453,9 @@ Parameters:
             import traceback
 
             logger.error(traceback.format_exc())
-            return ToolResult.create_failure(
-                f"Failed to get quarterly financials: {str(e)}"
-            )
+            return ToolResult.create_failure(f"Failed to get quarterly financials: {str(e)}")
 
-    async def _search_filings(
-        self, symbol: str, form_type: str, limit: int
-    ) -> ToolResult:
+    async def _search_filings(self, symbol: str, form_type: str, limit: int) -> ToolResult:
         """Search for recent filings.
 
         Args:
@@ -499,9 +469,7 @@ Parameters:
         try:
             if self._sec_client is None:
                 return ToolResult.create_failure("SEC client not initialized")
-            filings = await self._sec_client.search_filings(
-                symbol=symbol, form_type=form_type, limit=limit
-            )
+            filings = await self._sec_client.search_filings(symbol=symbol, form_type=form_type, limit=limit)
 
             if not filings:
                 return ToolResult.create_failure(
@@ -538,9 +506,7 @@ Parameters:
 
             # Run synchronous method in thread pool
             loop = asyncio.get_event_loop()
-            metrics = await loop.run_in_executor(
-                None, self._facts_extractor.extract_financial_metrics, symbol
-            )
+            metrics = await loop.run_in_executor(None, self._facts_extractor.extract_financial_metrics, symbol)
 
             if not metrics or all(
                 v is None
@@ -595,9 +561,7 @@ Parameters:
                         "cash_and_equivalents": metrics.get("cash_and_equivalents"),
                         "inventory": metrics.get("inventory"),
                         "accounts_receivable": metrics.get("accounts_receivable"),
-                        "property_plant_equipment": metrics.get(
-                            "property_plant_equipment"
-                        ),
+                        "property_plant_equipment": metrics.get("property_plant_equipment"),
                         "shares_outstanding": shares_outstanding,
                     },
                     "income_statement": {
@@ -610,9 +574,7 @@ Parameters:
                         "operating_income": metrics.get("operating_income"),
                         "cost_of_revenue": metrics.get("cost_of_revenue"),
                         "ebitda": metrics.get("ebitda"),
-                        "depreciation_amortization": metrics.get(
-                            "depreciation_amortization"
-                        ),
+                        "depreciation_amortization": metrics.get("depreciation_amortization"),
                     },
                     "cash_flow": {
                         "operating_cash_flow": metrics.get("operating_cash_flow"),
@@ -637,17 +599,13 @@ Parameters:
                     "insurance_metrics": {
                         "premiums_earned": metrics.get("premiums_earned"),
                         "claims_incurred": metrics.get("claims_incurred"),
-                        "policy_acquisition_costs": metrics.get(
-                            "policy_acquisition_costs"
-                        ),
+                        "policy_acquisition_costs": metrics.get("policy_acquisition_costs"),
                         "combined_ratio": self._calculate_combined_ratio(metrics),
                     },
                     "defense_metrics": {
                         "order_backlog": metrics.get("order_backlog"),
                         "contract_liability": metrics.get("contract_liability"),
-                        "unbilled_contracts_receivable": metrics.get(
-                            "unbilled_contracts_receivable"
-                        ),
+                        "unbilled_contracts_receivable": metrics.get("unbilled_contracts_receivable"),
                         "backlog_to_revenue": self._calculate_backlog_ratio(metrics),
                     },
                 },

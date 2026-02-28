@@ -261,10 +261,7 @@ class EnhancedInvestConversationManager:
 
         self._investment_context = InvestmentContext()
 
-        logger.info(
-            f"EnhancedInvestConversationManager initialized with "
-            f"max_turns={max_history_turns}"
-        )
+        logger.info(f"EnhancedInvestConversationManager initialized with " f"max_turns={max_history_turns}")
 
     # =========================================================================
     # Message Management (delegates to ConversationCoordinator)
@@ -290,9 +287,7 @@ class EnhancedInvestConversationManager:
         Returns:
             Turn ID for the added message
         """
-        return self._conversation_coordinator.add_message(
-            role, content, turn_type, metadata, tool_calls
-        )
+        return self._conversation_coordinator.add_message(role, content, turn_type, metadata, tool_calls)
 
     def get_history(
         self,
@@ -310,9 +305,7 @@ class EnhancedInvestConversationManager:
         Returns:
             List of message dictionaries
         """
-        return self._conversation_coordinator.get_history(
-            max_turns, include_system, include_tool
-        )
+        return self._conversation_coordinator.get_history(max_turns, include_system, include_tool)
 
     def clear_history(self, keep_summaries: bool = True) -> None:
         """Clear conversation history.
@@ -344,9 +337,7 @@ class EnhancedInvestConversationManager:
             analysis_type: Technical, Fundamental, etc.
             conclusion: Analysis conclusion
         """
-        self._investment_context.add_trade_analyzed(
-            symbol, action, analysis_type, conclusion
-        )
+        self._investment_context.add_trade_analyzed(symbol, action, analysis_type, conclusion)
 
     def track_investment_decision(
         self,
@@ -425,9 +416,7 @@ class EnhancedInvestConversationManager:
         if ctx.trades_analyzed:
             parts.append("## Trades Analyzed")
             for trade in ctx.trades_analyzed:
-                parts.append(
-                    f"- {trade['action']} {trade['symbol']} ({trade['analysis_type']}): {trade['conclusion']}"
-                )
+                parts.append(f"- {trade['action']} {trade['symbol']} ({trade['analysis_type']}): {trade['conclusion']}")
             parts.append("")
 
         # Investment decisions
@@ -435,20 +424,14 @@ class EnhancedInvestConversationManager:
             parts.append("## Investment Decisions")
             for decision in ctx.investment_decisions:
                 symbol = f" {decision['symbol']}" if decision.get("symbol") else ""
-                parts.append(
-                    f"- {decision['decision']}{symbol}: {decision.get('rationale', '')}"
-                )
+                parts.append(f"- {decision['decision']}{symbol}: {decision.get('rationale', '')}")
             parts.append("")
 
         # Risk assessments
         if ctx.risk_assessments:
             parts.append("## Risk Assessments")
             for risk in ctx.risk_assessments:
-                mitigation = (
-                    f" (mitigation: {risk['mitigation']})"
-                    if risk.get("mitigation")
-                    else ""
-                )
+                mitigation = f" (mitigation: {risk['mitigation']})" if risk.get("mitigation") else ""
                 parts.append(f"- {risk['risk_type']}: {risk['level']}{mitigation}")
             parts.append("")
 

@@ -10,16 +10,12 @@ def _requires_fallback_basehandler():
 
 
 def _requires_fallback_decorator():
-    return (
-        compat_handlers.handler_decorator.__module__ == "victor_invest.compat.handlers"
-    )
+    return compat_handlers.handler_decorator.__module__ == "victor_invest.compat.handlers"
 
 
 def test_fallback_basehandler_success_path():
     if not _requires_fallback_basehandler():
-        pytest.skip(
-            "Native Victor BaseHandler is active; fallback-specific test skipped"
-        )
+        pytest.skip("Native Victor BaseHandler is active; fallback-specific test skipped")
 
     from victor.workflows.executor import ExecutorNodeStatus
 
@@ -49,9 +45,7 @@ def test_fallback_basehandler_success_path():
 
 def test_fallback_basehandler_failure_path():
     if not _requires_fallback_basehandler():
-        pytest.skip(
-            "Native Victor BaseHandler is active; fallback-specific test skipped"
-        )
+        pytest.skip("Native Victor BaseHandler is active; fallback-specific test skipped")
 
     from victor.workflows.executor import ExecutorNodeStatus
 
@@ -75,9 +69,7 @@ def test_fallback_basehandler_failure_path():
 
 def test_fallback_handler_decorator_registers_with_registry_and_executor(monkeypatch):
     if not _requires_fallback_decorator():
-        pytest.skip(
-            "Native Victor handler_decorator is active; fallback-specific test skipped"
-        )
+        pytest.skip("Native Victor handler_decorator is active; fallback-specific test skipped")
 
     import victor.framework.handler_registry as handler_registry_module
     import victor.workflows.executor as executor_module
@@ -97,9 +89,7 @@ def test_fallback_handler_decorator_registers_with_registry_and_executor(monkeyp
         calls["executor"].append((name, handler))
 
     monkeypatch.setattr(handler_registry_module, "register_handler", _register_handler)
-    monkeypatch.setattr(
-        executor_module, "register_compute_handler", _register_compute_handler
-    )
+    monkeypatch.setattr(executor_module, "register_compute_handler", _register_compute_handler)
 
     @compat_handlers.handler_decorator(
         "unit_test_handler",

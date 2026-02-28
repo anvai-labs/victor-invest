@@ -54,15 +54,12 @@ class TestQ1FiscalYearCompanyFactsPathRegression:
         if actual_fp == "Q1" and fiscal_year_end:
             fy_end_month, fy_end_day = map(int, fiscal_year_end[1:].split("-"))
             if (period_end_date.month > fy_end_month) or (
-                period_end_date.month == fy_end_month
-                and period_end_date.day > fy_end_day
+                period_end_date.month == fy_end_month and period_end_date.day > fy_end_day
             ):
                 actual_fiscal_year += 1
 
         # Verify fiscal_year was incremented
-        assert actual_fiscal_year == 2024, (
-            "Q1 ending Oct 31, 2023 should be fiscal_year 2024 (FY ends Jul 31)"
-        )
+        assert actual_fiscal_year == 2024, "Q1 ending Oct 31, 2023 should be fiscal_year 2024 (FY ends Jul 31)"
 
     def test_q1_fiscal_year_not_adjusted_for_calendar_fy(self):
         """
@@ -81,15 +78,12 @@ class TestQ1FiscalYearCompanyFactsPathRegression:
         if actual_fp == "Q1" and fiscal_year_end:
             fy_end_month, fy_end_day = map(int, fiscal_year_end[1:].split("-"))
             if (period_end_date.month > fy_end_month) or (
-                period_end_date.month == fy_end_month
-                and period_end_date.day > fy_end_day
+                period_end_date.month == fy_end_month and period_end_date.day > fy_end_day
             ):
                 actual_fiscal_year += 1
 
         # Verify fiscal_year NOT incremented
-        assert actual_fiscal_year == 2024, (
-            "Q1 ending Mar 31, 2024 should stay fiscal_year 2024 (before Dec 31)"
-        )
+        assert actual_fiscal_year == 2024, "Q1 ending Mar 31, 2024 should stay fiscal_year 2024 (before Dec 31)"
 
     def test_q1_fiscal_year_edge_case_same_day_as_fy_end(self):
         """
@@ -106,15 +100,12 @@ class TestQ1FiscalYearCompanyFactsPathRegression:
         if actual_fp == "Q1" and fiscal_year_end:
             fy_end_month, fy_end_day = map(int, fiscal_year_end[1:].split("-"))
             if (period_end_date.month > fy_end_month) or (
-                period_end_date.month == fy_end_month
-                and period_end_date.day > fy_end_day
+                period_end_date.month == fy_end_month and period_end_date.day > fy_end_day
             ):
                 actual_fiscal_year += 1
 
         # Verify fiscal_year NOT incremented (same day, not after)
-        assert actual_fiscal_year == 2023, (
-            "Q1 ending Jul 31, 2023 should stay 2023 (same day as FY end, not after)"
-        )
+        assert actual_fiscal_year == 2023, "Q1 ending Jul 31, 2023 should stay 2023 (same day as FY end, not after)"
 
     def test_q1_fiscal_year_no_adjustment_without_fiscal_year_end(self):
         """
@@ -131,15 +122,12 @@ class TestQ1FiscalYearCompanyFactsPathRegression:
         if actual_fp == "Q1" and fiscal_year_end:
             fy_end_month, fy_end_day = map(int, fiscal_year_end[1:].split("-"))
             if (period_end_date.month > fy_end_month) or (
-                period_end_date.month == fy_end_month
-                and period_end_date.day > fy_end_day
+                period_end_date.month == fy_end_month and period_end_date.day > fy_end_day
             ):
                 actual_fiscal_year += 1
 
         # Verify fiscal_year NOT incremented (fiscal_year_end missing)
-        assert actual_fiscal_year == 2023, (
-            "Q1 should keep SEC's fiscal_year when fiscal_year_end unavailable"
-        )
+        assert actual_fiscal_year == 2023, "Q1 should keep SEC's fiscal_year when fiscal_year_end unavailable"
 
     def test_q2_q3_q4_not_affected_by_q1_fix(self):
         """
@@ -163,15 +151,14 @@ class TestQ1FiscalYearCompanyFactsPathRegression:
             if actual_fp == "Q1" and fiscal_year_end:
                 fy_end_month, fy_end_day = map(int, fiscal_year_end[1:].split("-"))
                 if (period_end_date.month > fy_end_month) or (
-                    period_end_date.month == fy_end_month
-                    and period_end_date.day > fy_end_day
+                    period_end_date.month == fy_end_month and period_end_date.day > fy_end_day
                 ):
                     actual_fiscal_year += 1
 
             # Verify fiscal_year NOT changed (not Q1)
-            assert actual_fiscal_year == original_fy, (
-                f"{actual_fp} ending {period_end_str} should keep fiscal_year {original_fy}"
-            )
+            assert (
+                actual_fiscal_year == original_fy
+            ), f"{actual_fp} ending {period_end_str} should keep fiscal_year {original_fy}"
 
 
 class TestQ1FiscalYearBulkTablePathRegression:
@@ -219,9 +206,7 @@ class TestQ1FiscalYearBulkTablePathRegression:
                 fiscal_year_end = f"-{fy_end_date.month:02d}-{fy_end_date.day:02d}"
                 break
 
-        assert fiscal_year_end == "-07-31", (
-            "Should detect fiscal_year_end from FY period"
-        )
+        assert fiscal_year_end == "-07-31", "Should detect fiscal_year_end from FY period"
 
         # 2. Process quarters with Q1 adjustment
         quarters = []
@@ -235,8 +220,7 @@ class TestQ1FiscalYearBulkTablePathRegression:
                 fy_end_month, fy_end_day = map(int, fiscal_year_end[1:].split("-"))
 
                 if (period_end_date.month > fy_end_month) or (
-                    period_end_date.month == fy_end_month
-                    and period_end_date.day > fy_end_day
+                    period_end_date.month == fy_end_month and period_end_date.day > fy_end_day
                 ):
                     fiscal_year += 1
 
@@ -250,15 +234,11 @@ class TestQ1FiscalYearBulkTablePathRegression:
 
         # Verify Q1 fiscal_year was adjusted
         q1_quarter = [q for q in quarters if q["fiscal_period"] == "Q1"][0]
-        assert q1_quarter["fiscal_year"] == 2024, (
-            "Q1 ending Oct 31, 2023 should be fiscal_year 2024 in bulk table path"
-        )
+        assert q1_quarter["fiscal_year"] == 2024, "Q1 ending Oct 31, 2023 should be fiscal_year 2024 in bulk table path"
 
         # Verify FY fiscal_year NOT changed
         fy_quarter = [q for q in quarters if q["fiscal_period"] == "FY"][0]
-        assert fy_quarter["fiscal_year"] == 2023, (
-            "FY ending Jul 31, 2023 should stay fiscal_year 2023"
-        )
+        assert fy_quarter["fiscal_year"] == 2023, "FY ending Jul 31, 2023 should stay fiscal_year 2023"
 
     def test_q1_fiscal_year_multiple_years_in_get_multiple_quarters(self):
         """
@@ -315,8 +295,7 @@ class TestQ1FiscalYearBulkTablePathRegression:
                 fy_end_month, fy_end_day = map(int, fiscal_year_end[1:].split("-"))
 
                 if (period_end_date.month > fy_end_month) or (
-                    period_end_date.month == fy_end_month
-                    and period_end_date.day > fy_end_day
+                    period_end_date.month == fy_end_month and period_end_date.day > fy_end_day
                 ):
                     fiscal_year += 1
 
@@ -333,14 +312,10 @@ class TestQ1FiscalYearBulkTablePathRegression:
         assert len(q1_quarters) == 2, "Should have 2 Q1 periods"
 
         q1_2024 = [q for q in q1_quarters if q["period_end"] == "2024-10-31"][0]
-        assert q1_2024["fiscal_year"] == 2025, (
-            "Q1 ending Oct 31, 2024 should be fiscal_year 2025"
-        )
+        assert q1_2024["fiscal_year"] == 2025, "Q1 ending Oct 31, 2024 should be fiscal_year 2025"
 
         q1_2023 = [q for q in q1_quarters if q["period_end"] == "2023-10-31"][0]
-        assert q1_2023["fiscal_year"] == 2024, (
-            "Q1 ending Oct 31, 2023 should be fiscal_year 2024"
-        )
+        assert q1_2023["fiscal_year"] == 2024, "Q1 ending Oct 31, 2023 should be fiscal_year 2024"
 
     def test_q1_fiscal_year_no_fy_periods_available(self):
         """
@@ -375,9 +350,7 @@ class TestQ1FiscalYearBulkTablePathRegression:
                 fiscal_year_end = f"-{fy_end_date.month:02d}-{fy_end_date.day:02d}"
                 break
 
-        assert fiscal_year_end is None, (
-            "Should not detect fiscal_year_end without FY periods"
-        )
+        assert fiscal_year_end is None, "Should not detect fiscal_year_end without FY periods"
 
         # Process Q1 (should keep original fiscal_year)
         row = mock_results[0]
@@ -388,15 +361,12 @@ class TestQ1FiscalYearBulkTablePathRegression:
             period_end_date = datetime.strptime(str(row.period), "%Y-%m-%d")
             fy_end_month, fy_end_day = map(int, fiscal_year_end[1:].split("-"))
             if (period_end_date.month > fy_end_month) or (
-                period_end_date.month == fy_end_month
-                and period_end_date.day > fy_end_day
+                period_end_date.month == fy_end_month and period_end_date.day > fy_end_day
             ):
                 fiscal_year += 1
 
         # Verify fiscal_year NOT changed (no fiscal_year_end available)
-        assert fiscal_year == 2023, (
-            "Q1 should keep SEC's fiscal_year when fiscal_year_end unavailable"
-        )
+        assert fiscal_year == 2023, "Q1 should keep SEC's fiscal_year when fiscal_year_end unavailable"
 
 
 class TestQ1FiscalYearImpactOnYTDGrouping:
@@ -450,9 +420,9 @@ class TestQ1FiscalYearImpactOnYTDGrouping:
 
         # Verify all 3 quarters in same fiscal_year group
         assert 2024 in fiscal_year_groups, "Should have FY 2024 group"
-        assert len(fiscal_year_groups[2024]) == 3, (
-            "All 3 quarters should be in FY 2024 group (Q1 fix prevents collision)"
-        )
+        assert (
+            len(fiscal_year_groups[2024]) == 3
+        ), "All 3 quarters should be in FY 2024 group (Q1 fix prevents collision)"
 
         # Verify no Q1-2023 mislabeling
         fy_2023_quarters = fiscal_year_groups.get(2023, [])

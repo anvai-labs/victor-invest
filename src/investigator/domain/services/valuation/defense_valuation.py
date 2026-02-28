@@ -191,16 +191,10 @@ def extract_backlog_metrics_from_xbrl(
                 if usd_data:
                     # Get the latest annual value (10-K preferred, then 10-Q)
                     sorted_data = sorted(
-                        [
-                            d
-                            for d in usd_data
-                            if d.get("form") in ["10-K", "10-Q", "20-F"]
-                        ],
+                        [d for d in usd_data if d.get("form") in ["10-K", "10-Q", "20-F"]],
                         key=lambda x: (
                             x.get("fy", 0),
-                            {"FY": 5, "Q4": 4, "Q3": 3, "Q2": 2, "Q1": 1}.get(
-                                x.get("fp", ""), 0
-                            ),
+                            {"FY": 5, "Q4": 4, "Q3": 3, "Q2": 2, "Q1": 1}.get(x.get("fp", ""), 0),
                         ),
                         reverse=True,
                     )
@@ -210,8 +204,7 @@ def extract_backlog_metrics_from_xbrl(
                         if value is not None:
                             extracted_values[canonical_name] = float(value)
                             logger.debug(
-                                f"{symbol} - Extracted {canonical_name} from {alias}: "
-                                f"${float(value) / 1e9:.2f}B"
+                                f"{symbol} - Extracted {canonical_name} from {alias}: " f"${float(value) / 1e9:.2f}B"
                             )
                             break  # Found value, move to next canonical name
 
@@ -307,10 +300,7 @@ def calculate_backlog_premium(backlog: float, annual_revenue: float) -> float:
         premium = 1.0  # No adjustment
         quality = "average"
 
-    logger.info(
-        f"Backlog premium calculated: {premium:.2f}x "
-        f"(ratio={backlog_ratio:.2f}x, quality={quality})"
-    )
+    logger.info(f"Backlog premium calculated: {premium:.2f}x " f"(ratio={backlog_ratio:.2f}x, quality={quality})")
 
     return premium
 
@@ -406,10 +396,7 @@ def calculate_contract_mix_adjustment(cost_plus_pct: float) -> float:
         adjustment = 1.0
         mix_type = "balanced"
 
-    logger.info(
-        f"Contract mix adjustment: {adjustment:.2f}x "
-        f"(cost-plus={cost_plus_pct:.0%}, mix={mix_type})"
-    )
+    logger.info(f"Contract mix adjustment: {adjustment:.2f}x " f"(cost-plus={cost_plus_pct:.0%}, mix={mix_type})")
 
     return adjustment
 
@@ -456,9 +443,7 @@ def classify_defense_contractor(
     # Priority 1: Check known defense contractor mappings
     if symbol_upper in KNOWN_DEFENSE_CONTRACTORS:
         contractor_type = KNOWN_DEFENSE_CONTRACTORS[symbol_upper]
-        logger.info(
-            f"{symbol} - Defense contractor detected via symbol mapping: {contractor_type.value}"
-        )
+        logger.info(f"{symbol} - Defense contractor detected via symbol mapping: {contractor_type.value}")
         return DefenseContractorClassification(
             is_defense_contractor=True,
             contractor_type=contractor_type,
@@ -472,13 +457,8 @@ def classify_defense_contractor(
         industry_lower = industry.lower()
 
         for defense_industry in DEFENSE_INDUSTRIES:
-            if (
-                defense_industry.lower() in industry_lower
-                or industry_lower in defense_industry.lower()
-            ):
-                logger.info(
-                    f"{symbol} - Defense contractor detected via industry match: '{industry}'"
-                )
+            if defense_industry.lower() in industry_lower or industry_lower in defense_industry.lower():
+                logger.info(f"{symbol} - Defense contractor detected via industry match: '{industry}'")
                 return DefenseContractorClassification(
                     is_defense_contractor=True,
                     contractor_type=DefenseContractorType.UNKNOWN,
@@ -491,9 +471,7 @@ def classify_defense_contractor(
         defense_keywords = ["defense", "military", "government", "aerospace"]
         for keyword in defense_keywords:
             if keyword in industry_lower:
-                logger.info(
-                    f"{symbol} - Possible defense contractor (keyword '{keyword}' in industry)"
-                )
+                logger.info(f"{symbol} - Possible defense contractor (keyword '{keyword}' in industry)")
                 return DefenseContractorClassification(
                     is_defense_contractor=True,
                     contractor_type=DefenseContractorType.UNKNOWN,
@@ -572,9 +550,7 @@ def value_defense_contractor(
     contractor_type = classification.contractor_type
 
     if not classification.is_defense_contractor:
-        logger.warning(
-            f"{symbol} - Not classified as defense contractor, returning base valuation"
-        )
+        logger.warning(f"{symbol} - Not classified as defense contractor, returning base valuation")
         return DefenseValuationResult(
             fair_value=base_fair_value,
             base_fair_value=base_fair_value,
@@ -590,12 +566,7 @@ def value_defense_contractor(
         )
 
     # Get annual revenue
-    annual_revenue = (
-        financials.get("total_revenue")
-        or financials.get("revenue")
-        or financials.get("revenues")
-        or 0
-    )
+    annual_revenue = financials.get("total_revenue") or financials.get("revenue") or financials.get("revenues") or 0
 
     # Extract backlog metrics
     backlog_metrics = None
@@ -604,21 +575,15 @@ def value_defense_contractor(
     backlog_value = None
 
     if xbrl_data:
-        backlog_metrics = extract_backlog_metrics_from_xbrl(
-            symbol, xbrl_data, annual_revenue
-        )
+        backlog_metrics = extract_backlog_metrics_from_xbrl(symbol, xbrl_data, annual_revenue)
         total_backlog = backlog_metrics.total_backlog
         backlog_ratio = backlog_metrics.backlog_ratio
 
         # Calculate NPV of backlog
         if total_backlog and annual_revenue > 0:
             operating_margin = DEFENSE_CONTRACTOR_TIER["parameters"]["terminal_margin"]
-            discount_rate = DEFENSE_CONTRACTOR_TIER["parameters"][
-                "backlog_discount_rate"
-            ]
-            backlog_value = calculate_backlog_value(
-                total_backlog, annual_revenue, operating_margin, discount_rate
-            )
+            discount_rate = DEFENSE_CONTRACTOR_TIER["parameters"]["backlog_discount_rate"]
+            backlog_value = calculate_backlog_value(total_backlog, annual_revenue, operating_margin, discount_rate)
     else:
         warnings.append("No XBRL data provided - backlog metrics not available")
 

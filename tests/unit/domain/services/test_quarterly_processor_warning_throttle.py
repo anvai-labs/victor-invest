@@ -44,12 +44,8 @@ def periods_with_missing_q3_for_legacy_fy():
     ]
 
 
-def test_q4_missing_q3_logs_warning_first_occurrence(
-    caplog, periods_with_missing_q3_for_legacy_fy
-):
-    with caplog.at_level(
-        logging.WARNING, logger="investigator.domain.services.quarterly_processor"
-    ):
+def test_q4_missing_q3_logs_warning_first_occurrence(caplog, periods_with_missing_q3_for_legacy_fy):
+    with caplog.at_level(logging.WARNING, logger="investigator.domain.services.quarterly_processor"):
         quarterly_processor.get_rolling_ttm_periods(
             copy.deepcopy(periods_with_missing_q3_for_legacy_fy),
             compute_missing=True,
@@ -58,22 +54,17 @@ def test_q4_missing_q3_logs_warning_first_occurrence(
 
     warning_messages = [record.message for record in caplog.records]
     assert any(
-        "No Q3 found within 30-150 days for FY 2022 ending 2022-06-27" in message
-        for message in warning_messages
+        "No Q3 found within 30-150 days for FY 2022 ending 2022-06-27" in message for message in warning_messages
     )
     assert any(
-        "No Q3 found within 30-180 days, attempting fiscal year match only" in message
-        for message in warning_messages
+        "No Q3 found within 30-180 days, attempting fiscal year match only" in message for message in warning_messages
     )
     assert any(
-        "No Q3 found for FY 2022 ending 2022-06-27, skipping Q4 computation" in message
-        for message in warning_messages
+        "No Q3 found for FY 2022 ending 2022-06-27, skipping Q4 computation" in message for message in warning_messages
     )
 
 
-def test_q4_missing_q3_downgrades_duplicate_warnings_to_debug(
-    caplog, periods_with_missing_q3_for_legacy_fy
-):
+def test_q4_missing_q3_downgrades_duplicate_warnings_to_debug(caplog, periods_with_missing_q3_for_legacy_fy):
     quarterly_processor.get_rolling_ttm_periods(
         copy.deepcopy(periods_with_missing_q3_for_legacy_fy),
         compute_missing=True,
@@ -81,9 +72,7 @@ def test_q4_missing_q3_downgrades_duplicate_warnings_to_debug(
     )
 
     caplog.clear()
-    with caplog.at_level(
-        logging.DEBUG, logger="investigator.domain.services.quarterly_processor"
-    ):
+    with caplog.at_level(logging.DEBUG, logger="investigator.domain.services.quarterly_processor"):
         quarterly_processor.get_rolling_ttm_periods(
             copy.deepcopy(periods_with_missing_q3_for_legacy_fy),
             compute_missing=True,
@@ -91,16 +80,13 @@ def test_q4_missing_q3_downgrades_duplicate_warnings_to_debug(
         )
 
     duplicate_warning_records = [
-        record
-        for record in caplog.records
-        if record.levelno >= logging.WARNING and "No Q3 found" in record.message
+        record for record in caplog.records if record.levelno >= logging.WARNING and "No Q3 found" in record.message
     ]
     assert not duplicate_warning_records
 
     duplicate_debug_records = [
         record
         for record in caplog.records
-        if record.levelno == logging.DEBUG
-        and "suppressed duplicate Q4 warning" in record.message
+        if record.levelno == logging.DEBUG and "suppressed duplicate Q4 warning" in record.message
     ]
     assert duplicate_debug_records

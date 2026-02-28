@@ -48,12 +48,8 @@ class SECCompanyFactsExtractor:
         import os
 
         self.db_config = db_config or {
-            "host": os.environ.get(
-                "SEC_DB_HOST", os.environ.get("DB_HOST", "dataserver1.singh.local")
-            ),
-            "port": int(
-                os.environ.get("SEC_DB_PORT", os.environ.get("DB_PORT", "5432"))
-            ),
+            "host": os.environ.get("SEC_DB_HOST", os.environ.get("DB_HOST", "dataserver1.singh.local")),
+            "port": int(os.environ.get("SEC_DB_PORT", os.environ.get("DB_PORT", "5432"))),
             "database": os.environ.get("SEC_DB_NAME", "sec_database"),
             "username": os.environ.get("SEC_DB_USER", "investigator"),
             "password": os.environ.get("SEC_DB_PASSWORD", "investigator"),
@@ -123,8 +119,7 @@ class SECCompanyFactsExtractor:
                 # Return cached data if fresh enough
                 if age_days < max_age_days:
                     logger.info(
-                        f"✓ Using cached data for {symbol} "
-                        f"({age_days:.1f} days old < {max_age_days} day threshold)"
+                        f"✓ Using cached data for {symbol} " f"({age_days:.1f} days old < {max_age_days} day threshold)"
                     )
                     db_data["source"] = "database_cache"
                     db_data["cache_age_days"] = age_days
@@ -139,10 +134,7 @@ class SECCompanyFactsExtractor:
                     )
 
         # Step 2: No fresh data in cache - return None to signal caller to run SEC Agent
-        logger.info(
-            f"No fresh data for {symbol} in cache. "
-            f"Caller should trigger SEC Agent to fetch from API."
-        )
+        logger.info(f"No fresh data for {symbol} in cache. " f"Caller should trigger SEC Agent to fetch from API.")
         return None
 
     def _calculate_age_days(self, fetched_at_str: str) -> float:
@@ -161,9 +153,7 @@ class SECCompanyFactsExtractor:
 
             # Parse ISO format timestamp
             if isinstance(fetched_at_str, str):
-                fetched_at = datetime.fromisoformat(
-                    fetched_at_str.replace("Z", "+00:00")
-                )
+                fetched_at = datetime.fromisoformat(fetched_at_str.replace("Z", "+00:00"))
             else:
                 fetched_at = fetched_at_str
 
@@ -203,25 +193,19 @@ class SECCompanyFactsExtractor:
                 result = conn.execute(query, {"symbol": symbol.upper()}).fetchone()
 
             if not result:
-                logger.debug(
-                    f"No cached data found in sec_companyfacts_raw for {symbol}"
-                )
+                logger.debug(f"No cached data found in sec_companyfacts_raw for {symbol}")
                 return None
 
             # Validate that cached data has us-gaap structure
             companyfacts = result.companyfacts
-            if "facts" not in companyfacts or "us-gaap" not in companyfacts.get(
-                "facts", {}
-            ):
+            if "facts" not in companyfacts or "us-gaap" not in companyfacts.get("facts", {}):
                 logger.warning(
                     f"❌ Cached data for {symbol} in database has INVALID structure (missing us-gaap). "
                     f"Treating as stale and will re-fetch from API."
                 )
                 # Delete invalid cache entry
                 try:
-                    delete_query = text(
-                        "DELETE FROM sec_companyfacts_raw WHERE symbol = :symbol"
-                    )
+                    delete_query = text("DELETE FROM sec_companyfacts_raw WHERE symbol = :symbol")
                     with self.engine.connect() as conn:
                         conn.execute(delete_query, {"symbol": symbol.upper()})
                         conn.commit()
@@ -230,18 +214,14 @@ class SECCompanyFactsExtractor:
                     logger.warning(f"Failed to delete invalid cache: {del_e}")
                 return None
 
-            logger.debug(
-                f"✅ Found valid cached data with us-gaap structure for {symbol}"
-            )
+            logger.debug(f"✅ Found valid cached data with us-gaap structure for {symbol}")
 
             return {
                 "symbol": result.symbol,
                 "cik": result.cik,
                 "entityName": result.entity_name,
                 "facts": companyfacts.get("facts", {}),
-                "fetched_at": result.fetched_at.isoformat()
-                if result.fetched_at
-                else None,
+                "fetched_at": result.fetched_at.isoformat() if result.fetched_at else None,
                 "source": "database_cache",
                 "raw_data_id": result.id,
             }
@@ -284,16 +264,11 @@ class SECCompanyFactsExtractor:
                 has_us_gaap = "us-gaap" in raw_facts
                 has_dei = "dei" in raw_facts
 
-                logger.info(
-                    f"📦 SEC API response for {symbol}: "
-                    f"has us-gaap={has_us_gaap}, has dei={has_dei}"
-                )
+                logger.info(f"📦 SEC API response for {symbol}: " f"has us-gaap={has_us_gaap}, has dei={has_dei}")
 
                 if has_us_gaap:
                     us_gaap_tags = len(raw_facts["us-gaap"])
-                    logger.info(
-                        f"✅ Raw us-gaap structure preserved: {us_gaap_tags} XBRL tags"
-                    )
+                    logger.info(f"✅ Raw us-gaap structure preserved: {us_gaap_tags} XBRL tags")
                 else:
                     logger.warning(
                         f"⚠️  SEC API response missing us-gaap structure for {symbol}! "
@@ -305,12 +280,8 @@ class SECCompanyFactsExtractor:
                     "symbol": symbol,
                     "cik": api_data.get("cik", cik),
                     "company_name": api_data.get("entityName", ""),
-                    "facts": api_data.get(
-                        "facts", {}
-                    ),  # Raw SEC structure: {'us-gaap': {...}, 'dei': {...}}
-                    "entityName": api_data.get(
-                        "entityName", ""
-                    ),  # Preserve entity name
+                    "facts": api_data.get("facts", {}),  # Raw SEC structure: {'us-gaap': {...}, 'dei': {...}}
+                    "entityName": api_data.get("entityName", ""),  # Preserve entity name
                     "fetched_at": datetime.utcnow().isoformat(),
                     "source": "sec_api",
                 }
@@ -369,15 +340,11 @@ class SECCompanyFactsExtractor:
                 return None
 
             if not has_us_gaap:
-                logger.error(
-                    f"❌ Data for {symbol} missing us-gaap structure, cannot save to raw table"
-                )
+                logger.error(f"❌ Data for {symbol} missing us-gaap structure, cannot save to raw table")
                 return None
 
             us_gaap_tag_count = len(facts["us-gaap"])
-            logger.info(
-                f"✅ Saving RAW SEC data for {symbol}: {us_gaap_tag_count} us-gaap XBRL tags"
-            )
+            logger.info(f"✅ Saving RAW SEC data for {symbol}: {us_gaap_tag_count} us-gaap XBRL tags")
 
             # Calculate checksum for integrity verification
             raw_json = json.dumps(data, sort_keys=True)
@@ -424,9 +391,7 @@ class SECCompanyFactsExtractor:
             return raw_id
 
         except Exception as e:
-            logger.error(
-                f"❌ Error saving {data.get('symbol', 'UNKNOWN')} to database: {e}"
-            )
+            logger.error(f"❌ Error saving {data.get('symbol', 'UNKNOWN')} to database: {e}")
             import traceback
 
             logger.error(traceback.format_exc())
@@ -449,14 +414,10 @@ class SECCompanyFactsExtractor:
                 get_sec_data_processor,
             )
 
-            logger.info(
-                f"⚙️  Triggering processing for {symbol} (raw_data_id={raw_data_id})"
-            )
+            logger.info(f"⚙️  Triggering processing for {symbol} (raw_data_id={raw_data_id})")
 
             processor = get_sec_data_processor(self.engine)
-            processed_filings = processor.process_raw_data(
-                symbol, raw_data, raw_data_id
-            )
+            processed_filings = processor.process_raw_data(symbol, raw_data, raw_data_id)
 
             if processed_filings:
                 saved_count = processor.save_processed_data(processed_filings)
@@ -465,9 +426,7 @@ class SECCompanyFactsExtractor:
                     f"{len(processed_filings)} filings extracted, {saved_count} saved to sec_companyfacts_processed"
                 )
             else:
-                logger.warning(
-                    f"⚠️  No filings extracted during processing for {symbol}"
-                )
+                logger.warning(f"⚠️  No filings extracted during processing for {symbol}")
 
         except Exception as e:
             logger.error(f"❌ Error processing raw data for {symbol}: {e}")
@@ -494,9 +453,7 @@ class SECCompanyFactsExtractor:
             if cik:
                 # CIK from map file is NOT zero-padded, need to pad to 10 digits
                 cik_padded = cik.zfill(10)
-                logger.debug(
-                    f"Found CIK {cik_padded} for symbol {symbol} via TickerCIKMapper"
-                )
+                logger.debug(f"Found CIK {cik_padded} for symbol {symbol} via TickerCIKMapper")
                 return cik_padded
             else:
                 logger.warning(f"No CIK found for {symbol} in ticker map")
@@ -530,9 +487,7 @@ class SECCompanyFactsExtractor:
             min_year = current_year - max_years
 
             # Filter to only last N years to avoid processing decades of data
-            filtered_data = [
-                entry for entry in units_data if entry.get("fy", 0) >= min_year
-            ]
+            filtered_data = [entry for entry in units_data if entry.get("fy", 0) >= min_year]
 
             # Fallback to all data if no recent data found
             if not filtered_data:
@@ -546,9 +501,7 @@ class SECCompanyFactsExtractor:
                 fp = entry.get("fp", "")  # Fiscal period (e.g., 'FY', 'Q4', 'Q3')
 
                 # Period priority: FY=5, Q4=4, Q3=3, Q2=2, Q1=1, unknown=0
-                period_priority = {"FY": 5, "Q4": 4, "Q3": 3, "Q2": 2, "Q1": 1}.get(
-                    fp, 0
-                )
+                period_priority = {"FY": 5, "Q4": 4, "Q3": 3, "Q2": 2, "Q1": 1}.get(fp, 0)
 
                 return (fy, period_priority)
 
@@ -558,11 +511,7 @@ class SECCompanyFactsExtractor:
 
             # If prefer_annual, try to find most recent annual data first
             if prefer_annual:
-                annual_data = [
-                    d
-                    for d in sorted_data
-                    if d.get("fp") == "FY" or d.get("form") in ["10-K", "20-F"]
-                ]
+                annual_data = [d for d in sorted_data if d.get("fp") == "FY" or d.get("form") in ["10-K", "20-F"]]
                 if annual_data:
                     return float(annual_data[0]["val"])
 
@@ -611,24 +560,17 @@ class SECCompanyFactsExtractor:
             filtered_data = [
                 entry
                 for entry in units_data
-                if entry.get("form")
-                in ["10-Q", "10-K", "20-F"]  # Standard quarterly/annual filings only
+                if entry.get("form") in ["10-Q", "10-K", "20-F"]  # Standard quarterly/annual filings only
                 and entry.get("fy", 0) >= min_year  # Only last N years
             ]
 
             # Fallback: If no standard forms found in date range, try without date filter
             if not filtered_data:
-                filtered_data = [
-                    entry
-                    for entry in units_data
-                    if entry.get("form") in ["10-Q", "10-K", "20-F"]
-                ]
+                filtered_data = [entry for entry in units_data if entry.get("form") in ["10-Q", "10-K", "20-F"]]
 
             # Final fallback: If still no data, use all data (better than nothing)
             if not filtered_data:
-                logger.warning(
-                    f"No standard 10-Q/10-K filings found in data, using all {len(units_data)} entries"
-                )
+                logger.warning(f"No standard 10-Q/10-K filings found in data, using all {len(units_data)} entries")
                 filtered_data = units_data
             else:
                 logger.debug(
@@ -640,9 +582,7 @@ class SECCompanyFactsExtractor:
                 """Sort by fiscal year (descending), then period priority (FY > Q4 > Q3 > Q2 > Q1)"""
                 fy = entry.get("fy", 0)
                 fp = entry.get("fp", "")
-                period_priority = {"FY": 5, "Q4": 4, "Q3": 3, "Q2": 2, "Q1": 1}.get(
-                    fp, 0
-                )
+                period_priority = {"FY": 5, "Q4": 4, "Q3": 3, "Q2": 2, "Q1": 1}.get(fp, 0)
                 return (fy, period_priority)
 
             sorted_data = sorted(
@@ -653,11 +593,7 @@ class SECCompanyFactsExtractor:
 
             # If prefer_annual, try to find most recent annual data first
             if prefer_annual:
-                annual_data = [
-                    d
-                    for d in sorted_data
-                    if d.get("fp") == "FY" or d.get("form") in ["10-K", "20-F"]
-                ]
+                annual_data = [d for d in sorted_data if d.get("fp") == "FY" or d.get("form") in ["10-K", "20-F"]]
                 if annual_data:
                     latest = annual_data[0]
                     return (
@@ -748,9 +684,7 @@ class SECCompanyFactsExtractor:
         try:
             # Use centralized fiscal period service for authoritative calculation
             service = get_fiscal_period_service()
-            fy_end_month, fy_end_day = service.get_fiscal_year_end_from_month(
-                fiscal_year_end_month
-            )
+            fy_end_month, fy_end_day = service.get_fiscal_year_end_from_month(fiscal_year_end_month)
 
             return service.calculate_fiscal_year(
                 period_end_date=period_end_date,
@@ -760,18 +694,14 @@ class SECCompanyFactsExtractor:
             )
 
         except Exception as e:
-            logger.warning(
-                f"Error calculating fiscal year from date {period_end_date}: {e}"
-            )
+            logger.warning(f"Error calculating fiscal year from date {period_end_date}: {e}")
             # Fallback to calendar year extraction
             try:
                 return int(period_end_date[:4])
             except (ValueError, IndexError):
                 return datetime.now().year
 
-    def _derive_fiscal_period_from_date(
-        self, end_date: str
-    ) -> Tuple[Optional[int], Optional[str]]:
+    def _derive_fiscal_period_from_date(self, end_date: str) -> Tuple[Optional[int], Optional[str]]:
         """
         Derive fiscal period from end date (fallback when raw SEC data not available).
 
@@ -834,8 +764,7 @@ class SECCompanyFactsExtractor:
                     latest_fy, latest_fp, _ = strategy._get_from_bulk_tables(cik)
                     if latest_fy and latest_fp:
                         logger.info(
-                            f"✓ Determined latest period from bulk tables for {symbol}: "
-                            f"{latest_fy}-{latest_fp}"
+                            f"✓ Determined latest period from bulk tables for {symbol}: " f"{latest_fy}-{latest_fp}"
                         )
                         return (latest_fy, latest_fp, None)  # No filed date from bulk
 
@@ -846,13 +775,9 @@ class SECCompanyFactsExtractor:
             # Get fiscal year end month for validation (if CIK provided)
             fiscal_year_end_month = None
             if cik:
-                logger.info(
-                    f"[DEBUG_FY_FIX] {symbol} - Getting fiscal year end month for CIK: {cik}"
-                )
+                logger.info(f"[DEBUG_FY_FIX] {symbol} - Getting fiscal year end month for CIK: {cik}")
                 fiscal_year_end_month = self._get_fiscal_year_end_month(cik)
-                logger.info(
-                    f"[DEBUG_FY_FIX] {symbol} - Fiscal year end month: {fiscal_year_end_month}"
-                )
+                logger.info(f"[DEBUG_FY_FIX] {symbol} - Fiscal year end month: {fiscal_year_end_month}")
                 if fiscal_year_end_month and fiscal_year_end_month != 12:
                     logger.info(
                         f"[DEBUG_FY_FIX] {symbol} - Non-calendar fiscal year detected "
@@ -860,9 +785,7 @@ class SECCompanyFactsExtractor:
                         f"Will validate fiscal_year from API."
                     )
             else:
-                logger.warning(
-                    f"[DEBUG_FY_FIX] {symbol} - No CIK provided to _determine_latest_fiscal_period!"
-                )
+                logger.warning(f"[DEBUG_FY_FIX] {symbol} - No CIK provided to _determine_latest_fiscal_period!")
 
             for tag_name, tag_data in us_gaap.items():
                 units = tag_data.get("units", {})
@@ -903,9 +826,7 @@ class SECCompanyFactsExtractor:
                         all_periods.add((filed, fy, fp))
 
             if not all_periods:
-                logger.warning(
-                    f"Could not find any fiscal periods in JSON API for {symbol}"
-                )
+                logger.warning(f"Could not find any fiscal periods in JSON API for {symbol}")
                 return (None, None, None)
 
             # Sort by filed date (descending) and pick the FIRST one
@@ -923,9 +844,7 @@ class SECCompanyFactsExtractor:
             logger.warning(f"Error determining latest fiscal period for {symbol}: {e}")
             return (None, None, None)
 
-    def _extract_period_from_cache(
-        self, cached_data: Dict
-    ) -> Tuple[Optional[int], Optional[str]]:
+    def _extract_period_from_cache(self, cached_data: Dict) -> Tuple[Optional[int], Optional[str]]:
         """
         Extract fiscal period from cached/flattened data.
 
@@ -989,8 +908,7 @@ class SECCompanyFactsExtractor:
             # The caller should extract from actual SEC CompanyFacts fy/fp fields.
 
             logger.debug(
-                "No valid fiscal period in cached data. "
-                "Caller should extract from SEC CompanyFacts fy/fp fields."
+                "No valid fiscal period in cached data. " "Caller should extract from SEC CompanyFacts fy/fp fields."
             )
             return (None, None)
 
@@ -1070,16 +988,12 @@ class SECCompanyFactsExtractor:
 
                     if fiscal_year and fiscal_period:
                         # Get specific quarter from bulk
-                        metrics = bulk_dao.fetch_financial_metrics(
-                            symbol, fiscal_year, fiscal_period
-                        )
+                        metrics = bulk_dao.fetch_financial_metrics(symbol, fiscal_year, fiscal_period)
                     else:
                         # Get latest quarter from bulk
                         latest_fy, latest_fp, _ = strategy._get_from_bulk_tables(cik)
                         if latest_fy and latest_fp:
-                            metrics = bulk_dao.fetch_financial_metrics(
-                                symbol, latest_fy, latest_fp
-                            )
+                            metrics = bulk_dao.fetch_financial_metrics(symbol, latest_fy, latest_fp)
                         else:
                             metrics = None
 
@@ -1115,9 +1029,7 @@ class SECCompanyFactsExtractor:
                     )
 
                 except Exception as e:
-                    logger.debug(
-                        f"Bulk table query failed for {symbol}: {e}. Falling back to JSON API."
-                    )
+                    logger.debug(f"Bulk table query failed for {symbol}: {e}. Falling back to JSON API.")
 
             # TIER 2: Fallback to JSON API (CompanyFacts)
             logger.debug(
@@ -1153,38 +1065,25 @@ class SECCompanyFactsExtractor:
 
                 if matching_entries:
                     # Sort by filed date (newest first) and take most recent
-                    matching_entries.sort(
-                        key=lambda x: x.get("filed", ""), reverse=True
-                    )
+                    matching_entries.sort(key=lambda x: x.get("filed", ""), reverse=True)
                     latest = matching_entries[0]
                     value = latest.get("val")
                     fy = latest.get("fy")
                     fp = latest.get("fp")
 
-                    logger.debug(
-                        f"✓ JSON API HIT for {symbol} {metric_tag} "
-                        f"{fiscal_year}-{fiscal_period}: {value}"
-                    )
+                    logger.debug(f"✓ JSON API HIT for {symbol} {metric_tag} " f"{fiscal_year}-{fiscal_period}: {value}")
                     return (value, fy, fp)
                 else:
-                    logger.debug(
-                        f"JSON API MISS for {symbol} {metric_tag} "
-                        f"{fiscal_year}-{fiscal_period}"
-                    )
+                    logger.debug(f"JSON API MISS for {symbol} {metric_tag} " f"{fiscal_year}-{fiscal_period}")
                     return (None, None, None)
             else:
                 # Get latest value using existing helper
                 value, fy, fp = self._get_latest_value_with_period(usd_data)
-                logger.debug(
-                    f"✓ JSON API HIT for {symbol} {metric_tag} (latest): "
-                    f"{value} (FY:{fy} FP:{fp})"
-                )
+                logger.debug(f"✓ JSON API HIT for {symbol} {metric_tag} (latest): " f"{value} (FY:{fy} FP:{fp})")
                 return (value, fy, fp)
 
         except Exception as e:
-            logger.error(
-                f"Error in hybrid metric extraction for {symbol} {metric_tag}: {e}"
-            )
+            logger.error(f"Error in hybrid metric extraction for {symbol} {metric_tag}: {e}")
             return (None, None, None)
 
     def extract_financial_metrics(self, symbol: str) -> Dict:
@@ -1209,9 +1108,7 @@ class SECCompanyFactsExtractor:
             cik = mapper.get_cik(symbol)
 
             if not cik:
-                logger.warning(
-                    f"No CIK found for {symbol}. Will attempt JSON API only."
-                )
+                logger.warning(f"No CIK found for {symbol}. Will attempt JSON API only.")
             else:
                 logger.info(f"[DEBUG_FY_FIX] {symbol} - CIK obtained: {cik}")
 
@@ -1248,9 +1145,7 @@ class SECCompanyFactsExtractor:
                                     units = raw_us_gaap[concept].get("units", {})
                                     usd_data = units.get("USD", [])
                                     if usd_data:
-                                        _, fy, fp = self._get_latest_value_with_period(
-                                            usd_data
-                                        )
+                                        _, fy, fp = self._get_latest_value_with_period(usd_data)
                                         if fy and fp:
                                             fiscal_year, fiscal_period = fy, fp
                                             logger.info(
@@ -1278,9 +1173,7 @@ class SECCompanyFactsExtractor:
                 current_path = Path(__file__).resolve()
                 project_root = current_path
                 for parent in [current_path, *current_path.parents]:
-                    if (parent / "setup.py").exists() or (
-                        parent / "pyproject.toml"
-                    ).exists():
+                    if (parent / "setup.py").exists() or (parent / "pyproject.toml").exists():
                         project_root = parent
                         break
 
@@ -1299,10 +1192,8 @@ class SECCompanyFactsExtractor:
             # STEP 1: Determine latest fiscal period FIRST (before extracting any metrics)
             # This ensures ALL metrics come from the SAME fiscal period
             logger.info(f"🎯 STEP 1: Determining latest fiscal period for {symbol}...")
-            fiscal_year, fiscal_period, filed_date = (
-                self._determine_latest_fiscal_period(
-                    symbol=symbol, us_gaap=us_gaap, cik=cik
-                )
+            fiscal_year, fiscal_period, filed_date = self._determine_latest_fiscal_period(
+                symbol=symbol, us_gaap=us_gaap, cik=cik
             )
 
             if not fiscal_year or not fiscal_period:
@@ -1324,9 +1215,7 @@ class SECCompanyFactsExtractor:
 
             # Helper function to get metric value with HYBRID STRATEGY (bulk + API)
             # NOW PERIOD-SCOPED: Will extract for the determined fiscal period
-            def get_metric(
-                concept_names, prefer_annual: bool = True, canonical_name: str = None
-            ) -> Optional[float]:
+            def get_metric(concept_names, prefer_annual: bool = True, canonical_name: str = None) -> Optional[float]:
                 """
                 Get metric value with HYBRID STRATEGY (tries bulk tables first, then JSON API).
 
@@ -1364,11 +1253,7 @@ class SECCompanyFactsExtractor:
                             fiscal_year=fiscal_year,  # Pass determined period
                             fiscal_period=fiscal_period,  # Pass determined period
                         )
-                        if (
-                            value is not None
-                            and fy == fiscal_year
-                            and fp == fiscal_period
-                        ):
+                        if value is not None and fy == fiscal_year and fp == fiscal_period:
                             logger.debug(
                                 f"✓ Metric extracted for {symbol} {concept_name}: {value} "
                                 f"(period: {fiscal_year}-{fiscal_period}, source: hybrid)"
@@ -1422,20 +1307,14 @@ class SECCompanyFactsExtractor:
             operating_income = get_metric(None, canonical_name="operating_income")
 
             # Extract Cash and Cash Flow metrics using tag mapper
-            cash_and_equivalents = get_metric(
-                None, canonical_name="cash_and_equivalents"
-            )
+            cash_and_equivalents = get_metric(None, canonical_name="cash_and_equivalents")
             operating_cash_flow = get_metric(None, canonical_name="operating_cash_flow")
-            capital_expenditures = get_metric(
-                None, canonical_name="capital_expenditures"
-            )
+            capital_expenditures = get_metric(None, canonical_name="capital_expenditures")
 
             # Calculate Free Cash Flow (Operating CF - CapEx)
             free_cash_flow = None
             if operating_cash_flow is not None and capital_expenditures is not None:
-                free_cash_flow = operating_cash_flow - abs(
-                    capital_expenditures
-                )  # CapEx is usually negative
+                free_cash_flow = operating_cash_flow - abs(capital_expenditures)  # CapEx is usually negative
             elif operating_cash_flow is not None:
                 # If no CapEx data, use operating CF as approximation
                 free_cash_flow = operating_cash_flow
@@ -1472,23 +1351,17 @@ class SECCompanyFactsExtractor:
                 dei_units = dei_shares_concept.get("units", {})
                 dei_shares_data = dei_units.get("shares", [])
                 if dei_shares_data:
-                    dei_value, _, _ = self._get_latest_value_with_period(
-                        dei_shares_data, prefer_annual=False
-                    )
+                    dei_value, _, _ = self._get_latest_value_with_period(dei_shares_data, prefer_annual=False)
                     if dei_value and dei_value > 0:
                         dei_shares = dei_value
-                        logger.info(
-                            f"✅ {symbol} - Found DEI EntityCommonStockSharesOutstanding: {dei_shares:,.0f}"
-                        )
+                        logger.info(f"✅ {symbol} - Found DEI EntityCommonStockSharesOutstanding: {dei_shares:,.0f}")
 
             # Use DEI shares if available and reasonable (> 1 million shares)
             if dei_shares and dei_shares > 1_000_000:
                 shares_outstanding = dei_shares
 
             # Fallback: Try weighted average diluted shares
-            weighted_avg_diluted = get_metric(
-                None, canonical_name="weighted_average_shares_diluted"
-            )
+            weighted_avg_diluted = get_metric(None, canonical_name="weighted_average_shares_diluted")
             if not shares_outstanding and weighted_avg_diluted:
                 shares_outstanding = weighted_avg_diluted
                 logger.info(
@@ -1496,9 +1369,7 @@ class SECCompanyFactsExtractor:
                 )
 
             # Fallback: Try weighted average basic shares
-            weighted_avg_basic = get_metric(
-                None, canonical_name="weighted_average_shares_basic"
-            )
+            weighted_avg_basic = get_metric(None, canonical_name="weighted_average_shares_basic")
             if not shares_outstanding and weighted_avg_basic:
                 shares_outstanding = weighted_avg_basic
                 logger.info(
@@ -1508,23 +1379,17 @@ class SECCompanyFactsExtractor:
             # =====================================================
             # EBITDA - Calculate from operating_income + D&A
             # =====================================================
-            depreciation_amortization = get_metric(
-                None, canonical_name="depreciation_amortization"
-            )
+            depreciation_amortization = get_metric(None, canonical_name="depreciation_amortization")
             ebitda = None
             if operating_income is not None and depreciation_amortization is not None:
-                ebitda = operating_income + abs(
-                    depreciation_amortization
-                )  # D&A is positive expense
+                ebitda = operating_income + abs(depreciation_amortization)  # D&A is positive expense
                 logger.info(
                     f"📊 {symbol} - Calculated EBITDA: {ebitda:,.0f} (operating_income: {operating_income:,.0f} + D&A: {depreciation_amortization:,.0f})"
                 )
             elif operating_income is not None:
                 # Estimate D&A as ~5-10% of operating income for rough EBITDA
                 ebitda = operating_income * 1.08  # Conservative 8% D&A estimate
-                logger.warning(
-                    f"⚠️  {symbol} - Estimated EBITDA: {ebitda:,.0f} (no D&A found, used 8% estimate)"
-                )
+                logger.warning(f"⚠️  {symbol} - Estimated EBITDA: {ebitda:,.0f} (no D&A found, used 8% estimate)")
 
             # =====================================================
             # DIVIDENDS PAID - For dividend yield and GGM
@@ -1536,26 +1401,20 @@ class SECCompanyFactsExtractor:
             # =====================================================
             premiums_earned = get_metric(None, canonical_name="premiums_earned")
             claims_incurred = get_metric(None, canonical_name="claims_incurred")
-            policy_acquisition_costs = get_metric(
-                None, canonical_name="policy_acquisition_costs"
-            )
+            policy_acquisition_costs = get_metric(None, canonical_name="policy_acquisition_costs")
 
             # =====================================================
             # DEFENSE/BACKLOG METRICS
             # =====================================================
             order_backlog = get_metric(None, canonical_name="order_backlog")
             contract_liability = get_metric(None, canonical_name="contract_liability")
-            unbilled_contracts_receivable = get_metric(
-                None, canonical_name="unbilled_contracts_receivable"
-            )
+            unbilled_contracts_receivable = get_metric(None, canonical_name="unbilled_contracts_receivable")
 
             # =====================================================
             # REIT METRICS (FFO components)
             # =====================================================
             # FFO = Net Income + Depreciation (real estate) - Gains on property sales
-            property_plant_equipment = get_metric(
-                None, canonical_name="property_plant_equipment"
-            )
+            property_plant_equipment = get_metric(None, canonical_name="property_plant_equipment")
 
             return {
                 # Balance Sheet
@@ -1664,9 +1523,7 @@ class SECCompanyFactsExtractor:
             "source": None,
         }
 
-    def get_processed_quarterly_data(
-        self, symbol: str, num_periods: int = 12
-    ) -> List[Dict[str, Any]]:
+    def get_processed_quarterly_data(self, symbol: str, num_periods: int = 12) -> List[Dict[str, Any]]:
         """
         Fetch pre-processed quarterly financial data from sec_companyfacts_processed table.
 
@@ -1742,9 +1599,7 @@ class SECCompanyFactsExtractor:
             """)
 
             with self.engine.connect() as conn:
-                result = conn.execute(
-                    query, {"symbol": symbol.upper(), "limit": num_periods}
-                )
+                result = conn.execute(query, {"symbol": symbol.upper(), "limit": num_periods})
                 rows = result.fetchall()
 
             if not rows:
@@ -1784,10 +1639,7 @@ class SECCompanyFactsExtractor:
                     period_data.get("operating_income") is not None
                     and period_data.get("depreciation_amortization") is not None
                 ):
-                    period_data["ebitda"] = (
-                        period_data["operating_income"]
-                        + period_data["depreciation_amortization"]
-                    )
+                    period_data["ebitda"] = period_data["operating_income"] + period_data["depreciation_amortization"]
 
                 quarterly_data.append(period_data)
 
@@ -1805,9 +1657,7 @@ class SECCompanyFactsExtractor:
             logger.error(traceback.format_exc())
             return []
 
-    def calculate_financial_ratios(
-        self, symbol: str, current_price: Optional[float] = None
-    ) -> Dict:
+    def calculate_financial_ratios(self, symbol: str, current_price: Optional[float] = None) -> Dict:
         """
         Calculate financial ratios from extracted metrics.
 
@@ -1828,19 +1678,13 @@ class SECCompanyFactsExtractor:
 
         # Calculate gross profit if not directly available
         gross_profit_calculated = metrics["gross_profit"]
-        if (
-            not gross_profit_calculated
-            and metrics["revenues"]
-            and metrics["cost_of_revenue"]
-        ):
+        if not gross_profit_calculated and metrics["revenues"] and metrics["cost_of_revenue"]:
             gross_profit_calculated = metrics["revenues"] - metrics["cost_of_revenue"]
 
         # Calculate ratios
         ratios = {
             # Liquidity Ratios
-            "current_ratio": safe_divide(
-                metrics["assets_current"], metrics["liabilities_current"]
-            ),
+            "current_ratio": safe_divide(metrics["assets_current"], metrics["liabilities_current"]),
             "quick_ratio": 0.0,  # Calculate below with inventory exclusion
             # Leverage Ratios
             "debt_to_equity": safe_divide(metrics["total_debt"], metrics["equity"]),
@@ -1873,9 +1717,7 @@ class SECCompanyFactsExtractor:
             ),
             # Valuation Ratios
             "price_to_sales": (
-                safe_divide(current_price, metrics["revenues"])
-                if current_price and metrics["revenues"]
-                else 0.0
+                safe_divide(current_price, metrics["revenues"]) if current_price and metrics["revenues"] else 0.0
             ),
             # Metadata
             "symbol": symbol,
@@ -1888,9 +1730,7 @@ class SECCompanyFactsExtractor:
             quick_assets = metrics["assets_current"]
             if metrics["inventory"]:
                 quick_assets -= metrics["inventory"]
-            ratios["quick_ratio"] = safe_divide(
-                quick_assets, metrics["liabilities_current"]
-            )
+            ratios["quick_ratio"] = safe_divide(quick_assets, metrics["liabilities_current"])
 
         return ratios
 

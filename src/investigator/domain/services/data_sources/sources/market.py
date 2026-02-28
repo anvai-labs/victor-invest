@@ -76,21 +76,13 @@ class PriceHistorySource(MarketDataSource):
             for idx, row in df.iterrows():
                 prices.append(
                     {
-                        "date": idx.isoformat()
-                        if hasattr(idx, "isoformat")
-                        else str(idx),
+                        "date": idx.isoformat() if hasattr(idx, "isoformat") else str(idx),
                         "open": float(row.get("open", 0)) if row.get("open") else None,
                         "high": float(row.get("high", 0)) if row.get("high") else None,
                         "low": float(row.get("low", 0)) if row.get("low") else None,
-                        "close": float(row.get("close", 0))
-                        if row.get("close")
-                        else None,
-                        "volume": int(row.get("volume", 0))
-                        if row.get("volume")
-                        else None,
-                        "adj_close": float(row.get("adj_close", 0))
-                        if row.get("adj_close")
-                        else None,
+                        "close": float(row.get("close", 0)) if row.get("close") else None,
+                        "volume": int(row.get("volume", 0)) if row.get("volume") else None,
+                        "adj_close": float(row.get("adj_close", 0)) if row.get("adj_close") else None,
                     }
                 )
 
@@ -109,19 +101,11 @@ class PriceHistorySource(MarketDataSource):
             # Calculate returns
             returns = {}
             if len(prices) >= 2 and prices[0]["close"] and prices[1]["close"]:
-                returns["1d"] = (
-                    (prices[0]["close"] - prices[1]["close"]) / prices[1]["close"] * 100
-                )
+                returns["1d"] = (prices[0]["close"] - prices[1]["close"]) / prices[1]["close"] * 100
             if len(prices) >= 6 and prices[0]["close"] and prices[5]["close"]:
-                returns["5d"] = (
-                    (prices[0]["close"] - prices[5]["close"]) / prices[5]["close"] * 100
-                )
+                returns["5d"] = (prices[0]["close"] - prices[5]["close"]) / prices[5]["close"] * 100
             if len(prices) >= 22 and prices[0]["close"] and prices[21]["close"]:
-                returns["1m"] = (
-                    (prices[0]["close"] - prices[21]["close"])
-                    / prices[21]["close"]
-                    * 100
-                )
+                returns["1m"] = (prices[0]["close"] - prices[21]["close"]) / prices[21]["close"] * 100
 
             return DataResult(
                 success=True,
@@ -139,9 +123,7 @@ class PriceHistorySource(MarketDataSource):
             logger.error(f"Price history fetch error: {e}")
             return DataResult(success=False, error=str(e), source=self.name)
 
-    def fetch_historical(
-        self, symbol: str, start_date: date, end_date: date
-    ) -> DataResult:
+    def fetch_historical(self, symbol: str, start_date: date, end_date: date) -> DataResult:
         """Fetch historical price range using PriceService"""
         try:
             from investigator.domain.services.market_data.price_service import (
@@ -162,21 +144,13 @@ class PriceHistorySource(MarketDataSource):
             for idx, row in df.iterrows():
                 prices.append(
                     {
-                        "date": idx.isoformat()
-                        if hasattr(idx, "isoformat")
-                        else str(idx),
+                        "date": idx.isoformat() if hasattr(idx, "isoformat") else str(idx),
                         "open": float(row.get("open", 0)) if row.get("open") else None,
                         "high": float(row.get("high", 0)) if row.get("high") else None,
                         "low": float(row.get("low", 0)) if row.get("low") else None,
-                        "close": float(row.get("close", 0))
-                        if row.get("close")
-                        else None,
-                        "volume": int(row.get("volume", 0))
-                        if row.get("volume")
-                        else None,
-                        "adj_close": float(row.get("adj_close", 0))
-                        if row.get("adj_close")
-                        else None,
+                        "close": float(row.get("close", 0)) if row.get("close") else None,
+                        "volume": int(row.get("volume", 0)) if row.get("volume") else None,
+                        "adj_close": float(row.get("adj_close", 0)) if row.get("adj_close") else None,
                     }
                 )
 
@@ -259,11 +233,7 @@ class TechnicalIndicatorSource(MarketDataSource):
                     source=self.name,
                 )
             elif hasattr(indicators, "__dict__"):
-                indicators_dict = {
-                    k: v
-                    for k, v in indicators.__dict__.items()
-                    if not k.startswith("_")
-                }
+                indicators_dict = {k: v for k, v in indicators.__dict__.items() if not k.startswith("_")}
             elif hasattr(indicators, "to_dict"):
                 indicators_dict = indicators.to_dict()
             else:
@@ -290,9 +260,7 @@ class TechnicalIndicatorSource(MarketDataSource):
             logger.error(f"Technical indicator fetch error: {e}")
             return DataResult(success=False, error=str(e), source=self.name)
 
-    def _calculate_basic_indicators(
-        self, symbol: str, as_of_date: Optional[date]
-    ) -> DataResult:
+    def _calculate_basic_indicators(self, symbol: str, as_of_date: Optional[date]) -> DataResult:
         """Calculate basic indicators from price data using PriceService"""
         try:
             from investigator.domain.services.market_data.price_service import (
@@ -376,9 +344,7 @@ class TechnicalIndicatorSource(MarketDataSource):
 
         return signals
 
-    def fetch_historical(
-        self, symbol: str, start_date: date, end_date: date
-    ) -> DataResult:
+    def fetch_historical(self, symbol: str, start_date: date, end_date: date) -> DataResult:
         """Historical indicators not supported - use current only"""
         return self._fetch_impl(symbol, end_date)
 
@@ -395,9 +361,7 @@ class ShortInterestSource(DataSource):
     """
 
     def __init__(self):
-        super().__init__(
-            "short_interest", DataCategory.SENTIMENT, DataFrequency.BIWEEKLY
-        )
+        super().__init__("short_interest", DataCategory.SENTIMENT, DataFrequency.BIWEEKLY)
 
     @property
     def metadata(self) -> SourceMetadata:
@@ -447,9 +411,7 @@ class ShortInterestSource(DataSource):
                             "short_interest": int(row[1]) if row[1] else None,
                             "avg_volume": int(row[2]) if row[2] else None,
                             "days_to_cover": float(row[3]) if row[3] else None,
-                            "short_pct_float": float(row[4]) * 100
-                            if row[4]
-                            else None,  # Convert ratio to percent
+                            "short_pct_float": float(row[4]) * 100 if row[4] else None,  # Convert ratio to percent
                         }
                     )
 
@@ -478,12 +440,10 @@ class ShortInterestSource(DataSource):
             # Calculate trend
             trend = "stable"
             if len(history) >= 2:
-                if history[0].get("short_interest") and history[1].get(
-                    "short_interest"
-                ):
-                    change = (
-                        history[0]["short_interest"] - history[1]["short_interest"]
-                    ) / history[1]["short_interest"]
+                if history[0].get("short_interest") and history[1].get("short_interest"):
+                    change = (history[0]["short_interest"] - history[1]["short_interest"]) / history[1][
+                        "short_interest"
+                    ]
                     if change > 0.1:
                         trend = "increasing"
                     elif change < -0.1:

@@ -142,9 +142,7 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
             # Get SEC financial data
             if self._sec_tool is None:
                 return ToolResult.create_failure("SEC filing tool not initialized")
-            sec_result = await self._sec_tool.execute(
-                symbol=symbol, action="extract_metrics"
-            )
+            sec_result = await self._sec_tool.execute(symbol=symbol, action="extract_metrics")
 
             if not sec_result.success:
                 return ToolResult.create_failure(
@@ -169,8 +167,7 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
                 return await self._calculate_composite(fin_data)
             else:
                 return ToolResult.create_failure(
-                    f"Unknown action: {action}. Valid actions: "
-                    "all, altman, beneish, piotroski, composite"
+                    f"Unknown action: {action}. Valid actions: " "all, altman, beneish, piotroski, composite"
                 )
 
         except Exception as e:
@@ -209,9 +206,7 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
             stockholders_equity=bs.get("stockholders_equity"),
             retained_earnings=bs.get("retained_earnings"),
             # Income Statement
-            revenue=is_.get("revenue")
-            or is_.get("revenues")
-            or is_.get("total_revenue"),
+            revenue=is_.get("revenue") or is_.get("revenues") or is_.get("total_revenue"),
             gross_profit=is_.get("gross_profit"),
             operating_income=is_.get("operating_income"),
             net_income=is_.get("net_income") or is_.get("net_income_loss"),
@@ -223,8 +218,7 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
             operating_cash_flow=cf.get("operating_cash_flow"),
             capital_expenditures=cf.get("capital_expenditures") or cf.get("capex"),
             # Market Data
-            shares_outstanding=bs.get("shares_outstanding")
-            or ratios.get("shares_outstanding"),
+            shares_outstanding=bs.get("shares_outstanding") or ratios.get("shares_outstanding"),
         )
 
     async def _calculate_all(self, fin_data) -> ToolResult:
@@ -232,9 +226,7 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
         if self._service is None:
             return ToolResult.create_failure("Credit risk service not available")
         loop = asyncio.get_event_loop()
-        assessment = await loop.run_in_executor(
-            None, self._service.calculate_all, fin_data
-        )
+        assessment = await loop.run_in_executor(None, self._service.calculate_all, fin_data)
 
         return ToolResult.create_success(
             output=assessment.to_dict(),
@@ -249,9 +241,7 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
         if self._service is None:
             return ToolResult.create_failure("Credit risk service not available")
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None, self._service.calculate_altman, fin_data
-        )
+        result = await loop.run_in_executor(None, self._service.calculate_altman, fin_data)
 
         return ToolResult.create_success(
             output=result.to_dict(),
@@ -267,9 +257,7 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
         if self._service is None:
             return ToolResult.create_failure("Credit risk service not available")
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None, self._service.calculate_beneish, fin_data
-        )
+        result = await loop.run_in_executor(None, self._service.calculate_beneish, fin_data)
 
         return ToolResult.create_success(
             output=result.to_dict(),
@@ -285,9 +273,7 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
         if self._service is None:
             return ToolResult.create_failure("Credit risk service not available")
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None, self._service.calculate_piotroski, fin_data
-        )
+        result = await loop.run_in_executor(None, self._service.calculate_piotroski, fin_data)
 
         return ToolResult.create_success(
             output=result.to_dict(),
@@ -304,9 +290,7 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
         if self._service is None:
             return ToolResult.create_failure("Credit risk service not available")
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None, self._service.calculate_composite, fin_data
-        )
+        result = await loop.run_in_executor(None, self._service.calculate_composite, fin_data)
 
         return ToolResult.create_success(
             output=result.to_dict(),

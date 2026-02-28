@@ -78,9 +78,7 @@ def test_enrich_company_profile_calculates_revenue_growth_from_quarters():
 
 
 def test_enrich_company_profile_sets_quality_flags_and_financial_archetype():
-    profile = CompanyProfile(
-        symbol="JPM", sector="Financial Services", industry="Banks"
-    )
+    profile = CompanyProfile(symbol="JPM", sector="Financial Services", industry="Banks")
     company_data = {
         "quarterly_data": [{} for _ in range(4)],
         "rule_of_40_score": 10.0,
@@ -153,9 +151,7 @@ def test_enrich_company_profile_prioritizes_diluted_shares_for_dual_class_compan
 
 def test_enrich_company_profile_falls_back_to_basic_shares_when_diluted_unavailable():
     """Test that basic shares_outstanding is used when diluted is not available."""
-    profile = CompanyProfile(
-        symbol="AAPL", sector="Technology", industry="Consumer Electronics"
-    )
+    profile = CompanyProfile(symbol="AAPL", sector="Technology", industry="Consumer Electronics")
     company_data = {
         "quarterly_data": [{} for _ in range(4)],
         "rule_of_40_score": 40.0,

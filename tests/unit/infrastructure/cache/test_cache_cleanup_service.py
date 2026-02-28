@@ -10,9 +10,7 @@ from investigator.infrastructure.cache.cache_cleaner import CacheCleanupService
 from investigator.infrastructure.cache.cache_types import CacheType
 
 
-def _write_cache_file(
-    path: Path, *, age: timedelta, metadata: Optional[Dict[str, str]] = None
-) -> Path:
+def _write_cache_file(path: Path, *, age: timedelta, metadata: Optional[Dict[str, str]] = None) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "response": {"data": "payload"},
@@ -31,9 +29,7 @@ def _write_cache_file(
 
 def test_cleanup_service_start_stop(monkeypatch):
     async def runner():
-        service = CacheCleanupService(
-            cache_manager=Mock(), cleanup_interval_seconds=0.01
-        )
+        service = CacheCleanupService(cache_manager=Mock(), cleanup_interval_seconds=0.01)
         monkeypatch.setattr(service, "_run_cleanup", AsyncMock())
 
         await service.start()
@@ -65,9 +61,7 @@ def test_cleanup_removes_expired_files(tmp_path: Path):
 
         assert expired_file.exists() and fresh_file.exists()
 
-        await service._cleanup_directory(
-            str(tmp_path / "llm_cache"), timedelta(days=7), CacheType.LLM_RESPONSE
-        )
+        await service._cleanup_directory(str(tmp_path / "llm_cache"), timedelta(days=7), CacheType.LLM_RESPONSE)
 
         assert not expired_file.exists()
         assert fresh_file.exists()

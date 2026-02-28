@@ -135,9 +135,7 @@ def test_normalize_ytd_missing_prev_period_logs_boundary_info_for_earliest_year(
         },
     ]
 
-    with caplog.at_level(
-        logging.INFO, logger="investigator.infrastructure.sec.data_processor"
-    ):
+    with caplog.at_level(logging.INFO, logger="investigator.infrastructure.sec.data_processor"):
         processor._normalize_ytd_to_pit(
             data=data,
             income_qtrs=2,
@@ -175,9 +173,7 @@ def test_normalize_ytd_missing_prev_period_keeps_critical_warning_for_non_bounda
         },
     ]
 
-    with caplog.at_level(
-        logging.WARNING, logger="investigator.infrastructure.sec.data_processor"
-    ):
+    with caplog.at_level(logging.WARNING, logger="investigator.infrastructure.sec.data_processor"):
         processor._normalize_ytd_to_pit(
             data=data,
             income_qtrs=2,
@@ -232,9 +228,7 @@ def test_select_best_entries_invalid_fy_historical_logs_info_not_warning(caplog)
     processor._detect_fiscal_year_end = lambda *_args, **_kwargs: None
     processor._score_period_for_selection = lambda *_args, **_kwargs: 1.0
 
-    historical_year = datetime.now().year - (
-        processor.ADSH_INVALID_FY_WARNING_YEARS + 1
-    )
+    historical_year = datetime.now().year - (processor.ADSH_INVALID_FY_WARNING_YEARS + 1)
     period_end = f"{historical_year}-03-31"
     all_entries = [
         {
@@ -255,17 +249,11 @@ def test_select_best_entries_invalid_fy_historical_logs_info_not_warning(caplog)
         },
     ]
 
-    with caplog.at_level(
-        logging.INFO, logger="investigator.infrastructure.sec.data_processor"
-    ):
-        best_entries = processor._select_best_entries_per_period(
-            all_entries, "TEST", {}
-        )
+    with caplog.at_level(logging.INFO, logger="investigator.infrastructure.sec.data_processor"):
+        best_entries = processor._select_best_entries_per_period(all_entries, "TEST", {})
 
     assert len(best_entries) == 1
-    matching_records = [
-        r for r in caplog.records if "All entries for period ending" in r.message
-    ]
+    matching_records = [r for r in caplog.records if "All entries for period ending" in r.message]
     assert any(r.levelno == logging.INFO for r in matching_records)
     assert not any(r.levelno >= logging.WARNING for r in matching_records)
 
@@ -296,15 +284,8 @@ def test_select_best_entries_invalid_fy_recent_keeps_warning(caplog):
         },
     ]
 
-    with caplog.at_level(
-        logging.WARNING, logger="investigator.infrastructure.sec.data_processor"
-    ):
-        best_entries = processor._select_best_entries_per_period(
-            all_entries, "TEST", {}
-        )
+    with caplog.at_level(logging.WARNING, logger="investigator.infrastructure.sec.data_processor"):
+        best_entries = processor._select_best_entries_per_period(all_entries, "TEST", {})
 
     assert len(best_entries) == 1
-    assert any(
-        r.levelno == logging.WARNING and "All entries for period ending" in r.message
-        for r in caplog.records
-    )
+    assert any(r.levelno == logging.WARNING and "All entries for period ending" in r.message for r in caplog.records)

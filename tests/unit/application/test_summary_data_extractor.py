@@ -208,27 +208,19 @@ class TestExtractionResult:
     """Tests for ExtractionResult dataclass."""
 
     def test_has_value_with_valid_string(self):
-        result = ExtractionResult(
-            value="BUY", confidence=ExtractionConfidence.HIGH, source_path="test.path"
-        )
+        result = ExtractionResult(value="BUY", confidence=ExtractionConfidence.HIGH, source_path="test.path")
         assert result.has_value is True
 
     def test_has_value_with_none(self):
-        result = ExtractionResult(
-            value=None, confidence=ExtractionConfidence.NONE, source_path="test"
-        )
+        result = ExtractionResult(value=None, confidence=ExtractionConfidence.NONE, source_path="test")
         assert result.has_value is False
 
     def test_has_value_with_na_string(self):
-        result = ExtractionResult(
-            value="N/A", confidence=ExtractionConfidence.MEDIUM, source_path="test"
-        )
+        result = ExtractionResult(value="N/A", confidence=ExtractionConfidence.MEDIUM, source_path="test")
         assert result.has_value is False
 
     def test_has_value_with_empty_list(self):
-        result = ExtractionResult(
-            value=[], confidence=ExtractionConfidence.HIGH, source_path="test"
-        )
+        result = ExtractionResult(value=[], confidence=ExtractionConfidence.HIGH, source_path="test")
         assert result.has_value is False
 
     def test_has_value_with_valid_list(self):
@@ -537,9 +529,7 @@ class TestSummaryDataExtractor:
         assert summary["valuation"]["price_target_12m"] == 95.00
         assert summary["valuation"]["current_price"] == 85.00
         # Expected return: (95-85)/85 * 100 = 11.76%
-        assert summary["valuation"]["expected_return_pct"] == pytest.approx(
-            11.76, rel=0.01
-        )
+        assert summary["valuation"]["expected_return_pct"] == pytest.approx(11.76, rel=0.01)
 
     def test_calculates_investment_grade_when_missing(self):
         """Should calculate investment grade from upside when explicit grade missing."""
@@ -635,9 +625,7 @@ class TestSummaryDataExtractor:
 
         assert summary["recommendation"]["action"] == "HOLD"
         assert summary["recommendation"]["time_horizon"] == "medium_term"
-        assert summary["thesis"]["investment_thesis"].startswith(
-            "Execution quality remains strong"
-        )
+        assert summary["thesis"]["investment_thesis"].startswith("Execution quality remains strong")
         assert summary["thesis"]["key_strengths"][:2] == [
             "Strong FCF generation",
             "Dividend discipline",

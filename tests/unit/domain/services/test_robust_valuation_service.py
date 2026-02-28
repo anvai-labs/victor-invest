@@ -54,15 +54,9 @@ def mock_stock_db_manager():
 def valuation_service(mock_sec_db_manager, mock_stock_db_manager):
     """Create RobustValuationService with mocked dependencies."""
     with (
-        patch(
-            "investigator.domain.services.robust_valuation_service.SectorMultiplesTrendAdjusted"
-        ),
-        patch(
-            "investigator.domain.services.robust_valuation_service.CompanyFairMultipleCalculator"
-        ),
-        patch(
-            "investigator.domain.services.robust_valuation_service.CrossSectionalValuation"
-        ),
+        patch("investigator.domain.services.robust_valuation_service.SectorMultiplesTrendAdjusted"),
+        patch("investigator.domain.services.robust_valuation_service.CompanyFairMultipleCalculator"),
+        patch("investigator.domain.services.robust_valuation_service.CrossSectionalValuation"),
     ):
         service = RobustValuationService(
             sec_db_manager=mock_sec_db_manager,
@@ -157,9 +151,7 @@ class TestLayer2Data:
             ),
         }
 
-        with patch.object(
-            valuation_service, "_get_layer1_data", return_value=layer1_data
-        ):
+        with patch.object(valuation_service, "_get_layer1_data", return_value=layer1_data):
             with patch.object(
                 valuation_service.layer2,
                 "calculate_fair_multiple",
@@ -221,9 +213,7 @@ class TestLayer2Data:
             ),
         }
 
-        with patch.object(
-            valuation_service, "_get_layer1_data", return_value=layer1_data
-        ):
+        with patch.object(valuation_service, "_get_layer1_data", return_value=layer1_data):
             with patch.object(
                 valuation_service.layer2,
                 "calculate_fair_multiple",
@@ -312,9 +302,7 @@ class TestLayer3Data:
         symbol = "AAPL"
         industry = "Unknown Industry"
 
-        with patch.object(
-            valuation_service.layer3, "compare_to_peers", return_value=None
-        ):
+        with patch.object(valuation_service.layer3, "compare_to_peers", return_value=None):
             result = valuation_service._get_layer3_data(symbol, industry)
 
         assert result == {}
@@ -572,11 +560,7 @@ class TestSynthesis:
         assert "pb_based" in synthesis["valuation_methods"]
         assert len(synthesis["valuation_methods"]) == 3
         assert synthesis["fair_value_estimate"] > 0
-        assert (
-            synthesis["fair_value_range"][0]
-            < synthesis["fair_value_estimate"]
-            < synthesis["fair_value_range"][1]
-        )
+        assert synthesis["fair_value_range"][0] < synthesis["fair_value_estimate"] < synthesis["fair_value_range"][1]
 
     def test_synthesize_layers_insufficient_data(self, valuation_service):
         """Test synthesis with insufficient data."""
@@ -847,15 +831,9 @@ class TestCalculateRobustValuation:
         # Mock Layer 3
         layer3_data = {}
 
-        with patch.object(
-            valuation_service, "_get_layer1_data", return_value=layer1_data
-        ):
-            with patch.object(
-                valuation_service, "_get_layer2_data", return_value=layer2_data
-            ):
-                with patch.object(
-                    valuation_service, "_get_layer3_data", return_value=layer3_data
-                ):
+        with patch.object(valuation_service, "_get_layer1_data", return_value=layer1_data):
+            with patch.object(valuation_service, "_get_layer2_data", return_value=layer2_data):
+                with patch.object(valuation_service, "_get_layer3_data", return_value=layer3_data):
                     result = valuation_service.calculate_robust_valuation(
                         symbol=symbol,
                         sector=sector,
@@ -901,9 +879,7 @@ class TestCalculateRobustValuation:
         # Mock Layer 1
         layer1_data = {"pe": 55.0}
 
-        with patch.object(
-            valuation_service, "_get_layer1_data", return_value=layer1_data
-        ):
+        with patch.object(valuation_service, "_get_layer1_data", return_value=layer1_data):
             with patch.object(valuation_service, "_get_layer2_data", return_value=None):
                 result = valuation_service.calculate_robust_valuation(
                     symbol=symbol,
@@ -962,9 +938,7 @@ class TestGenerateComprehensiveReport:
             calculated_at=datetime.now(timezone.utc).isoformat(),
         )
 
-        with patch.object(
-            valuation_service, "calculate_robust_valuation", return_value=mock_valuation
-        ):
+        with patch.object(valuation_service, "calculate_robust_valuation", return_value=mock_valuation):
             report = valuation_service.generate_comprehensive_report(
                 symbol=symbol,
                 sector=sector,
@@ -989,9 +963,7 @@ class TestGenerateComprehensiveReport:
         symbol = "AAPL"
         sector = "Technology"
 
-        with patch.object(
-            valuation_service, "calculate_robust_valuation", return_value=None
-        ):
+        with patch.object(valuation_service, "calculate_robust_valuation", return_value=None):
             report = valuation_service.generate_comprehensive_report(
                 symbol=symbol,
                 sector=sector,
@@ -1015,15 +987,9 @@ class TestDefaultWeights:
     def test_custom_weights(self, mock_sec_db_manager, mock_stock_db_manager):
         """Test custom weight configuration."""
         with (
-            patch(
-                "investigator.domain.services.robust_valuation_service.SectorMultiplesTrendAdjusted"
-            ),
-            patch(
-                "investigator.domain.services.robust_valuation_service.CompanyFairMultipleCalculator"
-            ),
-            patch(
-                "investigator.domain.services.robust_valuation_service.CrossSectionalValuation"
-            ),
+            patch("investigator.domain.services.robust_valuation_service.SectorMultiplesTrendAdjusted"),
+            patch("investigator.domain.services.robust_valuation_service.CompanyFairMultipleCalculator"),
+            patch("investigator.domain.services.robust_valuation_service.CrossSectionalValuation"),
         ):
             service = RobustValuationService(
                 sec_db_manager=mock_sec_db_manager,

@@ -201,9 +201,7 @@ class ProfitabilityClassifier:
 
             # Calculate margin from value and revenue if available
             if margin is None and value is not None:
-                revenue = self._get_value(financials, "revenue") or self._get_value(
-                    financials, "total_revenue"
-                )
+                revenue = self._get_value(financials, "revenue") or self._get_value(financials, "total_revenue")
                 if revenue and revenue > 0:
                     margin = (value / revenue) * 100
 
@@ -238,9 +236,7 @@ class ProfitabilityClassifier:
         )
 
         # Get model applicability for this stage
-        applicability = self.MODEL_APPLICABILITY.get(
-            stage, self.MODEL_APPLICABILITY[ProfitabilityStage.UNKNOWN]
-        )
+        applicability = self.MODEL_APPLICABILITY.get(stage, self.MODEL_APPLICABILITY[ProfitabilityStage.UNKNOWN])
 
         # Add notes
         if indicators_total == 0:
@@ -248,11 +244,7 @@ class ProfitabilityClassifier:
         elif indicators_positive == 0 and indicators_total > 0:
             notes.append("All available indicators show losses")
         elif indicators_positive < indicators_total:
-            negative_indicators = [
-                i.name
-                for i in indicators_checked
-                if i.value is not None and not i.is_positive
-            ]
+            negative_indicators = [i.name for i in indicators_checked if i.value is not None and not i.is_positive]
             notes.append(f"Mixed signals: {', '.join(negative_indicators)} negative")
 
         return ProfitabilityClassification(
@@ -317,19 +309,13 @@ class ProfitabilityClassifier:
         # Determine stage
         if positive_count == total_count and total_count >= 2:
             # All indicators positive
-            if (
-                primary_margin is not None
-                and primary_margin >= self.margin_thresholds["profitable"]
-            ):
+            if primary_margin is not None and primary_margin >= self.margin_thresholds["profitable"]:
                 return (
                     ProfitabilityStage.PROFITABLE,
                     primary_indicator,
                     min(0.95, base_confidence),
                 )
-            elif (
-                primary_margin is not None
-                and primary_margin >= self.margin_thresholds["marginal"]
-            ):
+            elif primary_margin is not None and primary_margin >= self.margin_thresholds["marginal"]:
                 return (
                     ProfitabilityStage.MARGINALLY_PROFITABLE,
                     primary_indicator,
@@ -344,10 +330,7 @@ class ProfitabilityClassifier:
 
         elif positive_count >= total_count / 2:
             # Majority positive
-            if (
-                primary_margin is not None
-                and primary_margin >= self.margin_thresholds["profitable"]
-            ):
+            if primary_margin is not None and primary_margin >= self.margin_thresholds["profitable"]:
                 return (
                     ProfitabilityStage.MARGINALLY_PROFITABLE,
                     primary_indicator,

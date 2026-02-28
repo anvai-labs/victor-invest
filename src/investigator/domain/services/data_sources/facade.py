@@ -187,19 +187,13 @@ class DataSourceFacade:
         fetch_funcs = []
 
         if DataSourceType.INSIDER_SENTIMENT in sources:
-            fetch_funcs.append(
-                partial(self._fetch_insider_data_sync, symbol, as_of_date)
-            )
+            fetch_funcs.append(partial(self._fetch_insider_data_sync, symbol, as_of_date))
 
         if DataSourceType.INSTITUTIONAL_HOLDINGS in sources:
-            fetch_funcs.append(
-                partial(self._fetch_institutional_data_sync, symbol, as_of_date)
-            )
+            fetch_funcs.append(partial(self._fetch_institutional_data_sync, symbol, as_of_date))
 
         if DataSourceType.SHORT_INTEREST in sources:
-            fetch_funcs.append(
-                partial(self._fetch_short_interest_sync, symbol, as_of_date)
-            )
+            fetch_funcs.append(partial(self._fetch_short_interest_sync, symbol, as_of_date))
 
         if DataSourceType.TREASURY_YIELDS in sources:
             fetch_funcs.append(partial(self._fetch_treasury_data_sync, as_of_date))
@@ -211,14 +205,10 @@ class DataSourceFacade:
             fetch_funcs.append(partial(self._fetch_market_regime_sync, as_of_date))
 
         if DataSourceType.CREDIT_RISK in sources:
-            fetch_funcs.append(
-                partial(self._fetch_credit_risk_sync, symbol, as_of_date)
-            )
+            fetch_funcs.append(partial(self._fetch_credit_risk_sync, symbol, as_of_date))
 
         if DataSourceType.TECHNICAL_INDICATORS in sources:
-            fetch_funcs.append(
-                partial(self._fetch_technical_data_sync, symbol, as_of_date)
-            )
+            fetch_funcs.append(partial(self._fetch_technical_data_sync, symbol, as_of_date))
 
         if DataSourceType.PRICE_DATA in sources:
             fetch_funcs.append(partial(self._fetch_price_data_sync, symbol, as_of_date))
@@ -233,9 +223,7 @@ class DataSourceFacade:
         if fetch_funcs:
             import concurrent.futures
 
-            with concurrent.futures.ThreadPoolExecutor(
-                max_workers=min(len(fetch_funcs), 5)
-            ) as executor:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(fetch_funcs), 5)) as executor:
                 futures = [executor.submit(func) for func in fetch_funcs]
                 for future in concurrent.futures.as_completed(futures):
                     try:
@@ -269,9 +257,7 @@ class DataSourceFacade:
         import concurrent.futures
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(
-                self.get_historical_data_sync, symbol, as_of_date, include_sources
-            )
+            future = executor.submit(self.get_historical_data_sync, symbol, as_of_date, include_sources)
             return future.result(timeout=60)
 
     async def get_batch_data(
@@ -293,10 +279,7 @@ class DataSourceFacade:
         as_of_date = as_of_date or date.today()
 
         # Fetch all symbols concurrently
-        tasks = [
-            self.get_historical_data(symbol, as_of_date, include_sources)
-            for symbol in symbols
-        ]
+        tasks = [self.get_historical_data(symbol, as_of_date, include_sources) for symbol in symbols]
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -358,9 +341,7 @@ class DataSourceFacade:
 
         return {"type": DataSourceType.INSIDER_SENTIMENT, "data": {}}
 
-    def _fetch_institutional_data_sync(
-        self, symbol: str, as_of_date: date
-    ) -> Dict[str, Any]:
+    def _fetch_institutional_data_sync(self, symbol: str, as_of_date: date) -> Dict[str, Any]:
         """Fetch institutional holdings data from database (synchronous)."""
         try:
             from sqlalchemy import text
@@ -390,9 +371,7 @@ class DataSourceFacade:
                     return {
                         "type": DataSourceType.INSTITUTIONAL_HOLDINGS,
                         "data": {
-                            "total_institutional_shares": float(row[0])
-                            if row[0]
-                            else 0,
+                            "total_institutional_shares": float(row[0]) if row[0] else 0,
                             "num_institutions": int(row[1]) if row[1] else 0,
                             "total_institutional_value": float(row[2]) if row[2] else 0,
                         },
@@ -402,9 +381,7 @@ class DataSourceFacade:
 
         return {"type": DataSourceType.INSTITUTIONAL_HOLDINGS, "data": {}}
 
-    def _fetch_short_interest_sync(
-        self, symbol: str, as_of_date: date
-    ) -> Dict[str, Any]:
+    def _fetch_short_interest_sync(self, symbol: str, as_of_date: date) -> Dict[str, Any]:
         """Fetch short interest data from database (synchronous)."""
         try:
             from sqlalchemy import text
@@ -479,9 +456,7 @@ class DataSourceFacade:
                             "yield_30yr": float(row[7]) if row[7] else None,
                             "spread_10y_2y": float(row[8]) if row[8] else None,
                             "spread_10y_3mo": float(row[9]) if row[9] else None,
-                            "is_inverted": bool(row[10])
-                            if row[10] is not None
-                            else False,
+                            "is_inverted": bool(row[10]) if row[10] is not None else False,
                         },
                     }
         except Exception as e:
@@ -568,12 +543,8 @@ class DataSourceFacade:
                             "credit_cycle_phase": row[1],
                             "volatility_regime": row[2],
                             "recession_probability": float(row[3]) if row[3] else 0,
-                            "yield_curve_inverted": bool(row[4])
-                            if row[4] is not None
-                            else False,
-                            "risk_off_signal": bool(row[5])
-                            if row[5] is not None
-                            else False,
+                            "yield_curve_inverted": bool(row[4]) if row[4] is not None else False,
+                            "risk_off_signal": bool(row[5]) if row[5] is not None else False,
                         },
                     }
         except Exception as e:
@@ -619,9 +590,7 @@ class DataSourceFacade:
 
         return {"type": DataSourceType.CREDIT_RISK, "data": {}}
 
-    def _fetch_technical_data_sync(
-        self, symbol: str, as_of_date: date
-    ) -> Dict[str, Any]:
+    def _fetch_technical_data_sync(self, symbol: str, as_of_date: date) -> Dict[str, Any]:
         """Fetch technical indicator data (synchronous)."""
         # Technical data is typically calculated on-demand from price history
         # This would integrate with the technical analysis service
@@ -739,37 +708,23 @@ class DataSourceFacade:
                 # Also extract key summary metrics for RL features
                 summary = {
                     # GDP outlook
-                    "gdpnow": self._extract_indicator_value(
-                        indicators, "atlanta_fed", "gdpnow"
-                    ),
+                    "gdpnow": self._extract_indicator_value(indicators, "atlanta_fed", "gdpnow"),
                     # Financial conditions
-                    "cfnai": self._extract_indicator_value(
-                        indicators, "chicago_fed", "cfnai"
-                    ),
-                    "nfci": self._extract_indicator_value(
-                        indicators, "chicago_fed", "nfci"
-                    ),
-                    "kcfsi": self._extract_indicator_value(
-                        indicators, "kansas_city_fed", "kcfsi"
-                    ),
+                    "cfnai": self._extract_indicator_value(indicators, "chicago_fed", "cfnai"),
+                    "nfci": self._extract_indicator_value(indicators, "chicago_fed", "nfci"),
+                    "kcfsi": self._extract_indicator_value(indicators, "kansas_city_fed", "kcfsi"),
                     # Inflation
                     "inflation_expectations": self._extract_indicator_value(
                         indicators, "cleveland_fed", "inflation_expectations"
                     ),
-                    "trimmed_mean_pce": self._extract_indicator_value(
-                        indicators, "dallas_fed", "trimmed_mean_pce"
-                    ),
-                    "median_cpi": self._extract_indicator_value(
-                        indicators, "cleveland_fed", "median_cpi"
-                    ),
+                    "trimmed_mean_pce": self._extract_indicator_value(indicators, "dallas_fed", "trimmed_mean_pce"),
+                    "median_cpi": self._extract_indicator_value(indicators, "cleveland_fed", "median_cpi"),
                     # Recession
                     "recession_probability": self._extract_indicator_value(
                         indicators, "new_york_fed", "recession_probability"
                     ),
                     # Manufacturing
-                    "empire_state_mfg": self._extract_indicator_value(
-                        indicators, "new_york_fed", "empire_state_mfg"
-                    ),
+                    "empire_state_mfg": self._extract_indicator_value(indicators, "new_york_fed", "empire_state_mfg"),
                 }
 
                 return {
@@ -820,8 +775,7 @@ class DataSourceFacade:
 
             # Build connection URL for stock database where macro indicators are stored
             stock_db_url = (
-                f"postgresql://{db_config.username}:{db_config.password}"
-                f"@{db_config.host}:{db_config.port}/stock"
+                f"postgresql://{db_config.username}:{db_config.password}" f"@{db_config.host}:{db_config.port}/stock"
             )
 
             engine = create_engine(stock_db_url)
@@ -890,8 +844,7 @@ class DataSourceFacade:
                         "skew": skew,
                         "volatility_regime": volatility_regime,
                         "term_structure": term_structure,
-                        "is_backwardation": term_structure
-                        in ("backwardation", "steep_backwardation"),
+                        "is_backwardation": term_structure in ("backwardation", "steep_backwardation"),
                         "skew_elevated": skew > 130 if skew else False,
                         "details": cboe_data,
                     },
@@ -954,9 +907,7 @@ class DataSourceFacade:
             # Clean entries older than TTL
             cutoff = (now - self._cache_ttl).date()
             for symbol in list(self._cache.keys()):
-                self._cache[symbol] = {
-                    d: v for d, v in self._cache[symbol].items() if d >= cutoff
-                }
+                self._cache[symbol] = {d: v for d, v in self._cache[symbol].items() if d >= cutoff}
                 if not self._cache[symbol]:
                     del self._cache[symbol]
             self._last_cache_clean = now

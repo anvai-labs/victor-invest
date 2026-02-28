@@ -195,20 +195,11 @@ class IntegratedValuationSignals:
             "base_fair_value": self.base_fair_value,
             "adjusted_fair_value": self.adjusted_fair_value,
             "current_price": self.current_price,
-            "upside_pct": (
-                (self.adjusted_fair_value - self.current_price) / self.current_price
-            )
-            * 100,
+            "upside_pct": ((self.adjusted_fair_value - self.current_price) / self.current_price) * 100,
             "credit_risk": self.credit_risk.to_dict() if self.credit_risk else None,
-            "insider_sentiment": self.insider_sentiment.to_dict()
-            if self.insider_sentiment
-            else None,
-            "short_interest": self.short_interest.to_dict()
-            if self.short_interest
-            else None,
-            "market_regime": self.market_regime.to_dict()
-            if self.market_regime
-            else None,
+            "insider_sentiment": self.insider_sentiment.to_dict() if self.insider_sentiment else None,
+            "short_interest": self.short_interest.to_dict() if self.short_interest else None,
+            "market_regime": self.market_regime.to_dict() if self.market_regime else None,
             "total_adjustment_pct": self.total_adjustment_pct,
             "confidence_adjustment": self.confidence_adjustment,
             "warnings": self.warnings,
@@ -273,9 +264,7 @@ class ValuationSignalIntegrator:
         self.config = config or {}
 
         # Override defaults from config if provided
-        self.distress_discounts = self.config.get(
-            "distress_discounts", self.DISTRESS_DISCOUNTS
-        )
+        self.distress_discounts = self.config.get("distress_discounts", self.DISTRESS_DISCOUNTS)
         self.insider_adjustments = self.config.get(
             "insider_confidence_adjustments", self.INSIDER_CONFIDENCE_ADJUSTMENTS
         )
@@ -304,21 +293,15 @@ class ValuationSignalIntegrator:
         if altman_zscore is not None:
             if altman_zscore > 2.99:
                 altman_zone = "safe"
-                factors.append(
-                    f"Altman Z-Score {altman_zscore:.2f} in safe zone (>2.99)"
-                )
+                factors.append(f"Altman Z-Score {altman_zscore:.2f} in safe zone (>2.99)")
             elif altman_zscore >= 1.81:
                 altman_zone = "grey"
                 distress_points += 1
-                factors.append(
-                    f"Altman Z-Score {altman_zscore:.2f} in grey zone (1.81-2.99)"
-                )
+                factors.append(f"Altman Z-Score {altman_zscore:.2f} in grey zone (1.81-2.99)")
             else:
                 altman_zone = "distress"
                 distress_points += 3
-                factors.append(
-                    f"Altman Z-Score {altman_zscore:.2f} in distress zone (<1.81)"
-                )
+                factors.append(f"Altman Z-Score {altman_zscore:.2f} in distress zone (<1.81)")
 
         # Analyze Beneish M-Score
         manipulation_flag = False
@@ -326,33 +309,23 @@ class ValuationSignalIntegrator:
             if beneish_mscore > -1.78:
                 manipulation_flag = True
                 distress_points += 2
-                factors.append(
-                    f"Beneish M-Score {beneish_mscore:.2f} indicates manipulation risk (>-1.78)"
-                )
+                factors.append(f"Beneish M-Score {beneish_mscore:.2f} indicates manipulation risk (>-1.78)")
             else:
-                factors.append(
-                    f"Beneish M-Score {beneish_mscore:.2f} - no manipulation signal"
-                )
+                factors.append(f"Beneish M-Score {beneish_mscore:.2f} - no manipulation signal")
 
         # Analyze Piotroski F-Score
         piotroski_grade = None
         if piotroski_fscore is not None:
             if piotroski_fscore >= 8:
                 piotroski_grade = "strong"
-                factors.append(
-                    f"Piotroski F-Score {piotroski_fscore} indicates strong fundamentals"
-                )
+                factors.append(f"Piotroski F-Score {piotroski_fscore} indicates strong fundamentals")
             elif piotroski_fscore >= 5:
                 piotroski_grade = "moderate"
-                factors.append(
-                    f"Piotroski F-Score {piotroski_fscore} indicates moderate fundamentals"
-                )
+                factors.append(f"Piotroski F-Score {piotroski_fscore} indicates moderate fundamentals")
             else:
                 piotroski_grade = "weak"
                 distress_points += 2
-                factors.append(
-                    f"Piotroski F-Score {piotroski_fscore} indicates weak fundamentals"
-                )
+                factors.append(f"Piotroski F-Score {piotroski_fscore} indicates weak fundamentals")
 
         # Determine distress tier based on cumulative points
         if distress_points >= 5:
@@ -406,55 +379,35 @@ class ValuationSignalIntegrator:
         if sentiment_score is not None:
             if sentiment_score >= 0.7:
                 signal = InsiderSignal.STRONG_BUY
-                factors.append(
-                    f"Sentiment score {sentiment_score:.2f} indicates strong insider buying"
-                )
+                factors.append(f"Sentiment score {sentiment_score:.2f} indicates strong insider buying")
             elif sentiment_score >= 0.3:
                 signal = InsiderSignal.BUY
-                factors.append(
-                    f"Sentiment score {sentiment_score:.2f} indicates insider buying"
-                )
+                factors.append(f"Sentiment score {sentiment_score:.2f} indicates insider buying")
             elif sentiment_score >= -0.3:
                 signal = InsiderSignal.NEUTRAL
-                factors.append(
-                    f"Sentiment score {sentiment_score:.2f} indicates neutral insider activity"
-                )
+                factors.append(f"Sentiment score {sentiment_score:.2f} indicates neutral insider activity")
             elif sentiment_score >= -0.7:
                 signal = InsiderSignal.SELL
-                factors.append(
-                    f"Sentiment score {sentiment_score:.2f} indicates insider selling"
-                )
+                factors.append(f"Sentiment score {sentiment_score:.2f} indicates insider selling")
             else:
                 signal = InsiderSignal.STRONG_SELL
-                factors.append(
-                    f"Sentiment score {sentiment_score:.2f} indicates heavy insider selling"
-                )
+                factors.append(f"Sentiment score {sentiment_score:.2f} indicates heavy insider selling")
         elif buy_sell_ratio is not None:
             if buy_sell_ratio >= 3.0:
                 signal = InsiderSignal.STRONG_BUY
-                factors.append(
-                    f"Buy/sell ratio {buy_sell_ratio:.1f} indicates strong insider buying"
-                )
+                factors.append(f"Buy/sell ratio {buy_sell_ratio:.1f} indicates strong insider buying")
             elif buy_sell_ratio >= 1.5:
                 signal = InsiderSignal.BUY
-                factors.append(
-                    f"Buy/sell ratio {buy_sell_ratio:.1f} indicates insider buying"
-                )
+                factors.append(f"Buy/sell ratio {buy_sell_ratio:.1f} indicates insider buying")
             elif buy_sell_ratio >= 0.67:
                 signal = InsiderSignal.NEUTRAL
-                factors.append(
-                    f"Buy/sell ratio {buy_sell_ratio:.1f} indicates neutral activity"
-                )
+                factors.append(f"Buy/sell ratio {buy_sell_ratio:.1f} indicates neutral activity")
             elif buy_sell_ratio >= 0.33:
                 signal = InsiderSignal.SELL
-                factors.append(
-                    f"Buy/sell ratio {buy_sell_ratio:.1f} indicates insider selling"
-                )
+                factors.append(f"Buy/sell ratio {buy_sell_ratio:.1f} indicates insider selling")
             else:
                 signal = InsiderSignal.STRONG_SELL
-                factors.append(
-                    f"Buy/sell ratio {buy_sell_ratio:.1f} indicates heavy selling"
-                )
+                factors.append(f"Buy/sell ratio {buy_sell_ratio:.1f} indicates heavy selling")
         else:
             signal = InsiderSignal.NEUTRAL
             factors.append("Insufficient insider data for signal")
@@ -470,9 +423,7 @@ class ValuationSignalIntegrator:
 
         confidence_adjustment = self.insider_adjustments.get(signal, 0.0)
         if isinstance(confidence_adjustment, InsiderSignal):
-            confidence_adjustment = self.INSIDER_CONFIDENCE_ADJUSTMENTS.get(
-                confidence_adjustment, 0.0
-            )
+            confidence_adjustment = self.INSIDER_CONFIDENCE_ADJUSTMENTS.get(confidence_adjustment, 0.0)
 
         # Generate interpretation
         interpretations = {
@@ -517,23 +468,17 @@ class ValuationSignalIntegrator:
         if squeeze_score is not None and squeeze_score >= 70:
             signal = ShortInterestSignal.SQUEEZE_RISK
             is_contrarian = True
-            factors.append(
-                f"Squeeze score {squeeze_score:.0f} indicates high squeeze potential"
-            )
+            factors.append(f"Squeeze score {squeeze_score:.0f} indicates high squeeze potential")
         elif short_percent_float is not None:
             if short_percent_float >= 30:
                 signal = ShortInterestSignal.SQUEEZE_RISK
                 is_contrarian = True
                 warning_flag = True
-                factors.append(
-                    f"Short % of float {short_percent_float:.1f}% is extremely elevated"
-                )
+                factors.append(f"Short % of float {short_percent_float:.1f}% is extremely elevated")
             elif short_percent_float >= 15:
                 signal = ShortInterestSignal.ELEVATED
                 warning_flag = True
-                factors.append(
-                    f"Short % of float {short_percent_float:.1f}% is elevated"
-                )
+                factors.append(f"Short % of float {short_percent_float:.1f}% is elevated")
             elif short_percent_float >= 5:
                 signal = ShortInterestSignal.NORMAL
                 factors.append(f"Short % of float {short_percent_float:.1f}% is normal")
@@ -547,9 +492,7 @@ class ValuationSignalIntegrator:
         # Days to cover analysis
         if days_to_cover is not None:
             if days_to_cover >= 10:
-                factors.append(
-                    f"Days to cover {days_to_cover:.1f} suggests squeeze risk"
-                )
+                factors.append(f"Days to cover {days_to_cover:.1f} suggests squeeze risk")
                 if signal == ShortInterestSignal.ELEVATED:
                     signal = ShortInterestSignal.SQUEEZE_RISK
                     is_contrarian = True
@@ -657,9 +600,7 @@ class ValuationSignalIntegrator:
 
         # Yield curve inversion warning
         if yield_curve_spread_bps is not None and yield_curve_spread_bps < 0:
-            factors.append(
-                f"Yield curve inverted ({yield_curve_spread_bps}bps) - recession warning"
-            )
+            factors.append(f"Yield curve inverted ({yield_curve_spread_bps}bps) - recession warning")
             wacc_adjustment_bps += 25
             valuation_factor *= 0.95
 
@@ -673,9 +614,7 @@ class ValuationSignalIntegrator:
             equity_adjustment = 0.10
 
         # Generate interpretation
-        interpretation = (
-            f"Market regime: {credit_cycle_phase.replace('_', ' ').title()}"
-        )
+        interpretation = f"Market regime: {credit_cycle_phase.replace('_', ' ').title()}"
         if wacc_adjustment_bps != 0:
             interpretation += f" with WACC adjustment of {wacc_adjustment_bps:+d}bps"
         if valuation_factor != 1.0:
@@ -760,9 +699,7 @@ class ValuationSignalIntegrator:
                 InsiderSignal.SELL,
                 InsiderSignal.STRONG_SELL,
             ]:
-                warnings.append(
-                    f"Insider selling detected: {insider_sentiment.interpretation}"
-                )
+                warnings.append(f"Insider selling detected: {insider_sentiment.interpretation}")
 
         # Process short interest
         short_interest = None
@@ -774,9 +711,7 @@ class ValuationSignalIntegrator:
             )
 
             if short_interest.warning_flag:
-                warnings.append(
-                    f"Short interest warning: {short_interest.interpretation}"
-                )
+                warnings.append(f"Short interest warning: {short_interest.interpretation}")
 
             if short_interest.is_contrarian_signal:
                 warnings.append("Potential short squeeze - contrarian bullish signal")
@@ -785,16 +720,10 @@ class ValuationSignalIntegrator:
         market_regime = None
         if market_regime_data:
             market_regime = self.calculate_market_regime_adjustment(
-                credit_cycle_phase=market_regime_data.get(
-                    "credit_cycle_phase", "mid_cycle"
-                ),
+                credit_cycle_phase=market_regime_data.get("credit_cycle_phase", "mid_cycle"),
                 volatility_regime=market_regime_data.get("volatility_regime", "normal"),
-                recession_probability=market_regime_data.get(
-                    "recession_probability", "low"
-                ),
-                fed_policy_stance=market_regime_data.get(
-                    "fed_policy_stance", "neutral"
-                ),
+                recession_probability=market_regime_data.get("recession_probability", "low"),
+                fed_policy_stance=market_regime_data.get("fed_policy_stance", "neutral"),
                 risk_free_rate=market_regime_data.get("risk_free_rate", 0.04),
                 yield_curve_spread_bps=market_regime_data.get("yield_curve_spread_bps"),
             )
@@ -803,9 +732,7 @@ class ValuationSignalIntegrator:
             total_adjustment_factor *= market_regime.valuation_adjustment_factor
 
             if market_regime.credit_cycle_phase in ["credit_stress", "credit_crisis"]:
-                warnings.append(
-                    f"Defensive market regime: {market_regime.interpretation}"
-                )
+                warnings.append(f"Defensive market regime: {market_regime.interpretation}")
 
         # Calculate adjusted fair value
         adjusted_fair_value = base_fair_value * total_adjustment_factor

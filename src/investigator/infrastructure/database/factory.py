@@ -102,9 +102,7 @@ class SQLiteConnection(DatabaseConnection):
         self._rowcount = self.cursor.rowcount
         return self
 
-    def _convert_params(
-        self, sql: str, params: Optional[Union[List, Dict]]
-    ) -> Tuple[str, Optional[List]]:
+    def _convert_params(self, sql: str, params: Optional[Union[List, Dict]]) -> Tuple[str, Optional[List]]:
         """Convert PostgreSQL named params to SQLite positional params."""
         if params is None:
             return sql, None
@@ -163,9 +161,7 @@ class PostgresConnection(DatabaseConnection):
         self._rowcount = 0
         self._text = text
 
-    def execute(
-        self, sql: str, params: Optional[Union[List, Dict]] = None
-    ) -> "PostgresConnection":
+    def execute(self, sql: str, params: Optional[Union[List, Dict]] = None) -> "PostgresConnection":
         """Execute SQL with PostgreSQL."""
         # Handle both list and dict params
         if isinstance(params, list):
@@ -279,9 +275,7 @@ class SQLiteDatabase(Database):
             return None
         conn = self.connect()
         try:
-            result = conn.execute(
-                "SELECT version FROM schema_version ORDER BY version DESC LIMIT 1"
-            ).fetchone()
+            result = conn.execute("SELECT version FROM schema_version ORDER BY version DESC LIMIT 1").fetchone()
             return result[0] if result else None
         finally:
             conn.close()
@@ -344,9 +338,7 @@ class PostgresDatabase(Database):
             return None
         conn = self.connect()
         try:
-            result = conn.execute(
-                "SELECT version FROM schema_version ORDER BY version DESC LIMIT 1"
-            ).fetchone()
+            result = conn.execute("SELECT version FROM schema_version ORDER BY version DESC LIMIT 1").fetchone()
             return result[0] if result else None
         finally:
             conn.close()
@@ -439,9 +431,7 @@ def install_schema(db: Database, schema_dir: Optional[Path] = None) -> bool:
         True if successful
     """
     if schema_dir is None:
-        schema_dir = (
-            Path(__file__).parent.parent.parent.parent.parent / "schema" / "install"
-        )
+        schema_dir = Path(__file__).parent.parent.parent.parent.parent / "schema" / "install"
 
     schema_files = [
         "00_core_tables.sql",

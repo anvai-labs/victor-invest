@@ -185,17 +185,13 @@ class CrossSectionalValuation:
             peers = [row[0] for row in result]
 
         if len(peers) < min_peers:
-            logger.warning(
-                f"{symbol}: Only found {len(peers)} peers (min required: {min_peers})"
-            )
+            logger.warning(f"{symbol}: Only found {len(peers)} peers (min required: {min_peers})")
             # Return what we have
             return peers
 
         return peers[:max_peers]
 
-    def calculate_percentile_rank(
-        self, value: float, comparison_values: List[float]
-    ) -> float:
+    def calculate_percentile_rank(self, value: float, comparison_values: List[float]) -> float:
         """Calculate percentile rank of a value among comparison values.
 
         Args:
@@ -279,8 +275,7 @@ class CrossSectionalValuation:
 
         if len(peer_multiples) < min_peers:
             logger.warning(
-                f"{symbol}: Insufficient peer data "
-                f"({len(peer_multiples)} peers with data, min: {min_peers})"
+                f"{symbol}: Insufficient peer data " f"({len(peer_multiples)} peers with data, min: {min_peers})"
             )
             return None
 
@@ -294,9 +289,7 @@ class CrossSectionalValuation:
         peer_p75 = statistics.quantiles(peer_multiples, n=4)[2]  # 75th percentile
 
         # Calculate percentile rank
-        percentile_rank = self.calculate_percentile_rank(
-            company_multiple, peer_multiples
-        )
+        percentile_rank = self.calculate_percentile_rank(company_multiple, peer_multiples)
 
         # Calculate z-score vs peers
         if peer_std > 0:
@@ -314,9 +307,7 @@ class CrossSectionalValuation:
 
         # Calculate premium to peers
         if peer_median > 0:
-            premium_to_peers_pct = (
-                (company_multiple - peer_median) / peer_median
-            ) * 100
+            premium_to_peers_pct = ((company_multiple - peer_median) / peer_median) * 100
         else:
             premium_to_peers_pct = 0.0
 
@@ -347,9 +338,7 @@ class CrossSectionalValuation:
             calculated_at=datetime.now(timezone.utc).isoformat(),
         )
 
-    def get_industry_multiples(
-        self, industry: str, metric: str = "pe"
-    ) -> Dict[str, float]:
+    def get_industry_multiples(self, industry: str, metric: str = "pe") -> Dict[str, float]:
         """Get all multiples for companies in an industry.
 
         Args:
@@ -502,9 +491,7 @@ class CrossSectionalValuation:
 
         for metric in metrics:
             try:
-                result = self.compare_to_peers(
-                    symbol=symbol, metric=metric, industry=industry
-                )
+                result = self.compare_to_peers(symbol=symbol, metric=metric, industry=industry)
                 results[metric] = result
             except Exception as e:
                 logger.error(f"Error comparing {symbol} {metric}: {e}")
@@ -512,9 +499,7 @@ class CrossSectionalValuation:
 
         return results
 
-    def generate_peer_summary(
-        self, symbol: str, industry: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def generate_peer_summary(self, symbol: str, industry: Optional[str] = None) -> Dict[str, Any]:
         """Generate comprehensive peer comparison summary.
 
         Args:
@@ -570,9 +555,7 @@ class CrossSectionalValuation:
 
         if valid_comparisons:
             # Average percentile rank
-            avg_percentile = statistics.mean(
-                [c.percentile_rank for c in valid_comparisons.values()]
-            )
+            avg_percentile = statistics.mean([c.percentile_rank for c in valid_comparisons.values()])
 
             # Determine overall status
             if avg_percentile >= 70:

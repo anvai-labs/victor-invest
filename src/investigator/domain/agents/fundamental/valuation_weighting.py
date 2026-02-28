@@ -14,18 +14,12 @@ def _count_fcf_quarters(company_profile: Any) -> int:
     for quarter in quarterly_metrics:
         if isinstance(quarter, dict):
             cash_flow = quarter.get("cash_flow", {})
-            if (
-                isinstance(cash_flow, dict)
-                and cash_flow.get("free_cash_flow") is not None
-            ):
+            if isinstance(cash_flow, dict) and cash_flow.get("free_cash_flow") is not None:
                 fcf_quarters_count += 1
             continue
         if hasattr(quarter, "cash_flow"):
             cash_flow = getattr(quarter, "cash_flow", {})
-            if (
-                isinstance(cash_flow, dict)
-                and cash_flow.get("free_cash_flow") is not None
-            ):
+            if isinstance(cash_flow, dict) and cash_flow.get("free_cash_flow") is not None:
                 fcf_quarters_count += 1
     return fcf_quarters_count
 
@@ -52,9 +46,7 @@ def resolve_fallback_weights(
     Returns `(weights_dict_or_none, tier_label)`.
     """
     try:
-        symbol = (
-            company_profile.symbol if hasattr(company_profile, "symbol") else "UNKNOWN"
-        )
+        symbol = company_profile.symbol if hasattr(company_profile, "symbol") else "UNKNOWN"
 
         if financials is None:
             logger.debug(
@@ -80,19 +72,12 @@ def resolve_fallback_weights(
 
         if hasattr(company_profile, "free_cash_flow"):
             financials["free_cash_flow"] = getattr(company_profile, "free_cash_flow", 0)
-        elif hasattr(company_profile, "ttm_metrics") and isinstance(
-            company_profile.ttm_metrics, dict
-        ):
-            financials["free_cash_flow"] = company_profile.ttm_metrics.get(
-                "free_cash_flow", 0
-            )
+        elif hasattr(company_profile, "ttm_metrics") and isinstance(company_profile.ttm_metrics, dict):
+            financials["free_cash_flow"] = company_profile.ttm_metrics.get("free_cash_flow", 0)
         else:
             financials["free_cash_flow"] = 0
 
-        if (
-            hasattr(company_profile, "dividends_paid")
-            and company_profile.dividends_paid
-        ):
+        if hasattr(company_profile, "dividends_paid") and company_profile.dividends_paid:
             financials["dividends_paid"] = company_profile.dividends_paid
 
         if hasattr(company_profile, "ebitda") and company_profile.ebitda:
@@ -114,9 +99,7 @@ def resolve_fallback_weights(
         )
 
         if ratios is None:
-            logger.debug(
-                "%s - No ratios provided, reconstructing from company_profile", symbol
-            )
+            logger.debug("%s - No ratios provided, reconstructing from company_profile", symbol)
             ratios = {
                 "payout_ratio": getattr(company_profile, "dividend_payout_ratio", 0),
                 "rule_of_40_score": getattr(company_profile, "rule_of_40_score", 0),
@@ -140,9 +123,7 @@ def resolve_fallback_weights(
             if model_result is None:
                 continue
 
-            logger.debug(
-                "%s - DEBUG: model_result[%s] type: %s", symbol, idx, type(model_result)
-            )
+            logger.debug("%s - DEBUG: model_result[%s] type: %s", symbol, idx, type(model_result))
             if isinstance(model_result, dict):
                 logger.debug(
                     "%s - DEBUG: model_result[%s] keys: %s",
@@ -177,47 +158,28 @@ def resolve_fallback_weights(
             if model_name == "pe":
                 assumptions = _model_get(model_result, "assumptions", {}) or {}
                 metadata = _model_get(model_result, "metadata", {}) or {}
-                current_price = (
-                    metadata.get("current_price")
-                    if isinstance(metadata, dict)
-                    else None
-                )
+                current_price = metadata.get("current_price") if isinstance(metadata, dict) else None
                 if current_price is not None:
                     financials["current_price"] = current_price
-                ttm_eps = (
-                    assumptions.get("ttm_eps")
-                    if isinstance(assumptions, dict)
-                    else None
-                )
+                ttm_eps = assumptions.get("ttm_eps") if isinstance(assumptions, dict) else None
                 if ttm_eps is not None:
                     ratios["ttm_eps"] = ttm_eps
 
             assumptions = _model_get(model_result, "assumptions", {}) or {}
             metadata = _model_get(model_result, "metadata", {}) or {}
-            market_cap_from_assumptions = (
-                assumptions.get("market_cap", 0) if isinstance(assumptions, dict) else 0
-            )
+            market_cap_from_assumptions = assumptions.get("market_cap", 0) if isinstance(assumptions, dict) else 0
             if market_cap_from_assumptions > 0:
                 financials["market_cap"] = market_cap_from_assumptions
-            market_cap_from_metadata = (
-                metadata.get("market_cap", 0) if isinstance(metadata, dict) else 0
-            )
+            market_cap_from_metadata = metadata.get("market_cap", 0) if isinstance(metadata, dict) else 0
             if market_cap_from_metadata > 0:
                 financials["market_cap"] = market_cap_from_metadata
 
-        if (
-            financials.get("market_cap", 0) == 0
-            and financials.get("current_price", 0) > 0
-        ):
+        if financials.get("market_cap", 0) == 0 and financials.get("current_price", 0) > 0:
             for model_result in models_for_blending:
                 if model_result is None:
                     continue
                 assumptions = _model_get(model_result, "assumptions", {}) or {}
-                shares = (
-                    assumptions.get("shares_outstanding", 0)
-                    if isinstance(assumptions, dict)
-                    else 0
-                )
+                shares = assumptions.get("shares_outstanding", 0) if isinstance(assumptions, dict) else 0
                 if shares > 0:
                     # Calculate market cap with split adjustment
                     # Shares from assumptions are typically from SEC (actual, not split-adjusted)
@@ -237,14 +199,12 @@ def resolve_fallback_weights(
                         break
 
         data_quality = getattr(company_profile, "data_quality", None)
-        weights, tier_classification, audit_trail = (
-            dynamic_weighting_service.determine_weights(
-                symbol=symbol,
-                financials=financials,
-                ratios=ratios,
-                data_quality=data_quality,
-                market_context=None,
-            )
+        weights, tier_classification, audit_trail = dynamic_weighting_service.determine_weights(
+            symbol=symbol,
+            financials=financials,
+            ratios=ratios,
+            data_quality=data_quality,
+            market_context=None,
         )
 
         if audit_trail:
@@ -254,31 +214,19 @@ def resolve_fallback_weights(
             "%s - Dynamic weights determined (tier=%s): %s",
             symbol,
             tier_classification,
-            ", ".join(
-                [
-                    f"{model.upper()}={weight}%"
-                    for model, weight in weights.items()
-                    if weight > 0
-                ]
-            ),
+            ", ".join([f"{model.upper()}={weight}%" for model, weight in weights.items() if weight > 0]),
         )
 
         return weights, tier_classification
 
     except Exception as exc:
-        logger.warning(
-            "Dynamic weighting failed: %s. Falling back to static weights.", exc
-        )
+        logger.warning("Dynamic weighting failed: %s. Falling back to static weights.", exc)
 
         valuation_settings = getattr(config, "valuation", None)
         if isinstance(valuation_settings, dict):
             fallback_cfg = valuation_settings.get("model_fallback", {})
         else:
-            fallback_cfg = (
-                getattr(valuation_settings, "model_fallback", {})
-                if valuation_settings
-                else {}
-            )
+            fallback_cfg = getattr(valuation_settings, "model_fallback", {}) if valuation_settings else {}
 
         if not isinstance(fallback_cfg, dict) or not fallback_cfg:
             return None, "fallback_error"
@@ -287,9 +235,7 @@ def resolve_fallback_weights(
             return key.lower() if key else None
 
         primary_key = _normalize_key(
-            company_profile.primary_archetype.name
-            if company_profile.primary_archetype
-            else None
+            company_profile.primary_archetype.name if company_profile.primary_archetype else None
         )
         if primary_key and primary_key in fallback_cfg:
             fallback_node = fallback_cfg[primary_key]
@@ -303,16 +249,12 @@ def resolve_fallback_weights(
             return None, "no_fallback_node"
 
         weights = (
-            fallback_node.get("weights")
-            if isinstance(fallback_node, dict)
-            else getattr(fallback_node, "weights", None)
+            fallback_node.get("weights") if isinstance(fallback_node, dict) else getattr(fallback_node, "weights", None)
         )
         if not isinstance(weights, dict):
             return None, "invalid_fallback_weights"
 
-        available_models = {
-            model.get("model") for model in models_for_blending if model.get("model")
-        }
+        available_models = {model.get("model") for model in models_for_blending if model.get("model")}
         resolved = {
             model_key: float(weight)
             for model_key, weight in weights.items()

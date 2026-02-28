@@ -78,21 +78,15 @@ class SectorMultiplesHistory(Base):
     percentile_high = Column(Float, nullable=False, default=0.95)
 
     # Additional context as JSON (renamed from 'metadata' to avoid SQLAlchemy conflict)
-    additional_context = Column(
-        Text, nullable=True
-    )  # JSON string for additional context
+    additional_context = Column(Text, nullable=True)  # JSON string for additional context
 
     # Audit timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
-    )
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     # Constraints and indexes
     __table_args__ = (
-        UniqueConstraint(
-            "group_name", "group_type", "fiscal_year", name="uix_sector_history_fy"
-        ),
+        UniqueConstraint("group_name", "group_type", "fiscal_year", name="uix_sector_history_fy"),
         Index("ix_sector_history_snapshot_date", "snapshot_date"),
         Index("ix_sector_history_group_type_year", "group_type", "fiscal_year"),
         {"schema": "public"},

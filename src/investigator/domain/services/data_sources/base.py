@@ -123,9 +123,7 @@ class Fetchable(Protocol):
 class BatchFetchable(Protocol):
     """Protocol for sources that support batch fetching"""
 
-    def fetch_batch(
-        self, symbols: List[str], as_of_date: Optional[date] = None
-    ) -> Dict[str, DataResult]: ...
+    def fetch_batch(self, symbols: List[str], as_of_date: Optional[date] = None) -> Dict[str, DataResult]: ...
 
 
 class Refreshable(Protocol):
@@ -144,9 +142,7 @@ class Cacheable(Protocol):
 class HistoricalFetchable(Protocol):
     """Protocol for sources that support historical data"""
 
-    def fetch_historical(
-        self, symbol: str, start_date: date, end_date: date
-    ) -> DataResult: ...
+    def fetch_historical(self, symbol: str, start_date: date, end_date: date) -> DataResult: ...
 
 
 # =============================================================================
@@ -255,9 +251,7 @@ class MacroDataSource(DataSource):
     def __init__(self, name: str, frequency: DataFrequency):
         super().__init__(name, DataCategory.MACRO, frequency)
 
-    def fetch(
-        self, symbol: str = "_MACRO", as_of_date: Optional[date] = None
-    ) -> DataResult:
+    def fetch(self, symbol: str = "_MACRO", as_of_date: Optional[date] = None) -> DataResult:
         """Macro sources use _MACRO as default symbol"""
         return super().fetch(symbol or "_MACRO", as_of_date)
 
@@ -271,9 +265,7 @@ class MarketDataSource(DataSource):
         super().__init__(name, DataCategory.MARKET_DATA, frequency)
 
     @abstractmethod
-    def fetch_historical(
-        self, symbol: str, start_date: date, end_date: date
-    ) -> DataResult:
+    def fetch_historical(self, symbol: str, start_date: date, end_date: date) -> DataResult:
         """Fetch historical data range"""
         pass
 
@@ -336,9 +328,7 @@ class CompositeDataSource(DataSource):
         else:
             raise ValueError(f"Unknown strategy: {self.strategy}")
 
-    def _first_success_strategy(
-        self, symbol: str, as_of_date: Optional[date]
-    ) -> DataResult:
+    def _first_success_strategy(self, symbol: str, as_of_date: Optional[date]) -> DataResult:
         """Return first successful result"""
         errors = []
         for source in self.sources:
@@ -373,13 +363,9 @@ class CompositeDataSource(DataSource):
                 quality=best_quality,
             )
 
-        return DataResult(
-            success=False, error="No data from any source", source=self.name
-        )
+        return DataResult(success=False, error="No data from any source", source=self.name)
 
-    def _best_quality_strategy(
-        self, symbol: str, as_of_date: Optional[date]
-    ) -> DataResult:
+    def _best_quality_strategy(self, symbol: str, as_of_date: Optional[date]) -> DataResult:
         """Return highest quality result"""
         results = []
         for source in self.sources:
@@ -392,9 +378,7 @@ class CompositeDataSource(DataSource):
             best = min(results, key=lambda r: r.quality.value)
             return best
 
-        return DataResult(
-            success=False, error="No successful results", source=self.name
-        )
+        return DataResult(success=False, error="No successful results", source=self.name)
 
 
 # =============================================================================

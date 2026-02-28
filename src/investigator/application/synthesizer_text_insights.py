@@ -64,10 +64,7 @@ def extract_insights_from_text(text_details: str) -> Tuple[List[str], List[str]]
                 "growth",
                 "improve",
             ]
-            if (
-                any(indicator in sentence.lower() for indicator in insight_indicators)
-                and len(insights) < 3
-            ):
+            if any(indicator in sentence.lower() for indicator in insight_indicators) and len(insights) < 3:
                 insights.append(sentence[:200])
             risk_indicators = [
                 "risk",
@@ -78,10 +75,7 @@ def extract_insights_from_text(text_details: str) -> Tuple[List[str], List[str]]
                 "decline",
                 "pressure",
             ]
-            if (
-                any(indicator in sentence.lower() for indicator in risk_indicators)
-                and len(risks) < 3
-            ):
+            if any(indicator in sentence.lower() for indicator in risk_indicators) and len(risks) < 3:
                 risks.append(sentence[:200])
 
     return insights[:5], risks[:5]
@@ -113,9 +107,7 @@ def extract_comprehensive_risks(
 
     for resp in llm_responses.get("fundamental", {}).values():
         content = _to_text(resp.get("content", ""))
-        risk_section = re.search(
-            r"risk[s]?[:\s]*(.*?)(?=\n\n|\d+\.)", content, re.IGNORECASE | re.DOTALL
-        )
+        risk_section = re.search(r"risk[s]?[:\s]*(.*?)(?=\n\n|\d+\.)", content, re.IGNORECASE | re.DOTALL)
         if risk_section:
             risk_items = re.findall(r"[•\-]\s*(.+)", risk_section.group(1))
             risks.extend(risk_items[:2])

@@ -40,9 +40,7 @@ def test_parquet_handler_round_trip(tmp_path: Path) -> None:
 
     stored = handler.get(key)
     assert stored is not None
-    pd.testing.assert_frame_equal(
-        stored["dataframe"].reset_index(drop=True), df.reset_index(drop=True)
-    )
+    pd.testing.assert_frame_equal(stored["dataframe"].reset_index(drop=True), df.reset_index(drop=True))
     assert stored["cache_info"]["records"] == len(df)
     assert stored["metadata"]["original_metadata"]["symbol"] == "ROUND"
 

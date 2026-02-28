@@ -161,9 +161,7 @@ class TestProfitabilityClassifier:
 
         # Should still classify based on EBITDA
         assert result.stage != ProfitabilityStage.UNKNOWN
-        assert any(
-            i.name == "ebitda" and i.is_positive for i in result.indicators_checked
-        )
+        assert any(i.name == "ebitda" and i.is_positive for i in result.indicators_checked)
 
     def test_only_fcf_available(self, classifier):
         """Test classification when only FCF is available."""

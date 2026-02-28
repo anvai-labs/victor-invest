@@ -94,9 +94,7 @@ try:
                 # Load from the workflows directory (same as this file)
                 workflows_dir = Path(__file__).parent
                 yaml_workflows = load_workflows_from_directory(workflows_dir)
-                logger.debug(
-                    f"Loaded {len(yaml_workflows)} YAML workflows from {workflows_dir}"
-                )
+                logger.debug(f"Loaded {len(yaml_workflows)} YAML workflows from {workflows_dir}")
                 return yaml_workflows
             except Exception as e:
                 logger.warning(f"Failed to load YAML workflows: {e}")
@@ -206,9 +204,7 @@ try:
                 yield chunk
 
         def __repr__(self) -> str:
-            return (
-                f"InvestmentWorkflowProvider(workflows={len(self._load_workflows())})"
-            )
+            return f"InvestmentWorkflowProvider(workflows={len(self._load_workflows())})"
 
 except ImportError:
     # Victor framework not available - provide stub

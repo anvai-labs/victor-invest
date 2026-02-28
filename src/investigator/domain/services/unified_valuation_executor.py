@@ -85,17 +85,13 @@ class UnifiedValuationExecutor:
 
         # Get configuration
         self.config = get_config()
-        self.valuation_config = (
-            self.config.valuation if hasattr(self.config, "valuation") else {}
-        )
+        self.valuation_config = self.config.valuation if hasattr(self.config, "valuation") else {}
 
         # Initialize services
         self.metadata_service = CompanyMetadataService(
             sector_normalization=self.valuation_config.get("sector_normalization", {})
         )
-        self.weighting_service = DynamicModelWeightingService(
-            valuation_config=self.valuation_config
-        )
+        self.weighting_service = DynamicModelWeightingService(valuation_config=self.valuation_config)
 
     async def run_comprehensive_valuation(
         self,
@@ -125,10 +121,7 @@ class UnifiedValuationExecutor:
 
         # Get sector/industry
         sector, industry = self.metadata_service.get_sector_industry(self.symbol)
-        logger.info(
-            f"{self.symbol}: Retrieved sector={sector}, industry={industry} "
-            "from CompanyMetadataService"
-        )
+        logger.info(f"{self.symbol}: Retrieved sector={sector}, industry={industry} " "from CompanyMetadataService")
 
         # Run all valuation models
         model_results = await self._run_all_models()
@@ -155,10 +148,7 @@ class UnifiedValuationExecutor:
             market_context=None,
         )
 
-        logger.info(
-            f"{self.symbol}: Tier={tier} | Sector={sector} | Industry={industry} | "
-            f"Weights: {weights}"
-        )
+        logger.info(f"{self.symbol}: Tier={tier} | Sector={sector} | Industry={industry} | " f"Weights: {weights}")
 
         # Apply weights to calculate blended fair value
         weighted_sum = 0.0
@@ -180,10 +170,7 @@ class UnifiedValuationExecutor:
 
         # Calculate final blended value
         if total_weight == 0:
-            logger.warning(
-                f"{self.symbol}: All models filtered out by tier-based weights, "
-                "using simple average"
-            )
+            logger.warning(f"{self.symbol}: All models filtered out by tier-based weights, " "using simple average")
             fair_values = [
                 r["output"]["fair_value_per_share"]
                 for r in model_results.values()
@@ -205,9 +192,7 @@ class UnifiedValuationExecutor:
             "models_applied": list(model_results.keys()),
             "consensus_fair_value": consensus,
             "consensus_upside": (
-                ((consensus / self.current_price) - 1) * 100
-                if consensus and self.current_price
-                else None
+                ((consensus / self.current_price) - 1) * 100 if consensus and self.current_price else None
             ),
             "tier_classification": tier,
             "weights_applied": applied_weights,
@@ -282,20 +267,14 @@ class UnifiedValuationExecutor:
             quarterly_data=self.quarterly_metrics,
             shares_outstanding=None,  # Will be fetched if needed
         )
-        ttm_revenue = TTMMetrics.calculate_ttm_revenue(
-            quarterly_data=self.quarterly_metrics
-        )
-        ttm_ebitda = TTMMetrics.calculate_ttm_ebitda(
-            quarterly_data=self.quarterly_metrics
-        )
+        ttm_revenue = TTMMetrics.calculate_ttm_revenue(quarterly_data=self.quarterly_metrics)
+        ttm_ebitda = TTMMetrics.calculate_ttm_ebitda(quarterly_data=self.quarterly_metrics)
 
         # Get sector multiples
         from investigator.domain.services.valuation.common import SectorMultiples
 
         sector, industry = self.metadata_service.get_sector_industry(self.symbol)
-        sector_multiples = SectorMultiples.get_sector_multiples(
-            sector=sector, industry=industry
-        )
+        sector_multiples = SectorMultiples.get_sector_multiples(sector=sector, industry=industry)
 
         # Run PE
         try:
@@ -347,9 +326,7 @@ class UnifiedValuationExecutor:
             )
 
             book_value_service = BookValueService()
-            book_value = book_value_service.calculate_book_value(
-                quarterly_data=self.quarterly_metrics
-            )
+            book_value = book_value_service.calculate_book_value(quarterly_data=self.quarterly_metrics)
 
             if book_value and book_value > 0:
                 pb_model = PBRatioModel(
@@ -416,12 +393,8 @@ class UnifiedValuationExecutor:
         # Extract from quarterly_metrics if available
         if self.quarterly_metrics and len(self.quarterly_metrics) >= 4:
             ttm = self.quarterly_metrics[:4]
-            financials["net_income"] = sum(
-                self._extract_metric(q, ["net_income"]) or 0 for q in ttm
-            )
-            financials["revenue"] = sum(
-                self._extract_metric(q, ["revenue", "total_revenue"]) or 0 for q in ttm
-            )
+            financials["net_income"] = sum(self._extract_metric(q, ["net_income"]) or 0 for q in ttm)
+            financials["revenue"] = sum(self._extract_metric(q, ["revenue", "total_revenue"]) or 0 for q in ttm)
             financials["shareholders_equity"] = self._extract_metric(
                 self.quarterly_metrics[0],
                 ["stockholders_equity", "total_stockholders_equity"],
@@ -454,13 +427,8 @@ class UnifiedValuationExecutor:
 
         # Calculate ROE if we have the data
         if financials.get("net_income") and financials.get("shareholders_equity"):
-            if (
-                financials["shareholders_equity"]
-                and financials["shareholders_equity"] > 0
-            ):
-                ratios["roe"] = (
-                    financials["net_income"] / financials["shareholders_equity"] * 100
-                )
+            if financials["shareholders_equity"] and financials["shareholders_equity"] > 0:
+                ratios["roe"] = financials["net_income"] / financials["shareholders_equity"] * 100
 
         return ratios
 

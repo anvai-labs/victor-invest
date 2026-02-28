@@ -298,10 +298,7 @@ class TTMCalculator:
         if "balance_sheet" in most_recent:
             ttm_balance_sheet = most_recent["balance_sheet"].copy()
         else:
-            ttm_balance_sheet = {
-                metric: most_recent.get(metric)
-                for metric in self.STOCK_METRICS["balance_sheet"]
-            }
+            ttm_balance_sheet = {metric: most_recent.get(metric) for metric in self.STOCK_METRICS["balance_sheet"]}
 
         return {
             "income_statement": ttm_income,
@@ -342,17 +339,14 @@ class TTMCalculator:
             "cash_flow": {
                 "operating_cash_flow": data.get("operating_cash_flow"),
                 "free_cash_flow": data.get("free_cash_flow"),
-                "capital_expenditures": data.get("capital_expenditures")
-                or data.get("capex"),
+                "capital_expenditures": data.get("capital_expenditures") or data.get("capex"),
                 "dividends_paid": data.get("dividends_paid") or data.get("dividends"),
             },
             "balance_sheet": {
                 "total_assets": data.get("total_assets"),
                 "total_liabilities": data.get("total_liabilities"),
-                "stockholders_equity": data.get("stockholders_equity")
-                or data.get("equity"),
-                "cash_and_equivalents": data.get("cash_and_equivalents")
-                or data.get("cash"),
+                "stockholders_equity": data.get("stockholders_equity") or data.get("equity"),
+                "cash_and_equivalents": data.get("cash_and_equivalents") or data.get("cash"),
                 "long_term_debt": data.get("long_term_debt"),
                 "short_term_debt": data.get("short_term_debt"),
                 "current_assets": data.get("current_assets"),

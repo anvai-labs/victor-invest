@@ -229,9 +229,7 @@ class REITDataset(BaseIndustryDataset):
             ),
         ]
 
-    def extract_metrics(
-        self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs
-    ) -> IndustryMetrics:
+    def extract_metrics(self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs) -> IndustryMetrics:
         """Extract REIT-specific metrics from XBRL data and financials."""
         metrics = IndustryMetrics(
             industry="reit",
@@ -266,9 +264,7 @@ class REITDataset(BaseIndustryDataset):
         if ffo_ps:
             metrics.metrics["ffo_per_share"] = ffo_ps
         elif ffo:
-            shares = financials.get("sharesOutstanding") or financials.get(
-                "dilutedShares"
-            )
+            shares = financials.get("sharesOutstanding") or financials.get("dilutedShares")
             if shares and shares > 0:
                 metrics.metrics["ffo_per_share"] = ffo / shares
 
@@ -295,9 +291,7 @@ class REITDataset(BaseIndustryDataset):
         else:
             # Use industry average
             metrics.metrics["occupancy_rate"] = 0.93
-            warnings.append(
-                "Occupancy rate not available, using industry average (93%)"
-            )
+            warnings.append("Occupancy rate not available, using industry average (93%)")
 
         # Extract Same-Store NOI Growth
         ss_noi = self._extract_from_xbrl(
@@ -341,9 +335,7 @@ class REITDataset(BaseIndustryDataset):
     def _calculate_ffo(self, financials: Dict) -> Optional[float]:
         """Calculate FFO from available data."""
         net_income = financials.get("netIncome")
-        depreciation = financials.get("depreciation") or financials.get(
-            "depreciationAmortization"
-        )
+        depreciation = financials.get("depreciation") or financials.get("depreciationAmortization")
 
         if net_income and depreciation:
             # FFO = Net Income + Depreciation (simplified)

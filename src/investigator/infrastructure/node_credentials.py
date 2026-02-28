@@ -203,11 +203,7 @@ class CredentialAuditLogger:
         # Pattern 3: Off-hours access (6am-10pm considered normal)
         current_hour = now.hour
         if current_hour < 6 or current_hour >= 22:
-            off_hours_entries = [
-                e
-                for e in recent_entries
-                if e.timestamp.hour < 6 or e.timestamp.hour >= 22
-            ]
+            off_hours_entries = [e for e in recent_entries if e.timestamp.hour < 6 or e.timestamp.hour >= 22]
             if off_hours_entries:
                 violations.append(
                     {
@@ -231,17 +227,14 @@ class CredentialAuditLogger:
         for entry in recent_entries:
             cred_key = f"{entry.credential_type}:{entry.credential_name}"
             # Get all nodes that have accessed this credential
-            nodes_for_cred = [
-                n for n, creds in node_cred_access.items() if cred_key in creds
-            ]
+            nodes_for_cred = [n for n, creds in node_cred_access.items() if cred_key in creds]
             # If this is a new node accessing an established credential
             if len(nodes_for_cred) > 3:  # Established credential
                 # Check if this node has only recently started accessing it
                 node_history = [
                     e
                     for e in cls._entries
-                    if e.node_id == entry.node_id
-                    and f"{e.credential_type}:{e.credential_name}" == cred_key
+                    if e.node_id == entry.node_id and f"{e.credential_type}:{e.credential_name}" == cred_key
                 ]
                 if len(node_history) <= 2:  # New accessor
                     violations.append(
@@ -498,9 +491,7 @@ class NodeCredentialContext:
             if req.type == CredentialType.DATABASE:
                 creds = self.get_database(req.name)
                 if req.required and not creds:
-                    errors.append(
-                        f"Required database credential '{req.name}' not available"
-                    )
+                    errors.append(f"Required database credential '{req.name}' not available")
 
             elif req.type == CredentialType.API_KEY:
                 key = self.get_api_key(req.name)

@@ -92,9 +92,7 @@ def test_run_yaml_analysis_maps_custom_mode_to_comprehensive(monkeypatch):
         async def run_workflow_with_handlers(self, workflow_name, context):
             calls["workflow_name"] = workflow_name
             calls["context"] = dict(context)
-            return _FakeWorkflowResult(
-                success=True, context=_FakeContext({"synthesis": {}})
-            )
+            return _FakeWorkflowResult(success=True, context=_FakeContext({"synthesis": {}}))
 
     monkeypatch.setattr(workflows_pkg, "InvestmentWorkflowProvider", FakeProvider)
 
@@ -109,9 +107,7 @@ def test_run_analysis_prefers_yaml_execution(monkeypatch):
 
     async def fake_yaml(symbol, mode):
         calls["yaml"] += 1
-        return AnalysisWorkflowState(
-            symbol=symbol.upper(), mode=mode, synthesis={"status": "success"}
-        )
+        return AnalysisWorkflowState(symbol=symbol.upper(), mode=mode, synthesis={"status": "success"})
 
     async def fake_stategraph(symbol, mode):
         calls["stategraph"] += 1
@@ -135,9 +131,7 @@ def test_run_analysis_falls_back_to_stategraph_on_yaml_failure(monkeypatch):
 
     async def fake_stategraph(symbol, mode):
         calls["stategraph"] += 1
-        return AnalysisWorkflowState(
-            symbol=symbol.upper(), mode=mode, errors=["fallback"]
-        )
+        return AnalysisWorkflowState(symbol=symbol.upper(), mode=mode, errors=["fallback"])
 
     monkeypatch.setattr(graphs, "run_yaml_analysis", fake_yaml)
     monkeypatch.setattr(graphs, "run_stategraph_analysis", fake_stategraph)

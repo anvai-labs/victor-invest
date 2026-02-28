@@ -276,11 +276,7 @@ def warm(ctx, symbols, symbols_file, parallel, process_raw, force_refresh):
         symbol_list = [s.strip().upper() for s in symbols.split(",")]
     elif symbols_file:
         with open(symbols_file) as f:
-            symbol_list = [
-                line.strip().upper()
-                for line in f
-                if line.strip() and not line.startswith("#")
-            ]
+            symbol_list = [line.strip().upper() for line in f if line.strip() and not line.startswith("#")]
     else:
         click.echo("Provide --symbols or --file", err=True)
         sys.exit(1)
@@ -319,10 +315,7 @@ def warm(ctx, symbols, symbols_file, parallel, process_raw, force_refresh):
                         force_refresh=force_refresh,
                     )
                     results.append((symbol, True, ""))
-                    click.echo(
-                        f"  Cached: {symbol}"
-                        f"{' (processed)' if process_raw else ' (raw-only)'}"
-                    )
+                    click.echo(f"  Cached: {symbol}" f"{' (processed)' if process_raw else ' (raw-only)'}")
                 except Exception as e:
                     results.append((symbol, False, str(e)))
                     click.echo(f"  Failed: {symbol} - {e}")
@@ -416,11 +409,7 @@ def refresh_submissions(ctx, symbols, symbols_file, verbose):
         symbol_list = [s.strip().upper() for s in symbols.split(",")]
     elif symbols_file:
         with open(symbols_file) as f:
-            symbol_list = [
-                line.strip().upper()
-                for line in f
-                if line.strip() and not line.startswith("#")
-            ]
+            symbol_list = [line.strip().upper() for line in f if line.strip() and not line.startswith("#")]
     else:
         click.echo("Provide --symbols or --file", err=True)
         sys.exit(1)
@@ -456,9 +445,7 @@ def refresh_submissions(ctx, symbols, symbols_file, verbose):
 
             # Try to delete from file cache
             try:
-                for handlers in cache_manager.handlers.get(
-                    CacheType.SUBMISSION_DATA, []
-                ):
+                for handlers in cache_manager.handlers.get(CacheType.SUBMISSION_DATA, []):
                     if isinstance(handlers, FileCacheStorageHandler):
                         handlers.delete(cache_key)
                         if verbose:
@@ -509,9 +496,7 @@ def refresh_submissions(ctx, symbols, symbols_file, verbose):
                     click.echo(f"   CIK: {r['cik']}")
                     click.echo("   Latest filings:")
                     for f in r["latest_filings"]:
-                        click.echo(
-                            f"     {f['form']:8} | {f['filed']} | {f['accession']}"
-                        )
+                        click.echo(f"     {f['form']:8} | {f['filed']} | {f['accession']}")
             else:
                 click.echo(f"❌ {symbol}: Failed - {r['error']}", err=True)
 

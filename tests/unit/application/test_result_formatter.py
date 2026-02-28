@@ -221,9 +221,7 @@ class TestFormatAnalysisOutput:
 
     def test_standard_handles_numpy_arrays(self):
         """Standard mode should handle numpy arrays without crashing."""
-        data = {
-            "fundamental": {"prices": np.array([100.0, 101.5]), "recommendation": "BUY"}
-        }
+        data = {"fundamental": {"prices": np.array([100.0, 101.5]), "recommendation": "BUY"}}
         # Should not raise ValueError
         result = format_analysis_output(data, OutputDetailLevel.STANDARD)
         assert "fundamental" in result
@@ -332,10 +330,7 @@ class TestFormatAnalysisOutput:
         assert result["valuation"]["basis"] == "forward"
         assert result["valuation"]["forward_horizon"] == "2q"
         assert result["valuation"]["models"]["pe"]["fair_value_per_share"] == 260.0
-        assert (
-            result["valuation"]["models"]["pe"]["assumptions"]["guidance_applied"]
-            is True
-        )
+        assert result["valuation"]["models"]["pe"]["assumptions"]["guidance_applied"] is True
         assert result["sec"]["forward_guidance"]["source_form"] == "8-K"
 
     def test_compact_preserves_non_applicable_reason_for_models(self):

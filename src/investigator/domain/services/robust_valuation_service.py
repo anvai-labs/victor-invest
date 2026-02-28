@@ -191,9 +191,7 @@ class RobustValuationService:
         sector = normalized["sector"] or "Unknown"
         industry = normalized["industry"]
 
-        logger.info(
-            f"Calculating robust valuation for {symbol} (sector: {sector}, industry: {industry})..."
-        )
+        logger.info(f"Calculating robust valuation for {symbol} (sector: {sector}, industry: {industry})...")
 
         # Step 1: Get trend-adjusted sector multiples (Layer 1)
         layer1_data = self._get_layer1_data(sector)
@@ -233,10 +231,7 @@ class RobustValuationService:
             **synthesis,
         )
 
-        logger.info(
-            f"{symbol} Robust Valuation: {result.recommendation} "
-            f"({result.confidence} confidence)"
-        )
+        logger.info(f"{symbol} Robust Valuation: {result.recommendation} " f"({result.confidence} confidence)")
 
         return result
 
@@ -295,9 +290,7 @@ class RobustValuationService:
 
         return fair_multiples if fair_multiples else None
 
-    def _get_layer3_data(
-        self, symbol: str, industry: Optional[str]
-    ) -> Dict[str, PeerComparisonResult]:
+    def _get_layer3_data(self, symbol: str, industry: Optional[str]) -> Dict[str, PeerComparisonResult]:
         """Get Layer 3: Peer comparison data.
 
         Args:
@@ -416,23 +409,17 @@ class RobustValuationService:
         fair_value_range = (min(fair_values), max(fair_values))
 
         # Determine overall confidence
-        confidences = [
-            layer2_data[m].confidence for m in ["pe", "ps", "pb"] if m in layer2_data
-        ]
+        confidences = [layer2_data[m].confidence for m in ["pe", "ps", "pb"] if m in layer2_data]
         overall_confidence = self._determine_overall_confidence(confidences)
 
         # Calculate upside/downside
         if current_price:
-            upside_downside_pct = (
-                (weighted_fair_value - current_price) / current_price
-            ) * 100
+            upside_downside_pct = ((weighted_fair_value - current_price) / current_price) * 100
         else:
             upside_downside_pct = 0.0
 
         # Determine recommendation
-        recommendation = self._determine_recommendation(
-            upside_downside_pct, overall_confidence
-        )
+        recommendation = self._determine_recommendation(upside_downside_pct, overall_confidence)
 
         # Collect signals
         signals = self._collect_signals(layer2_data, layer3_data, overall_confidence)
@@ -476,9 +463,7 @@ class RobustValuationService:
         else:
             return "LOW"
 
-    def _determine_recommendation(
-        self, upside_downside_pct: float, confidence: str
-    ) -> str:
+    def _determine_recommendation(self, upside_downside_pct: float, confidence: str) -> str:
         """Determine recommendation from upside/downside and confidence.
 
         Args:

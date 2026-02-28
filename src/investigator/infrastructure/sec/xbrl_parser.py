@@ -108,9 +108,7 @@ class XBRLParser:
                         unit_ref = node.get("unitRef", "")
                         value = node.text
 
-                        values.append(
-                            {"value": value, "context": context_ref, "unit": unit_ref}
-                        )
+                        values.append({"value": value, "context": context_ref, "unit": unit_ref})
 
                     if values:
                         financial_data[element] = values
@@ -144,13 +142,9 @@ class XBRLParser:
                 metrics["Equity"] = metrics["Assets"] - metrics["Liabilities"]
 
             if "AssetsCurrent" in metrics and "LiabilitiesCurrent" in metrics:
-                metrics["WorkingCapital"] = (
-                    metrics["AssetsCurrent"] - metrics["LiabilitiesCurrent"]
-                )
+                metrics["WorkingCapital"] = metrics["AssetsCurrent"] - metrics["LiabilitiesCurrent"]
                 if metrics["LiabilitiesCurrent"] > 0:
-                    metrics["CurrentRatio"] = (
-                        metrics["AssetsCurrent"] / metrics["LiabilitiesCurrent"]
-                    )
+                    metrics["CurrentRatio"] = metrics["AssetsCurrent"] / metrics["LiabilitiesCurrent"]
 
         except Exception as e:
             logger.error(f"Error extracting metrics: {e}")

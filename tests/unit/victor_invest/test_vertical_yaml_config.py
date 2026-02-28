@@ -10,9 +10,7 @@ def test_investment_vertical_loads_yaml_config():
     assert "entry_exit_signals" in config.tools.tools
     assert "DATA_GATHERING" in config.stages
     assert "preferred_providers" in config.provider_hints
-    assert any(
-        "Data accuracy and completeness" == item for item in config.evaluation_criteria
-    )
+    assert any("Data accuracy and completeness" == item for item in config.evaluation_criteria)
 
 
 def test_investment_vertical_get_tools_uses_yaml_backed_toolset():

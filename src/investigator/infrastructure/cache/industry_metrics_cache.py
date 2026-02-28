@@ -155,9 +155,7 @@ class IndustryMetricsStorageBackend(ABC):
 
     # Industry-level methods
     @abstractmethod
-    def get_industry_benchmarks(
-        self, industry: str
-    ) -> Optional[IndustryBenchmarksCacheEntry]:
+    def get_industry_benchmarks(self, industry: str) -> Optional[IndustryBenchmarksCacheEntry]:
         """Get cached industry-level benchmarks"""
         pass
 
@@ -252,9 +250,7 @@ class ParquetIndustryMetricsBackend(IndustryMetricsStorageBackend):
                     "file_path",
                 ]
             )
-            df.to_parquet(
-                self._industry_index_path, engine="pyarrow", compression="gzip"
-            )
+            df.to_parquet(self._industry_index_path, engine="pyarrow", compression="gzip")
 
     # ========== Symbol-Level Methods ==========
 
@@ -287,9 +283,7 @@ class ParquetIndustryMetricsBackend(IndustryMetricsStorageBackend):
                 index_df = new_row
             else:
                 index_df = pd.concat([index_df, new_row], ignore_index=True)
-            index_df.to_parquet(
-                self._symbol_index_path, engine="pyarrow", compression="gzip"
-            )
+            index_df.to_parquet(self._symbol_index_path, engine="pyarrow", compression="gzip")
 
         except Exception as e:
             logger.warning(f"Failed to update symbol index: {e}")
@@ -299,9 +293,7 @@ class ParquetIndustryMetricsBackend(IndustryMetricsStorageBackend):
         try:
             index_df = pd.read_parquet(self._symbol_index_path)
             index_df = index_df[index_df["symbol"] != symbol.upper()]
-            index_df.to_parquet(
-                self._symbol_index_path, engine="pyarrow", compression="gzip"
-            )
+            index_df.to_parquet(self._symbol_index_path, engine="pyarrow", compression="gzip")
         except Exception as e:
             logger.warning(f"Failed to remove from symbol index: {e}")
 
@@ -391,9 +383,7 @@ class ParquetIndustryMetricsBackend(IndustryMetricsStorageBackend):
         """Get all cached metrics for an industry"""
         try:
             index_df = pd.read_parquet(self._symbol_index_path)
-            industry_rows = index_df[
-                index_df["industry"].str.lower() == industry.lower()
-            ]
+            industry_rows = index_df[index_df["industry"].str.lower() == industry.lower()]
 
             entries = []
             for _, row in industry_rows.iterrows():
@@ -420,20 +410,14 @@ class ParquetIndustryMetricsBackend(IndustryMetricsStorageBackend):
     def _get_industry_file_path(self, industry: str) -> Path:
         """Get file path for industry benchmarks"""
         # Normalize industry name for filename
-        safe_name = (
-            industry.lower().replace(" ", "_").replace("&", "and").replace("-", "_")
-        )
+        safe_name = industry.lower().replace(" ", "_").replace("&", "and").replace("-", "_")
         return self.industries_path / f"{safe_name}.parquet.gz"
 
-    def _update_industry_index(
-        self, entry: IndustryBenchmarksCacheEntry, file_path: Path
-    ):
+    def _update_industry_index(self, entry: IndustryBenchmarksCacheEntry, file_path: Path):
         """Update the industry index"""
         try:
             index_df = pd.read_parquet(self._industry_index_path)
-            index_df = index_df[
-                index_df["industry"].str.lower() != entry.industry.lower()
-            ]
+            index_df = index_df[index_df["industry"].str.lower() != entry.industry.lower()]
 
             new_row = pd.DataFrame(
                 [
@@ -452,16 +436,12 @@ class ParquetIndustryMetricsBackend(IndustryMetricsStorageBackend):
                 index_df = new_row
             else:
                 index_df = pd.concat([index_df, new_row], ignore_index=True)
-            index_df.to_parquet(
-                self._industry_index_path, engine="pyarrow", compression="gzip"
-            )
+            index_df.to_parquet(self._industry_index_path, engine="pyarrow", compression="gzip")
 
         except Exception as e:
             logger.warning(f"Failed to update industry index: {e}")
 
-    def get_industry_benchmarks(
-        self, industry: str
-    ) -> Optional[IndustryBenchmarksCacheEntry]:
+    def get_industry_benchmarks(self, industry: str) -> Optional[IndustryBenchmarksCacheEntry]:
         """Get cached industry-level benchmarks"""
         file_path = self._get_industry_file_path(industry)
 
@@ -519,10 +499,7 @@ class ParquetIndustryMetricsBackend(IndustryMetricsStorageBackend):
 
             self._update_industry_index(entry, file_path)
 
-            logger.info(
-                f"Cached industry benchmarks for {entry.industry} "
-                f"({entry.symbol_count} symbols)"
-            )
+            logger.info(f"Cached industry benchmarks for {entry.industry} " f"({entry.symbol_count} symbols)")
             return True
 
         except Exception as e:
@@ -573,37 +550,25 @@ class ParquetIndustryMetricsBackend(IndustryMetricsStorageBackend):
             industry_df = pd.read_parquet(self._industry_index_path)
 
             # Calculate sizes
-            symbol_size = sum(
-                f.stat().st_size for f in self.symbols_path.glob("*.parquet.gz")
-            )
-            industry_size = sum(
-                f.stat().st_size for f in self.industries_path.glob("*.parquet.gz")
-            )
+            symbol_size = sum(f.stat().st_size for f in self.symbols_path.glob("*.parquet.gz"))
+            industry_size = sum(f.stat().st_size for f in self.industries_path.glob("*.parquet.gz"))
 
             return {
                 "backend": "parquet_hybrid",
                 "symbols": {
                     "count": len(symbol_df),
-                    "by_industry": symbol_df["industry"].value_counts().to_dict()
-                    if len(symbol_df) > 0
-                    else {},
-                    "by_quality": symbol_df["quality"].value_counts().to_dict()
-                    if len(symbol_df) > 0
-                    else {},
+                    "by_industry": symbol_df["industry"].value_counts().to_dict() if len(symbol_df) > 0 else {},
+                    "by_quality": symbol_df["quality"].value_counts().to_dict() if len(symbol_df) > 0 else {},
                     "size_bytes": symbol_size,
                     "size_mb": round(symbol_size / (1024 * 1024), 2),
                 },
                 "industries": {
                     "count": len(industry_df),
-                    "names": industry_df["industry"].tolist()
-                    if len(industry_df) > 0
-                    else [],
+                    "names": industry_df["industry"].tolist() if len(industry_df) > 0 else [],
                     "size_bytes": industry_size,
                     "size_mb": round(industry_size / (1024 * 1024), 2),
                 },
-                "total_size_mb": round(
-                    (symbol_size + industry_size) / (1024 * 1024), 2
-                ),
+                "total_size_mb": round((symbol_size + industry_size) / (1024 * 1024), 2),
                 "cache_path": str(self.base_path),
             }
         except Exception as e:
@@ -736,9 +701,7 @@ class PostgreSQLIndustryMetricsBackend(IndustryMetricsStorageBackend):
                         "coverage": entry.coverage,
                         "metrics": json.dumps(entry.metrics),
                         "adjustments": json.dumps(entry.adjustments),
-                        "tier_weights": json.dumps(entry.tier_weights)
-                        if entry.tier_weights
-                        else None,
+                        "tier_weights": json.dumps(entry.tier_weights) if entry.tier_weights else None,
                         "warnings": json.dumps(entry.warnings),
                         "metadata": json.dumps(entry.metadata),
                         "cached_at": entry.cached_at,
@@ -784,9 +747,7 @@ class PostgreSQLIndustryMetricsBackend(IndustryMetricsStorageBackend):
         try:
             with self.db_manager.get_session() as session:
                 results = session.execute(
-                    text(
-                        f"SELECT * FROM {self.SYMBOLS_TABLE} WHERE LOWER(industry) = LOWER(:industry)"
-                    ),
+                    text(f"SELECT * FROM {self.SYMBOLS_TABLE} WHERE LOWER(industry) = LOWER(:industry)"),
                     {"industry": industry},
                 ).fetchall()
                 entries = []
@@ -807,25 +768,19 @@ class PostgreSQLIndustryMetricsBackend(IndustryMetricsStorageBackend):
 
         try:
             with self.db_manager.get_session() as session:
-                results = session.execute(
-                    text(f"SELECT symbol FROM {self.SYMBOLS_TABLE} ORDER BY symbol")
-                ).fetchall()
+                results = session.execute(text(f"SELECT symbol FROM {self.SYMBOLS_TABLE} ORDER BY symbol")).fetchall()
                 return [r[0] for r in results]
         except Exception:
             return []
 
     # Industry-level methods
-    def get_industry_benchmarks(
-        self, industry: str
-    ) -> Optional[IndustryBenchmarksCacheEntry]:
+    def get_industry_benchmarks(self, industry: str) -> Optional[IndustryBenchmarksCacheEntry]:
         from sqlalchemy import text
 
         try:
             with self.db_manager.get_session() as session:
                 result = session.execute(
-                    text(
-                        f"SELECT * FROM {self.INDUSTRIES_TABLE} WHERE LOWER(industry) = LOWER(:industry)"
-                    ),
+                    text(f"SELECT * FROM {self.INDUSTRIES_TABLE} WHERE LOWER(industry) = LOWER(:industry)"),
                     {"industry": industry},
                 ).fetchone()
                 if not result:
@@ -895,9 +850,7 @@ class PostgreSQLIndustryMetricsBackend(IndustryMetricsStorageBackend):
         try:
             with self.db_manager.get_session() as session:
                 results = session.execute(
-                    text(
-                        f"SELECT industry FROM {self.INDUSTRIES_TABLE} ORDER BY industry"
-                    )
+                    text(f"SELECT industry FROM {self.INDUSTRIES_TABLE} ORDER BY industry")
                 ).fetchall()
                 return [r[0] for r in results]
         except Exception:
@@ -920,12 +873,8 @@ class PostgreSQLIndustryMetricsBackend(IndustryMetricsStorageBackend):
 
         try:
             with self.db_manager.get_session() as session:
-                symbol_count = session.execute(
-                    text(f"SELECT COUNT(*) FROM {self.SYMBOLS_TABLE}")
-                ).scalar()
-                industry_count = session.execute(
-                    text(f"SELECT COUNT(*) FROM {self.INDUSTRIES_TABLE}")
-                ).scalar()
+                symbol_count = session.execute(text(f"SELECT COUNT(*) FROM {self.SYMBOLS_TABLE}")).scalar()
+                industry_count = session.execute(text(f"SELECT COUNT(*) FROM {self.INDUSTRIES_TABLE}")).scalar()
                 return {
                     "backend": "postgresql_hybrid",
                     "symbols": {"count": symbol_count},
@@ -959,9 +908,7 @@ class IndustryMetricsCache:
         config = self._load_config()
 
         self._backend_type = backend or config.get("storage_backend", "parquet")
-        self._parquet_path = parquet_path or config.get(
-            "parquet_path", "data/industry_metrics_cache"
-        )
+        self._parquet_path = parquet_path or config.get("parquet_path", "data/industry_metrics_cache")
 
         if self._backend_type == "postgresql":
             try:
@@ -973,9 +920,7 @@ class IndustryMetricsCache:
                 self._backend = ParquetIndustryMetricsBackend(Path(self._parquet_path))
         else:
             self._backend = ParquetIndustryMetricsBackend(Path(self._parquet_path))
-            logger.info(
-                f"Initialized Parquet hybrid industry metrics cache at {self._parquet_path}"
-            )
+            logger.info(f"Initialized Parquet hybrid industry metrics cache at {self._parquet_path}")
 
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration from config.yaml"""
@@ -986,9 +931,7 @@ class IndustryMetricsCache:
             if config_path.exists():
                 with open(config_path, "r") as f:
                     config_data = yaml.safe_load(f)
-                    return config_data.get("cache_control", {}).get(
-                        "industry_metrics", {}
-                    )
+                    return config_data.get("cache_control", {}).get("industry_metrics", {})
             return {}
         except Exception:
             return {}
@@ -1060,9 +1003,7 @@ class IndustryMetricsCache:
 
     # ========== Industry-Level Methods ==========
 
-    def get_industry_benchmarks(
-        self, industry: str
-    ) -> Optional[IndustryBenchmarksCacheEntry]:
+    def get_industry_benchmarks(self, industry: str) -> Optional[IndustryBenchmarksCacheEntry]:
         """Get cached industry-level benchmarks (shared across symbols)"""
         return self._backend.get_industry_benchmarks(industry)
 
@@ -1130,9 +1071,7 @@ class IndustryMetricsCache:
         symbol_entries = self.get_by_industry(industry)
 
         if len(symbol_entries) < 2:
-            logger.warning(
-                f"Not enough symbols ({len(symbol_entries)}) to compute benchmarks for {industry}"
-            )
+            logger.warning(f"Not enough symbols ({len(symbol_entries)}) to compute benchmarks for {industry}")
             return None
 
         # Aggregate metrics
@@ -1190,11 +1129,7 @@ class IndustryMetricsCache:
             inv_median = peer_statistics["inventory_days"]["median"]
             cycle_indicators["inventory_cycle"] = {
                 "median_days": inv_median,
-                "assessment": "elevated"
-                if inv_median > 60
-                else "normal"
-                if inv_median > 30
-                else "lean",
+                "assessment": "elevated" if inv_median > 60 else "normal" if inv_median > 30 else "lean",
             }
 
         computation_notes = [

@@ -50,13 +50,9 @@ class SECAnalysisAgent(InvestmentAgent):
     Agent specialized in SEC filing analysis and financial data extraction
     """
 
-    def __init__(
-        self, agent_id: str, ollama_client, event_bus, cache_manager: CacheManager
-    ):
+    def __init__(self, agent_id: str, ollama_client, event_bus, cache_manager: CacheManager):
         config = get_config()
-        self.primary_model = config.ollama.models.get(
-            "fundamental_analysis", "deepseek-r1:32b"
-        )
+        self.primary_model = config.ollama.models.get("fundamental_analysis", "deepseek-r1:32b")
         self.summary_model = config.ollama.models.get("synthesis", self.primary_model)
 
         # Specialized models for different tasks (set before base __init__ so capabilities use them)
@@ -148,14 +144,10 @@ class SECAnalysisAgent(InvestmentAgent):
 
                     cache_dir = Path("data/sec_cache") / symbol
                     if cache_dir.exists():
-                        self.logger.info(
-                            f"[SEC Agent] Removing cache directory: {cache_dir}"
-                        )
+                        self.logger.info(f"[SEC Agent] Removing cache directory: {cache_dir}")
                         shutil.rmtree(cache_dir)
                 except Exception as e:
-                    self.logger.error(
-                        f"[SEC Agent] Failed to clear cache for {symbol}: {e}"
-                    )
+                    self.logger.error(f"[SEC Agent] Failed to clear cache for {symbol}: {e}")
 
         return await super().pre_process(task)
 
@@ -176,9 +168,7 @@ class SECAnalysisAgent(InvestmentAgent):
 
         try:
             # PRIMARY TASK: Fetch and cache RAW SEC CompanyFacts data
-            raw_companyfacts = await self._fetch_and_cache_companyfacts(
-                symbol, force_refresh=force_refresh
-            )
+            raw_companyfacts = await self._fetch_and_cache_companyfacts(symbol, force_refresh=force_refresh)
 
             # SECONDARY TASK: Analyze filing sections (MD&A, Risk Factors, etc.)
             # This is optional and can be skipped for faster execution
@@ -189,9 +179,7 @@ class SECAnalysisAgent(InvestmentAgent):
                 sections = await self._extract_sections(filing_data)
 
                 # Analyze risk factors
-                risks = await self._analyze_risks(
-                    sections.get("risk_factors", ""), symbol
-                )
+                risks = await self._analyze_risks(sections.get("risk_factors", ""), symbol)
 
                 # Analyze MD&A
                 mda_analysis = await self._analyze_mda(sections.get("mda", ""), symbol)
@@ -275,16 +263,12 @@ class SECAnalysisAgent(InvestmentAgent):
 
     def _should_extract_forward_guidance(self, task: AgentTask) -> bool:
         """Return True when the downstream valuation path requests forward denominators."""
-        valuation_basis = (
-            str(task.context.get("valuation_basis", "ttm")).strip().lower()
-        )
+        valuation_basis = str(task.context.get("valuation_basis", "ttm")).strip().lower()
         if valuation_basis == "forward":
             return True
         return bool(task.context.get("extract_guidance", False))
 
-    async def _extract_forward_guidance(
-        self, symbol: str, *, force_refresh: bool = False
-    ) -> Dict[str, Any]:
+    async def _extract_forward_guidance(self, symbol: str, *, force_refresh: bool = False) -> Dict[str, Any]:
         """
         Fetch latest filings and deterministically extract guidance signals.
 
@@ -301,11 +285,7 @@ class SECAnalysisAgent(InvestmentAgent):
             "version": "v4",
         }
         if not force_refresh:
-            cached = (
-                self.cache.get(CacheType.SEC_RESPONSE, cache_key)
-                if self.cache
-                else None
-            )
+            cached = self.cache.get(CacheType.SEC_RESPONSE, cache_key) if self.cache else None
             if isinstance(cached, dict) and cached:
                 return cached
 
@@ -630,14 +610,10 @@ TEXT:
         if explicit is False:
             return {}
 
-        revenue_guidance = self._normalize_guidance_range(
-            payload.get("revenue_guidance")
-        )
+        revenue_guidance = self._normalize_guidance_range(payload.get("revenue_guidance"))
         eps_guidance = self._normalize_guidance_range(payload.get("eps_guidance"))
         revenue_growth = self._to_float_or_none(payload.get("revenue_growth_guidance"))
-        earnings_growth = self._to_float_or_none(
-            payload.get("earnings_growth_guidance")
-        )
+        earnings_growth = self._to_float_or_none(payload.get("earnings_growth_guidance"))
 
         # Convert percentage-like values to ratio.
         if revenue_growth is not None and abs(revenue_growth) > 2.0:
@@ -707,13 +683,9 @@ TEXT:
                     # Fall through to direct override attribute checks.
                     pass
 
-            override_enabled = bool(
-                getattr(cache_manager, "_force_refresh_override", False)
-            )
+            override_enabled = bool(getattr(cache_manager, "_force_refresh_override", False))
             if override_enabled:
-                override_symbols = getattr(
-                    cache_manager, "_force_refresh_symbols_override", None
-                )
+                override_symbols = getattr(cache_manager, "_force_refresh_symbols_override", None)
                 if not override_symbols:
                     return True
                 normalized_symbols = {str(s).upper() for s in override_symbols}
@@ -794,9 +766,7 @@ TEXT:
                         age_days,
                     )
                 elif age_days < 90:
-                    self.logger.info(
-                        f"[SEC Agent] Using cached raw data for {symbol} ({age_days} days old)"
-                    )
+                    self.logger.info(f"[SEC Agent] Using cached raw data for {symbol} ({age_days} days old)")
 
                     # Check if processed data exists, if not trigger processing
                     proc_result = conn.execute(
@@ -809,9 +779,7 @@ TEXT:
                     ).fetchone()
 
                     if proc_result.count == 0 and process_raw:
-                        self.logger.info(
-                            f"[SEC Agent] Processed data missing, triggering processing for {symbol}"
-                        )
+                        self.logger.info(f"[SEC Agent] Processed data missing, triggering processing for {symbol}")
                         processor = SECDataProcessor(db_engine=db_manager.engine)
                         processor.process_raw_data(
                             symbol=symbol,
@@ -847,14 +815,11 @@ TEXT:
                 f"[SEC Agent] SEC API response for {symbol} missing us-gaap structure! "
                 f"Keys: {list(api_data.get('facts', {}).keys())}"
             )
-            raise ValueError(
-                f"Invalid SEC API response for {symbol}: missing us-gaap structure"
-            )
+            raise ValueError(f"Invalid SEC API response for {symbol}: missing us-gaap structure")
 
         us_gaap_tag_count = len(api_data["facts"]["us-gaap"])
         self.logger.info(
-            f"[SEC Agent] ✅ Fetched raw CompanyFacts from SEC API: "
-            f"{symbol} has {us_gaap_tag_count} us-gaap tags"
+            f"[SEC Agent] ✅ Fetched raw CompanyFacts from SEC API: " f"{symbol} has {us_gaap_tag_count} us-gaap tags"
         )
 
         # Step 3: Save to sec_companyfacts_raw (with hash-based deduplication)
@@ -879,9 +844,7 @@ TEXT:
         self.logger.debug("[SEC Agent] Raw SEC payload cached at %s", raw_snapshot_path)
 
         data_changed = False  # Track if raw payload changed
-        should_reprocess = bool(
-            force_refresh
-        )  # Force refresh should rebuild processed rows
+        should_reprocess = bool(force_refresh)  # Force refresh should rebuild processed rows
 
         with db_manager.engine.connect() as conn:
             # Check if existing data has same hash
@@ -932,9 +895,7 @@ TEXT:
                     raw_id = result.fetchone().id
                     data_changed = True
                     should_reprocess = True
-                    self.logger.info(
-                        f"[SEC Agent] ✅ Updated raw data in sec_companyfacts_raw (id={raw_id})"
-                    )
+                    self.logger.info(f"[SEC Agent] ✅ Updated raw data in sec_companyfacts_raw (id={raw_id})")
             else:
                 # No existing data, insert new
                 result = conn.execute(
@@ -953,9 +914,7 @@ TEXT:
                 raw_id = result.fetchone().id
                 data_changed = True
                 should_reprocess = True
-                self.logger.info(
-                    f"[SEC Agent] ✅ Inserted raw data into sec_companyfacts_raw (id={raw_id})"
-                )
+                self.logger.info(f"[SEC Agent] ✅ Inserted raw data into sec_companyfacts_raw (id={raw_id})")
 
         # Step 4: Process raw data into sec_companyfacts_processed when changed OR force-refresh requested
         if process_raw and should_reprocess:
@@ -965,9 +924,7 @@ TEXT:
                     symbol,
                 )
             else:
-                self.logger.info(
-                    f"[SEC Agent] Processing raw data with SECDataProcessor for {symbol}"
-                )
+                self.logger.info(f"[SEC Agent] Processing raw data with SECDataProcessor for {symbol}")
             processor = SECDataProcessor(db_engine=db_manager.engine)
 
             processed_filings = processor.process_raw_data(
@@ -982,9 +939,7 @@ TEXT:
                 f"[SEC Agent] ✅ Processed {len(processed_filings)} filings into sec_companyfacts_processed"
             )
         elif process_raw:
-            self.logger.info(
-                f"[SEC Agent] ⏭️  Skipping reprocessing for {symbol} (data unchanged)"
-            )
+            self.logger.info(f"[SEC Agent] ⏭️  Skipping reprocessing for {symbol} (data unchanged)")
         else:
             self.logger.info(
                 "[SEC Agent] Raw caching only for %s complete (processed data step skipped)",
@@ -1010,14 +965,10 @@ TEXT:
             return file_path
 
         try:
-            with gzip.open(
-                file_path, "wt", encoding="utf-8", compresslevel=9
-            ) as handle:
+            with gzip.open(file_path, "wt", encoding="utf-8", compresslevel=9) as handle:
                 json.dump(payload, handle, default=str, separators=(",", ":"))
         except Exception as exc:
-            self.logger.warning(
-                "Failed to persist raw SEC payload for %s: %s", symbol, exc
-            )
+            self.logger.warning("Failed to persist raw SEC payload for %s: %s", symbol, exc)
         return file_path
 
     async def _fetch_current_price(self, symbol: str) -> Optional[float]:
@@ -1031,9 +982,7 @@ TEXT:
             if price is not None:
                 return float(price)
         except Exception as exc:
-            self.logger.warning(
-                "⚠️  Unable to fetch current price for %s: %s", symbol, exc
-            )
+            self.logger.warning("⚠️  Unable to fetch current price for %s: %s", symbol, exc)
         return None
 
     async def _extract_from_filing(self, filing: Dict, symbol: str) -> Dict:
@@ -1046,9 +995,7 @@ TEXT:
         try:
             # Try XBRL parsing if available
             if filing.get("xbrl_url"):
-                self.logger.info(
-                    f"Attempting to fetch and parse XBRL data from {filing.get('xbrl_url')}"
-                )
+                self.logger.info(f"Attempting to fetch and parse XBRL data from {filing.get('xbrl_url')}")
 
                 # Download XBRL content
                 import ssl
@@ -1071,53 +1018,36 @@ TEXT:
                 }
 
                 connector = aiohttp.TCPConnector(ssl=ssl_context)
-                async with aiohttp.ClientSession(
-                    connector=connector, headers=headers
-                ) as session:
+                async with aiohttp.ClientSession(connector=connector, headers=headers) as session:
                     async with session.get(filing["xbrl_url"], timeout=30) as response:
                         if response.status == 200:
                             xbrl_content = await response.text()
 
                             # Parse XBRL
-                            parsed_xbrl = await self.xbrl_parser.parse_filing(
-                                xbrl_content
-                            )
+                            parsed_xbrl = await self.xbrl_parser.parse_filing(xbrl_content)
 
                             if parsed_xbrl and parsed_xbrl.get("financial_data"):
                                 # Extract metrics from parsed XBRL
-                                metrics = await self.xbrl_parser.extract_metrics(
-                                    parsed_xbrl
-                                )
+                                metrics = await self.xbrl_parser.extract_metrics(parsed_xbrl)
 
                                 if metrics:
                                     # Convert XBRL metrics to our standard format
                                     financial_data = {
                                         "metrics": {
                                             "assets": metrics.get("Assets", 0),
-                                            "current_assets": metrics.get(
-                                                "AssetsCurrent", 0
-                                            ),
-                                            "liabilities": metrics.get(
-                                                "Liabilities", 0
-                                            ),
-                                            "current_liabilities": metrics.get(
-                                                "LiabilitiesCurrent", 0
-                                            ),
-                                            "equity": metrics.get("StockholdersEquity")
-                                            or metrics.get("Equity", 0),
+                                            "current_assets": metrics.get("AssetsCurrent", 0),
+                                            "liabilities": metrics.get("Liabilities", 0),
+                                            "current_liabilities": metrics.get("LiabilitiesCurrent", 0),
+                                            "equity": metrics.get("StockholdersEquity") or metrics.get("Equity", 0),
                                             "revenues": metrics.get("Revenues", 0),
-                                            "net_income": metrics.get(
-                                                "NetIncomeLoss", 0
-                                            ),
+                                            "net_income": metrics.get("NetIncomeLoss", 0),
                                             "cash": metrics.get(
                                                 "CashAndCashEquivalentsAtCarryingValue",
                                                 0,
                                             ),
                                         },
                                         "ratios": {
-                                            "current_ratio": metrics.get(
-                                                "CurrentRatio", 0
-                                            ),
+                                            "current_ratio": metrics.get("CurrentRatio", 0),
                                             "quick_ratio": 0,  # Need to calculate
                                             "debt_to_equity": 0,  # Need to calculate
                                             "debt_to_assets": 0,  # Need to calculate
@@ -1135,21 +1065,15 @@ TEXT:
                                     # Calculate additional ratios
                                     self._calculate_ratios(financial_data)
 
-                                    self.logger.info(
-                                        f"Successfully extracted financial data from XBRL for {symbol}"
-                                    )
+                                    self.logger.info(f"Successfully extracted financial data from XBRL for {symbol}")
                                     return financial_data
 
             # Fallback: Try to extract from filing text using regex patterns
-            self.logger.info(
-                f"XBRL not available or failed, attempting text-based extraction for {symbol}"
-            )
+            self.logger.info(f"XBRL not available or failed, attempting text-based extraction for {symbol}")
             financial_data = await self._extract_from_text(filing, symbol)
 
             if financial_data and financial_data.get("metrics"):
-                self.logger.info(
-                    f"Successfully extracted financial data from filing text for {symbol}"
-                )
+                self.logger.info(f"Successfully extracted financial data from filing text for {symbol}")
                 return financial_data
 
             # If we got here, extraction failed
@@ -1183,12 +1107,7 @@ TEXT:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
                 try:
-                    value_str = (
-                        match.group(1)
-                        .replace(",", "")
-                        .replace("(", "-")
-                        .replace(")", "")
-                    )
+                    value_str = match.group(1).replace(",", "").replace("(", "-").replace(")", "")
                     extracted[key] = float(value_str)
                 except (ValueError, AttributeError):
                     pass
@@ -1224,21 +1143,15 @@ TEXT:
 
         # Current ratio
         if "current_assets" in metrics and "current_liabilities" in metrics:
-            ratios["current_ratio"] = safe_div(
-                metrics["current_assets"], metrics["current_liabilities"]
-            )
+            ratios["current_ratio"] = safe_div(metrics["current_assets"], metrics["current_liabilities"])
 
         # Debt to equity
         if "liabilities" in metrics and "equity" in metrics:
-            ratios["debt_to_equity"] = safe_div(
-                metrics["liabilities"], metrics["equity"]
-            )
+            ratios["debt_to_equity"] = safe_div(metrics["liabilities"], metrics["equity"])
 
         # Debt to assets
         if "liabilities" in metrics and "assets" in metrics:
-            ratios["debt_to_assets"] = safe_div(
-                metrics["liabilities"], metrics["assets"]
-            )
+            ratios["debt_to_assets"] = safe_div(metrics["liabilities"], metrics["assets"])
 
         # ROE
         if "net_income" in metrics and "equity" in metrics:
@@ -1250,13 +1163,9 @@ TEXT:
 
         # Net margin
         if "net_income" in metrics and "revenues" in metrics:
-            ratios["net_margin"] = (
-                safe_div(metrics["net_income"], metrics["revenues"]) * 100
-            )
+            ratios["net_margin"] = safe_div(metrics["net_income"], metrics["revenues"]) * 100
 
-    async def _fetch_filing(
-        self, symbol: str, filing_type: str, period: str
-    ) -> SECFilingData:
+    async def _fetch_filing(self, symbol: str, filing_type: str, period: str) -> SECFilingData:
         """Fetch SEC filing from EDGAR with hybrid data extraction"""
         cache_key = {
             "symbol": symbol,
@@ -1269,9 +1178,7 @@ TEXT:
         # Check cache
         from investigator.infrastructure.cache.cache_types import CacheType
 
-        cached = (
-            self.cache.get(CacheType.SEC_RESPONSE, cache_key) if self.cache else None
-        )
+        cached = self.cache.get(CacheType.SEC_RESPONSE, cache_key) if self.cache else None
         if cached:
             return SECFilingData(**cached)
 
@@ -1291,9 +1198,7 @@ TEXT:
             "note": "Financial data is available via Fundamental Agent from sec_companyfacts_processed table",
             "source": "clean_architecture",
         }
-        self.logger.info(
-            "[SEC Agent] Filing fetched for section analysis only - financial data via Fundamental Agent"
-        )
+        self.logger.info("[SEC Agent] Filing fetched for section analysis only - financial data via Fundamental Agent")
 
         filing_data = SECFilingData(
             cik=filing["cik"],
@@ -1340,17 +1245,13 @@ TEXT:
                             re.IGNORECASE | re.MULTILINE,
                         )
                         if next_match:
-                            next_section_idx = min(
-                                next_section_idx, start_idx + next_match.start()
-                            )
+                            next_section_idx = min(next_section_idx, start_idx + next_match.start())
 
                 sections[section_name] = text[start_idx:next_section_idx].strip()
 
         return sections
 
-    async def _analyze_financials(
-        self, filing_data: SECFilingData, sections: Dict[str, str]
-    ) -> Dict:
+    async def _analyze_financials(self, filing_data: SECFilingData, sections: Dict[str, str]) -> Dict:
         """Analyze financial statements and data"""
         prompt = f"""
         Analyze the following financial data and provide insights:
@@ -1493,19 +1394,13 @@ TEXT:
 
         # Calculate derived metrics
         if "revenue" in metrics and "net_income" in metrics:
-            metrics["net_margin"] = (
-                metrics["net_income"] / metrics["revenue"] if metrics["revenue"] else 0
-            )
+            metrics["net_margin"] = metrics["net_income"] / metrics["revenue"] if metrics["revenue"] else 0
 
         if "total_assets" in metrics and "total_liabilities" in metrics:
-            metrics["book_value"] = (
-                metrics["total_assets"] - metrics["total_liabilities"]
-            )
+            metrics["book_value"] = metrics["total_assets"] - metrics["total_liabilities"]
 
         if "debt" in metrics and "equity" in metrics:
-            metrics["debt_to_equity"] = (
-                metrics["debt"] / metrics["equity"] if metrics["equity"] else 0
-            )
+            metrics["debt_to_equity"] = metrics["debt"] / metrics["equity"] if metrics["equity"] else 0
 
         return metrics
 
@@ -1746,9 +1641,7 @@ TEXT:
             format="json",
         )
 
-    async def analyze_peer_comparison(
-        self, symbol: str, peers: List[str], filing_type: str = "10-K"
-    ) -> Dict:
+    async def analyze_peer_comparison(self, symbol: str, peers: List[str], filing_type: str = "10-K") -> Dict:
         """Compare SEC filings across peer companies"""
         analyses = {}
 

@@ -168,11 +168,7 @@ class PSMultipleModel(BaseValuationModel):
             if ratio > 1000 or ratio < 0.001:
                 # Fair value is more than 1000x or less than 0.001x of current price
                 # This indicates a data quality issue (likely revenue_per_share unit mismatch)
-                symbol = (
-                    self.company_profile.symbol
-                    if hasattr(self.company_profile, "symbol")
-                    else "UNKNOWN"
-                )
+                symbol = self.company_profile.symbol if hasattr(self.company_profile, "symbol") else "UNKNOWN"
                 logger.warning(
                     f"⚠️  [PS_DATA_QUALITY] {symbol} - Implausible fair value: ${fair_value:,.2f} "
                     f"(revenue_per_share=${self.revenue_per_share:.4f}, target_ps={target_ps:.2f}, current_price=${self.current_price:.2f}) "
@@ -193,9 +189,7 @@ class PSMultipleModel(BaseValuationModel):
         metadata: Dict[str, Any] = {}
         if self.current_price is not None and self.current_price > 0:
             metadata["current_price"] = self.current_price
-            metadata["upside_downside_pct"] = round(
-                ((fair_value / self.current_price) - 1) * 100, 2
-            )
+            metadata["upside_downside_pct"] = round(((fair_value / self.current_price) - 1) * 100, 2)
 
         assumptions = {
             "revenue_per_share": self.revenue_per_share,
@@ -216,9 +210,7 @@ class PSMultipleModel(BaseValuationModel):
     def estimate_confidence(self, raw_output: Dict[str, Any]) -> float:
         diagnostics = self._build_diagnostics(target_ps=raw_output.get("target_ps"))
         return clamp(
-            0.55 * diagnostics.data_quality_score
-            + 0.30 * diagnostics.fit_score
-            + 0.15 * diagnostics.calibration_score,
+            0.55 * diagnostics.data_quality_score + 0.30 * diagnostics.fit_score + 0.15 * diagnostics.calibration_score,
             0.0,
             1.0,
         )
@@ -250,16 +242,10 @@ class PSMultipleModel(BaseValuationModel):
 
         # Try industry-specific lookup first
         if self.company_profile.industry:
-            sector_key = (
-                self.company_profile.sector.split("/")[0].strip()
-                if self.company_profile.sector
-                else None
-            )
+            sector_key = self.company_profile.sector.split("/")[0].strip() if self.company_profile.sector else None
             industry_candidates = []
             if sector_key:
-                industry_candidates.append(
-                    f"{sector_key}/{self.company_profile.industry}"
-                )
+                industry_candidates.append(f"{sector_key}/{self.company_profile.industry}")
             industry_candidates.append(self.company_profile.industry)
 
             for industry_key in industry_candidates:
@@ -281,9 +267,7 @@ class PSMultipleModel(BaseValuationModel):
             )
             base_ps = SECTOR_BASE_PS.get(sector_key)
             if base_ps:
-                logger.debug(
-                    f"PS_GRANULAR - Sector base P/S: {base_ps} (sector: {sector_key})"
-                )
+                logger.debug(f"PS_GRANULAR - Sector base P/S: {base_ps} (sector: {sector_key})")
 
         # Last resort: use sector_median_ps from input
         if base_ps is None and self.sector_median_ps and self.sector_median_ps > 0:
@@ -310,9 +294,7 @@ class PSMultipleModel(BaseValuationModel):
                     )
                     break
         else:
-            logger.debug(
-                "PS_GRANULAR - No revenue_growth_yoy available, skipping growth adjustment"
-            )
+            logger.debug("PS_GRANULAR - No revenue_growth_yoy available, skipping growth adjustment")
 
         target_ps += growth_adjustment
 
@@ -322,37 +304,26 @@ class PSMultipleModel(BaseValuationModel):
         # Determine stage classification
         # Use boolean flags from CompanyProfile (has_positive_earnings, has_positive_ebitda)
         is_pre_profitable = (
-            self.company_profile.has_positive_earnings is not None
-            and not self.company_profile.has_positive_earnings
-        ) or (
-            self.company_profile.has_positive_ebitda is not None
-            and not self.company_profile.has_positive_ebitda
-        )
+            self.company_profile.has_positive_earnings is not None and not self.company_profile.has_positive_earnings
+        ) or (self.company_profile.has_positive_ebitda is not None and not self.company_profile.has_positive_ebitda)
 
         if is_pre_profitable:
             # Check if high growth (>20% YoY)
             is_high_growth = (
-                self.company_profile.revenue_growth_yoy is not None
-                and self.company_profile.revenue_growth_yoy > 0.20
+                self.company_profile.revenue_growth_yoy is not None and self.company_profile.revenue_growth_yoy > 0.20
             )
 
             if is_high_growth:
                 stage_adjustment = STAGE_ADJUSTMENTS["pre_profitable_high_growth"]
-                logger.info(
-                    f"PS_GRANULAR - Stage adjustment: +{stage_adjustment:.1f} (pre-profitable high-growth)"
-                )
+                logger.info(f"PS_GRANULAR - Stage adjustment: +{stage_adjustment:.1f} (pre-profitable high-growth)")
             else:
                 stage_adjustment = STAGE_ADJUSTMENTS["pre_profitable_low_growth"]
-                logger.info(
-                    f"PS_GRANULAR - Stage adjustment: {stage_adjustment:.1f} (pre-profitable low-growth)"
-                )
+                logger.info(f"PS_GRANULAR - Stage adjustment: {stage_adjustment:.1f} (pre-profitable low-growth)")
         else:
             # Profitable company - check if early stage or mature
             # Early stage: less than 3 years of positive earnings
             stage_adjustment = STAGE_ADJUSTMENTS["profitable_mature"]
-            logger.debug(
-                f"PS_GRANULAR - Stage adjustment: {stage_adjustment:.1f} (profitable mature)"
-            )
+            logger.debug(f"PS_GRANULAR - Stage adjustment: {stage_adjustment:.1f} (profitable mature)")
 
         target_ps += stage_adjustment
 
@@ -364,39 +335,23 @@ class PSMultipleModel(BaseValuationModel):
         if self.company_profile.rule_of_40_score is not None:
             if self.company_profile.rule_of_40_score > 0.40:
                 quality_multiplier *= QUALITY_PREMIUMS["rule_of_40_excellent"]
-                applied_premiums.append(
-                    f"Rule of 40 excellent ({self.company_profile.rule_of_40_score * 100:.1f}%)"
-                )
+                applied_premiums.append(f"Rule of 40 excellent ({self.company_profile.rule_of_40_score * 100:.1f}%)")
             elif self.company_profile.rule_of_40_score > 0.30:
                 quality_multiplier *= QUALITY_PREMIUMS["rule_of_40_good"]
-                applied_premiums.append(
-                    f"Rule of 40 good ({self.company_profile.rule_of_40_score * 100:.1f}%)"
-                )
+                applied_premiums.append(f"Rule of 40 good ({self.company_profile.rule_of_40_score * 100:.1f}%)")
 
         # Net Revenue Retention (NRR) premium
-        if (
-            self.company_profile.net_revenue_retention is not None
-            and self.company_profile.net_revenue_retention > 1.20
-        ):
+        if self.company_profile.net_revenue_retention is not None and self.company_profile.net_revenue_retention > 1.20:
             quality_multiplier *= QUALITY_PREMIUMS["nrr_excellent"]
-            applied_premiums.append(
-                f"NRR excellent ({self.company_profile.net_revenue_retention * 100:.0f}%)"
-            )
+            applied_premiums.append(f"NRR excellent ({self.company_profile.net_revenue_retention * 100:.0f}%)")
 
         # Gross margin premium
-        if (
-            self.company_profile.gross_margin is not None
-            and self.company_profile.gross_margin > 0.70
-        ):
+        if self.company_profile.gross_margin is not None and self.company_profile.gross_margin > 0.70:
             quality_multiplier *= QUALITY_PREMIUMS["gross_margin_high"]
-            applied_premiums.append(
-                f"Gross margin high ({self.company_profile.gross_margin * 100:.1f}%)"
-            )
+            applied_premiums.append(f"Gross margin high ({self.company_profile.gross_margin * 100:.1f}%)")
 
         if applied_premiums:
-            logger.info(
-                f"PS_GRANULAR - Quality premiums: {quality_multiplier:.2f}x ({', '.join(applied_premiums)})"
-            )
+            logger.info(f"PS_GRANULAR - Quality premiums: {quality_multiplier:.2f}x ({', '.join(applied_premiums)})")
 
         target_ps *= quality_multiplier
 
@@ -410,9 +365,7 @@ class PSMultipleModel(BaseValuationModel):
         return final_ps
 
     def _build_baseline_diagnostics(self) -> ModelDiagnostics:
-        context = baseline_multiple_context(
-            self.company_profile, data_quality_default=0.55, fit_default=0.45
-        )
+        context = baseline_multiple_context(self.company_profile, data_quality_default=0.55, fit_default=0.45)
         if self.company_profile.primary_archetype == CompanyArchetype.HIGH_GROWTH:
             context.fit_score = clamp(context.fit_score + 0.1, 0.0, 1.0)
         return context.to_diagnostics()
@@ -425,9 +378,7 @@ class PSMultipleModel(BaseValuationModel):
             return diagnostics
 
         if self.current_price and self.revenue_per_share:
-            observed_ps = clamp(
-                self.current_price / self.revenue_per_share, 0.0, self.max_ps
-            )
+            observed_ps = clamp(self.current_price / self.revenue_per_share, 0.0, self.max_ps)
             delta = abs(observed_ps - target_ps) / target_ps if target_ps else 0
             if delta < 0.25:
                 diagnostics.fit_score = clamp(diagnostics.fit_score + 0.1, 0.0, 1.0)
@@ -440,8 +391,6 @@ class PSMultipleModel(BaseValuationModel):
             and self.company_profile.daily_liquidity_usd < self.liquidity_floor_usd
         ):
             diagnostics.flags.append("LOW_LIQUIDITY")
-            diagnostics.data_quality_score = clamp(
-                diagnostics.data_quality_score - 0.1, 0.0, 1.0
-            )
+            diagnostics.data_quality_score = clamp(diagnostics.data_quality_score - 0.1, 0.0, 1.0)
 
         return diagnostics

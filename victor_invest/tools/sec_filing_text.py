@@ -186,13 +186,9 @@ Parameters:
             elif action == "get_developments":
                 return await self._get_developments(symbol, num_filings, max_chars)
             elif action == "get_risk_factors":
-                return await self._get_risk_factors(
-                    symbol, form_type, period, max_chars
-                )
+                return await self._get_risk_factors(symbol, form_type, period, max_chars)
             elif action == "get_business_overview":
-                return await self._get_business_overview(
-                    symbol, form_type, period, max_chars
-                )
+                return await self._get_business_overview(symbol, form_type, period, max_chars)
             elif action == "get_management_discussion":
                 return await self._get_management_discussion(symbol, max_chars)
             else:
@@ -220,9 +216,7 @@ Parameters:
         normalized = re.sub(r"\{[^}]+\}", " ", normalized)
         return normalized.strip()
 
-    def _extract_section_by_patterns(
-        self, text: str, patterns: List[str], max_chars: int
-    ) -> Optional[str]:
+    def _extract_section_by_patterns(self, text: str, patterns: List[str], max_chars: int) -> Optional[str]:
         """Extract a section from filing text using regex patterns.
 
         Args:
@@ -261,9 +255,7 @@ Parameters:
 
         return None
 
-    def _extract_guidance_sentences(
-        self, text: str, max_sentences: int = 50
-    ) -> List[str]:
+    def _extract_guidance_sentences(self, text: str, max_sentences: int = 50) -> List[str]:
         """Extract sentences containing guidance/forward-looking statements.
 
         Args:
@@ -297,9 +289,7 @@ Parameters:
 
         return guidance_sentences
 
-    async def _get_filing_text(
-        self, symbol: str, form_type: str, period: str
-    ) -> Optional[str]:
+    async def _get_filing_text(self, symbol: str, form_type: str, period: str) -> Optional[str]:
         """Get filing text from SEC.
 
         Args:
@@ -314,27 +304,19 @@ Parameters:
             return None
 
         try:
-            filing_data = await self._sec_client.get_filing_by_symbol(
-                symbol=symbol, form_type=form_type, period=period
-            )
+            filing_data = await self._sec_client.get_filing_by_symbol(symbol=symbol, form_type=form_type, period=period)
             return filing_data.get("text", "")
         except Exception as e:
             logger.error(f"Error fetching filing text: {e}")
             return None
 
-    async def _get_mda(
-        self, symbol: str, form_type: str, period: str, max_chars: int
-    ) -> ToolResult:
+    async def _get_mda(self, symbol: str, form_type: str, period: str, max_chars: int) -> ToolResult:
         """Extract Management's Discussion and Analysis section."""
         text = await self._get_filing_text(symbol, form_type, period)
         if not text:
-            return ToolResult.create_failure(
-                f"Could not retrieve {form_type} filing text for {symbol}"
-            )
+            return ToolResult.create_failure(f"Could not retrieve {form_type} filing text for {symbol}")
 
-        mda_text = self._extract_section_by_patterns(
-            text, self._mda_patterns, max_chars
-        )
+        mda_text = self._extract_section_by_patterns(text, self._mda_patterns, max_chars)
 
         if not mda_text:
             # Fallback: try to extract any discussion-like content
@@ -362,9 +344,7 @@ Parameters:
             if extracted_sentences:
                 mda_text = " ".join(extracted_sentences)[:max_chars]
             else:
-                return ToolResult.create_failure(
-                    f"Could not extract MD&A section from {form_type} filing for {symbol}"
-                )
+                return ToolResult.create_failure(f"Could not extract MD&A section from {form_type} filing for {symbol}")
 
         return ToolResult.create_success(
             output={
@@ -382,20 +362,14 @@ Parameters:
             },
         )
 
-    async def _get_guidance(
-        self, symbol: str, form_type: str, period: str, max_chars: int
-    ) -> ToolResult:
+    async def _get_guidance(self, symbol: str, form_type: str, period: str, max_chars: int) -> ToolResult:
         """Extract management guidance and outlook."""
         text = await self._get_filing_text(symbol, form_type, period)
         if not text:
-            return ToolResult.create_failure(
-                f"Could not retrieve {form_type} filing text for {symbol}"
-            )
+            return ToolResult.create_failure(f"Could not retrieve {form_type} filing text for {symbol}")
 
         # First try to find a dedicated guidance section
-        guidance_section = self._extract_section_by_patterns(
-            text, self._guidance_patterns, max_chars
-        )
+        guidance_section = self._extract_section_by_patterns(text, self._guidance_patterns, max_chars)
 
         if guidance_section:
             return ToolResult.create_success(
@@ -435,22 +409,16 @@ Parameters:
                 },
             )
 
-        return ToolResult.create_failure(
-            f"Could not extract guidance from {form_type} filing for {symbol}"
-        )
+        return ToolResult.create_failure(f"Could not extract guidance from {form_type} filing for {symbol}")
 
-    async def _get_developments(
-        self, symbol: str, num_filings: int, max_chars: int
-    ) -> ToolResult:
+    async def _get_developments(self, symbol: str, num_filings: int, max_chars: int) -> ToolResult:
         """Extract recent developments from 8-K filings."""
         if self._sec_client is None:
             return ToolResult.create_failure("SEC client not initialized")
 
         try:
             # Search for recent 8-K filings
-            filings = await self._sec_client.search_filings(
-                symbol=symbol, form_type="8-K", limit=num_filings
-            )
+            filings = await self._sec_client.search_filings(symbol=symbol, form_type="8-K", limit=num_filings)
 
             if not filings:
                 return ToolResult.create_failure(
@@ -484,29 +452,21 @@ Parameters:
                     )
 
                     if dev_text:
-                        developments.append(
-                            f"## Filing Date: {filing_date}\n{dev_text}\n"
-                        )
+                        developments.append(f"## Filing Date: {filing_date}\n{dev_text}\n")
                         total_chars += len(dev_text)
                     else:
                         # Fallback: take first 2000 chars of the filing
                         normalized = self._normalize_text(text)
                         snippet = normalized[: min(2000, max_chars - total_chars)]
-                        developments.append(
-                            f"## Filing Date: {filing_date}\n{snippet}\n"
-                        )
+                        developments.append(f"## Filing Date: {filing_date}\n{snippet}\n")
                         total_chars += len(snippet)
 
                 except Exception as e:
-                    logger.warning(
-                        f"Error processing 8-K filing {accession_number}: {e}"
-                    )
+                    logger.warning(f"Error processing 8-K filing {accession_number}: {e}")
                     continue
 
             if not developments:
-                return ToolResult.create_failure(
-                    f"Could not extract developments from 8-K filings for {symbol}"
-                )
+                return ToolResult.create_failure(f"Could not extract developments from 8-K filings for {symbol}")
 
             combined_text = "\n".join(developments)
 
@@ -527,24 +487,16 @@ Parameters:
             logger.error(f"Error getting developments for {symbol}: {e}")
             return ToolResult.create_failure(f"Failed to get developments: {str(e)}")
 
-    async def _get_risk_factors(
-        self, symbol: str, form_type: str, period: str, max_chars: int
-    ) -> ToolResult:
+    async def _get_risk_factors(self, symbol: str, form_type: str, period: str, max_chars: int) -> ToolResult:
         """Extract risk factors section."""
         text = await self._get_filing_text(symbol, form_type, period)
         if not text:
-            return ToolResult.create_failure(
-                f"Could not retrieve {form_type} filing text for {symbol}"
-            )
+            return ToolResult.create_failure(f"Could not retrieve {form_type} filing text for {symbol}")
 
-        risk_text = self._extract_section_by_patterns(
-            text, self._risk_factors_patterns, max_chars
-        )
+        risk_text = self._extract_section_by_patterns(text, self._risk_factors_patterns, max_chars)
 
         if not risk_text:
-            return ToolResult.create_failure(
-                f"Could not extract risk factors from {form_type} filing for {symbol}"
-            )
+            return ToolResult.create_failure(f"Could not extract risk factors from {form_type} filing for {symbol}")
 
         return ToolResult.create_success(
             output={
@@ -562,19 +514,13 @@ Parameters:
             },
         )
 
-    async def _get_business_overview(
-        self, symbol: str, form_type: str, period: str, max_chars: int
-    ) -> ToolResult:
+    async def _get_business_overview(self, symbol: str, form_type: str, period: str, max_chars: int) -> ToolResult:
         """Extract business overview section."""
         text = await self._get_filing_text(symbol, form_type, period)
         if not text:
-            return ToolResult.create_failure(
-                f"Could not retrieve {form_type} filing text for {symbol}"
-            )
+            return ToolResult.create_failure(f"Could not retrieve {form_type} filing text for {symbol}")
 
-        business_text = self._extract_section_by_patterns(
-            text, self._business_overview_patterns, max_chars
-        )
+        business_text = self._extract_section_by_patterns(text, self._business_overview_patterns, max_chars)
 
         if not business_text:
             return ToolResult.create_failure(
@@ -597,9 +543,7 @@ Parameters:
             },
         )
 
-    async def _get_management_discussion(
-        self, symbol: str, max_chars: int
-    ) -> ToolResult:
+    async def _get_management_discussion(self, symbol: str, max_chars: int) -> ToolResult:
         """Get comprehensive management commentary from multiple sources.
 
         Combines MD&A from 10-K, guidance from latest 10-Q/8-K, and recent developments.
@@ -619,9 +563,7 @@ Parameters:
         # Get guidance from latest 10-Q
         if char_budget > 3000:
             try:
-                guidance_result = await self._get_guidance(
-                    symbol, "10-Q", "latest", min(char_budget // 2, 5000)
-                )
+                guidance_result = await self._get_guidance(symbol, "10-Q", "latest", min(char_budget // 2, 5000))
                 if guidance_result.success:
                     sections["guidance_10q"] = guidance_result.output.get("text", "")
                     char_budget -= len(sections["guidance_10q"])
@@ -631,33 +573,23 @@ Parameters:
         # Get recent developments from 8-K
         if char_budget > 2000:
             try:
-                dev_result = await self._get_developments(
-                    symbol, 3, min(char_budget, 5000)
-                )
+                dev_result = await self._get_developments(symbol, 3, min(char_budget, 5000))
                 if dev_result.success:
                     sections["developments_8k"] = dev_result.output.get("text", "")
             except Exception as e:
                 logger.warning(f"Could not get 8-K developments for {symbol}: {e}")
 
         if not sections:
-            return ToolResult.create_failure(
-                f"Could not extract any management commentary from filings for {symbol}"
-            )
+            return ToolResult.create_failure(f"Could not extract any management commentary from filings for {symbol}")
 
         # Combine sections with headers
         combined_parts = []
         if "mda_10k" in sections:
-            combined_parts.append(
-                f"# Management's Discussion and Analysis (10-K)\n{sections['mda_10k']}"
-            )
+            combined_parts.append(f"# Management's Discussion and Analysis (10-K)\n{sections['mda_10k']}")
         if "guidance_10q" in sections:
-            combined_parts.append(
-                f"# Management Guidance (10-Q)\n{sections['guidance_10q']}"
-            )
+            combined_parts.append(f"# Management Guidance (10-Q)\n{sections['guidance_10q']}")
         if "developments_8k" in sections:
-            combined_parts.append(
-                f"# Recent Developments (8-K)\n{sections['developments_8k']}"
-            )
+            combined_parts.append(f"# Recent Developments (8-K)\n{sections['developments_8k']}")
 
         combined_text = "\n\n".join(combined_parts)
 

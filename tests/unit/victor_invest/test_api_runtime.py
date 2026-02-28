@@ -76,29 +76,17 @@ def test_run_batch_analysis_uses_workflow_runner(monkeypatch):
         ("MSFT", AnalysisMode.QUICK),
     ]
     assert api_module.app.state.analysis_jobs["job-1"]["status"] == "completed"
-    assert (
-        api_module.app.state.analysis_jobs["job-1"]["results"]["AAPL"]["status"]
-        == "completed"
-    )
-    assert (
-        api_module.app.state.analysis_jobs["job-1"]["results"]["MSFT"]["status"]
-        == "completed"
-    )
+    assert api_module.app.state.analysis_jobs["job-1"]["results"]["AAPL"]["status"] == "completed"
+    assert api_module.app.state.analysis_jobs["job-1"]["results"]["MSFT"]["status"] == "completed"
     assert api_module.app.state.analysis_jobs["job-1"]["success_count"] == 2
     assert api_module.app.state.analysis_jobs["job-1"]["error_count"] == 0
 
 
 def test_run_batch_analysis_marks_failed_for_invalid_mode(monkeypatch):
-    async def should_not_run_workflow_analysis(
-        symbol, mode
-    ):  # pragma: no cover - defensive
-        raise AssertionError(
-            "run_workflow_analysis should not be called for invalid mode"
-        )
+    async def should_not_run_workflow_analysis(symbol, mode):  # pragma: no cover - defensive
+        raise AssertionError("run_workflow_analysis should not be called for invalid mode")
 
-    monkeypatch.setattr(
-        api_module, "run_workflow_analysis", should_not_run_workflow_analysis
-    )
+    monkeypatch.setattr(api_module, "run_workflow_analysis", should_not_run_workflow_analysis)
     api_module.app.state.analysis_jobs = {
         "job-invalid-mode": {
             "symbols": ["AAPL", "MSFT"],
@@ -109,9 +97,7 @@ def test_run_batch_analysis_marks_failed_for_invalid_mode(monkeypatch):
         }
     }
 
-    asyncio.run(
-        api_module._run_batch_analysis("job-invalid-mode", ["AAPL", "MSFT"], "invalid")
-    )
+    asyncio.run(api_module._run_batch_analysis("job-invalid-mode", ["AAPL", "MSFT"], "invalid"))
 
     job = api_module.app.state.analysis_jobs["job-invalid-mode"]
     assert job["status"] == "failed"
@@ -142,9 +128,7 @@ def test_run_batch_analysis_marks_completed_with_errors(monkeypatch):
         }
     }
 
-    asyncio.run(
-        api_module._run_batch_analysis("job-partial", ["AAPL", "MSFT"], "quick")
-    )
+    asyncio.run(api_module._run_batch_analysis("job-partial", ["AAPL", "MSFT"], "quick"))
 
     job = api_module.app.state.analysis_jobs["job-partial"]
     assert job["status"] == "completed_with_errors"
@@ -331,9 +315,7 @@ def test_build_rankings_payload_returns_overall_and_sector_views():
     assert payload["universe"]["eligible_symbols"] == 3
     assert payload["overall"]["longs"][0]["symbol"] == "AAA"
     assert payload["overall"]["shorts"][0]["symbol"] == "BBB"
-    assert any(
-        sector_row["sector"] == "Technology" for sector_row in payload["sectors"]
-    )
+    assert any(sector_row["sector"] == "Technology" for sector_row in payload["sectors"])
     assert payload["pairs"][0]["long"]["symbol"] == "AAA"
     assert payload["pairs"][0]["short"]["symbol"] == "BBB"
     assert payload["portfolio_preview"]["legs"]["longs"] >= 1
@@ -449,9 +431,7 @@ def test_ui_rankings_endpoint_reads_cache_files(monkeypatch, tmp_path: Path):
     _write("XOM", -8.0, "Energy", 72.0)
 
     client = TestClient(api_module.app)
-    response = client.get(
-        "/ui/api/rankings?limit=2&per_sector=1&min_quality=0&max_age_hours=1000"
-    )
+    response = client.get("/ui/api/rankings?limit=2&per_sector=1&min_quality=0&max_age_hours=1000")
 
     assert response.status_code == 200
     data = response.json()
@@ -507,9 +487,7 @@ def test_ui_rankings_export_csv(monkeypatch, tmp_path: Path):
     (tmp_path / "AAPL.json").write_text(json.dumps(record), encoding="utf-8")
 
     client = TestClient(api_module.app)
-    response = client.get(
-        "/ui/api/rankings/export.csv?export_type=overall&limit=5&min_quality=0&max_age_hours=1000"
-    )
+    response = client.get("/ui/api/rankings/export.csv?export_type=overall&limit=5&min_quality=0&max_age_hours=1000")
 
     assert response.status_code == 200
     assert "text/csv" in (response.headers.get("content-type") or "")

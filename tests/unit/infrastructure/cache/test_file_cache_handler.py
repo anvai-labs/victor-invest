@@ -15,9 +15,7 @@ def cache_root(tmp_path: Path) -> Path:
 
 def _build_handler(cache_type: CacheType, root: Path) -> FileCacheStorageHandler:
     handler_root = root / cache_type.value
-    return FileCacheStorageHandler(
-        cache_type=cache_type, base_path=handler_root, priority=10
-    )
+    return FileCacheStorageHandler(cache_type=cache_type, base_path=handler_root, priority=10)
 
 
 def test_llm_response_set_get_delete_cycle(cache_root: Path) -> None:
@@ -54,12 +52,8 @@ def test_llm_response_set_get_delete_cycle(cache_root: Path) -> None:
 
     normalised_key = handler._normalize_key(key)  # pylint: disable=protected-access
     file_path = handler._get_file_path(normalised_key)  # pylint: disable=protected-access
-    prompt_path = (
-        file_path.parent / f"prompt_{file_path.stem.replace('.json', '')}.txt.gz"
-    )
-    response_path = (
-        file_path.parent / f"llmresponse_{file_path.stem.replace('.json', '')}.json.gz"
-    )
+    prompt_path = file_path.parent / f"prompt_{file_path.stem.replace('.json', '')}.txt.gz"
+    response_path = file_path.parent / f"llmresponse_{file_path.stem.replace('.json', '')}.json.gz"
 
     assert prompt_path.exists()
     assert response_path.exists()

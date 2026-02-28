@@ -156,9 +156,7 @@ class InvestmentAgent(ABC):
         # Unexpected type - log warning and return default
         import logging
 
-        logging.getLogger(__name__).warning(
-            f"Unexpected LLM response type: {type(response)}"
-        )
+        logging.getLogger(__name__).warning(f"Unexpected LLM response type: {type(response)}")
         return default
 
     async def post_process(self, task: AgentTask, result: AgentResult) -> AgentResult:
@@ -179,13 +177,11 @@ class InvestmentAgent(ABC):
                 )
 
                 self.logger.debug(
-                    f"Normalized {len(result.result_data)} keys to snake_case "
-                    f"for task {task.task_id}"
+                    f"Normalized {len(result.result_data)} keys to snake_case " f"for task {task.task_id}"
                 )
             except Exception as e:
                 self.logger.warning(
-                    f"Failed to normalize result data for {task.task_id}: {e}. "
-                    f"Continuing with unnormalized data."
+                    f"Failed to normalize result data for {task.task_id}: {e}. " f"Continuing with unnormalized data."
                 )
 
         # Update metrics
@@ -194,8 +190,7 @@ class InvestmentAgent(ABC):
         # Log performance
         if result.is_successful():
             self.logger.info(
-                f"Task {task.task_id} completed in {result.processing_time:.2f}s "
-                f"(cache_hit: {result.cache_hit})"
+                f"Task {task.task_id} completed in {result.processing_time:.2f}s " f"(cache_hit: {result.cache_hit})"
             )
         else:
             self.logger.error(f"Task {task.task_id} failed: {result.error}")
@@ -293,26 +288,18 @@ class InvestmentAgent(ABC):
             # FIX Issue #3: Use async cache to prevent event loop blocking
             cached_result = await self.cache.get_async(cache_type, cache_key)
             if cached_result:
-                self.logger.info(
-                    f"Cache hit for task {task.task_id} (period: {task.fiscal_period or 'latest'})"
-                )
+                self.logger.info(f"Cache hit for task {task.task_id} (period: {task.fiscal_period or 'latest'})")
 
                 # HYBRID CACHING FIX (Phase 1):
                 # Cache expensive LLM responses (30-60s) but recalculate deterministic metrics (~100ms)
                 # This ensures CompanyProfile and derived metrics are always fresh
                 if hasattr(self, "recalculate_derived_metrics"):
                     try:
-                        self.logger.debug(
-                            f"{task.symbol} - Recalculating derived metrics from cached data"
-                        )
-                        enriched_data = await self.recalculate_derived_metrics(
-                            task, cached_result
-                        )
+                        self.logger.debug(f"{task.symbol} - Recalculating derived metrics from cached data")
+                        enriched_data = await self.recalculate_derived_metrics(task, cached_result)
                         if enriched_data:
                             cached_result = enriched_data
-                            self.logger.debug(
-                                f"{task.symbol} - Derived metrics recalculated successfully"
-                            )
+                            self.logger.debug(f"{task.symbol} - Derived metrics recalculated successfully")
                     except Exception as e:
                         self.logger.warning(
                             f"{task.symbol} - Failed to recalculate derived metrics: {e}",
@@ -357,9 +344,7 @@ class InvestmentAgent(ABC):
                 # FIX Issue #3: Use async cache to prevent event loop blocking
                 await self.cache.set_async(cache_type, cache_key, result.result_data)
                 result.cached = True
-                self.logger.debug(
-                    f"Cached result for {task.symbol} (period: {task.fiscal_period or 'latest'})"
-                )
+                self.logger.debug(f"Cached result for {task.symbol} (period: {task.fiscal_period or 'latest'})")
             except Exception as e:
                 self.logger.warning(f"Failed to cache result: {e}")
 
@@ -420,9 +405,7 @@ class InvestmentAgent(ABC):
                 "symbol": symbol,
                 "llm_type": llm_type,
                 "model": model,
-                "prompt_hash": hashlib.md5(prompt.encode()).hexdigest()[:8]
-                if prompt
-                else "no_prompt",
+                "prompt_hash": hashlib.md5(prompt.encode()).hexdigest()[:8] if prompt else "no_prompt",
             }
 
             # Add period to cache key if provided (ensures different cache per fiscal period)
@@ -433,12 +416,8 @@ class InvestmentAgent(ABC):
             from investigator.infrastructure.cache.cache_types import CacheType
 
             # FIX Issue #3: Use async cache to prevent event loop blocking
-            await self.cache.set_async(
-                CacheType.LLM_RESPONSE, llm_cache_key, wrapped_response
-            )
-            self.logger.info(
-                f"💾 Cached LLM response: {llm_type} for {symbol} (model: {model})"
-            )
+            await self.cache.set_async(CacheType.LLM_RESPONSE, llm_cache_key, wrapped_response)
+            self.logger.info(f"💾 Cached LLM response: {llm_type} for {symbol} (model: {model})")
 
         except Exception as e:
             self.logger.warning(f"Failed to cache LLM response: {e}")
@@ -558,13 +537,9 @@ class InvestmentAgent(ABC):
                 "cached_at": datetime.now().isoformat(),
                 "agent_id": self.agent_id,
                 "prompt_length": len(prompt) if prompt else 0,
-                "prompt_preview": prompt[:200]
-                if prompt
-                else "",  # Save prompt preview for debugging
+                "prompt_preview": prompt[:200] if prompt else "",  # Save prompt preview for debugging
                 "cache_type": "llm_response",
-                "raw_thinking": raw_thinking[:500]
-                if raw_thinking
-                else "",  # Save thinking preview
+                "raw_thinking": raw_thinking[:500] if raw_thinking else "",  # Save thinking preview
             },
         }
 
@@ -579,9 +554,7 @@ class InvestmentAgent(ABC):
             "metrics": {
                 "total_tasks": self.metrics.total_tasks,
                 "success_rate": (
-                    self.metrics.successful_tasks / self.metrics.total_tasks
-                    if self.metrics.total_tasks > 0
-                    else 0
+                    self.metrics.successful_tasks / self.metrics.total_tasks if self.metrics.total_tasks > 0 else 0
                 ),
                 "avg_processing_time": self.metrics.avg_processing_time,
                 "cache_hit_rate": self.metrics.cache_hit_rate,
@@ -603,9 +576,7 @@ class InvestmentAgent(ABC):
             wait_time += 1
 
         if self.processing_tasks:
-            self.logger.warning(
-                f"Agent {self.agent_id} shutting down with {len(self.processing_tasks)} active tasks"
-            )
+            self.logger.warning(f"Agent {self.agent_id} shutting down with {len(self.processing_tasks)} active tasks")
 
 
 # ========================================================================================
@@ -625,9 +596,7 @@ class AgentPool:
         self.agents[agent.agent_id] = agent
         self.agent_loads[agent.agent_id] = 0
 
-    async def get_best_agent_for_task(
-        self, task: AgentTask
-    ) -> Optional[InvestmentAgent]:
+    async def get_best_agent_for_task(self, task: AgentTask) -> Optional[InvestmentAgent]:
         """Get the best available agent for a task"""
         capable_agents = []
 

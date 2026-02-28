@@ -127,9 +127,7 @@ class CompetitiveContext:
 class ForceAnalyzer(Protocol):
     """Protocol for analyzing a Porter's Force."""
 
-    def analyze(
-        self, context: CompetitiveContext, sector_profile: "SectorProfile"
-    ) -> ForceAssessment: ...
+    def analyze(self, context: CompetitiveContext, sector_profile: "SectorProfile") -> ForceAssessment: ...
 
 
 # ============================================================================
@@ -349,9 +347,7 @@ DEFAULT_PROFILE = SectorProfile(
 class MarketPositionAnalyzer:
     """Analyzes market position and share."""
 
-    def analyze(
-        self, context: CompetitiveContext, sector_profile: SectorProfile
-    ) -> ForceAssessment:
+    def analyze(self, context: CompetitiveContext, sector_profile: SectorProfile) -> ForceAssessment:
         """Assess market position based on financial metrics."""
         # Estimate position from market cap (simplified heuristic)
         market_cap = context.market_cap or 0
@@ -372,14 +368,10 @@ class MarketPositionAnalyzer:
         # Adjust for revenue growth (strong growth = gaining share)
         if context.revenue_growth and context.revenue_growth > 0.15:
             base_score = min(95, base_score + 10)
-            growth_comment = (
-                "with market share gains evident from strong revenue growth"
-            )
+            growth_comment = "with market share gains evident from strong revenue growth"
         elif context.revenue_growth and context.revenue_growth < 0:
             base_score = max(20, base_score - 15)
-            growth_comment = (
-                "though market share may be under pressure given revenue decline"
-            )
+            growth_comment = "though market share may be under pressure given revenue decline"
         else:
             growth_comment = "with stable market positioning"
 
@@ -394,17 +386,13 @@ class MarketPositionAnalyzer:
             f"(market cap: {market_cap_str}), {growth_comment}."
         )
 
-        return ForceAssessment(
-            assessment=assessment, commentary=commentary, score=base_score
-        )
+        return ForceAssessment(assessment=assessment, commentary=commentary, score=base_score)
 
 
 class MoatAnalyzer:
     """Analyzes competitive advantages and economic moat."""
 
-    def analyze(
-        self, context: CompetitiveContext, sector_profile: SectorProfile
-    ) -> ForceAssessment:
+    def analyze(self, context: CompetitiveContext, sector_profile: SectorProfile) -> ForceAssessment:
         """Assess economic moat from financial metrics."""
         moat_indicators = 0
         moat_sources = []
@@ -460,17 +448,13 @@ class MoatAnalyzer:
                 f"{', '.join(sector_profile.typical_moat_sources[:2])}."
             )
 
-        return ForceAssessment(
-            assessment=assessment, commentary=commentary, score=base_score
-        )
+        return ForceAssessment(assessment=assessment, commentary=commentary, score=base_score)
 
 
 class IndustryDynamicsAnalyzer:
     """Analyzes industry dynamics and trends."""
 
-    def analyze(
-        self, context: CompetitiveContext, sector_profile: SectorProfile
-    ) -> ForceAssessment:
+    def analyze(self, context: CompetitiveContext, sector_profile: SectorProfile) -> ForceAssessment:
         """Assess industry dynamics from sector profile."""
         growth = sector_profile.industry_growth
         consolidation = sector_profile.consolidation_trend
@@ -499,17 +483,13 @@ class IndustryDynamicsAnalyzer:
             f"Key success factors include {', '.join(sector_profile.key_success_factors[:2])}."
         )
 
-        return ForceAssessment(
-            assessment=assessment, commentary=commentary, score=base_score
-        )
+        return ForceAssessment(assessment=assessment, commentary=commentary, score=base_score)
 
 
 class BarriersToEntryAnalyzer:
     """Analyzes barriers to entry."""
 
-    def analyze(
-        self, context: CompetitiveContext, sector_profile: SectorProfile
-    ) -> ForceAssessment:
+    def analyze(self, context: CompetitiveContext, sector_profile: SectorProfile) -> ForceAssessment:
         """Assess barriers to entry from sector profile."""
         barriers = sector_profile.typical_barriers
 
@@ -537,17 +517,13 @@ class BarriersToEntryAnalyzer:
             f"{', '.join(sector_profile.typical_moat_sources[:2])}."
         )
 
-        return ForceAssessment(
-            assessment=assessment, commentary=commentary, score=base_score
-        )
+        return ForceAssessment(assessment=assessment, commentary=commentary, score=base_score)
 
 
 class BuyerSupplierPowerAnalyzer:
     """Analyzes supplier and customer power."""
 
-    def analyze(
-        self, context: CompetitiveContext, sector_profile: SectorProfile
-    ) -> ForceAssessment:
+    def analyze(self, context: CompetitiveContext, sector_profile: SectorProfile) -> ForceAssessment:
         """Assess supplier and customer bargaining power."""
         supplier_power = sector_profile.supplier_power.lower()
         customer_power = sector_profile.customer_power.lower()
@@ -585,17 +561,13 @@ class BuyerSupplierPowerAnalyzer:
             f"{'Strong profit margins suggest effective bargaining position.' if context.profit_margin and context.profit_margin > 0.15 else 'Margin profile suggests typical sector dynamics.'}"
         )
 
-        return ForceAssessment(
-            assessment=assessment, commentary=commentary, score=score
-        )
+        return ForceAssessment(assessment=assessment, commentary=commentary, score=score)
 
 
 class SubstituteThreatAnalyzer:
     """Analyzes threat of substitutes."""
 
-    def analyze(
-        self, context: CompetitiveContext, sector_profile: SectorProfile
-    ) -> ForceAssessment:
+    def analyze(self, context: CompetitiveContext, sector_profile: SectorProfile) -> ForceAssessment:
         """Assess threat of substitutes from sector profile."""
         threat = sector_profile.substitute_threat.lower()
 
@@ -621,9 +593,7 @@ class SubstituteThreatAnalyzer:
             f"{'Strong revenue growth suggests limited near-term substitution risk.' if base_score > 60 else 'Companies must continuously innovate to maintain relevance.'}"
         )
 
-        return ForceAssessment(
-            assessment=assessment, commentary=commentary, score=base_score
-        )
+        return ForceAssessment(assessment=assessment, commentary=commentary, score=base_score)
 
 
 # ============================================================================
@@ -634,9 +604,7 @@ class SubstituteThreatAnalyzer:
 class CompetitiveRiskGenerator:
     """Generates competitive risks based on context and sector."""
 
-    def generate(
-        self, context: CompetitiveContext, sector_profile: SectorProfile
-    ) -> List[str]:
+    def generate(self, context: CompetitiveContext, sector_profile: SectorProfile) -> List[str]:
         """Generate relevant competitive risks."""
         risks = []
 
@@ -656,9 +624,7 @@ class CompetitiveRiskGenerator:
 
         # Add general competitive risks
         if len(risks) < 3:
-            risks.append(
-                "Potential intensification of competition from well-resourced rivals"
-            )
+            risks.append("Potential intensification of competition from well-resourced rivals")
 
         if len(risks) < 4:
             risks.append("Technology or business model disruption risk")
@@ -694,13 +660,9 @@ class DeterministicCompetitiveAnalyzer:
         substitute_analyzer: Optional[ForceAnalyzer] = None,
         risk_generator: Optional[CompetitiveRiskGenerator] = None,
     ):
-        self.market_position_analyzer = (
-            market_position_analyzer or MarketPositionAnalyzer()
-        )
+        self.market_position_analyzer = market_position_analyzer or MarketPositionAnalyzer()
         self.moat_analyzer = moat_analyzer or MoatAnalyzer()
-        self.industry_dynamics_analyzer = (
-            industry_dynamics_analyzer or IndustryDynamicsAnalyzer()
-        )
+        self.industry_dynamics_analyzer = industry_dynamics_analyzer or IndustryDynamicsAnalyzer()
         self.barriers_analyzer = barriers_analyzer or BarriersToEntryAnalyzer()
         self.power_analyzer = power_analyzer or BuyerSupplierPowerAnalyzer()
         self.substitute_analyzer = substitute_analyzer or SubstituteThreatAnalyzer()
@@ -722,9 +684,7 @@ class DeterministicCompetitiveAnalyzer:
         # Analyze each force
         market_position = self.market_position_analyzer.analyze(context, sector_profile)
         moat = self.moat_analyzer.analyze(context, sector_profile)
-        industry_dynamics = self.industry_dynamics_analyzer.analyze(
-            context, sector_profile
-        )
+        industry_dynamics = self.industry_dynamics_analyzer.analyze(context, sector_profile)
         barriers = self.barriers_analyzer.analyze(context, sector_profile)
         power = self.power_analyzer.analyze(context, sector_profile)
         substitutes = self.substitute_analyzer.analyze(context, sector_profile)
@@ -759,9 +719,7 @@ class DeterministicCompetitiveAnalyzer:
         )
 
     @classmethod
-    def from_company_data(
-        cls, symbol: str, company_data: Dict[str, Any]
-    ) -> CompetitiveAnalysis:
+    def from_company_data(cls, symbol: str, company_data: Dict[str, Any]) -> CompetitiveAnalysis:
         """
         Factory method to create analysis from company_data dict.
 
@@ -793,9 +751,7 @@ class DeterministicCompetitiveAnalyzer:
             revenue_growth=ratios.get("revenue_growth"),
             roe=ratios.get("roe") or ratios.get("return_on_equity"),
             debt_to_equity=ratios.get("debt_to_equity"),
-            data_quality_score=company_data.get("data_quality", {}).get(
-                "data_quality_score", 50
-            ),
+            data_quality_score=company_data.get("data_quality", {}).get("data_quality_score", 50),
         )
 
         # Create analyzer and run
@@ -808,9 +764,7 @@ class DeterministicCompetitiveAnalyzer:
 # ============================================================================
 
 
-def analyze_competitive_position(
-    symbol: str, company_data: Dict[str, Any]
-) -> Dict[str, Any]:
+def analyze_competitive_position(symbol: str, company_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Drop-in replacement for LLM-based competitive position analysis.
 
@@ -826,9 +780,7 @@ def analyze_competitive_position(
             company_data=company_data
         )
     """
-    analysis = DeterministicCompetitiveAnalyzer.from_company_data(
-        symbol=symbol, company_data=company_data
-    )
+    analysis = DeterministicCompetitiveAnalyzer.from_company_data(symbol=symbol, company_data=company_data)
     return analysis.to_dict()
 
 

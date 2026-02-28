@@ -176,9 +176,7 @@ class ParallelValuationOrchestrator:
             tasks.append(task)
 
         # Run all frameworks concurrently
-        logger.info(
-            f"{self.symbol} - Executing {len(frameworks)} frameworks in parallel..."
-        )
+        logger.info(f"{self.symbol} - Executing {len(frameworks)} frameworks in parallel...")
         framework_results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Step 3: Process results and handle failures
@@ -192,15 +190,11 @@ class ParallelValuationOrchestrator:
                 failed_frameworks.append(frameworks[i].type)
             elif result.error:
                 # Framework returned error
-                logger.warning(
-                    f"{self.symbol} - {result.framework_type} error: {result.error}"
-                )
+                logger.warning(f"{self.symbol} - {result.framework_type} error: {result.error}")
                 failed_frameworks.append(result.framework_type)
             elif result.fair_value is None or result.fair_value <= 0:
                 # Framework returned invalid value
-                logger.warning(
-                    f"{self.symbol} - {result.framework_type} invalid value: {result.fair_value}"
-                )
+                logger.warning(f"{self.symbol} - {result.framework_type} invalid value: {result.fair_value}")
                 failed_frameworks.append(result.framework_type)
             else:
                 # Framework succeeded
@@ -208,22 +202,17 @@ class ParallelValuationOrchestrator:
 
         # Step 4: Reweight remaining frameworks
         if not valid_results:
-            raise ValueError(
-                f"{self.symbol} - All {len(frameworks)} frameworks failed: {failed_frameworks}"
-            )
+            raise ValueError(f"{self.symbol} - All {len(frameworks)} frameworks failed: {failed_frameworks}")
 
         total_weight = sum(f.weight for f, _ in valid_results)
         normalized_weights = {f.type: f.weight / total_weight for f, _ in valid_results}
 
         # Step 5: Compute weighted blended fair value
         blended_fair_value = sum(
-            result.fair_value * normalized_weights[framework.type]
-            for framework, result in valid_results
+            result.fair_value * normalized_weights[framework.type] for framework, result in valid_results
         )
 
-        upside_pct = (
-            (blended_fair_value - self.current_price) / self.current_price
-        ) * 100
+        upside_pct = ((blended_fair_value - self.current_price) / self.current_price) * 100
 
         # Step 6: Create execution summary
         end_time = datetime.now()
@@ -310,14 +299,10 @@ class ParallelValuationOrchestrator:
                 )
 
             elif framework.type == ValuationFrameworkPlanner.FRAMEWORK_EV_EBITDA:
-                fair_value, metrics = await self._execute_ev_ebitda(
-                    financials=financials, params=framework.params
-                )
+                fair_value, metrics = await self._execute_ev_ebitda(financials=financials, params=framework.params)
 
             elif framework.type == ValuationFrameworkPlanner.FRAMEWORK_PS_RATIO:
-                fair_value, metrics = await self._execute_ps_ratio(
-                    financials=financials, params=framework.params
-                )
+                fair_value, metrics = await self._execute_ps_ratio(financials=financials, params=framework.params)
 
             elif framework.type == ValuationFrameworkPlanner.FRAMEWORK_PEG_RATIO:
                 fair_value, metrics = await self._execute_peg_ratio(
@@ -355,9 +340,7 @@ class ParallelValuationOrchestrator:
             )
 
         except Exception as e:
-            logger.error(
-                f"{self.symbol} - {framework.type} execution failed: {e}", exc_info=True
-            )
+            logger.error(f"{self.symbol} - {framework.type} execution failed: {e}", exc_info=True)
             return FrameworkResult(
                 framework_type=framework.type,
                 fair_value=None,

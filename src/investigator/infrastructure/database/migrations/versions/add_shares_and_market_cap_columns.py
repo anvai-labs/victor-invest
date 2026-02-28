@@ -88,9 +88,7 @@ def populate_shares_and_market_cap():
               AND t.shares IS NOT NULL
         """)
         result = session.execute(update_shares_from_tickerdata)
-        logger.info(
-            f"Updated {result.rowcount} rows with shares_outstanding (exact date match)"
-        )
+        logger.info(f"Updated {result.rowcount} rows with shares_outstanding (exact date match)")
 
         # For remaining rows, get shares from nearest date within 7 days
         update_shares_nearest = text("""
@@ -114,9 +112,7 @@ def populate_shares_and_market_cap():
               )
         """)
         result = session.execute(update_shares_nearest)
-        logger.info(
-            f"Updated {result.rowcount} rows with shares_outstanding (nearest date)"
-        )
+        logger.info(f"Updated {result.rowcount} rows with shares_outstanding (nearest date)")
 
         # Calculate market_cap from price * shares
         # Use price from period_end_date + 90 days (quarter end + filing window)
@@ -139,9 +135,7 @@ def populate_shares_and_market_cap():
               AND t.close IS NOT NULL
         """)
         result = session.execute(update_mc)
-        logger.info(
-            f"Updated {result.rowcount} rows with market_cap (price at ~45 days after period end)"
-        )
+        logger.info(f"Updated {result.rowcount} rows with market_cap (price at ~45 days after period end)")
 
         # Calculate EPS (basic) = net_income / shares_outstanding
         update_eps_basic = text("""
@@ -156,9 +150,7 @@ def populate_shares_and_market_cap():
               AND net_income IS NOT NULL
         """)
         result = session.execute(update_eps_basic)
-        logger.info(
-            f"Updated {result.rowcount} rows with earnings_per_share (calculated)"
-        )
+        logger.info(f"Updated {result.rowcount} rows with earnings_per_share (calculated)")
 
         # Calculate diluted EPS (assume basic = diluted for simplicity, can be refined)
         update_eps_diluted = text("""
@@ -168,9 +160,7 @@ def populate_shares_and_market_cap():
               AND earnings_per_share IS NOT NULL
         """)
         result = session.execute(update_eps_diluted)
-        logger.info(
-            f"Updated {result.rowcount} rows with earnings_per_share_diluted (same as basic)"
-        )
+        logger.info(f"Updated {result.rowcount} rows with earnings_per_share_diluted (same as basic)")
 
         # Set weighted_average_diluted_shares_outstanding = shares_outstanding
         update_diluted_shares = text("""
@@ -180,9 +170,7 @@ def populate_shares_and_market_cap():
               AND shares_outstanding IS NOT NULL
         """)
         result = session.execute(update_diluted_shares)
-        logger.info(
-            f"Updated {result.rowcount} rows with weighted_average_diluted_shares_outstanding"
-        )
+        logger.info(f"Updated {result.rowcount} rows with weighted_average_diluted_shares_outstanding")
 
         session.commit()
 
@@ -211,13 +199,9 @@ def verify_data():
         row = result.fetchone()
 
         logger.info(f"Total rows: {row[0]}")
-        logger.info(
-            f"Rows with shares_outstanding: {row[1]} ({row[1] / row[0] * 100:.1f}%)"
-        )
+        logger.info(f"Rows with shares_outstanding: {row[1]} ({row[1] / row[0] * 100:.1f}%)")
         logger.info(f"Rows with market_cap: {row[2]} ({row[2] / row[0] * 100:.1f}%)")
-        logger.info(
-            f"Rows with earnings_per_share: {row[3]} ({row[3] / row[0] * 100:.1f}%)"
-        )
+        logger.info(f"Rows with earnings_per_share: {row[3]} ({row[3] / row[0] * 100:.1f}%)")
 
         # Sample a few rows
         sample_query = text("""

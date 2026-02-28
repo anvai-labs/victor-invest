@@ -61,9 +61,7 @@ from patterns.llm.llm_facade import (  # TODO: Move to investigator.infrastructu
 )
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -73,9 +71,7 @@ class _StubChartGenerator:
     def __init__(self, charts_dir):
         self.charts_dir = Path(charts_dir)
         self.logger = logging.getLogger(f"{__name__}.ChartGeneratorStub")
-        self.logger.warning(
-            "Chart generation disabled – matplotlib backend unavailable or failed to initialize."
-        )
+        self.logger.warning("Chart generation disabled – matplotlib backend unavailable or failed to initialize.")
 
     def __getattr__(self, name):
         def _noop(*args, **kwargs):
@@ -134,9 +130,7 @@ class InvestmentSynthesizer:
                 include_charts=True,
             ),
         )
-        self.weekly_report_generator = WeeklyReportGenerator(
-            self.config.reports_dir / "weekly"
-        )
+        self.weekly_report_generator = WeeklyReportGenerator(self.config.reports_dir / "weekly")
 
         # Initialize DAOs
         self.llm_dao = get_llm_responses_dao()
@@ -172,9 +166,7 @@ class InvestmentSynthesizer:
                     )
                     self.main_logger.info("Email notifier initialized for alerts")
                 except Exception as e:
-                    self.main_logger.warning(
-                        f"Failed to initialize email notifier: {e}"
-                    )
+                    self.main_logger.warning(f"Failed to initialize email notifier: {e}")
 
         # Response processing handled by LLM facade
 
@@ -225,14 +217,10 @@ class InvestmentSynthesizer:
             return fiscal_year, fiscal_period
 
         except Exception as e:
-            self.main_logger.warning(
-                f"Could not determine fiscal period: {e}, using defaults"
-            )
+            self.main_logger.warning(f"Could not determine fiscal period: {e}, using defaults")
             return datetime.now().year, "FY"
 
-    def _infer_period_from_fundamental(
-        self, llm_responses: Dict[str, Dict]
-    ) -> Optional[str]:
+    def _infer_period_from_fundamental(self, llm_responses: Dict[str, Dict]) -> Optional[str]:
         """Extract fiscal period label directly from cached fundamental analyses if available."""
         fundamentals = llm_responses.get("fundamental") or {}
         if not fundamentals:
@@ -252,18 +240,14 @@ class InvestmentSynthesizer:
         for candidate in _candidate_dicts():
             fiscal_year = candidate.get("fiscal_year")
             fiscal_period = candidate.get("fiscal_period") or candidate.get("period")
-            period_label = candidate.get("fiscal_period_label") or candidate.get(
-                "period_label"
-            )
+            period_label = candidate.get("fiscal_period_label") or candidate.get("period_label")
             if fiscal_year and fiscal_period:
                 return f"{fiscal_year}-{fiscal_period}"
             if period_label:
                 return str(period_label)
         return None
 
-    def synthesize_analysis(
-        self, symbol: str, synthesis_mode: str = "comprehensive"
-    ) -> InvestmentRecommendation:
+    def synthesize_analysis(self, symbol: str, synthesis_mode: str = "comprehensive") -> InvestmentRecommendation:
         """
         Synthesize fundamental and technical analysis for a symbol
 
@@ -296,9 +280,7 @@ class InvestmentSynthesizer:
             # Fetch historical scores for trend analysis
             symbol_logger.info("Fetching historical investment scores")
             score_history = self._fetch_historical_scores(symbol)
-            score_trend = (
-                self._calculate_score_trend(score_history) if score_history else {}
-            )
+            score_trend = self._calculate_score_trend(score_history) if score_history else {}
 
             if score_trend and score_trend.get("trend") != "insufficient_data":
                 symbol_logger.info(
@@ -309,11 +291,7 @@ class InvestmentSynthesizer:
             # Fetch quarterly metrics for trend analysis (12 quarters for geometric mean)
             symbol_logger.info("Fetching quarterly metrics for trend analysis")
             quarterly_metrics = self._fetch_quarterly_metrics(symbol, limit=12)
-            quarterly_trends = (
-                self._calculate_quarterly_trends(quarterly_metrics)
-                if quarterly_metrics
-                else {}
-            )
+            quarterly_trends = self._calculate_quarterly_trends(quarterly_metrics) if quarterly_metrics else {}
 
             # Log trend summary
             if quarterly_trends:
@@ -359,19 +337,11 @@ class InvestmentSynthesizer:
             cached_dcf = self.cache_manager.get(CacheType.LLM_RESPONSE, dcf_cache_key)
             if cached_dcf:
                 dcf_valuation = cached_dcf.get("response") or cached_dcf
-                symbol_logger.info(
-                    "Reusing cached deterministic DCF valuation from fundamental agent."
-                )
+                symbol_logger.info("Reusing cached deterministic DCF valuation from fundamental agent.")
 
-            if (
-                quarterly_metrics
-                and len(quarterly_metrics) >= 4
-                and dcf_valuation is None
-            ):
+            if quarterly_metrics and len(quarterly_metrics) >= 4 and dcf_valuation is None:
                 try:
-                    symbol_logger.info(
-                        "Calculating DCF (Discounted Cash Flow) valuation with unified terminal growth"
-                    )
+                    symbol_logger.info("Calculating DCF (Discounted Cash Flow) valuation with unified terminal growth")
                     from investigator.domain.services.fcf_growth_calculator import (
                         FCFGrowthCalculator,
                     )
@@ -399,9 +369,7 @@ class InvestmentSynthesizer:
 
                     # Step 3: Calculate FCF margin
                     fcf_calc = FCFGrowthCalculator(symbol)
-                    fcf_margin_pct = fcf_calc.calculate_fcf_margin(
-                        quarterly_metrics, ttm=True
-                    )
+                    fcf_margin_pct = fcf_calc.calculate_fcf_margin(quarterly_metrics, ttm=True)
 
                     # Step 4: Get sector and market cap for ValuationFrameworkPlanner
                     sector = dcf_analyzer.sector
@@ -409,9 +377,7 @@ class InvestmentSynthesizer:
                     market_cap_billions = 0.0
                     if quarterly_metrics:
                         latest_market_cap = quarterly_metrics[-1].get("market_cap", 0)
-                        market_cap_billions = (
-                            latest_market_cap / 1e9 if latest_market_cap > 0 else 0.0
-                        )
+                        market_cap_billions = latest_market_cap / 1e9 if latest_market_cap > 0 else 0.0
 
                     # Step 5: Create ValuationFrameworkPlanner
                     planner = ValuationFrameworkPlanner(
@@ -450,16 +416,12 @@ class InvestmentSynthesizer:
                     )
 
                     # Step 9: Calculate DCF with unified terminal growth rate
-                    dcf_valuation = dcf_analyzer.calculate_dcf_valuation(
-                        terminal_growth_rate=terminal_growth_rate
-                    )
+                    dcf_valuation = dcf_analyzer.calculate_dcf_valuation(terminal_growth_rate=terminal_growth_rate)
 
                     if dcf_valuation:
                         fair_value = dcf_valuation.get("fair_value_per_share", 0)
                         upside = dcf_valuation.get("upside_downside_pct", 0)
-                        assessment = dcf_valuation.get(
-                            "valuation_assessment", "Unknown"
-                        )
+                        assessment = dcf_valuation.get("valuation_assessment", "Unknown")
                         symbol_logger.info(
                             f"DCF Fair Value: ${fair_value:.2f}, Upside: {upside:+.1f}%, Assessment: {assessment}"
                         )
@@ -472,43 +434,29 @@ class InvestmentSynthesizer:
                                 "period": current_period_label,
                             },
                         }
-                        self.cache_manager.set(
-                            CacheType.LLM_RESPONSE, dcf_cache_key, cache_payload
-                        )
+                        self.cache_manager.set(CacheType.LLM_RESPONSE, dcf_cache_key, cache_payload)
                 except Exception as e:
                     symbol_logger.error(f"Error calculating DCF valuation: {e}")
                     dcf_valuation = None
             elif dcf_valuation is None:
-                symbol_logger.info(
-                    "Skipping DCF valuation - insufficient quarterly data"
-                )
+                symbol_logger.info("Skipping DCF valuation - insufficient quarterly data")
 
             # Tier 3: Recession Performance Analysis
             recession_performance = None
             if multi_year_data and len(multi_year_data) >= 5:
                 try:
                     symbol_logger.info("Analyzing recession performance")
-                    recession_performance = self._analyze_recession_performance(
-                        symbol, multi_year_data
-                    )
+                    recession_performance = self._analyze_recession_performance(symbol, multi_year_data)
 
                     if recession_performance:
-                        defensive_score = recession_performance.get(
-                            "defensive_score", 5.0
-                        )
-                        defensive_rating = recession_performance.get(
-                            "defensive_rating", "Unknown"
-                        )
-                        symbol_logger.info(
-                            f"Defensive characteristics: {defensive_rating} ({defensive_score}/10)"
-                        )
+                        defensive_score = recession_performance.get("defensive_score", 5.0)
+                        defensive_rating = recession_performance.get("defensive_rating", "Unknown")
+                        symbol_logger.info(f"Defensive characteristics: {defensive_rating} ({defensive_score}/10)")
                 except Exception as e:
                     symbol_logger.error(f"Error analyzing recession performance: {e}")
                     recession_performance = None
             else:
-                symbol_logger.info(
-                    "Skipping recession performance - need at least 5 years of historical data"
-                )
+                symbol_logger.info("Skipping recession performance - need at least 5 years of historical data")
 
             # Tier 3: Insider Trading Analysis
             insider_trading = None
@@ -517,24 +465,18 @@ class InvestmentSynthesizer:
                 from utils.insider_trading import InsiderTradingAnalyzer
 
                 insider_analyzer = InsiderTradingAnalyzer(db_manager=self.db_manager)
-                insider_trading = insider_analyzer.analyze_insider_activity(
-                    symbol, days=180
-                )
+                insider_trading = insider_analyzer.analyze_insider_activity(symbol, days=180)
 
                 if insider_trading and insider_trading.get("data_available"):
                     sentiment_score = insider_trading.get("sentiment_score", 5.0)
-                    sentiment_rating = insider_trading.get(
-                        "sentiment_rating", "Neutral"
-                    )
+                    sentiment_rating = insider_trading.get("sentiment_rating", "Neutral")
                     buy_count = insider_trading.get("buy_count", 0)
                     sell_count = insider_trading.get("sell_count", 0)
                     symbol_logger.info(
                         f"Insider sentiment: {sentiment_rating} ({sentiment_score}/10) - {buy_count} buys, {sell_count} sells"
                     )
                 else:
-                    symbol_logger.info(
-                        "Insider trading data not yet available - requires SEC Form 4 integration"
-                    )
+                    symbol_logger.info("Insider trading data not yet available - requires SEC Form 4 integration")
             except Exception as e:
                 symbol_logger.error(f"Error analyzing insider trading: {e}")
                 insider_trading = None
@@ -546,9 +488,7 @@ class InvestmentSynthesizer:
                 from utils.news_sentiment import NewsSentimentAnalyzer
 
                 # Initialize with Ollama client for LLM-powered sentiment
-                news_analyzer = NewsSentimentAnalyzer(
-                    db_manager=self.db_manager, ollama_client=self.ollama
-                )
+                news_analyzer = NewsSentimentAnalyzer(db_manager=self.db_manager, ollama_client=self.ollama)
                 news_sentiment = news_analyzer.analyze_news_sentiment(symbol, days=7)
 
                 if news_sentiment and news_sentiment.get("data_available"):
@@ -561,9 +501,7 @@ class InvestmentSynthesizer:
                         f"News sentiment: {sentiment_rating} ({sentiment_score}/10) from {article_count} articles, trend: {trend_dir}"
                     )
                 else:
-                    symbol_logger.info(
-                        "News sentiment data not yet available - requires NewsAPI integration"
-                    )
+                    symbol_logger.info("News sentiment data not yet available - requires NewsAPI integration")
             except Exception as e:
                 symbol_logger.error(f"Error analyzing news sentiment: {e}")
                 news_sentiment = None
@@ -579,22 +517,15 @@ class InvestmentSynthesizer:
 
             # Detect red flags
             symbol_logger.info("Detecting red flags in financial data")
-            red_flags = self._detect_red_flags(
-                symbol, quarterly_metrics, quarterly_trends, latest_data
-            )
+            red_flags = self._detect_red_flags(symbol, quarterly_metrics, quarterly_trends, latest_data)
             if red_flags:
                 high_severity = [f for f in red_flags if f["severity"] == "high"]
-                symbol_logger.warning(
-                    f"⚠️  Detected {len(red_flags)} red flags ({len(high_severity)} high severity)"
-                )
+                symbol_logger.warning(f"⚠️  Detected {len(red_flags)} red flags ({len(high_severity)} high severity)")
 
             # Extract support/resistance levels
-            support_resistance = latest_data.get("technical", {}).get(
-                "support_resistance"
-            )
+            support_resistance = latest_data.get("technical", {}).get("support_resistance")
             if support_resistance and (
-                support_resistance.get("support_levels")
-                or support_resistance.get("resistance_levels")
+                support_resistance.get("support_levels") or support_resistance.get("resistance_levels")
             ):
                 symbol_logger.info(
                     f"Support/Resistance: {len(support_resistance.get('support_levels', []))} support, "
@@ -603,9 +534,7 @@ class InvestmentSynthesizer:
 
             # Calculate multi-dimensional risk scores
             symbol_logger.info("Calculating multi-dimensional risk scores")
-            risk_scores = self._calculate_risk_scores(
-                symbol, quarterly_metrics, latest_data, multi_year_trends
-            )
+            risk_scores = self._calculate_risk_scores(symbol, quarterly_metrics, latest_data, multi_year_trends)
             if risk_scores:
                 overall_risk = risk_scores.get("overall_risk", "N/A")
                 risk_rating = risk_scores.get("risk_rating", "N/A")
@@ -618,32 +547,22 @@ class InvestmentSynthesizer:
 
             # Fetch competitive positioning data
             symbol_logger.info("Fetching competitive positioning data")
-            competitive_positioning = self._fetch_competitive_positioning_data(
-                symbol, quarterly_metrics
-            )
+            competitive_positioning = self._fetch_competitive_positioning_data(symbol, quarterly_metrics)
             if competitive_positioning and competitive_positioning.get("peers"):
                 num_peers = len(competitive_positioning.get("peers", []))
                 industry = competitive_positioning.get("industry", "Unknown")
-                symbol_logger.info(
-                    f"Competitive Position: {num_peers} peers in {industry} industry"
-                )
+                symbol_logger.info(f"Competitive Position: {num_peers} peers in {industry} industry")
 
             # Build peer performance leaderboard
             symbol_logger.info("Building peer performance leaderboard")
-            peer_leaderboard = self._build_peer_performance_leaderboard(
-                symbol, quarterly_metrics
-            )
+            peer_leaderboard = self._build_peer_performance_leaderboard(symbol, quarterly_metrics)
             if peer_leaderboard and peer_leaderboard.get("peers"):
                 # Find target's rank
-                target_peer = next(
-                    (p for p in peer_leaderboard["peers"] if p["is_target"]), None
-                )
+                target_peer = next((p for p in peer_leaderboard["peers"] if p["is_target"]), None)
                 if target_peer:
                     overall_rank = target_peer.get("overall_rank", "N/A")
                     total_peers = peer_leaderboard.get("total_peers", "N/A")
-                    symbol_logger.info(
-                        f"Peer Leaderboard: {symbol} ranks #{overall_rank} of {total_peers} peers"
-                    )
+                    symbol_logger.info(f"Peer Leaderboard: {symbol} ranks #{overall_rank} of {total_peers} peers")
 
             # Calculate volume profile
             symbol_logger.info("Calculating volume profile analysis")
@@ -659,24 +578,18 @@ class InvestmentSynthesizer:
             # Tier 4: Monte Carlo Simulation for Probabilistic Forecasting
             monte_carlo_results = None
             try:
-                symbol_logger.info(
-                    "Running Monte Carlo simulation for probabilistic price forecasting"
-                )
+                symbol_logger.info("Running Monte Carlo simulation for probabilistic price forecasting")
                 from utils.monte_carlo import MonteCarloSimulator
 
                 # Get current price and volatility from latest data
                 current_price_mc = latest_data.get("current_price", 0)
                 if current_price_mc == 0:
-                    current_price_mc = latest_data.get("technical", {}).get(
-                        "current_price", 0
-                    )
+                    current_price_mc = latest_data.get("technical", {}).get("current_price", 0)
 
                 if current_price_mc > 0:
                     # Get volatility from technical indicators
                     technical_data = latest_data.get("technical", {})
-                    volatility_annual = technical_data.get(
-                        "volatility_annual", 0.25
-                    )  # Default 25%
+                    volatility_annual = technical_data.get("volatility_annual", 0.25)  # Default 25%
 
                     # Run simulation
                     simulator = MonteCarloSimulator(random_seed=42)
@@ -709,9 +622,7 @@ class InvestmentSynthesizer:
                         )
                         monte_carlo_results.scenarios = scenarios
                 else:
-                    symbol_logger.warning(
-                        "Cannot run Monte Carlo simulation - current price not available"
-                    )
+                    symbol_logger.warning("Cannot run Monte Carlo simulation - current price not available")
 
             except Exception as e:
                 symbol_logger.error(f"Error running Monte Carlo simulation: {e}")
@@ -736,10 +647,7 @@ class InvestmentSynthesizer:
                     price_df = pd.DataFrame(price_history)
 
                     # Ensure required columns exist
-                    if all(
-                        col in price_df.columns
-                        for col in ["date", "close", "high", "low", "open", "volume"]
-                    ):
+                    if all(col in price_df.columns for col in ["date", "close", "high", "low", "open", "volume"]):
                         recognizer = PatternRecognizer()
                         detected_patterns = recognizer.detect_patterns(price_df)
 
@@ -750,27 +658,17 @@ class InvestmentSynthesizer:
                         }
 
                         if detected_patterns:
-                            pattern_types = [
-                                p.pattern_type.value for p in detected_patterns
-                            ]
-                            bullish = sum(
-                                1 for p in detected_patterns if p.direction == "bullish"
-                            )
-                            bearish = sum(
-                                1 for p in detected_patterns if p.direction == "bearish"
-                            )
+                            pattern_types = [p.pattern_type.value for p in detected_patterns]
+                            bullish = sum(1 for p in detected_patterns if p.direction == "bullish")
+                            bearish = sum(1 for p in detected_patterns if p.direction == "bearish")
                             symbol_logger.info(
                                 f"Chart Patterns: {len(detected_patterns)} detected "
                                 f"({bullish} bullish, {bearish} bearish) - {', '.join(pattern_types[:3])}"
                             )
                         else:
-                            symbol_logger.info(
-                                "Chart Patterns: No significant patterns detected"
-                            )
+                            symbol_logger.info("Chart Patterns: No significant patterns detected")
                     else:
-                        symbol_logger.warning(
-                            "Chart patterns skipped - missing required columns in price data"
-                        )
+                        symbol_logger.warning("Chart patterns skipped - missing required columns in price data")
                 else:
                     symbol_logger.warning(
                         f"Chart patterns skipped - insufficient price history (need 30+ days, have {len(price_history) if price_history else 0})"
@@ -786,9 +684,7 @@ class InvestmentSynthesizer:
             technical_score = self._calculate_technical_score(llm_responses)
 
             # Calculate weighted overall score
-            overall_score = self._calculate_weighted_score(
-                fundamental_score, technical_score
-            )
+            overall_score = self._calculate_weighted_score(fundamental_score, technical_score)
 
             # Get current price from latest data (database) first, then try LLM response
             current_price = latest_data.get("current_price", 0)
@@ -843,9 +739,7 @@ class InvestmentSynthesizer:
             data_quality_detailed = self._calculate_data_quality_detailed(
                 symbol, llm_responses, quarterly_metrics, latest_data
             )
-            data_quality = (
-                data_quality_detailed["overall_score"] / 10
-            )  # Convert to 0-10 scale
+            data_quality = data_quality_detailed["overall_score"] / 10  # Convert to 0-10 scale
             symbol_logger.info(
                 f"Data quality: {data_quality_detailed['grade']} ({data_quality_detailed['overall_score']:.1f}%)"
             )
@@ -854,9 +748,7 @@ class InvestmentSynthesizer:
             use_direct_extraction = sec_data and tech_indicators
 
             if use_direct_extraction:
-                symbol_logger.info(
-                    "OPTIMIZATION: Using direct LLM extraction - skipping traditional synthesis"
-                )
+                symbol_logger.info("OPTIMIZATION: Using direct LLM extraction - skipping traditional synthesis")
                 # We'll create the recommendation directly later, for now just set a flag
                 direct_extraction_data = {
                     "sec_data": sec_data,
@@ -886,12 +778,8 @@ class InvestmentSynthesizer:
                 format_technical_data_for_synthesis,
             )
 
-            fundamental_data_str = format_fundamental_data_for_synthesis(
-                llm_responses.get("fundamental", {})
-            )
-            technical_data_str = format_technical_data_for_synthesis(
-                llm_responses.get("technical", {})
-            )
+            fundamental_data_str = format_fundamental_data_for_synthesis(llm_responses.get("fundamental", {}))
+            technical_data_str = format_technical_data_for_synthesis(llm_responses.get("technical", {}))
 
             # Get peer comparison data
             symbol_logger.info("Fetching peer comparison data")
@@ -904,9 +792,7 @@ class InvestmentSynthesizer:
                 peer_analyzer = get_peer_comparison_analyzer()
                 peer_comparison = peer_analyzer.get_peer_comparison(symbol)
             except Exception as peer_err:
-                symbol_logger.warning(
-                    f"Peer comparison unavailable, continuing without it: {peer_err}"
-                )
+                symbol_logger.warning(f"Peer comparison unavailable, continuing without it: {peer_err}")
 
             # Generate synthesis using LLM (but only if not using direct extraction)
             model_name = self.config.ollama.models.get("synthesis", "deepseek-r1:32b")
@@ -914,15 +800,11 @@ class InvestmentSynthesizer:
             if not use_direct_extraction:
                 # Only run traditional synthesis if direct extraction failed
                 # Generate synthesis using LLM
-                model_name = self.config.ollama.models.get(
-                    "synthesis", "deepseek-r1:32b"
-                )
+                model_name = self.config.ollama.models.get("synthesis", "deepseek-r1:32b")
 
                 # Choose synthesis approach based on mode
                 if synthesis_mode == "quarterly":
-                    symbol_logger.info(
-                        "Using quarterly synthesis mode (last N quarters + technical analysis)"
-                    )
+                    symbol_logger.info("Using quarterly synthesis mode (last N quarters + technical analysis)")
                     synthesis_prompt = self._create_quarterly_synthesis_prompt(
                         symbol, llm_responses, latest_data, prompt_manager
                     )
@@ -932,8 +814,7 @@ class InvestmentSynthesizer:
                         peer_comparison
                         and peer_comparison.get("company_ratios")
                         and peer_comparison.get("peer_statistics")
-                        and len(peer_comparison.get("peer_statistics", {}))
-                        > 5  # At least 5 metrics
+                        and len(peer_comparison.get("peer_statistics", {})) > 5  # At least 5 metrics
                     )
 
                     if use_peer_synthesis:
@@ -941,44 +822,26 @@ class InvestmentSynthesizer:
                             f"Using peer-enhanced synthesis with {peer_comparison.get('peers_analyzed', 0)} peers"
                         )
                         # Use peer-enhanced prompt
-                        synthesis_prompt = (
-                            prompt_manager.render_investment_synthesis_peer_prompt(
-                                symbol=symbol,
-                                analysis_date=datetime.now().strftime("%Y-%m-%d"),
-                                current_price=latest_data.get("current_price", 0.0),
-                                sector=peer_comparison.get("peer_group", {}).get(
-                                    "sector", "N/A"
-                                ),
-                                industry=peer_comparison.get("peer_group", {}).get(
-                                    "industry", "N/A"
-                                ),
-                                fundamental_data=fundamental_data_str,
-                                technical_data=technical_data_str,
-                                latest_market_data=str(latest_data),
-                                peer_list=peer_comparison.get("peer_group", {}).get(
-                                    "peers", []
-                                )[:10],
-                                company_ratios=peer_comparison.get(
-                                    "company_ratios", {}
-                                ),
-                                peer_statistics=peer_comparison.get(
-                                    "peer_statistics", {}
-                                ),
-                                relative_position=peer_comparison.get(
-                                    "relative_position", {}
-                                ),
-                            )
+                        synthesis_prompt = prompt_manager.render_investment_synthesis_peer_prompt(
+                            symbol=symbol,
+                            analysis_date=datetime.now().strftime("%Y-%m-%d"),
+                            current_price=latest_data.get("current_price", 0.0),
+                            sector=peer_comparison.get("peer_group", {}).get("sector", "N/A"),
+                            industry=peer_comparison.get("peer_group", {}).get("industry", "N/A"),
+                            fundamental_data=fundamental_data_str,
+                            technical_data=technical_data_str,
+                            latest_market_data=str(latest_data),
+                            peer_list=peer_comparison.get("peer_group", {}).get("peers", [])[:10],
+                            company_ratios=peer_comparison.get("company_ratios", {}),
+                            peer_statistics=peer_comparison.get("peer_statistics", {}),
+                            relative_position=peer_comparison.get("relative_position", {}),
                         )
                     else:
                         symbol_logger.info("Using comprehensive synthesis mode")
 
                         # Debug: Log available fundamental keys
-                        fundamental_keys = list(
-                            llm_responses.get("fundamental", {}).keys()
-                        )
-                        symbol_logger.info(
-                            f"Available fundamental keys: {fundamental_keys}"
-                        )
+                        fundamental_keys = list(llm_responses.get("fundamental", {}).keys())
+                        symbol_logger.info(f"Available fundamental keys: {fundamental_keys}")
 
                         # Extract comprehensive analysis and quarterly data
                         comprehensive_analysis = ""
@@ -988,20 +851,14 @@ class InvestmentSynthesizer:
                         if "comprehensive" in llm_responses.get("fundamental", {}):
                             comp_data = llm_responses["fundamental"]["comprehensive"]
                             content = comp_data.get("content", comp_data)
-                            symbol_logger.info(
-                                f"Found comprehensive analysis, content type: {type(content)}"
-                            )
+                            symbol_logger.info(f"Found comprehensive analysis, content type: {type(content)}")
                             if isinstance(content, dict):
                                 comprehensive_analysis = json.dumps(content, indent=2)
-                                symbol_logger.info(
-                                    f"Comprehensive analysis length: {len(comprehensive_analysis)}"
-                                )
+                                symbol_logger.info(f"Comprehensive analysis length: {len(comprehensive_analysis)}")
                             else:
                                 comprehensive_analysis = str(content)
                         else:
-                            symbol_logger.warning(
-                                "No comprehensive analysis found in fundamental responses"
-                            )
+                            symbol_logger.warning("No comprehensive analysis found in fundamental responses")
 
                         # Get quarterly analyses
                         for key, resp in llm_responses.get("fundamental", {}).items():
@@ -1062,16 +919,10 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
                 # Use cached response directly (already processed by LLM facade)
                 synthesis_response = cached_response.get("response", {})
-                processing_time_ms = cached_response.get("metadata", {}).get(
-                    "processing_time_ms", 0
-                )
+                processing_time_ms = cached_response.get("metadata", {}).get("processing_time_ms", 0)
             else:
-                symbol_logger.info(
-                    f"No cached synthesis found, generating with {model_name}"
-                )
-                self.main_logger.info(
-                    f"Cache MISS for synthesis: {symbol}, generating with {model_name} (32K context)"
-                )
+                symbol_logger.info(f"No cached synthesis found, generating with {model_name}")
+                self.main_logger.info(f"Cache MISS for synthesis: {symbol}, generating with {model_name} (32K context)")
 
                 start_time = time.time()
                 # Use queue-based processing for synthesis
@@ -1103,20 +954,12 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                     synthesis_mode,
                 )
 
-            symbol_logger.info(
-                f"Synthesis response generated in {processing_time_ms}ms"
-            )
+            symbol_logger.info(f"Synthesis response generated in {processing_time_ms}ms")
 
             # Debug: Check what the synthesis response contains
-            self.main_logger.info(
-                f"Synthesis response type: {type(synthesis_response)}"
-            )
-            self.main_logger.info(
-                f"Synthesis response length: {len(str(synthesis_response))}"
-            )
-            self.main_logger.info(
-                f"Synthesis response preview: {str(synthesis_response)}"
-            )
+            self.main_logger.info(f"Synthesis response type: {type(synthesis_response)}")
+            self.main_logger.info(f"Synthesis response length: {len(str(synthesis_response))}")
+            self.main_logger.info(f"Synthesis response preview: {str(synthesis_response)}")
 
             # Parse JSON synthesis response with metadata
             synthesis_metadata = {
@@ -1134,63 +977,41 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             )
 
             if isinstance(synthesis_response, dict):
-                symbol_logger.info(
-                    f"synthesis_response content preview: {str(synthesis_response)[:300]}..."
-                )
+                symbol_logger.info(f"synthesis_response content preview: {str(synthesis_response)[:300]}...")
                 # Check for common response formats
                 if "content" in synthesis_response:
-                    symbol_logger.info(
-                        f"Found 'content' key, type: {type(synthesis_response['content'])}"
-                    )
-                    symbol_logger.info(
-                        f"Content preview: {str(synthesis_response['content'])[:200]}..."
-                    )
+                    symbol_logger.info(f"Found 'content' key, type: {type(synthesis_response['content'])}")
+                    symbol_logger.info(f"Content preview: {str(synthesis_response['content'])[:200]}...")
                 if "response" in synthesis_response:
-                    symbol_logger.info(
-                        f"Found 'response' key, type: {type(synthesis_response['response'])}"
-                    )
+                    symbol_logger.info(f"Found 'response' key, type: {type(synthesis_response['response'])}")
                 if "overall_score" in synthesis_response:
                     symbol_logger.info("Response appears to already be parsed JSON")
             else:
-                symbol_logger.info(
-                    f"synthesis_response preview: {str(synthesis_response)[:300]}..."
-                )
+                symbol_logger.info(f"synthesis_response preview: {str(synthesis_response)[:300]}...")
 
             symbol_logger.info(f"synthesis_metadata: {synthesis_metadata}")
             symbol_logger.info("=== SYNTHESIS RESPONSE DEBUG END ===")
 
             # Robust JSON validation with fallback handling
             try:
-                symbol_logger.info(
-                    "BEFORE validation: Calling prompt_manager.validate_json_response"
-                )
-                validated_response = prompt_manager.validate_json_response(
-                    synthesis_response, synthesis_metadata
-                )
-                symbol_logger.info(
-                    f"AFTER validation: validated_response type: {type(validated_response)}"
-                )
+                symbol_logger.info("BEFORE validation: Calling prompt_manager.validate_json_response")
+                validated_response = prompt_manager.validate_json_response(synthesis_response, synthesis_metadata)
+                symbol_logger.info(f"AFTER validation: validated_response type: {type(validated_response)}")
                 symbol_logger.info(
                     f"AFTER validation: validated_response keys: {list(validated_response.keys()) if isinstance(validated_response, dict) else 'N/A'}"
                 )
 
                 # Check if validation failed
                 if validated_response.get("error"):
-                    symbol_logger.warning(
-                        f"JSON validation failed: {validated_response['error']}"
-                    )
+                    symbol_logger.warning(f"JSON validation failed: {validated_response['error']}")
                     symbol_logger.warning(
                         f"Validation error details: {validated_response.get('details', 'No details')}"
                     )
                     # Try to extract any partial JSON or create fallback
-                    ai_recommendation = self._create_fallback_recommendation(
-                        synthesis_response, symbol, overall_score
-                    )
+                    ai_recommendation = self._create_fallback_recommendation(synthesis_response, symbol, overall_score)
                 else:
                     ai_recommendation = validated_response["value"]
-                    symbol_logger.info(
-                        f"Validation successful, ai_recommendation type: {type(ai_recommendation)}"
-                    )
+                    symbol_logger.info(f"Validation successful, ai_recommendation type: {type(ai_recommendation)}")
 
             except Exception as e:
                 import traceback
@@ -1198,23 +1019,15 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 symbol_logger.error(f"EXCEPTION in JSON validation: {str(e)}")
                 symbol_logger.error(f"Exception type: {type(e).__name__}")
                 symbol_logger.error(f"Exception traceback: {traceback.format_exc()}")
-                symbol_logger.error(
-                    f"Raw LLM response (first 500 chars): {str(synthesis_response)[:500]}"
-                )
+                symbol_logger.error(f"Raw LLM response (first 500 chars): {str(synthesis_response)[:500]}")
 
                 # Create a fallback recommendation based on computed scores
-                ai_recommendation = self._create_fallback_recommendation(
-                    synthesis_response, symbol, overall_score
-                )
-                symbol_logger.info(
-                    "Created fallback recommendation due to JSON parsing failure"
-                )
+                ai_recommendation = self._create_fallback_recommendation(synthesis_response, symbol, overall_score)
+                symbol_logger.info("Created fallback recommendation due to JSON parsing failure")
 
             # OPTIMIZATION: Use direct extraction if available
             if use_direct_extraction and "direct_extraction_data" in locals():
-                symbol_logger.info(
-                    "OPTIMIZATION: Overriding synthesis with direct extraction recommendation"
-                )
+                symbol_logger.info("OPTIMIZATION: Overriding synthesis with direct extraction recommendation")
                 ai_recommendation = self._create_recommendation_from_llm_data(
                     symbol,
                     direct_extraction_data["sec_data"],
@@ -1227,9 +1040,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                     "source": "direct_extraction",
                     "model": "comprehensive_analysis",
                 }
-                symbol_logger.info(
-                    "Direct extraction recommendation created successfully"
-                )
+                symbol_logger.info("Direct extraction recommendation created successfully")
 
             # Handle different response types and capture additional insights
             additional_insights = []
@@ -1241,16 +1052,12 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             symbol_logger.info(
                 f"ai_recommendation keys: {list(ai_recommendation.keys()) if isinstance(ai_recommendation, dict) else 'N/A'}"
             )
-            symbol_logger.info(
-                f"ai_recommendation preview: {str(ai_recommendation)[:300]}..."
-            )
+            symbol_logger.info(f"ai_recommendation preview: {str(ai_recommendation)[:300]}...")
 
             thinking_content = ai_recommendation.get("thinking", "")
             symbol_logger.info(f"thinking_content length: {len(thinking_content)}")
             symbol_logger.info(
-                f"thinking_content preview: {thinking_content[:100]}..."
-                if thinking_content
-                else "No thinking content"
+                f"thinking_content preview: {thinking_content[:100]}..." if thinking_content else "No thinking content"
             )
 
             additional_details = ai_recommendation.get("details", "")
@@ -1276,9 +1083,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             for field in standard_fields:
                 if field in ai_recommendation:
                     field_value = ai_recommendation[field]
-                    symbol_logger.info(
-                        f"Found {field}: {type(field_value)} = {str(field_value)[:100]}..."
-                    )
+                    symbol_logger.info(f"Found {field}: {type(field_value)} = {str(field_value)[:100]}...")
                 else:
                     symbol_logger.warning(f"Missing standard field: {field}")
 
@@ -1288,46 +1093,32 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             extensible_insights = self._create_extensible_insights_structure(
                 ai_recommendation, thinking_content, additional_details, symbol
             )
-            symbol_logger.info(
-                f"Created extensible insights structure with {len(extensible_insights)} sections"
-            )
+            symbol_logger.info(f"Created extensible insights structure with {len(extensible_insights)} sections")
 
             if additional_details:
-                symbol_logger.info(
-                    "Mixed response detected - capturing both JSON and additional text details"
-                )
-                symbol_logger.info(
-                    f"Additional details captured: {len(additional_details)} characters"
-                )
+                symbol_logger.info("Mixed response detected - capturing both JSON and additional text details")
+                symbol_logger.info(f"Additional details captured: {len(additional_details)} characters")
 
             if thinking_content:
-                symbol_logger.info(
-                    f"Captured {len(thinking_content)} chars of thinking/reasoning content"
-                )
+                symbol_logger.info(f"Captured {len(thinking_content)} chars of thinking/reasoning content")
 
             # Extract insights and risks from additional text details
             if additional_details:
-                additional_insights, additional_risks = (
-                    self._extract_insights_from_text(additional_details)
-                )
+                additional_insights, additional_risks = self._extract_insights_from_text(additional_details)
                 symbol_logger.info(
                     f"Extracted {len(additional_insights)} insights and {len(additional_risks)} risks from text details"
                 )
 
             # Also extract from thinking content if present
             if thinking_content:
-                think_insights, think_risks = self._extract_insights_from_text(
-                    thinking_content
-                )
+                think_insights, think_risks = self._extract_insights_from_text(thinking_content)
                 additional_insights.extend(think_insights)
                 additional_risks.extend(think_risks)
 
             # Extract scores from parsed response or use defaults
             # Use LLM-provided scores if available
             overall_score = ai_recommendation.get("overall_score", overall_score)
-            fundamental_score = ai_recommendation.get(
-                "fundamental_score", fundamental_score
-            )
+            fundamental_score = ai_recommendation.get("fundamental_score", fundamental_score)
             technical_score = ai_recommendation.get("technical_score", technical_score)
             income_score = ai_recommendation.get(
                 "income_statement_score",
@@ -1355,17 +1146,11 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             )
 
             # Determine final recommendation with risk management
-            final_recommendation = self._determine_final_recommendation(
-                overall_score, ai_recommendation, data_quality
-            )
+            final_recommendation = self._determine_final_recommendation(overall_score, ai_recommendation, data_quality)
 
             # Calculate price targets and risk levels
-            price_target = self._calculate_price_target(
-                symbol, llm_responses, ai_recommendation, current_price
-            )
-            stop_loss = self._calculate_stop_loss(
-                current_price, final_recommendation, overall_score
-            )
+            price_target = self._calculate_price_target(symbol, llm_responses, ai_recommendation, current_price)
+            stop_loss = self._calculate_stop_loss(current_price, final_recommendation, overall_score)
 
             # Clean symbol of any quotes that might have been added
             clean_symbol = symbol.strip("\"'")
@@ -1389,18 +1174,14 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 current_price=current_price,
                 investment_thesis=ai_recommendation.get("executive_summary", {}).get(
                     "investment_thesis",
-                    ai_recommendation.get(
-                        "investment_thesis", "Analysis based on available data"
-                    ),
+                    ai_recommendation.get("investment_thesis", "Analysis based on available data"),
                 ),
                 time_horizon=ai_recommendation.get("investment_recommendation", {}).get(
                     "time_horizon", ai_recommendation.get("time_horizon", "MEDIUM-TERM")
                 ),
                 position_size=self._extract_position_size(ai_recommendation),
                 key_catalysts=self._extract_catalysts(ai_recommendation),
-                key_risks=self._extract_comprehensive_risks(
-                    llm_responses, ai_recommendation, additional_risks
-                ),
+                key_risks=self._extract_comprehensive_risks(llm_responses, ai_recommendation, additional_risks),
                 key_insights=self._extract_comprehensive_insights(
                     llm_responses, ai_recommendation, additional_insights
                 ),
@@ -1409,12 +1190,8 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 stop_loss=stop_loss,
                 analysis_timestamp=datetime.now(timezone.utc),
                 data_quality_score=data_quality,
-                analysis_thinking=ai_recommendation.get(
-                    "analysis_thinking", thinking_content
-                ),
-                synthesis_details=ai_recommendation.get(
-                    "synthesis_details", additional_details
-                ),
+                analysis_thinking=ai_recommendation.get("analysis_thinking", thinking_content),
+                synthesis_details=ai_recommendation.get("synthesis_details", additional_details),
                 quarterly_metrics=quarterly_metrics,
                 quarterly_trends=quarterly_trends,
                 score_history=score_history,
@@ -1438,9 +1215,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
             # Attach extensible insights for enhanced reporting and future evolution
             recommendation.extensible_insights = extensible_insights
-            symbol_logger.info(
-                f"Attached extensible insights structure with {len(extensible_insights)} sections"
-            )
+            symbol_logger.info(f"Attached extensible insights structure with {len(extensible_insights)} sections")
 
             # Evaluate alerts (Tier 3 Enhancement #14)
             if self.alert_engine:
@@ -1477,27 +1252,16 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                         for alert in alerts:
                             if alert["severity"] in ["high", "medium"]:
                                 self.alert_engine.save_alert(alert)
-                                symbol_logger.info(
-                                    f"Saved {alert['severity']} severity alert: {alert['type']}"
-                                )
+                                symbol_logger.info(f"Saved {alert['severity']} severity alert: {alert['type']}")
 
                         # Send email for high severity alerts if configured
                         if self.email_notifier:
-                            high_severity = [
-                                a for a in alerts if a["severity"] == "high"
-                            ]
+                            high_severity = [a for a in alerts if a["severity"] == "high"]
                             # Get recipients from email config
-                            if (
-                                high_severity
-                                and hasattr(self.config, "email")
-                                and self.config.email
-                            ):
+                            if high_severity and hasattr(self.config, "email") and self.config.email:
                                 email_config = self.config.email
                                 recipients = []
-                                if (
-                                    hasattr(email_config, "recipients")
-                                    and email_config.recipients
-                                ):
+                                if hasattr(email_config, "recipients") and email_config.recipients:
                                     recipients = email_config.recipients
 
                                 if recipients:
@@ -1511,13 +1275,9 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                                             f"Sent {len(high_severity)} high severity alerts to {len(recipients)} recipients"
                                         )
                                     except Exception as email_error:
-                                        symbol_logger.error(
-                                            f"Failed to send alert email: {email_error}"
-                                        )
+                                        symbol_logger.error(f"Failed to send alert email: {email_error}")
                     else:
-                        symbol_logger.info(
-                            "No significant changes detected - no alerts generated"
-                        )
+                        symbol_logger.info("No significant changes detected - no alerts generated")
 
                 except Exception as alert_error:
                     symbol_logger.error(f"Error evaluating alerts: {alert_error}")
@@ -1535,12 +1295,8 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             )
 
             # Track report generation in database
-            processing_time = (
-                int((time.time() - start_time)) if "start_time" in locals() else None
-            )
-            self._track_report_generation(
-                recommendation, processing_time=processing_time
-            )
+            processing_time = int((time.time() - start_time)) if "start_time" in locals() else None
+            self._track_report_generation(recommendation, processing_time=processing_time)
 
             return recommendation
 
@@ -1554,9 +1310,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             # Raise the exception instead of returning a default recommendation
             raise RuntimeError(f"Investment synthesis failed for {symbol}: {str(e)}")
 
-    def _analyze_recession_performance(
-        self, symbol: str, multi_year_data: List[Dict]
-    ) -> Dict:
+    def _analyze_recession_performance(self, symbol: str, multi_year_data: List[Dict]) -> Dict:
         """
         Analyze company performance during major economic crises
 
@@ -1614,14 +1368,10 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             }
 
         except Exception as e:
-            self.main_logger.error(
-                f"Error analyzing recession performance for {symbol}: {e}"
-            )
+            self.main_logger.error(f"Error analyzing recession performance for {symbol}: {e}")
             return {}
 
-    def _calculate_crisis_metrics(
-        self, symbol: str, start_date: str, end_date: str, recovery_end: str
-    ) -> Dict:
+    def _calculate_crisis_metrics(self, symbol: str, start_date: str, end_date: str, recovery_end: str) -> Dict:
         """
         Calculate performance during and after crisis
 
@@ -1670,19 +1420,13 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
             # Revenue decline during crisis
             if crisis_data:
-                crisis_revenues = [
-                    r.value for r in crisis_data if r.tag == "Revenues" and r.value
-                ]
+                crisis_revenues = [r.value for r in crisis_data if r.tag == "Revenues" and r.value]
                 if len(crisis_revenues) >= 2:
-                    revenue_decline = (
-                        (crisis_revenues[-1] / crisis_revenues[0]) - 1
-                    ) * 100
+                    revenue_decline = ((crisis_revenues[-1] / crisis_revenues[0]) - 1) * 100
                     metrics["revenue_decline_pct"] = round(revenue_decline, 2)
 
             # Earnings stability
-            crisis_earnings = [
-                r.value for r in crisis_data if r.tag == "NetIncomeLoss" and r.value
-            ]
+            crisis_earnings = [r.value for r in crisis_data if r.tag == "NetIncomeLoss" and r.value]
             negative_quarters = sum(1 for e in crisis_earnings if e < 0)
             metrics["negative_earnings_quarters"] = negative_quarters
             if negative_quarters == 0:
@@ -1693,20 +1437,14 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 metrics["earnings_stability"] = "low"
 
             # Cash position maintained
-            crisis_cash = [
-                r.value
-                for r in crisis_data
-                if r.tag == "CashAndCashEquivalentsAtCarryingValue" and r.value
-            ]
+            crisis_cash = [r.value for r in crisis_data if r.tag == "CashAndCashEquivalentsAtCarryingValue" and r.value]
             if len(crisis_cash) >= 2:
                 cash_change = ((crisis_cash[-1] / crisis_cash[0]) - 1) * 100
                 metrics["cash_position_change"] = round(cash_change, 2)
 
             # Recovery speed (quarters to pre-crisis revenue)
             if recovery_data and crisis_revenues:
-                recovery_revenues = [
-                    r.value for r in recovery_data if r.tag == "Revenues" and r.value
-                ]
+                recovery_revenues = [r.value for r in recovery_data if r.tag == "Revenues" and r.value]
                 if recovery_revenues:
                     pre_crisis_revenue = crisis_revenues[0]
                     quarters_to_recover = 0
@@ -1714,16 +1452,12 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                         if rev >= pre_crisis_revenue:
                             quarters_to_recover = i + 1
                             break
-                    metrics["quarters_to_recover"] = (
-                        quarters_to_recover if quarters_to_recover > 0 else "N/A"
-                    )
+                    metrics["quarters_to_recover"] = quarters_to_recover if quarters_to_recover > 0 else "N/A"
 
             return metrics
 
         except Exception as e:
-            self.main_logger.error(
-                f"Error calculating crisis metrics for {symbol}: {e}"
-            )
+            self.main_logger.error(f"Error calculating crisis metrics for {symbol}: {e}")
             return {}
 
     def _calculate_defensive_score(self, crisis_results: Dict) -> float:
@@ -1790,12 +1524,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 recovery_score = 2
 
             # Weighted average for this crisis
-            crisis_score = (
-                revenue_score * 0.3
-                + earnings_score * 0.3
-                + cash_score * 0.2
-                + recovery_score * 0.2
-            )
+            crisis_score = revenue_score * 0.3 + earnings_score * 0.3 + cash_score * 0.2 + recovery_score * 0.2
             scores.append(crisis_score)
 
         # Average across all crises
@@ -1892,14 +1621,10 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             cursor.execute(insert_sql, data)
             conn.commit()
 
-            self.main_logger.info(
-                f"📊 Report generation tracked for {recommendation.symbol}"
-            )
+            self.main_logger.info(f"📊 Report generation tracked for {recommendation.symbol}")
 
         except Exception as e:
-            self.main_logger.error(
-                f"Failed to track report generation for {recommendation.symbol}: {e}"
-            )
+            self.main_logger.error(f"Failed to track report generation for {recommendation.symbol}: {e}")
         finally:
             if "cursor" in locals():
                 cursor.close()
@@ -1959,9 +1684,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             # Generate technical charts for each symbol
             for rec in recommendations:
                 # Load price data if available
-                price_data_path = (
-                    Path(self.config.data_dir) / "price_cache" / f"{rec.symbol}.parquet"
-                )
+                price_data_path = Path(self.config.data_dir) / "price_cache" / f"{rec.symbol}.parquet"
                 if price_data_path.exists():
                     import pandas as pd
 
@@ -1974,9 +1697,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
                 # Generate score history chart if data is available
                 if rec.score_history and len(rec.score_history) >= 2:
-                    self.main_logger.info(
-                        f"Generating score history chart for {rec.symbol}"
-                    )
+                    self.main_logger.info(f"Generating score history chart for {rec.symbol}")
                     score_chart = self.chart_generator.generate_score_history_chart(
                         rec.symbol, rec.score_history, rec.score_trend or {}
                     )
@@ -1985,46 +1706,32 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
                 # Generate valuation comparison chart if peer data is available
                 if rec.peer_valuation:
-                    self.main_logger.info(
-                        f"Generating valuation comparison chart for {rec.symbol}"
-                    )
-                    val_chart = (
-                        self.chart_generator.generate_valuation_comparison_chart(
-                            rec.symbol, rec.peer_valuation
-                        )
-                    )
+                    self.main_logger.info(f"Generating valuation comparison chart for {rec.symbol}")
+                    val_chart = self.chart_generator.generate_valuation_comparison_chart(rec.symbol, rec.peer_valuation)
                     if val_chart:
                         chart_paths.append(val_chart)
 
                 # Generate quarterly trend charts if data is available
                 if rec.quarterly_trends:
-                    self.main_logger.info(
-                        f"Generating quarterly trend charts for {rec.symbol}"
-                    )
+                    self.main_logger.info(f"Generating quarterly trend charts for {rec.symbol}")
 
                     # Revenue trend chart
-                    revenue_chart = (
-                        self.chart_generator.generate_quarterly_revenue_trend(
-                            rec.symbol, rec.quarterly_trends
-                        )
+                    revenue_chart = self.chart_generator.generate_quarterly_revenue_trend(
+                        rec.symbol, rec.quarterly_trends
                     )
                     if revenue_chart:
                         chart_paths.append(revenue_chart)
 
                     # Profitability chart (Net Income + Margins)
-                    profitability_chart = (
-                        self.chart_generator.generate_quarterly_profitability_chart(
-                            rec.symbol, rec.quarterly_trends
-                        )
+                    profitability_chart = self.chart_generator.generate_quarterly_profitability_chart(
+                        rec.symbol, rec.quarterly_trends
                     )
                     if profitability_chart:
                         chart_paths.append(profitability_chart)
 
                     # Cash Flow chart
-                    cashflow_chart = (
-                        self.chart_generator.generate_quarterly_cashflow_chart(
-                            rec.symbol, rec.quarterly_trends
-                        )
+                    cashflow_chart = self.chart_generator.generate_quarterly_cashflow_chart(
+                        rec.symbol, rec.quarterly_trends
                     )
                     if cashflow_chart:
                         chart_paths.append(cashflow_chart)
@@ -2035,89 +1742,57 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
                 # Generate multi-year trends chart if data is available
                 if rec.multi_year_trends:
-                    self.main_logger.info(
-                        f"Generating multi-year historical trends chart for {rec.symbol}"
-                    )
-                    multi_year_chart = (
-                        self.chart_generator.generate_multi_year_trends_chart(
-                            rec.symbol, rec.multi_year_trends
-                        )
+                    self.main_logger.info(f"Generating multi-year historical trends chart for {rec.symbol}")
+                    multi_year_chart = self.chart_generator.generate_multi_year_trends_chart(
+                        rec.symbol, rec.multi_year_trends
                     )
                     if multi_year_chart:
                         chart_paths.append(multi_year_chart)
-                        self.main_logger.info(
-                            f"Generated multi-year trends chart for {rec.symbol}"
-                        )
+                        self.main_logger.info(f"Generated multi-year trends chart for {rec.symbol}")
 
                 # Generate risk radar chart if data is available
                 if rec.risk_scores:
-                    self.main_logger.info(
-                        f"Generating risk radar chart for {rec.symbol}"
-                    )
-                    risk_radar_chart = (
-                        self.chart_generator.generate_risk_scores_radar_chart(
-                            rec.symbol, rec.risk_scores
-                        )
+                    self.main_logger.info(f"Generating risk radar chart for {rec.symbol}")
+                    risk_radar_chart = self.chart_generator.generate_risk_scores_radar_chart(
+                        rec.symbol, rec.risk_scores
                     )
                     if risk_radar_chart:
                         chart_paths.append(risk_radar_chart)
-                        self.main_logger.info(
-                            f"Generated risk radar chart for {rec.symbol}"
-                        )
+                        self.main_logger.info(f"Generated risk radar chart for {rec.symbol}")
 
                 # Generate competitive positioning matrix if data is available
-                if rec.competitive_positioning and rec.competitive_positioning.get(
-                    "peers"
-                ):
-                    self.main_logger.info(
-                        f"Generating competitive positioning matrix for {rec.symbol}"
-                    )
-                    positioning_chart = (
-                        self.chart_generator.generate_competitive_positioning_matrix(
-                            rec.competitive_positioning
-                        )
+                if rec.competitive_positioning and rec.competitive_positioning.get("peers"):
+                    self.main_logger.info(f"Generating competitive positioning matrix for {rec.symbol}")
+                    positioning_chart = self.chart_generator.generate_competitive_positioning_matrix(
+                        rec.competitive_positioning
                     )
                     if positioning_chart:
                         chart_paths.append(positioning_chart)
-                        self.main_logger.info(
-                            f"Generated competitive positioning matrix for {rec.symbol}"
-                        )
+                        self.main_logger.info(f"Generated competitive positioning matrix for {rec.symbol}")
 
                 # Generate volume profile chart if data is available
                 if rec.volume_profile and rec.volume_profile.get("profile_bins"):
-                    self.main_logger.info(
-                        f"Generating volume profile chart for {rec.symbol}"
-                    )
-                    volume_profile_chart = (
-                        self.chart_generator.generate_volume_profile_chart(
-                            rec.symbol, rec.volume_profile
-                        )
+                    self.main_logger.info(f"Generating volume profile chart for {rec.symbol}")
+                    volume_profile_chart = self.chart_generator.generate_volume_profile_chart(
+                        rec.symbol, rec.volume_profile
                     )
                     if volume_profile_chart:
                         chart_paths.append(volume_profile_chart)
-                        self.main_logger.info(
-                            f"Generated volume profile chart for {rec.symbol}"
-                        )
+                        self.main_logger.info(f"Generated volume profile chart for {rec.symbol}")
 
             # Generate 3D fundamental plot for both single and multi-symbol reports
             # (Single symbol will show position in 3D space relative to ideal scores)
-            fundamental_3d = self.chart_generator.generate_3d_fundamental_plot(
-                rec_dicts
-            )
+            fundamental_3d = self.chart_generator.generate_3d_fundamental_plot(rec_dicts)
             if fundamental_3d:
                 chart_paths.append(fundamental_3d)
 
             # Generate 2D technical vs fundamental plot
-            tech_fund_2d = self.chart_generator.generate_2d_technical_fundamental_plot(
-                rec_dicts
-            )
+            tech_fund_2d = self.chart_generator.generate_2d_technical_fundamental_plot(rec_dicts)
             if tech_fund_2d:
                 chart_paths.append(tech_fund_2d)
 
             # Generate growth vs value plot
-            growth_value_plot = self.chart_generator.generate_growth_value_plot(
-                rec_dicts
-            )
+            growth_value_plot = self.chart_generator.generate_growth_value_plot(rec_dicts)
             if growth_value_plot:
                 chart_paths.append(growth_value_plot)
 
@@ -2171,14 +1846,10 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                     "form_type": "COMPREHENSIVE",
                     "period": f"{fiscal_year}-FY",
                 }
-                self.main_logger.info(
-                    f"✅ Fetched comprehensive fundamental analysis for {symbol}"
-                )
+                self.main_logger.info(f"✅ Fetched comprehensive fundamental analysis for {symbol}")
 
             # 2. FETCH ALL INDIVIDUAL QUARTERLY ANALYSES (for quarter-by-quarter trends)
-            sec_responses = self.llm_dao.get_llm_responses_by_symbol(
-                symbol, llm_type="sec"
-            )
+            sec_responses = self.llm_dao.get_llm_responses_by_symbol(symbol, llm_type="sec")
             quarterly_count = 0
 
             for resp in sec_responses:
@@ -2222,9 +1893,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                     }
                     quarterly_count += 1
 
-            self.main_logger.info(
-                f"✅ Fetched {quarterly_count} individual quarterly analyses for {symbol}"
-            )
+            self.main_logger.info(f"✅ Fetched {quarterly_count} individual quarterly analyses for {symbol}")
 
             # 3. FETCH TECHNICAL ANALYSIS
             # Try multiple cache key formats for technical analysis
@@ -2272,28 +1941,20 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                         else:
                             tech_content = raw_response
                     else:
-                        tech_content = (
-                            raw_response
-                            if isinstance(raw_response, dict)
-                            else raw_response
-                        )
+                        tech_content = raw_response if isinstance(raw_response, dict) else raw_response
 
                     llm_responses["technical"] = {
                         "content": tech_content,
                         "metadata": tech_resp.get("metadata", {}),
                         "cache_key_used": tech_key,
                     }
-                    self.main_logger.info(
-                        f"✅ Fetched technical analysis for {symbol} using key: {tech_key}"
-                    )
+                    self.main_logger.info(f"✅ Fetched technical analysis for {symbol} using key: {tech_key}")
                     break
 
             # 4. FALLBACK: Check file-based technical analysis cache
             if not llm_responses["technical"]:
                 try:
-                    tech_file_path = (
-                        f"data/llm_cache/{symbol}/response_technical_indicators.txt"
-                    )
+                    tech_file_path = f"data/llm_cache/{symbol}/response_technical_indicators.txt"
                     if Path(tech_file_path).exists():
                         with open(tech_file_path, "r") as f:
                             tech_content = f.read()
@@ -2302,13 +1963,9 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                             "metadata": {"source": "file_fallback"},
                             "cache_key_used": "file_fallback",
                         }
-                        self.main_logger.info(
-                            f"✅ Fetched technical analysis from file for {symbol}"
-                        )
+                        self.main_logger.info(f"✅ Fetched technical analysis from file for {symbol}")
                 except Exception as e:
-                    self.main_logger.warning(
-                        f"Failed to fetch technical analysis from file: {e}"
-                    )
+                    self.main_logger.warning(f"Failed to fetch technical analysis from file: {e}")
 
             if not llm_responses["technical"]:
                 self.main_logger.warning(f"❌ No technical analysis found for {symbol}")
@@ -2340,21 +1997,11 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
             # First try parquet format (compressed, efficient)
             parquet_data_path = (
-                Path(self.config.data_dir)
-                / "technical_cache"
-                / symbol
-                / f"technical_data_{symbol}.parquet"
+                Path(self.config.data_dir) / "technical_cache" / symbol / f"technical_data_{symbol}.parquet"
             )
-            csv_data_path = (
-                Path(self.config.data_dir)
-                / "technical_cache"
-                / symbol
-                / f"technical_data_{symbol}.csv"
-            )
+            csv_data_path = Path(self.config.data_dir) / "technical_cache" / symbol / f"technical_data_{symbol}.csv"
 
-            self.main_logger.info(
-                f"Looking for technical data - Parquet: {parquet_data_path}, CSV: {csv_data_path}"
-            )
+            self.main_logger.info(f"Looking for technical data - Parquet: {parquet_data_path}, CSV: {csv_data_path}")
 
             # Try parquet first, then CSV fallback
             technical_data_path = None
@@ -2400,12 +2047,8 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                             "price_change_1d": float(
                                 latest_row.get("Price_Change_1D", 0)
                             ),  # Use the correct column name
-                            "price_change_1w": float(
-                                latest_row.get("price_change_1w", 0)
-                            ),
-                            "price_change_1m": float(
-                                latest_row.get("price_change_1m", 0)
-                            ),
+                            "price_change_1w": float(latest_row.get("price_change_1w", 0)),
+                            "price_change_1m": float(latest_row.get("price_change_1m", 0)),
                             "rsi": float(latest_row.get("RSI_14", 50)),
                             "macd": float(latest_row.get("MACD", 0)),
                             "sma_20": float(latest_row.get("SMA_20", 0)),
@@ -2440,9 +2083,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                                 f"{len(sr_levels.get('resistance_levels', []))} resistance levels for {symbol}"
                             )
                         except Exception as e:
-                            self.main_logger.warning(
-                                f"Could not detect support/resistance levels for {symbol}: {e}"
-                            )
+                            self.main_logger.warning(f"Could not detect support/resistance levels for {symbol}: {e}")
                             technical_data["support_resistance"] = None
 
                         self.main_logger.info(
@@ -2454,9 +2095,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 except Exception as e:
                     self.main_logger.error(f"Error reading CSV file for {symbol}: {e}")
             else:
-                self.main_logger.warning(
-                    f"CSV file not found for {symbol}: {technical_data_path}"
-                )
+                self.main_logger.warning(f"CSV file not found for {symbol}: {technical_data_path}")
 
             return {
                 "fundamental": {},
@@ -2506,36 +2145,20 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             for row in rows:
                 score_history.append(
                     {
-                        "date": row[0]
-                        if hasattr(row, "__getitem__")
-                        else row.generated_at,
-                        "overall_score": row[1]
-                        if hasattr(row, "__getitem__")
-                        else row.overall_score,
-                        "fundamental_score": row[2]
-                        if hasattr(row, "__getitem__")
-                        else row.fundamental_score,
-                        "technical_score": row[3]
-                        if hasattr(row, "__getitem__")
-                        else row.technical_score,
-                        "recommendation": row[4]
-                        if hasattr(row, "__getitem__")
-                        else row.recommendation,
-                        "confidence": row[5]
-                        if hasattr(row, "__getitem__")
-                        else row.confidence,
+                        "date": row[0] if hasattr(row, "__getitem__") else row.generated_at,
+                        "overall_score": row[1] if hasattr(row, "__getitem__") else row.overall_score,
+                        "fundamental_score": row[2] if hasattr(row, "__getitem__") else row.fundamental_score,
+                        "technical_score": row[3] if hasattr(row, "__getitem__") else row.technical_score,
+                        "recommendation": row[4] if hasattr(row, "__getitem__") else row.recommendation,
+                        "confidence": row[5] if hasattr(row, "__getitem__") else row.confidence,
                     }
                 )
 
-            self.main_logger.info(
-                f"Retrieved {len(score_history)} historical scores for {symbol}"
-            )
+            self.main_logger.info(f"Retrieved {len(score_history)} historical scores for {symbol}")
             return score_history
 
         except Exception as e:
-            self.main_logger.error(
-                f"Error fetching historical scores for {symbol}: {e}"
-            )
+            self.main_logger.error(f"Error fetching historical scores for {symbol}: {e}")
             return []
 
     def _fetch_peer_valuation_metrics(self, symbol: str) -> Dict:
@@ -2564,9 +2187,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                     self.main_logger.warning(f"No peer group found for {symbol}")
                     return {}
 
-                industry = (
-                    result[0] if hasattr(result, "__getitem__") else result.industry
-                )
+                industry = result[0] if hasattr(result, "__getitem__") else result.industry
                 sector = result[1] if hasattr(result, "__getitem__") else result.sector
 
                 # Get peer metrics
@@ -2589,9 +2210,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
             for row in peers:
                 sym = row[0] if hasattr(row, "__getitem__") else row.symbol
-                metrics = (
-                    dict(row[1]) if hasattr(row, "__getitem__") else row.metrics_data
-                )
+                metrics = dict(row[1]) if hasattr(row, "__getitem__") else row.metrics_data
 
                 valuation = {
                     "symbol": sym,
@@ -2631,9 +2250,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 "target": target_valuation,
                 "peer_medians": peer_medians,
                 "peer_count": len(peer_valuations),
-                "relative_valuation": self._calculate_relative_valuation(
-                    target_valuation, peer_medians
-                ),
+                "relative_valuation": self._calculate_relative_valuation(target_valuation, peer_medians),
             }
 
         except Exception as e:
@@ -2665,9 +2282,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                         "target": round(target_val, 2),
                         "peer_median": round(peer_median, 2),
                         "premium_discount": round(premium, 1),
-                        "assessment": "expensive"
-                        if premium > 20
-                        else ("cheap" if premium < -20 else "fair"),
+                        "assessment": "expensive" if premium > 20 else ("cheap" if premium < -20 else "fair"),
                     }
                 else:
                     relative[metric] = {
@@ -2677,9 +2292,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                     }
 
             # Overall valuation assessment
-            assessments = [
-                v.get("assessment") for v in relative.values() if v.get("assessment")
-            ]
+            assessments = [v.get("assessment") for v in relative.values() if v.get("assessment")]
             if assessments:
                 cheap_count = assessments.count("cheap")
                 expensive_count = assessments.count("expensive")
@@ -2724,9 +2337,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
             # Calculate average of first half vs second half
             mid_point = len(scores) // 2
-            first_half_avg = (
-                sum(scores[:mid_point]) / mid_point if mid_point > 0 else first_score
-            )
+            first_half_avg = sum(scores[:mid_point]) / mid_point if mid_point > 0 else first_score
             second_half_avg = sum(scores[mid_point:]) / (len(scores) - mid_point)
 
             # Determine trend direction
@@ -2740,18 +2351,14 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             # Calculate momentum (recent trend)
             if len(scores) >= 3:
                 recent_change = scores[-1] - scores[-3]
-                momentum = (
-                    "accelerating" if abs(recent_change) > abs(change) / 2 else "steady"
-                )
+                momentum = "accelerating" if abs(recent_change) > abs(change) / 2 else "steady"
             else:
                 momentum = "steady"
 
             return {
                 "trend": direction,
                 "change": round(change, 2),
-                "change_percent": round((change / first_score) * 100, 1)
-                if first_score > 0
-                else 0,
+                "change_percent": round((change / first_score) * 100, 1) if first_score > 0 else 0,
                 "first_half_avg": round(first_half_avg, 2),
                 "second_half_avg": round(second_half_avg, 2),
                 "momentum": momentum,
@@ -2792,9 +2399,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             last_3 = revenue_trend[-3:]
             # Check if all values are non-None before comparing
             if all(item.get("value") is not None for item in last_3):
-                if all(
-                    last_3[i]["value"] < last_3[i - 1]["value"] for i in range(1, 3)
-                ):
+                if all(last_3[i]["value"] < last_3[i - 1]["value"] for i in range(1, 3)):
                     red_flags.append(
                         {
                             "type": "declining_revenue",
@@ -2843,9 +2448,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             # Handle None values in net_margin
             recent_margins = [m.get("net_margin", 0) or 0 for m in margin_trends[-2:]]
             past_margins = [m.get("net_margin", 0) or 0 for m in margin_trends[:2]]
-            recent_avg = (
-                sum(recent_margins) / len(recent_margins) if recent_margins else 0
-            )
+            recent_avg = sum(recent_margins) / len(recent_margins) if recent_margins else 0
             past_avg = sum(past_margins) / len(past_margins) if past_margins else 0
 
             if past_avg and past_avg > 0 and recent_avg and recent_avg < past_avg * 0.8:
@@ -2891,9 +2494,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         """
         try:
             # Get CIK for this symbol
-            cik_query = text(
-                "SELECT cik FROM ticker_cik_mapping WHERE ticker = :symbol"
-            )
+            cik_query = text("SELECT cik FROM ticker_cik_mapping WHERE ticker = :symbol")
 
             with self.db_manager.get_session() as session:
                 cik_result = session.execute(cik_query, {"symbol": symbol}).fetchone()
@@ -2949,15 +2550,11 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             # Structure the data by year
             yearly_data = self._structure_yearly_sec_data(rows)
 
-            self.main_logger.info(
-                f"Fetched {len(yearly_data)} years of financial data for {symbol}"
-            )
+            self.main_logger.info(f"Fetched {len(yearly_data)} years of financial data for {symbol}")
             return yearly_data
 
         except Exception as e:
-            self.main_logger.error(
-                f"Error fetching multi-year financials for {symbol}: {e}"
-            )
+            self.main_logger.error(f"Error fetching multi-year financials for {symbol}: {e}")
             return []
 
     def _structure_yearly_sec_data(self, rows: List) -> List[Dict]:
@@ -3024,39 +2621,27 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         metrics = {"years_analyzed": len(yearly_data)}
 
         # Revenue CAGR
-        revenue_values = [
-            (y["year"], y["revenue"])
-            for y in yearly_data
-            if y["revenue"] and y["revenue"] > 0
-        ]
+        revenue_values = [(y["year"], y["revenue"]) for y in yearly_data if y["revenue"] and y["revenue"] > 0]
         if len(revenue_values) >= 3:
             first_year, first_revenue = revenue_values[0]
             last_year, last_revenue = revenue_values[-1]
             years_span = last_year - first_year
 
             if years_span > 0 and first_revenue > 0:
-                revenue_cagr = (
-                    (last_revenue / first_revenue) ** (1 / years_span) - 1
-                ) * 100
+                revenue_cagr = ((last_revenue / first_revenue) ** (1 / years_span) - 1) * 100
                 metrics["revenue_cagr"] = round(revenue_cagr, 2)
                 metrics["revenue_first"] = first_revenue
                 metrics["revenue_last"] = last_revenue
 
         # Earnings CAGR
-        earnings_values = [
-            (y["year"], y["net_income"])
-            for y in yearly_data
-            if y["net_income"] and y["net_income"] > 0
-        ]
+        earnings_values = [(y["year"], y["net_income"]) for y in yearly_data if y["net_income"] and y["net_income"] > 0]
         if len(earnings_values) >= 3:
             first_year, first_earnings = earnings_values[0]
             last_year, last_earnings = earnings_values[-1]
             years_span = last_year - first_year
 
             if years_span > 0 and first_earnings > 0:
-                earnings_cagr = (
-                    (last_earnings / first_earnings) ** (1 / years_span) - 1
-                ) * 100
+                earnings_cagr = ((last_earnings / first_earnings) ** (1 / years_span) - 1) * 100
                 metrics["earnings_cagr"] = round(earnings_cagr, 2)
 
         # Revenue volatility
@@ -3097,9 +2682,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
     def _detect_cyclical_pattern(self, yearly_data: List[Dict]) -> str:
         """Detect if business shows cyclical pattern"""
-        revenue_values = [
-            y["revenue"] for y in yearly_data if y["revenue"] and y["revenue"] > 0
-        ]
+        revenue_values = [y["revenue"] for y in yearly_data if y["revenue"] and y["revenue"] > 0]
 
         if len(revenue_values) < 3:
             return "insufficient_data"
@@ -3179,9 +2762,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         elif current_ratio > 2.0:
             financial_health_risk -= 1.0
 
-        risk_scores["financial_health_risk"] = max(
-            0, min(10, round(financial_health_risk, 1))
-        )
+        risk_scores["financial_health_risk"] = max(0, min(10, round(financial_health_risk, 1)))
 
         # 2. Market Risk (based on volatility and beta)
         market_risk = 5.0
@@ -3230,9 +2811,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
         # 4. Business Model Risk (margin stability)
         if len(quarterly_metrics) >= 4:
-            recent_margins = [
-                q.get("net_margin", 0) or 0 for q in quarterly_metrics[-4:]
-            ]
+            recent_margins = [q.get("net_margin", 0) or 0 for q in quarterly_metrics[-4:]]
             if recent_margins and any(m != 0 for m in recent_margins):
                 margin_volatility = np.std(recent_margins)
                 np.mean(recent_margins)
@@ -3259,9 +2838,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         else:
             business_model_risk = 6.0  # Insufficient history
 
-        risk_scores["business_model_risk"] = max(
-            0, min(10, round(business_model_risk, 1))
-        )
+        risk_scores["business_model_risk"] = max(0, min(10, round(business_model_risk, 1)))
 
         # 5. Growth Risk (from multi-year data)
         growth_risk = 5.0
@@ -3311,9 +2888,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
         return risk_scores
 
-    def _fetch_competitive_positioning_data(
-        self, symbol: str, quarterly_metrics: List[Dict]
-    ) -> Dict:
+    def _fetch_competitive_positioning_data(self, symbol: str, quarterly_metrics: List[Dict]) -> Dict:
         """
         Fetch competitive positioning data for matrix visualization
 
@@ -3327,17 +2902,11 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         try:
             # Get target company metrics
             if not quarterly_metrics or len(quarterly_metrics) < 4:
-                self.main_logger.warning(
-                    "Insufficient quarterly data for positioning matrix"
-                )
+                self.main_logger.warning("Insufficient quarterly data for positioning matrix")
                 return {}
 
             latest = quarterly_metrics[-1]
-            year_ago = (
-                quarterly_metrics[-4]
-                if len(quarterly_metrics) >= 4
-                else quarterly_metrics[0]
-            )
+            year_ago = quarterly_metrics[-4] if len(quarterly_metrics) >= 4 else quarterly_metrics[0]
 
             # Calculate target company metrics
             target_revenue = latest.get("revenue", 0) or 0
@@ -3374,9 +2943,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                         "sector": "Unknown",
                     }
 
-                industry = (
-                    result[0] if hasattr(result, "__getitem__") else result.industry
-                )
+                industry = result[0] if hasattr(result, "__getitem__") else result.industry
                 sector = result[1] if hasattr(result, "__getitem__") else result.sector
 
                 # Get peer metrics
@@ -3387,35 +2954,25 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                     LIMIT 15
                 """)
 
-                peer_result = session.execute(
-                    peer_query, {"industry": industry, "symbol": symbol}
-                )
+                peer_result = session.execute(peer_query, {"industry": industry, "symbol": symbol})
                 peers = peer_result.fetchall()
 
             # Build peer positioning data
             peer_positions = []
             for row in peers:
                 peer_symbol = row[0] if hasattr(row, "__getitem__") else row.symbol
-                metrics = (
-                    dict(row[1]) if hasattr(row, "__getitem__") else row.metrics_data
-                )
+                metrics = dict(row[1]) if hasattr(row, "__getitem__") else row.metrics_data
 
                 # Extract relevant metrics
                 revenue_growth = metrics.get("revenue_growth_yoy", 0)
-                profit_margin = metrics.get("profit_margin", 0) or metrics.get(
-                    "net_margin", 0
-                )
+                profit_margin = metrics.get("profit_margin", 0) or metrics.get("net_margin", 0)
 
                 if revenue_growth is not None and profit_margin is not None:
                     peer_positions.append(
                         {
                             "symbol": peer_symbol,
-                            "revenue_growth": float(revenue_growth)
-                            if revenue_growth
-                            else 0,
-                            "profit_margin": float(profit_margin)
-                            if profit_margin
-                            else 0,
+                            "revenue_growth": float(revenue_growth) if revenue_growth else 0,
+                            "profit_margin": float(profit_margin) if profit_margin else 0,
                         }
                     )
 
@@ -3437,9 +2994,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             self.main_logger.error(traceback.format_exc())
             return {}
 
-    def _build_peer_performance_leaderboard(
-        self, symbol: str, quarterly_metrics: List[Dict]
-    ) -> Dict:
+    def _build_peer_performance_leaderboard(self, symbol: str, quarterly_metrics: List[Dict]) -> Dict:
         """
         Build peer performance leaderboard with rankings
 
@@ -3466,9 +3021,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                     self.main_logger.warning("No peer group found for leaderboard")
                     return {}
 
-                industry = (
-                    result[0] if hasattr(result, "__getitem__") else result.industry
-                )
+                industry = result[0] if hasattr(result, "__getitem__") else result.industry
                 sector = result[1] if hasattr(result, "__getitem__") else result.sector
 
                 # Get all peer metrics including target
@@ -3489,9 +3042,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             peer_performance = []
             for row in peers:
                 peer_symbol = row[0] if hasattr(row, "__getitem__") else row.symbol
-                metrics = (
-                    dict(row[1]) if hasattr(row, "__getitem__") else row.metrics_data
-                )
+                metrics = dict(row[1]) if hasattr(row, "__getitem__") else row.metrics_data
 
                 # Extract comprehensive metrics
                 performance = {
@@ -3499,8 +3050,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                     "market_cap": metrics.get("market_cap", 0),
                     "revenue": metrics.get("revenue", 0),
                     "revenue_growth": metrics.get("revenue_growth_yoy", 0),
-                    "profit_margin": metrics.get("profit_margin", 0)
-                    or metrics.get("net_margin", 0),
+                    "profit_margin": metrics.get("profit_margin", 0) or metrics.get("net_margin", 0),
                     "pe_ratio": metrics.get("pe_ratio", 0),
                     "pb_ratio": metrics.get("pb_ratio", 0),
                     "roe": metrics.get("roe", 0),
@@ -3512,36 +3062,28 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
             # Calculate rankings for each metric
             # Revenue growth ranking (higher is better)
-            sorted_by_growth = sorted(
-                peer_performance, key=lambda x: x["revenue_growth"] or 0, reverse=True
-            )
+            sorted_by_growth = sorted(peer_performance, key=lambda x: x["revenue_growth"] or 0, reverse=True)
             for rank, peer in enumerate(sorted_by_growth, 1):
                 for p in peer_performance:
                     if p["symbol"] == peer["symbol"]:
                         p["growth_rank"] = rank
 
             # Profit margin ranking (higher is better)
-            sorted_by_margin = sorted(
-                peer_performance, key=lambda x: x["profit_margin"] or 0, reverse=True
-            )
+            sorted_by_margin = sorted(peer_performance, key=lambda x: x["profit_margin"] or 0, reverse=True)
             for rank, peer in enumerate(sorted_by_margin, 1):
                 for p in peer_performance:
                     if p["symbol"] == peer["symbol"]:
                         p["margin_rank"] = rank
 
             # ROE ranking (higher is better)
-            sorted_by_roe = sorted(
-                peer_performance, key=lambda x: x["roe"] or 0, reverse=True
-            )
+            sorted_by_roe = sorted(peer_performance, key=lambda x: x["roe"] or 0, reverse=True)
             for rank, peer in enumerate(sorted_by_roe, 1):
                 for p in peer_performance:
                     if p["symbol"] == peer["symbol"]:
                         p["roe_rank"] = rank
 
             # Market cap ranking (higher is better)
-            sorted_by_mcap = sorted(
-                peer_performance, key=lambda x: x["market_cap"] or 0, reverse=True
-            )
+            sorted_by_mcap = sorted(peer_performance, key=lambda x: x["market_cap"] or 0, reverse=True)
             for rank, peer in enumerate(sorted_by_mcap, 1):
                 for p in peer_performance:
                     if p["symbol"] == peer["symbol"]:
@@ -3594,9 +3136,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             price_history = technical_data.get("price_history", {})
 
             if not price_history:
-                self.main_logger.warning(
-                    "No price history available for volume profile"
-                )
+                self.main_logger.warning("No price history available for volume profile")
                 return {}
 
             # Convert to DataFrame for easier manipulation
@@ -3607,9 +3147,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             lows = price_history.get("low", [])
 
             if not all([dates, closes, volumes]) or len(dates) < 30:
-                self.main_logger.warning(
-                    "Insufficient price/volume data for volume profile"
-                )
+                self.main_logger.warning("Insufficient price/volume data for volume profile")
                 return {}
 
             # Use last 90 days for volume profile
@@ -3653,15 +3191,11 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             poc_index = volume_at_price.index(max(volume_at_price))
             poc_price = (price_bins[poc_index] + price_bins[poc_index + 1]) / 2
             poc_volume = volume_at_price[poc_index]
-            poc_volume_pct = (
-                (poc_volume / total_volume * 100) if total_volume > 0 else 0
-            )
+            poc_volume_pct = (poc_volume / total_volume * 100) if total_volume > 0 else 0
 
             # Value Area: Price range containing 70% of volume
             # Sort bins by volume to find the 70% concentration
-            bin_volumes_sorted = sorted(
-                enumerate(volume_at_price), key=lambda x: x[1], reverse=True
-            )
+            bin_volumes_sorted = sorted(enumerate(volume_at_price), key=lambda x: x[1], reverse=True)
             cumulative_volume = 0
             value_area_bins = []
             target_volume = total_volume * 0.70
@@ -3694,9 +3228,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                         {
                             "price": price_level,
                             "volume": vol,
-                            "volume_pct": (vol / total_volume * 100)
-                            if total_volume > 0
-                            else 0,
+                            "volume_pct": (vol / total_volume * 100) if total_volume > 0 else 0,
                         }
                     )
 
@@ -3710,9 +3242,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                         {
                             "price": price_level,
                             "volume": vol,
-                            "volume_pct": (vol / total_volume * 100)
-                            if total_volume > 0
-                            else 0,
+                            "volume_pct": (vol / total_volume * 100) if total_volume > 0 else 0,
                         }
                     )
 
@@ -3725,9 +3255,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                         "price_high": price_bins[i + 1],
                         "price_mid": (price_bins[i] + price_bins[i + 1]) / 2,
                         "volume": volume_at_price[i],
-                        "volume_pct": (volume_at_price[i] / total_volume * 100)
-                        if total_volume > 0
-                        else 0,
+                        "volume_pct": (volume_at_price[i] / total_volume * 100) if total_volume > 0 else 0,
                     }
                 )
 
@@ -3794,37 +3322,23 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             # Parse quarterly data
             quarterly_data = []
             for row in rows:
-                metrics = (
-                    dict(row._mapping["metrics_data"])
-                    if hasattr(row, "_mapping")
-                    else row.metrics_data
-                )
+                metrics = dict(row._mapping["metrics_data"]) if hasattr(row, "_mapping") else row.metrics_data
 
                 # Add fiscal period info
-                metrics["fiscal_year"] = (
-                    row.fiscal_year if hasattr(row, "fiscal_year") else row[1]
-                )
-                metrics["fiscal_period"] = (
-                    row.fiscal_period if hasattr(row, "fiscal_period") else row[2]
-                )
-                metrics["period_label"] = (
-                    f"{metrics['fiscal_year']}-{metrics['fiscal_period']}"
-                )
+                metrics["fiscal_year"] = row.fiscal_year if hasattr(row, "fiscal_year") else row[1]
+                metrics["fiscal_period"] = row.fiscal_period if hasattr(row, "fiscal_period") else row[2]
+                metrics["period_label"] = f"{metrics['fiscal_year']}-{metrics['fiscal_period']}"
 
                 quarterly_data.append(metrics)
 
             # Reverse to get chronological order (oldest first)
             quarterly_data.reverse()
 
-            self.main_logger.info(
-                f"Fetched {len(quarterly_data)} quarters of metrics for {symbol}"
-            )
+            self.main_logger.info(f"Fetched {len(quarterly_data)} quarters of metrics for {symbol}")
             return quarterly_data
 
         except Exception as e:
-            self.main_logger.error(
-                f"Error fetching quarterly metrics for {symbol}: {e}"
-            )
+            self.main_logger.error(f"Error fetching quarterly metrics for {symbol}: {e}")
             return []
 
     def _fetch_price_history(self, symbol: str, days: int = 252) -> List[Dict]:
@@ -3867,19 +3381,13 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                             }
                         )
 
-                    self.main_logger.info(
-                        f"Fetched {len(price_data)} days of price history for {symbol} from database"
-                    )
+                    self.main_logger.info(f"Fetched {len(price_data)} days of price history for {symbol} from database")
                     return price_data
                 else:
-                    self.main_logger.warning(
-                        f"Insufficient data from database for {symbol}, trying cache fallback"
-                    )
+                    self.main_logger.warning(f"Insufficient data from database for {symbol}, trying cache fallback")
 
             except Exception as db_error:
-                self.main_logger.warning(
-                    f"Database fetch failed for {symbol}: {db_error}, trying cache fallback"
-                )
+                self.main_logger.warning(f"Database fetch failed for {symbol}: {db_error}, trying cache fallback")
 
             # Fallback: Try cache (TECHNICAL_DATA contains OHLCV + indicators)
             cache_key = (symbol, "technical_data", f"{days}d")
@@ -3905,19 +3413,13 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                             }
                         )
 
-                    self.main_logger.info(
-                        f"Fetched {len(price_data)} days of price history for {symbol} from cache"
-                    )
+                    self.main_logger.info(f"Fetched {len(price_data)} days of price history for {symbol} from cache")
                     return price_data
                 else:
-                    self.main_logger.warning(
-                        f"Cached data missing OHLCV columns for {symbol}"
-                    )
+                    self.main_logger.warning(f"Cached data missing OHLCV columns for {symbol}")
                     return []
             else:
-                self.main_logger.warning(
-                    f"No price history found for {symbol} in database or cache"
-                )
+                self.main_logger.warning(f"No price history found for {symbol} in database or cache")
                 return []
 
         except Exception as e:
@@ -3961,9 +3463,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                         trends["qoq_growth"][metric] = round(growth, 2)
 
             # Calculate Y-o-Y growth (compare same quarter from previous year)
-            if (
-                len(quarterly_data) >= 5
-            ):  # Need at least 5 quarters to compare Q-4 with Q-8
+            if len(quarterly_data) >= 5:  # Need at least 5 quarters to compare Q-4 with Q-8
                 for i in range(len(quarterly_data) - 4):
                     current = quarterly_data[i + 4]
                     year_ago = quarterly_data[i]
@@ -3973,9 +3473,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                         year_ago_val = year_ago.get(metric, 0)
 
                         if current_val and year_ago_val and year_ago_val != 0:
-                            growth = (
-                                (current_val - year_ago_val) / abs(year_ago_val)
-                            ) * 100
+                            growth = ((current_val - year_ago_val) / abs(year_ago_val)) * 100
                             if metric not in trends["yoy_growth"]:
                                 trends["yoy_growth"][metric] = []
                             trends["yoy_growth"][metric].append(
@@ -3998,9 +3496,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                     )
 
                 if quarter.get("net_income"):
-                    trends["net_income_trend"].append(
-                        {"period": period, "value": quarter["net_income"] / 1_000_000}
-                    )
+                    trends["net_income_trend"].append({"period": period, "value": quarter["net_income"] / 1_000_000})
 
                 if quarter.get("operating_cash_flow"):
                     trends["operating_cash_flow_trend"].append(
@@ -4012,12 +3508,8 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
                 # Calculate margins
                 if quarter.get("revenue") and quarter.get("revenue") > 0:
-                    net_margin = (
-                        quarter.get("net_income", 0) / quarter["revenue"]
-                    ) * 100
-                    op_margin = (
-                        quarter.get("operating_income", 0) / quarter["revenue"]
-                    ) * 100
+                    net_margin = (quarter.get("net_income", 0) / quarter["revenue"]) * 100
+                    op_margin = (quarter.get("operating_income", 0) / quarter["revenue"]) * 100
 
                     trends["margin_trends"].append(
                         {
@@ -4092,9 +3584,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 if score_match:
                     scores.append(float(score_match.group(1)))
 
-        return (
-            sum(scores) / len(scores) if scores else 0.0
-        )  # Clear fallback - no scores found
+        return sum(scores) / len(scores) if scores else 0.0  # Clear fallback - no scores found
 
     def _calculate_technical_score(self, llm_responses: Dict) -> float:
         """Calculate technical score from structured JSON LLM response"""
@@ -4116,9 +3606,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             # Handle file format with headers - extract JSON part
             json_content = content
             if "=== AI RESPONSE ===" in content:
-                json_start = content.find("=== AI RESPONSE ===") + len(
-                    "=== AI RESPONSE ==="
-                )
+                json_start = content.find("=== AI RESPONSE ===") + len("=== AI RESPONSE ===")
                 json_content = content[json_start:].strip()
 
             try:
@@ -4163,41 +3651,25 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             # New structured format with comprehensive technical data
             indicators = {
                 "technical_score": content.get("technical_score", {}).get("score", 0.0),
-                "trend_direction": content.get("trend_analysis", {}).get(
-                    "primary_trend", "NEUTRAL"
-                ),
-                "trend_strength": content.get("trend_analysis", {}).get(
-                    "trend_strength", "WEAK"
-                ),
+                "trend_direction": content.get("trend_analysis", {}).get("primary_trend", "NEUTRAL"),
+                "trend_strength": content.get("trend_analysis", {}).get("trend_strength", "WEAK"),
                 "support_levels": [
                     content.get("support_resistance", {}).get("immediate_support", 0.0),
                     content.get("support_resistance", {}).get("major_support", 0.0),
                 ],
                 "resistance_levels": [
-                    content.get("support_resistance", {}).get(
-                        "immediate_resistance", 0.0
-                    ),
+                    content.get("support_resistance", {}).get("immediate_resistance", 0.0),
                     content.get("support_resistance", {}).get("major_resistance", 0.0),
                 ],
-                "fibonacci_levels": content.get("support_resistance", {}).get(
-                    "fibonacci_levels", {}
-                ),
+                "fibonacci_levels": content.get("support_resistance", {}).get("fibonacci_levels", {}),
                 "momentum_signals": self._extract_momentum_signals(content),
                 "risk_factors": content.get("risk_factors", []),
                 "key_insights": content.get("key_insights", []),
                 "catalysts": content.get("catalysts", []),
-                "time_horizon": content.get("recommendation", {}).get(
-                    "time_horizon", "MEDIUM"
-                ),
-                "recommendation": content.get("recommendation", {}).get(
-                    "technical_rating", "HOLD"
-                ),
-                "confidence": content.get("recommendation", {}).get(
-                    "confidence", "MEDIUM"
-                ),
-                "position_sizing": content.get("recommendation", {}).get(
-                    "position_sizing", "MODERATE"
-                ),
+                "time_horizon": content.get("recommendation", {}).get("time_horizon", "MEDIUM"),
+                "recommendation": content.get("recommendation", {}).get("technical_rating", "HOLD"),
+                "confidence": content.get("recommendation", {}).get("confidence", "MEDIUM"),
+                "position_sizing": content.get("recommendation", {}).get("position_sizing", "MODERATE"),
                 "entry_strategy": content.get("entry_exit_strategy", {}),
                 "volume_analysis": content.get("volume_analysis", {}),
                 "volatility_analysis": content.get("volatility_analysis", {}),
@@ -4208,9 +3680,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 # Handle file format with headers - extract JSON part
                 json_content = content
                 if "=== AI RESPONSE ===" in content:
-                    json_start = content.find("=== AI RESPONSE ===") + len(
-                        "=== AI RESPONSE ==="
-                    )
+                    json_start = content.find("=== AI RESPONSE ===") + len("=== AI RESPONSE ===")
                     json_content = content[json_start:].strip()
 
                 # Handle responses with <think> prefix - find the JSON part
@@ -4245,9 +3715,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                     "trend_strength": parsed.get("trend_strength", "WEAK"),
                     "support_levels": parsed.get("support_levels", []),
                     "resistance_levels": parsed.get("resistance_levels", []),
-                    "fibonacci_levels": parsed.get("support_resistance", {}).get(
-                        "fibonacci_levels", {}
-                    ),
+                    "fibonacci_levels": parsed.get("support_resistance", {}).get("fibonacci_levels", {}),
                     "momentum_signals": parsed.get("momentum_signals", []),
                     "risk_factors": parsed.get("risk_factors", []),
                     "key_insights": parsed.get("key_insights", []),
@@ -4266,12 +3734,8 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 indicators = self._extract_legacy_technical_indicators(content)
 
         # Filter out zero values from support/resistance
-        indicators["support_levels"] = [
-            s for s in indicators.get("support_levels", []) if s > 0
-        ]
-        indicators["resistance_levels"] = [
-            r for r in indicators.get("resistance_levels", []) if r > 0
-        ]
+        indicators["support_levels"] = [s for s in indicators.get("support_levels", []) if s > 0]
+        indicators["resistance_levels"] = [r for r in indicators.get("resistance_levels", []) if r > 0]
 
         return indicators
 
@@ -4285,9 +3749,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             rsi = momentum.get("rsi_14", 0)
             rsi_assessment = momentum.get("rsi_assessment", "")
             if rsi and rsi_assessment:
-                signals.append(
-                    f"RSI ({rsi:.1f}) indicates {rsi_assessment.lower()} conditions"
-                )
+                signals.append(f"RSI ({rsi:.1f}) indicates {rsi_assessment.lower()} conditions")
 
             # MACD signals
             macd = momentum.get("macd", {})
@@ -4297,9 +3759,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             # Stochastic signals
             stoch = momentum.get("stochastic", {})
             if stoch.get("signal"):
-                signals.append(
-                    f"Stochastic indicates {stoch['signal'].lower()} conditions"
-                )
+                signals.append(f"Stochastic indicates {stoch['signal'].lower()} conditions")
 
         # Volume signals
         volume = content.get("volume_analysis", {})
@@ -4313,29 +3773,19 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
         indicators = {}
 
-        support_match = re.search(
-            r"support_levels[:\s]*\[([^\]]+)\]", content, re.IGNORECASE
-        )
-        resistance_match = re.search(
-            r"resistance_levels[:\s]*\[([^\]]+)\]", content, re.IGNORECASE
-        )
-        trend_match = re.search(
-            r'trend_direction[:\s]*["\']?([A-Z]+)["\']?', content, re.IGNORECASE
-        )
+        support_match = re.search(r"support_levels[:\s]*\[([^\]]+)\]", content, re.IGNORECASE)
+        resistance_match = re.search(r"resistance_levels[:\s]*\[([^\]]+)\]", content, re.IGNORECASE)
+        trend_match = re.search(r'trend_direction[:\s]*["\']?([A-Z]+)["\']?', content, re.IGNORECASE)
 
         if support_match:
             try:
-                indicators["support_levels"] = [
-                    float(x.strip()) for x in support_match.group(1).split(",")
-                ]
+                indicators["support_levels"] = [float(x.strip()) for x in support_match.group(1).split(",")]
             except Exception:
                 indicators["support_levels"] = []
 
         if resistance_match:
             try:
-                indicators["resistance_levels"] = [
-                    float(x.strip()) for x in resistance_match.group(1).split(",")
-                ]
+                indicators["resistance_levels"] = [float(x.strip()) for x in resistance_match.group(1).split(",")]
             except Exception:
                 indicators["resistance_levels"] = []
 
@@ -4409,12 +3859,8 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
         # Extract key scores and data (use fundamental_score instead of financial_health_score)
         business_quality = sec_data.get("business_quality_score", 0.0)
-        fundamental_score = sec_data.get(
-            "financial_health_score", 0.0
-        )  # This becomes our fundamental score
-        growth_score = sec_data.get(
-            "growth_prospects_score", 0.0
-        )  # Use growth_score not growth_prospects
+        fundamental_score = sec_data.get("financial_health_score", 0.0)  # This becomes our fundamental score
+        growth_score = sec_data.get("growth_prospects_score", 0.0)  # Use growth_score not growth_prospects
         data_quality = sec_data.get("data_quality_score", 0.0)
         sec_data.get("confidence_level", "MEDIUM")
 
@@ -4473,13 +3919,9 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         # Add technical insights
         tech_insights = []
         if support_levels:
-            tech_insights.append(
-                f"Key support levels at ${', $'.join([f'{s:.2f}' for s in support_levels[:3]])}"
-            )
+            tech_insights.append(f"Key support levels at ${', $'.join([f'{s:.2f}' for s in support_levels[:3]])}")
         if resistance_levels:
-            tech_insights.append(
-                f"Key resistance levels at ${', $'.join([f'{r:.2f}' for r in resistance_levels[:3]])}"
-            )
+            tech_insights.append(f"Key resistance levels at ${', $'.join([f'{r:.2f}' for r in resistance_levels[:3]])}")
 
         all_insights = sec_insights + tech_insights
         all_risks = sec_risks + tech_risks
@@ -4539,9 +3981,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             "source": "direct_llm_extraction",
         }
 
-    def _calculate_weighted_score(
-        self, fundamental_score: float, technical_score: float
-    ) -> float:
+    def _calculate_weighted_score(self, fundamental_score: float, technical_score: float) -> float:
         """Calculate weighted overall score"""
         if fundamental_score is None or technical_score is None:
             return 5.0
@@ -4564,9 +4004,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         norm_fund_weight = fund_weight / total_weight
         norm_tech_weight = tech_weight / total_weight
 
-        overall_score = (
-            fundamental_score * norm_fund_weight + technical_score * norm_tech_weight
-        )
+        overall_score = fundamental_score * norm_fund_weight + technical_score * norm_tech_weight
 
         return round(overall_score, 1)
 
@@ -4661,9 +4099,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             float: Data quality score on 1-10 scale
         """
         # First, try to get data quality score from SEC comprehensive analysis
-        comprehensive_analysis = llm_responses.get("fundamental", {}).get(
-            "comprehensive", {}
-        )
+        comprehensive_analysis = llm_responses.get("fundamental", {}).get("comprehensive", {})
         if isinstance(comprehensive_analysis, dict):
             # Direct score from comprehensive analysis
             if "data_quality_score" in comprehensive_analysis:
@@ -4764,9 +4200,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             )
             if catalysts_match:
                 catalysts_text = catalysts_match.group(1)
-                result["key_catalysts"] = [
-                    cat.strip() for cat in re.findall(r"[•\-]\s*(.+)", catalysts_text)
-                ]
+                result["key_catalysts"] = [cat.strip() for cat in re.findall(r"[•\-]\s*(.+)", catalysts_text)]
 
             # Extract risks
             risks_match = re.search(
@@ -4776,14 +4210,10 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             )
             if risks_match:
                 risks_text = risks_match.group(1)
-                result["key_risks"] = [
-                    risk.strip() for risk in re.findall(r"[•\-]\s*(.+)", risks_text)
-                ]
+                result["key_risks"] = [risk.strip() for risk in re.findall(r"[•\-]\s*(.+)", risks_text)]
 
             # Extract price targets
-            target_match = re.search(
-                r"12-month.*?Target[:\s]*\$?([\d.]+)", response, re.IGNORECASE
-            )
+            target_match = re.search(r"12-month.*?Target[:\s]*\$?([\d.]+)", response, re.IGNORECASE)
             if target_match:
                 result["price_targets"]["12_month"] = float(target_match.group(1))
 
@@ -4816,9 +4246,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
         return result
 
-    def _extract_income_score(
-        self, llm_responses: Dict, ai_recommendation: Dict
-    ) -> float:
+    def _extract_income_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
         """Extract income statement score from responses"""
         # First check AI recommendation
         if "income_statement_score" in ai_recommendation:
@@ -4826,11 +4254,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
         # Check comprehensive analysis for income statement analysis
         comp_analysis = llm_responses.get("fundamental", {}).get("comprehensive", {})
-        content = (
-            comp_analysis.get("content", comp_analysis)
-            if isinstance(comp_analysis, dict)
-            else {}
-        )
+        content = comp_analysis.get("content", comp_analysis) if isinstance(comp_analysis, dict) else {}
 
         if isinstance(content, dict):
             # Look for income statement analysis section
@@ -4845,8 +4269,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 ]
                 # Convert margins to score (assuming good margins are >15%)
                 avg_margin = (
-                    sum(m for m in margins if m > 0)
-                    / len([m for m in margins if m > 0])
+                    sum(m for m in margins if m > 0) / len([m for m in margins if m > 0])
                     if any(m > 0 for m in margins)
                     else 0
                 )
@@ -4857,9 +4280,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         base_fundamental = self._calculate_fundamental_score(llm_responses)
         return base_fundamental * 0.9 if base_fundamental > 0 else 0.0
 
-    def _extract_cashflow_score(
-        self, llm_responses: Dict, ai_recommendation: Dict
-    ) -> float:
+    def _extract_cashflow_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
         """Extract cash flow score from responses"""
         base_fundamental = self._calculate_fundamental_score(llm_responses)
 
@@ -4881,9 +4302,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             elif not isinstance(content, str):
                 content = str(content)
             content = content.lower()
-            cashflow_mentions = sum(
-                1 for keyword in cashflow_keywords if keyword in content
-            )
+            cashflow_mentions = sum(1 for keyword in cashflow_keywords if keyword in content)
             if cashflow_mentions > 3:
                 cashflow_score_adjustments.append(0.5)
             elif cashflow_mentions > 0:
@@ -4892,19 +4311,11 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 cashflow_score_adjustments.append(-0.5)
 
         adjustment = (
-            sum(cashflow_score_adjustments) / len(cashflow_score_adjustments)
-            if cashflow_score_adjustments
-            else 0
+            sum(cashflow_score_adjustments) / len(cashflow_score_adjustments) if cashflow_score_adjustments else 0
         )
-        return (
-            max(0.0, min(10.0, base_fundamental + adjustment))
-            if base_fundamental > 0
-            else 0.0
-        )
+        return max(0.0, min(10.0, base_fundamental + adjustment)) if base_fundamental > 0 else 0.0
 
-    def _extract_balance_score(
-        self, llm_responses: Dict, ai_recommendation: Dict
-    ) -> float:
+    def _extract_balance_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
         """Extract balance sheet score from responses"""
         base_fundamental = self._calculate_fundamental_score(llm_responses)
 
@@ -4927,9 +4338,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             elif not isinstance(content, str):
                 content = str(content)
             content = content.lower()
-            balance_mentions = sum(
-                1 for keyword in balance_keywords if keyword in content
-            )
+            balance_mentions = sum(1 for keyword in balance_keywords if keyword in content)
             if balance_mentions > 3:
                 balance_score_adjustments.append(0.5)
             elif balance_mentions > 0:
@@ -4937,30 +4346,15 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             else:
                 balance_score_adjustments.append(-0.5)
 
-        adjustment = (
-            sum(balance_score_adjustments) / len(balance_score_adjustments)
-            if balance_score_adjustments
-            else 0
-        )
-        return (
-            max(0.0, min(10.0, base_fundamental + adjustment))
-            if base_fundamental > 0
-            else 0.0
-        )
+        adjustment = sum(balance_score_adjustments) / len(balance_score_adjustments) if balance_score_adjustments else 0
+        return max(0.0, min(10.0, base_fundamental + adjustment)) if base_fundamental > 0 else 0.0
 
-    def _extract_growth_score(
-        self, llm_responses: Dict, ai_recommendation: Dict
-    ) -> float:
+    def _extract_growth_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
         """Extract growth prospects score from responses"""
         # First check if growth score is in the comprehensive fundamental analysis
         if "comprehensive" in llm_responses.get("fundamental", {}):
-            comp_content = llm_responses["fundamental"]["comprehensive"].get(
-                "content", {}
-            )
-            if (
-                isinstance(comp_content, dict)
-                and "growth_prospects_score" in comp_content
-            ):
+            comp_content = llm_responses["fundamental"]["comprehensive"].get("content", {})
+            if isinstance(comp_content, dict) and "growth_prospects_score" in comp_content:
                 return float(comp_content["growth_prospects_score"])
 
         # Check AI recommendation for growth assessment
@@ -4991,9 +4385,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             elif not isinstance(content, str):
                 content = str(content)
             content = content.lower()
-            growth_mentions = sum(
-                1 for keyword in growth_keywords if keyword in content
-            )
+            growth_mentions = sum(1 for keyword in growth_keywords if keyword in content)
             if growth_mentions > 5:
                 growth_score_adjustments.append(1.0)
             elif growth_mentions > 2:
@@ -5001,20 +4393,10 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             else:
                 growth_score_adjustments.append(0.0)
 
-        adjustment = (
-            sum(growth_score_adjustments) / len(growth_score_adjustments)
-            if growth_score_adjustments
-            else 0
-        )
-        return (
-            max(0.0, min(10.0, base_fundamental + adjustment))
-            if base_fundamental > 0
-            else 0.0
-        )
+        adjustment = sum(growth_score_adjustments) / len(growth_score_adjustments) if growth_score_adjustments else 0
+        return max(0.0, min(10.0, base_fundamental + adjustment)) if base_fundamental > 0 else 0.0
 
-    def _extract_value_score(
-        self, llm_responses: Dict, ai_recommendation: Dict
-    ) -> float:
+    def _extract_value_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
         """Extract value investment score from responses"""
         # Check for valuation metrics in AI recommendation
         if "fundamental_assessment" in ai_recommendation:
@@ -5047,9 +4429,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             content = content.lower()
 
             value_mentions = sum(1 for keyword in value_keywords if keyword in content)
-            negative_mentions = sum(
-                1 for keyword in negative_value_keywords if keyword in content
-            )
+            negative_mentions = sum(1 for keyword in negative_value_keywords if keyword in content)
 
             net_value_signal = value_mentions - negative_mentions
             if net_value_signal > 3:
@@ -5061,20 +4441,10 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             else:
                 value_score_adjustments.append(0.0)
 
-        adjustment = (
-            sum(value_score_adjustments) / len(value_score_adjustments)
-            if value_score_adjustments
-            else 0
-        )
-        return (
-            max(0.0, min(10.0, base_fundamental + adjustment))
-            if base_fundamental > 0
-            else 0.0
-        )
+        adjustment = sum(value_score_adjustments) / len(value_score_adjustments) if value_score_adjustments else 0
+        return max(0.0, min(10.0, base_fundamental + adjustment)) if base_fundamental > 0 else 0.0
 
-    def _extract_business_quality_score(
-        self, llm_responses: Dict, ai_recommendation: Dict
-    ) -> float:
+    def _extract_business_quality_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
         """
         Extract business quality score from SEC comprehensive analysis.
 
@@ -5087,9 +4457,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         - Management effectiveness signals
         """
         # First, try to get the business_quality_score directly from SEC comprehensive analysis
-        comprehensive_analysis = llm_responses.get("fundamental", {}).get(
-            "comprehensive", {}
-        )
+        comprehensive_analysis = llm_responses.get("fundamental", {}).get("comprehensive", {})
         if isinstance(comprehensive_analysis, dict):
             # Direct score from comprehensive analysis
             if "business_quality_score" in comprehensive_analysis:
@@ -5132,9 +4500,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 content = str(content)
 
             # Analyze quarterly data for business quality indicators
-            quality_score = self._analyze_quarterly_business_quality(
-                content, period_key
-            )
+            quality_score = self._analyze_quarterly_business_quality(content, period_key)
             if quality_score > 0:
                 quality_indicators.append(quality_score)
 
@@ -5239,9 +4605,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         self, overall_score: float, ai_recommendation: Dict, data_quality: float
     ) -> Dict:
         """Determine final recommendation with risk management"""
-        return determine_final_recommendation(
-            overall_score, ai_recommendation, data_quality
-        )
+        return determine_final_recommendation(overall_score, ai_recommendation, data_quality)
 
     def _calculate_price_target(
         self,
@@ -5252,13 +4616,9 @@ Your responses must be precise, quantitative, and suitable for institutional inv
     ) -> float:
         """Calculate sophisticated price target"""
         _ = llm_responses  # retained for backward-compatible method signature
-        return calculate_price_target(
-            symbol, ai_recommendation, current_price, self.main_logger
-        )
+        return calculate_price_target(symbol, ai_recommendation, current_price, self.main_logger)
 
-    def _calculate_stop_loss(
-        self, current_price: float, recommendation: Dict, overall_score: float
-    ) -> float:
+    def _calculate_stop_loss(self, current_price: float, recommendation: Dict, overall_score: float) -> float:
         """Calculate stop loss based on risk management"""
         return calculate_stop_loss(current_price, recommendation, overall_score)
 
@@ -5270,9 +4630,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         """Extract key catalysts from recommendation"""
         return extract_catalysts(ai_recommendation)
 
-    def _extract_insights_from_text(
-        self, text_details: str
-    ) -> tuple[List[str], List[str]]:
+    def _extract_insights_from_text(self, text_details: str) -> tuple[List[str], List[str]]:
         """Extract insights and risks from additional text details beyond JSON"""
         return extract_insights_from_text(text_details)
 
@@ -5283,9 +4641,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         additional_risks: List[str] = None,
     ) -> List[str]:
         """Extract and prioritize comprehensive risk factors"""
-        return extract_comprehensive_risks(
-            llm_responses, ai_recommendation, additional_risks
-        )
+        return extract_comprehensive_risks(llm_responses, ai_recommendation, additional_risks)
 
     def _extract_comprehensive_insights(
         self,
@@ -5294,9 +4650,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         additional_insights: List[str] = None,
     ) -> List[str]:
         """Extract and prioritize comprehensive insights"""
-        return extract_comprehensive_insights(
-            llm_responses, ai_recommendation, additional_insights
-        )
+        return extract_comprehensive_insights(llm_responses, ai_recommendation, additional_insights)
 
     def _save_synthesis_llm_response(
         self,
@@ -5353,25 +4707,19 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 "metadata": metadata,
             }
 
-            success = self.cache_manager.set(
-                CacheType.LLM_RESPONSE, cache_key, cache_value
-            )
+            success = self.cache_manager.set(CacheType.LLM_RESPONSE, cache_key, cache_value)
 
             if success:
                 self.main_logger.info(f"💾 Stored synthesis LLM response for {symbol}")
             else:
-                self.main_logger.error(
-                    f"Failed to store synthesis LLM response for {symbol}"
-                )
+                self.main_logger.error(f"Failed to store synthesis LLM response for {symbol}")
 
             # Also save the prompt and response as separate text files for visibility
             symbol_cache_dir = self.llm_cache_dir / symbol
             symbol_cache_dir.mkdir(parents=True, exist_ok=True)
 
             # Use mode-specific filenames to avoid overlap
-            mode_suffix = (
-                "_comprehensive" if synthesis_mode == "comprehensive" else "_quarterly"
-            )
+            mode_suffix = "_comprehensive" if synthesis_mode == "comprehensive" else "_quarterly"
 
             # Save prompt
             prompt_file = symbol_cache_dir / f"prompt_synthesis{mode_suffix}.txt"
@@ -5430,14 +4778,10 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 return None
 
         except Exception as e:
-            self.main_logger.error(
-                f"Error retrieving previous recommendation for {symbol}: {e}"
-            )
+            self.main_logger.error(f"Error retrieving previous recommendation for {symbol}: {e}")
             return None
 
-    def _save_synthesis_results(
-        self, symbol: str, recommendation: InvestmentRecommendation
-    ):
+    def _save_synthesis_results(self, symbol: str, recommendation: InvestmentRecommendation):
         """Save synthesis results to database"""
         try:
             import json
@@ -5479,24 +4823,16 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                         "price_target": recommendation.price_target,
                         "current_price": recommendation.current_price,
                         "investment_thesis": (
-                            recommendation.investment_thesis[:5000]
-                            if recommendation.investment_thesis
-                            else None
+                            recommendation.investment_thesis[:5000] if recommendation.investment_thesis else None
                         ),  # Truncate if too long
                         "time_horizon": recommendation.time_horizon,
                         "position_size": recommendation.position_size,
                         "key_catalysts": (
-                            json.dumps(recommendation.key_catalysts)
-                            if recommendation.key_catalysts
-                            else None
+                            json.dumps(recommendation.key_catalysts) if recommendation.key_catalysts else None
                         ),
-                        "key_risks": json.dumps(recommendation.key_risks)
-                        if recommendation.key_risks
-                        else None,
+                        "key_risks": json.dumps(recommendation.key_risks) if recommendation.key_risks else None,
                         "key_insights": (
-                            json.dumps(recommendation.key_insights)
-                            if recommendation.key_insights
-                            else None
+                            json.dumps(recommendation.key_insights) if recommendation.key_insights else None
                         ),
                         "entry_strategy": recommendation.entry_strategy,
                         "exit_strategy": recommendation.exit_strategy,
@@ -5511,9 +4847,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             )
 
         except Exception as e:
-            self.main_logger.error(
-                f"Failed to save synthesis results for {symbol}: {e}"
-            )
+            self.main_logger.error(f"Failed to save synthesis results for {symbol}: {e}")
             # Don't fail the entire synthesis if database save fails
             pass
 
@@ -5544,26 +4878,18 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         win_rate = buy_count / len(recommendations) * 100 if recommendations else 0
 
         # Find best/worst performers (placeholder logic)
-        sorted_by_score = sorted(
-            recommendations, key=lambda x: x["overall_score"], reverse=True
-        )
+        sorted_by_score = sorted(recommendations, key=lambda x: x["overall_score"], reverse=True)
 
         return {
             "week_return": "+2.3%",  # Placeholder
             "month_return": "+5.1%",  # Placeholder
             "ytd_return": "+18.7%",  # Placeholder
             "win_rate": f"{win_rate:.1f}%",
-            "best_performer": sorted_by_score[0]["symbol"]
-            if sorted_by_score
-            else "N/A",
-            "worst_performer": sorted_by_score[-1]["symbol"]
-            if sorted_by_score
-            else "N/A",
+            "best_performer": sorted_by_score[0]["symbol"] if sorted_by_score else "N/A",
+            "worst_performer": sorted_by_score[-1]["symbol"] if sorted_by_score else "N/A",
         }
 
-    def _create_synthesis_prompt(
-        self, symbol: str, llm_responses: Dict, latest_data: Dict
-    ) -> str:
+    def _create_synthesis_prompt(self, symbol: str, llm_responses: Dict, latest_data: Dict) -> str:
         """Create comprehensive synthesis prompt using Jinja2 template with all quarterly analyses, comprehensive analysis, and technical data"""
 
         # 1. ORGANIZE FUNDAMENTAL DATA BY TYPE
@@ -5589,9 +4915,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 content = resp.get("content", {})
 
                 if isinstance(content, dict):
-                    content_str = json.dumps(content, indent=2)[
-                        :3000
-                    ]  # Limit for readability
+                    content_str = json.dumps(content, indent=2)[:3000]  # Limit for readability
                 else:
                     content_str = str(content)[:3000]
 
@@ -5606,9 +4930,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
                 # Extract key financial metrics for trend analysis
                 if isinstance(content, dict):
-                    metrics = self._extract_financial_metrics_from_quarter(
-                        content, period
-                    )
+                    metrics = self._extract_financial_metrics_from_quarter(content, period)
                     if metrics:
                         financial_metrics_by_quarter.append(metrics)
 
@@ -5616,9 +4938,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         quarterly_analyses.sort(key=lambda x: x["period"], reverse=True)
 
         # 2. CREATE FINANCIAL TRENDS AND RATIOS
-        financial_trends = self._create_financial_trends_analysis(
-            financial_metrics_by_quarter
-        )
+        financial_trends = self._create_financial_trends_analysis(financial_metrics_by_quarter)
 
         # 3. EXTRACT TECHNICAL ANALYSIS
         technical_analysis = ""
@@ -5632,9 +4952,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             else:
                 technical_analysis = str(technical_content)[:6000]
                 # Try to extract signals from text
-                technical_signals = self._extract_technical_signals_from_text(
-                    technical_analysis
-                )
+                technical_signals = self._extract_technical_signals_from_text(technical_analysis)
 
         # 4. GET CURRENT MARKET DATA
         current_price = latest_data.get("technical", {}).get("current_price", 0)
@@ -5671,9 +4989,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             return prompt
 
         except Exception as e:
-            self.main_logger.error(
-                f"❌ Failed to render Jinja2 comprehensive synthesis template: {e}"
-            )
+            self.main_logger.error(f"❌ Failed to render Jinja2 comprehensive synthesis template: {e}")
             # Fallback to simple template
             return f"""Investment synthesis for {symbol} at ${current_price}:
 Comprehensive: {"✅" if comprehensive_analysis else "❌"}
@@ -5700,9 +5016,7 @@ Respond with detailed JSON investment analysis."""
                 content = resp.get("content", {})
 
                 if isinstance(content, dict):
-                    content_str = json.dumps(content, indent=2)[
-                        :4000
-                    ]  # More space since no comprehensive
+                    content_str = json.dumps(content, indent=2)[:4000]  # More space since no comprehensive
                 else:
                     content_str = str(content)[:4000]
 
@@ -5719,9 +5033,7 @@ Respond with detailed JSON investment analysis."""
         quarterly_analyses.sort(key=lambda x: x["period"], reverse=True)
         quarterly_count = len(quarterly_analyses)
 
-        symbol_logger.info(
-            f"Quarterly synthesis: Using {quarterly_count} quarterly analyses for {symbol}"
-        )
+        symbol_logger.info(f"Quarterly synthesis: Using {quarterly_count} quarterly analyses for {symbol}")
 
         # 2. EXTRACT TECHNICAL ANALYSIS
         technical_analysis = ""
@@ -5753,9 +5065,7 @@ Respond with detailed JSON investment analysis."""
             market_data=latest_data,
         )
 
-        symbol_logger.info(
-            f"Generated quarterly synthesis prompt: {len(quarterly_synthesis_prompt)} characters"
-        )
+        symbol_logger.info(f"Generated quarterly synthesis prompt: {len(quarterly_synthesis_prompt)} characters")
         return quarterly_synthesis_prompt
 
     def _extract_quarterly_trends(self, quarterly_analyses: List[Dict]) -> str:
@@ -5764,26 +5074,20 @@ Respond with detailed JSON investment analysis."""
             return "No quarterly data available for trend analysis"
 
         trends = []
-        trends.append(
-            f"Quarterly Analysis Summary ({len(quarterly_analyses)} quarters):"
-        )
+        trends.append(f"Quarterly Analysis Summary ({len(quarterly_analyses)} quarters):")
 
         # Add trends based on available quarterly data
         for i, qa in enumerate(quarterly_analyses[:8]):  # Use last 8 quarters max
             period = qa.get("period", f"Q{i + 1}")
             form_type = qa.get("form_type", "Unknown")
-            trends.append(
-                f"- {period} ({form_type}): Key financial metrics and performance indicators"
-            )
+            trends.append(f"- {period} ({form_type}): Key financial metrics and performance indicators")
 
         if len(quarterly_analyses) > 8:
             trends.append(f"... and {len(quarterly_analyses) - 8} additional quarters")
 
         return "\n".join(trends)
 
-    def _extract_financial_metrics_from_quarter(
-        self, quarter_data: Dict, period: str
-    ) -> Optional[Dict]:
+    def _extract_financial_metrics_from_quarter(self, quarter_data: Dict, period: str) -> Optional[Dict]:
         """Extract key financial metrics from a quarterly analysis"""
         try:
             metrics = {"period": period}
@@ -5821,9 +5125,7 @@ Respond with detailed JSON investment analysis."""
             return metrics if len(metrics) > 1 else None
 
         except Exception as e:
-            self.main_logger.warning(
-                f"Error extracting metrics from quarter {period}: {e}"
-            )
+            self.main_logger.warning(f"Error extracting metrics from quarter {period}: {e}")
             return None
 
     def _create_financial_trends_analysis(self, metrics_by_quarter: List[Dict]) -> str:
@@ -5833,38 +5135,22 @@ Respond with detailed JSON investment analysis."""
                 return "[NO QUARTERLY METRICS AVAILABLE FOR TREND ANALYSIS]"
 
             trends = []
-            trends.append(
-                f"📊 FINANCIAL TRENDS ANALYSIS ({len(metrics_by_quarter)} quarters):"
-            )
+            trends.append(f"📊 FINANCIAL TRENDS ANALYSIS ({len(metrics_by_quarter)} quarters):")
 
             # Sort by period for chronological analysis
-            sorted_metrics = sorted(
-                metrics_by_quarter, key=lambda x: x.get("period", "")
-            )
+            sorted_metrics = sorted(metrics_by_quarter, key=lambda x: x.get("period", ""))
 
             # Revenue trend
             revenues = [m.get("revenue", 0) for m in sorted_metrics if m.get("revenue")]
             if len(revenues) >= 2:
-                revenue_growth = (
-                    ((revenues[-1] - revenues[0]) / revenues[0] * 100)
-                    if revenues[0] > 0
-                    else 0
-                )
-                trends.append(
-                    f"📈 Revenue Trend: {revenue_growth:+.1f}% over {len(revenues)} quarters"
-                )
+                revenue_growth = ((revenues[-1] - revenues[0]) / revenues[0] * 100) if revenues[0] > 0 else 0
+                trends.append(f"📈 Revenue Trend: {revenue_growth:+.1f}% over {len(revenues)} quarters")
 
             # Margin trends
-            margins = [
-                m.get("profit_margin", 0)
-                for m in sorted_metrics
-                if m.get("profit_margin")
-            ]
+            margins = [m.get("profit_margin", 0) for m in sorted_metrics if m.get("profit_margin")]
             if len(margins) >= 2:
                 margin_change = margins[-1] - margins[0]
-                trends.append(
-                    f"💰 Margin Trend: {margin_change:+.1f}pp change in profit margin"
-                )
+                trends.append(f"💰 Margin Trend: {margin_change:+.1f}pp change in profit margin")
 
             # Add quarterly breakdown
             trends.append("\n📋 Quarterly Progression:")
@@ -5872,9 +5158,7 @@ Respond with detailed JSON investment analysis."""
                 period = metrics.get("period", f"Q{i + 1}")
                 revenue = metrics.get("revenue", 0)
                 margin = metrics.get("profit_margin", 0)
-                trends.append(
-                    f"  {period}: Revenue ${revenue:,.0f}M, Margin {margin:.1f}%"
-                )
+                trends.append(f"  {period}: Revenue ${revenue:,.0f}M, Margin {margin:.1f}%")
 
             return "\n".join(trends)
 
@@ -5890,36 +5174,26 @@ Respond with detailed JSON investment analysis."""
             signals = {}
 
             # Extract RSI
-            rsi_match = re.search(
-                r"RSI[^:]*:\s*([\d.]+)", technical_text, re.IGNORECASE
-            )
+            rsi_match = re.search(r"RSI[^:]*:\s*([\d.]+)", technical_text, re.IGNORECASE)
             if rsi_match:
                 signals["rsi"] = float(rsi_match.group(1))
 
             # Extract MACD
-            macd_match = re.search(
-                r"MACD[^:]*:\s*([-\d.]+)", technical_text, re.IGNORECASE
-            )
+            macd_match = re.search(r"MACD[^:]*:\s*([-\d.]+)", technical_text, re.IGNORECASE)
             if macd_match:
                 signals["macd"] = float(macd_match.group(1))
 
             # Extract trend
-            trend_match = re.search(
-                r"trend[^:]*:\s*([A-Za-z]+)", technical_text, re.IGNORECASE
-            )
+            trend_match = re.search(r"trend[^:]*:\s*([A-Za-z]+)", technical_text, re.IGNORECASE)
             if trend_match:
                 signals["trend"] = trend_match.group(1).upper()
 
             # Extract support/resistance
-            support_match = re.search(
-                r"support[^:]*:\s*\$?([\d.]+)", technical_text, re.IGNORECASE
-            )
+            support_match = re.search(r"support[^:]*:\s*\$?([\d.]+)", technical_text, re.IGNORECASE)
             if support_match:
                 signals["support"] = float(support_match.group(1))
 
-            resistance_match = re.search(
-                r"resistance[^:]*:\s*\$?([\d.]+)", technical_text, re.IGNORECASE
-            )
+            resistance_match = re.search(r"resistance[^:]*:\s*\$?([\d.]+)", technical_text, re.IGNORECASE)
             if resistance_match:
                 signals["resistance"] = float(resistance_match.group(1))
 
@@ -5948,9 +5222,7 @@ Respond with detailed JSON investment analysis."""
                 else:
                     return f"{default['sector']} - {default['industry']}"
             else:
-                self.main_logger.warning(
-                    f"Sector mapping file not found: {sector_mapping_file}"
-                )
+                self.main_logger.warning(f"Sector mapping file not found: {sector_mapping_file}")
                 return "Unknown Sector - Requires Research"
 
         except Exception as e:
@@ -6068,9 +5340,7 @@ Respond with detailed JSON investment analysis."""
         except Exception:
             return "N/A"
 
-    def _create_fallback_recommendation(
-        self, raw_response: Any, symbol: str, overall_score: float
-    ) -> Dict[str, Any]:
+    def _create_fallback_recommendation(self, raw_response: Any, symbol: str, overall_score: float) -> Dict[str, Any]:
         """
         Create a fallback recommendation when JSON parsing fails
 
@@ -6228,53 +5498,31 @@ Respond with detailed JSON investment analysis."""
                 "reasoning_insights": {
                     "thinking_content": thinking_content if thinking_content else "",
                     "thinking_length": len(thinking_content) if thinking_content else 0,
-                    "has_structured_reasoning": bool(
-                        thinking_content and len(thinking_content) > 100
-                    ),
-                    "reasoning_themes": self._extract_reasoning_themes(thinking_content)
-                    if thinking_content
-                    else [],
-                    "decision_process": self._extract_decision_process(thinking_content)
-                    if thinking_content
-                    else {},
+                    "has_structured_reasoning": bool(thinking_content and len(thinking_content) > 100),
+                    "reasoning_themes": self._extract_reasoning_themes(thinking_content) if thinking_content else [],
+                    "decision_process": self._extract_decision_process(thinking_content) if thinking_content else {},
                 },
                 # Additional content and markdown capture
                 "content_insights": {
-                    "additional_details": additional_details
-                    if additional_details
-                    else "",
-                    "details_length": len(additional_details)
-                    if additional_details
-                    else 0,
+                    "additional_details": additional_details if additional_details else "",
+                    "details_length": len(additional_details) if additional_details else 0,
                     "has_markdown_content": (
-                        self._detect_markdown_content(additional_details)
-                        if additional_details
-                        else False
+                        self._detect_markdown_content(additional_details) if additional_details else False
                     ),
                     "extracted_bullet_points": (
-                        self._extract_bullet_points(additional_details)
-                        if additional_details
-                        else []
+                        self._extract_bullet_points(additional_details) if additional_details else []
                     ),
                     "extracted_numbers": (
-                        self._extract_numerical_insights(additional_details)
-                        if additional_details
-                        else []
+                        self._extract_numerical_insights(additional_details) if additional_details else []
                     ),
                 },
                 # Response structure analysis
                 "response_structure": {
-                    "field_completeness": self._analyze_field_completeness(
-                        ai_recommendation
-                    ),
+                    "field_completeness": self._analyze_field_completeness(ai_recommendation),
                     "response_type": type(ai_recommendation).__name__,
                     "custom_fields": self._identify_custom_fields(ai_recommendation),
-                    "processing_metadata": ai_recommendation.get(
-                        "processing_metadata", {}
-                    ),
-                    "contains_fallback_flags": self._check_fallback_flags(
-                        ai_recommendation
-                    ),
+                    "processing_metadata": ai_recommendation.get("processing_metadata", {}),
+                    "contains_fallback_flags": self._check_fallback_flags(ai_recommendation),
                 },
                 # Future evolution placeholders (for prompt/response evolution)
                 "evolution_capture": {
@@ -6288,21 +5536,13 @@ Respond with detailed JSON investment analysis."""
                 },
                 # Report integration guidance
                 "report_integration": {
-                    "should_include_thinking": bool(
-                        thinking_content and len(thinking_content) > 200
-                    ),
-                    "should_include_details": bool(
-                        additional_details and len(additional_details) > 50
-                    ),
+                    "should_include_thinking": bool(thinking_content and len(thinking_content) > 200),
+                    "should_include_details": bool(additional_details and len(additional_details) > 50),
                     "recommended_report_sections": self._recommend_report_sections(
                         ai_recommendation, thinking_content, additional_details
                     ),
-                    "priority_insights": self._extract_priority_insights(
-                        thinking_content, additional_details
-                    ),
-                    "visualization_suggestions": self._suggest_visualizations(
-                        ai_recommendation
-                    ),
+                    "priority_insights": self._extract_priority_insights(thinking_content, additional_details),
+                    "visualization_suggestions": self._suggest_visualizations(ai_recommendation),
                 },
             }
 
@@ -6362,13 +5602,9 @@ Respond with detailed JSON investment analysis."""
         self, ai_recommendation: Dict, thinking_content: str, additional_details: str
     ) -> List[str]:
         """Recommend which report sections should be included based on available content"""
-        return recommend_report_sections(
-            ai_recommendation, thinking_content, additional_details
-        )
+        return recommend_report_sections(ai_recommendation, thinking_content, additional_details)
 
-    def _extract_priority_insights(
-        self, thinking_content: str, additional_details: str
-    ) -> List[str]:
+    def _extract_priority_insights(self, thinking_content: str, additional_details: str) -> List[str]:
         """Extract the most important insights for highlighting in reports"""
         return extract_priority_insights(thinking_content, additional_details)
 
@@ -6389,18 +5625,12 @@ def main():
     main_logger = config.get_main_logger("synthesizer_main")
 
     parser = argparse.ArgumentParser(description="Investment Synthesizer")
-    parser.add_argument(
-        "--symbol", help="Stock symbol to analyze (required unless --weekly)"
-    )
-    parser.add_argument(
-        "--symbols", nargs="*", help="Multiple stock symbols for batch analysis"
-    )
+    parser.add_argument("--symbol", help="Stock symbol to analyze (required unless --weekly)")
+    parser.add_argument("--symbols", nargs="*", help="Multiple stock symbols for batch analysis")
     parser.add_argument("--config", default="config.json", help="Config file path")
     parser.add_argument("--report", action="store_true", help="Generate PDF report")
     parser.add_argument("--weekly", action="store_true", help="Generate weekly report")
-    parser.add_argument(
-        "--send-email", action="store_true", help="Send report via email"
-    )
+    parser.add_argument("--send-email", action="store_true", help="Send report via email")
     parser.add_argument(
         "--synthesis-mode",
         choices=["comprehensive", "quarterly"],
@@ -6428,9 +5658,7 @@ def main():
                     print(f"  Synthesizing analysis for {symbol}...")
                     recommendation = synthesizer.synthesize_analysis(symbol)
                     recommendations.append(recommendation)
-                    print(
-                        f"  ✅ {symbol}: {recommendation.recommendation} ({recommendation.overall_score:.1f}/10)"
-                    )
+                    print(f"  ✅ {symbol}: {recommendation.recommendation} ({recommendation.overall_score:.1f}/10)")
                 except Exception as e:
                     print(f"  ❌ {symbol}: Failed to synthesize - {e}")
                     main_logger.warning(f"Failed to synthesize {symbol}: {e}")
@@ -6457,13 +5685,9 @@ def main():
         for symbol in args.symbols:
             try:
                 print(f"Synthesizing analysis for {symbol}...")
-                recommendation = synthesizer.synthesize_analysis(
-                    symbol, args.synthesis_mode
-                )
+                recommendation = synthesizer.synthesize_analysis(symbol, args.synthesis_mode)
                 recommendations.append(recommendation)
-                print(
-                    f"✅ {symbol}: {recommendation.recommendation} ({recommendation.overall_score:.1f}/10)"
-                )
+                print(f"✅ {symbol}: {recommendation.recommendation} ({recommendation.overall_score:.1f}/10)")
             except Exception as e:
                 print(f"❌ {symbol}: Failed to synthesize - {e}")
 
@@ -6475,9 +5699,7 @@ def main():
         # Single symbol analysis
         symbol = args.symbol.upper()
         try:
-            recommendation = synthesizer.synthesize_analysis(
-                symbol, args.synthesis_mode
-            )
+            recommendation = synthesizer.synthesize_analysis(symbol, args.synthesis_mode)
 
             # Print summary
             print(f"\n{'=' * 60}")
@@ -6490,9 +5712,7 @@ def main():
             print(f"│  ├─ Balance Sheet: {recommendation.balance_score:.1f}/10")
             print(f"│  ├─ Growth Score: {recommendation.growth_score:.1f}/10")
             print(f"│  ├─ Value Score: {recommendation.value_score:.1f}/10")
-            print(
-                f"│  ├─ Business Quality: {recommendation.business_quality_score:.1f}/10"
-            )
+            print(f"│  ├─ Business Quality: {recommendation.business_quality_score:.1f}/10")
             print(f"│  └─ Data Quality: {recommendation.data_quality_score:.1f}/10")
             print(f"└─ Technical: {recommendation.technical_score:.1f}/10")
             print(f"\nRecommendation: {recommendation.recommendation}")
@@ -6504,10 +5724,7 @@ def main():
                 print(f"\nPrice Target: ${recommendation.price_target:.2f}")
                 print(f"Current Price: ${recommendation.current_price:.2f}")
                 upside = (
-                    (
-                        (recommendation.price_target / recommendation.current_price - 1)
-                        * 100
-                    )
+                    ((recommendation.price_target / recommendation.current_price - 1) * 100)
                     if recommendation.current_price > 0
                     else 0
                 )

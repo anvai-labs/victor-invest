@@ -48,9 +48,7 @@ class PoolStrategy(Enum):
     RANDOM = "random"
     LEAST_BUSY = "least_busy"
     MOST_CAPACITY = "most_capacity"
-    PREFER_REMOTE = (
-        "prefer_remote"  # Prefer non-localhost servers first (better hardware)
-    )
+    PREFER_REMOTE = "prefer_remote"  # Prefer non-localhost servers first (better hardware)
 
 
 @dataclass
@@ -62,9 +60,7 @@ class ServerCapacity:
     usable_ram_gb: int
     metal: bool = True
     max_concurrent: int = 1  # Changed default to 1 (one 32B model per 48GB)
-    priority: int = (
-        0  # Higher = preferred (0=default, 100=highest priority for remote M4 Max)
-    )
+    priority: int = 0  # Higher = preferred (0=default, 100=highest priority for remote M4 Max)
 
 
 @dataclass
@@ -104,9 +100,7 @@ class ServerStatus:
         """Calculate free RAM (actual usage + reservations)"""
         return max(
             0.0,
-            self.capacity.usable_ram_gb
-            - self.total_vram_used_gb
-            - self.reserved_ram_gb,
+            self.capacity.usable_ram_gb - self.total_vram_used_gb - self.reserved_ram_gb,
         )
 
     @property
@@ -155,9 +149,7 @@ class ResourceAwareOllamaPool:
         # Concurrency control
         self.lock = asyncio.Lock()
         self.server_locks = {url: asyncio.Lock() for url in self.servers.keys()}
-        self.capacity_available = asyncio.Condition(
-            self.lock
-        )  # Wait/notify for capacity changes
+        self.capacity_available = asyncio.Condition(self.lock)  # Wait/notify for capacity changes
 
         # HTTP session
         self._session: Optional[aiohttp.ClientSession] = None
@@ -200,9 +192,7 @@ class ResourceAwareOllamaPool:
         length = len(text)
         return max(1, length // 4 + 1)
 
-    def _estimate_kv_cache_gb(
-        self, spec: Any, prompt_tokens: int, response_tokens: int
-    ) -> float:
+    def _estimate_kv_cache_gb(self, spec: Any, prompt_tokens: int, response_tokens: int) -> float:
         per_1k = float(self._spec_value(spec, "kv_cache_mb_per_1k_tokens", 120.0))
         total_tokens = max(0, prompt_tokens + response_tokens)
         return (total_tokens / 1000.0) * per_1k / 1024.0
@@ -248,9 +238,7 @@ class ResourceAwareOllamaPool:
                     self.servers.pop(url, None)
                     self.server_locks.pop(url, None)
             if removed:
-                self.server_list = [
-                    url for url in self.server_list if url not in removed
-                ]
+                self.server_list = [url for url in self.server_list if url not in removed]
 
         if removed:
             logger.warning(
@@ -272,9 +260,7 @@ class ResourceAwareOllamaPool:
                 )
                 return {"models": [], "error": f"HTTP {response.status}"}
         except Exception as e:
-            logger.warning(
-                "POOL_HEALTH connection_error url=%s error=%s", server_url, e
-            )
+            logger.warning("POOL_HEALTH connection_error url=%s error=%s", server_url, e)
             return {"models": [], "error": str(e)}
 
     async def update_server_status(self, server_url: str):
@@ -344,11 +330,7 @@ class ResourceAwareOllamaPool:
         """
         spec = self._get_model_spec(model_name)
         if spec is not None:
-            return float(
-                self._spec_value(
-                    spec, "weights_vram_gb", self._spec_value(spec, "memory_gb", 0.0)
-                )
-            )
+            return float(self._spec_value(spec, "weights_vram_gb", self._spec_value(spec, "memory_gb", 0.0)))
 
         # PRIORITY 2: Name-based estimates for BASE model weights only
         model_lower = model_name.lower()
@@ -366,9 +348,7 @@ class ResourceAwareOllamaPool:
             return 4.0  # Base weights for 7B models
 
         # Conservative default - base weights only
-        logger.warning(
-            f"No memory estimate for {model_name}, using default 20GB base weight"
-        )
+        logger.warning(f"No memory estimate for {model_name}, using default 20GB base weight")
         return 20.0
 
     async def select_server_for_model(
@@ -380,18 +360,14 @@ class ResourceAwareOllamaPool:
         Updates all servers via /api/ps first
         """
         # Update all server statuses in parallel
-        await asyncio.gather(
-            *[self.update_server_status(url) for url in self.servers.keys()]
-        )
+        await asyncio.gather(*[self.update_server_status(url) for url in self.servers.keys()])
 
         spec = spec or self._get_model_spec(model_name)
 
         # Use centralized VRAM calculator (single source of truth)
         vram_est = estimate_model_vram_requirement(spec, include_kv_cache=True)
         required_new = vram_est["total_gb"]
-        required_reuse = vram_est[
-            "kv_cache_gb"
-        ]  # When reusing loaded model, only need KV cache
+        required_reuse = vram_est["kv_cache_gb"]  # When reusing loaded model, only need KV cache
 
         # Wait/notify pattern: wait for capacity with timeout
         max_wait_seconds = 600  # 10 minutes max wait
@@ -416,9 +392,7 @@ class ResourceAwareOllamaPool:
                         else:
                             new_candidates.append((server, required))
 
-                candidate_pool: List[
-                    tuple[ServerStatus, float, bool]
-                ]  # (server, vram, is_reuse)
+                candidate_pool: List[tuple[ServerStatus, float, bool]]  # (server, vram, is_reuse)
 
                 # For ROUND_ROBIN, RANDOM, MOST_CAPACITY, and PREFER_REMOTE: combine pools for distribution
                 # MOST_CAPACITY will naturally prefer servers with more free RAM
@@ -441,9 +415,7 @@ class ResourceAwareOllamaPool:
                 # Found capacity - proceed
                 if candidate_pool:
                     if self.strategy == PoolStrategy.MOST_CAPACITY:
-                        selected, required, reuse_existing = max(
-                            candidate_pool, key=lambda item: item[0].free_ram_gb
-                        )
+                        selected, required, reuse_existing = max(candidate_pool, key=lambda item: item[0].free_ram_gb)
                     elif self.strategy == PoolStrategy.PREFER_REMOTE:
                         # Sort by priority (descending), then by free RAM (descending)
                         # Higher priority servers (remote M4 Max) preferred, then most available RAM
@@ -465,9 +437,7 @@ class ResourceAwareOllamaPool:
                         selected, required, reuse_existing = candidate_pool[index]
                         self.current_index += 1
                     elif self.strategy == PoolStrategy.RANDOM:
-                        selected, required, reuse_existing = random.choice(
-                            candidate_pool
-                        )
+                        selected, required, reuse_existing = random.choice(candidate_pool)
                     else:
                         selected, required, reuse_existing = candidate_pool[0]
 
@@ -536,9 +506,7 @@ class ResourceAwareOllamaPool:
                 self.servers[server_url].active_requests += 1
                 self.servers[server_url].total_requests += 1
                 self.servers[server_url].reserved_ram_gb += model_memory_gb
-                self.servers[server_url].reserved_ram_gb = max(
-                    0.0, self.servers[server_url].reserved_ram_gb
-                )
+                self.servers[server_url].reserved_ram_gb = max(0.0, self.servers[server_url].reserved_ram_gb)
                 self.servers[server_url].last_used = datetime.now()
 
                 logger.debug(
@@ -546,9 +514,7 @@ class ResourceAwareOllamaPool:
                     f"total reserved: {self.servers[server_url].reserved_ram_gb:.1f}GB"
                 )
 
-    async def mark_request_end(
-        self, server_url: str, model_memory_gb: float, success: bool = True
-    ):
+    async def mark_request_end(self, server_url: str, model_memory_gb: float, success: bool = True):
         """
         Mark that a request finished and release reservation
 
@@ -604,25 +570,17 @@ class ResourceAwareOllamaPool:
         if not num_predict:
             num_predict = int(self._spec_value(spec, "default_num_predict", 1024))
 
-        context_limit_spec = int(
-            self._spec_value(spec, "context_window", self.max_prompt_tokens)
-        )
+        context_limit_spec = int(self._spec_value(spec, "context_window", self.max_prompt_tokens))
         context_limit = max(1024, min(self.max_prompt_tokens, context_limit_spec))
 
-        prompt_tokens = self._estimate_tokens(prompt) + self._estimate_tokens(
-            system_prompt
-        )
+        prompt_tokens = self._estimate_tokens(prompt) + self._estimate_tokens(system_prompt)
         prompt_tokens = min(prompt_tokens, context_limit)
-        response_tokens = max(
-            1, min(num_predict, max(0, context_limit - prompt_tokens))
-        )
+        response_tokens = max(1, min(num_predict, max(0, context_limit - prompt_tokens)))
 
         total_tokens_for_cache = max(prompt_tokens + response_tokens, 1024)
         total_tokens_for_cache = min(total_tokens_for_cache, context_limit)
 
-        selection = await self.select_server_for_model(
-            model, total_tokens_for_cache, spec
-        )
+        selection = await self.select_server_for_model(model, total_tokens_for_cache, spec)
         if not selection:
             raise RuntimeError(
                 f"No server has capacity for {model} "
@@ -674,9 +632,7 @@ class ResourceAwareOllamaPool:
 
     async def get_pool_status(self) -> Dict[str, Any]:
         """Get detailed status of all servers"""
-        await asyncio.gather(
-            *[self.update_server_status(url) for url in self.servers.keys()]
-        )
+        await asyncio.gather(*[self.update_server_status(url) for url in self.servers.keys()])
 
         async with self.lock:
             return {
@@ -712,17 +668,10 @@ class ResourceAwareOllamaPool:
                 ],
                 "strategy": self.strategy.value,
                 "total_servers": len(self.servers),
-                "available_servers": sum(
-                    1 for s in self.servers.values() if s.available
-                ),
-                "total_capacity_gb": sum(
-                    s.capacity.usable_ram_gb for s in self.servers.values()
-                ),
+                "available_servers": sum(1 for s in self.servers.values() if s.available),
+                "total_capacity_gb": sum(s.capacity.usable_ram_gb for s in self.servers.values()),
                 "used_capacity_gb": round(
-                    sum(
-                        s.total_vram_used_gb + s.reserved_ram_gb
-                        for s in self.servers.values()
-                    ),
+                    sum(s.total_vram_used_gb + s.reserved_ram_gb for s in self.servers.values()),
                     1,
                 ),
             }
@@ -744,12 +693,8 @@ def create_resource_aware_pool(config) -> ResourceAwareOllamaPool:
                         total_ram_gb=server_config.get("total_ram_gb", 64),
                         usable_ram_gb=server_config.get("usable_ram_gb", 48),
                         metal=server_config.get("metal", True),
-                        max_concurrent=server_config.get(
-                            "max_concurrent", 1
-                        ),  # Default 1
-                        priority=server_config.get(
-                            "priority", 0
-                        ),  # Default 0 (localhost), 100 for remote M4 Max
+                        max_concurrent=server_config.get("max_concurrent", 1),  # Default 1
+                        priority=server_config.get("priority", 0),  # Default 0 (localhost), 100 for remote M4 Max
                     )
                 )
             else:
@@ -770,9 +715,7 @@ def create_resource_aware_pool(config) -> ResourceAwareOllamaPool:
         if hasattr(ollama_config, "model_specs"):
             model_specs = ollama_config.model_specs
 
-        logger.info(
-            f"Creating resource-aware Ollama pool v3 with {len(servers)} servers"
-        )
+        logger.info(f"Creating resource-aware Ollama pool v3 with {len(servers)} servers")
         return ResourceAwareOllamaPool(
             servers,
             model_specs,
@@ -782,15 +725,11 @@ def create_resource_aware_pool(config) -> ResourceAwareOllamaPool:
 
     else:
         base_url = getattr(ollama_config, "base_url", "http://localhost:11434")
-        server = ServerCapacity(
-            url=base_url, total_ram_gb=64, usable_ram_gb=48, max_concurrent=1
-        )
+        server = ServerCapacity(url=base_url, total_ram_gb=64, usable_ram_gb=48, max_concurrent=1)
 
         model_specs = {}
         if hasattr(ollama_config, "model_specs"):
             model_specs = ollama_config.model_specs
 
         logger.info(f"Creating resource-aware pool v3 with single server: {base_url}")
-        return ResourceAwareOllamaPool(
-            [server], model_specs, max_prompt_tokens=analysis_max_tokens
-        )
+        return ResourceAwareOllamaPool([server], model_specs, max_prompt_tokens=analysis_max_tokens)
