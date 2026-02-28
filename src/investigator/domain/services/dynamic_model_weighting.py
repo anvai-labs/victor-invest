@@ -127,6 +127,7 @@ class DynamicModelWeightingService:
         self.tier_thresholds = valuation_config.get("tier_thresholds", {})
         self.tier_base_weights = valuation_config.get("tier_base_weights", {})
         self.industry_specific = valuation_config.get("industry_specific_weights", {})
+        self.symbol_overrides = valuation_config.get("symbol_weight_overrides", {})
         self.data_quality_thresholds = valuation_config.get("data_quality_thresholds", {})
         self.market_context_multipliers = valuation_config.get("market_context_multipliers", {})
         self.fee_based_insurance_symbols = {
@@ -336,9 +337,40 @@ class DynamicModelWeightingService:
                 metadata={"tier": tier, "sub_tier": sub_tier, "sector": sector},
             )
 
-        # 6. Apply industry overrides (if configured)
+        # 5.5. Apply symbol-level overrides (if configured) - HIGHEST PRIORITY
+        weights_before_symbol = base_weights.copy()
+        if symbol:
+            base_weights = self._apply_symbol_overrides(base_weights, symbol)
+
+            # Audit: Capture symbol override
+            if audit_trail and weights_before_symbol != base_weights:
+                step_number += 1
+                adjustments = [
+                    WeightAdjustment(
+                        model=model,
+                        source="symbol_override",
+                        multiplier=(
+                            base_weights[model] / weights_before_symbol[model]
+                            if weights_before_symbol.get(model, 0) > 0
+                            else 1.0
+                        ),
+                        reason=f"Symbol: {symbol}",
+                    )
+                    for model in base_weights
+                    if model in weights_before_symbol and weights_before_symbol[model] != base_weights[model]
+                ]
+                audit_trail.capture(
+                    step_number=step_number,
+                    step_name="symbol_override",
+                    weights_before=weights_before_symbol,
+                    weights_after=base_weights.copy(),
+                    adjustments=adjustments,
+                    metadata={"symbol": symbol},
+                )
+
+        # 6. Apply industry overrides (if configured) - only if no symbol override applied
         weights_before_industry = base_weights.copy()
-        if industry:
+        if industry and weights_before_symbol == base_weights:
             base_weights = self._apply_industry_overrides(base_weights, industry)
 
             # Audit: Capture industry override
@@ -1029,6 +1061,11 @@ class DynamicModelWeightingService:
         """
         Apply industry-specific weight adjustments from config.
 
+        Supports three modes (in priority order):
+        1. tier_override: Use weights from a different tier
+        2. weights: Direct absolute weight assignment (preferred)
+        3. weight_adjustments: Percentage adjustments from base weights
+
         Args:
             base_weights: Base weights from tier classification
             industry: Industry name
@@ -1041,35 +1078,94 @@ class DynamicModelWeightingService:
         if not industry_config:
             return base_weights  # No override for this industry
 
-        # Check if tier should be overridden
+        # PRIORITY 1: Check if tier should be overridden
         tier_override = industry_config.get("tier_override")
         if tier_override:
             logger.info(f"Industry {industry} triggers tier override: {tier_override}")
             # Get weights for override tier
             return self._get_tier_base_weights(tier_override)
 
-        # Apply percentage adjustments
+        # PRIORITY 2: Direct absolute weights (preferred approach)
+        direct_weights = industry_config.get("weights")
+        if direct_weights:
+            logger.info(f"Industry {industry} using direct absolute weights: {direct_weights}")
+            # Validate weights sum to ~100%
+            total = sum(direct_weights.values())
+            if abs(total - 100) > 1:  # Allow small rounding differences
+                logger.warning(
+                    f"Industry {industry} direct weights sum to {total}%, not 100%. Will be normalized later."
+                )
+            return direct_weights.copy()
+
+        # PRIORITY 3: Percentage adjustments (legacy approach)
         adjustments = industry_config.get("weight_adjustments", {})
-        adjusted_weights = base_weights.copy()
+        if adjustments:
+            adjusted_weights = base_weights.copy()
 
-        for model, adjustment in adjustments.items():
-            if model not in adjusted_weights:
-                continue
+            for model, adjustment in adjustments.items():
+                if model not in adjusted_weights:
+                    continue
 
-            if isinstance(adjustment, str) and adjustment.endswith("%"):
-                # Percentage adjustment (e.g., "+10%")
-                adj_str = adjustment.rstrip("%")
-                if adj_str == "100":
-                    # Absolute assignment (e.g., "100%")
-                    adjusted_weights[model] = 100.0
-                else:
-                    # Relative adjustment (e.g., "+10%")
-                    pct_change = float(adj_str) / 100.0
-                    adjusted_weights[model] *= 1.0 + pct_change
+                if isinstance(adjustment, str) and adjustment.endswith("%"):
+                    # Percentage adjustment (e.g., "+10%")
+                    adj_str = adjustment.rstrip("%")
+                    if adj_str == "100":
+                        # Absolute assignment (e.g., "100%")
+                        adjusted_weights[model] = 100.0
+                    else:
+                        # Relative adjustment (e.g., "+10%")
+                        pct_change = float(adj_str) / 100.0
+                        adjusted_weights[model] *= 1.0 + pct_change
 
-        logger.info(f"Applied industry override for {industry}: {industry_config.get('reason', 'No reason provided')}")
+            logger.info(f"Applied industry percentage adjustments for {industry}: {adjustments}")
+            return adjusted_weights
 
-        return adjusted_weights
+        # No override applied
+        return base_weights
+
+    def _apply_symbol_overrides(self, base_weights: Dict[str, float], symbol: str) -> Dict[str, float]:
+        """
+        Apply symbol-specific weight overrides from config.
+
+        This is the HIGHEST PRIORITY override, applied before industry overrides.
+        Useful for handling special cases within an industry (e.g., payment networks
+        within Credit Services where P/B should be disabled).
+
+        Args:
+            base_weights: Base weights from tier classification
+            symbol: Stock symbol (uppercase)
+
+        Returns:
+            Adjusted weights (or original if no override configured)
+        """
+        # Normalize symbol to uppercase for config lookup
+        symbol_upper = symbol.upper()
+
+        # Check if symbol has override configured
+        symbol_config = self.symbol_overrides.get(symbol_upper)
+
+        if not symbol_config:
+            return base_weights  # No override for this symbol
+
+        # PRIORITY 1: Direct absolute weights (preferred)
+        direct_weights = symbol_config.get("weights")
+        if direct_weights:
+            logger.info(f"Symbol {symbol_upper} using direct absolute weights: {direct_weights}")
+            total = sum(direct_weights.values())
+            if abs(total - 100) > 1:
+                logger.warning(
+                    f"Symbol {symbol_upper} direct weights sum to {total}%, not 100%. Will be normalized later."
+                )
+            return direct_weights.copy()
+
+        # PRIORITY 2: Tier override
+        tier_override = symbol_config.get("tier_override")
+        if tier_override:
+            logger.info(f"Symbol {symbol_upper} triggers tier override: {tier_override}")
+            return self._get_tier_base_weights(tier_override)
+
+        # No override applied
+        return base_weights
 
     def apply_market_context_adjustments(
         self, base_weights: Dict[str, float], market_context: MarketContext, symbol: str

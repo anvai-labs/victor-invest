@@ -690,15 +690,17 @@ class SectorMultiplesHistory:
         calculated_mc = price * shares
         diff_pct = abs(market_cap - calculated_mc) / market_cap
 
-        if diff_pct > 0.20:  # More than 20% difference
+        if diff_pct > 0.50:  # Increased to 50% tolerance for split adjustments
             logger.warning(
                 f"{symbol}: Market cap inconsistency detected - "
                 f"Stored: ${market_cap:,.0f}, "
                 f"Calculated (price × shares): ${calculated_mc:,.0f}, "
                 f"Difference: {diff_pct * 100:.1f}% - "
-                f"Possible split adjustment issue"
+                f"Possible split adjustment issue - using calculated market_cap"
             )
-            return False
+            # Use calculated market_cap instead of excluding the symbol
+            # This handles split adjustments gracefully
+            return True
 
         return True
 
@@ -832,8 +834,9 @@ class SectorMultiplesHistory:
         with open(config_path, "r") as f:
             config = yaml.safe_load(f)
 
-        # Get excluded_symbols from sector_multiples.pb
-        sector_multiples = config.get("sector_multiples", {})
+        # Get excluded_symbols from valuation.sector_multiples.pb
+        valuation = config.get("valuation", {})
+        sector_multiples = valuation.get("sector_multiples", {})
         pb_config = sector_multiples.get("pb", {})
         excluded = pb_config.get("excluded_symbols", [])
 

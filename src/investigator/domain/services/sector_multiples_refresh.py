@@ -471,8 +471,9 @@ class SectorMultiplesRefresh:
         with open(config_path, "r") as f:
             config = yaml.safe_load(f)
 
-        # Get excluded_symbols from sector_multiples.pb
-        sector_multiples = config.get("sector_multiples", {})
+        # Get excluded_symbols from valuation.sector_multiples.pb
+        valuation = config.get("valuation", {})
+        sector_multiples = valuation.get("sector_multiples", {})
         pb_config = sector_multiples.get("pb", {})
         excluded = pb_config.get("excluded_symbols", [])
 

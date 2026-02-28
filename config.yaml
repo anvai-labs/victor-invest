@@ -760,6 +760,31 @@ valuation:
       ps: 15
       pb: 10
       ggm: 0
+  # Symbol-level weight overrides - HIGHEST PRIORITY
+  # Applied before industry overrides. Use for special cases within an industry.
+  symbol_weight_overrides:
+    V:
+      weights:
+        dcf: 20
+        pe: 80
+        ev_ebitda: 0
+        ps: 0
+        pb: 0
+        ggm: 0
+      reason: >-
+        Visa is an asset-light payment network. P/B is meaningless (minimal tangible equity).
+        P/E and DCF are the most reliable valuation metrics.
+    MA:
+      weights:
+        dcf: 20
+        pe: 80
+        ev_ebitda: 0
+        ps: 0
+        pb: 0
+        ggm: 0
+      reason: >-
+        Mastercard is an asset-light payment network. P/B is meaningless (minimal tangible equity).
+        P/E and DCF are the most reliable valuation metrics.
   industry_specific_weights:
     Software - Application:
       weight_adjustments:
