@@ -147,7 +147,7 @@ class SectorMultiplesTrendAdjusted:
 
             if not trend_data or len(trend_data) < 2:
                 logger.warning(
-                    f"{group_name}: Insufficient historical data for trend adjustment, " f"using current multiples"
+                    f"{group_name}: Insufficient historical data for trend adjustment, using current multiples"
                 )
                 results[group_name] = self._create_unadjusted_result(current_data)
                 continue
@@ -466,13 +466,13 @@ class SectorMultiplesTrendAdjusted:
 
         if final_factor < min_adjustment:
             logger.warning(
-                f"{metric}: Adjustment factor {final_factor:.3f} below minimum, " f"capping at {min_adjustment:.3f}"
+                f"{metric}: Adjustment factor {final_factor:.3f} below minimum, capping at {min_adjustment:.3f}"
             )
             final_factor = min_adjustment
             adjusted_value = current_value * final_factor
         elif final_factor > max_adjustment:
             logger.warning(
-                f"{metric}: Adjustment factor {final_factor:.3f} above maximum, " f"capping at {max_adjustment:.3f}"
+                f"{metric}: Adjustment factor {final_factor:.3f} above maximum, capping at {max_adjustment:.3f}"
             )
             final_factor = max_adjustment
             adjusted_value = current_value * final_factor

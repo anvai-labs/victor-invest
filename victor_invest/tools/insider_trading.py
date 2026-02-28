@@ -165,7 +165,7 @@ values, and cluster detection flags.
                 return await self._fetch_filings(symbol, days)
             else:
                 return ToolResult.create_failure(
-                    f"Unknown action: {action}. Valid actions: " "sentiment, recent, clusters, key_insiders, fetch"
+                    f"Unknown action: {action}. Valid actions: sentiment, recent, clusters, key_insiders, fetch"
                 )
 
         except Exception as e:

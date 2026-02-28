@@ -380,7 +380,7 @@ class InsiderTransactionFetcher:
                             # Fetch and parse the XML
                             accession = accession_numbers[i].replace("-", "")
                             # Use www.sec.gov for XML files (data.sec.gov returns 403)
-                            base_url = f"{self.SEC_BASE_URL}/Archives/edgar/data/" f"{int(cik)}/{accession}"
+                            base_url = f"{self.SEC_BASE_URL}/Archives/edgar/data/{int(cik)}/{accession}"
 
                             # Get the actual Form 4 XML (not XSLT-transformed view)
                             xml_url = await self._find_form4_xml_url(base_url, primary_docs[i])

@@ -261,7 +261,7 @@ class EnhancedInvestConversationManager:
 
         self._investment_context = InvestmentContext()
 
-        logger.info(f"EnhancedInvestConversationManager initialized with " f"max_turns={max_history_turns}")
+        logger.info(f"EnhancedInvestConversationManager initialized with max_turns={max_history_turns}")
 
     # =========================================================================
     # Message Management (delegates to ConversationCoordinator)

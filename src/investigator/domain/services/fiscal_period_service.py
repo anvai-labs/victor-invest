@@ -129,8 +129,7 @@ class FiscalPeriodService:
 
         # If not in mapping, raise error
         raise ValueError(
-            f"Unknown fiscal period format: '{fiscal_period}'. "
-            f"Supported formats: {list(self.PERIOD_MAPPINGS.keys())}"
+            f"Unknown fiscal period format: '{fiscal_period}'. Supported formats: {list(self.PERIOD_MAPPINGS.keys())}"
         )
 
     def parse_period(self, period_str: str) -> FiscalPeriod:
@@ -162,7 +161,7 @@ class FiscalPeriodService:
 
         if not match:
             raise ValueError(
-                f"Invalid period string format: '{period_str}'. " f"Expected format: 'YYYY-QN' or 'YYYY-FY' or 'YYYY'"
+                f"Invalid period string format: '{period_str}'. Expected format: 'YYYY-QN' or 'YYYY-FY' or 'YYYY'"
             )
 
         fiscal_year_str, period_part = match.groups()

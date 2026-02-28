@@ -121,7 +121,7 @@ class UnifiedValuationExecutor:
 
         # Get sector/industry
         sector, industry = self.metadata_service.get_sector_industry(self.symbol)
-        logger.info(f"{self.symbol}: Retrieved sector={sector}, industry={industry} " "from CompanyMetadataService")
+        logger.info(f"{self.symbol}: Retrieved sector={sector}, industry={industry} from CompanyMetadataService")
 
         # Run all valuation models
         model_results = await self._run_all_models()
@@ -148,7 +148,7 @@ class UnifiedValuationExecutor:
             market_context=None,
         )
 
-        logger.info(f"{self.symbol}: Tier={tier} | Sector={sector} | Industry={industry} | " f"Weights: {weights}")
+        logger.info(f"{self.symbol}: Tier={tier} | Sector={sector} | Industry={industry} | Weights: {weights}")
 
         # Apply weights to calculate blended fair value
         weighted_sum = 0.0
@@ -170,7 +170,7 @@ class UnifiedValuationExecutor:
 
         # Calculate final blended value
         if total_weight == 0:
-            logger.warning(f"{self.symbol}: All models filtered out by tier-based weights, " "using simple average")
+            logger.warning(f"{self.symbol}: All models filtered out by tier-based weights, using simple average")
             fair_values = [
                 r["output"]["fair_value_per_share"]
                 for r in model_results.values()
@@ -181,8 +181,7 @@ class UnifiedValuationExecutor:
             consensus = weighted_sum
 
         logger.info(
-            f"{self.symbol}: Using sector-weighted blend (tier={tier}) → "
-            f"${consensus:.2f} | Weights: {applied_weights}"
+            f"{self.symbol}: Using sector-weighted blend (tier={tier}) → ${consensus:.2f} | Weights: {applied_weights}"
         )
 
         return {

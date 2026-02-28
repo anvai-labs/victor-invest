@@ -196,7 +196,7 @@ class RotationScheduler:
 
         self._schedules[policy.credential_name] = entry
         logger.info(
-            f"Added rotation policy for {policy.credential_name}: " f"rotate every {policy.rotation_interval_days} days"
+            f"Added rotation policy for {policy.credential_name}: rotate every {policy.rotation_interval_days} days"
         )
 
     def remove_policy(self, credential_name: str) -> None:

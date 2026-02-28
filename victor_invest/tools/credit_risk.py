@@ -167,7 +167,7 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
                 return await self._calculate_composite(fin_data)
             else:
                 return ToolResult.create_failure(
-                    f"Unknown action: {action}. Valid actions: " "all, altman, beneish, piotroski, composite"
+                    f"Unknown action: {action}. Valid actions: all, altman, beneish, piotroski, composite"
                 )
 
         except Exception as e:

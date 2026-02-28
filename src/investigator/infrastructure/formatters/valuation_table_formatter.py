@@ -84,7 +84,7 @@ class ValuationTableFormatter:
             fcf = proj.get("fcf", 0)
             discount_factor = proj.get("discount_factor", 0)
             pv = proj.get("pv_fcf", 0)
-            lines.append(f"  Year {year:<3} ${fcf / 1e9:>12.2f}B   " f"{discount_factor:>16.4f}   ${pv / 1e9:>15.2f}B")
+            lines.append(f"  Year {year:<3} ${fcf / 1e9:>12.2f}B   {discount_factor:>16.4f}   ${pv / 1e9:>15.2f}B")
 
         lines.append(f"  {'-' * 8} {'-' * 15} {'-' * 18} {'-' * 18}")
         total_pv_fcf = sum(p.get("pv_fcf", 0) for p in projections)
@@ -261,7 +261,7 @@ class ValuationTableFormatter:
                 dividend = proj.get("dividend", 0)
                 discount_factor = proj.get("discount_factor", 0)
                 pv = proj.get("pv_dividend", 0)
-                lines.append(f"  Year {year:<3} ${dividend:>18.4f}   " f"{discount_factor:>16.4f}   ${pv:>16.2f}")
+                lines.append(f"  Year {year:<3} ${dividend:>18.4f}   {discount_factor:>16.4f}   ${pv:>16.2f}")
 
             lines.append(f"  {'-' * 8} {'-' * 20} {'-' * 18} {'-' * 18}")
             total_pv_div = sum(p.get("pv_dividend", 0) for p in dividend_projections)
@@ -347,12 +347,11 @@ class ValuationTableFormatter:
                 total_weight += weight
 
                 lines.append(
-                    f"  {name:<15} ${fair_value:>14.2f}  {confidence:>10.0f}%  "
-                    f"{weight:>9.0f}%  ${weighted_fv:>14.2f}"
+                    f"  {name:<15} ${fair_value:>14.2f}  {confidence:>10.0f}%  {weight:>9.0f}%  ${weighted_fv:>14.2f}"
                 )
 
         lines.append(f"  {'-' * 15} {'-' * 15} {'-' * 12} {'-' * 10} {'-' * 15}")
-        lines.append(f"  {'BLENDED':<15} {' ' * 15} {' ' * 12} {total_weight:>9.0f}%  " f"${total_weighted_fv:>14.2f}")
+        lines.append(f"  {'BLENDED':<15} {' ' * 15} {' ' * 12} {total_weight:>9.0f}%  ${total_weighted_fv:>14.2f}")
 
         upside_pct = ((blended_fair_value - current_price) / current_price) * 100 if current_price > 0 else 0
 

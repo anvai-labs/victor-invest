@@ -387,7 +387,7 @@ def validate_victor_installed():
     """Check if Victor AI framework is installed."""
     if Agent is None:
         console.print(
-            "[red]Error: victor-ai is not installed.[/red]\n" "Install with: pip install 'victor-ai>=0.5.0,<0.6.0'"
+            "[red]Error: victor-ai is not installed.[/red]\nInstall with: pip install 'victor-ai>=0.5.0,<0.6.0'"
         )
         sys.exit(1)
 

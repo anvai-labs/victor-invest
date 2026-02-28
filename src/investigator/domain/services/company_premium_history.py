@@ -550,7 +550,7 @@ class CompanyPremiumHistory:
         # For now, return None to indicate not available
         # In production, this would aggregate all companies in the sector
         logger.warning(
-            f"On-the-fly sector multiple calculation not yet implemented: " f"{sector} {fiscal_year} {fiscal_period}"
+            f"On-the-fly sector multiple calculation not yet implemented: {sector} {fiscal_year} {fiscal_period}"
         )
         return None
 

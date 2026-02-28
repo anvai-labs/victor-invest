@@ -82,8 +82,7 @@ class CompanyMetadataService:
         stock_host = os.environ.get("STOCK_DB_HOST", config.database.host)
         if not stock_password:
             raise EnvironmentError(
-                "STOCK_DB_PASSWORD environment variable not set. "
-                "Please set it or source your ~/.investigator/env file."
+                "STOCK_DB_PASSWORD environment variable not set. Please set it or source your ~/.investigator/env file."
             )
         stock_db_url = f"postgresql://stockuser:{stock_password}@{stock_host}:{config.database.port}/stock"
         engine = create_engine(stock_db_url, pool_pre_ping=True)

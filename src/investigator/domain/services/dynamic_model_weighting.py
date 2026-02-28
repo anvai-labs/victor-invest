@@ -1101,7 +1101,7 @@ class DynamicModelWeightingService:
 
         # Log market context adjustments
         logger.info(
-            f"{symbol} - Market context adjustments applied: {market_context}. " f"Multipliers: {multipliers_applied}"
+            f"{symbol} - Market context adjustments applied: {market_context}. Multipliers: {multipliers_applied}"
         )
         logger.debug(
             f"{symbol} - Weight changes: "

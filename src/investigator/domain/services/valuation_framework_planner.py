@@ -511,8 +511,7 @@ class ValuationFrameworkPlanner:
         # Priority 1: Mega-cap tech (>$200B)
         if self.market_cap_billions > self.SIZE_MEGA_CAP:
             logger.info(
-                f"{self.symbol} - Classified as 'mega_cap_tech' "
-                f"(market cap: ${self.market_cap_billions:.1f}B > $200B)"
+                f"{self.symbol} - Classified as 'mega_cap_tech' (market cap: ${self.market_cap_billions:.1f}B > $200B)"
             )
             return "mega_cap_tech"
 

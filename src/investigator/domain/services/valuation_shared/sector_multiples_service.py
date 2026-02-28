@@ -260,7 +260,7 @@ class SectorMultiplesService:
         elif type_lower in ("ev_ebitda", "evebitda", "ev/ebitda"):
             return self.get_ev_ebitda(sector, industry)
         else:
-            raise ValueError(f"Unknown multiple type: {multiple_type}. " f"Use one of: pe, ps, pb, ev_ebitda")
+            raise ValueError(f"Unknown multiple type: {multiple_type}. Use one of: pe, ps, pb, ev_ebitda")
 
     # ============================================================================
     # Historical Median Methods (from sector_multiples_history table)
@@ -524,7 +524,7 @@ class SectorMultiplesService:
                 median = sorted_values[n // 2]
 
             logger.info(
-                f"Historical {metric} median for industry {industry}: {median:.2f} " f"(from {len(values)} data points)"
+                f"Historical {metric} median for industry {industry}: {median:.2f} (from {len(values)} data points)"
             )
 
             return median

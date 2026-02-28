@@ -124,7 +124,7 @@ class PiotroskiFScoreCalculator:
         """Initialize the F-Score calculator."""
         self._name = "Piotroski F-Score Calculator"
         self._description = (
-            "Financial strength assessment using 9 binary criteria. " "8-9 = Strong, 5-7 = Moderate, 0-4 = Weak."
+            "Financial strength assessment using 9 binary criteria. 8-9 = Strong, 5-7 = Moderate, 0-4 = Weak."
         )
 
     @property

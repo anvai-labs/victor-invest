@@ -306,7 +306,7 @@ def derive_q4_from_fy(quarters_data: List[Dict[str, Any]], symbol: str) -> List[
             ni_str = f"${ni_float / 1e6:.0f}M" if ni_float is not None else "N/A"
             rev_str = f"${rev_float / 1e9:.2f}B" if rev_float is not None else "N/A"
             logger.info(
-                f"[Q4 Derivation] {symbol} FY{fy}: Derived Q4 from FY filing " f"(NI: {ni_str}, Revenue: {rev_str})"
+                f"[Q4 Derivation] {symbol} FY{fy}: Derived Q4 from FY filing (NI: {ni_str}, Revenue: {rev_str})"
             )
         else:
             # No derivation needed, add all quarters as-is

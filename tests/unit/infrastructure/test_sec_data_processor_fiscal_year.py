@@ -348,9 +348,9 @@ class TestSectorSpecificFiscalYearEnds:
 
         needs_adjustment = q1_end_month > fye_month
 
-        assert (
-            needs_adjustment == expected_adjustment
-        ), f"{company} ({symbol}): Q1 ending month {q1_end_month} vs FYE month {fye_month} - adjustment should be {expected_adjustment}"
+        assert needs_adjustment == expected_adjustment, (
+            f"{company} ({symbol}): Q1 ending month {q1_end_month} vs FYE month {fye_month} - adjustment should be {expected_adjustment}"
+        )
 
 
 class TestConsecutiveQuarterValidation:

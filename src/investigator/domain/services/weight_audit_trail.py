@@ -167,11 +167,9 @@ class WeightAuditTrail:
         # Log step summary
         changes = step.get_changes()
         if changes:
-            logger.debug(f"[{self.symbol}] Step {step_number} ({step_name}): " f"{len(changes)} models changed")
+            logger.debug(f"[{self.symbol}] Step {step_number} ({step_name}): {len(changes)} models changed")
             for model, change in changes.items():
-                logger.debug(
-                    f"  {model}: {change['before']:.1f}% → {change['after']:.1f}% " f"({change['delta']:+.1f}%)"
-                )
+                logger.debug(f"  {model}: {change['before']:.1f}% → {change['after']:.1f}% ({change['delta']:+.1f}%)")
 
     def mark_bounds_applied(self) -> None:
         """Mark that bounds were applied during weighting."""
@@ -220,9 +218,7 @@ class WeightAuditTrail:
             if initial > 0:
                 change_pct = (final - initial) / initial * 100
                 if abs(change_pct) > 50:
-                    warnings.append(
-                        f"{model}: Weight changed by {change_pct:+.0f}% " f"({initial:.1f}% → {final:.1f}%)"
-                    )
+                    warnings.append(f"{model}: Weight changed by {change_pct:+.0f}% ({initial:.1f}% → {final:.1f}%)")
 
         return AuditSummary(
             symbol=self.symbol,

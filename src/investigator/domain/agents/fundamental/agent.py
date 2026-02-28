@@ -349,9 +349,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                     fy, fp, adsh = strategy.get_latest_fiscal_period(symbol, cik)
 
                     if fy and fp:
-                        self.logger.info(
-                            f"Using fiscal period from bulk tables for {symbol}: " f"{fy}-{fp} (ADSH: {adsh})"
-                        )
+                        self.logger.info(f"Using fiscal period from bulk tables for {symbol}: {fy}-{fp} (ADSH: {adsh})")
                         return f"{fy}-{fp}"
 
                 except Exception as e:
@@ -444,9 +442,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             return f"{year}-Q{quarter}"
 
         except Exception as e:
-            self.logger.warning(
-                f"Failed to determine fiscal period for {symbol}: {e}. " f"Using 'unknown' as fallback."
-            )
+            self.logger.warning(f"Failed to determine fiscal period for {symbol}: {e}. Using 'unknown' as fallback.")
             return "unknown"
 
     def _require_financials(self, company_data: Dict) -> Dict:
@@ -1055,9 +1051,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             cik = resolve_cik_for_symbol(symbol=symbol, ticker_mapper=self.ticker_mapper, logger=self.logger)
             fiscal_period = self._get_current_fiscal_period(symbol, financials=None, cik=cik)
             cache_key = build_company_cache_key(symbol=symbol, fiscal_period=fiscal_period, cik=cik)
-            self.logger.debug(
-                f"Cache key for {symbol}: {cache_key} " f"(fiscal_period ensures quarter-specific caching)"
-            )
+            self.logger.debug(f"Cache key for {symbol}: {cache_key} (fiscal_period ensures quarter-specific caching)")
 
             cached = get_cached_company_data(cache=self.cache, cache_key=cache_key, symbol=symbol, logger=self.logger)
             if cached:
@@ -1092,8 +1086,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                 )
             except ValueError as cache_error:
                 raise ValueError(
-                    f"SEC Agent cache miss for {symbol}: {cache_error}. "
-                    f"Ensure SEC Agent runs before Fundamental Agent."
+                    f"SEC Agent cache miss for {symbol}: {cache_error}. Ensure SEC Agent runs before Fundamental Agent."
                 )
             except Exception as api_error:
                 self.logger.error(
@@ -1184,7 +1177,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                 fiscal_period_for_cache = f"{resolved_period}-latest-{num_quarters}"
         except Exception as exc:
             self.logger.debug(
-                "Could not resolve fiscal period for %s quarterly cache key: %s. " "Using fallback token %s.",
+                "Could not resolve fiscal period for %s quarterly cache key: %s. Using fallback token %s.",
                 symbol,
                 exc,
                 fiscal_period_for_cache,

@@ -124,7 +124,7 @@ class DCFFactory:
 
         elif model_enum == DCFModelType.STANDARD:
             # Standard DCF requires different initialization
-            raise ValueError("Standard DCF requires legacy initialization. " "Use DCFFactory.create_legacy() instead.")
+            raise ValueError("Standard DCF requires legacy initialization. Use DCFFactory.create_legacy() instead.")
 
         return model_class(**kwargs)
 

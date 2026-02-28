@@ -1566,9 +1566,7 @@ def cache_facts(symbols_file, symbol_list, parallel, process_raw, hydrate_from_d
             click.echo(f"Symbols missing in DB: {', '.join(missing[:20])}{' ...' if len(missing) > 20 else ''}")
         return
 
-    click.echo(
-        f"Fetching raw CompanyFacts for {len(symbols)} symbols " f"(parallel={parallel}, process_raw={process_raw})"
-    )
+    click.echo(f"Fetching raw CompanyFacts for {len(symbols)} symbols (parallel={parallel}, process_raw={process_raw})")
 
     async def _runner():
         sem = asyncio.Semaphore(max(1, parallel))

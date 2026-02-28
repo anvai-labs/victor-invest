@@ -294,7 +294,7 @@ def _parse_analysis_mode(mode: Optional[str]) -> AnalysisMode:
     }:
         raise HTTPException(
             status_code=400,
-            detail=(f"Invalid mode: {normalized_mode}. " f"Use: {', '.join(ALLOWED_API_ANALYSIS_MODES)}"),
+            detail=(f"Invalid mode: {normalized_mode}. Use: {', '.join(ALLOWED_API_ANALYSIS_MODES)}"),
         )
 
     return parsed_mode
@@ -1044,11 +1044,13 @@ def _load_symbol_metadata(symbols: List[str]) -> Dict[str, Dict[str, Any]]:
         from sqlalchemy import bindparam, text
 
         with engine.connect() as conn:
-            col_rows = conn.execute(text("""
+            col_rows = conn.execute(
+                text("""
                     SELECT column_name
                     FROM information_schema.columns
                     WHERE table_name = 'symbol'
-                """)).fetchall()
+                """)
+            ).fetchall()
             available_cols = {str(row[0]) for row in col_rows}
 
             select_cols = ["ticker"]

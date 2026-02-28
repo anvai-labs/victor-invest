@@ -166,7 +166,7 @@ def extract_non_recurring_items(
                         )
 
                         logger.info(
-                            f"Detected non-recurring: {category} = ${amount / 1e6:.1f}M " f"({pct_of_ni:.1%} of NI)"
+                            f"Detected non-recurring: {category} = ${amount / 1e6:.1f}M ({pct_of_ni:.1%} of NI)"
                         )
 
     return items
@@ -332,7 +332,7 @@ def assess_earnings_quality(
             total_adjustment += item.adjustment_recommended
             if item.as_pct_of_net_income >= MATERIALITY_THRESHOLDS["significant"]:
                 warnings.append(
-                    f"Significant {item.name}: ${item.amount / 1e6:.1f}M " f"({item.as_pct_of_net_income:.1%} of NI)"
+                    f"Significant {item.name}: ${item.amount / 1e6:.1f}M ({item.as_pct_of_net_income:.1%} of NI)"
                 )
 
     # Calculate adjusted net income

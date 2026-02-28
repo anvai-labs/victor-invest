@@ -119,7 +119,7 @@ class SECCompanyFactsExtractor:
                 # Return cached data if fresh enough
                 if age_days < max_age_days:
                     logger.info(
-                        f"✓ Using cached data for {symbol} " f"({age_days:.1f} days old < {max_age_days} day threshold)"
+                        f"✓ Using cached data for {symbol} ({age_days:.1f} days old < {max_age_days} day threshold)"
                     )
                     db_data["source"] = "database_cache"
                     db_data["cache_age_days"] = age_days
@@ -134,7 +134,7 @@ class SECCompanyFactsExtractor:
                     )
 
         # Step 2: No fresh data in cache - return None to signal caller to run SEC Agent
-        logger.info(f"No fresh data for {symbol} in cache. " f"Caller should trigger SEC Agent to fetch from API.")
+        logger.info(f"No fresh data for {symbol} in cache. Caller should trigger SEC Agent to fetch from API.")
         return None
 
     def _calculate_age_days(self, fetched_at_str: str) -> float:
@@ -264,7 +264,7 @@ class SECCompanyFactsExtractor:
                 has_us_gaap = "us-gaap" in raw_facts
                 has_dei = "dei" in raw_facts
 
-                logger.info(f"📦 SEC API response for {symbol}: " f"has us-gaap={has_us_gaap}, has dei={has_dei}")
+                logger.info(f"📦 SEC API response for {symbol}: has us-gaap={has_us_gaap}, has dei={has_dei}")
 
                 if has_us_gaap:
                     us_gaap_tags = len(raw_facts["us-gaap"])
@@ -764,7 +764,7 @@ class SECCompanyFactsExtractor:
                     latest_fy, latest_fp, _ = strategy._get_from_bulk_tables(cik)
                     if latest_fy and latest_fp:
                         logger.info(
-                            f"✓ Determined latest period from bulk tables for {symbol}: " f"{latest_fy}-{latest_fp}"
+                            f"✓ Determined latest period from bulk tables for {symbol}: {latest_fy}-{latest_fp}"
                         )
                         return (latest_fy, latest_fp, None)  # No filed date from bulk
 
@@ -908,7 +908,7 @@ class SECCompanyFactsExtractor:
             # The caller should extract from actual SEC CompanyFacts fy/fp fields.
 
             logger.debug(
-                "No valid fiscal period in cached data. " "Caller should extract from SEC CompanyFacts fy/fp fields."
+                "No valid fiscal period in cached data. Caller should extract from SEC CompanyFacts fy/fp fields."
             )
             return (None, None)
 
@@ -1071,15 +1071,15 @@ class SECCompanyFactsExtractor:
                     fy = latest.get("fy")
                     fp = latest.get("fp")
 
-                    logger.debug(f"✓ JSON API HIT for {symbol} {metric_tag} " f"{fiscal_year}-{fiscal_period}: {value}")
+                    logger.debug(f"✓ JSON API HIT for {symbol} {metric_tag} {fiscal_year}-{fiscal_period}: {value}")
                     return (value, fy, fp)
                 else:
-                    logger.debug(f"JSON API MISS for {symbol} {metric_tag} " f"{fiscal_year}-{fiscal_period}")
+                    logger.debug(f"JSON API MISS for {symbol} {metric_tag} {fiscal_year}-{fiscal_period}")
                     return (None, None, None)
             else:
                 # Get latest value using existing helper
                 value, fy, fp = self._get_latest_value_with_period(usd_data)
-                logger.debug(f"✓ JSON API HIT for {symbol} {metric_tag} (latest): " f"{value} (FY:{fy} FP:{fp})")
+                logger.debug(f"✓ JSON API HIT for {symbol} {metric_tag} (latest): {value} (FY:{fy} FP:{fp})")
                 return (value, fy, fp)
 
         except Exception as e:

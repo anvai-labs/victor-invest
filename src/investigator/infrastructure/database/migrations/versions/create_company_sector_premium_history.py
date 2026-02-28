@@ -126,10 +126,7 @@ class CompanySectorPremiumHistory(Base):
     )
 
     def __repr__(self):
-        return (
-            f"<CompanySectorPremiumHistory({self.symbol}, "
-            f"FY:{self.fiscal_year}, PE premium:{self.pe_premium_pct}%)>"
-        )
+        return f"<CompanySectorPremiumHistory({self.symbol}, FY:{self.fiscal_year}, PE premium:{self.pe_premium_pct}%)>"
 
 
 def upgrade():
@@ -155,24 +152,30 @@ def upgrade():
 
     with engine.connect() as conn:
         # Composite index for symbol+period lookups
-        conn.execute(text("""
+        conn.execute(
+            text("""
             CREATE INDEX IF NOT EXISTS ix_company_premium_symbol_period
             ON company_sector_premium_history(symbol, fiscal_year, fiscal_period)
-        """))
+        """)
+        )
 
         # Index for sector-level queries
-        conn.execute(text("""
+        conn.execute(
+            text("""
             CREATE INDEX IF NOT EXISTS ix_company_premium_sector_period
             ON company_sector_premium_history(sector, fiscal_year, fiscal_period)
-        """))
+        """)
+        )
 
         # Index for premium/discount analysis (PostgreSQL doesn't support partial indexes with IF NOT EXISTS in all versions)
         try:
-            conn.execute(text("""
+            conn.execute(
+                text("""
                 CREATE INDEX ix_company_premium_pe_pct
                 ON company_sector_premium_history(pe_premium_pct)
                 WHERE pe_premium_pct IS NOT NULL
-            """))
+            """)
+            )
         except Exception:
             # Index might already exist
             pass

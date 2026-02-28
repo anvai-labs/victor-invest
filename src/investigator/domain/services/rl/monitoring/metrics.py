@@ -86,8 +86,7 @@ class RLMetrics:
                 ).fetchall()
 
                 return {
-                    row[0]
-                    or "Unknown": {
+                    row[0] or "Unknown": {
                         "num_predictions": int(row[1]),
                         "avg_reward": float(row[2]) if row[2] else 0,
                         "std_reward": float(row[3]) if row[3] else 0,
@@ -138,8 +137,7 @@ class RLMetrics:
                 ).fetchall()
 
                 return {
-                    row[0]
-                    or "Unknown": {
+                    row[0] or "Unknown": {
                         "num_predictions": int(row[1]),
                         "avg_reward": float(row[2]) if row[2] else 0,
                         "std_reward": float(row[3]) if row[3] else 0,

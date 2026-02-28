@@ -128,8 +128,7 @@ class GordonGrowthModel:
             logger.info(f"🔍 [GGM_STAGE_4] {self.symbol} - Calculating expected dividend D₁ = D₀ × (1 + g)")
             d1 = latest_dps * (1 + growth_rate)
             logger.info(
-                f"🔍 [GGM_D1_CALC] {self.symbol} - "
-                f"D₁ = ${latest_dps:.4f} × (1 + {growth_rate * 100:.2f}%) = ${d1:.4f}"
+                f"🔍 [GGM_D1_CALC] {self.symbol} - D₁ = ${latest_dps:.4f} × (1 + {growth_rate * 100:.2f}%) = ${d1:.4f}"
             )
 
             # Step 5: Apply GGM formula: Fair Value = D₁ / (r - g)

@@ -259,7 +259,7 @@ def apply_valuation_ratios(
 
         # DEBUG: Log detailed EPS calculation with unit validation
         logger.info(
-            "[EPS_DEBUG] %s - EPS Calculation: earnings=$%s, shares=%s, eps=$%.2f, " "market_cap=$%s",
+            "[EPS_DEBUG] %s - EPS Calculation: earnings=$%s, shares=%s, eps=$%.2f, market_cap=$%s",
             symbol,
             format(earnings, ",.0f"),
             format(shares, ",.0f"),
@@ -279,7 +279,7 @@ def apply_valuation_ratios(
             )
         elif calculated_eps < 0.01 and calculated_eps > 0:
             logger.warning(
-                "[EPS_SUSPICIOUS] %s - EPS seems too low ($%.4f) - possible unit mismatch. " "earnings=$%s, shares=%s.",
+                "[EPS_SUSPICIOUS] %s - EPS seems too low ($%.4f) - possible unit mismatch. earnings=$%s, shares=%s.",
                 symbol,
                 calculated_eps,
                 format(earnings, ",.0f"),
@@ -314,7 +314,7 @@ def apply_valuation_ratios(
 
         # DEBUG: Log detailed revenue_per_share calculation with unit validation
         logger.info(
-            "[RPS_DEBUG] %s - Revenue Per Share Calculation: revenue=$%s, shares=%s, rps=$%.2f, " "market_cap=$%s",
+            "[RPS_DEBUG] %s - Revenue Per Share Calculation: revenue=$%s, shares=%s, rps=$%.2f, market_cap=$%s",
             symbol,
             format(revenue, ",.0f"),
             format(shares, ",.0f"),

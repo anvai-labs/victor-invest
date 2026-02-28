@@ -222,7 +222,7 @@ class SymbolUpdateAgent(InvestmentAgent):
             rows_updated = self._update_symbol_table(symbol, update_data)
 
             self.logger.info(
-                f"✅ Updated symbol table for {symbol}: {len(update_data)} fields, " f"{rows_updated} row(s) affected"
+                f"✅ Updated symbol table for {symbol}: {len(update_data)} fields, {rows_updated} row(s) affected"
             )
 
             return AgentResult(

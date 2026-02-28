@@ -221,7 +221,11 @@ class CBOEVolatilitySource(DataSource):
             else (
                 "fear"
                 if fear_score > 60
-                else "neutral" if fear_score > 40 else "greed" if fear_score > 20 else "extreme_greed"
+                else "neutral"
+                if fear_score > 40
+                else "greed"
+                if fear_score > 20
+                else "extreme_greed"
             )
         )
 

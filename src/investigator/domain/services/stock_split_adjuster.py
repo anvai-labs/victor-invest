@@ -606,8 +606,7 @@ if __name__ == "__main__":
     for year in sorted(adjusted_data.keys()):
         adj = adjusted_data[year]
         print(
-            f"  {year}: ${adj.raw_eps:.2f} → ${adj.split_adjusted_eps:.2f} "
-            f"(adjustment: {adj.adjustment_factor:.2f}x)"
+            f"  {year}: ${adj.raw_eps:.2f} → ${adj.split_adjusted_eps:.2f} (adjustment: {adj.adjustment_factor:.2f}x)"
         )
 
     print()

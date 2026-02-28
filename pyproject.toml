@@ -215,6 +215,37 @@ ensure_newline_before_comments = true
 skip_gitignore = true
 skip = [".venv", "build", "dist", "data", "artifacts"]
 
+[tool.ruff]
+# Same line length as Black
+line-length = 120
+
+# Target Python versions
+target-version = "py311"
+
+# Exclude directories matching Black's extend-exclude
+extend-exclude = [
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".tox",
+    ".venv",
+    "build",
+    "dist",
+    "data",
+    "artifacts",
+]
+
+[tool.ruff.format]
+# Use double quotes (Black default)
+quote-style = "double"
+
+# Use spaces for indentation (Black default)
+indent-style = "space"
+
+# Preserve magic trailing commas (Black style)
+skip-magic-trailing-comma = false
+
 [tool.mypy]
 python_version = "3.11"
 warn_return_any = true

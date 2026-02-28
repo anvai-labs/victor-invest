@@ -1614,8 +1614,7 @@ class CacheManager:
         ]
 
         logger.info(
-            f"{'[DRY RUN] ' if dry_run else ''}Checking SEC invalidation for {symbol} "
-            f"(new filing: {new_filing_date})"
+            f"{'[DRY RUN] ' if dry_run else ''}Checking SEC invalidation for {symbol} (new filing: {new_filing_date})"
         )
 
         for cache_type in sec_sensitive_types:
@@ -1752,8 +1751,7 @@ class CacheManager:
         }
 
         logger.info(
-            f"{'[DRY RUN] ' if dry_run else ''}Scanning for corrupted cache entries"
-            f"{f' for {symbol}' if symbol else ''}"
+            f"{'[DRY RUN] ' if dry_run else ''}Scanning for corrupted cache entries{f' for {symbol}' if symbol else ''}"
         )
 
         for cache_type, handlers in self.handlers.items():
@@ -1817,7 +1815,7 @@ class CacheManager:
                             if not dry_run:
                                 try:
                                     handler.delete(entry_key)
-                                    logger.info(f"Purged corrupted entry [{handler_name}] " f"{type_name}: {entry_key}")
+                                    logger.info(f"Purged corrupted entry [{handler_name}] {type_name}: {entry_key}")
                                 except Exception as del_err:
                                     result["errors"].append(f"Failed to purge {entry_key}: {del_err}")
 

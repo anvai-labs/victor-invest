@@ -292,9 +292,7 @@ def extract_insurance_metrics_from_xbrl(symbol: str, xbrl_data: Dict, database_u
                         value = sorted_data[0].get("val")
                         if value is not None:
                             metrics[metric_name] = float(value)
-                            logger.debug(
-                                f"{symbol} - Extracted {metric_name} from {alias}: " f"${float(value) / 1e9:.2f}B"
-                            )
+                            logger.debug(f"{symbol} - Extracted {metric_name} from {alias}: ${float(value) / 1e9:.2f}B")
                             break  # Found value, move to next metric
 
     # Log extraction summary

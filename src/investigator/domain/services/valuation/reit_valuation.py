@@ -361,8 +361,7 @@ def detect_reit_property_type(
         for keyword, prop_type in industry_mappings.items():
             if keyword in industry_lower:
                 logger.info(
-                    f"{symbol} - REIT property type detected via industry: "
-                    f"{prop_type.value} (industry: '{industry}')"
+                    f"{symbol} - REIT property type detected via industry: {prop_type.value} (industry: '{industry}')"
                 )
                 return REITPropertyTypeResult(
                     property_type=prop_type,

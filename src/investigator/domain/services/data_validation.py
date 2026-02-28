@@ -467,7 +467,7 @@ class DataValidator:
                         ValidationIssue(
                             field="eps",
                             severity=ValidationSeverity.WARNING,
-                            message=(f"EPS ({eps:.2f}) inconsistent with " f"calculated ({calculated_eps:.2f})"),
+                            message=(f"EPS ({eps:.2f}) inconsistent with calculated ({calculated_eps:.2f})"),
                             suggestion="Check if using diluted shares",
                         )
                     )

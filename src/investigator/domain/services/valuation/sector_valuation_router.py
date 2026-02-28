@@ -163,7 +163,7 @@ class SectorValuationRouter:
                 self.VALUATION_METHODS.get((sector, None), self.VALUATION_METHODS[("default", None)]),
             )
 
-        self.logger.info(f"{symbol} - Routing to {valuation_type} valuation " f"(sector={sector}, industry={industry})")
+        self.logger.info(f"{symbol} - Routing to {valuation_type} valuation (sector={sector}, industry={industry})")
 
         # Route to appropriate method
         if valuation_type == "insurance":
@@ -836,7 +836,7 @@ class SectorValuationRouter:
                 return eps * target_pe
             else:
                 self.logger.warning(
-                    f"{symbol} - Insufficient data for defense base valuation, " "using current price as base"
+                    f"{symbol} - Insufficient data for defense base valuation, using current price as base"
                 )
                 return current_price
 
@@ -1115,7 +1115,7 @@ class SectorValuationRouter:
 
             if success:
                 self.logger.info(
-                    f"{symbol} - Cached industry metrics " f"(quality={metrics.quality.value}, ttl={ttl_days}d)"
+                    f"{symbol} - Cached industry metrics (quality={metrics.quality.value}, ttl={ttl_days}d)"
                 )
 
         except Exception as e:
@@ -1152,9 +1152,7 @@ class SectorValuationRouter:
                 # Compute and cache industry benchmarks
                 benchmarks = cache.compute_and_cache_industry_benchmarks(industry)
                 if benchmarks:
-                    self.logger.info(
-                        f"Updated industry benchmarks for {industry} " f"({benchmarks.symbol_count} symbols)"
-                    )
+                    self.logger.info(f"Updated industry benchmarks for {industry} ({benchmarks.symbol_count} symbols)")
 
         except Exception as e:
             self.logger.debug(f"Failed to update industry benchmarks: {e}")

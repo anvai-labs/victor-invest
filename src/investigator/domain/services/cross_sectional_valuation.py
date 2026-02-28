@@ -275,7 +275,7 @@ class CrossSectionalValuation:
 
         if len(peer_multiples) < min_peers:
             logger.warning(
-                f"{symbol}: Insufficient peer data " f"({len(peer_multiples)} peers with data, min: {min_peers})"
+                f"{symbol}: Insufficient peer data ({len(peer_multiples)} peers with data, min: {min_peers})"
             )
             return None
 

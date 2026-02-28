@@ -90,7 +90,7 @@ class WeightNormalizer:
                 # If adjustment makes largest weight negative, redistribute
                 if new_value < 0:
                     logger.warning(
-                        f"Adjustment would make {max_model} negative ({new_value}%), " f"redistributing difference"
+                        f"Adjustment would make {max_model} negative ({new_value}%), redistributing difference"
                     )
                     # Reset and try equal distribution
                     num_models = len(rounded)
@@ -113,7 +113,7 @@ class WeightNormalizer:
         # Final validation
         final_sum = sum(final.values())
         if abs(final_sum - 100) > 0.01:  # Allow tiny floating point errors
-            logger.warning(f"Final weights sum to {final_sum}% (not exactly 100%), " f"this may cause issues")
+            logger.warning(f"Final weights sum to {final_sum}% (not exactly 100%), this may cause issues")
 
         return final
 

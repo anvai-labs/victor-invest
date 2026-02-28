@@ -261,7 +261,8 @@ class MultiModelValuationOrchestrator:
             if model.get("fair_value_per_share") is not None
         }
         model_weights_for_agreement = {
-            model.get("model"): model.get("weight", 0.0) * 100 for model in applicable  # Convert to percentage
+            model.get("model"): model.get("weight", 0.0) * 100
+            for model in applicable  # Convert to percentage
         }
 
         agreement_result = self.agreement_scorer.analyze(

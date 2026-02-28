@@ -91,9 +91,7 @@ class SECDataStrategy:
             age_days = self._check_bulk_data_age(cik)
 
             if age_days is not None and age_days < 90:
-                logger.info(
-                    f"Using bulk-loaded data for {symbol}: {fy}-{fp} " f"({age_days:.0f} days old, ADSH: {adsh})"
-                )
+                logger.info(f"Using bulk-loaded data for {symbol}: {fy}-{fp} ({age_days:.0f} days old, ADSH: {adsh})")
                 return (fy, fp, adsh)
             else:
                 symbol_key = (symbol or "").upper()
@@ -110,7 +108,7 @@ class SECDataStrategy:
                     )
 
         # TIER 2: Fallback to CompanyFacts API
-        logger.info(f"Bulk data unavailable or stale for {symbol}. " f"Using CompanyFacts API fallback.")
+        logger.info(f"Bulk data unavailable or stale for {symbol}. Using CompanyFacts API fallback.")
 
         # Note: CompanyFacts API extraction handled by caller
         # Return None to signal caller to use API
@@ -241,8 +239,7 @@ class SECDataStrategy:
                 use_bulk_quarters = bulk_quarters[:8]  # Take up to 8
 
                 logger.info(
-                    f"Using {len(use_bulk_quarters)} quarters from bulk tables for {symbol} "
-                    f"(age: {bulk_age:.0f} days)"
+                    f"Using {len(use_bulk_quarters)} quarters from bulk tables for {symbol} (age: {bulk_age:.0f} days)"
                 )
             else:
                 # Bulk data moderately stale - use tiered strategy

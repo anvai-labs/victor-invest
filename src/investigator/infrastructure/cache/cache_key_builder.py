@@ -258,9 +258,7 @@ class CacheKeyBuilder:
         for field in required:
             if field not in key or key[field] is None:
                 error_msg = (
-                    f"Cache key missing required field '{field}' "
-                    f"for cache type {cache_type.value}. "
-                    f"Key provided: {key}"
+                    f"Cache key missing required field '{field}' for cache type {cache_type.value}. Key provided: {key}"
                 )
 
                 if strict:

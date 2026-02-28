@@ -455,8 +455,7 @@ class SectorMultiplesTool:
 
         if not trend_data:
             return ToolResult.create_failure(
-                f"No trend data found for {group_type}: {group_name}. "
-                "Run historical action first to populate database."
+                f"No trend data found for {group_type}: {group_name}. Run historical action first to populate database."
             )
 
         # Format results

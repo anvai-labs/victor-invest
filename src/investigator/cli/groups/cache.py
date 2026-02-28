@@ -315,7 +315,7 @@ def warm(ctx, symbols, symbols_file, parallel, process_raw, force_refresh):
                         force_refresh=force_refresh,
                     )
                     results.append((symbol, True, ""))
-                    click.echo(f"  Cached: {symbol}" f"{' (processed)' if process_raw else ' (raw-only)'}")
+                    click.echo(f"  Cached: {symbol}{' (processed)' if process_raw else ' (raw-only)'}")
                 except Exception as e:
                     results.append((symbol, False, str(e)))
                     click.echo(f"  Failed: {symbol} - {e}")

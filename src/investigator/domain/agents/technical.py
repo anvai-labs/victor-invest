@@ -308,7 +308,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
             fallback = Path("data") / "technical_cache" / symbol.upper() / f"technical_data_{symbol.upper()}.csv"
             if fallback.exists():
                 self.logger.warning(
-                    "Primary market data fetch returned no rows for %s; " "loading fallback dataset %s",
+                    "Primary market data fetch returned no rows for %s; loading fallback dataset %s",
                     symbol,
                     fallback,
                 )

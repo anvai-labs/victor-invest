@@ -337,7 +337,7 @@ class SECDataProcessor:
             # Only correct if different
             if expected_period_end != current_period_end:
                 logger.debug(
-                    f"{symbol} FY{fy} {fp}: Correcting period_end_date " f"{current_period_end} → {expected_period_end}"
+                    f"{symbol} FY{fy} {fp}: Correcting period_end_date {current_period_end} → {expected_period_end}"
                 )
                 filing["period_end_date"] = expected_period_end
                 corrections_made += 1
@@ -389,7 +389,7 @@ class SECDataProcessor:
         # LEAP YEAR HANDLING: Adjust Feb 29 to Feb 28 for non-leap years
         if month == 2 and day == 29:
             if not isleap(fiscal_year):
-                logger.warning(f"[Fiscal Year Start] Adjusted Feb 29 to Feb 28 for " f"non-leap year {fiscal_year}")
+                logger.warning(f"[Fiscal Year Start] Adjusted Feb 29 to Feb 28 for non-leap year {fiscal_year}")
                 day = 28
 
         try:
@@ -397,7 +397,7 @@ class SECDataProcessor:
             fy_end = date(fiscal_year, month, day)
         except ValueError as e:
             logger.error(
-                f"[Fiscal Year Start] Invalid date for FY {fiscal_year} " f"with fiscal_year_end={fiscal_year_end}: {e}"
+                f"[Fiscal Year Start] Invalid date for FY {fiscal_year} with fiscal_year_end={fiscal_year_end}: {e}"
             )
             # Fallback: Use Jan 1 of fiscal year
             return date(fiscal_year, 1, 1).strftime("%Y-%m-%d")
@@ -455,9 +455,7 @@ class SECDataProcessor:
         elif duration_days >= 120 and fp in ["Q2", "Q3"]:
             # Fallback: Use duration if fiscal_year_start not available
             is_ytd = True
-            logger.debug(
-                f"[SCORE] {symbol} {fp} {end_date}: YTD detected by duration " f"({duration_days} days >= 120)"
-            )
+            logger.debug(f"[SCORE] {symbol} {fp} {end_date}: YTD detected by duration ({duration_days} days >= 120)")
 
         # Scoring
         if not is_ytd:
@@ -1190,7 +1188,7 @@ class SECDataProcessor:
 
             # Log orchestrator failure for debugging
             logger.debug(
-                f"[Orchestrator] Failed to extract {canonical_key} for period_end={period_end}: " f"{result.error}"
+                f"[Orchestrator] Failed to extract {canonical_key} for period_end={period_end}: {result.error}"
             )
 
             # Targeted fallback: derive OCI when direct other_comprehensive_income tags are missing.
@@ -1988,7 +1986,7 @@ class SECDataProcessor:
         if not (needs_income_normalization or needs_cashflow_normalization):
             # No normalization needed - data is already point-in-time
             logger.info(
-                f"[YTD_NORM_DEBUG] {symbol} {fiscal_year}-{fiscal_period}: " f"NO normalization needed (already PIT)"
+                f"[YTD_NORM_DEBUG] {symbol} {fiscal_year}-{fiscal_period}: NO normalization needed (already PIT)"
             )
             return normalized, income_normalized, cashflow_normalized
 
@@ -2002,7 +2000,7 @@ class SECDataProcessor:
         )
         for idx, f in enumerate(all_filings[:10]):  # Show first 10 for debugging
             logger.debug(
-                f"[YTD_NORM_DEBUG]   Filing[{idx}]: " f"{f.get('fiscal_year', 'N/A')}-{f.get('fiscal_period', 'N/A')}"
+                f"[YTD_NORM_DEBUG]   Filing[{idx}]: {f.get('fiscal_year', 'N/A')}-{f.get('fiscal_period', 'N/A')}"
             )
 
         prev_filing = next(

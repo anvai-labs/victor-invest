@@ -188,7 +188,7 @@ class MacroIndicatorsFetcher:
             }
         """
         if not self._api_key:
-            self.logger.warning("FRED_API_KEY not configured. " "Set via: victor keys --set-service fred --keyring")
+            self.logger.warning("FRED_API_KEY not configured. Set via: victor keys --set-service fred --keyring")
             return {}
 
         result: Dict[str, Any] = {

@@ -313,7 +313,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 return await self._run_ev_ebitda(symbol, quarterly_metrics, current_price)
             else:
                 return ToolResult.create_failure(
-                    f"Unknown model: {model}. Valid models: " "dcf, ggm, pe, ps, pb, ev_ebitda, sector_routed, all"
+                    f"Unknown model: {model}. Valid models: dcf, ggm, pe, ps, pb, ev_ebitda, sector_routed, all"
                 )
 
         except Exception as e:
@@ -1185,9 +1185,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                                         break
                         return total
 
-                    financials["net_income"] = extract_ttm_metric(
-                        ["net_income", "net_income_loss"]
-                    )  # type: ignore[assignment]
+                    financials["net_income"] = extract_ttm_metric(["net_income", "net_income_loss"])  # type: ignore[assignment]
                     financials["revenue"] = extract_ttm_metric(["total_revenue", "revenue"])  # type: ignore[assignment]
 
                     # Use latest quarter's shareholders_equity

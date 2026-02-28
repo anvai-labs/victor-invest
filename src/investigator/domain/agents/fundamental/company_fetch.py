@@ -104,7 +104,7 @@ def fetch_latest_company_data_from_processed_table(
             )
 
         logger.info(
-            "[CLEAN ARCH] Fetched company data for %s from processed table: " "%s-%s (filed: %s) | Revenue: $%s",
+            "[CLEAN ARCH] Fetched company data for %s from processed table: %s-%s (filed: %s) | Revenue: $%s",
             symbol,
             fiscal_year,
             fiscal_period,

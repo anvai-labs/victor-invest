@@ -212,7 +212,7 @@ class SectorMultiplesRefresh:
 
         if len(metrics_data) < self.min_samples:
             logger.warning(
-                f"{group_name}: Insufficient data ({len(metrics_data)} symbols, " f"min required: {self.min_samples})"
+                f"{group_name}: Insufficient data ({len(metrics_data)} symbols, min required: {self.min_samples})"
             )
             return None
 

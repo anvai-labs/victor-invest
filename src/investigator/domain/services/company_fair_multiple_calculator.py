@@ -170,7 +170,7 @@ class CompanyFairMultipleCalculator:
         )
 
         if not premium_data:
-            logger.warning(f"{symbol}: Insufficient historical premium data " f"(need {self.min_data_points} points)")
+            logger.warning(f"{symbol}: Insufficient historical premium data (need {self.min_data_points} points)")
             return None
 
         # Extract premium data
@@ -342,13 +342,15 @@ class CompanyFairMultipleCalculator:
                 return None
 
             # Get latest data
-            query = text("""
+            query = text(
+                """
                 SELECT market_cap, {denominator}
                 FROM sec_companyfacts_processed
                 WHERE UPPER(symbol) = UPPER(:symbol)
                 ORDER BY fiscal_year DESC, fiscal_period DESC
                 LIMIT 1
-            """.format(denominator=metric_column_map[metric]))
+            """.format(denominator=metric_column_map[metric])
+            )
 
             result = conn.execute(query, {"symbol": symbol})
             row = result.fetchone()

@@ -190,7 +190,7 @@ Investment Signals:
 
             else:
                 return ToolResult.create_failure(
-                    f"Unknown action: {action}. Valid actions: " "holdings, top_holders, changes, institution, search"
+                    f"Unknown action: {action}. Valid actions: holdings, top_holders, changes, institution, search"
                 )
 
         except Exception as e:
@@ -564,7 +564,7 @@ Investment Signals:
             interpretation = f"Stable institutional ownership (avg {avg_change:+.1f}% per quarter)"
         else:
             direction = "mixed"
-            interpretation = f"Mixed institutional activity " f"({up_quarters} up, {down_quarters} down quarters)"
+            interpretation = f"Mixed institutional activity ({up_quarters} up, {down_quarters} down quarters)"
 
         # Total change over period
         first_shares = changes[0].get("total_shares", 0)

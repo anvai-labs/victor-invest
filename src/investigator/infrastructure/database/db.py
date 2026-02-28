@@ -668,13 +668,15 @@ class AllSubmissionStoreDAO:
         try:
             with self.db.get_session() as session:
                 result = session.execute(
-                    text("""
+                    text(
+                        """
                         SELECT submissions_data, company_name, fetched_at, updated_at, cik
                         FROM sec_submissions
                         WHERE symbol = :symbol
                         AND updated_at > NOW() - INTERVAL ':max_age days'
                         LIMIT 1
-                    """.replace(":max_age", str(max_age_days))),
+                    """.replace(":max_age", str(max_age_days))
+                    ),
                     {"symbol": symbol},
                 ).fetchone()
 
@@ -697,10 +699,14 @@ class AllSubmissionStoreDAO:
         """Delete submissions older than specified days"""
         try:
             with self.db.get_session() as session:
-                result = session.execute(text("""
+                result = session.execute(
+                    text(
+                        """
                         DELETE FROM sec_submissions
                         WHERE updated_at < NOW() - INTERVAL ':days days'
-                    """.replace(":days", str(days_to_keep))))
+                    """.replace(":days", str(days_to_keep))
+                    )
+                )
                 session.commit()
                 deleted_count = result.rowcount
                 logger.info(f"Deleted {deleted_count} old submission records")
@@ -791,7 +797,8 @@ class QuarterlyMetricsDAO:
                 if fiscal_year and fiscal_period:
                     # Get specific quarter
                     result = session.execute(
-                        text("""
+                        text(
+                            """
                             SELECT symbol, fiscal_year, fiscal_period, cik, form_type,
                                    metrics_data, company_name, calculated_at, updated_at
                             FROM quarterly_metrics
@@ -800,7 +807,8 @@ class QuarterlyMetricsDAO:
                             AND fiscal_period = :fiscal_period
                             AND updated_at > NOW() - INTERVAL ':max_age days'
                             LIMIT 1
-                        """.replace(":max_age", str(max_age_days))),
+                        """.replace(":max_age", str(max_age_days))
+                        ),
                         {
                             "symbol": symbol,
                             "fiscal_year": fiscal_year,
@@ -823,7 +831,8 @@ class QuarterlyMetricsDAO:
                 else:
                     # Get latest metrics for symbol
                     result = session.execute(
-                        text("""
+                        text(
+                            """
                             SELECT symbol, fiscal_year, fiscal_period, cik, form_type,
                                    metrics_data, company_name, calculated_at, updated_at
                             FROM quarterly_metrics
@@ -839,7 +848,8 @@ class QuarterlyMetricsDAO:
                                          ELSE 0
                                      END DESC
                             LIMIT 1
-                        """.replace(":max_age", str(max_age_days))),
+                        """.replace(":max_age", str(max_age_days))
+                        ),
                         {"symbol": symbol},
                     ).fetchone()
 

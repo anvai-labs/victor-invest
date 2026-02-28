@@ -775,7 +775,7 @@ class DataSourceFacade:
 
             # Build connection URL for stock database where macro indicators are stored
             stock_db_url = (
-                f"postgresql://{db_config.username}:{db_config.password}" f"@{db_config.host}:{db_config.port}/stock"
+                f"postgresql://{db_config.username}:{db_config.password}@{db_config.host}:{db_config.port}/stock"
             )
 
             engine = create_engine(stock_db_url)

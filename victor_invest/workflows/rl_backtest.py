@@ -480,7 +480,7 @@ async def finalize_backtest(state_input) -> dict:
     }
 
     state.mark_step_completed("finalize_backtest")
-    logger.info(f"Backtest complete for {state.symbol}: " f"{successful} recorded, {failed} failed, {skipped} skipped")
+    logger.info(f"Backtest complete for {state.symbol}: {successful} recorded, {failed} failed, {skipped} skipped")
 
     return _state_to_dict(state)
 

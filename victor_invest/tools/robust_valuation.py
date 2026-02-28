@@ -166,9 +166,7 @@ class RobustValuationTool:
             "calculated_at": result.calculated_at,
         }
 
-        logger.info(
-            f"Robust valuation complete for {symbol}: {result.recommendation} " f"({result.confidence} confidence)"
-        )
+        logger.info(f"Robust valuation complete for {symbol}: {result.recommendation} ({result.confidence} confidence)")
 
         return ToolResult.create_success(result_data)
 

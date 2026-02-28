@@ -1243,8 +1243,7 @@ class OutcomeTracker:
                 logger.warning(f"Failed to parse experience {record['id']}: {e}")
 
         logger.info(
-            f"Loaded {len(experiences)} experiences for {horizon} horizon "
-            f"(limit={limit}, exclude_used={exclude_used})"
+            f"Loaded {len(experiences)} experiences for {horizon} horizon (limit={limit}, exclude_used={exclude_used})"
         )
         return experiences
 

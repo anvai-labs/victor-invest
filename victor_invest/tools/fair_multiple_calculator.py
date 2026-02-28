@@ -167,7 +167,7 @@ class FairMultipleCalculatorTool:
 
             if fair_result is None:
                 return ToolResult.create_failure(
-                    f"Could not calculate fair {metric.upper()} multiple for {symbol} " f"(insufficient data)"
+                    f"Could not calculate fair {metric.upper()} multiple for {symbol} (insufficient data)"
                 )
 
             result_data = {
@@ -192,8 +192,7 @@ class FairMultipleCalculatorTool:
             }
 
         logger.info(
-            f"Fair multiple calculation complete for {symbol}: "
-            f"{len(result_data.get('multiples', {})) or 1} metric(s)"
+            f"Fair multiple calculation complete for {symbol}: {len(result_data.get('multiples', {})) or 1} metric(s)"
         )
 
         return ToolResult.create_success(result_data)

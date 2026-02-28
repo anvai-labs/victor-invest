@@ -499,7 +499,7 @@ class ParquetIndustryMetricsBackend(IndustryMetricsStorageBackend):
 
             self._update_industry_index(entry, file_path)
 
-            logger.info(f"Cached industry benchmarks for {entry.industry} " f"({entry.symbol_count} symbols)")
+            logger.info(f"Cached industry benchmarks for {entry.industry} ({entry.symbol_count} symbols)")
             return True
 
         except Exception as e:

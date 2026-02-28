@@ -231,7 +231,7 @@ class RobustValuationService:
             **synthesis,
         )
 
-        logger.info(f"{symbol} Robust Valuation: {result.recommendation} " f"({result.confidence} confidence)")
+        logger.info(f"{symbol} Robust Valuation: {result.recommendation} ({result.confidence} confidence)")
 
         return result
 

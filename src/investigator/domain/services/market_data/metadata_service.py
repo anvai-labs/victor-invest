@@ -283,25 +283,29 @@ class SymbolMetadataService:
     def get_russell1000_symbols(self) -> List[str]:
         """Get Russell 1000 symbols."""
         with self.stock_engine.connect() as conn:
-            result = conn.execute(text("""
+            result = conn.execute(
+                text("""
                     SELECT ticker
                     FROM symbol
                     WHERE russell1000 = TRUE
                       AND islisted = TRUE
                       AND isstock = TRUE
                     ORDER BY mktcap DESC NULLS LAST
-                """)).fetchall()
+                """)
+            ).fetchall()
             return [row[0] for row in result]
 
     def get_sp500_symbols(self) -> List[str]:
         """Get S&P 500 symbols."""
         with self.stock_engine.connect() as conn:
-            result = conn.execute(text("""
+            result = conn.execute(
+                text("""
                     SELECT ticker
                     FROM symbol
                     WHERE sp500 = TRUE
                       AND islisted = TRUE
                       AND isstock = TRUE
                     ORDER BY mktcap DESC NULLS LAST
-                """)).fetchall()
+                """)
+            ).fetchall()
             return [row[0] for row in result]

@@ -819,7 +819,7 @@ TEXT:
 
         us_gaap_tag_count = len(api_data["facts"]["us-gaap"])
         self.logger.info(
-            f"[SEC Agent] ✅ Fetched raw CompanyFacts from SEC API: " f"{symbol} has {us_gaap_tag_count} us-gaap tags"
+            f"[SEC Agent] ✅ Fetched raw CompanyFacts from SEC API: {symbol} has {us_gaap_tag_count} us-gaap tags"
         )
 
         # Step 3: Save to sec_companyfacts_raw (with hash-based deduplication)

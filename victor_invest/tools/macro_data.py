@@ -472,7 +472,7 @@ Example indicators: DGS10 (10Y Treasury), FEDFUNDS (Fed Funds Rate), VIXCLS (VIX
 
             if not buffett:
                 return ToolResult.create_failure(
-                    "Failed to calculate Buffett Indicator. " "Missing VTI price or GDP data."
+                    "Failed to calculate Buffett Indicator. Missing VTI price or GDP data."
                 )
 
             # Interpretation guide

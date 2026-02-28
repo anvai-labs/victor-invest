@@ -122,7 +122,7 @@ class ExperienceCollector:
             filtered.append(exp)
 
         logger.info(
-            f"Collected {len(filtered)} experiences " f"(filtered from {len(experiences)}, min_days={min_days_ago})"
+            f"Collected {len(filtered)} experiences (filtered from {len(experiences)}, min_days={min_days_ago})"
         )
 
         return filtered
@@ -157,7 +157,7 @@ class ExperienceCollector:
         # Filter sectors with too few experiences
         result = {sector: exps for sector, exps in by_sector.items() if len(exps) >= min_per_sector}
 
-        logger.info(f"Collected experiences for {len(result)} sectors " f"(min {min_per_sector} per sector)")
+        logger.info(f"Collected experiences for {len(result)} sectors (min {min_per_sector} per sector)")
 
         return result
 
@@ -231,7 +231,7 @@ class ExperienceCollector:
         val = [experiences[i] for i in val_indices]
         test = [experiences[i] for i in test_indices]
 
-        logger.info(f"Split {n} experiences: train={len(train)}, " f"val={len(val)}, test={len(test)}")
+        logger.info(f"Split {n} experiences: train={len(train)}, val={len(val)}, test={len(test)}")
 
         return train, val, test
 
@@ -292,7 +292,7 @@ class ExperienceCollector:
         np.random.shuffle(val)
         np.random.shuffle(test)
 
-        logger.info(f"Stratified split by {stratify_by}: train={len(train)}, " f"val={len(val)}, test={len(test)}")
+        logger.info(f"Stratified split by {stratify_by}: train={len(train)}, val={len(val)}, test={len(test)}")
 
         return train, val, test
 

@@ -486,7 +486,7 @@ class SectorMultiplesHistory:
                                 f"between period_end and price_anchor_date"
                             )
                             for split in splits:
-                                logger.info(f"  Split on {split['split_date']}: " f"{split['split_ratio']}-for-1 ratio")
+                                logger.info(f"  Split on {split['split_date']}: {split['split_ratio']}-for-1 ratio")
                             # Store split info for context (don't skip, just log)
                             metrics["splits_in_window"] = len(splits)
 

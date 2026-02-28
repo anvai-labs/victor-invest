@@ -164,7 +164,7 @@ and investment recommendations based on current market regime.
                 return await self._get_summary()
             else:
                 return ToolResult.create_failure(
-                    f"Unknown action: {action}. Valid actions: " "curve, spread, regime, recession, history, summary"
+                    f"Unknown action: {action}. Valid actions: curve, spread, regime, recession, history, summary"
                 )
 
         except Exception as e:

@@ -187,7 +187,7 @@ class FiscalPeriodNormalizer:
             quarterly_values["Q2"] = ytd_q2 - ytd_q1
             if quarterly_values["Q2"] < 0:
                 warnings.append(
-                    f"Negative Q2 value: {quarterly_values['Q2']:.2f} " f"(YTD_Q2={ytd_q2:.2f} - YTD_Q1={ytd_q1:.2f})"
+                    f"Negative Q2 value: {quarterly_values['Q2']:.2f} (YTD_Q2={ytd_q2:.2f} - YTD_Q1={ytd_q1:.2f})"
                 )
         else:
             quarterly_values["Q2"] = None
@@ -198,7 +198,7 @@ class FiscalPeriodNormalizer:
             quarterly_values["Q3"] = ytd_q3 - ytd_q2
             if quarterly_values["Q3"] < 0:
                 warnings.append(
-                    f"Negative Q3 value: {quarterly_values['Q3']:.2f} " f"(YTD_Q3={ytd_q3:.2f} - YTD_Q2={ytd_q2:.2f})"
+                    f"Negative Q3 value: {quarterly_values['Q3']:.2f} (YTD_Q3={ytd_q3:.2f} - YTD_Q2={ytd_q2:.2f})"
                 )
         else:
             quarterly_values["Q3"] = None
@@ -243,12 +243,11 @@ class FiscalPeriodNormalizer:
         # Determine conversion method description
         if fy_value is not None:
             conversion_method = (
-                "YTD-to-Quarterly with Annual-based Q4: "
-                "Q1=YTD_Q1, Q2=YTD_Q2-YTD_Q1, Q3=YTD_Q3-YTD_Q2, Q4=Annual-YTD_Q3"
+                "YTD-to-Quarterly with Annual-based Q4: Q1=YTD_Q1, Q2=YTD_Q2-YTD_Q1, Q3=YTD_Q3-YTD_Q2, Q4=Annual-YTD_Q3"
             )
         else:
             conversion_method = (
-                "YTD-to-Quarterly (incomplete): " "Q1=YTD_Q1, Q2=YTD_Q2-YTD_Q1, Q3=YTD_Q3-YTD_Q2, Q4=unavailable"
+                "YTD-to-Quarterly (incomplete): Q1=YTD_Q1, Q2=YTD_Q2-YTD_Q1, Q3=YTD_Q3-YTD_Q2, Q4=unavailable"
             )
 
         # Log warnings
@@ -360,7 +359,7 @@ class FiscalPeriodNormalizer:
 
         # Strategy 4: Default to calendar year
         default = (12, 31)
-        self.logger.info(f"Using default calendar year end for {symbol}: " f"month={default[0]}, day={default[1]}")
+        self.logger.info(f"Using default calendar year end for {symbol}: month={default[0]}, day={default[1]}")
         self._fiscal_year_end_cache[symbol] = default
         return default
 
@@ -570,8 +569,7 @@ class FiscalPeriodNormalizer:
         if validate and q4_value < 0:
             first_three_quarters = q1_value + q2_value + q3_value
             warning = (
-                f"Negative Q4 value: {q4_value:.2f} "
-                f"(Annual={annual_value:.2f}, Q1+Q2+Q3={first_three_quarters:.2f})"
+                f"Negative Q4 value: {q4_value:.2f} (Annual={annual_value:.2f}, Q1+Q2+Q3={first_three_quarters:.2f})"
             )
             self.logger.warning(warning)
 

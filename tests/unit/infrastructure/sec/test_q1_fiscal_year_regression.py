@@ -156,9 +156,9 @@ class TestQ1FiscalYearCompanyFactsPathRegression:
                     actual_fiscal_year += 1
 
             # Verify fiscal_year NOT changed (not Q1)
-            assert (
-                actual_fiscal_year == original_fy
-            ), f"{actual_fp} ending {period_end_str} should keep fiscal_year {original_fy}"
+            assert actual_fiscal_year == original_fy, (
+                f"{actual_fp} ending {period_end_str} should keep fiscal_year {original_fy}"
+            )
 
 
 class TestQ1FiscalYearBulkTablePathRegression:
@@ -420,9 +420,9 @@ class TestQ1FiscalYearImpactOnYTDGrouping:
 
         # Verify all 3 quarters in same fiscal_year group
         assert 2024 in fiscal_year_groups, "Should have FY 2024 group"
-        assert (
-            len(fiscal_year_groups[2024]) == 3
-        ), "All 3 quarters should be in FY 2024 group (Q1 fix prevents collision)"
+        assert len(fiscal_year_groups[2024]) == 3, (
+            "All 3 quarters should be in FY 2024 group (Q1 fix prevents collision)"
+        )
 
         # Verify no Q1-2023 mislabeling
         fy_2023_quarters = fiscal_year_groups.get(2023, [])

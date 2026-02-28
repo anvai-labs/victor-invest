@@ -184,7 +184,7 @@ Investment Signals:
 
             else:
                 return ToolResult.create_failure(
-                    f"Unknown action: {action}. Valid actions: " "current, history, volume, squeeze, most_shorted"
+                    f"Unknown action: {action}. Valid actions: current, history, volume, squeeze, most_shorted"
                 )
 
         except Exception as e:
@@ -458,19 +458,16 @@ Investment Signals:
             )
         elif "elevated" in signal["level"]:
             signal["interpretation"] = (
-                "Elevated short interest warrants monitoring. "
-                "Could indicate informed bearish view or squeeze buildup."
+                "Elevated short interest warrants monitoring. Could indicate informed bearish view or squeeze buildup."
             )
         elif signal["level"] == "covering":
-            signal["interpretation"] = (
-                "Active short covering in progress. " "Could support near-term price appreciation."
-            )
+            signal["interpretation"] = "Active short covering in progress. Could support near-term price appreciation."
         elif signal["level"] == "increasing_short":
             signal["interpretation"] = (
-                "Short interest increasing rapidly. " "Bears are building positions - watch for fundamental concerns."
+                "Short interest increasing rapidly. Bears are building positions - watch for fundamental concerns."
             )
         else:
-            signal["interpretation"] = "Normal short interest levels. " "No significant short-driven dynamics expected."
+            signal["interpretation"] = "Normal short interest levels. No significant short-driven dynamics expected."
 
         return signal
 
@@ -518,8 +515,7 @@ Investment Signals:
         elif avg_change > 5:
             direction = "increasing"
             interpretation = (
-                f"Short interest steadily increasing ({avg_change:+.1f}% avg per period). "
-                f"Growing bearish sentiment."
+                f"Short interest steadily increasing ({avg_change:+.1f}% avg per period). Growing bearish sentiment."
             )
         elif avg_change < -10 and decreases > increases:
             direction = "rapidly_decreasing"
@@ -530,7 +526,7 @@ Investment Signals:
         elif avg_change < -5:
             direction = "decreasing"
             interpretation = (
-                f"Short interest steadily decreasing ({avg_change:+.1f}% avg per period). " f"Bears reducing positions."
+                f"Short interest steadily decreasing ({avg_change:+.1f}% avg per period). Bears reducing positions."
             )
         else:
             direction = "stable"
