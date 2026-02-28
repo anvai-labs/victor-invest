@@ -1172,6 +1172,7 @@ pe_multiples:
     Construction/Ag Equipment/Trucks: 6.89
     Professional Services: 3.67
     Financials: 20.79
+    Credit Services: 20.79
   default: 20.0
 dcf_valuation:
   sector_override:

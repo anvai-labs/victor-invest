@@ -257,7 +257,7 @@ class SectorMultiplesRefresh:
             equity = metrics.get("stockholders_equity")
             if equity and equity > 0:
                 pb = mc / equity
-                if pb > 0 and pb < 50:  # Sanity check
+                if pb > 0:  # Only check for positive values - let data define the median
                     pb_multiples.append(pb)
 
         # Apply percentile filtering to remove outliers
@@ -280,31 +280,35 @@ class SectorMultiplesRefresh:
         }
 
     def _filtered_median(self, values: List[float], name: str) -> Optional[float]:
-        """Calculate median after excluding outliers by percentile.
+        """Calculate median - robust to outliers without filtering.
+
+        The median is inherently robust to outliers (unlike mean).
+        No need for percentile filtering since median naturally handles extreme values.
 
         Args:
             values: List of values
             name: Name for logging
 
         Returns:
-            Filtered median or None if insufficient data
+            Median value or None if insufficient data
         """
         if not values:
             return None
 
-        if len(values) < 3:
-            return float(sum(values) / len(values)) if values else None
-
         sorted_values = sorted(values)
-        low_idx = int(len(sorted_values) * self.percentile_exclude[0])
-        high_idx = int(len(sorted_values) * self.percentile_exclude[1])
-        filtered = sorted_values[low_idx:high_idx]
+        n = len(sorted_values)
 
-        if not filtered:
-            logger.warning(f"{name}: No values after outlier filtering")
-            return None
+        # Calculate median directly without filtering
+        if n % 2 == 0:
+            # Even number of values: average of two middle values
+            median = (sorted_values[n // 2 - 1] + sorted_values[n // 2]) / 2
+        else:
+            # Odd number of values: middle value
+            median = sorted_values[n // 2]
 
-        return float(sum(filtered) / len(filtered))
+        logger.debug(f"{name}: median={median:.2f} from {n} values (range: {sorted_values[0]:.2f} - {sorted_values[-1]:.2f})")
+
+        return float(median)
 
     def _get_ttm_metrics(self, symbols: List[str]) -> Dict[str, Dict[str, float]]:
         """Get TTM metrics from sec_companyfacts_processed.

@@ -3,9 +3,9 @@ import victor_invest.workflows as workflows
 
 def test_ensure_handlers_registered_is_idempotent(monkeypatch):
     import victor.framework.handler_registry as handler_registry_module
+    import victor.workflows.executor as executor_module
 
     import victor_invest.handlers as handlers_module
-    import victor.workflows.executor as executor_module
 
     calls = {"register_handlers": 0, "executor_register": []}
 

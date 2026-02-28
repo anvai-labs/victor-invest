@@ -315,29 +315,6 @@ class SectorMultiplesService:
     # Historical Median Methods (from sector_multiples_history table)
     # ============================================================================
 
-    # Minimum sample size thresholds for historical data reliability
-    MIN_SAMPLES_INDUSTRY = 5  # Industry-level need at least 5 companies
-    MIN_SAMPLES_SECTOR = 10  # Sector-level need at least 10 companies
-
-    def _is_sample_size_sufficient(self, sample_size: int, is_industry: bool) -> bool:
-        """Check if sample size is sufficient for reliable historical data.
-
-        Args:
-            sample_size: Number of companies in the sample
-            is_industry: True for industry-level, False for sector-level
-
-        Returns:
-            True if sample size is sufficient
-        """
-        min_required = self.MIN_SAMPLES_INDUSTRY if is_industry else self.MIN_SAMPLES_SECTOR
-        if sample_size < min_required:
-            logger.warning(
-                f"Sample size insufficient ({sample_size} < {min_required}) for "
-                f"{'industry' if is_industry else 'sector'}-level historical data"
-            )
-            return False
-        return True
-
     def _get_historical_multiple(
         self,
         metric: str,
@@ -352,9 +329,8 @@ class SectorMultiplesService:
         1. Industry-level historical multiple (if industry provided)
         2. Sector-level historical multiple
 
-        Sample size requirements:
-        - Industry-level: requires at least 5 companies
-        - Sector-level: requires at least 10 companies
+        Note: Uses data-driven approach without sample size filtering.
+        The median is inherently robust to outliers and small samples.
 
         Args:
             metric: 'pe', 'ps', 'pb', 'ev_ebitda'
@@ -364,9 +340,10 @@ class SectorMultiplesService:
             lookback_years: Years to look back if fiscal_year is None
 
         Returns:
-            Multiple value or None if not found or sample size insufficient
+            Multiple value or None if not found
         """
         from sqlalchemy import create_engine, text
+
         from investigator.config import get_config
 
         config = get_config()
@@ -380,10 +357,10 @@ class SectorMultiplesService:
         metric_column = f"{metric}_multiple"
 
         if industry:
-            # Query industry-level record with sample size
+            # Query industry-level record
             if fiscal_year:
                 query_str = f"""
-                    SELECT {metric_column}, sample_size FROM sector_multiples_history
+                    SELECT {metric_column} FROM sector_multiples_history
                     WHERE sector_name = :sector
                       AND industry_name = :industry
                       AND fiscal_year = :fiscal_year
@@ -392,7 +369,7 @@ class SectorMultiplesService:
             else:
                 # Get most recent year
                 query_str = f"""
-                    SELECT {metric_column}, sample_size FROM sector_multiples_history
+                    SELECT {metric_column} FROM sector_multiples_history
                     WHERE sector_name = :sector
                       AND industry_name = :industry
                     ORDER BY fiscal_year DESC LIMIT 1
@@ -400,10 +377,10 @@ class SectorMultiplesService:
                 params = {"sector": standard_sector, "industry": industry}
 
         else:
-            # Query sector-level record with sample size
+            # Query sector-level record (industry_name IS NULL)
             if fiscal_year:
                 query_str = f"""
-                    SELECT {metric_column}, sample_size FROM sector_multiples_history
+                    SELECT {metric_column} FROM sector_multiples_history
                     WHERE sector_name = :sector
                       AND industry_name IS NULL
                       AND fiscal_year = :fiscal_year
@@ -412,7 +389,7 @@ class SectorMultiplesService:
             else:
                 # Get most recent year
                 query_str = f"""
-                    SELECT {metric_column}, sample_size FROM sector_multiples_history
+                    SELECT {metric_column} FROM sector_multiples_history
                     WHERE sector_name = :sector
                       AND industry_name IS NULL
                     ORDER BY fiscal_year DESC LIMIT 1
@@ -425,21 +402,7 @@ class SectorMultiplesService:
 
             if result and result[0] is not None:
                 value = float(result[0])
-                sample_size = int(result[1]) if len(result) > 1 and result[1] is not None else 0
-
-                # Check sample size sufficiency
-                is_industry = industry is not None
-                if not self._is_sample_size_sufficient(sample_size, is_industry):
-                    logger.warning(
-                        f"Historical {metric} for {standard_sector}/{industry or 'sector'}: {value:.2f} "
-                        f"(sample_size={sample_size}) - REJECTED due to insufficient sample"
-                    )
-                    return None
-
-                logger.info(
-                    f"Historical {metric} for {standard_sector}/{industry or 'sector'}: {value:.2f} "
-                    f"(sample_size={sample_size})"
-                )
+                logger.info(f"Historical {metric} for {standard_sector}/{industry or 'sector'}: {value:.2f}")
                 return value
 
         except Exception as e:

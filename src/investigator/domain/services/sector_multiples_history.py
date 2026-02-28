@@ -285,29 +285,15 @@ class SectorMultiplesHistory:
 
             # P/B = Price / Book Value per Share
             # Book Value per Share = Shareholders Equity / Shares
-            # Skip asset-light companies where P/B is not meaningful
             equity = metrics.get("stockholders_equity")
             if equity and shares and shares > 0:
                 bvps = equity / shares
                 if bvps > 0:
                     pb = price / bvps
-
-                    # Detect asset-light companies (payment networks, platforms)
-                    # For these, book value is minimal, making P/B artificially high
-                    # Threshold: if bvps < 10% of price, it's asset-light (P/B would be > 10x)
-                    is_asset_light = bvps < (price * 0.10) if price > 0 else False
-
-                    if is_asset_light:
-                        # Skip P/B for asset-light companies - not meaningful
-                        logger.debug(
-                            f"{symbol}: Excluding from P/B calculation - asset-light model "
-                            f"(price=${price:.2f}, bvps=${bvps:.2f}, implied P/B={pb:.1f}x)"
-                        )
-                        skipped_pb_asset_light += 1
-                    elif pb > 0 and pb < 50:  # Sanity check
+                    if pb > 0:  # Only check for positive values - let data define median
                         pb_multiples.append(pb)
 
-        # Apply percentile filtering
+        # Apply robust median calculation (handles outliers automatically)
         pe_median = self._filtered_median(pe_multiples, f"{group_name}_PE")
         ps_median = self._filtered_median(ps_multiples, f"{group_name}_PS")
         pb_median = self._filtered_median(pb_multiples, f"{group_name}_PB")
@@ -755,23 +741,35 @@ class SectorMultiplesHistory:
             return [(row[0], row[1], row[2]) for row in result]
 
     def _filtered_median(self, values: List[float], name: str) -> Optional[float]:
-        """Calculate median after excluding outliers by percentile."""
+        """Calculate median - robust to outliers without filtering.
+
+        The median is inherently robust to outliers (unlike mean).
+        No need for percentile filtering since median naturally handles extreme values.
+
+        Args:
+            values: List of values
+            name: Name for logging
+
+        Returns:
+            Median value or None if insufficient data
+        """
         if not values:
             return None
 
-        if len(values) < 3:
-            return float(sum(values) / len(values)) if values else None
-
         sorted_values = sorted(values)
-        low_idx = int(len(sorted_values) * self.percentile_exclude[0])
-        high_idx = int(len(sorted_values) * self.percentile_exclude[1])
-        filtered = sorted_values[low_idx:high_idx]
+        n = len(sorted_values)
 
-        if not filtered:
-            logger.warning(f"{name}: No values after outlier filtering")
-            return None
+        # Calculate median directly without filtering
+        if n % 2 == 0:
+            # Even number of values: average of two middle values
+            median = (sorted_values[n // 2 - 1] + sorted_values[n // 2]) / 2
+        else:
+            # Odd number of values: middle value
+            median = sorted_values[n // 2]
 
-        return float(sum(filtered) / len(filtered))
+        logger.debug(f"{name}: median={median:.2f} from {n} values (range: {sorted_values[0]:.2f} - {sorted_values[-1]:.2f})")
+
+        return float(median)
 
     def _load_config_overrides(self) -> Dict[str, str]:
         """Load sector overrides from config.yaml."""
