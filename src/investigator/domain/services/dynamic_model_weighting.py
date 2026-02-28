@@ -651,6 +651,43 @@ class DynamicModelWeightingService:
         # Insurance and managed care companies should use P/BV valuation, not DCF or P/S
         # Note: Managed care (CNC, UNH, HUM, CI) are in Health Care sector, not Financials!
         if self._is_insurance_or_managed_care(sector, industry, symbol):
+            # Check for Property & Casualty insurance - P/B is primary valuation metric
+            # P&C insurers: ALL, TRV, HIG, PGR, CB, AIG, etc.
+            if self._is_property_casualty_insurance(industry, symbol):
+                # If stockholders_equity is missing, try to fetch from database
+                if stockholders_equity <= 0 and symbol:
+                    try:
+                        from investigator.domain.services.valuation.insurance_valuation import (
+                            _fetch_from_database,
+                        )
+
+                        db_equity, _, _ = _fetch_from_database(symbol, None)  # Will use config
+                        if db_equity:
+                            stockholders_equity = db_equity
+                            logger.info(
+                                f"{symbol} - P&C Insurance: Fetched stockholders_equity from database: ${stockholders_equity / 1e9:.2f}B"
+                            )
+                    except Exception as e:
+                        logger.warning(f"{symbol} - P&C Insurance: Could not fetch equity from database: {e}")
+
+                # Calculate ROE if we have the data
+                if net_income > 0 and stockholders_equity > 0:
+                    roe = (net_income / stockholders_equity) * 100
+                    logger.info(
+                        f"{symbol or 'UNKNOWN'} - P&C Insurance tier classification: ROE={roe:.1f}% (NI=${net_income / 1e9:.2f}B, Equity=${stockholders_equity / 1e9:.2f}B)"
+                    )
+                    if roe >= 12:
+                        return ("insurance", "insurance_property_casualty")
+                    elif roe >= 8:
+                        return ("insurance", "insurance_property_casualty")
+                    else:
+                        return ("insurance", "insurance_property_casualty")
+                else:
+                    # No ROE data, use P&C tier
+                    logger.warning(f"{symbol or 'UNKNOWN'} - P&C Insurance: Cannot calculate ROE, using P&C tier")
+                    return ("insurance", "insurance_property_casualty")
+
+            # For other insurance (managed care, life, reinsurance), use ROE-based tier
             # If stockholders_equity is missing, try to fetch from database
             if stockholders_equity <= 0 and symbol:
                 try:
@@ -1575,6 +1612,43 @@ class DynamicModelWeightingService:
                 return True
 
         return False
+
+    def _is_property_casualty_insurance(self, industry: Optional[str], symbol: Optional[str] = None) -> bool:
+        """
+        Check if company is a Property & Casualty insurance company.
+
+        P&C insurers (TRV, ALL, HIG, PGR, CB, AIG) should use P/B as primary
+        valuation metric because:
+        - Earnings are volatile due to claim frequency/severity
+        - Book value (reserves + surplus) is more stable
+        - P/B is standard valuation metric for P&C insurance
+
+        Args:
+            industry: Industry name
+            symbol: Stock symbol
+
+        Returns:
+            True if P&C insurance company
+        """
+        if not industry:
+            return False
+
+        # Direct symbol lookup for known P&C insurers
+        pc_symbols = {"ALL", "PGR", "TRV", "CB", "AIG", "HIG"}
+        if symbol and symbol.upper() in pc_symbols:
+            return True
+
+        industry_lower = industry.lower()
+
+        # Property & Casualty keywords
+        pc_terms = [
+            "property",
+            "casualty",
+            "property-casualty",
+            "property & casualty",
+            "p&c",
+        ]
+        return any(term in industry_lower for term in pc_terms)
 
     def _is_low_margin_industry(self, sector: Optional[str], industry: Optional[str]) -> bool:
         """
