@@ -274,6 +274,22 @@ valuation:
   sector_multiples_delta_threshold: 0.15
   liquidity_floor_usd: 5000000
   ggm_payout_threshold_pct: 40.0
+  # Property & Casualty insurance - P/B is primary valuation metric
+  # These insurers have volatile earnings due to claim frequency/severity
+  # Book value (reserves + surplus) is more stable, making P/B the standard metric
+  property_casualty_insurance_symbols:
+  - ALL
+  - PGR
+  - TRV
+  - CB
+  - AIG
+  - HIG
+  property_casualty_insurance_industry_keywords:
+  - Property & Casualty Insurance
+  - Property-Casualty Insurance
+  - Property Casualty Insurers
+  - P&C Insurance
+  - Insurance-Property & Casualty
   fee_based_insurance_symbols:
   - ERIE
   fee_based_insurance_industry_keywords:

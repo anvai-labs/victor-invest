@@ -148,6 +148,24 @@ class DynamicModelWeightingService:
             )
             if keyword
         )
+        # Property & Casualty insurance configuration (P/B is primary valuation metric)
+        self.property_casualty_insurance_symbols = {
+            str(symbol).upper() for symbol in valuation_config.get("property_casualty_insurance_symbols", []) if symbol
+        }
+        self.property_casualty_insurance_industry_keywords = tuple(
+            str(keyword).lower()
+            for keyword in valuation_config.get(
+                "property_casualty_insurance_industry_keywords",
+                [
+                    "property & casualty insurance",
+                    "property-casualty insurance",
+                    "property casualty insurers",
+                    "p&c insurance",
+                    "insurance-property & casualty",
+                ],
+            )
+            if keyword
+        )
 
         # Initialize shared services
         self.metadata_service = CompanyMetadataService(
@@ -1617,11 +1635,13 @@ class DynamicModelWeightingService:
         """
         Check if company is a Property & Casualty insurance company.
 
-        P&C insurers (TRV, ALL, HIG, PGR, CB, AIG) should use P/B as primary
-        valuation metric because:
+        P&C insurers should use P/B as primary valuation metric because:
         - Earnings are volatile due to claim frequency/severity
         - Book value (reserves + surplus) is more stable
         - P/B is standard valuation metric for P&C insurance
+
+        Configuration: property_casualty_insurance_symbols and
+                      property_casualty_insurance_industry_keywords in config.yaml
 
         Args:
             industry: Industry name
@@ -1630,25 +1650,16 @@ class DynamicModelWeightingService:
         Returns:
             True if P&C insurance company
         """
+        # Direct symbol lookup from config
+        if symbol and symbol.upper() in self.property_casualty_insurance_symbols:
+            return True
+
         if not industry:
             return False
 
-        # Direct symbol lookup for known P&C insurers
-        pc_symbols = {"ALL", "PGR", "TRV", "CB", "AIG", "HIG"}
-        if symbol and symbol.upper() in pc_symbols:
-            return True
-
+        # Industry keywords from config
         industry_lower = industry.lower()
-
-        # Property & Casualty keywords
-        pc_terms = [
-            "property",
-            "casualty",
-            "property-casualty",
-            "property & casualty",
-            "p&c",
-        ]
-        return any(term in industry_lower for term in pc_terms)
+        return any(keyword in industry_lower for keyword in self.property_casualty_insurance_industry_keywords)
 
     def _is_low_margin_industry(self, sector: Optional[str], industry: Optional[str]) -> bool:
         """
