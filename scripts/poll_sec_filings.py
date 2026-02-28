@@ -158,14 +158,12 @@ class SECFilingPoller:
 
     def check_stale_status(self, symbol: Optional[str] = None) -> Tuple[bool, Optional[datetime], Optional[datetime]]:
         """
-        Check if filing data is stale using TWO checks:
+        Check if filing data is stale using adaptive rate limiting.
 
-        1. filed_date check: Is the latest filing older than stale_days (default 90)?
-           - If company filed 90+ days ago, data is stale and needs refresh
-
-        2. fetched_at check: Did we recently try to refresh with no new data?
-           - Skip if we just checked today (SEC API rate limiting)
-           - Skip if we checked in last 7 days and filing is < 120 days old
+        Rate limiting based on filing age (optimizes for catching new filings):
+        - Very stale (150+ days): Check every 1 day (high probability of new filing)
+        - Moderately stale (90-150 days): Check every 3 days
+        - Fresh (<90 days): Check every 7 days (low probability of new filing)
 
         Args:
             symbol: Filter by specific symbol
@@ -186,7 +184,7 @@ class SECFilingPoller:
 
         is_filing_stale = today >= stale_date
 
-        # Check 2: Did we recently fetch? (prevent excessive SEC API calls)
+        # Check 2: Adaptive rate limiting based on filing age
         skip_refresh = False
         if symbol and is_filing_stale:
             last_fetch = self.get_last_fetch_date(symbol)
@@ -195,18 +193,26 @@ class SECFilingPoller:
                 days_since_fetch = (today - fetch_date).days
                 days_since_filing = (today - latest_date_only).days
 
-                # Don't refetch if we just checked today
+                # Determine skip interval based on filing age
+                if days_since_filing >= 150:
+                    # Very stale - check every day (high probability of new filing)
+                    skip_threshold = 1
+                elif days_since_filing >= 90:
+                    # Moderately stale - check every 3 days
+                    skip_threshold = 3
+                else:
+                    # Fresh but still over threshold - check every 7 days
+                    skip_threshold = 7
+
+                # Always skip if checked today (avoid same-day redundant checks)
                 if days_since_fetch == 0:
-                    logger.info(
-                        f"{symbol}: Filing is {days_since_filing} days old, "
-                        f"but we just checked today ({days_since_fetch} days ago). Skipping to avoid excessive SEC API calls."
-                    )
+                    logger.info(f"{symbol}: Checked today already. Skipping to avoid redundant API calls.")
                     skip_refresh = True
-                # Don't refetch if we checked recently (7 days) and filing isn't super old (120+ days)
-                elif days_since_fetch <= 7 and days_since_filing < 120:
+                elif days_since_fetch < skip_threshold:
                     logger.info(
                         f"{symbol}: Filing is {days_since_filing} days old, "
-                        f"but we recently checked ({days_since_fetch} days ago). Skipping to avoid excessive SEC API calls."
+                        f"checked {days_since_fetch} days ago (skip threshold: {skip_threshold} days). "
+                        f"Skipping to avoid excessive SEC API calls."
                     )
                     skip_refresh = True
 
