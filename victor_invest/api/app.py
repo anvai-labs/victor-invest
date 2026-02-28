@@ -65,6 +65,8 @@ try:
 except ImportError:
     Agent = None
 
+# Include sector analysis router
+from victor_invest.api.sectors import router as sectors_router
 from victor_invest.workflows import (
     AnalysisMode,
 )
@@ -174,14 +176,15 @@ app.add_middleware(
 # GZip compression
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
+# Include sector analysis router
+app.include_router(sectors_router)
+
 # Serve React frontend assets (JS/CSS bundles) if the build directory exists.
 _react_assets = _react_dist_dir() / "assets"
 if _react_assets.is_dir():
     from fastapi.staticfiles import StaticFiles
 
-    app.mount(
-        "/ui/assets", StaticFiles(directory=str(_react_assets)), name="react-assets"
-    )
+    app.mount("/ui/assets", StaticFiles(directory=str(_react_assets)), name="react-assets")
 
 
 # ========================================================================================
@@ -255,18 +258,10 @@ class UIRefreshRequest(BaseModel):
         default="comprehensive",
         description="Analysis mode: quick, standard, comprehensive",
     )
-    backend: str = Field(
-        default="legacy", description="Execution backend: auto, legacy, workflow"
-    )
-    valuation_basis: str = Field(
-        default="ttm", description="Valuation basis: ttm or forward"
-    )
-    forward_horizon: str = Field(
-        default="1y", description="Forward horizon: 1q, 2q, 3q, 1y"
-    )
-    force_refresh: bool = Field(
-        default=True, description="Clear caches and force fresh analysis"
-    )
+    backend: str = Field(default="legacy", description="Execution backend: auto, legacy, workflow")
+    valuation_basis: str = Field(default="ttm", description="Valuation basis: ttm or forward")
+    forward_horizon: str = Field(default="1y", description="Forward horizon: 1q, 2q, 3q, 1y")
+    force_refresh: bool = Field(default=True, description="Clear caches and force fresh analysis")
 
 
 class ModelInfo(BaseModel):
@@ -298,10 +293,7 @@ def _parse_analysis_mode(mode: Optional[str]) -> AnalysisMode:
     }:
         raise HTTPException(
             status_code=400,
-            detail=(
-                f"Invalid mode: {normalized_mode}. "
-                f"Use: {', '.join(ALLOWED_API_ANALYSIS_MODES)}"
-            ),
+            detail=(f"Invalid mode: {normalized_mode}. Use: {', '.join(ALLOWED_API_ANALYSIS_MODES)}"),
         )
 
     return parsed_mode
@@ -368,18 +360,12 @@ def _is_analysis_payload(payload: Any) -> bool:
     if not isinstance(payload, dict):
         return False
     schema = str(payload.get("schema_version", ""))
-    if (
-        schema.startswith("analysis.compact.")
-        or "agents" in payload
-        or "valuation" in payload
-    ):
+    if schema.startswith("analysis.compact.") or "agents" in payload or "valuation" in payload:
         return True
     return "summary" in payload and ("fundamental" in payload or "technical" in payload)
 
 
-def _save_ui_cache(
-    symbol: str, payload: Dict[str, Any], source: str, cached_at: Optional[str] = None
-) -> None:
+def _save_ui_cache(symbol: str, payload: Dict[str, Any], source: str, cached_at: Optional[str] = None) -> None:
     try:
         UI_CACHE_DIR.mkdir(parents=True, exist_ok=True)
         record = {
@@ -388,9 +374,7 @@ def _save_ui_cache(
             "source": source,
             "payload": payload,
         }
-        _ui_cache_path(symbol).write_text(
-            json.dumps(record, ensure_ascii=False), encoding="utf-8"
-        )
+        _ui_cache_path(symbol).write_text(json.dumps(record, ensure_ascii=False), encoding="utf-8")
     except Exception as exc:
         logger.warning("Failed to save UI cache for %s: %s", symbol, exc)
 
@@ -527,9 +511,7 @@ def _get_latest_ui_payload(symbol: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def _normalize_valuation_inputs(
-    basis: Optional[str], horizon: Optional[str]
-) -> tuple[str, str]:
+def _normalize_valuation_inputs(basis: Optional[str], horizon: Optional[str]) -> tuple[str, str]:
     normalized_basis = str(basis or "ttm").strip().lower()
     normalized_horizon = str(horizon or "1y").strip().lower()
 
@@ -642,24 +624,10 @@ def _extract_basis_and_horizon_from_models(
     for model in models.values():
         if not isinstance(model, dict):
             continue
-        assumptions = (
-            model.get("assumptions", {})
-            if isinstance(model.get("assumptions"), dict)
-            else {}
-        )
-        metadata = (
-            model.get("metadata", {}) if isinstance(model.get("metadata"), dict) else {}
-        )
-        basis = (
-            assumptions.get("valuation_basis")
-            or metadata.get("valuation_basis")
-            or basis
-        )
-        horizon = (
-            assumptions.get("forward_horizon")
-            or metadata.get("forward_horizon")
-            or horizon
-        )
+        assumptions = model.get("assumptions", {}) if isinstance(model.get("assumptions"), dict) else {}
+        metadata = model.get("metadata", {}) if isinstance(model.get("metadata"), dict) else {}
+        basis = assumptions.get("valuation_basis") or metadata.get("valuation_basis") or basis
+        horizon = assumptions.get("forward_horizon") or metadata.get("forward_horizon") or horizon
         if basis and horizon:
             break
 
@@ -680,11 +648,7 @@ def _extract_forward_guidance_from_models(models: Any) -> Dict[str, Any]:
         if not isinstance(model, dict):
             continue
 
-        assumptions = (
-            model.get("assumptions", {})
-            if isinstance(model.get("assumptions"), dict)
-            else {}
-        )
+        assumptions = model.get("assumptions", {}) if isinstance(model.get("assumptions"), dict) else {}
         if not assumptions:
             continue
 
@@ -740,6 +704,35 @@ def _extract_forward_guidance(sec_section: Any, models: Any) -> Dict[str, Any]:
     return _extract_forward_guidance_from_models(models)
 
 
+def _apply_thesis_fallback(result: Dict[str, Any]) -> Dict[str, Any]:
+    """Fill empty thesis with a template-based fallback using available data."""
+    summary = result.get("summary", {})
+    if summary.get("thesis"):
+        return result
+    try:
+        from investigator.domain.services.template_thesis_generator import (
+            generate_investment_thesis,
+        )
+
+        thesis_data = generate_investment_thesis(
+            symbol=summary.get("symbol", ""),
+            key_insights={},
+            composite_scores={
+                "overall_score": summary.get("confidence_score", 50),
+                "confidence": summary.get("overall_confidence", 50),
+            },
+            fundamental_analysis=result.get("fundamental", {}),
+        )
+        summary["thesis"] = thesis_data.get("core_investment_narrative", "")
+        if not summary.get("key_catalysts"):
+            summary["key_catalysts"] = thesis_data.get("growth_catalysts", [])
+        if not summary.get("key_risks"):
+            summary["key_risks"] = thesis_data.get("bear_case_considerations", [])
+    except Exception:
+        pass  # Template fallback is best-effort
+    return result
+
+
 def _extract_ui_view_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     """
     Normalize either compact analysis JSON or legacy orchestrator JSON into a
@@ -759,83 +752,67 @@ def _extract_ui_view_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
         technical = payload.get("technical", {}) or {}
         market = payload.get("market", {}) or {}
         sec = payload.get("sec", {}) or {}
+        synth = payload.get("synthesis", {}) or {}
 
         basis = valuation.get("basis")
         horizon = valuation.get("forward_horizon")
-        inferred_basis, inferred_horizon = _extract_basis_and_horizon_from_models(
-            valuation.get("models", {})
-        )
+        inferred_basis, inferred_horizon = _extract_basis_and_horizon_from_models(valuation.get("models", {}))
         if not basis:
             basis = inferred_basis
         if horizon is None:
             horizon = inferred_horizon
 
         forward_guidance = _extract_forward_guidance(sec, valuation.get("models", {}))
-        return {
-            "schema": "compact",
-            "summary": {
-                "symbol": payload.get("symbol"),
-                "action": rec.get("action"),
-                "confidence_score": rec.get("confidence_score"),
-                "investment_grade": rec.get("investment_grade"),
-                "current_price": price.get("current"),
-                "target_price": price.get("target"),
-                "expected_return_pct": price.get("expected_return_pct"),
-                "data_quality_score": quality.get("data_quality_score"),
-                "quality_grade": quality.get("quality_grade"),
-                "valuation_basis": basis,
-                "forward_horizon": horizon,
-                "blended_fair_value": valuation.get("blended_fair_value"),
-                "overall_confidence": valuation.get("overall_confidence"),
-                "model_agreement_score": valuation.get("model_agreement_score"),
-                "dispersion_ratio": valuation.get("dispersion_ratio"),
-                "market_regime": market.get("market_regime"),
-                "sector": market.get("sector"),
-                "guidance_source_form": (
-                    forward_guidance.get("source_form")
-                    if isinstance(forward_guidance, dict)
-                    else None
-                ),
-                "guidance_confidence_score": (
-                    forward_guidance.get("confidence_score")
-                    if isinstance(forward_guidance, dict)
-                    else None
-                ),
-            },
-            "fundamental": {
-                "valuation": valuation,
-                "notes": payload.get("notes", []),
-                "forward_guidance": forward_guidance,
-                "sec": sec if isinstance(sec, dict) else {},
-            },
-            "technical": technical,
-            "raw": payload,
-        }
+        return _apply_thesis_fallback(
+            {
+                "schema": "compact",
+                "summary": {
+                    "symbol": payload.get("symbol"),
+                    "action": rec.get("action"),
+                    "confidence_score": rec.get("confidence_score"),
+                    "investment_grade": rec.get("investment_grade"),
+                    "current_price": price.get("current"),
+                    "target_price": price.get("target"),
+                    "expected_return_pct": price.get("expected_return_pct"),
+                    "data_quality_score": quality.get("data_quality_score"),
+                    "quality_grade": quality.get("quality_grade"),
+                    "valuation_basis": basis,
+                    "forward_horizon": horizon,
+                    "blended_fair_value": valuation.get("blended_fair_value"),
+                    "overall_confidence": valuation.get("overall_confidence"),
+                    "model_agreement_score": valuation.get("model_agreement_score"),
+                    "dispersion_ratio": valuation.get("dispersion_ratio"),
+                    "market_regime": market.get("market_regime"),
+                    "sector": market.get("sector"),
+                    "guidance_source_form": (
+                        forward_guidance.get("source_form") if isinstance(forward_guidance, dict) else None
+                    ),
+                    "guidance_confidence_score": (
+                        forward_guidance.get("confidence_score") if isinstance(forward_guidance, dict) else None
+                    ),
+                    "thesis": (rec.get("executive_summary") or synth.get("executive_summary") or ""),
+                    "key_catalysts": (rec.get("key_catalysts") or synth.get("key_catalysts") or []),
+                    "key_risks": (rec.get("key_risks") or synth.get("key_risks") or []),
+                },
+                "fundamental": {
+                    "valuation": valuation,
+                    "notes": payload.get("notes", []),
+                    "forward_guidance": forward_guidance,
+                    "sec": sec if isinstance(sec, dict) else {},
+                },
+                "technical": technical,
+                "raw": payload,
+            }
+        )
 
     # Legacy orchestrator shape
-    agents = (
-        payload.get("agents", {}) if isinstance(payload.get("agents"), dict) else {}
-    )
-    fundamental = (
-        agents.get("fundamental", {})
-        if isinstance(agents.get("fundamental"), dict)
-        else {}
-    )
-    technical = (
-        agents.get("technical", {}) if isinstance(agents.get("technical"), dict) else {}
-    )
+    agents = payload.get("agents", {}) if isinstance(payload.get("agents"), dict) else {}
+    fundamental = agents.get("fundamental", {}) if isinstance(agents.get("fundamental"), dict) else {}
+    technical = agents.get("technical", {}) if isinstance(agents.get("technical"), dict) else {}
     sec = agents.get("sec", {}) if isinstance(agents.get("sec"), dict) else {}
 
-    valuation = (
-        fundamental.get("valuation", {})
-        if isinstance(fundamental.get("valuation"), dict)
-        else {}
-    )
-    valuation_payload = (
-        valuation.get("response", {})
-        if isinstance(valuation.get("response"), dict)
-        else valuation
-    )
+    valuation = fundamental.get("valuation", {}) if isinstance(fundamental.get("valuation"), dict) else {}
+    valuation_payload = valuation.get("response", {}) if isinstance(valuation.get("response"), dict) else valuation
     valuation_methods = (
         valuation_payload.get("valuation_methods", {})
         if isinstance(valuation_payload.get("valuation_methods"), dict)
@@ -856,22 +833,14 @@ def _extract_ui_view_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
         if isinstance(valuation_payload, dict)
         else fundamental.get("current_price")
     )
-    target_price = (
-        valuation_payload.get("fair_value_estimate")
-        if isinstance(valuation_payload, dict)
-        else None
-    )
+    target_price = valuation_payload.get("fair_value_estimate") if isinstance(valuation_payload, dict) else None
     if target_price is None and isinstance(valuation_payload, dict):
         target_price = valuation_payload.get("fair_value")
 
     expected_return_pct = None
     if current_price and target_price:
         try:
-            expected_return_pct = (
-                (float(target_price) - float(current_price))
-                / float(current_price)
-                * 100.0
-            )
+            expected_return_pct = (float(target_price) - float(current_price)) / float(current_price) * 100.0
         except Exception:
             expected_return_pct = None
 
@@ -879,38 +848,42 @@ def _extract_ui_view_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     if isinstance(forward_guidance, dict) and forward_guidance:
         fundamental_view["forward_guidance"] = forward_guidance
 
-    return {
-        "schema": "legacy",
-        "summary": {
-            "symbol": payload.get("symbol"),
-            "action": recommendation,
-            "confidence_score": (
-                (fundamental.get("confidence") or {}).get("confidence_score")
-                if isinstance(fundamental.get("confidence"), dict)
-                else None
-            ),
-            "investment_grade": fundamental.get("investment_grade"),
-            "current_price": current_price,
-            "target_price": target_price,
-            "expected_return_pct": expected_return_pct,
-            "valuation_basis": basis or fundamental.get("fiscal_period"),
-            "forward_horizon": horizon,
-            "blended_fair_value": fundamental.get("fair_value"),
-            "guidance_source_form": (
-                forward_guidance.get("source_form")
-                if isinstance(forward_guidance, dict)
-                else None
-            ),
-            "guidance_confidence_score": (
-                forward_guidance.get("confidence_score")
-                if isinstance(forward_guidance, dict)
-                else None
-            ),
-        },
-        "fundamental": fundamental_view,
-        "technical": technical,
-        "raw": payload,
-    }
+    synth = payload.get("synthesis", {}) if isinstance(payload.get("synthesis"), dict) else {}
+    legacy_rec = payload.get("recommendation", {}) if isinstance(payload.get("recommendation"), dict) else {}
+
+    return _apply_thesis_fallback(
+        {
+            "schema": "legacy",
+            "summary": {
+                "symbol": payload.get("symbol"),
+                "action": recommendation,
+                "confidence_score": (
+                    (fundamental.get("confidence") or {}).get("confidence_score")
+                    if isinstance(fundamental.get("confidence"), dict)
+                    else None
+                ),
+                "investment_grade": fundamental.get("investment_grade"),
+                "current_price": current_price,
+                "target_price": target_price,
+                "expected_return_pct": expected_return_pct,
+                "valuation_basis": basis or fundamental.get("fiscal_period"),
+                "forward_horizon": horizon,
+                "blended_fair_value": fundamental.get("fair_value"),
+                "guidance_source_form": (
+                    forward_guidance.get("source_form") if isinstance(forward_guidance, dict) else None
+                ),
+                "guidance_confidence_score": (
+                    forward_guidance.get("confidence_score") if isinstance(forward_guidance, dict) else None
+                ),
+                "thesis": (legacy_rec.get("executive_summary") or synth.get("executive_summary") or ""),
+                "key_catalysts": (legacy_rec.get("key_catalysts") or synth.get("key_catalysts") or []),
+                "key_risks": (legacy_rec.get("key_risks") or synth.get("key_risks") or []),
+            },
+            "fundamental": fundamental_view,
+            "technical": technical,
+            "raw": payload,
+        }
+    )
 
 
 def _safe_float(value: Any) -> Optional[float]:
@@ -1018,20 +991,12 @@ def _load_rankable_cache_entries() -> List[Dict[str, Any]]:
         mtime_epoch = float(path.stat().st_mtime)
         cached_at = raw.get("cached_at") if isinstance(raw, dict) else None
         cached_epoch = _parse_cached_at_epoch(cached_at, mtime_epoch)
-        recommendation_confidence_score = _to_confidence_percent(
-            summary.get("confidence_score")
-        )
-        valuation_confidence_score = _to_confidence_percent(
-            summary.get("overall_confidence")
-        )
+        recommendation_confidence_score = _to_confidence_percent(summary.get("confidence_score"))
+        valuation_confidence_score = _to_confidence_percent(summary.get("overall_confidence"))
         confidence_score = (
-            valuation_confidence_score
-            if valuation_confidence_score is not None
-            else recommendation_confidence_score
+            valuation_confidence_score if valuation_confidence_score is not None else recommendation_confidence_score
         )
-        model_weight_stats = _extract_model_weight_stats(
-            payload if isinstance(payload, dict) else {}
-        )
+        model_weight_stats = _extract_model_weight_stats(payload if isinstance(payload, dict) else {})
 
         entry = {
             "symbol": symbol,
@@ -1041,8 +1006,7 @@ def _load_rankable_cache_entries() -> List[Dict[str, Any]]:
             "recommendation_confidence_score": recommendation_confidence_score,
             "valuation_confidence_score": valuation_confidence_score,
             "current_price": _safe_float(summary.get("current_price")),
-            "target_price": _safe_float(summary.get("target_price"))
-            or _safe_float(summary.get("blended_fair_value")),
+            "target_price": _safe_float(summary.get("target_price")) or _safe_float(summary.get("blended_fair_value")),
             "expected_return_pct": _safe_float(summary.get("expected_return_pct")),
             "data_quality_score": _safe_float(summary.get("data_quality_score")),
             "quality_grade": summary.get("quality_grade"),
@@ -1050,8 +1014,7 @@ def _load_rankable_cache_entries() -> List[Dict[str, Any]]:
             "dispersion_ratio": _safe_float(summary.get("dispersion_ratio")),
             "valuation_basis": summary.get("valuation_basis"),
             "forward_horizon": summary.get("forward_horizon"),
-            "cached_at": cached_at
-            or datetime.utcfromtimestamp(mtime_epoch).isoformat(),
+            "cached_at": cached_at or datetime.utcfromtimestamp(mtime_epoch).isoformat(),
             "cached_at_epoch": cached_epoch,
             "source": raw.get("source") if isinstance(raw, dict) else None,
             "weighted_model_count": model_weight_stats.get("weighted_model_count", 0),
@@ -1060,9 +1023,7 @@ def _load_rankable_cache_entries() -> List[Dict[str, Any]]:
         }
 
         current = latest_by_symbol.get(symbol)
-        if current is None or float(entry["cached_at_epoch"]) >= float(
-            current.get("cached_at_epoch", 0)
-        ):
+        if current is None or float(entry["cached_at_epoch"]) >= float(current.get("cached_at_epoch", 0)):
             latest_by_symbol[symbol] = entry
 
     return list(latest_by_symbol.values())
@@ -1083,13 +1044,11 @@ def _load_symbol_metadata(symbols: List[str]) -> Dict[str, Dict[str, Any]]:
 
         with engine.connect() as conn:
             col_rows = conn.execute(
-                text(
-                    """
+                text("""
                     SELECT column_name
                     FROM information_schema.columns
                     WHERE table_name = 'symbol'
-                """
-                )
+                """)
             ).fetchall()
             available_cols = {str(row[0]) for row in col_rows}
 
@@ -1108,9 +1067,9 @@ def _load_symbol_metadata(symbols: List[str]) -> Dict[str, Dict[str, Any]]:
             if len(select_cols) == 1:
                 return {}
 
-            query = text(
-                f"SELECT {', '.join(select_cols)} FROM symbol WHERE ticker IN :symbols"
-            ).bindparams(bindparam("symbols", expanding=True))
+            query = text(f"SELECT {', '.join(select_cols)} FROM symbol WHERE ticker IN :symbols").bindparams(
+                bindparam("symbols", expanding=True)
+            )
             rows = conn.execute(query, {"symbols": symbols}).mappings().all()
     except Exception:
         return {}
@@ -1172,9 +1131,7 @@ def _compute_portfolio_preview(
         return float(sum(clean) / len(clean))
 
     long_er = _avg([_safe_float(x.get("expected_return_pct")) for x in longs], 0.0)
-    short_er = _avg(
-        [-(_safe_float(x.get("expected_return_pct")) or 0.0) for x in shorts], 0.0
-    )
+    short_er = _avg([-(_safe_float(x.get("expected_return_pct")) or 0.0) for x in shorts], 0.0)
     long_beta = _avg([_safe_float(x.get("beta")) for x in longs], 1.0)
     short_beta = _avg([_safe_float(x.get("beta")) for x in shorts], 1.0)
 
@@ -1197,9 +1154,7 @@ def _compute_portfolio_preview(
     # 50/50 gross-neutral benchmark construction.
     long_weight_eq = 0.5 / len(longs)
     short_weight_eq = -0.5 / len(shorts)
-    beta_net_eq = (long_weight_eq * len(longs) * long_beta) + (
-        short_weight_eq * len(shorts) * short_beta
-    )
+    beta_net_eq = (long_weight_eq * len(longs) * long_beta) + (short_weight_eq * len(shorts) * short_beta)
     expected_alpha_eq = 0.5 * long_er + 0.5 * short_er
 
     # Beta-neutral notional split.
@@ -1288,9 +1243,7 @@ def _build_rankings_payload(
             continue
 
         confidence_score = _safe_float(item.get("confidence_score"))
-        if min_confidence > 0 and (
-            confidence_score is None or confidence_score < min_confidence
-        ):
+        if min_confidence > 0 and (confidence_score is None or confidence_score < min_confidence):
             continue
 
         quality_score = _safe_float(item.get("data_quality_score"))
@@ -1327,30 +1280,20 @@ def _build_rankings_payload(
         current_price = _safe_float(item.get("current_price"))
         target_price = _safe_float(item.get("target_price"))
         if require_positive_target and (
-            current_price is None
-            or current_price <= 0
-            or target_price is None
-            or target_price <= 0
+            current_price is None or current_price <= 0 or target_price is None or target_price <= 0
         ):
             continue
         if current_price is not None and current_price > 0 and target_price is not None:
             target_multiple = target_price / current_price
-            if (
-                target_multiple < min_target_multiple
-                or target_multiple > max_target_multiple
-            ):
+            if target_multiple < min_target_multiple or target_multiple > max_target_multiple:
                 continue
             enriched["target_multiple"] = round(target_multiple, 4)
 
         filtered.append(enriched)
 
     symbol_metadata = symbol_metadata or {}
-    long_candidates = [
-        x for x in filtered if (_safe_float(x.get("expected_return_pct")) or 0.0) > 0
-    ]
-    short_candidates = [
-        x for x in filtered if (_safe_float(x.get("expected_return_pct")) or 0.0) < 0
-    ]
+    long_candidates = [x for x in filtered if (_safe_float(x.get("expected_return_pct")) or 0.0) > 0]
+    short_candidates = [x for x in filtered if (_safe_float(x.get("expected_return_pct")) or 0.0) < 0]
     overall_longs = sorted(
         long_candidates,
         key=lambda x: _safe_float(x.get("expected_return_pct")) or -9999,
@@ -1372,29 +1315,21 @@ def _build_rankings_payload(
             continue
 
         sorted_longs = sorted(
-            [
-                x
-                for x in items
-                if (_safe_float(x.get("expected_return_pct")) or 0.0) > 0
-            ],
+            [x for x in items if (_safe_float(x.get("expected_return_pct")) or 0.0) > 0],
             key=lambda x: _safe_float(x.get("expected_return_pct")) or -9999,
             reverse=True,
         )
         sorted_shorts = sorted(
-            [
-                x
-                for x in items
-                if (_safe_float(x.get("expected_return_pct")) or 0.0) < 0
-            ],
+            [x for x in items if (_safe_float(x.get("expected_return_pct")) or 0.0) < 0],
             key=lambda x: _safe_float(x.get("expected_return_pct")) or 9999,
         )
 
         longs = sorted_longs[:per_sector]
         shorts = sorted_shorts[:per_sector]
         if longs and shorts:
-            top_pair_spread = (
-                _safe_float(longs[0].get("expected_return_pct")) or 0.0
-            ) - (_safe_float(shorts[0].get("expected_return_pct")) or 0.0)
+            top_pair_spread = (_safe_float(longs[0].get("expected_return_pct")) or 0.0) - (
+                _safe_float(shorts[0].get("expected_return_pct")) or 0.0
+            )
             sectors.append(
                 {
                     "sector": sector,
@@ -1420,12 +1355,8 @@ def _build_rankings_payload(
 
             long_symbol = str(long_item.get("symbol") or "").upper()
             short_symbol = str(short_item.get("symbol") or "").upper()
-            long_beta = _safe_float(
-                (symbol_metadata.get(long_symbol) or {}).get("beta")
-            )
-            short_beta = _safe_float(
-                (symbol_metadata.get(short_symbol) or {}).get("beta")
-            )
+            long_beta = _safe_float((symbol_metadata.get(long_symbol) or {}).get("beta"))
+            short_beta = _safe_float((symbol_metadata.get(short_symbol) or {}).get("beta"))
             pair_candidates.append(
                 {
                     "sector": sector,
@@ -1456,16 +1387,13 @@ def _build_rankings_payload(
                     "long_beta": long_beta,
                     "short_beta": short_beta,
                     "beta_net_estimate": round(
-                        (long_beta if long_beta is not None else 1.0)
-                        - (short_beta if short_beta is not None else 1.0),
+                        (long_beta if long_beta is not None else 1.0) - (short_beta if short_beta is not None else 1.0),
                         4,
                     ),
                 }
             )
 
-    sectors = sorted(
-        sectors, key=lambda x: x.get("spread_top_pair_pct", 0), reverse=True
-    )
+    sectors = sorted(sectors, key=lambda x: x.get("spread_top_pair_pct", 0), reverse=True)
     pairs = sorted(
         pair_candidates,
         key=lambda x: (
@@ -1578,9 +1506,7 @@ def _compute_rankings(
             "portfolio_preview": {},
         }
 
-    metadata = _load_symbol_metadata(
-        [str(e.get("symbol") or "").upper() for e in entries]
-    )
+    metadata = _load_symbol_metadata([str(e.get("symbol") or "").upper() for e in entries])
     return _build_rankings_payload(
         entries=entries,
         limit=limit,
@@ -1635,9 +1561,7 @@ def _rankings_to_csv(payload: Dict[str, Any], export_type: str) -> str:
         )
         for side_key in ("longs", "shorts"):
             side = "long" if side_key == "longs" else "short"
-            for idx, item in enumerate(
-                (payload.get("overall", {}) or {}).get(side_key, []) or [], start=1
-            ):
+            for idx, item in enumerate((payload.get("overall", {}) or {}).get(side_key, []) or [], start=1):
                 writer.writerow(
                     [
                         side,
@@ -1670,12 +1594,8 @@ def _rankings_to_csv(payload: Dict[str, Any], export_type: str) -> str:
             ]
         )
         for row in payload.get("sectors", []) or []:
-            long_candidates = ", ".join(
-                str(i.get("symbol")) for i in (row.get("longs") or [])
-            )
-            short_candidates = ", ".join(
-                str(i.get("symbol")) for i in (row.get("shorts") or [])
-            )
+            long_candidates = ", ".join(str(i.get("symbol")) for i in (row.get("longs") or []))
+            short_candidates = ", ".join(str(i.get("symbol")) for i in (row.get("shorts") or []))
             writer.writerow(
                 [
                     row.get("sector"),
@@ -1725,19 +1645,9 @@ def _rankings_to_csv(payload: Dict[str, Any], export_type: str) -> str:
             )
     else:
         # portfolio
-        preview = (
-            payload.get("portfolio_preview", {}) if isinstance(payload, dict) else {}
-        )
-        eq = (
-            preview.get("equal_weight", {})
-            if isinstance(preview.get("equal_weight"), dict)
-            else {}
-        )
-        bn = (
-            preview.get("beta_neutral", {})
-            if isinstance(preview.get("beta_neutral"), dict)
-            else {}
-        )
+        preview = payload.get("portfolio_preview", {}) if isinstance(payload, dict) else {}
+        eq = preview.get("equal_weight", {}) if isinstance(preview.get("equal_weight"), dict) else {}
+        bn = preview.get("beta_neutral", {}) if isinstance(preview.get("beta_neutral"), dict) else {}
         writer.writerow(
             [
                 "portfolio_mode",
@@ -1784,9 +1694,7 @@ def _series_to_float_list(series: Any) -> List[Optional[float]]:
     return values
 
 
-def _build_chart_payload(
-    symbol: str, days: int, ui_view: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
+def _build_chart_payload(symbol: str, days: int, ui_view: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     import numpy as np
     import pandas as pd
 
@@ -1809,9 +1717,7 @@ def _build_chart_payload(
     fetcher = get_market_data_fetcher(get_config())
     df = fetcher.get_stock_data(symbol, days=days)
     if df is None or df.empty:
-        raise HTTPException(
-            status_code=404, detail=f"No market data found for {symbol}"
-        )
+        raise HTTPException(status_code=404, detail=f"No market data found for {symbol}")
 
     data = df.copy()
     for col in ["Open", "High", "Low", "Close", "Adj Close", "Volume"]:
@@ -1819,9 +1725,7 @@ def _build_chart_payload(
             data[col] = pd.to_numeric(data[col], errors="coerce")
     data = data.dropna(subset=["Open", "High", "Low", "Close"])
     if data.empty:
-        raise HTTPException(
-            status_code=404, detail=f"No valid OHLC rows found for {symbol}"
-        )
+        raise HTTPException(status_code=404, detail=f"No valid OHLC rows found for {symbol}")
 
     def _sma(series: pd.Series, length: int) -> pd.Series:
         return series.rolling(window=length, min_periods=length).mean()
@@ -1868,22 +1772,14 @@ def _build_chart_payload(
 
         data["OBV"] = pta.obv(data["Close"], data["Volume"])
 
-        bb_upper_col = next(
-            (col for col in data.columns if str(col).startswith("BBU_")), None
-        )
-        bb_middle_col = next(
-            (col for col in data.columns if str(col).startswith("BBM_")), None
-        )
-        bb_lower_col = next(
-            (col for col in data.columns if str(col).startswith("BBL_")), None
-        )
+        bb_upper_col = next((col for col in data.columns if str(col).startswith("BBU_")), None)
+        bb_middle_col = next((col for col in data.columns if str(col).startswith("BBM_")), None)
+        bb_lower_col = next((col for col in data.columns if str(col).startswith("BBL_")), None)
     else:
         ema_fast = _ema(data["Close"], 12)
         ema_slow = _ema(data["Close"], 26)
         data["MACD_12_26_9"] = ema_fast - ema_slow
-        data["MACDs_12_26_9"] = (
-            data["MACD_12_26_9"].ewm(span=9, adjust=False, min_periods=9).mean()
-        )
+        data["MACDs_12_26_9"] = data["MACD_12_26_9"].ewm(span=9, adjust=False, min_periods=9).mean()
         data["MACDh_12_26_9"] = data["MACD_12_26_9"] - data["MACDs_12_26_9"]
 
         bb_mid = _sma(data["Close"], 20)
@@ -1896,38 +1792,19 @@ def _build_chart_payload(
         bb_middle_col = "BBM_20_2.0"
         bb_lower_col = "BBL_20_2.0"
 
-    dates = [
-        idx.strftime("%Y-%m-%d") if hasattr(idx, "strftime") else str(idx)
-        for idx in data.index
-    ]
+    dates = [idx.strftime("%Y-%m-%d") if hasattr(idx, "strftime") else str(idx) for idx in data.index]
 
     summary: dict[str, Any] = {}
     technical: dict[str, Any] = {}
     levels: dict[str, Any] = {}
     if isinstance(ui_view, dict):
-        summary = (
-            ui_view.get("summary", {})
-            if isinstance(ui_view.get("summary"), dict)
-            else {}
-        )
-        technical = (
-            ui_view.get("technical", {})
-            if isinstance(ui_view.get("technical"), dict)
-            else {}
-        )
-        levels = (
-            technical.get("levels", {})
-            if isinstance(technical.get("levels"), dict)
-            else {}
-        )
+        summary = ui_view.get("summary", {}) if isinstance(ui_view.get("summary"), dict) else {}
+        technical = ui_view.get("technical", {}) if isinstance(ui_view.get("technical"), dict) else {}
+        levels = technical.get("levels", {}) if isinstance(technical.get("levels"), dict) else {}
 
     last_row = data.iloc[-1]
-    current_price = _safe_float(summary.get("current_price")) or _safe_float(
-        last_row.get("Close")
-    )
-    fair_value = _safe_float(summary.get("target_price")) or _safe_float(
-        summary.get("blended_fair_value")
-    )
+    current_price = _safe_float(summary.get("current_price")) or _safe_float(last_row.get("Close"))
+    fair_value = _safe_float(summary.get("target_price")) or _safe_float(summary.get("blended_fair_value"))
 
     level_payload = {
         "pivot_point": _safe_float(levels.get("pivot_point")),
@@ -1961,15 +1838,9 @@ def _build_chart_payload(
             "ema_50": _series_to_float_list(data["EMA_50"]),
             "ema_100": _series_to_float_list(data["EMA_100"]),
             "ema_200": _series_to_float_list(data["EMA_200"]),
-            "bb_upper": _series_to_float_list(data[bb_upper_col])
-            if bb_upper_col
-            else [],
-            "bb_middle": _series_to_float_list(data[bb_middle_col])
-            if bb_middle_col
-            else [],
-            "bb_lower": _series_to_float_list(data[bb_lower_col])
-            if bb_lower_col
-            else [],
+            "bb_upper": _series_to_float_list(data[bb_upper_col]) if bb_upper_col else [],
+            "bb_middle": _series_to_float_list(data[bb_middle_col]) if bb_middle_col else [],
+            "bb_lower": _series_to_float_list(data[bb_lower_col]) if bb_lower_col else [],
             "rsi_14": _series_to_float_list(data["RSI_14"]),
             "macd": _series_to_float_list(data.get("MACD_12_26_9")),
             "macd_signal": _series_to_float_list(data.get("MACDs_12_26_9")),
@@ -2006,27 +1877,21 @@ def _get_latest_orchestrator_payload(symbol: str) -> Optional[Dict[str, Any]]:
             ts = row.get("ts")
             return {
                 "payload": payload,
-                "cached_at": ts.isoformat()
-                if ts is not None and hasattr(ts, "isoformat")
-                else str(ts),
+                "cached_at": ts.isoformat() if ts is not None and hasattr(ts, "isoformat") else str(ts),
                 "period": row.get("period"),
                 "form_type": row.get("form_type"),
                 "source": f"db:{row.get('llm_type')}",
             }
 
         for llm_type in candidate_types:
-            hit = _row_to_payload(
-                dao.get_llm_response(symbol=symbol, llm_type=llm_type)
-            )
+            hit = _row_to_payload(dao.get_llm_response(symbol=symbol, llm_type=llm_type))
             if hit:
                 return hit
 
         # Final fallback: latest row for symbol regardless of llm_type.
         return _row_to_payload(dao.get_llm_response(symbol=symbol))
     except Exception as exc:
-        logger.warning(
-            "Failed to load latest orchestrator payload for %s: %s", symbol, exc
-        )
+        logger.warning("Failed to load latest orchestrator payload for %s: %s", symbol, exc)
         return None
 
 
@@ -2065,8 +1930,7 @@ async def ui_search_symbols(
         )
 
         repo = SymbolRepository()
-        sql = text(
-            """
+        sql = text("""
             SELECT
                 ticker,
                 COALESCE(description, ticker) AS description,
@@ -2090,8 +1954,7 @@ async def ui_search_symbols(
               END,
               mktcap DESC NULLS LAST
             LIMIT :limit
-            """
-        )
+            """)
 
         with repo.stock_engine.connect() as conn:
             rows = conn.execute(
@@ -2167,9 +2030,7 @@ async def ui_latest_analysis(symbol: str, include_raw: bool = Query(False)):
     if not cached:
         raise HTTPException(
             status_code=404,
-            detail=(
-                f"No cached analysis found for {normalized_symbol}. Run refresh first."
-            ),
+            detail=(f"No cached analysis found for {normalized_symbol}. Run refresh first."),
         )
 
     payload = cached["payload"]
@@ -2219,9 +2080,7 @@ async def ui_refresh_analysis(symbol: str, request: UIRefreshRequest):
         raise HTTPException(status_code=400, detail="No symbol provided")
 
     analysis_mode = _parse_analysis_mode(request.mode if request else None)
-    backend = (
-        str((request.backend if request else "legacy") or "legacy").strip().lower()
-    )
+    backend = str((request.backend if request else "legacy") or "legacy").strip().lower()
     valuation_basis, forward_horizon = _normalize_valuation_inputs(
         request.valuation_basis if request else "ttm",
         request.forward_horizon if request else "1y",
@@ -2229,18 +2088,14 @@ async def ui_refresh_analysis(symbol: str, request: UIRefreshRequest):
     force_refresh = bool(request.force_refresh) if request else True
 
     if backend not in {"auto", "legacy", "workflow"}:
-        raise HTTPException(
-            status_code=400, detail="Invalid backend. Use auto, legacy, or workflow."
-        )
+        raise HTTPException(status_code=400, detail="Invalid backend. Use auto, legacy, or workflow.")
 
     workflow_error: Optional[str] = None
     legacy_error: Optional[str] = None
     live_result: Optional[Any] = None
     refresh_result_available = False
 
-    prefer_legacy = backend == "legacy" or (
-        backend == "auto" and os.getenv("INVESTIGATOR_LEGACY", "0") == "1"
-    )
+    prefer_legacy = backend == "legacy" or (backend == "auto" and os.getenv("INVESTIGATOR_LEGACY", "0") == "1")
     if prefer_legacy:
         legacy_exec = await _run_legacy_cli_analysis(
             normalized_symbol,
@@ -2270,17 +2125,11 @@ async def ui_refresh_analysis(symbol: str, request: UIRefreshRequest):
                     "view": _extract_ui_view_from_payload(parsed_payload),
                 }
         else:
-            legacy_error = (
-                legacy_exec["stdout"][-5000:]
-                if legacy_exec.get("stdout")
-                else "legacy CLI failed"
-            )
+            legacy_error = legacy_exec["stdout"][-5000:] if legacy_exec.get("stdout") else "legacy CLI failed"
 
     # If caller explicitly requested legacy refresh and it failed, don't silently serve stale cache.
     if backend == "legacy" and legacy_error and not refresh_result_available:
-        logger.error(
-            "UI legacy refresh failed for %s: %s", normalized_symbol, legacy_error
-        )
+        logger.error("UI legacy refresh failed for %s: %s", normalized_symbol, legacy_error)
         raise HTTPException(
             status_code=500,
             detail=(
@@ -2311,24 +2160,19 @@ async def ui_refresh_analysis(symbol: str, request: UIRefreshRequest):
         }
 
     if live_result is not None:
-        recommendation = (
-            live_result.recommendation
-            if isinstance(live_result.recommendation, dict)
-            else {}
-        )
+        recommendation = live_result.recommendation if isinstance(live_result.recommendation, dict) else {}
         view = {
             "schema": "live",
             "summary": {
                 "symbol": normalized_symbol,
-                "action": recommendation.get("action")
-                if isinstance(recommendation, dict)
-                else None,
+                "action": recommendation.get("action") if isinstance(recommendation, dict) else None,
                 "confidence_score": (
-                    recommendation.get("confidence_score")
-                    if isinstance(recommendation, dict)
-                    else None
+                    recommendation.get("confidence_score") if isinstance(recommendation, dict) else None
                 ),
                 "valuation_basis": valuation_basis,
+                "thesis": (recommendation.get("executive_summary", "") if isinstance(recommendation, dict) else ""),
+                "key_catalysts": (recommendation.get("key_catalysts", []) if isinstance(recommendation, dict) else []),
+                "key_risks": (recommendation.get("key_risks", []) if isinstance(recommendation, dict) else []),
             },
             "fundamental": live_result.fundamental_analysis,
             "technical": live_result.technical_analysis,
@@ -2355,11 +2199,29 @@ async def ui_refresh_analysis(symbol: str, request: UIRefreshRequest):
         error_parts.append(f"legacy={legacy_error}")
     if workflow_error:
         error_parts.append(f"workflow={workflow_error}")
-    error_msg = (
-        "; ".join(error_parts) if error_parts else "refresh failed without result"
-    )
+    error_msg = "; ".join(error_parts) if error_parts else "refresh failed without result"
     logger.error("UI refresh failed for %s: %s", normalized_symbol, error_msg)
     raise HTTPException(status_code=500, detail=error_msg)
+
+
+@app.get("/ui/api/predictions/{symbol}")
+async def ui_predictions(symbol: str, limit: int = Query(50, ge=1, le=200)):
+    """Get RL prediction history for a symbol."""
+    normalized_symbol = symbol.strip().upper()
+    try:
+        from investigator.domain.services.rl.outcome_tracker import (
+            ValuationOutcomesDAO,
+        )
+
+        dao = ValuationOutcomesDAO()
+        records = dao.get_by_symbol(normalized_symbol, limit=limit)
+        return {"symbol": normalized_symbol, "predictions": records}
+    except Exception as e:
+        return {
+            "symbol": normalized_symbol,
+            "predictions": [],
+            "error": str(e),
+        }
 
 
 @app.get("/ui/api/history")
@@ -2385,9 +2247,7 @@ async def ui_history(limit: int = Query(20, ge=1, le=200)):
                 summary = view.get("summary", {}) if isinstance(view, dict) else {}
                 items.append(
                     {
-                        "symbol": raw.get("symbol")
-                        or summary.get("symbol")
-                        or path.stem,
+                        "symbol": raw.get("symbol") or summary.get("symbol") or path.stem,
                         "cached_at": raw.get("cached_at"),
                         "source": raw.get("source"),
                         "action": summary.get("action"),
@@ -2458,9 +2318,7 @@ async def ui_rankings(
 
 @app.get("/ui/api/rankings/export.csv", response_class=PlainTextResponse)
 async def ui_rankings_export_csv(
-    export_type: str = Query(
-        default="overall", pattern="^(overall|sectors|pairs|portfolio)$"
-    ),
+    export_type: str = Query(default="overall", pattern="^(overall|sectors|pairs|portfolio)$"),
     limit: int = Query(20, ge=1, le=100),
     per_sector: int = Query(3, ge=1, le=20),
     min_quality: float = Query(50.0, ge=0.0, le=100.0),
@@ -2737,9 +2595,7 @@ async def list_models():
                         "count": len(models),
                     }
                 else:
-                    raise HTTPException(
-                        status_code=resp.status, detail="Ollama unavailable"
-                    )
+                    raise HTTPException(status_code=resp.status, detail="Ollama unavailable")
     except aiohttp.ClientError as e:
         raise HTTPException(status_code=503, detail=f"Cannot connect to Ollama: {e}")
 
@@ -2855,11 +2711,7 @@ async def _run_batch_analysis(job_id: str, symbols: List[str], mode: str):
         for symbol, result_payload in results:
             job["results"][symbol] = result_payload
 
-        error_count = sum(
-            1
-            for symbol_result in job["results"].values()
-            if symbol_result["status"] == "error"
-        )
+        error_count = sum(1 for symbol_result in job["results"].values() if symbol_result["status"] == "error")
         success_count = len(job["results"]) - error_count
 
         job["success_count"] = success_count
@@ -2886,9 +2738,7 @@ async def _warm_cache_for_symbols(symbols: List[str]):
                 # Fetch SEC data to warm cache
                 await sec_tool.execute(symbol=symbol.upper())
                 # Fetch market data to warm cache
-                await market_tool.execute(
-                    symbol=symbol.upper(), action="get_history", days=365
-                )
+                await market_tool.execute(symbol=symbol.upper(), action="get_history", days=365)
                 logger.info(f"Cache warmed for {symbol}")
             except Exception as e:
                 logger.warning(f"Failed to warm cache for {symbol}: {e}")

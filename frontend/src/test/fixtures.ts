@@ -1,6 +1,7 @@
 import type {
   AnalysisResponse,
   ChartPayload,
+  PredictionsResponse,
   RankingsResponse,
   SymbolSearchResult,
   UIView,
@@ -242,3 +243,39 @@ export const mockSymbolSearchResults: SymbolSearchResult[] = [
   { symbol: "AAPL", name: "Apple Inc.", sector: "Technology", industry: "Consumer Electronics" },
   { symbol: "AAPLX", name: "Apple Fund", sector: "Finance", industry: "Mutual Funds" },
 ];
+
+export const mockPredictionsResponse: PredictionsResponse = {
+  symbol: "AAPL",
+  predictions: [
+    {
+      id: 1,
+      symbol: "AAPL",
+      analysis_date: "2025-01-15",
+      blended_fair_value: 195.0,
+      current_price: 182.5,
+      predicted_upside_pct: 6.85,
+      model_fair_values: { dcf: 200.0, pe: 188.0, ps: null, ev_ebitda: 192.0, pb: null, ggm: 201.0 },
+      actual_price_30d: 190.0,
+      actual_price_90d: 198.0,
+      actual_price_365d: null,
+      reward_30d: 0.8,
+      reward_90d: 0.9,
+      tier_classification: "high_conviction",
+    },
+    {
+      id: 2,
+      symbol: "AAPL",
+      analysis_date: "2024-12-01",
+      blended_fair_value: 180.0,
+      current_price: 175.0,
+      predicted_upside_pct: 2.86,
+      model_fair_values: { dcf: 185.0, pe: 178.0, ps: null, ev_ebitda: 177.0, pb: null, ggm: 180.0 },
+      actual_price_30d: 170.0,
+      actual_price_90d: null,
+      actual_price_365d: null,
+      reward_30d: -0.3,
+      reward_90d: null,
+      tier_classification: "moderate",
+    },
+  ],
+};

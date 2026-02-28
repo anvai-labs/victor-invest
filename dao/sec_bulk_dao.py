@@ -175,7 +175,8 @@ class SECBulkDAO:
 
         if not results:
             logger.warning(
-                f"No data found for {symbol} (CIK: {cik}) " f"fiscal year {fiscal_year}, period {fiscal_period}"
+                f"No data found for {symbol} (CIK: {cik}) "
+                f"fiscal year {fiscal_year}, period {fiscal_period}"
             )
             return {
                 "symbol": symbol,
@@ -199,7 +200,9 @@ class SECBulkDAO:
 
         # Log raw tag coverage before normalization
         unique_tags = set(r["tag"] for r in rows)
-        logger.debug(f"Fetched {len(rows)} data points with {len(unique_tags)} unique XBRL tags for {symbol}")
+        logger.debug(
+            f"Fetched {len(rows)} data points with {len(unique_tags)} unique XBRL tags for {symbol}"
+        )
 
         # Normalize using tag mapper
         metrics = self.normalizer.normalize_bulk_table_results(rows, symbol)
@@ -287,7 +290,9 @@ class SECBulkDAO:
         fiscal_year = result[0]
         logger.info(f"Latest annual filing for {symbol}: {fiscal_year}-FY")
 
-        return self.fetch_financial_metrics(symbol, fiscal_year, "FY", form_types=["10-K", "10-K/A"])
+        return self.fetch_financial_metrics(
+            symbol, fiscal_year, "FY", form_types=["10-K", "10-K/A"]
+        )
 
     def fetch_latest_quarterly_metrics(self, symbol: str) -> Dict[str, Any]:
         """
@@ -329,9 +334,13 @@ class SECBulkDAO:
             return {"symbol": symbol, "error": "No quarterly filings found"}
 
         fiscal_year, fiscal_period = result[0], result[1]
-        logger.info(f"Latest quarterly filing for {symbol}: {fiscal_year}-{fiscal_period}")
+        logger.info(
+            f"Latest quarterly filing for {symbol}: {fiscal_year}-{fiscal_period}"
+        )
 
-        return self.fetch_financial_metrics(symbol, fiscal_year, fiscal_period, form_types=["10-Q", "10-Q/A"])
+        return self.fetch_financial_metrics(
+            symbol, fiscal_year, fiscal_period, form_types=["10-Q", "10-Q/A"]
+        )
 
     def _fiscal_period_to_qtrs(self, fiscal_period: str) -> int:
         """
@@ -380,7 +389,9 @@ class SECBulkDAO:
         )
 
         with self.engine.connect() as conn:
-            results = conn.execute(query, {"cik": cik, "fiscal_year": fiscal_year}).fetchall()
+            results = conn.execute(
+                query, {"cik": cik, "fiscal_year": fiscal_year}
+            ).fetchall()
 
         return [r[0] for r in results]
 

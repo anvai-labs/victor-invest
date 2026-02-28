@@ -128,19 +128,29 @@ class EconomicIndicatorsCollector(BaseCollector):
                             "url": result.url_used,
                             "fetch_time": result.fetch_time.isoformat(),
                         }
-                        self.logger.debug(f"Fetched {source_id}/{indicator_id} from {result.source}")
+                        self.logger.debug(
+                            f"Fetched {source_id}/{indicator_id} from {result.source}"
+                        )
                     else:
-                        self.logger.warning(f"Failed to fetch {source_id}/{indicator_id}: {result.error}")
-                        self.metrics.warnings.append(f"{source_id}/{indicator_id}: {result.error}")
+                        self.logger.warning(
+                            f"Failed to fetch {source_id}/{indicator_id}: {result.error}"
+                        )
+                        self.metrics.warnings.append(
+                            f"{source_id}/{indicator_id}: {result.error}"
+                        )
 
                 except Exception as e:
-                    self.logger.warning(f"Error fetching {source_id}/{indicator_id}: {e}")
+                    self.logger.warning(
+                        f"Error fetching {source_id}/{indicator_id}: {e}"
+                    )
                     self.metrics.warnings.append(f"{source_id}/{indicator_id}: {e}")
 
             # Log summary for source
             success_count = len(results[source_id])
             total_count = len(indicator_ids)
-            self.logger.info(f"{source_id}: collected {success_count}/{total_count} indicators")
+            self.logger.info(
+                f"{source_id}: collected {success_count}/{total_count} indicators"
+            )
 
         return results
 
@@ -316,10 +326,18 @@ def print_health_report(report: Dict[str, Any]):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Collect economic indicators from all sources")
-    parser.add_argument("--source", type=str, help="Filter by source (e.g., atlanta_fed, chicago_fed)")
-    parser.add_argument("--indicator", type=str, help="Filter by indicator (e.g., gdpnow, cfnai)")
-    parser.add_argument("--dry-run", action="store_true", help="Collect but don't store to database")
+    parser = argparse.ArgumentParser(
+        description="Collect economic indicators from all sources"
+    )
+    parser.add_argument(
+        "--source", type=str, help="Filter by source (e.g., atlanta_fed, chicago_fed)"
+    )
+    parser.add_argument(
+        "--indicator", type=str, help="Filter by indicator (e.g., gdpnow, cfnai)"
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Collect but don't store to database"
+    )
     parser.add_argument(
         "--health-check",
         action="store_true",

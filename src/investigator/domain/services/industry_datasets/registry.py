@@ -95,7 +95,7 @@ class IndustryDatasetRegistry:
                 industry_lower = industry.lower()
                 if industry_lower in self._industry_index:
                     existing = self._industry_index[industry_lower]
-                    logger.warning(f"Industry '{industry}' already mapped to '{existing}', " f"now mapping to '{name}'")
+                    logger.warning(f"Industry '{industry}' already mapped to '{existing}', now mapping to '{name}'")
                 self._industry_index[industry_lower] = name
 
             # Index by known symbols
@@ -103,7 +103,7 @@ class IndustryDatasetRegistry:
                 symbol_upper = symbol.upper()
                 if symbol_upper in self._symbol_index:
                     existing = self._symbol_index[symbol_upper]
-                    logger.warning(f"Symbol '{symbol}' already mapped to '{existing}', " f"now mapping to '{name}'")
+                    logger.warning(f"Symbol '{symbol}' already mapped to '{existing}', now mapping to '{name}'")
                 self._symbol_index[symbol_upper] = name
 
             logger.info(

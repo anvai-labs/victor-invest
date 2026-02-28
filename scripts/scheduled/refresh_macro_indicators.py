@@ -128,7 +128,10 @@ class MacroIndicatorCollector(BaseCollector):
                     indicators.extend(INDICATOR_CATEGORIES[category])
 
             indicators = list(set(indicators))  # Remove duplicates
-            self.logger.info(f"Refreshing {len(indicators)} FRED indicators from " f"{len(self.categories)} categories")
+            self.logger.info(
+                f"Refreshing {len(indicators)} FRED indicators from "
+                f"{len(self.categories)} categories"
+            )
 
             # Fetch each indicator
             conn = get_database_connection()
@@ -160,7 +163,10 @@ class MacroIndicatorCollector(BaseCollector):
                     if last_date:
                         # Incremental: fetch from day after last observation
                         start_date = last_date + timedelta(days=1)
-                        self.logger.debug(f"{indicator}: Incremental fetch from {start_date} " f"(last: {last_date})")
+                        self.logger.debug(
+                            f"{indicator}: Incremental fetch from {start_date} "
+                            f"(last: {last_date})"
+                        )
                     else:
                         # Full fetch: use configured lookback
                         start_date = end_date - timedelta(days=self.lookback_days)
@@ -317,7 +323,9 @@ class MacroIndicatorCollector(BaseCollector):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Refresh FRED macroeconomic indicators")
+    parser = argparse.ArgumentParser(
+        description="Refresh FRED macroeconomic indicators"
+    )
     parser.add_argument(
         "--category",
         type=str,
@@ -325,7 +333,9 @@ def main():
         default="all",
         help="Category to refresh (default: all)",
     )
-    parser.add_argument("--days", type=int, default=30, help="Number of days to look back (default: 30)")
+    parser.add_argument(
+        "--days", type=int, default=30, help="Number of days to look back (default: 30)"
+    )
     args = parser.parse_args()
 
     categories = None

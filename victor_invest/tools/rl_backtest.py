@@ -36,7 +36,7 @@ import logging
 from datetime import date, timedelta
 from typing import Any, Dict, List, Optional
 
-from dateutil.relativedelta import relativedelta  # type: ignore[import-untyped]
+from dateutil.relativedelta import relativedelta
 
 from victor_invest.tools.base import BaseTool, ToolResult
 
@@ -148,9 +148,7 @@ class RLBacktestTool(BaseTool):
             self._data_source_manager = DataSourceManager()
 
             self._initialized = True
-            logger.info(
-                "RLBacktestTool initialized with shared services and DataSourceManager"
-            )
+            logger.info("RLBacktestTool initialized with shared services and DataSourceManager")
         except ImportError as e:
             logger.error(f"Could not import required services: {e}")
             raise
@@ -302,9 +300,7 @@ class RLBacktestTool(BaseTool):
         metadata = await self._get_metadata(symbol)
         beta = metadata.get("beta", 1.0)
 
-        multi_period_data = await self._get_multi_period_data(
-            symbol, analysis_date, current_price, beta
-        )
+        multi_period_data = await self._get_multi_period_data(symbol, analysis_date, current_price, beta)
 
         return ToolResult.create_success(
             output={
@@ -343,24 +339,16 @@ class RLBacktestTool(BaseTool):
             # Calculate multi-period data
             metadata = await self._get_metadata(symbol)
             beta = metadata.get("beta", 1.0)
-            multi_period_data = await self._get_multi_period_data(
-                symbol, analysis_date, current_price, beta
-            )
+            multi_period_data = await self._get_multi_period_data(symbol, analysis_date, current_price, beta)
 
             # If context_features not provided, use DataSourceManager
             if not context_features and self._data_source_manager:
                 try:
-                    consolidated = self._data_source_manager.get_data(
-                        symbol=symbol, as_of_date=analysis_date
-                    )
+                    consolidated = self._data_source_manager.get_data(symbol=symbol, as_of_date=analysis_date)
                     context_features = consolidated.get_rl_features()
-                    logger.debug(
-                        f"Auto-fetched {len(context_features)} RL features for {symbol}"
-                    )
+                    logger.debug(f"Auto-fetched {len(context_features)} RL features for {symbol}")
                 except Exception as e:
-                    logger.warning(
-                        f"Could not fetch RL features via DataSourceManager: {e}"
-                    )
+                    logger.warning(f"Could not fetch RL features via DataSourceManager: {e}")
                     context_features = {}
 
             record_ids = []
@@ -442,9 +430,7 @@ class RLBacktestTool(BaseTool):
             return ToolResult.create_failure("DataSourceManager not initialized")
 
         try:
-            consolidated = self._data_source_manager.get_data(
-                symbol=symbol, as_of_date=analysis_date
-            )
+            consolidated = self._data_source_manager.get_data(symbol=symbol, as_of_date=analysis_date)
 
             features = consolidated.get_rl_features()
 

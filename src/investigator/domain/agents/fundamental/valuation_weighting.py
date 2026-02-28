@@ -181,8 +181,22 @@ def resolve_fallback_weights(
                 assumptions = _model_get(model_result, "assumptions", {}) or {}
                 shares = assumptions.get("shares_outstanding", 0) if isinstance(assumptions, dict) else 0
                 if shares > 0:
-                    financials["market_cap"] = financials["current_price"] * shares
-                    break
+                    # Calculate market cap with split adjustment
+                    # Shares from assumptions are typically from SEC (actual, not split-adjusted)
+                    from investigator.domain.services.valuation_shared.split_adjusted_market_cap import (
+                        calculate_market_cap,
+                    )
+
+                    mcap = calculate_market_cap(
+                        symbol=symbol,
+                        price=financials["current_price"],
+                        shares=shares,
+                        price_date=None,  # Current date
+                        shares_source="sec",  # Assumptions use SEC shares
+                    )
+                    if mcap:
+                        financials["market_cap"] = mcap
+                        break
 
         data_quality = getattr(company_profile, "data_quality", None)
         weights, tier_classification, audit_trail = dynamic_weighting_service.determine_weights(

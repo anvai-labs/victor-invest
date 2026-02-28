@@ -24,30 +24,39 @@ echo "Staged Python files:"
 echo "$STAGED_FILES"
 echo ""
 
-# Verify critical project dependencies are installed
+# Find Python 3.11+ (project minimum). Prefer python3.11, fall back to python3.
+PYTHON="$(command -v python3.11 2>/dev/null || echo python3)"
+PIP="$PYTHON -m pip"
+
+# Verify critical project dependencies are installed; auto-install if missing
 echo -e "${YELLOW}Checking project dependencies...${NC}"
 MISSING_DEPS=""
 for pkg in pandas numpy scipy sqlalchemy fastapi pydantic yaml ruff; do
     if [ "$pkg" = "ruff" ]; then
         command -v ruff >/dev/null 2>&1 || MISSING_DEPS="$MISSING_DEPS ruff"
     elif [ "$pkg" = "yaml" ]; then
-        python3 -c "import $pkg" 2>/dev/null || MISSING_DEPS="$MISSING_DEPS pyyaml"
+        $PYTHON -c "import $pkg" 2>/dev/null || MISSING_DEPS="$MISSING_DEPS pyyaml"
     else
-        python3 -c "import $pkg" 2>/dev/null || MISSING_DEPS="$MISSING_DEPS $pkg"
+        $PYTHON -c "import $pkg" 2>/dev/null || MISSING_DEPS="$MISSING_DEPS $pkg"
     fi
 done
 
+# Also check dev tools
+for tool in ruff black mypy; do
+    command -v "$tool" >/dev/null 2>&1 || MISSING_DEPS="$MISSING_DEPS $tool"
+done
+
 if [ -n "$MISSING_DEPS" ]; then
-    echo -e "${RED}Missing dependencies:${MISSING_DEPS}${NC}"
-    echo -e "${RED}Run 'make dev-install' or 'pip install -e \".[dev,viz]\"' to install all dependencies.${NC}"
-    exit 1
+    echo -e "${YELLOW}Missing dependencies:${MISSING_DEPS}${NC}"
+    echo -e "${YELLOW}Auto-installing via '$PIP install -e .[dev,viz]'...${NC}"
+    if $PIP install -e ".[dev,viz]" --quiet 2>&1; then
+        echo -e "${GREEN}Dependencies installed successfully.${NC}"
+    else
+        echo -e "${RED}Auto-install failed. Run 'make dev-install' manually.${NC}"
+        exit 1
+    fi
 fi
 echo -e "${GREEN}Dependencies OK.${NC}"
-
-# Check if required tools are installed
-command -v ruff >/dev/null 2>&1 || { echo -e "${RED}ruff not found. Install with: pip install ruff${NC}" && exit 1; }
-command -v black >/dev/null 2>&1 || { echo -e "${RED}black not found. Install with: pip install black${NC}" && exit 1; }
-command -v mypy >/dev/null 2>&1 || { echo -e "${RED}mypy not found. Install with: pip install mypy${NC}" && exit 1; }
 
 # Run ruff checks (format + lint)
 echo -e "${YELLOW}Running ruff format check...${NC}"
@@ -69,7 +78,9 @@ echo -e "${YELLOW}Running mypy type check...${NC}"
 # Only run mypy on files in src/ and victor_invest/
 MYPY_FILES=$(echo "$STAGED_FILES" | grep -E '^(src/|victor_invest/)' || true)
 if [ -n "$MYPY_FILES" ]; then
-    if ! mypy $MYPY_FILES; then
+    # Use --explicit-package-bases to avoid "source file found twice" errors
+    # when using src/ layout
+    if ! mypy --explicit-package-bases $MYPY_FILES; then
         echo -e "${RED}Mypy type check failed.${NC}"
         exit 1
     fi

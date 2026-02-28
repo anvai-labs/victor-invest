@@ -1020,7 +1020,7 @@ class AgentOrchestrator:
                 # No nodes ready - circular dependency detected
                 unprocessed = [a for a in agents if a not in processed]
                 raise ValueError(
-                    f"Circular dependency detected in agents: {unprocessed}. " f"Cannot determine execution order."
+                    f"Circular dependency detected in agents: {unprocessed}. Cannot determine execution order."
                 )
 
             processed.update(level)

@@ -44,7 +44,11 @@ def _is_analysis_payload(payload: Any) -> bool:
     if not isinstance(payload, dict):
         return False
     schema = str(payload.get("schema_version", ""))
-    if schema.startswith("analysis.compact.") or "agents" in payload or "valuation" in payload:
+    if (
+        schema.startswith("analysis.compact.")
+        or "agents" in payload
+        or "valuation" in payload
+    ):
         return True
     return "summary" in payload and ("fundamental" in payload or "technical" in payload)
 
@@ -87,7 +91,9 @@ def _load_payload_from_file(path: Path) -> Optional[Dict[str, Any]]:
     return parsed if _is_analysis_payload(parsed) else None
 
 
-def _write_ui_cache(cache_dir: Path, symbol: str, payload: Dict[str, Any], source: str) -> Path:
+def _write_ui_cache(
+    cache_dir: Path, symbol: str, payload: Dict[str, Any], source: str
+) -> Path:
     cache_dir.mkdir(parents=True, exist_ok=True)
     cache_path = cache_dir / f"{symbol.upper()}.json"
     record = {
@@ -124,7 +130,7 @@ def _load_symbols(
         f"""
         SELECT ticker, stockid, COALESCE(sec_sector, 'Unknown') AS sec_sector
         FROM symbol
-        WHERE {' AND '.join(filters)}
+        WHERE {" AND ".join(filters)}
         ORDER BY stockid ASC
         {limit_clause}
     """
@@ -136,7 +142,10 @@ def _load_symbols(
 
     with repo.stock_engine.connect() as conn:
         rows = conn.execute(query, params).fetchall()
-    return [SymbolRow(ticker=str(r[0]).upper(), stockid=int(r[1]), sector=str(r[2])) for r in rows]
+    return [
+        SymbolRow(ticker=str(r[0]).upper(), stockid=int(r[1]), sector=str(r[2]))
+        for r in rows
+    ]
 
 
 def _source_env_vars(env_file: Path) -> Dict[str, str]:
@@ -170,10 +179,15 @@ def _source_env_vars(env_file: Path) -> Dict[str, str]:
 
 
 def _parse_symbols_arg(raw_symbols: str) -> List[SymbolRow]:
-    tokens = [token.strip().upper() for token in (raw_symbols or "").replace("\n", ",").split(",")]
+    tokens = [
+        token.strip().upper()
+        for token in (raw_symbols or "").replace("\n", ",").split(",")
+    ]
     clean = [token for token in tokens if token]
     deduped = list(dict.fromkeys(clean))
-    return [SymbolRow(ticker=symbol, stockid=-1, sector="Unknown") for symbol in deduped]
+    return [
+        SymbolRow(ticker=symbol, stockid=-1, sector="Unknown") for symbol in deduped
+    ]
 
 
 def _build_command(
@@ -308,7 +322,10 @@ def run(args: argparse.Namespace) -> int:
             flush=True,
         )
     if args.skip_cached:
-        print("Skip mode: existing artifacts/ui_cache/<SYMBOL>.json entries will be reused.", flush=True)
+        print(
+            "Skip mode: existing artifacts/ui_cache/<SYMBOL>.json entries will be reused.",
+            flush=True,
+        )
 
     run_log: Dict[str, Any] = {
         "started_at": started_at.isoformat(),
@@ -348,7 +365,10 @@ def run(args: argparse.Namespace) -> int:
                     "cache_file": str(canonical_cache_path),
                 }
             )
-            print(f"[{idx}/{total}] {symbol:<8} stockid={row.stockid:<5} skipped (cached)", flush=True)
+            print(
+                f"[{idx}/{total}] {symbol:<8} stockid={row.stockid:<5} skipped (cached)",
+                flush=True,
+            )
             continue
 
         tick_start = time.time()
@@ -389,9 +409,15 @@ def run(args: argparse.Namespace) -> int:
         }
 
         if status == "success":
-            cached_path = _write_ui_cache(cache_dir, symbol, payload, source="precompute_wrapper")
+            cached_path = _write_ui_cache(
+                cache_dir, symbol, payload, source="precompute_wrapper"
+            )
             entry["cache_file"] = str(cached_path)
-            summary = payload.get("recommendation", {}) if isinstance(payload.get("recommendation"), dict) else {}
+            summary = (
+                payload.get("recommendation", {})
+                if isinstance(payload.get("recommendation"), dict)
+                else {}
+            )
             entry["action"] = summary.get("action")
             entry["confidence_score"] = summary.get("confidence_score")
             success_count += 1
@@ -427,7 +453,8 @@ def run(args: argparse.Namespace) -> int:
         remaining = total - idx
         eta = _format_eta(avg * remaining)
         print(
-            f"          progress: success={success_count}, failed={fail_count}, " f"skipped={skipped_count}, eta={eta}",
+            f"          progress: success={success_count}, failed={fail_count}, "
+            f"skipped={skipped_count}, eta={eta}",
             flush=True,
         )
 
@@ -452,11 +479,14 @@ def run(args: argparse.Namespace) -> int:
     }
 
     run_log_file = run_dir / f"precompute_{run_stamp}.json"
-    run_log_file.write_text(json.dumps(run_log, ensure_ascii=False, indent=2), encoding="utf-8")
+    run_log_file.write_text(
+        json.dumps(run_log, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
     print("\nDone.", flush=True)
     print(
-        f"  success={success_count}, failed={fail_count}, skipped={skipped_count}, " f"elapsed={_format_eta(elapsed)}",
+        f"  success={success_count}, failed={fail_count}, skipped={skipped_count}, "
+        f"elapsed={_format_eta(elapsed)}",
         flush=True,
     )
     print(f"  run log: {run_log_file}", flush=True)
@@ -465,15 +495,29 @@ def run(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Precompute sequential dashboard cache from symbol table.")
+    parser = argparse.ArgumentParser(
+        description="Precompute sequential dashboard cache from symbol table."
+    )
     parser.add_argument(
         "--symbols",
         default=None,
         help="Optional comma-separated symbol list (skips DB lookup), e.g. AAPL,MSFT,TRV",
     )
-    parser.add_argument("--min-stockid", type=int, default=1, help="Minimum stockid to include (default: 1)")
-    parser.add_argument("--max-stockid", type=int, default=1000, help="Maximum stockid to include (default: 1000)")
-    parser.add_argument("--limit", type=int, default=None, help="Optional cap after stockid filtering")
+    parser.add_argument(
+        "--min-stockid",
+        type=int,
+        default=1,
+        help="Minimum stockid to include (default: 1)",
+    )
+    parser.add_argument(
+        "--max-stockid",
+        type=int,
+        default=1000,
+        help="Maximum stockid to include (default: 1000)",
+    )
+    parser.add_argument(
+        "--limit", type=int, default=None, help="Optional cap after stockid filtering"
+    )
     parser.add_argument(
         "--mode",
         choices=["quick", "standard", "comprehensive"],

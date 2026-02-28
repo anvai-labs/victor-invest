@@ -106,14 +106,20 @@ def test_build_deterministic_fundamental_report_payload_derives_recommendation()
 
     buy_payload = agent._build_deterministic_fundamental_report_payload(
         {
-            "valuation": {"fair_value_estimate": 120.0, "valuation_stance": "Undervalued"},
+            "valuation": {
+                "fair_value_estimate": 120.0,
+                "valuation_stance": "Undervalued",
+            },
             "ratios": {"current_price": 100.0},
             "company_data": {},
         }
     )
     sell_payload = agent._build_deterministic_fundamental_report_payload(
         {
-            "valuation": {"fair_value_estimate": 80.0, "valuation_stance": "Overvalued"},
+            "valuation": {
+                "fair_value_estimate": 80.0,
+                "valuation_stance": "Overvalued",
+            },
             "ratios": {"current_price": 100.0},
             "company_data": {},
         }

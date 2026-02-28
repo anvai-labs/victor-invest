@@ -104,7 +104,8 @@ class DividendCollector(BaseCollector):
 
         if not self.api_key:
             self.logger.warning(
-                "FINNHUB_API_KEY not configured. " "Set via: victor keys --set-service finnhub --keyring"
+                "FINNHUB_API_KEY not configured. "
+                "Set via: victor keys --set-service finnhub --keyring"
             )
 
     def _make_request(self, endpoint: str, params: Dict[str, Any]) -> Optional[Any]:
@@ -138,7 +139,8 @@ class DividendCollector(BaseCollector):
         """Collect dividend data with incremental fetching."""
         if not self.api_key:
             self.metrics.errors.append(
-                "FINNHUB_API_KEY not configured. " "Run: victor keys --set-service finnhub --keyring"
+                "FINNHUB_API_KEY not configured. "
+                "Run: victor keys --set-service finnhub --keyring"
             )
             return self.metrics
 
@@ -162,7 +164,9 @@ class DividendCollector(BaseCollector):
                     self.metrics.records_processed += 1
 
                     # Get last dividend date for incremental fetch
-                    last_date = get_last_date(cursor, "dividend_history", "ex_dividend_date", "symbol", symbol)
+                    last_date = get_last_date(
+                        cursor, "dividend_history", "ex_dividend_date", "symbol", symbol
+                    )
 
                     if last_date:
                         start_date = last_date + timedelta(days=1)
@@ -398,8 +402,12 @@ class DividendCollector(BaseCollector):
 
 def main():
     parser = argparse.ArgumentParser(description="Collect dividend history data")
-    parser.add_argument("--symbols", type=str, help="Comma-separated list of symbols (default: S&P 500)")
-    parser.add_argument("--years", type=int, default=5, help="Number of years to fetch (default: 5)")
+    parser.add_argument(
+        "--symbols", type=str, help="Comma-separated list of symbols (default: S&P 500)"
+    )
+    parser.add_argument(
+        "--years", type=int, default=5, help="Number of years to fetch (default: 5)"
+    )
     args = parser.parse_args()
 
     symbols = None

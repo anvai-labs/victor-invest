@@ -176,12 +176,10 @@ class InvestmentAgent(ABC):
                     to_camel_case=False,  # Use snake_case for internal Python code
                 )
 
-                self.logger.debug(
-                    f"Normalized {len(result.result_data)} keys to snake_case " f"for task {task.task_id}"
-                )
+                self.logger.debug(f"Normalized {len(result.result_data)} keys to snake_case for task {task.task_id}")
             except Exception as e:
                 self.logger.warning(
-                    f"Failed to normalize result data for {task.task_id}: {e}. " f"Continuing with unnormalized data."
+                    f"Failed to normalize result data for {task.task_id}: {e}. Continuing with unnormalized data."
                 )
 
         # Update metrics
@@ -190,7 +188,7 @@ class InvestmentAgent(ABC):
         # Log performance
         if result.is_successful():
             self.logger.info(
-                f"Task {task.task_id} completed in {result.processing_time:.2f}s " f"(cache_hit: {result.cache_hit})"
+                f"Task {task.task_id} completed in {result.processing_time:.2f}s (cache_hit: {result.cache_hit})"
             )
         else:
             self.logger.error(f"Task {task.task_id} failed: {result.error}")

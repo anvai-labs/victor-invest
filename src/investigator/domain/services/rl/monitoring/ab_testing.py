@@ -157,8 +157,7 @@ class ABTestingFramework:
             with self.db.get_session() as session:
                 # Get performance by group
                 result = session.execute(
-                    text(
-                        """
+                    text("""
                         SELECT
                             ab_test_group,
                             COUNT(*) as num_predictions,
@@ -175,8 +174,7 @@ class ABTestingFramework:
                           AND ab_test_group IS NOT NULL
                           AND analysis_date >= CURRENT_DATE - :days
                         GROUP BY ab_test_group
-                    """
-                    ),
+                    """),
                     {"days": days},
                 ).fetchall()
 
@@ -322,8 +320,7 @@ class ABTestingFramework:
         try:
             with self.db.get_session() as session:
                 result = session.execute(
-                    text(
-                        """
+                    text("""
                         SELECT
                             ab_test_group,
                             context_features->>'sector' as sector,
@@ -335,8 +332,7 @@ class ABTestingFramework:
                           AND analysis_date >= CURRENT_DATE - :days
                         GROUP BY ab_test_group, context_features->>'sector'
                         ORDER BY ab_test_group, count DESC
-                    """
-                    ),
+                    """),
                     {"days": days},
                 ).fetchall()
 
@@ -380,8 +376,7 @@ class ABTestingFramework:
 
             with self.db.get_session() as session:
                 result = session.execute(
-                    text(
-                        f"""
+                    text(f"""
                         SELECT
                             {bucket_sql} as period,
                             ab_test_group,
@@ -393,8 +388,7 @@ class ABTestingFramework:
                           AND analysis_date >= CURRENT_DATE - :days
                         GROUP BY {bucket_sql}, ab_test_group
                         ORDER BY period ASC, ab_test_group
-                    """
-                    ),
+                    """),
                     {"days": days},
                 ).fetchall()
 

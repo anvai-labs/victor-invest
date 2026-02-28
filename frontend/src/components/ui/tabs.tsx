@@ -51,13 +51,19 @@ export function TabsTrigger({
   value,
   children,
   className,
+  onClick,
 }: {
   value: string;
   children: ReactNode;
   className?: string;
+  onClick?: () => void;
 }) {
   const { active, setActive } = useContext(TabsContext);
   const isActive = active === value;
+  const handleClick = () => {
+    setActive(value);
+    if (onClick) onClick();
+  };
   return (
     <button
       className={cn(
@@ -67,7 +73,7 @@ export function TabsTrigger({
           : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
         className,
       )}
-      onClick={() => setActive(value)}
+      onClick={handleClick}
     >
       {children}
     </button>

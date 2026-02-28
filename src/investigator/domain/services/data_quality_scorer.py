@@ -464,7 +464,7 @@ class DataQualityScorer:
         # Level-based recommendations
         if level == DataQualityLevel.INSUFFICIENT:
             recommendations.append(
-                "Data quality insufficient for reliable valuation. " "Consider fetching additional data sources."
+                "Data quality insufficient for reliable valuation. Consider fetching additional data sources."
             )
         elif level == DataQualityLevel.POOR:
             recommendations.append("Data quality is poor. Results should be used with caution.")
@@ -474,7 +474,7 @@ class DataQualityScorer:
         if weak_categories:
             cats = ", ".join(c for c, _ in weak_categories[:3])
             recommendations.append(
-                f"Low data completeness in: {cats}. " f"Consider supplementing with alternative data sources."
+                f"Low data completeness in: {cats}. Consider supplementing with alternative data sources."
             )
 
         # Model-specific recommendations
@@ -482,7 +482,7 @@ class DataQualityScorer:
         if low_applicability:
             models = ", ".join(low_applicability[:3])
             recommendations.append(
-                f"Models with limited applicability: {models}. " f"Consider excluding or weighting down these models."
+                f"Models with limited applicability: {models}. Consider excluding or weighting down these models."
             )
 
         return recommendations

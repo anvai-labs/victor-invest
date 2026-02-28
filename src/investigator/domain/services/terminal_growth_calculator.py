@@ -188,7 +188,7 @@ class TerminalGrowthCalculator:
         else:
             tier = self.TIER_STANDARD
             adjustment = self.ADJUSTMENT_STANDARD
-            reason = f"Standard (Rule of 40: {rule_of_40_score:.1f}%, " f"FCF margin {fcf_margin_pct:.1f}%)"
+            reason = f"Standard (Rule of 40: {rule_of_40_score:.1f}%, FCF margin {fcf_margin_pct:.1f}%)"
 
         return tier, adjustment, reason
 

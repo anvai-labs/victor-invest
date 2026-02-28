@@ -23,8 +23,7 @@ def fetch_latest_company_data_from_processed_table(
     """
     with db_manager.engine.connect() as conn:
         result = conn.execute(
-            text(
-                """
+            text("""
                 SELECT *
                 FROM sec_companyfacts_processed
                 WHERE symbol = :symbol
@@ -38,8 +37,7 @@ def fetch_latest_company_data_from_processed_table(
                         WHEN 'Q1' THEN 0
                     END DESC
                 LIMIT 1
-            """
-            ),
+            """),
             {"symbol": symbol},
         ).fetchone()
 
@@ -75,14 +73,12 @@ def fetch_latest_company_data_from_processed_table(
                 format(revenue, ",.0f"),
             )
             conn.execute(
-                text(
-                    """
+                text("""
                     DELETE FROM sec_companyfacts_processed
                     WHERE symbol = :symbol
                       AND fiscal_year = :fiscal_year
                       AND fiscal_period = :fiscal_period
-                """
-                ),
+                """),
                 {
                     "symbol": symbol,
                     "fiscal_year": fiscal_year,
@@ -108,7 +104,7 @@ def fetch_latest_company_data_from_processed_table(
             )
 
         logger.info(
-            "[CLEAN ARCH] Fetched company data for %s from processed table: " "%s-%s (filed: %s) | Revenue: $%s",
+            "[CLEAN ARCH] Fetched company data for %s from processed table: %s-%s (filed: %s) | Revenue: $%s",
             symbol,
             fiscal_year,
             fiscal_period,

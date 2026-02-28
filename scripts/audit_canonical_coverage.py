@@ -72,7 +72,10 @@ def has_raw_support(
         return False
 
     next_seen = seen | {canonical_key}
-    result = all(has_raw_support(dep, mapper, sector, us_gaap, memo, next_seen) for dep in required_fields)
+    result = all(
+        has_raw_support(dep, mapper, sector, us_gaap, memo, next_seen)
+        for dep in required_fields
+    )
     memo[cache_key] = result
     return result
 
@@ -108,7 +111,9 @@ def parse_sector_map(path: Path) -> Dict[str, Dict[str, Optional[str]]]:
 
 def latest_snapshot(symbol_dir: Path) -> Optional[Path]:
     """Return the newest gz snapshot inside a symbol directory."""
-    files = sorted(symbol_dir.glob("*.json.gz"), key=lambda p: p.stat().st_mtime, reverse=True)
+    files = sorted(
+        symbol_dir.glob("*.json.gz"), key=lambda p: p.stat().st_mtime, reverse=True
+    )
     return files[0] if files else None
 
 
@@ -155,7 +160,9 @@ def audit_coverage(
                 continue
 
             # Skip keys that have neither tags nor derivations configured
-            has_defined_tags = bool(mapping.get("global_fallback") or mapping.get("sector_specific"))
+            has_defined_tags = bool(
+                mapping.get("global_fallback") or mapping.get("sector_specific")
+            )
             has_derived_logic = mapping.get("derived", {}).get("enabled", False)
             if not has_defined_tags and not has_derived_logic:
                 continue
@@ -195,10 +202,14 @@ def print_summary(coverage: Dict, total_symbols: int) -> None:
                 sector_gaps.append(f"{sector}:{sector_pct:.0f}%")
 
         gap_str = ", ".join(sorted(sector_gaps)[:3]) if sector_gaps else ""
-        print(f"{canonical_key:40s} {overall_present:4d}/{overall_total:<4d} ({pct:5.1f}%)   {gap_str}")
+        print(
+            f"{canonical_key:40s} {overall_present:4d}/{overall_total:<4d} ({pct:5.1f}%)   {gap_str}"
+        )
 
 
-def serialize_report(coverage: Dict, output_path: Path, facts_root: Path, total_symbols: int) -> None:
+def serialize_report(
+    coverage: Dict, output_path: Path, facts_root: Path, total_symbols: int
+) -> None:
     output = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "facts_root": str(facts_root),
@@ -223,7 +234,9 @@ def serialize_report(coverage: Dict, output_path: Path, facts_root: Path, total_
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Audit canonical key coverage using cached SEC raw facts.")
+    parser = argparse.ArgumentParser(
+        description="Audit canonical key coverage using cached SEC raw facts."
+    )
     parser.add_argument(
         "--facts-root",
         type=Path,
@@ -242,7 +255,9 @@ def main():
         default=None,
         help="Optional limit on number of symbols to scan.",
     )
-    parser.add_argument("--output", type=Path, help="Optional path to write JSON coverage report.")
+    parser.add_argument(
+        "--output", type=Path, help="Optional path to write JSON coverage report."
+    )
     args = parser.parse_args()
 
     if not args.facts_root.exists():

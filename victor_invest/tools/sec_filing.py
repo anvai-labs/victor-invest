@@ -38,6 +38,13 @@ Example:
         action="get_company_facts"
     )
 
+    # Get quarterly financial data from processed table
+    result = await tool.execute(
+        symbol="AAPL",
+        action="get_quarterly_financials",
+        num_periods=12
+    )
+
     # Search for filings
     result = await tool.execute(
         symbol="AAPL",
@@ -80,6 +87,7 @@ class SECFilingTool(BaseTool):
 Actions:
 - get_filing: Get full filing content (10-K, 10-Q, 8-K)
 - get_company_facts: Get structured financial data from SEC CompanyFacts API
+- get_quarterly_financials: Get pre-processed quarterly financial data from database
 - search_filings: Search for recent filings by form type
 - extract_metrics: Extract key financial metrics (revenues, assets, liabilities, etc.)
 - parse_xbrl: Parse XBRL content for detailed financial data
@@ -90,6 +98,7 @@ Parameters:
 - form_type: Filing form type (default: "10-K")
 - period: Filing period ("latest" or specific quarter like "2024-Q3")
 - limit: Number of filings to return for search (default: 5)
+- num_periods: Number of periods for get_quarterly_financials (default: 12)
 """
 
     def __init__(self, config: Optional[Any] = None):
@@ -147,13 +156,14 @@ Parameters:
             action: Operation to perform:
                 - "get_filing": Get full filing content
                 - "get_company_facts": Get structured financial data
+                - "get_quarterly_financials": Get pre-processed quarterly data from database
                 - "search_filings": Search for filings
                 - "extract_metrics": Extract financial metrics
                 - "parse_xbrl": Parse XBRL content
             form_type: SEC form type ("10-K", "10-Q", "8-K")
             period: Filing period ("latest" or specific period)
             limit: Max filings to return for search action
-            **kwargs: Additional action-specific parameters
+            **kwargs: Additional action-specific parameters (e.g., num_periods for get_quarterly_financials)
 
         Returns:
             ToolResult with filing data or error message
@@ -171,6 +181,9 @@ Parameters:
                 return await self._get_filing(symbol, form_type, period)
             elif action == "get_company_facts":
                 return await self._get_company_facts(symbol)
+            elif action == "get_quarterly_financials":
+                num_periods = kwargs.get("num_periods", 12)
+                return await self._get_quarterly_financials(symbol, num_periods)
             elif action == "search_filings":
                 return await self._search_filings(symbol, form_type, limit)
             elif action == "extract_metrics":
@@ -181,7 +194,7 @@ Parameters:
             else:
                 return ToolResult.create_failure(
                     f"Unknown action: {action}. Valid actions: "
-                    "get_filing, get_company_facts, search_filings, extract_metrics, parse_xbrl"
+                    "get_filing, get_company_facts, get_quarterly_financials, search_filings, extract_metrics, parse_xbrl"
                 )
 
         except Exception as e:
@@ -205,9 +218,7 @@ Parameters:
         try:
             if self._sec_client is None:
                 return ToolResult.create_failure("SEC client not initialized")
-            filing_data = await self._sec_client.get_filing_by_symbol(
-                symbol=symbol, form_type=form_type, period=period
-            )
+            filing_data = await self._sec_client.get_filing_by_symbol(symbol=symbol, form_type=form_type, period=period)
 
             if not filing_data:
                 return ToolResult.create_failure(
@@ -224,9 +235,7 @@ Parameters:
                     "form_url": filing_data.get("form_url"),
                     "xbrl_url": filing_data.get("xbrl_url"),
                     "cik": filing_data.get("cik"),
-                    "text": filing_data.get("text", "")[
-                        :50000
-                    ],  # Truncate large filings
+                    "text": filing_data.get("text", "")[:50000],  # Truncate large filings
                 },
                 metadata={
                     "source": "sec_edgar",
@@ -255,9 +264,7 @@ Parameters:
 
             # Run synchronous method in thread pool
             loop = asyncio.get_event_loop()
-            facts_data = await loop.run_in_executor(
-                None, self._facts_extractor.get_company_facts, symbol
-            )
+            facts_data = await loop.run_in_executor(None, self._facts_extractor.get_company_facts, symbol)
 
             if not facts_data:
                 return ToolResult.create_failure(
@@ -285,9 +292,177 @@ Parameters:
             logger.error(f"Error getting company facts for {symbol}: {e}")
             return ToolResult.create_failure(f"Failed to get company facts: {str(e)}")
 
-    async def _search_filings(
-        self, symbol: str, form_type: str, limit: int
-    ) -> ToolResult:
+    def _derive_missing_q4_quarters(self, quarters_data: list, symbol: str) -> list:
+        """Derive Q4 quarterly data from FY filings when Q4 is missing.
+
+        This is a thin wrapper around the shared q4_derivation module to maintain
+        API compatibility. The actual implementation is in:
+        investigator.domain.services.valuation_shared.q4_derivation
+
+        Args:
+            quarters_data: List of quarterly entries from database
+            symbol: Stock ticker (for logging)
+
+        Returns:
+            Updated list with derived Q4 entries replacing FY entries
+        """
+        from investigator.domain.services.valuation_shared.q4_derivation import (
+            derive_q4_from_fy,
+        )
+
+        return derive_q4_from_fy(quarters_data, symbol)
+
+    async def _get_quarterly_financials(self, symbol: str, num_periods: int = 12) -> ToolResult:
+        """Get quarterly financial data using the legacy pipeline.
+
+        This method uses the same data pipeline as the legacy CLI to ensure
+        consistent results. It reads from sec_companyfacts_processed table
+        via the legacy quarterly_fetch module.
+
+        Args:
+            symbol: Stock ticker
+            num_periods: Maximum number of periods to return (default: 12)
+
+        Returns:
+            ToolResult with quarterly financial data in dict format
+        """
+        try:
+            from investigator.domain.agents.fundamental.quarterly_fetch import (
+                query_recent_processed_periods,
+            )
+            from investigator.domain.services.fiscal_period_service import (
+                get_fiscal_period_service,
+            )
+            from investigator.infrastructure.database.db import get_db_manager
+
+            db_manager = get_db_manager()
+            fiscal_period_service = get_fiscal_period_service()
+
+            # Use legacy pipeline to fetch quarterly data
+            loop = asyncio.get_event_loop()
+            quarters_data = await loop.run_in_executor(
+                None,
+                lambda: query_recent_processed_periods(
+                    symbol=symbol,
+                    num_quarters=num_periods,
+                    db_manager=db_manager,
+                    fiscal_period_service=fiscal_period_service,
+                    logger=logger,
+                ),
+            )
+
+            if not quarters_data:
+                return ToolResult.create_failure(
+                    f"No quarterly financial data found for {symbol} in sec_companyfacts_processed table. "
+                    "The symbol may need to be processed first.",
+                    metadata={"symbol": symbol},
+                )
+
+            # Derive Q4 from FY filings when Q4 is missing
+            # SEC Company Facts API provides FY (full year) but often not separate Q4 entry
+            quarters_data = self._derive_missing_q4_quarters(quarters_data, symbol)
+
+            # Convert raw quarters data to dict format compatible with valuation models
+            # This matches the QuarterlyData.to_dict() nested format expected by DCF and other models
+            quarterly_metrics = []
+            for q in quarters_data:
+                # Build nested structure to match investigator CLI format
+                metric_dict = {
+                    "symbol": q.get("symbol"),
+                    "fiscal_year": q.get("fiscal_year"),
+                    "fiscal_period": q.get("fiscal_period"),
+                    "adsh": q.get("adsh"),
+                    "filed": q.get("filed"),
+                    "period_end": q.get("period_end"),
+                    "period_end_date": q.get("period_end"),  # Alias for quarterly_processor compatibility
+                    "filed_date": q.get("filed"),  # Alias for quarterly_processor compatibility
+                    "form": q.get("form"),
+                    # Shares outstanding - prefer weighted average diluted for EPS calculations
+                    # This is the industry standard for per-share calculations
+                    "shares_outstanding": q.get("weighted_average_diluted_shares_outstanding")
+                    or q.get("shares_outstanding"),
+                    # Actual shares outstanding (for EV/market cap calculations)
+                    "actual_shares_outstanding": q.get("shares_outstanding"),
+                    # Nested structures (matching QuarterlyData.to_dict() format)
+                    "cash_flow": {
+                        "operating_cash_flow": q.get("operating_cash_flow"),
+                        "capital_expenditures": q.get("capital_expenditures"),
+                        "free_cash_flow": q.get("free_cash_flow"),
+                        "dividends_paid": q.get("dividends_paid"),
+                        "is_ytd": q.get("is_ytd_cashflow", False),
+                        "value_type": "quarterly",
+                    },
+                    "income_statement": {
+                        "total_revenue": q.get("total_revenue"),
+                        "net_income": q.get("net_income"),
+                        "gross_profit": q.get("gross_profit"),
+                        "operating_income": q.get("operating_income"),
+                        "interest_expense": q.get("interest_expense"),
+                        "income_tax_expense": q.get("income_tax_expense"),
+                        "cost_of_revenue": q.get("cost_of_revenue"),
+                        "depreciation_amortization": q.get("depreciation_amortization"),
+                        "stock_based_compensation": q.get("stock_based_compensation"),
+                        "research_and_development_expense": q.get("research_and_development_expense"),
+                        "selling_general_administrative_expense": q.get("selling_general_administrative_expense"),
+                    },
+                    "balance_sheet": {
+                        "total_assets": q.get("total_assets"),
+                        "total_liabilities": q.get("total_liabilities"),
+                        "stockholders_equity": q.get("stockholders_equity"),
+                        "current_assets": q.get("current_assets"),
+                        "current_liabilities": q.get("current_liabilities"),
+                        "accounts_receivable": q.get("accounts_receivable"),
+                        "inventory": q.get("inventory"),
+                        "cash_and_equivalents": q.get("cash_and_equivalents"),
+                        "long_term_debt": q.get("long_term_debt"),
+                        "short_term_debt": q.get("short_term_debt"),
+                        "total_debt": q.get("total_debt"),
+                    },
+                    # Additional calculated metrics (flat for compatibility)
+                    "weighted_average_diluted_shares_outstanding": q.get("weighted_average_diluted_shares_outstanding")
+                    or q.get("shares_outstanding"),
+                    # Also include flat fields for backward compatibility with DynamicModelWeightingService
+                    "_derived": q.get("_derived"),  # Flag for derived Q4 entries (important for TTM filtering)
+                    "total_revenue": q.get("total_revenue"),
+                    "net_income": q.get("net_income"),
+                    "gross_profit": q.get("gross_profit"),
+                    "operating_income": q.get("operating_income"),
+                    "ebitda": q.get("ebitda")
+                    or (
+                        (q.get("operating_income", 0) or 0) + (q.get("depreciation_amortization", 0) or 0)
+                        if q.get("operating_income") and q.get("depreciation_amortization")
+                        else None
+                    ),
+                    "operating_cash_flow": q.get("operating_cash_flow"),
+                    "capital_expenditures": q.get("capital_expenditures"),
+                    "free_cash_flow": q.get("free_cash_flow"),
+                    "dividends_paid": q.get("dividends_paid"),
+                }
+                quarterly_metrics.append(metric_dict)
+
+            logger.info(f"Retrieved {len(quarterly_metrics)} quarterly periods from legacy pipeline for {symbol}")
+
+            return ToolResult.create_success(
+                output={
+                    "symbol": symbol,
+                    "quarterly_metrics": quarterly_metrics,
+                    "count": len(quarterly_metrics),
+                },
+                metadata={
+                    "source": "legacy_quarterly_pipeline",
+                    "num_periods": num_periods,
+                    "raw_quarters_count": len(quarters_data),
+                },
+            )
+
+        except Exception as e:
+            logger.error(f"Error getting quarterly financials for {symbol}: {e}")
+            import traceback
+
+            logger.error(traceback.format_exc())
+            return ToolResult.create_failure(f"Failed to get quarterly financials: {str(e)}")
+
+    async def _search_filings(self, symbol: str, form_type: str, limit: int) -> ToolResult:
         """Search for recent filings.
 
         Args:
@@ -301,9 +476,7 @@ Parameters:
         try:
             if self._sec_client is None:
                 return ToolResult.create_failure("SEC client not initialized")
-            filings = await self._sec_client.search_filings(
-                symbol=symbol, form_type=form_type, limit=limit
-            )
+            filings = await self._sec_client.search_filings(symbol=symbol, form_type=form_type, limit=limit)
 
             if not filings:
                 return ToolResult.create_failure(
@@ -340,9 +513,7 @@ Parameters:
 
             # Run synchronous method in thread pool
             loop = asyncio.get_event_loop()
-            metrics = await loop.run_in_executor(
-                None, self._facts_extractor.extract_financial_metrics, symbol
-            )
+            metrics = await loop.run_in_executor(None, self._facts_extractor.extract_financial_metrics, symbol)
 
             if not metrics or all(
                 v is None
@@ -397,9 +568,7 @@ Parameters:
                         "cash_and_equivalents": metrics.get("cash_and_equivalents"),
                         "inventory": metrics.get("inventory"),
                         "accounts_receivable": metrics.get("accounts_receivable"),
-                        "property_plant_equipment": metrics.get(
-                            "property_plant_equipment"
-                        ),
+                        "property_plant_equipment": metrics.get("property_plant_equipment"),
                         "shares_outstanding": shares_outstanding,
                     },
                     "income_statement": {
@@ -412,9 +581,7 @@ Parameters:
                         "operating_income": metrics.get("operating_income"),
                         "cost_of_revenue": metrics.get("cost_of_revenue"),
                         "ebitda": metrics.get("ebitda"),
-                        "depreciation_amortization": metrics.get(
-                            "depreciation_amortization"
-                        ),
+                        "depreciation_amortization": metrics.get("depreciation_amortization"),
                     },
                     "cash_flow": {
                         "operating_cash_flow": metrics.get("operating_cash_flow"),
@@ -439,17 +606,13 @@ Parameters:
                     "insurance_metrics": {
                         "premiums_earned": metrics.get("premiums_earned"),
                         "claims_incurred": metrics.get("claims_incurred"),
-                        "policy_acquisition_costs": metrics.get(
-                            "policy_acquisition_costs"
-                        ),
+                        "policy_acquisition_costs": metrics.get("policy_acquisition_costs"),
                         "combined_ratio": self._calculate_combined_ratio(metrics),
                     },
                     "defense_metrics": {
                         "order_backlog": metrics.get("order_backlog"),
                         "contract_liability": metrics.get("contract_liability"),
-                        "unbilled_contracts_receivable": metrics.get(
-                            "unbilled_contracts_receivable"
-                        ),
+                        "unbilled_contracts_receivable": metrics.get("unbilled_contracts_receivable"),
                         "backlog_to_revenue": self._calculate_backlog_ratio(metrics),
                     },
                 },
@@ -562,6 +725,7 @@ Parameters:
                     "enum": [
                         "get_filing",
                         "get_company_facts",
+                        "get_quarterly_financials",
                         "search_filings",
                         "extract_metrics",
                         "parse_xbrl",

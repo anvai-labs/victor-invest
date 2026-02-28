@@ -48,7 +48,7 @@ class SECCompanyFactsExtractor:
         import os
 
         self.db_config = db_config or {
-            "host": os.environ.get("SEC_DB_HOST", os.environ.get("DB_HOST", "localhost")),
+            "host": os.environ.get("SEC_DB_HOST", os.environ.get("DB_HOST", "dataserver1.singh.local")),
             "port": int(os.environ.get("SEC_DB_PORT", os.environ.get("DB_PORT", "5432"))),
             "database": os.environ.get("SEC_DB_NAME", "sec_database"),
             "username": os.environ.get("SEC_DB_USER", "investigator"),
@@ -119,7 +119,7 @@ class SECCompanyFactsExtractor:
                 # Return cached data if fresh enough
                 if age_days < max_age_days:
                     logger.info(
-                        f"✓ Using cached data for {symbol} " f"({age_days:.1f} days old < {max_age_days} day threshold)"
+                        f"✓ Using cached data for {symbol} ({age_days:.1f} days old < {max_age_days} day threshold)"
                     )
                     db_data["source"] = "database_cache"
                     db_data["cache_age_days"] = age_days
@@ -134,7 +134,7 @@ class SECCompanyFactsExtractor:
                     )
 
         # Step 2: No fresh data in cache - return None to signal caller to run SEC Agent
-        logger.info(f"No fresh data for {symbol} in cache. " f"Caller should trigger SEC Agent to fetch from API.")
+        logger.info(f"No fresh data for {symbol} in cache. Caller should trigger SEC Agent to fetch from API.")
         return None
 
     def _calculate_age_days(self, fetched_at_str: str) -> float:
@@ -175,8 +175,7 @@ class SECCompanyFactsExtractor:
             Dictionary with RAW SEC API response (with us-gaap structure) or None if not found
         """
         try:
-            query = text(
-                """
+            query = text("""
                 SELECT
                     id,
                     symbol,
@@ -188,8 +187,7 @@ class SECCompanyFactsExtractor:
                 FROM sec_companyfacts_raw
                 WHERE symbol = :symbol
                 LIMIT 1
-            """
-            )
+            """)
 
             with self.engine.connect() as conn:
                 result = conn.execute(query, {"symbol": symbol.upper()}).fetchone()
@@ -266,7 +264,7 @@ class SECCompanyFactsExtractor:
                 has_us_gaap = "us-gaap" in raw_facts
                 has_dei = "dei" in raw_facts
 
-                logger.info(f"📦 SEC API response for {symbol}: " f"has us-gaap={has_us_gaap}, has dei={has_dei}")
+                logger.info(f"📦 SEC API response for {symbol}: has us-gaap={has_us_gaap}, has dei={has_dei}")
 
                 if has_us_gaap:
                     us_gaap_tags = len(raw_facts["us-gaap"])
@@ -353,8 +351,7 @@ class SECCompanyFactsExtractor:
             checksum = hashlib.sha256(raw_json.encode()).hexdigest()
 
             # Save to sec_companyfacts_raw table (3-table architecture)
-            query = text(
-                """
+            query = text("""
                 INSERT INTO sec_companyfacts_raw
                 (symbol, cik, entity_name, companyfacts, api_version, api_response_size, api_checksum)
                 VALUES (:symbol, :cik, :entity_name, CAST(:companyfacts AS jsonb), 'v1.0', :size, :checksum)
@@ -366,8 +363,7 @@ class SECCompanyFactsExtractor:
                     api_response_size = EXCLUDED.api_response_size,
                     api_checksum = EXCLUDED.api_checksum
                 RETURNING id
-            """
-            )
+            """)
 
             with self.engine.connect() as conn:
                 result = conn.execute(
@@ -632,15 +628,13 @@ class SECCompanyFactsExtractor:
             AAPL (cik=320193) → 9 (September fiscal year end)
         """
         try:
-            query = text(
-                """
+            query = text("""
                 SELECT EXTRACT(MONTH FROM sub.period) as fy_end_month
                 FROM sec_sub_data sub
                 WHERE sub.cik = :cik AND sub.fp = 'FY'
                 ORDER BY sub.period DESC
                 LIMIT 1
-            """
-            )
+            """)
 
             with self.engine.connect() as conn:
                 result = conn.execute(query, {"cik": cik}).fetchone()
@@ -770,7 +764,7 @@ class SECCompanyFactsExtractor:
                     latest_fy, latest_fp, _ = strategy._get_from_bulk_tables(cik)
                     if latest_fy and latest_fp:
                         logger.info(
-                            f"✓ Determined latest period from bulk tables for {symbol}: " f"{latest_fy}-{latest_fp}"
+                            f"✓ Determined latest period from bulk tables for {symbol}: {latest_fy}-{latest_fp}"
                         )
                         return (latest_fy, latest_fp, None)  # No filed date from bulk
 
@@ -914,7 +908,7 @@ class SECCompanyFactsExtractor:
             # The caller should extract from actual SEC CompanyFacts fy/fp fields.
 
             logger.debug(
-                "No valid fiscal period in cached data. " "Caller should extract from SEC CompanyFacts fy/fp fields."
+                "No valid fiscal period in cached data. Caller should extract from SEC CompanyFacts fy/fp fields."
             )
             return (None, None)
 
@@ -1077,15 +1071,15 @@ class SECCompanyFactsExtractor:
                     fy = latest.get("fy")
                     fp = latest.get("fp")
 
-                    logger.debug(f"✓ JSON API HIT for {symbol} {metric_tag} " f"{fiscal_year}-{fiscal_period}: {value}")
+                    logger.debug(f"✓ JSON API HIT for {symbol} {metric_tag} {fiscal_year}-{fiscal_period}: {value}")
                     return (value, fy, fp)
                 else:
-                    logger.debug(f"JSON API MISS for {symbol} {metric_tag} " f"{fiscal_year}-{fiscal_period}")
+                    logger.debug(f"JSON API MISS for {symbol} {metric_tag} {fiscal_year}-{fiscal_period}")
                     return (None, None, None)
             else:
                 # Get latest value using existing helper
                 value, fy, fp = self._get_latest_value_with_period(usd_data)
-                logger.debug(f"✓ JSON API HIT for {symbol} {metric_tag} (latest): " f"{value} (FY:{fy} FP:{fp})")
+                logger.debug(f"✓ JSON API HIT for {symbol} {metric_tag} (latest): {value} (FY:{fy} FP:{fp})")
                 return (value, fy, fp)
 
         except Exception as e:
@@ -1169,9 +1163,31 @@ class SECCompanyFactsExtractor:
                 }
 
             # Import tag mapper for comprehensive tag coverage (ALL metrics)
-            from utils.xbrl_tag_aliases import XBRLTagAliasMapper
+            XBRLTagAliasMapper = None
+            try:
+                # First try to add project root to path for utils import
+                import sys
+                from pathlib import Path
 
-            tag_mapper = XBRLTagAliasMapper()
+                # Find project root (look for setup.py or pyproject.toml)
+                current_path = Path(__file__).resolve()
+                project_root = current_path
+                for parent in [current_path, *current_path.parents]:
+                    if (parent / "setup.py").exists() or (parent / "pyproject.toml").exists():
+                        project_root = parent
+                        break
+
+                # Add project root to sys.path if not already there
+                project_root_str = str(project_root)
+                if project_root_str not in sys.path:
+                    sys.path.insert(0, project_root_str)
+
+                from utils.xbrl_tag_aliases import XBRLTagAliasMapper
+            except ImportError:
+                # Fallback: if running from different context, skip tag mapper
+                XBRLTagAliasMapper = None
+
+            tag_mapper = XBRLTagAliasMapper() if XBRLTagAliasMapper else None
 
             # STEP 1: Determine latest fiscal period FIRST (before extracting any metrics)
             # This ensures ALL metrics come from the SAME fiscal period
@@ -1212,11 +1228,14 @@ class SECCompanyFactsExtractor:
                     Extracted value or None if not found
                 """
                 # If canonical_name provided, use tag mapper to get all aliases
-                if canonical_name:
+                if canonical_name and tag_mapper:
                     concept_names = tag_mapper.get_xbrl_aliases(canonical_name)
                     if not concept_names:
                         # Fallback to original if mapper doesn't have mapping
                         concept_names = [canonical_name]
+                elif canonical_name and not tag_mapper:
+                    # No tag mapper available, use canonical name directly
+                    concept_names = [canonical_name]
 
                 # Convert single string to list for consistent handling
                 if isinstance(concept_names, str):
@@ -1503,6 +1522,140 @@ class SECCompanyFactsExtractor:
             "fiscal_period": None,
             "source": None,
         }
+
+    def get_processed_quarterly_data(self, symbol: str, num_periods: int = 12) -> List[Dict[str, Any]]:
+        """
+        Fetch pre-processed quarterly financial data from sec_companyfacts_processed table.
+
+        This method reads from the processed table which has all fields properly extracted
+        and calculated, avoiding the need to parse raw XBRL JSON.
+
+        Args:
+            symbol: Stock ticker symbol
+            num_periods: Maximum number of periods to return (default: 12)
+
+        Returns:
+            List of dictionaries with quarterly financial data
+        """
+        try:
+            query = text("""
+                SELECT
+                    symbol, fiscal_year, fiscal_period, adsh,
+                    filed_date as filed,
+                    period_end_date as period_end,
+                    form_type as form,
+                    total_revenue,
+                    net_income,
+                    gross_profit,
+                    operating_income,
+                    interest_expense,
+                    income_tax_expense,
+                    cost_of_revenue,
+                    total_assets,
+                    total_liabilities,
+                    stockholders_equity,
+                    current_assets,
+                    current_liabilities,
+                    accounts_receivable,
+                    inventory,
+                    cash_and_equivalents,
+                    long_term_debt,
+                    short_term_debt,
+                    total_debt,
+                    operating_cash_flow,
+                    capital_expenditures,
+                    free_cash_flow,
+                    dividends_paid,
+                    depreciation_amortization,
+                    stock_based_compensation,
+                    weighted_average_diluted_shares_outstanding as shares_diluted,
+                    shares_outstanding as shares_basic,
+                    shares_outstanding,
+                    earnings_per_share,
+                    earnings_per_share_diluted,
+                    market_cap,
+                    book_value,
+                    book_value_per_share,
+                    working_capital,
+                    net_debt,
+                    research_and_development_expense,
+                    selling_general_administrative_expense,
+                    operating_expenses,
+                    income_statement_qtrs,
+                    cash_flow_statement_qtrs,
+                    extracted_at
+                FROM sec_companyfacts_processed
+                WHERE symbol = :symbol
+                ORDER BY
+                    fiscal_year DESC,
+                    CASE fiscal_period
+                        WHEN 'FY' THEN 4
+                        WHEN 'Q3' THEN 3
+                        WHEN 'Q2' THEN 2
+                        WHEN 'Q1' THEN 1
+                        ELSE 0
+                    END DESC
+                LIMIT :limit
+            """)
+
+            with self.engine.connect() as conn:
+                result = conn.execute(query, {"symbol": symbol.upper(), "limit": num_periods})
+                rows = result.fetchall()
+
+            if not rows:
+                logger.warning(
+                    "No quarterly data found in sec_companyfacts_processed for %s",
+                    symbol,
+                )
+                return []
+
+            quarterly_data = []
+            for row in rows:
+                # Convert Row to dict, handling None values
+                period_data = {}
+                for key in row._mapping:
+                    value = row._mapping[key]
+                    # Skip non-numeric columns
+                    if key in (
+                        "symbol",
+                        "adsh",
+                        "form",
+                        "fiscal_period",
+                        "filed",
+                        "period_end",
+                        "extracted_at",
+                    ):
+                        period_data[key] = str(value) if value is not None else None
+                    elif value is not None:
+                        try:
+                            period_data[key] = float(value)
+                        except (ValueError, TypeError):
+                            period_data[key] = value
+                    else:
+                        period_data[key] = None
+
+                # Calculate EBITDA if not directly available
+                if (
+                    period_data.get("operating_income") is not None
+                    and period_data.get("depreciation_amortization") is not None
+                ):
+                    period_data["ebitda"] = period_data["operating_income"] + period_data["depreciation_amortization"]
+
+                quarterly_data.append(period_data)
+
+            logger.info(
+                "Retrieved %d periods from sec_companyfacts_processed for %s",
+                len(quarterly_data),
+                symbol,
+            )
+            return quarterly_data
+
+        except Exception as e:
+            logger.error(f"Error fetching processed quarterly data for {symbol}: {e}")
+            import traceback
+
+            logger.error(traceback.format_exc())
+            return []
 
     def calculate_financial_ratios(self, symbol: str, current_price: Optional[float] = None) -> Dict:
         """

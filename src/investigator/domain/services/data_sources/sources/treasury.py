@@ -78,8 +78,7 @@ class TreasuryYieldSource(DataSource):
 
             with engine.connect() as conn:
                 result = conn.execute(
-                    text(
-                        """
+                    text("""
                         SELECT date, yield_1m, yield_3m, yield_6m, yield_1y,
                                yield_2y, yield_5y, yield_10y, yield_20y, yield_30y,
                                spread_10y_2y, spread_10y_3m, is_inverted
@@ -87,8 +86,7 @@ class TreasuryYieldSource(DataSource):
                         WHERE date <= :target_date
                         ORDER BY date DESC
                         LIMIT 1
-                    """
-                    ),
+                    """),
                     {"target_date": target_date},
                 )
                 row = result.fetchone()
@@ -239,15 +237,13 @@ class TreasuryYieldSource(DataSource):
 
             with engine.connect() as conn:
                 result = conn.execute(
-                    text(
-                        f"""
+                    text(f"""
                         SELECT date, {spread_column} as spread
                         FROM treasury_yields
                         WHERE date >= :start_date
                         AND {spread_column} IS NOT NULL
                         ORDER BY date
-                    """
-                    ),
+                    """),
                     {"start_date": start_date},
                 )
                 rows = result.fetchall()

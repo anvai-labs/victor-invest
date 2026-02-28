@@ -82,8 +82,7 @@ class CompanyMetadataService:
         stock_host = os.environ.get("STOCK_DB_HOST", config.database.host)
         if not stock_password:
             raise EnvironmentError(
-                "STOCK_DB_PASSWORD environment variable not set. "
-                "Please set it or source your ~/.investigator/env file."
+                "STOCK_DB_PASSWORD environment variable not set. Please set it or source your ~/.investigator/env file."
             )
         stock_db_url = f"postgresql://stockuser:{stock_password}@{stock_host}:{config.database.port}/stock"
         engine = create_engine(stock_db_url, pool_pre_ping=True)
@@ -297,6 +296,10 @@ class CompanyMetadataService:
                     industry,
                 )
 
+        # Clean up whitespace (especially trailing newlines from database)
+        if industry:
+            industry = industry.strip()
+
         # Cache result
         if use_cache:
             self._cache[symbol] = (sector, industry)
@@ -313,15 +316,13 @@ class CompanyMetadataService:
         Returns:
             (normalized_sector, industry) tuple
         """
-        query = text(
-            """
+        query = text("""
             SELECT
                 COALESCE(sec_sector, "Sector", 'Unknown') as sector,
                 COALESCE(sec_industry, "Industry") as industry
             FROM symbol
             WHERE ticker = :symbol
-        """
-        )
+        """)
 
         try:
             with self.engine.connect() as conn:
@@ -348,7 +349,7 @@ class CompanyMetadataService:
 
     def _normalize_sector_name(self, raw_sector: str) -> str:
         """
-        Normalize sector name using configured mappings.
+        Normalize sector name using SectorIndustryMapper.
 
         Args:
             raw_sector: Raw sector name from database or JSON
@@ -359,13 +360,40 @@ class CompanyMetadataService:
         if not raw_sector:
             return "Unknown"
 
-        # Check if it matches any variant in normalization config
-        for canonical, variants in self.sector_normalization.items():
-            if raw_sector in variants:
-                return canonical
+        # Use SectorIndustryMapper for normalization (single source of truth)
+        from investigator.domain.services.sector_name_mapper import SectorIndustryMapper
 
-        # If no match, return as-is (might already be canonical)
-        return raw_sector
+        return SectorIndustryMapper.to_standard(raw_sector)
+
+    def _normalize_industry_and_infer_sector(
+        self, raw_industry: Optional[str], raw_sector: Optional[str] = None
+    ) -> Tuple[Optional[str], str]:
+        """
+        Normalize industry name and ensure sector is inferred if needed.
+
+        Args:
+            raw_industry: Raw industry name from database or JSON
+            raw_sector: Raw sector name (used for validation)
+
+        Returns:
+            (normalized_industry, normalized_sector) tuple
+        """
+        from investigator.domain.services.sector_name_mapper import SectorIndustryMapper
+
+        # Normalize sector first
+        normalized_sector = self._normalize_sector_name(raw_sector) if raw_sector else "Unknown"
+
+        # If industry is provided, validate it maps to the sector
+        if raw_industry:
+            # Check if industry maps to a different sector than what we have
+            industry_sector = SectorIndustryMapper.get_sector_for_industry(raw_industry)
+            if industry_sector and industry_sector != "Unknown":
+                # Industry provides authoritative sector mapping
+                if normalized_sector == "Unknown" or normalized_sector != industry_sector:
+                    normalized_sector = industry_sector
+            return raw_industry, normalized_sector
+
+        return None, normalized_sector
 
     def get_sector(self, symbol: str, use_cache: bool = True) -> str:
         """
@@ -419,16 +447,14 @@ class CompanyMetadataService:
             return results
 
         # Batch query database for uncached symbols
-        query = text(
-            """
+        query = text("""
             SELECT
                 ticker,
                 COALESCE(sec_sector, "Sector", 'Unknown') as sector,
                 COALESCE(sec_industry, "Industry") as industry
             FROM symbol
             WHERE ticker = ANY(:symbols)
-        """
-        )
+        """)
 
         try:
             with self.engine.connect() as conn:
@@ -470,6 +496,18 @@ class CompanyMetadataService:
         """Clear the in-memory cache."""
         self._cache.clear()
         logger.info("Cleared company metadata cache")
+
+    def reload_sector_map(self):
+        """Reload the sector map from file and clear related cache.
+
+        Use this to pick up changes to sector_industry_ticker_map.txt
+        without restarting the process.
+        """
+        self.extended_sector_mapping = self._load_sector_map_txt()
+        logger.info("Reloaded sector map from file")
+        # Clear the cache so new values will be used
+        self._cache.clear()
+        logger.info("Cleared cache after sector map reload")
 
     def get_cache_stats(self) -> Dict[str, int]:
         """

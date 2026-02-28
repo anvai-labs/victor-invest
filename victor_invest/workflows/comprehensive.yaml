@@ -182,7 +182,7 @@ workflows:
         handler: run_synthesis
         constraints:
           llm_allowed: true
-          timeout: 300
+          timeout: 600
         input_mapping:
           symbol: symbol
           technical_analysis: technical_analysis

@@ -118,9 +118,21 @@ def test_normalize_ytd_missing_prev_period_logs_boundary_info_for_earliest_year(
     processor = _processor()
     data = {"total_revenue": 1_000_000.0}
     all_filings = [
-        {"fiscal_year": 2011, "fiscal_period": "Q2", "data": {"total_revenue": 1_000_000.0}},
-        {"fiscal_year": 2011, "fiscal_period": "Q3", "data": {"total_revenue": 2_000_000.0}},
-        {"fiscal_year": 2012, "fiscal_period": "Q1", "data": {"total_revenue": 1_100_000.0}},
+        {
+            "fiscal_year": 2011,
+            "fiscal_period": "Q2",
+            "data": {"total_revenue": 1_000_000.0},
+        },
+        {
+            "fiscal_year": 2011,
+            "fiscal_period": "Q3",
+            "data": {"total_revenue": 2_000_000.0},
+        },
+        {
+            "fiscal_year": 2012,
+            "fiscal_period": "Q1",
+            "data": {"total_revenue": 1_100_000.0},
+        },
     ]
 
     with caplog.at_level(logging.INFO, logger="investigator.infrastructure.sec.data_processor"):
@@ -138,13 +150,27 @@ def test_normalize_ytd_missing_prev_period_logs_boundary_info_for_earliest_year(
     assert not any("[YTD_NORM_CRITICAL]" in record.message for record in caplog.records)
 
 
-def test_normalize_ytd_missing_prev_period_keeps_critical_warning_for_non_boundary_year(caplog):
+def test_normalize_ytd_missing_prev_period_keeps_critical_warning_for_non_boundary_year(
+    caplog,
+):
     processor = _processor()
     data = {"total_revenue": 1_000_000.0}
     all_filings = [
-        {"fiscal_year": 2023, "fiscal_period": "Q3", "data": {"total_revenue": 2_000_000.0}},
-        {"fiscal_year": 2024, "fiscal_period": "Q2", "data": {"total_revenue": 1_000_000.0}},
-        {"fiscal_year": 2024, "fiscal_period": "Q3", "data": {"total_revenue": 2_000_000.0}},
+        {
+            "fiscal_year": 2023,
+            "fiscal_period": "Q3",
+            "data": {"total_revenue": 2_000_000.0},
+        },
+        {
+            "fiscal_year": 2024,
+            "fiscal_period": "Q2",
+            "data": {"total_revenue": 1_000_000.0},
+        },
+        {
+            "fiscal_year": 2024,
+            "fiscal_period": "Q3",
+            "data": {"total_revenue": 2_000_000.0},
+        },
     ]
 
     with caplog.at_level(logging.WARNING, logger="investigator.infrastructure.sec.data_processor"):

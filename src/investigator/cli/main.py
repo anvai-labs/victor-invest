@@ -31,7 +31,7 @@ if str(src_dir) not in sys.path:
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from .groups import analyze, backtest, cache, data, macro, system  # noqa: E402
+from .groups import analyze, backtest, cache, data, macro, sector_multiples, system  # noqa: E402
 from .utils import load_config, setup_logging  # noqa: E402
 
 CONTEXT_SETTINGS = dict(
@@ -106,12 +106,13 @@ def cli(ctx, config, log_level, log_file, verbose, quiet):
 
     \b
     COMMAND GROUPS:
-      analyze   Stock analysis (fundamental, technical, synthesis)
-      backtest  RL model backtesting and training
-      data      Data source management
-      macro     Macroeconomic data and indicators
-      cache     Cache management
-      system    System administration
+      analyze         Stock analysis (fundamental, technical, synthesis)
+      backtest        RL model backtesting and training
+      cache           Cache management
+      data            Data source management
+      macro           Macroeconomic data and indicators
+      sector-multiples Sector/industry multiples management
+      system          System administration
 
     \b
     EXAMPLES:
@@ -143,6 +144,7 @@ cli.add_command(backtest)
 cli.add_command(cache)
 cli.add_command(data)
 cli.add_command(macro)
+cli.add_command(sector_multiples)
 cli.add_command(system)
 
 

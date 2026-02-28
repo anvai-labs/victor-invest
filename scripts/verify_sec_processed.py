@@ -66,7 +66,9 @@ def _period_rank(period: str) -> int:
     return PERIOD_SORT_ORDER.get(period, 0)
 
 
-def _collect_processed_rows(conn, symbol: str, limit: int) -> Dict[Tuple[int, str], FilingSnapshot]:
+def _collect_processed_rows(
+    conn, symbol: str, limit: int
+) -> Dict[Tuple[int, str], FilingSnapshot]:
     """Fetch the latest rows from sec_companyfacts_processed for a symbol."""
     query = text(
         """
@@ -198,7 +200,10 @@ def _print_comparison(
                 or abs(proc.fcf - repro.fcf) > 1e-2
             ):
                 marker = "  ⚠︎ value mismatch"
-            elif repro and (proc.income_qtrs != repro.income_qtrs or proc.cashflow_qtrs != repro.cashflow_qtrs):
+            elif repro and (
+                proc.income_qtrs != repro.income_qtrs
+                or proc.cashflow_qtrs != repro.cashflow_qtrs
+            ):
                 marker = "  ⚠︎ qtrs mismatch"
 
             print(f"[DB      ] {_format_snapshot(proc)}{marker}")
@@ -251,7 +256,9 @@ def _apply_flag_fixes(conn, symbol: str, fix_fcf: bool) -> None:
     conn.commit()
 
 
-def run(symbol: str, quarters: int, apply_flag_fix: bool, fix_fcf: bool, persist: bool) -> None:
+def run(
+    symbol: str, quarters: int, apply_flag_fix: bool, fix_fcf: bool, persist: bool
+) -> None:
     db_manager = get_db_manager()
     engine = db_manager.engine
     processor = SECDataProcessor(db_engine=engine)
@@ -273,7 +280,9 @@ def run(symbol: str, quarters: int, apply_flag_fix: bool, fix_fcf: bool, persist
             raise RuntimeError(f"No RAW companyfacts found for {symbol}")
 
         processed = _collect_processed_rows(conn, symbol, quarters * 2)
-        reprocessed = _collect_reprocessed_rows(symbol, raw_row.companyfacts, raw_row.id, processor, persist)
+        reprocessed = _collect_reprocessed_rows(
+            symbol, raw_row.companyfacts, raw_row.id, processor, persist
+        )
 
         _print_comparison(processed, reprocessed, quarters)
 
@@ -282,8 +291,12 @@ def run(symbol: str, quarters: int, apply_flag_fix: bool, fix_fcf: bool, persist
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Validate sec_companyfacts_processed normalized values.")
-    parser.add_argument("--symbol", required=True, help="Ticker symbol to validate (e.g., AAPL)")
+    parser = argparse.ArgumentParser(
+        description="Validate sec_companyfacts_processed normalized values."
+    )
+    parser.add_argument(
+        "--symbol", required=True, help="Ticker symbol to validate (e.g., AAPL)"
+    )
     parser.add_argument(
         "--quarters",
         type=int,

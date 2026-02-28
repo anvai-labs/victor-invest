@@ -54,13 +54,39 @@ class SECApiClient:
         cache_dir = getattr(sec_config, "cache_dir", "data")
 
         # Lazy imports to avoid circular dependency
-        from utils.api_client import SECAPIClient as LegacySECAPIClient
-        from utils.submission_processor import get_submission_processor
-        from utils.ticker_cik_mapper import TickerCIKMapper
+        # Use try-except to handle cases where utils module is not in path
+        try:
+            from utils.api_client import SECAPIClient as LegacySECAPIClient
+        except ImportError:
+            LegacySECAPIClient = None
+            logger.warning("utils.api_client not available - SEC API client functionality limited")
 
-        self.ticker_mapper = TickerCIKMapper(data_dir=cache_dir, config=self.config)
-        self.submission_processor = get_submission_processor()
-        self.legacy_client = LegacySECAPIClient(self.user_agent, self.config)
+        try:
+            from utils.submission_processor import get_submission_processor
+        except ImportError:
+            get_submission_processor = None
+            logger.warning("utils.submission_processor not available")
+
+        try:
+            from utils.ticker_cik_mapper import TickerCIKMapper
+        except ImportError:
+            TickerCIKMapper = None
+            logger.warning("utils.ticker_cik_mapper not available")
+
+        if LegacySECAPIClient:
+            self.legacy_client = LegacySECAPIClient(self.user_agent, self.config)
+        else:
+            self.legacy_client = None
+
+        if TickerCIKMapper:
+            self.ticker_mapper = TickerCIKMapper(data_dir=cache_dir, config=self.config)
+        else:
+            self.ticker_mapper = None
+
+        if get_submission_processor:
+            self.submission_processor = get_submission_processor()
+        else:
+            self.submission_processor = None
 
     async def get_company_facts(self, cik: str) -> Dict[str, Any]:
         """Fetch company facts, delegating to the legacy SECAPIClient."""
@@ -207,7 +233,14 @@ class SECApiClient:
 
     @staticmethod
     def _filter_filings(filings: List["Filing"], form_type: str) -> List["Filing"]:
-        from utils.submission_processor import Filing
+        try:
+            from utils.submission_processor import Filing
+        except ImportError:
+            Filing = None
+
+        if Filing is None:
+            # Fallback: treat as dict
+            return [f for f in filings if isinstance(f, dict)]
 
         base_type = (form_type or "").upper()
         results: List[Filing] = []
@@ -225,7 +258,14 @@ class SECApiClient:
 
     @staticmethod
     def _dict_to_filing(data: Dict[str, Any]) -> "Filing":
-        from utils.submission_processor import Filing
+        try:
+            from utils.submission_processor import Filing
+        except ImportError:
+            Filing = None
+
+        if Filing is None:
+            # Fallback: return dict as-is
+            return data
 
         return Filing(
             form_type=data.get("form_type", ""),

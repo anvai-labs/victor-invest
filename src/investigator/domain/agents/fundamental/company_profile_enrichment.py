@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from investigator.domain.services.valuation.models import (
     CompanyArchetype,
@@ -10,6 +10,45 @@ from investigator.domain.services.valuation.models import (
 )
 
 from .models import QuarterlyData
+
+
+def _calculate_market_cap_with_split_adjustment(
+    symbol: str,
+    current_price: float,
+    shares_outstanding: float,
+    shares_source: str = "tickerdata",
+) -> Optional[float]:
+    """
+    Calculate market cap with proper split adjustment.
+
+    Args:
+        symbol: Stock ticker
+        current_price: Current stock price
+        shares_outstanding: Shares outstanding
+        shares_source: "tickerdata" (split-adjusted) or "sec" (actual)
+
+    Returns:
+        Market cap or None if calculation fails
+    """
+    try:
+        if shares_source == "tickerdata":
+            # Both price and shares are split-adjusted
+            return float(current_price) * float(shares_outstanding)
+        else:
+            # Shares from SEC need split adjustment for historical prices
+            from investigator.domain.services.valuation_shared.split_adjusted_market_cap import (
+                calculate_market_cap,
+            )
+
+            return calculate_market_cap(
+                symbol=symbol,
+                price=current_price,
+                shares=shares_outstanding,
+                price_date=None,  # Current date
+                shares_source=shares_source,
+            )
+    except (TypeError, ValueError):
+        return None
 
 
 def enrich_company_profile(
@@ -116,7 +155,13 @@ def enrich_company_profile(
         or financials.get("PaymentsOfDividends")
         or 0
     )
-    shares_outstanding = financials.get("shares_outstanding") or market_data.get("shares_outstanding")
+    # Use diluted shares for dual-class companies (e.g., GOOGL)
+    shares_outstanding = (
+        financials.get("weighted_average_diluted_shares_outstanding")  # PRIORITY 1: Industry standard for EPS
+        or financials.get("shares_outstanding_diluted")  # PRIORITY 2: Legacy field (doesn't exist in DB)
+        or financials.get("shares_outstanding")  # PRIORITY 3: Basic shares
+        or market_data.get("shares_outstanding")  # PRIORITY 4: Market data fallback
+    )
     profile.pays_dividends = dividends_paid > 0
     profile.dividends_paid = dividends_paid
     logger.info(
@@ -130,9 +175,13 @@ def enrich_company_profile(
     profile.dividend_growth_rate = ratios.get("dividend_growth_rate")
 
     profile.book_value_per_share = ratios.get("book_value_per_share")
+    # For dual-class companies (e.g., GOOGL), use diluted shares to capture all classes
+    # Otherwise DCF valuation divides by too few shares, inflating per-share value
+    # CRITICAL: Use weighted_average_diluted_shares_outstanding for accurate EPS calculations
     profile.shares_outstanding = (
-        financials.get("shares_outstanding")
-        or financials.get("shares_outstanding_diluted")
+        financials.get("weighted_average_diluted_shares_outstanding")  # PRIORITY 1: Industry standard for EPS
+        or financials.get("shares_outstanding_diluted")  # PRIORITY 2: Legacy field (doesn't exist in DB)
+        or financials.get("shares_outstanding")  # PRIORITY 3: Basic shares (may be single class)
         or ratios.get("shares_outstanding")
         or company_data.get("shares_outstanding")
         or market_data.get("shares_outstanding")
@@ -160,10 +209,17 @@ def enrich_company_profile(
     )
     profile.market_cap = market_data.get("market_cap") or market_data.get("market_capitalization")
     if not profile.market_cap and profile.current_price and profile.shares_outstanding:
-        try:
-            profile.market_cap = float(profile.current_price) * float(profile.shares_outstanding)
-        except (TypeError, ValueError):
-            profile.market_cap = None
+        # Calculate market cap with split adjustment
+        # Determine shares source: SEC data is actual, tickerdata is split-adjusted
+        shares_source = (
+            "sec" if financials.get("shares_outstanding") or company_data.get("shares_outstanding") else "tickerdata"
+        )
+        profile.market_cap = _calculate_market_cap_with_split_adjustment(
+            symbol=symbol,
+            current_price=float(profile.current_price),
+            shares_outstanding=float(profile.shares_outstanding),
+            shares_source=shares_source,
+        )
 
     profile.beta = market_data.get("beta") or market_data.get("five_year_beta") or ratios.get("beta")
     average_volume = (

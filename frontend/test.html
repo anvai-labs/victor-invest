@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Page</title>
+</head>
+<body>
+    <h1>Test Page - Working!</h1>
+    <p>If you see this, the server is responding correctly.</p>
+    <hr>
+    <h2>API Tests:</h2>
+    <pre id="api-results">Loading...</pre>
+
+    <script>
+        // Test API
+        fetch('/ui/api/sectors/multiples')
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('api-results').textContent =
+                    'API Working! Found ' + data.sectors.length + ' sectors';
+            })
+            .catch(err => {
+                document.getElementById('api-results').textContent =
+                    'API Error: ' + err.message;
+            });
+    </script>
+</body>
+</html>

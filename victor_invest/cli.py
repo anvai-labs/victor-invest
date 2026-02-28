@@ -27,16 +27,15 @@ from rich.table import Table
 
 # Victor framework imports (from local wheel)
 try:
-    from victor.core.protocols import OrchestratorProtocol
-    from victor.framework import Agent, Event, EventType
-    from victor.workflows.streaming import WorkflowEventType
-except ImportError:
-    # Fallback for development without victor installed
-    Agent = None
-    Event = None
-    EventType = None
-    OrchestratorProtocol = None
-    WorkflowEventType = None
+    from victor.framework import Agent
+except ImportError as e:
+    # Victor framework is required for victor-invest CLI
+    # This fallback only allows module-level imports for type checking
+    import sys
+
+    click.echo(f"[red]Error: Victor framework not available: {e}[/red]", err=True)
+    click.echo("[yellow]Install with: pip install 'victor-ai>=0.5.0,<0.6.0'[/yellow]", err=True)
+    sys.exit(1)
 
 from victor_invest import __version__ as VICTOR_INVEST_VERSION
 from victor_invest.framework_bootstrap import create_investment_orchestrator
@@ -59,22 +58,59 @@ def _get_ollama_base_url() -> str:
             return base_url
     except Exception:
         pass
-    return (
-        os.getenv("OLLAMA_URL")
-        or os.getenv("OLLAMA_BASE_URL")
-        or "http://localhost:11434"
+    return os.getenv("OLLAMA_URL") or os.getenv("OLLAMA_BASE_URL") or "http://localhost:11434"
+
+
+def _display_provider_info(provider: Optional[str], model: Optional[str]) -> tuple:
+    """Resolve and display provider/model information from environment variables.
+
+    Priority: CLI param > VICTOR_PROVIDER env var > fallback
+
+    Returns:
+        Tuple of (resolved_provider, resolved_model) for use in analysis
+    """
+    from victor_invest.framework_bootstrap import (
+        resolve_model_from_env,
     )
 
+    # Resolve provider with correct priority: CLI param > env var > fallback
+    if provider:
+        # CLI parameter takes highest priority
+        resolved_provider = provider
+        source = "CLI override"
+    elif os.getenv("VICTOR_PROVIDER"):
+        # Environment variable second
+        resolved_provider = os.getenv("VICTOR_PROVIDER", "").strip().lower()
+        source = "$VICTOR_PROVIDER"
+    else:
+        # Fallback to default
+        resolved_provider = "ollama"
+        source = "default"
 
-async def _create_workflow_executor(
-    provider: str, model: Optional[str], timeout: float
-):
+    # Resolve model with correct priority: CLI param > VICTOR_MODEL > provider default
+    resolved_model = resolve_model_from_env(resolved_provider, model)
+
+    # Display which provider/model is being used
+    model_display = resolved_model or "(provider default)"
+    console.print(f"Provider: [cyan]{resolved_provider}[/cyan] ([dim]{source}[/dim])")
+
+    if model:
+        console.print(f"Model: [cyan]{model_display}[/cyan] ([dim]CLI override[/dim])")
+    elif os.getenv("VICTOR_MODEL"):
+        console.print(f"Model: [cyan]{model_display}[/cyan] ([dim]$VICTOR_MODEL[/dim])")
+    else:
+        console.print(f"Model: [cyan]{model_display}[/cyan] ([dim]provider default[/dim])")
+
+    return resolved_provider, resolved_model
+
+
+async def _create_workflow_executor(provider: Optional[str], model: Optional[str], timeout: float):
     from victor.workflows.executor import WorkflowExecutor
 
     from victor_invest.workflows import ensure_handlers_registered
 
     orchestrator = await create_investment_orchestrator(
-        provider=provider,
+        provider=provider,  # Will be resolved from env in create_investment_orchestrator
         model=model,
         ensure_handlers=ensure_handlers_registered,
         warning_callback=lambda msg: console.print(f"[yellow]{msg}[/yellow]"),
@@ -89,9 +125,7 @@ async def _create_workflow_executor(
     return executor
 
 
-def _convert_workflow_result_to_state(
-    workflow_result, symbol: str, mode: str
-) -> AnalysisWorkflowState:
+def _convert_workflow_result_to_state(workflow_result, symbol: str, mode: str) -> AnalysisWorkflowState:
     """Convert Victor WorkflowResult to AnalysisWorkflowState for CLI compatibility.
 
     Args:
@@ -211,17 +245,13 @@ def _convert_to_investment_recommendation(result, symbol: str):
         # Build meaningful thesis from technical data
         thesis_parts = []
         if current_price:
-            thesis_parts.append(
-                f"{symbol} is currently trading at ${current_price:.2f}"
-            )
+            thesis_parts.append(f"{symbol} is currently trading at ${current_price:.2f}")
         if week_52:
             high_52 = week_52.get("high")
             low_52 = week_52.get("low")
             if high_52 and low_52 and current_price:
                 range_position = (current_price - low_52) / (high_52 - low_52) * 100
-                thesis_parts.append(
-                    f"at {range_position:.0f}% of its 52-week range (${low_52:.2f} - ${high_52:.2f})"
-                )
+                thesis_parts.append(f"at {range_position:.0f}% of its 52-week range (${low_52:.2f} - ${high_52:.2f})")
 
         thesis_parts.append(
             f"The technical outlook is {trend_signal} with {bullish_pct:.0f}% bullish and {bearish_pct:.0f}% bearish signals."
@@ -229,9 +259,7 @@ def _convert_to_investment_recommendation(result, symbol: str):
         thesis_parts.append(f"Composite analysis score: {composite_score:.1f}/100.")
 
         if final_recommendation == "BUY":
-            thesis_parts.append(
-                "The analysis suggests accumulating shares at current levels."
-            )
+            thesis_parts.append("The analysis suggests accumulating shares at current levels.")
         elif final_recommendation == "SELL":
             thesis_parts.append("The analysis suggests reducing exposure.")
         else:
@@ -256,14 +284,10 @@ def _convert_to_investment_recommendation(result, symbol: str):
         key_catalysts = []
         if price_target and current_price:
             upside = ((price_target - current_price) / current_price) * 100
-            key_catalysts.append(
-                f"Near-term resistance at ${price_target:.2f} ({upside:.1f}% upside)"
-            )
+            key_catalysts.append(f"Near-term resistance at ${price_target:.2f} ({upside:.1f}% upside)")
         if week_52.get("high") and current_price:
             upside_52 = ((week_52["high"] - current_price) / current_price) * 100
-            key_catalysts.append(
-                f"52-week high of ${week_52['high']:.2f} ({upside_52:.1f}% from current)"
-            )
+            key_catalysts.append(f"52-week high of ${week_52['high']:.2f} ({upside_52:.1f}% from current)")
 
     if llm_key_risks:
         key_risks = llm_key_risks
@@ -274,9 +298,7 @@ def _convert_to_investment_recommendation(result, symbol: str):
             key_risks.append(f"Support at ${stop_loss:.2f} ({downside:.1f}% downside)")
         if week_52.get("low") and current_price:
             downside_52 = ((current_price - week_52["low"]) / current_price) * 100
-            key_risks.append(
-                f"52-week low of ${week_52['low']:.2f} ({downside_52:.1f}% below current)"
-            )
+            key_risks.append(f"52-week low of ${week_52['low']:.2f} ({downside_52:.1f}% below current)")
 
     # Entry/exit strategies based on levels
     key_levels = trend_data.get("key_levels", {})
@@ -307,9 +329,7 @@ def _convert_to_investment_recommendation(result, symbol: str):
 
     # Data quality - check what analyses were included
     analyses_included = synthesis.get("analyses_included", [])
-    data_completeness = (
-        len(analyses_included) / 4.0
-    )  # 4 possible: fundamental, technical, market_context, valuation
+    data_completeness = len(analyses_included) / 4.0  # 4 possible: fundamental, technical, market_context, valuation
     data_quality_score = min(data_completeness, 1.0)
 
     # Build synthesis details with all available data
@@ -367,8 +387,7 @@ def validate_victor_installed():
     """Check if Victor AI framework is installed."""
     if Agent is None:
         console.print(
-            "[red]Error: victor-ai is not installed.[/red]\n"
-            "Install with: pip install 'victor-ai>=0.5.0,<0.6.0'"
+            "[red]Error: victor-ai is not installed.[/red]\nInstall with: pip install 'victor-ai>=0.5.0,<0.6.0'"
         )
         sys.exit(1)
 
@@ -400,14 +419,14 @@ def cli():
     "--provider",
     "-p",
     type=str,
-    default="ollama",
-    help="LLM provider (ollama, anthropic, openai)",
+    default=None,
+    help="LLM provider (ollama, anthropic, openai). Default: $VICTOR_PROVIDER or 'ollama'",
 )
 @click.option(
     "--model",
     type=str,
     default=None,
-    help="Model name (default: provider-specific)",
+    help="Model name. Default: $VICTOR_MODEL or provider-specific",
 )
 @click.option(
     "--stream/--no-stream",
@@ -419,6 +438,13 @@ def cli():
     is_flag=True,
     default=False,
     help="Generate PDF investment report using LLM synthesis",
+)
+@click.option(
+    "--detail",
+    "-d",
+    type=click.Choice(["minimal", "standard", "compact", "verbose"]),
+    default="standard",
+    help="Output detail level (compact recommended for web UI integration)",
 )
 @click.option(
     "--beta-source",
@@ -434,6 +460,14 @@ def cli():
     show_default=True,
     help="Lookback horizon in months for beta source selection",
 )
+@click.option(
+    "--holding-period",
+    "-h",
+    type=click.Choice(["90d", "365d", "730d"], case_sensitive=False),
+    default="730d",
+    show_default=True,
+    help="Investment holding period for RL policy selection (90d=3mo, 365d=1yr, 730d=2yr)",
+)
 def analyze(
     symbol: str,
     mode: str,
@@ -442,8 +476,10 @@ def analyze(
     model: Optional[str],
     stream: bool,
     report: bool,
+    detail: str,
     beta_source: str,
     beta_horizon_months: int,
+    holding_period: str,
 ):
     """Run investment analysis on a stock symbol.
 
@@ -456,20 +492,35 @@ def analyze(
     console.print("\n[bold blue]Victor Investment Analysis[/bold blue]")
     console.print(f"Symbol: [green]{symbol.upper()}[/green]")
     console.print(f"Mode: [yellow]{mode}[/yellow]")
-    console.print(f"Provider: [cyan]{provider}[/cyan]")
+    console.print(f"Detail: [cyan]{detail}[/cyan]")
+
+    # Resolve and display provider/model from environment variables
+    resolved_provider, resolved_model = _display_provider_info(provider, model)
+
+    console.print(f"Holding Period: [cyan]{holding_period}[/cyan]")
     if report:
         console.print("Report: [magenta]PDF generation enabled[/magenta]")
     console.print()
 
     prev_beta_source = os.environ.get("INVESTIGATOR_BETA_SOURCE")
     prev_beta_horizon = os.environ.get("INVESTIGATOR_BETA_HORIZON_MONTHS")
+    prev_holding_period = os.environ.get("INVESTIGATOR_HOLDING_PERIOD")
     os.environ["INVESTIGATOR_BETA_SOURCE"] = beta_source
-    os.environ["INVESTIGATOR_BETA_HORIZON_MONTHS"] = str(
-        max(1, int(beta_horizon_months))
-    )
+    os.environ["INVESTIGATOR_BETA_HORIZON_MONTHS"] = str(max(1, int(beta_horizon_months)))
+    os.environ["INVESTIGATOR_HOLDING_PERIOD"] = holding_period
     try:
         asyncio.run(
-            _run_analysis(symbol, mode, output, provider, model, stream, report)
+            _run_analysis(
+                symbol,
+                mode,
+                output,
+                resolved_provider,  # Use resolved provider from env
+                resolved_model,  # Use resolved model from env
+                stream,
+                report,
+                detail,
+                holding_period,
+            )
         )
     finally:
         if prev_beta_source is None:
@@ -481,6 +532,11 @@ def analyze(
             os.environ.pop("INVESTIGATOR_BETA_HORIZON_MONTHS", None)
         else:
             os.environ["INVESTIGATOR_BETA_HORIZON_MONTHS"] = prev_beta_horizon
+
+        if prev_holding_period is None:
+            os.environ.pop("INVESTIGATOR_HOLDING_PERIOD", None)
+        else:
+            os.environ["INVESTIGATOR_HOLDING_PERIOD"] = prev_holding_period
 
 
 @cli.command()
@@ -503,14 +559,14 @@ def analyze(
     "--provider",
     "-p",
     type=str,
-    default="ollama",
-    help="LLM provider (ollama, anthropic, openai)",
+    default=None,
+    help="LLM provider (ollama, anthropic, openai). Default: $VICTOR_PROVIDER or 'ollama'",
 )
 @click.option(
     "--model",
     type=str,
     default=None,
-    help="Model name (default: provider-specific)",
+    help="Model name. Default: $VICTOR_MODEL or provider-specific",
 )
 @click.option(
     "--parallel",
@@ -518,26 +574,58 @@ def analyze(
     default=2,
     help="Max concurrent analyses",
 )
+@click.option(
+    "--detail",
+    "-d",
+    type=click.Choice(["minimal", "standard", "compact", "verbose"]),
+    default="standard",
+    help="Output detail level (compact recommended for web UI integration)",
+)
 def batch(
     symbols: tuple[str, ...],
     mode: str,
     output_dir: str,
-    provider: str,
+    provider: Optional[str],  # Changed to Optional
     model: Optional[str],
     parallel: int,
+    detail: str,
 ):
     """Run batch investment analysis across multiple symbols."""
     validate_victor_installed()
-    asyncio.run(_run_batch(symbols, mode, output_dir, provider, model, parallel))
+
+    # Resolve provider/model from environment variables
+    from victor_invest.framework_bootstrap import (
+        resolve_model_from_env,
+        resolve_provider_from_env,
+    )
+
+    resolved_provider = resolve_provider_from_env(fallback=provider or "ollama")
+    resolved_model = resolve_model_from_env(resolved_provider, model)
+
+    console.print(f"Provider: [cyan]{resolved_provider}[/cyan]")
+    console.print(f"Model: [cyan]{resolved_model or '(provider default)'}[/cyan]")
+
+    asyncio.run(
+        _run_batch(
+            symbols,
+            mode,
+            output_dir,
+            resolved_provider,
+            resolved_model,
+            parallel,
+            detail,
+        )
+    )
 
 
 async def _run_batch(
     symbols: tuple[str, ...],
     mode: str,
     output_dir: str,
-    provider: str,
+    provider: Optional[str],  # Changed to Optional
     model: Optional[str],
     parallel: int,
+    detail: str = "standard",
 ):
     workflow_provider = InvestmentWorkflowProvider()
     workflow_name = workflow_provider.get_workflow_for_task_type(mode) or mode
@@ -591,32 +679,38 @@ async def _run_batch(
             state = _convert_workflow_result_to_state(outcome, symbol, mode)
             results[symbol] = state
 
-            result_file = (
-                output_path
-                / f"{symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-            )
+            result_file = output_path / f"{symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
             with open(result_file, "w") as f:
-                json.dump(
-                    {
-                        "symbol": state.symbol,
-                        "mode": state.mode.value,
-                        "fundamental_analysis": state.fundamental_analysis,
-                        "technical_analysis": state.technical_analysis,
-                        "market_context": state.market_context,
-                        "synthesis": state.synthesis,
-                        "recommendation": state.recommendation,
-                        "errors": state.errors,
-                    },
-                    f,
-                    indent=2,
-                    default=str,
-                )
+                # Use compact format if detail=compact
+                if detail == "compact":
+                    from investigator.application import (
+                        OutputDetailLevel,
+                        format_analysis_output,
+                    )
+
+                    agent_format = _convert_state_to_agent_format(state)
+                    formatted_output = format_analysis_output(agent_format, OutputDetailLevel.COMPACT)
+                    json.dump(formatted_output, f, indent=2, default=str)
+                else:
+                    json.dump(
+                        {
+                            "symbol": state.symbol,
+                            "mode": state.mode.value,
+                            "fundamental_analysis": state.fundamental_analysis,
+                            "technical_analysis": state.technical_analysis,
+                            "market_context": state.market_context,
+                            "synthesis": state.synthesis,
+                            "recommendation": state.recommendation,
+                            "errors": state.errors,
+                        },
+                        f,
+                        indent=2,
+                        default=str,
+                    )
 
             progress.advance(task)
 
-    summary_file = (
-        output_path / f"batch_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-    )
+    summary_file = output_path / f"batch_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     with open(summary_file, "w") as f:
         json.dump(
             {
@@ -638,32 +732,43 @@ async def _run_batch(
 @cli.command()
 @click.argument("target")
 @click.argument("peers", nargs=-1, required=True)
-@click.option(
-    "--output", "-o", type=click.Path(), default=None, help="Output file or directory"
-)
+@click.option("--output", "-o", type=click.Path(), default=None, help="Output file or directory")
 @click.option(
     "--provider",
     "-p",
     type=str,
-    default="ollama",
-    help="LLM provider (ollama, anthropic, openai)",
+    default=None,
+    help="LLM provider (ollama, anthropic, openai). Default: $VICTOR_PROVIDER or 'ollama'",
 )
 @click.option(
     "--model",
     type=str,
     default=None,
-    help="Model name (default: provider-specific)",
+    help="Model name. Default: $VICTOR_MODEL or provider-specific",
 )
 def compare(
     target: str,
     peers: tuple[str, ...],
     output: Optional[str],
-    provider: str,
+    provider: Optional[str],  # Changed to Optional
     model: Optional[str],
 ):
     """Compare a target company against peers."""
     validate_victor_installed()
-    asyncio.run(_run_compare(target, peers, output, provider, model))
+
+    # Resolve provider/model from environment variables
+    from victor_invest.framework_bootstrap import (
+        resolve_model_from_env,
+        resolve_provider_from_env,
+    )
+
+    resolved_provider = resolve_provider_from_env(fallback=provider or "ollama")
+    resolved_model = resolve_model_from_env(resolved_provider, model)
+
+    console.print(f"Provider: [cyan]{resolved_provider}[/cyan]")
+    console.print(f"Model: [cyan]{resolved_model or '(provider default)'}[/cyan]")
+
+    asyncio.run(_run_compare(target, peers, output, resolved_provider, resolved_model))
 
 
 @cli.command("beta-refresh")
@@ -730,9 +835,7 @@ def compare(
     default=False,
     help="Disable FRED DFF fallback risk-free series",
 )
-@click.option(
-    "--dry-run", is_flag=True, default=False, help="Compute but do not write results"
-)
+@click.option("--dry-run", is_flag=True, default=False, help="Compute but do not write results")
 def beta_refresh(
     symbols: Optional[str],
     universe: str,
@@ -788,7 +891,7 @@ async def _run_compare(
     target: str,
     peers: tuple[str, ...],
     output: Optional[str],
-    provider: str,
+    provider: Optional[str],  # Changed to Optional
     model: Optional[str],
 ):
     workflow_provider = InvestmentWorkflowProvider()
@@ -817,9 +920,7 @@ async def _run_compare(
         console.print(f"[red]Workflow failed:[/red] {result.error}")
         return
 
-    peer_comparison = (
-        result.context.get("peer_comparison") if hasattr(result, "context") else {}
-    )
+    peer_comparison = result.context.get("peer_comparison") if hasattr(result, "context") else {}
     console.print("\n[bold]Peer Comparison Result[/bold]")
     if peer_comparison:
         console.print(json.dumps(peer_comparison, indent=2))
@@ -854,10 +955,12 @@ async def _run_analysis(
     symbol: str,
     mode: str,
     output: Optional[str],
-    provider: str,
+    provider: Optional[str],  # Changed to Optional to support env var default
     model: Optional[str],
     stream: bool,
     report: bool = False,
+    detail: str = "standard",
+    holding_period: str = "730d",
 ):
     """Execute the analysis workflow using InvestmentWorkflowProvider.
 
@@ -865,6 +968,7 @@ async def _run_analysis(
     - Compute handlers for data collection (SEC, market data, technicals)
     - Agent nodes for LLM synthesis via Victor's SubAgentOrchestrator
     - Proper provider/model abstraction through Victor framework
+    - Compact format output for web UI integration when detail=compact
     """
     # Initialize workflow provider (loads YAML workflows, registers handlers)
     workflow_provider = InvestmentWorkflowProvider()
@@ -882,12 +986,19 @@ async def _run_analysis(
         try:
             # Execute YAML workflow with full agent node support
             # Uses Victor's SubAgentOrchestrator for LLM synthesis
+            # Use longer timeout for comprehensive mode (600s) vs standard/quick (300s)
+            timeout = 600.0 if mode == "comprehensive" else 300.0
             workflow_result = await workflow_provider.run_agentic_workflow(
                 workflow_name,
-                context={"symbol": symbol.upper()},
+                context={
+                    "symbol": symbol.upper(),
+                    "holding_period": holding_period,
+                    "llm_provider": provider,  # Pass provider for LLM synthesis
+                    "llm_model": model,  # Pass model for LLM synthesis
+                },
                 provider=provider,
                 model=model,
-                timeout=300.0,
+                timeout=timeout,
             )
             progress.update(task, description="Analysis complete!")
 
@@ -906,7 +1017,7 @@ async def _run_analysis(
             return
 
     # Display results
-    _display_results(result, symbol)
+    _display_results(result, symbol, detail)
 
     # Save to file if output specified
     if output:
@@ -915,18 +1026,30 @@ async def _run_analysis(
         result_file = output_path / f"{symbol.upper()}_analysis.json"
 
         with open(result_file, "w") as f:
-            # Convert dataclass to dict for JSON serialization
-            result_dict = {
-                "symbol": result.symbol,
-                "mode": result.mode.value,
-                "fundamental_analysis": result.fundamental_analysis,
-                "technical_analysis": result.technical_analysis,
-                "market_context": result.market_context,
-                "synthesis": result.synthesis,
-                "recommendation": result.recommendation,
-                "errors": result.errors,
-            }
-            json.dump(result_dict, f, indent=2, default=str)
+            # Use compact format if detail=compact, otherwise use standard format
+            if detail == "compact":
+                from investigator.application import (
+                    OutputDetailLevel,
+                    format_analysis_output,
+                )
+
+                # Convert result to agent-orchestrator format for compact formatting
+                agent_format = _convert_state_to_agent_format(result)
+                formatted_output = format_analysis_output(agent_format, OutputDetailLevel.COMPACT)
+                json.dump(formatted_output, f, indent=2, default=str)
+            else:
+                # Convert dataclass to dict for JSON serialization
+                result_dict = {
+                    "symbol": result.symbol,
+                    "mode": result.mode.value,
+                    "fundamental_analysis": result.fundamental_analysis,
+                    "technical_analysis": result.technical_analysis,
+                    "market_context": result.market_context,
+                    "synthesis": result.synthesis,
+                    "recommendation": result.recommendation,
+                    "errors": result.errors,
+                }
+                json.dump(result_dict, f, indent=2, default=str)
 
         console.print(f"\n[green]Results saved to: {result_file}[/green]")
 
@@ -944,16 +1067,12 @@ async def _run_analysis(
             synthesizer = InvestmentSynthesizer()
 
             # Generate PDF report
-            report_path = synthesizer.generate_report(
-                [recommendation], report_type="synthesis"
-            )
+            report_path = synthesizer.generate_report([recommendation], report_type="synthesis")
 
             console.print(f"[green]✅ PDF report generated: {report_path}[/green]")
 
         except ImportError as e:
-            console.print(
-                f"[red]❌ PDF generation requires investigator package: {e}[/red]"
-            )
+            console.print(f"[red]❌ PDF generation requires investigator package: {e}[/red]")
         except Exception as e:
             console.print(f"[red]❌ Failed to generate PDF report: {e}[/red]")
             import traceback
@@ -961,9 +1080,108 @@ async def _run_analysis(
             traceback.print_exc()
 
 
-def _display_results(result, symbol: str):
+def _convert_state_to_agent_format(state: AnalysisWorkflowState) -> dict:  # type: ignore
+    """Convert AnalysisWorkflowState to agent orchestrator format for compact output.
+
+    This function uses the shared converter module to ensure consistency
+    between victor-invest and investigator CLIs.
+
+    Args:
+        state: AnalysisWorkflowState from Victor workflow execution
+
+    Returns:
+        Dictionary in agent orchestrator format with agents, timing, metadata
+    """
+    from investigator.application import convert_victor_state_to_agent_format
+
+    return convert_victor_state_to_agent_format(state)
+
+
+def _display_results(result, symbol: str, detail: str = "standard"):
     """Display analysis results in a formatted table."""
     console.print("\n[bold]Analysis Results[/bold]\n")
+
+    # For compact mode, show minimal output
+    if detail == "compact":
+        if result.recommendation:
+            rec = result.recommendation
+            console.print(f"[bold]{rec.get('action', 'N/A')}[/bold]")
+            if "price_target" in rec:
+                price = rec["price_target"]
+                if isinstance(price, (int, float)):
+                    console.print(f"  Price Target: ${price:.2f}")
+                else:
+                    console.print(f"  Price Target: ${price}")
+            if "confidence" in rec:
+                console.print(f"  Confidence: {rec.get('confidence', 'N/A')}")
+
+        # Multi-tier technical summary (if available)
+        if result.technical_analysis:
+            tech = result.technical_analysis
+            summary = tech.get("summary") if isinstance(tech, dict) else None
+            if summary and isinstance(summary, dict):
+                strategic = summary.get("strategic_trend")
+                tactical = summary.get("tactical_signal")
+                overall = summary.get("overall_bias")
+                if strategic or tactical or overall:
+                    console.print("\n[dim]Technical Signals:[/dim]")
+                    if strategic:
+                        console.print(f"  [cyan]Strategic (Weekly):[/cyan] {strategic.upper()}")
+                    if tactical:
+                        console.print(f"  [cyan]Tactical (Daily):[/cyan] {tactical.upper()}")
+                    if overall:
+                        console.print(f"  [cyan]Overall Bias:[/cyan] {overall.upper().replace('_', ' ')}")
+
+        # Add cache status information for key data sources
+        console.print("\n[dim]Cache Status:[/dim]")
+
+        # Check if there's cache info in the state
+        import time
+        from pathlib import Path
+
+        cache_root = Path("data/cache")
+        symbol_upper = symbol.upper() if symbol else ""
+
+        # Check SEC filings cache
+        sec_cache = Path("data/sec_cache/submissions") / symbol_upper
+        if sec_cache.exists():
+            cache_files = list(sec_cache.glob("submissions.json.gz"))
+            if cache_files:
+                latest_cache = max(cache_files, key=lambda p: p.stat().st_mtime)
+                mtime = latest_cache.stat().st_mtime
+                age_hours = (time.time() - mtime) / 3600
+                if age_hours < 1:
+                    time_str = f"{int(age_hours * 60)} min ago"
+                else:
+                    time_str = f"{int(age_hours)} hours ago"
+                console.print(f"  [cyan]SEC Filings:[/cyan] ✓ Cached ({time_str})")
+            else:
+                console.print("  [cyan]SEC Filings:[/cyan] ✗ Not cached")
+        else:
+            console.print("  [cyan]SEC Filings:[/cyan] ✗ Not cached")
+
+        # Check market data cache
+        if cache_root.exists():
+            market_cache = cache_root / symbol.lower()
+            if market_cache.exists():
+                try:
+                    cache_files = list(market_cache.glob("*.parquet")) + list(market_cache.glob("*.json"))
+                    if cache_files:
+                        latest_cache = max(cache_files, key=lambda p: p.stat().st_mtime)
+                        mtime = latest_cache.stat().st_mtime
+                        age_hours = (time.time() - mtime) / 3600
+                        if age_hours < 1:
+                            time_str = f"{int(age_hours * 60)} min ago"
+                        else:
+                            time_str = f"{int(age_hours)} hours ago"
+                        console.print(f"  [cyan]Market Data:[/cyan] ✓ Cached ({time_str})")
+                    else:
+                        console.print("  [cyan]Market Data:[/cyan] ✗ Not cached")
+                except Exception:
+                    console.print("  [cyan]Market Data:[/cyan] ✗ Not cached")
+
+        console.print("  Detail: [cyan]Compact format saved to file[/cyan]")
+        return
 
     # Summary table
     table = Table(title=f"{symbol.upper()} Analysis Summary")
@@ -1023,9 +1241,7 @@ def status():
         if importlib.util.find_spec("victor.framework") is not None:
             table.add_row("victor-ai", "✓ Installed", "Framework available")
         else:
-            table.add_row(
-                "victor-ai", "✗ Missing", "pip install 'victor-ai>=0.5.0,<0.6.0'"
-            )
+            table.add_row("victor-ai", "✗ Missing", "pip install 'victor-ai>=0.5.0,<0.6.0'")
     except Exception:
         table.add_row("victor-ai", "✗ Missing", "pip install 'victor-ai>=0.5.0,<0.6.0'")
 
@@ -1296,9 +1512,7 @@ def clean_cache(clean_all, clean_db, clean_disk, symbol):
                                 deleted += handler.delete_by_symbol(symbol)
                             except Exception as exc:
                                 console.print(f"[red]❌ Error: {exc}[/red]")
-                console.print(
-                    f"[green]✅ Database cache cleared for {symbol} (entries: {deleted})[/green]"
-                )
+                console.print(f"[green]✅ Database cache cleared for {symbol} (entries: {deleted})[/green]")
             else:
                 console.print("Cleaning database cache...")
                 for ct in [
@@ -1323,9 +1537,7 @@ def clean_cache(clean_all, clean_db, clean_disk, symbol):
                                 deleted += handler.delete_by_symbol(symbol)
                             except Exception as exc:
                                 console.print(f"[red]❌ Error: {exc}[/red]")
-                console.print(
-                    f"[green]✅ Disk cache cleared for {symbol} (entries: {deleted})[/green]"
-                )
+                console.print(f"[green]✅ Disk cache cleared for {symbol} (entries: {deleted})[/green]")
             else:
                 console.print("Cleaning disk cache...")
                 for ct in [
@@ -1343,9 +1555,7 @@ def clean_cache(clean_all, clean_db, clean_disk, symbol):
             console.print(f"Cleaning all caches for {symbol}...")
             result = cache_manager.delete_by_symbol(symbol)
             total_deleted = sum(result.values()) if isinstance(result, dict) else result
-            console.print(
-                f"[green]✅ Cache cleared for {symbol} (entries: {total_deleted})[/green]"
-            )
+            console.print(f"[green]✅ Cache cleared for {symbol} (entries: {total_deleted})[/green]")
 
         else:
             console.print("Cleaning default caches (LLM responses)...")
@@ -1392,9 +1602,7 @@ def cache_sizes():
             table.add_row(name, "0.00", "0")
 
     table.add_row("─" * 20, "─" * 10, "─" * 10)
-    table.add_row(
-        "[bold]Total[/bold]", f"[bold]{total_size / (1024 * 1024):.2f}[/bold]", ""
-    )
+    table.add_row("[bold]Total[/bold]", f"[bold]{total_size / (1024 * 1024):.2f}[/bold]", "")
 
     console.print(table)
 
@@ -1448,9 +1656,7 @@ def inspect_cache(symbol, verbose):
             for key, value in stats.items():
                 console.print(f"  {key}: {value}")
         else:
-            console.print(
-                "  No statistics available (specify --symbol for symbol-specific info)"
-            )
+            console.print("  No statistics available (specify --symbol for symbol-specific info)")
 
 
 @cli.command("from-batch")
@@ -1545,9 +1751,7 @@ def from_batch(
     console.print(f"Filtered: {len(filtered)} symbols for report generation")
 
     if not filtered:
-        console.print(
-            "[yellow]No symbols match the criteria. No reports generated.[/yellow]"
-        )
+        console.print("[yellow]No symbols match the criteria. No reports generated.[/yellow]")
         return
 
     # Generate reports
@@ -1580,9 +1784,7 @@ def from_batch(
             except Exception as e:
                 console.print(f"    [red]✗ Error: {e}[/red]")
 
-        console.print(
-            f"\n[bold green]Reports generated: {success_count}/{len(filtered)}[/bold green]"
-        )
+        console.print(f"\n[bold green]Reports generated: {success_count}/{len(filtered)}[/bold green]")
         console.print(f"Output directory: {output_path}")
 
     except ImportError as e:
@@ -1625,12 +1827,8 @@ def _convert_batch_result_to_report_data(batch_result: dict) -> dict:
     else:
         overall_score = max(50 + (upside_pct or 0) * 2, 10)
 
-    fundamental_score = (
-        overall_score + 5 if upside_pct and upside_pct > 10 else overall_score
-    )
-    technical_score = (
-        overall_score - 5 if upside_pct and upside_pct < 0 else overall_score
-    )
+    fundamental_score = overall_score + 5 if upside_pct and upside_pct > 10 else overall_score
+    technical_score = overall_score - 5 if upside_pct and upside_pct < 0 else overall_score
 
     # Calculate stop loss (10% below current)
     stop_loss = current_price * 0.90 if current_price else None
@@ -1656,17 +1854,11 @@ def _convert_batch_result_to_report_data(batch_result: dict) -> dict:
                 f"Analysis indicates significant undervaluation with {upside_pct:.1f}% upside to fair value."
             )
         elif upside_pct > 5:
-            thesis_parts.append(
-                f"Moderate upside of {upside_pct:.1f}% to fair value estimate."
-            )
+            thesis_parts.append(f"Moderate upside of {upside_pct:.1f}% to fair value estimate.")
         elif upside_pct > 0:
-            thesis_parts.append(
-                f"Trading near fair value with {upside_pct:.1f}% potential upside."
-            )
+            thesis_parts.append(f"Trading near fair value with {upside_pct:.1f}% potential upside.")
         else:
-            thesis_parts.append(
-                f"Currently trading at {abs(upside_pct):.1f}% premium to fair value."
-            )
+            thesis_parts.append(f"Currently trading at {abs(upside_pct):.1f}% premium to fair value.")
     if market_cap:
         thesis_parts.append(f"Market cap: ${market_cap / 1e9:.1f}B.")
 
@@ -1701,9 +1893,7 @@ def _convert_batch_result_to_report_data(batch_result: dict) -> dict:
         "key_catalysts": key_catalysts,
         "key_risks": key_risks,
         "time_horizon": "MEDIUM-TERM",
-        "position_size": "MODERATE"
-        if tier.upper() in ["BUY", "STRONG_BUY"]
-        else "SMALL",
+        "position_size": "MODERATE" if tier.upper() in ["BUY", "STRONG_BUY"] else "SMALL",
         "valuation_models": valuation_models,
         "score_breakdown": {
             "value": min(50 + (upside_pct or 0) * 2, 100),

@@ -84,13 +84,41 @@ def test_apply_valuation_ratios_prefers_ttm_revenue_for_ps():
 
 def test_calculate_ttm_metrics_uses_most_recent_quarters_and_excludes_fy():
     quarterly_data = [
-        {"fiscal_year": 2024, "fiscal_period": "Q1", "financial_data": {"net_income": 10, "revenues": 100}},
-        {"fiscal_year": 2024, "fiscal_period": "Q2", "financial_data": {"net_income": 20, "revenues": 120}},
-        {"fiscal_year": 2024, "fiscal_period": "Q3", "financial_data": {"net_income": 30, "revenues": 130}},
-        {"fiscal_year": 2024, "fiscal_period": "Q4", "financial_data": {"net_income": 40, "revenues": 140}},
-        {"fiscal_year": 2025, "fiscal_period": "FY", "financial_data": {"net_income": 250, "revenues": 1000}},
-        {"fiscal_year": 2025, "fiscal_period": "Q1", "financial_data": {"net_income": 50, "revenues": 150}},
-        {"fiscal_year": 2025, "fiscal_period": "Q2", "financial_data": {"net_income": 60, "revenues": 160}},
+        {
+            "fiscal_year": 2024,
+            "fiscal_period": "Q1",
+            "financial_data": {"net_income": 10, "revenues": 100},
+        },
+        {
+            "fiscal_year": 2024,
+            "fiscal_period": "Q2",
+            "financial_data": {"net_income": 20, "revenues": 120},
+        },
+        {
+            "fiscal_year": 2024,
+            "fiscal_period": "Q3",
+            "financial_data": {"net_income": 30, "revenues": 130},
+        },
+        {
+            "fiscal_year": 2024,
+            "fiscal_period": "Q4",
+            "financial_data": {"net_income": 40, "revenues": 140},
+        },
+        {
+            "fiscal_year": 2025,
+            "fiscal_period": "FY",
+            "financial_data": {"net_income": 250, "revenues": 1000},
+        },
+        {
+            "fiscal_year": 2025,
+            "fiscal_period": "Q1",
+            "financial_data": {"net_income": 50, "revenues": 150},
+        },
+        {
+            "fiscal_year": 2025,
+            "fiscal_period": "Q2",
+            "financial_data": {"net_income": 60, "revenues": 160},
+        },
     ]
 
     ttm = calculate_ttm_metrics(

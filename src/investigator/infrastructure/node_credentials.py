@@ -115,8 +115,7 @@ class CredentialAuditLogger:
             )
         else:
             logger.warning(
-                f"[CRED_AUDIT] node={node_id} type={credential_type} "
-                f"name={credential_name} granted=False error={error}"
+                f"[CRED_AUDIT] node={node_id} type={credential_type} name={credential_name} granted=False error={error}"
             )
 
     @classmethod

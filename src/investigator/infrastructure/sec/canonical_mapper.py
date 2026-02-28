@@ -330,9 +330,7 @@ class CanonicalKeyMapper:
 
         # If no tags found anywhere
         if not tags:
-            logger.warning(
-                f"No tags found for canonical key '{canonical_key}' " f"(sector={sector}, industry={industry})"
-            )
+            logger.warning(f"No tags found for canonical key '{canonical_key}' (sector={sector}, industry={industry})")
             return []
 
         # Remove duplicates while preserving order
@@ -429,15 +427,13 @@ class CanonicalKeyMapper:
                     )
                     if i > 0:
                         self.stats["fallbacks_used"] += 1
-                        logger.debug(
-                            f"🎯 Fallback SUCCESS: {canonical_key} → {tag} " f"(tried {i} tags before success)"
-                        )
+                        logger.debug(f"🎯 Fallback SUCCESS: {canonical_key} → {tag} (tried {i} tags before success)")
 
                     return (float(value), tag)
 
         # No value found in any fallback
         self.stats["failures"] += 1
-        logger.warning(f"⚠️  Failed to extract {canonical_key} for sector {sector}. " f"Tried tags: {tags}")
+        logger.warning(f"⚠️  Failed to extract {canonical_key} for sector {sector}. Tried tags: {tags}")
         return (None, None)
 
     def extract_from_bulk_table(
@@ -477,7 +473,7 @@ class CanonicalKeyMapper:
                 )
                 if i > 0:
                     self.stats["fallbacks_used"] += 1
-                    logger.debug(f"🎯 Bulk table fallback SUCCESS: {canonical_key} → {tag} " f"(tried {i} tags)")
+                    logger.debug(f"🎯 Bulk table fallback SUCCESS: {canonical_key} → {tag} (tried {i} tags)")
 
                 return (float(value), tag)
 

@@ -27,6 +27,9 @@ const formatDate = (d: string) => {
 
 const fmtPrice = (v: number) => `$${v.toFixed(2)}`;
 
+// Shared margin so all chart plot areas align horizontally
+const CHART_MARGIN = { top: 4, right: 48, bottom: 0, left: 8 };
+
 export function ChartPanel({ chart }: ChartPanelProps) {
   // Merge candle + overlay data into a single series for the price chart
   const priceData = useMemo(
@@ -97,7 +100,7 @@ export function ChartPanel({ chart }: ChartPanelProps) {
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={320}>
-            <ComposedChart data={priceData}>
+            <ComposedChart data={priceData} syncId="chart" margin={CHART_MARGIN}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
               <XAxis dataKey="date" tickFormatter={formatDate} fontSize={11} tick={false} height={4} />
               <YAxis domain={["auto", "auto"]} fontSize={11} tickFormatter={fmtPrice} />
@@ -206,7 +209,7 @@ export function ChartPanel({ chart }: ChartPanelProps) {
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={160}>
-            <ComposedChart data={volumeData}>
+            <ComposedChart data={volumeData} syncId="chart" margin={CHART_MARGIN}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
               <XAxis dataKey="date" tickFormatter={formatDate} fontSize={11} tick={false} height={4} />
               <YAxis yAxisId="vol" orientation="left" fontSize={11} />
@@ -228,7 +231,7 @@ export function ChartPanel({ chart }: ChartPanelProps) {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={160}>
-              <ComposedChart data={macdData}>
+              <ComposedChart data={macdData} syncId="chart" margin={CHART_MARGIN}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                 <XAxis dataKey="date" tickFormatter={formatDate} fontSize={11} tick={false} height={4} />
                 <YAxis fontSize={11} />
@@ -252,7 +255,7 @@ export function ChartPanel({ chart }: ChartPanelProps) {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={160}>
-              <LineChart data={rsiData}>
+              <LineChart data={rsiData} syncId="chart" margin={CHART_MARGIN}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                 <XAxis dataKey="date" tickFormatter={formatDate} fontSize={11} />
                 <YAxis domain={[0, 100]} fontSize={11} />

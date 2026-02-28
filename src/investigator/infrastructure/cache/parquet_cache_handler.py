@@ -230,7 +230,9 @@ class ParquetCacheStorageHandler(CacheStorageHandler):
                 "compression": (
                     self.parquet_config.compression
                     if self.parquet_config.engine == "fastparquet"
-                    else self.parquet_config.pyarrow_compression if self._parquet_engine else "gzip"
+                    else self.parquet_config.pyarrow_compression
+                    if self._parquet_engine
+                    else "gzip"
                 ),
                 "storage_format": self._storage_format,
                 "records": len(df),

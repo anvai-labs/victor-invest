@@ -63,8 +63,7 @@ class RLMetrics:
         try:
             with self.db.get_session() as session:
                 result = session.execute(
-                    text(
-                        """
+                    text("""
                         SELECT
                             context_features->>'sector' as sector,
                             COUNT(*) as num_predictions,
@@ -82,14 +81,12 @@ class RLMetrics:
                         GROUP BY context_features->>'sector'
                         HAVING COUNT(*) >= :min_samples
                         ORDER BY avg_reward DESC
-                    """
-                    ),
+                    """),
                     {"days": days, "min_samples": min_samples},
                 ).fetchall()
 
                 return {
-                    row[0]
-                    or "Unknown": {
+                    row[0] or "Unknown": {
                         "num_predictions": int(row[1]),
                         "avg_reward": float(row[2]) if row[2] else 0,
                         "std_reward": float(row[3]) if row[3] else 0,
@@ -121,8 +118,7 @@ class RLMetrics:
         try:
             with self.db.get_session() as session:
                 result = session.execute(
-                    text(
-                        """
+                    text("""
                         SELECT
                             tier_classification,
                             COUNT(*) as num_predictions,
@@ -136,14 +132,12 @@ class RLMetrics:
                         GROUP BY tier_classification
                         HAVING COUNT(*) >= :min_samples
                         ORDER BY avg_reward DESC
-                    """
-                    ),
+                    """),
                     {"days": days, "min_samples": min_samples},
                 ).fetchall()
 
                 return {
-                    row[0]
-                    or "Unknown": {
+                    row[0] or "Unknown": {
                         "num_predictions": int(row[1]),
                         "avg_reward": float(row[2]) if row[2] else 0,
                         "std_reward": float(row[3]) if row[3] else 0,
@@ -173,8 +167,7 @@ class RLMetrics:
             with self.db.get_session() as session:
                 # Get average weights used
                 result = session.execute(
-                    text(
-                        """
+                    text("""
                         SELECT
                             AVG((model_weights->>'dcf')::float) as dcf_avg,
                             AVG((model_weights->>'pe')::float) as pe_avg,
@@ -185,8 +178,7 @@ class RLMetrics:
                         FROM valuation_outcomes
                         WHERE reward_90d IS NOT NULL
                           AND analysis_date >= CURRENT_DATE - :days
-                    """
-                    ),
+                    """),
                     {"days": days},
                 ).fetchone()
 
@@ -223,8 +215,7 @@ class RLMetrics:
             with self.db.get_session() as session:
                 # Compare RL vs baseline A/B test results
                 result = session.execute(
-                    text(
-                        """
+                    text("""
                         SELECT
                             ab_test_group,
                             COUNT(*) as num_predictions,
@@ -240,8 +231,7 @@ class RLMetrics:
                           AND ab_test_group IS NOT NULL
                           AND analysis_date >= CURRENT_DATE - :days
                         GROUP BY ab_test_group
-                    """
-                    ),
+                    """),
                     {"days": days},
                 ).fetchall()
 
@@ -290,8 +280,7 @@ class RLMetrics:
 
             with self.db.get_session() as session:
                 result = session.execute(
-                    text(
-                        f"""
+                    text(f"""
                         SELECT
                             {bucket_sql} as period,
                             COUNT(*) as num_predictions,
@@ -303,8 +292,7 @@ class RLMetrics:
                           AND analysis_date >= CURRENT_DATE - :days
                         GROUP BY {bucket_sql}
                         ORDER BY period ASC
-                    """
-                    ),
+                    """),
                     {"days": days},
                 ).fetchall()
 
@@ -335,8 +323,7 @@ class RLMetrics:
         try:
             with self.db.get_session() as session:
                 result = session.execute(
-                    text(
-                        """
+                    text("""
                         SELECT
                             COUNT(*) as total_predictions,
                             COUNT(CASE WHEN reward_90d IS NOT NULL THEN 1 END) as with_outcomes,
@@ -354,8 +341,7 @@ class RLMetrics:
                                 as direction_accuracy
                         FROM valuation_outcomes
                         WHERE analysis_date >= CURRENT_DATE - :days
-                    """
-                    ),
+                    """),
                     {"days": days},
                 ).fetchone()
 

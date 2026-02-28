@@ -126,7 +126,7 @@ class RLTrainer:
 
         if verbose:
             logger.info(
-                f"Starting training: {len(train_experiences)} train, " f"{len(val_experiences)} val, {epochs} epochs"
+                f"Starting training: {len(train_experiences)} train, {len(val_experiences)} val, {epochs} epochs"
             )
 
         best_val_reward = float("-inf")

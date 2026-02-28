@@ -340,16 +340,14 @@ class DataValidationService:
         """Get shares from most recent SEC filing."""
         with self.sec_engine.connect() as conn:
             result = conn.execute(
-                text(
-                    """
+                text("""
                     SELECT shares_outstanding
                     FROM sec_companyfacts_processed
                     WHERE symbol = :symbol
                       AND shares_outstanding IS NOT NULL
                     ORDER BY filed_date DESC
                     LIMIT 1
-                """
-                ),
+                """),
                 {"symbol": symbol},
             ).fetchone()
             return float(result[0]) if result and result[0] else None
@@ -358,15 +356,13 @@ class DataValidationService:
         """Get most recent SEC filing date."""
         with self.sec_engine.connect() as conn:
             result = conn.execute(
-                text(
-                    """
+                text("""
                     SELECT filed_date
                     FROM sec_companyfacts_processed
                     WHERE symbol = :symbol
                     ORDER BY filed_date DESC
                     LIMIT 1
-                """
-                ),
+                """),
                 {"symbol": symbol},
             ).fetchone()
             return result[0] if result else None
@@ -375,13 +371,11 @@ class DataValidationService:
         """Get data from symbol table."""
         with self.stock_engine.connect() as conn:
             result = conn.execute(
-                text(
-                    """
+                text("""
                     SELECT outstandingshares, mktcap, "Sector", "Industry"
                     FROM symbol
                     WHERE ticker = :symbol
-                """
-                ),
+                """),
                 {"symbol": symbol},
             ).fetchone()
 

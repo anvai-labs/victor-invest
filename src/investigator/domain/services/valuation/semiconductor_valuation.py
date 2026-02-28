@@ -1031,6 +1031,8 @@ def calculate_growth_adjusted_valuation(
         symbol: Stock ticker
         financials: Financial data (eps, revenue, ebitda, etc.)
         market_data: Market data (current_price, forward_eps, shares_outstanding, etc.)
+                     Note: shares_outstanding from SEC data are actual (not split-adjusted).
+                     For accurate market cap calculation, use split_adjusted_market_cap.calculate_market_cap()
         growth_profile: Classified growth profile
         chip_type: Type of semiconductor
         cycle_position: Current position in semiconductor cycle

@@ -18,11 +18,13 @@ from investigator.domain.services.valuation.models.base import (
     ModelNotApplicable,
     ValuationModelResult,
 )
-from investigator.domain.services.valuation.models.common import baseline_multiple_context, clamp
+from investigator.domain.services.valuation.models.common import (
+    baseline_multiple_context,
+    clamp,
+)
 from investigator.domain.services.valuation.models.company_profile import (
     CompanyArchetype,
     CompanyProfile,
-    DataQualityFlag,
 )
 
 logger = logging.getLogger(__name__)
@@ -42,13 +44,26 @@ INDUSTRY_BASE_PS = {
     # Technology - Internet & E-commerce
     "Technology/Services-Computer Programming": 9.0,
     "Technology/Retail": 1.5,
-    # Healthcare - Biotech & Pharma
+    # Healthcare - Biotech & Pharma (High P/S appropriate for growth/R&D)
     "Health Care/Biotechnology: Biological Products (No Diagnostic Substances)": 8.0,
+    "Health Care/Biotechnology: Pharmaceutical Preparations": 8.0,
     "Health Care/Pharmaceutical Preparations": 5.0,
+    # Healthcare - Insurance & Managed Care (P/S NOT meaningful - revenue = premiums)
+    "Health Care/Managed Health Care": 1.0,
+    "Health Care/Hospital/Nursing Management": 1.0,
+    "Health Care/Medical/Nursing Services": 1.0,
+    # Healthcare - Medical Devices & Supplies
+    "Health Care/Medical/Dental Instruments": 2.5,
+    "Health Care/Medical Specialities": 2.0,
+    "Health Care/Ophthalmic Goods": 2.0,
+    # Healthcare - Other
+    "Health Care/Other Pharmaceuticals": 3.0,
+    "Health Care/Medicinal Chemicals and Botanical Products": 2.0,
     # Financial Services
     "Financials/Security Brokers, Dealers & Flotation Companies": 3.0,  # Fintech
     "Financials/Banks": 2.0,
     "Financials/Insurance": 1.5,
+    "Financials/Accident & Health Insurance": 1.5,
     # Consumer
     "Consumer Discretionary/Catalog & Mail-Order Houses": 2.0,  # E-commerce
     "Consumer Discretionary/Restaurants": 1.5,
@@ -144,6 +159,30 @@ class PSMultipleModel(BaseValuationModel):
             )
 
         fair_value = float(self.revenue_per_share) * target_ps
+
+        # Sanity check: Reject absurdly high fair values caused by unit mismatches
+        # A reasonable P/S fair value should be within 0.01x to 1000x of current price
+        # If current_price is available, use it for validation
+        if self.current_price and self.current_price > 0:
+            ratio = fair_value / self.current_price
+            if ratio > 1000 or ratio < 0.001:
+                # Fair value is more than 1000x or less than 0.001x of current price
+                # This indicates a data quality issue (likely revenue_per_share unit mismatch)
+                symbol = self.company_profile.symbol if hasattr(self.company_profile, "symbol") else "UNKNOWN"
+                logger.warning(
+                    f"⚠️  [PS_DATA_QUALITY] {symbol} - Implausible fair value: ${fair_value:,.2f} "
+                    f"(revenue_per_share=${self.revenue_per_share:.4f}, target_ps={target_ps:.2f}, current_price=${self.current_price:.2f}) "
+                    f"→ ratio={ratio:.1f}x, rejecting as unit mismatch error"
+                )
+                diagnostics = self._build_baseline_diagnostics()
+                diagnostics.flags.append("UNIT_MISMATCH")
+                diagnostics.data_quality_score = 0.0
+                return ModelNotApplicable(
+                    model_name=self.model_name,
+                    reason="unit_mismatch_implausible_fair_value",
+                    diagnostics=diagnostics,
+                )
+
         diagnostics = self._build_diagnostics(target_ps=target_ps)
         confidence = self.estimate_confidence({"target_ps": target_ps})
 
@@ -203,11 +242,7 @@ class PSMultipleModel(BaseValuationModel):
 
         # Try industry-specific lookup first
         if self.company_profile.industry:
-            sector_key = (
-                self.company_profile.sector.split("/")[0].strip()
-                if self.company_profile.sector
-                else None
-            )
+            sector_key = self.company_profile.sector.split("/")[0].strip() if self.company_profile.sector else None
             industry_candidates = []
             if sector_key:
                 industry_candidates.append(f"{sector_key}/{self.company_profile.industry}")
@@ -255,7 +290,7 @@ class PSMultipleModel(BaseValuationModel):
                 if low <= growth_rate < high:
                     growth_adjustment = adjustment
                     logger.info(
-                        f"PS_GRANULAR - Growth adjustment: +{adjustment:.1f} (revenue growth: {growth_rate*100:.1f}%)"
+                        f"PS_GRANULAR - Growth adjustment: +{adjustment:.1f} (revenue growth: {growth_rate * 100:.1f}%)"
                     )
                     break
         else:
@@ -300,20 +335,20 @@ class PSMultipleModel(BaseValuationModel):
         if self.company_profile.rule_of_40_score is not None:
             if self.company_profile.rule_of_40_score > 0.40:
                 quality_multiplier *= QUALITY_PREMIUMS["rule_of_40_excellent"]
-                applied_premiums.append(f"Rule of 40 excellent ({self.company_profile.rule_of_40_score*100:.1f}%)")
+                applied_premiums.append(f"Rule of 40 excellent ({self.company_profile.rule_of_40_score * 100:.1f}%)")
             elif self.company_profile.rule_of_40_score > 0.30:
                 quality_multiplier *= QUALITY_PREMIUMS["rule_of_40_good"]
-                applied_premiums.append(f"Rule of 40 good ({self.company_profile.rule_of_40_score*100:.1f}%)")
+                applied_premiums.append(f"Rule of 40 good ({self.company_profile.rule_of_40_score * 100:.1f}%)")
 
         # Net Revenue Retention (NRR) premium
         if self.company_profile.net_revenue_retention is not None and self.company_profile.net_revenue_retention > 1.20:
             quality_multiplier *= QUALITY_PREMIUMS["nrr_excellent"]
-            applied_premiums.append(f"NRR excellent ({self.company_profile.net_revenue_retention*100:.0f}%)")
+            applied_premiums.append(f"NRR excellent ({self.company_profile.net_revenue_retention * 100:.0f}%)")
 
         # Gross margin premium
         if self.company_profile.gross_margin is not None and self.company_profile.gross_margin > 0.70:
             quality_multiplier *= QUALITY_PREMIUMS["gross_margin_high"]
-            applied_premiums.append(f"Gross margin high ({self.company_profile.gross_margin*100:.1f}%)")
+            applied_premiums.append(f"Gross margin high ({self.company_profile.gross_margin * 100:.1f}%)")
 
         if applied_premiums:
             logger.info(f"PS_GRANULAR - Quality premiums: {quality_multiplier:.2f}x ({', '.join(applied_premiums)})")

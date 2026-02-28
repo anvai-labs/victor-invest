@@ -62,7 +62,7 @@ def get_stock_db_url() -> str:
             "Please source your ~/.investigator/env file or set the variable."
         )
     user = os.environ.get("STOCK_DB_USER", "stockuser")
-    host = os.environ.get("STOCK_DB_HOST", "localhost")
+    host = os.environ.get("STOCK_DB_HOST", "dataserver1.singh.local")
     port = os.environ.get("STOCK_DB_PORT", "5432")
     database = os.environ.get("STOCK_DB_NAME", "stock")
     return f"postgresql://{user}:{password}@{host}:{port}/{database}"
@@ -75,7 +75,7 @@ def get_sec_db_url() -> str:
     Optional environment variables:
     - SEC_DB_USER: Database username (default: investigator)
     - SEC_DB_PASSWORD or DB_PASSWORD: Password (default: investigator)
-    - SEC_DB_HOST or DB_HOST: Database host (default: localhost)
+    - SEC_DB_HOST or DB_HOST: Database host (default: dataserver1.singh.local)
     - SEC_DB_PORT or DB_PORT: Database port (default: 5432)
     - SEC_DB_NAME: Database name (default: sec_database)
 
@@ -84,7 +84,7 @@ def get_sec_db_url() -> str:
     """
     user = os.environ.get("SEC_DB_USER", "investigator")
     password = os.environ.get("SEC_DB_PASSWORD") or os.environ.get("DB_PASSWORD", "investigator")
-    host = os.environ.get("SEC_DB_HOST") or os.environ.get("DB_HOST", "localhost")
+    host = os.environ.get("SEC_DB_HOST") or os.environ.get("DB_HOST", "dataserver1.singh.local")
     port = os.environ.get("SEC_DB_PORT") or os.environ.get("DB_PORT", "5432")
     database = os.environ.get("SEC_DB_NAME", "sec_database")
     return f"postgresql://{user}:{password}@{host}:{port}/{database}"

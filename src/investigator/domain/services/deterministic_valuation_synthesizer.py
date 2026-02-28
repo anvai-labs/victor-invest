@@ -316,9 +316,7 @@ class TemplateBasedExplanationGenerator:
             secondary_weights = [f"{c.weight:.0%}" for c in sorted_contrib[1:3]]
 
             if len(secondary_names) == 1:
-                parts.append(
-                    f"The {secondary_names[0]} model ({secondary_weights[0]}) " f"provides secondary validation."
-                )
+                parts.append(f"The {secondary_names[0]} model ({secondary_weights[0]}) provides secondary validation.")
             else:
                 parts.append(
                     f"The {' and '.join(secondary_names)} models "
@@ -332,7 +330,7 @@ class TemplateBasedExplanationGenerator:
             if min_val > 0:
                 spread = (max_val - min_val) / min_val
                 if spread > 0.3:
-                    parts.append(f"Note: Model outputs show {spread:.0%} spread, " f"suggesting valuation uncertainty.")
+                    parts.append(f"Note: Model outputs show {spread:.0%} spread, suggesting valuation uncertainty.")
 
         return " ".join(parts)
 
@@ -360,10 +358,10 @@ class TemplateBasedExplanationGenerator:
 
         # Data quality impact
         if data_quality >= 80:
-            parts.append(f"Data quality is {quality_grade} ({data_quality:.0f}/100), " f"supporting reliable analysis.")
+            parts.append(f"Data quality is {quality_grade} ({data_quality:.0f}/100), supporting reliable analysis.")
         elif data_quality >= 60:
             parts.append(
-                f"Data quality is {quality_grade} ({data_quality:.0f}/100). " f"Some metrics may require verification."
+                f"Data quality is {quality_grade} ({data_quality:.0f}/100). Some metrics may require verification."
             )
         else:
             parts.append(
@@ -440,8 +438,7 @@ class TemplateBasedExplanationGenerator:
         # Add standard risk considerations if list is short
         if len(risks) < 2:
             risks.append(
-                "Changes in interest rates, sector multiples, or "
-                "company fundamentals could shift valuation materially"
+                "Changes in interest rates, sector multiples, or company fundamentals could shift valuation materially"
             )
 
         return " ".join(risks) if risks else "Standard valuation risks apply."

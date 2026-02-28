@@ -43,13 +43,9 @@ except Exception:
 
             start_time = time.time()
             try:
-                output, tool_calls_used = await self.execute(
-                    node, context, tool_registry
-                )
+                output, tool_calls_used = await self.execute(node, context, tool_registry)
 
-                output_key = getattr(node, "output_key", None) or getattr(
-                    node, "id", "output"
-                )
+                output_key = getattr(node, "output_key", None) or getattr(node, "id", "output")
                 if hasattr(context, "set"):
                     context.set(output_key, output)
                 elif isinstance(context, dict):
@@ -88,32 +84,50 @@ except Exception:
         description: Optional[str],
     ) -> None:
         try:
-            from victor.framework.handler_registry import register_handler
-
-            register_handler(
-                name=name,
-                handler=instance,
-                vertical=vertical,
-                description=description,
-                replace=True,
+            # Try new Victor API first (register_vertical_handlers, register_global_handler)
+            from victor.framework.handler_registry import (
+                register_global_handler,
+                register_vertical_handlers,
             )
-        except TypeError:
-            try:
-                # Older/newer variants may not support `replace`.
-                from victor.framework.handler_registry import register_handler
 
-                register_handler(
+            if vertical:
+                # Register as vertical handler
+                register_vertical_handlers(
+                    vertical_name=vertical,
+                    handlers={name: instance},
+                    category="general",
+                    description=description or "",
+                )
+            else:
+                # Register as global handler
+                register_global_handler(
                     name=name,
                     handler=instance,
-                    vertical=vertical,
-                    description=description,
+                    category="global",
                 )
+        except Exception:
+            # Fallback to old Victor 0.5.0 API (get_handler_registry())
+            try:
+                from victor.framework.handler_registry import get_handler_registry
+
+                registry = get_handler_registry()
+                if vertical:
+                    # Old API: register_vertical(vertical_name, handlers_dict)
+                    registry.register_vertical(
+                        vertical_name=vertical,
+                        handlers={name: instance},
+                        category="general",
+                        description=description or "",
+                    )
+                else:
+                    # Old API: register_global(name, handler)
+                    registry.register_global(
+                        name=name,
+                        handler=instance,
+                        category="global",
+                    )
             except Exception as exc:
-                logger.debug(
-                    "Handler registry registration skipped for %s: %s", name, exc
-                )
-        except Exception as exc:
-            logger.debug("Handler registry registration skipped for %s: %s", name, exc)
+                logger.debug("Handler registry registration skipped for %s: %s", name, exc)
 
     def _register_with_executor(name: str, instance: Any) -> None:
         try:
@@ -135,9 +149,7 @@ except Exception:
             try:
                 instance = handler_cls()
             except Exception as exc:
-                logger.warning(
-                    "Could not instantiate handler %s for registration: %s", name, exc
-                )
+                logger.warning("Could not instantiate handler %s for registration: %s", name, exc)
                 return handler_cls
 
             _register_with_handler_registry(name, instance, vertical, description)

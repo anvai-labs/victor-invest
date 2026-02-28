@@ -37,10 +37,22 @@ def safe_json_dumps(obj: Any, **kwargs) -> str:
 
 
 def safe_json_loads(json_str: str) -> Any:
-    """Safely decode JSON string with UTF-8 encoding"""
+    """Safely decode JSON string with UTF-8 encoding
+
+    Handles various input types:
+    - str: Direct JSON parsing
+    - bytes: Decode UTF-8 first
+    - dict/list: Already parsed (JSONB columns), return as-is
+    - Decimal: PostgreSQL numeric type in JSONB, convert to float
+    """
+    from decimal import Decimal
+
     # If already a dict/list (from JSONB columns), return as-is
     if isinstance(json_str, (dict, list)):
         return json_str
+    # Handle Decimal type from PostgreSQL JSONB numeric fields
+    if isinstance(json_str, Decimal):
+        return float(json_str)
     if isinstance(json_str, bytes):
         json_str = json_str.decode("utf-8", errors="replace")
     return json.loads(json_str)
@@ -234,8 +246,7 @@ class LLMResponseStoreDAO:
         try:
             with self.db.get_session() as session:
                 session.execute(
-                    text(
-                        """
+                    text("""
                         INSERT INTO llm_responses
                         (symbol, form_type, period, prompt, model_info, 
                          response, metadata, llm_type)
@@ -248,8 +259,7 @@ class LLMResponseStoreDAO:
                             response = EXCLUDED.response,
                             metadata = EXCLUDED.metadata,
                             ts = NOW()
-                    """
-                    ),
+                    """),
                     {
                         "symbol": symbol,
                         "form_type": form_type,
@@ -419,8 +429,7 @@ class TickerCIKMappingDAO:
         try:
             with self.db.get_session() as session:
                 session.execute(
-                    text(
-                        """
+                    text("""
                         INSERT INTO ticker_cik_mapping (ticker, cik, company_name, exchange)
                         VALUES (:ticker, :cik, :company_name, :exchange)
                         ON CONFLICT (ticker) DO UPDATE SET
@@ -428,8 +437,7 @@ class TickerCIKMappingDAO:
                             company_name = EXCLUDED.company_name,
                             exchange = EXCLUDED.exchange,
                             updated_at = NOW()
-                    """
-                    ),
+                    """),
                     {
                         "ticker": ticker,
                         "cik": cik,
@@ -498,8 +506,7 @@ class SECResponseStoreDAO:
         try:
             with self.db.get_session() as session:
                 session.execute(
-                    text(
-                        """
+                    text("""
                         INSERT INTO sec_responses
                         (symbol, fiscal_year, fiscal_period, form_type, category, response_data, metadata)
                         VALUES (:symbol, :fiscal_year, :fiscal_period, :form_type, :category, :response_data, :metadata)
@@ -507,8 +514,7 @@ class SECResponseStoreDAO:
                             response_data = EXCLUDED.response_data,
                             metadata = EXCLUDED.metadata,
                             updated_at = NOW()
-                    """
-                    ),
+                    """),
                     {
                         "symbol": symbol,
                         "fiscal_year": fiscal_year,
@@ -537,8 +543,7 @@ class SECResponseStoreDAO:
         try:
             with self.db.get_session() as session:
                 result = session.execute(
-                    text(
-                        """
+                    text("""
                         SELECT response_data, metadata, updated_at
                         FROM sec_responses
                         WHERE symbol = :symbol
@@ -546,8 +551,7 @@ class SECResponseStoreDAO:
                           AND fiscal_year = :fiscal_year
                           AND fiscal_period = :fiscal_period
                           AND (:category IS NULL OR category = :category)
-                    """
-                    ),
+                    """),
                     {
                         "symbol": symbol,
                         "form_type": form_type,
@@ -573,8 +577,7 @@ class SECResponseStoreDAO:
         try:
             with self.db.get_session() as session:
                 result = session.execute(
-                    text(
-                        """
+                    text("""
                         SELECT response_data, metadata, fiscal_year, fiscal_period, updated_at
                         FROM sec_responses
                         WHERE symbol = :symbol
@@ -591,8 +594,7 @@ class SECResponseStoreDAO:
                                  END DESC,
                                  updated_at DESC
                         LIMIT 1
-                    """
-                    ),
+                    """),
                     {"symbol": symbol, "form_type": form_type, "category": category},
                 ).fetchone()
 
@@ -637,8 +639,7 @@ class AllSubmissionStoreDAO:
         try:
             with self.db.get_session() as session:
                 session.execute(
-                    text(
-                        """
+                    text("""
                         INSERT INTO sec_submissions 
                         (symbol, cik, company_name, submissions_data, fetched_at, updated_at)
                         VALUES (:symbol, :cik, :company_name, :submissions_data, NOW(), NOW())
@@ -647,8 +648,7 @@ class AllSubmissionStoreDAO:
                             company_name = EXCLUDED.company_name,
                             submissions_data = EXCLUDED.submissions_data,
                             updated_at = NOW()
-                    """
-                    ),
+                    """),
                     {
                         "symbol": symbol,
                         "cik": cik,
@@ -675,9 +675,7 @@ class AllSubmissionStoreDAO:
                         WHERE symbol = :symbol
                         AND updated_at > NOW() - INTERVAL ':max_age days'
                         LIMIT 1
-                    """.replace(
-                            ":max_age", str(max_age_days)
-                        )
+                    """.replace(":max_age", str(max_age_days))
                     ),
                     {"symbol": symbol},
                 ).fetchone()
@@ -706,9 +704,7 @@ class AllSubmissionStoreDAO:
                         """
                         DELETE FROM sec_submissions
                         WHERE updated_at < NOW() - INTERVAL ':days days'
-                    """.replace(
-                            ":days", str(days_to_keep)
-                        )
+                    """.replace(":days", str(days_to_keep))
                     )
                 )
                 session.commit()
@@ -758,8 +754,7 @@ class QuarterlyMetricsDAO:
         try:
             with self.db.get_session() as session:
                 session.execute(
-                    text(
-                        """
+                    text("""
                         INSERT INTO quarterly_metrics
                         (symbol, fiscal_year, fiscal_period, cik, form_type, 
                          metrics_data, company_name, calculated_at, updated_at)
@@ -771,8 +766,7 @@ class QuarterlyMetricsDAO:
                             metrics_data = EXCLUDED.metrics_data,
                             company_name = EXCLUDED.company_name,
                             updated_at = NOW()
-                    """
-                    ),
+                    """),
                     {
                         "symbol": symbol,
                         "fiscal_year": str(fiscal_year),
@@ -813,9 +807,7 @@ class QuarterlyMetricsDAO:
                             AND fiscal_period = :fiscal_period
                             AND updated_at > NOW() - INTERVAL ':max_age days'
                             LIMIT 1
-                        """.replace(
-                                ":max_age", str(max_age_days)
-                            )
+                        """.replace(":max_age", str(max_age_days))
                         ),
                         {
                             "symbol": symbol,
@@ -856,9 +848,7 @@ class QuarterlyMetricsDAO:
                                          ELSE 0
                                      END DESC
                             LIMIT 1
-                        """.replace(
-                                ":max_age", str(max_age_days)
-                            )
+                        """.replace(":max_age", str(max_age_days))
                         ),
                         {"symbol": symbol},
                     ).fetchone()
@@ -958,8 +948,7 @@ class AllCompanyFactsStoreDAO:
             with self.db_manager.get_session() as session:
                 # Use PostgreSQL UPSERT (INSERT ... ON CONFLICT DO UPDATE)
                 session.execute(
-                    text(
-                        """
+                    text("""
                         INSERT INTO sec_companyfacts 
                         (symbol, cik, company_name, companyfacts, metadata, updated_at)
                         VALUES (:symbol, :cik, :company_name, :companyfacts, :metadata, :updated_at)
@@ -968,8 +957,7 @@ class AllCompanyFactsStoreDAO:
                             companyfacts = EXCLUDED.companyfacts,
                             metadata = EXCLUDED.metadata,
                             updated_at = EXCLUDED.updated_at
-                    """
-                    ),
+                    """),
                     {
                         "symbol": symbol,
                         "cik": cik_int,
@@ -994,13 +982,11 @@ class AllCompanyFactsStoreDAO:
             with self.db_manager.get_session() as session:
                 logger.info(f"🔍 DB GET_COMPANY_FACTS: Got session for {symbol}")
                 result = session.execute(
-                    text(
-                        """
+                    text("""
                         SELECT companyfacts, metadata, cik, company_name, updated_at
                         FROM sec_companyfacts 
                         WHERE symbol = :symbol
-                    """
-                    ),
+                    """),
                     {"symbol": symbol},
                 ).fetchone()
                 logger.info(f"🔍 DB GET_COMPANY_FACTS: Query executed for {symbol}, result: {result is not None}")
@@ -1060,12 +1046,10 @@ class AllCompanyFactsStoreDAO:
         try:
             with self.db_manager.get_session() as session:
                 result = session.execute(
-                    text(
-                        """
+                    text("""
                         DELETE FROM sec_companyfacts
                         WHERE updated_at < :cutoff_date
-                    """
-                    ),
+                    """),
                     {"cutoff_date": datetime.utcnow() - timedelta(days=days_to_keep)},
                 )
                 session.commit()
@@ -1120,14 +1104,12 @@ def is_etf(symbol: str) -> bool:
         stock_db_url = config.database.url.replace("/sec_database", "/stock")
         stock_engine = create_engine(stock_db_url)
 
-        query = text(
-            """
+        query = text("""
             SELECT isetf, isstock, description
             FROM symbol
             WHERE UPPER(ticker) = UPPER(:symbol)
             LIMIT 1
-        """
-        )
+        """)
 
         with stock_engine.connect() as conn:
             result = conn.execute(query, {"symbol": symbol}).fetchone()

@@ -74,21 +74,41 @@ def test_fallback_handler_decorator_registers_with_registry_and_executor(monkeyp
     import victor.framework.handler_registry as handler_registry_module
     import victor.workflows.executor as executor_module
 
+    # Skip if running against Victor 0.5.0 which doesn't have register_vertical_handlers
+    if not hasattr(handler_registry_module, "register_vertical_handlers"):
+        pytest.skip("Victor 0.5.0 detected; skipping new API test")
+
     calls = {
         "registry": [],
         "executor": [],
     }
 
-    def _register_handler(**kwargs):
-        calls["registry"].append(dict(kwargs))
-        if "replace" in kwargs:
-            # Simulate older API variant that doesn't accept `replace`.
-            raise TypeError("replace unsupported")
+    def _register_vertical_handlers(vertical_name, handlers, category="general", description=""):
+        calls["registry"].append(
+            {
+                "type": "vertical",
+                "vertical_name": vertical_name,
+                "handlers": handlers,
+                "category": category,
+                "description": description,
+            }
+        )
+
+    def _register_global_handler(name, handler, category="global"):
+        calls["registry"].append(
+            {
+                "type": "global",
+                "name": name,
+                "handler": handler,
+                "category": category,
+            }
+        )
 
     def _register_compute_handler(name, handler):
         calls["executor"].append((name, handler))
 
-    monkeypatch.setattr(handler_registry_module, "register_handler", _register_handler)
+    monkeypatch.setattr(handler_registry_module, "register_vertical_handlers", _register_vertical_handlers)
+    monkeypatch.setattr(handler_registry_module, "register_global_handler", _register_global_handler)
     monkeypatch.setattr(executor_module, "register_compute_handler", _register_compute_handler)
 
     @compat_handlers.handler_decorator(
@@ -100,12 +120,13 @@ def test_fallback_handler_decorator_registers_with_registry_and_executor(monkeyp
         async def execute(self, node, context, tool_registry):
             return {"ok": True}, 0
 
-    # First call includes replace=True (simulated TypeError), second retries without replace.
-    assert calls["registry"][0]["name"] == "unit_test_handler"
-    assert calls["registry"][0]["vertical"] == "investment"
-    assert "replace" in calls["registry"][0]
-    assert calls["registry"][1]["name"] == "unit_test_handler"
-    assert "replace" not in calls["registry"][1]
+    # Should call register_vertical_handlers since vertical="investment"
+    assert len(calls["registry"]) == 1
+    assert calls["registry"][0]["type"] == "vertical"
+    assert calls["registry"][0]["vertical_name"] == "investment"
+    assert "unit_test_handler" in calls["registry"][0]["handlers"]
+    assert calls["registry"][0]["category"] == "general"
+    assert calls["registry"][0]["description"] == "compat test"
 
     assert len(calls["executor"]) == 1
     assert calls["executor"][0][0] == "unit_test_handler"

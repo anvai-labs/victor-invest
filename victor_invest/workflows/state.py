@@ -74,6 +74,10 @@ class AnalysisWorkflowState:
     symbol: str
     mode: AnalysisMode
 
+    # LLM Configuration (for synthesis node)
+    llm_provider: Optional[str] = None
+    llm_model: Optional[str] = None
+
     # Data collection results
     sec_data: Optional[Dict[str, Any]] = None
     market_data: Optional[Dict[str, Any]] = None
@@ -100,6 +104,8 @@ class AnalysisWorkflowState:
         return {
             "symbol": self.symbol,
             "mode": self.mode.value,
+            "llm_provider": self.llm_provider,
+            "llm_model": self.llm_model,
             "sec_data": self.sec_data,
             "market_data": self.market_data,
             "fundamental_analysis": self.fundamental_analysis,
@@ -128,6 +134,8 @@ class AnalysisWorkflowState:
         return cls(
             symbol=data["symbol"],
             mode=mode,
+            llm_provider=data.get("llm_provider"),
+            llm_model=data.get("llm_model"),
             sec_data=data.get("sec_data"),
             market_data=data.get("market_data"),
             fundamental_analysis=data.get("fundamental_analysis"),

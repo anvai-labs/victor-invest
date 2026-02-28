@@ -222,7 +222,7 @@ class SymbolUpdateAgent(InvestmentAgent):
             rows_updated = self._update_symbol_table(symbol, update_data)
 
             self.logger.info(
-                f"✅ Updated symbol table for {symbol}: {len(update_data)} fields, " f"{rows_updated} row(s) affected"
+                f"✅ Updated symbol table for {symbol}: {len(update_data)} fields, {rows_updated} row(s) affected"
             )
 
             return AgentResult(
@@ -548,13 +548,11 @@ class SymbolUpdateAgent(InvestmentAgent):
         set_clause = ", ".join([f"{col} = :{col}" for col in update_data.keys()])
 
         # Build UPDATE statement
-        query = text(
-            f"""
+        query = text(f"""
             UPDATE symbol
             SET {set_clause}
             WHERE UPPER(ticker) = UPPER(:symbol)
-        """
-        )
+        """)
 
         # Add symbol to params
         params = {"symbol": symbol, **update_data}

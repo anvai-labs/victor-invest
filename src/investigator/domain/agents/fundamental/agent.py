@@ -339,9 +339,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                     fy, fp, adsh = strategy.get_latest_fiscal_period(symbol, cik)
 
                     if fy and fp:
-                        self.logger.info(
-                            f"Using fiscal period from bulk tables for {symbol}: " f"{fy}-{fp} (ADSH: {adsh})"
-                        )
+                        self.logger.info(f"Using fiscal period from bulk tables for {symbol}: {fy}-{fp} (ADSH: {adsh})")
                         return f"{fy}-{fp}"
 
                 except Exception as e:
@@ -358,16 +356,14 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                     db_manager = get_db_manager()
                     with db_manager.engine.connect() as conn:
                         latest = conn.execute(
-                            text(
-                                """
+                            text("""
                                 SELECT fiscal_year, fiscal_period, filed_date
                                 FROM sec_companyfacts_processed
                                 WHERE symbol = :symbol
                                 ORDER BY filed_date DESC NULLS LAST,
                                          period_end_date DESC NULLS LAST
                                 LIMIT 1
-                                """
-                            ),
+                                """),
                             {"symbol": symbol.upper()},
                         ).fetchone()
 
@@ -436,9 +432,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             return f"{year}-Q{quarter}"
 
         except Exception as e:
-            self.logger.warning(
-                f"Failed to determine fiscal period for {symbol}: {e}. " f"Using 'unknown' as fallback."
-            )
+            self.logger.warning(f"Failed to determine fiscal period for {symbol}: {e}. Using 'unknown' as fallback.")
             return "unknown"
 
     def _require_financials(self, company_data: Dict) -> Dict:
@@ -560,8 +554,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             with db_manager.get_session() as session:
                 # Query for shares outstanding with priority ordering
                 # Priority: EntityCommonStockSharesOutstanding (DEI - always actual shares) > CommonStock > WeightedAverage
-                query = text(
-                    """
+                query = text("""
                     SELECT n.value, n.ddate, n.tag
                     FROM sec_num_data n
                     JOIN sec_sub_data s ON n.adsh = s.adsh
@@ -580,8 +573,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                                  ELSE 4
                              END
                     LIMIT 1
-                """
-                )
+                """)
 
                 result = session.execute(query, {"cik": cik}).fetchone()
 
@@ -673,8 +665,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             db_manager = get_db_manager()
             with db_manager.get_session() as session:
                 # EntityPublicFloat is in DEI namespace, reported in USD
-                query = text(
-                    """
+                query = text("""
                     SELECT n.value, n.ddate, n.uom
                     FROM sec_num_data n
                     JOIN sec_sub_data s ON n.adsh = s.adsh
@@ -683,8 +674,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                       AND n.ddate IS NOT NULL
                     ORDER BY n.ddate DESC
                     LIMIT 1
-                    """
-                )
+                    """)
 
                 result = session.execute(query, {"cik": cik}).fetchone()
 
@@ -1051,9 +1041,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             cik = resolve_cik_for_symbol(symbol=symbol, ticker_mapper=self.ticker_mapper, logger=self.logger)
             fiscal_period = self._get_current_fiscal_period(symbol, financials=None, cik=cik)
             cache_key = build_company_cache_key(symbol=symbol, fiscal_period=fiscal_period, cik=cik)
-            self.logger.debug(
-                f"Cache key for {symbol}: {cache_key} " f"(fiscal_period ensures quarter-specific caching)"
-            )
+            self.logger.debug(f"Cache key for {symbol}: {cache_key} (fiscal_period ensures quarter-specific caching)")
 
             cached = get_cached_company_data(cache=self.cache, cache_key=cache_key, symbol=symbol, logger=self.logger)
             if cached:
@@ -1088,8 +1076,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                 )
             except ValueError as cache_error:
                 raise ValueError(
-                    f"SEC Agent cache miss for {symbol}: {cache_error}. "
-                    f"Ensure SEC Agent runs before Fundamental Agent."
+                    f"SEC Agent cache miss for {symbol}: {cache_error}. Ensure SEC Agent runs before Fundamental Agent."
                 )
             except Exception as api_error:
                 self.logger.error(
@@ -1180,7 +1167,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                 fiscal_period_for_cache = f"{resolved_period}-latest-{num_quarters}"
         except Exception as exc:
             self.logger.debug(
-                "Could not resolve fiscal period for %s quarterly cache key: %s. " "Using fallback token %s.",
+                "Could not resolve fiscal period for %s quarterly cache key: %s. Using fallback token %s.",
                 symbol,
                 exc,
                 fiscal_period_for_cache,
@@ -2108,19 +2095,74 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             period=company_data.get("fiscal_period"),  # Period-based caching
         )
 
-    def _lookup_sector_multiple(self, sector: Optional[str], multiple: str) -> Optional[float]:
-        """Fetch sector-level reference multiples from configuration if available."""
+    def _lookup_sector_multiple(
+        self, sector: Optional[str], multiple: str, industry: Optional[str] = None
+    ) -> Optional[float]:
+        """Fetch sector-level reference multiples from configuration if available.
+
+        Priority (aligned with victor-invest for consistency):
+        1. SectorMultiplesService with config override priority (industry-aware)
+        2. Sector multiples loader (if available) - most specific, already loaded
+        3. Shared SectorMultiples module (from valuation.common) - consolidated logic
+        4. Config.yaml sector_multiples - fallback
+
+        Args:
+            sector: Sector name
+            multiple: Metric type (pe, pb, ps, ev_ebitda)
+            industry: Optional industry name for industry-specific multiples
+        """
         if not sector:
             self.logger.debug("[SECTOR_LOOKUP_DEBUG] sector is None, returning None")
             return None
 
+        self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] Looking up {sector}/{industry or 'sector'}/{multiple}")
+        self.logger.debug(
+            f"[SECTOR_LOOKUP_DEBUG] _sector_multiples_loader exists: {self._sector_multiples_loader is not None}"
+        )
+        self.logger.info(f"[SECTOR_LOOKUP] Looking up {multiple} for sector={sector}, industry={industry}")
+
+        # Priority 1: Use SectorMultiplesService with config override priority (same as victor-invest)
         try:
-            self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] Looking up {sector}/{multiple}")
-            self.logger.debug(
-                f"[SECTOR_LOOKUP_DEBUG] _sector_multiples_loader exists: {self._sector_multiples_loader is not None}"
+            from investigator.domain.services.valuation_shared.sector_multiples_service import (
+                SectorMultiplesService,
             )
 
-            if self._sector_multiples_loader:
+            sector_service = SectorMultiplesService()
+            # Try config-aware methods first (get_pe, get_pb, get_ps) which prioritize config overrides
+            config_method = getattr(sector_service, f"get_{multiple}", None)
+            if config_method:
+                # Call with industry parameter if available
+                import inspect
+
+                sig = inspect.signature(config_method)
+                if "industry" in sig.parameters:
+                    config_value = config_method(sector, industry)
+                else:
+                    config_value = config_method(sector)
+
+                if config_value is not None:
+                    self.logger.info(
+                        f"[SECTOR_LOOKUP] Using config-aware value from SectorMultiplesService.{multiple}({sector}, {industry}): {config_value}"
+                    )
+                    return config_value
+
+            # Fall back to historical median (3-year lookback)
+            historical_value = sector_service.get_historical_median_multiple(
+                sector=sector,
+                metric=multiple,
+                lookback_years=3,
+            )
+            if historical_value is not None:
+                self.logger.debug(
+                    f"[SECTOR_LOOKUP_DEBUG] Returning historical median from SectorMultiplesService: {historical_value}"
+                )
+                return historical_value
+        except Exception as exc:
+            self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] SectorMultiplesService failed: {exc}, trying fallback")
+
+        # Priority 2: Use sector multiples loader if available (most specific)
+        if self._sector_multiples_loader:
+            try:
                 record = self._sector_multiples_loader.get(sector)
                 self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] Loader record for {sector}: {record}")
                 if record:
@@ -2129,7 +2171,22 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                     if value is not None:
                         self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] Returning value from loader: {value}")
                         return float(value)
+            except Exception as exc:
+                self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] Loader failed: {exc}, trying fallback")
 
+        # Priority 3: Use shared SectorMultiples module (consolidated logic)
+        try:
+            from investigator.domain.services.valuation.common import SectorMultiples
+
+            value = SectorMultiples.get_sector_multiple(sector, multiple)
+            if value is not None:
+                self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] Returning value from shared SectorMultiples: {value}")
+                return value
+        except Exception as e:
+            self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] Shared SectorMultiples not available: {e}")
+
+        # Priority 4: Fall back to config.yaml
+        try:
             valuation_settings = getattr(self.config, "valuation", None)
             self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] valuation_settings exists: {valuation_settings is not None}")
             if isinstance(valuation_settings, dict):
@@ -2482,7 +2539,10 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                 "Linear fade applied to avoid over-extrapolation",
             ],
             "scenario_analysis": {
-                "base_case": {"revenue_growth": round(growth, 4), "eps": round(eps_2028, 4)},
+                "base_case": {
+                    "revenue_growth": round(growth, 4),
+                    "eps": round(eps_2028, 4),
+                },
                 "bull_case": {
                     "revenue_growth": round(bull_growth, 4),
                     "eps": round(eps_2028 * (1 + max(bull_growth - growth, 0)), 4),

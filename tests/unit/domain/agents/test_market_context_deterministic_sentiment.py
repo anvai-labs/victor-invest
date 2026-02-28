@@ -10,7 +10,12 @@ async def test_market_sentiment_bypasses_llm_when_deterministic_enabled():
     agent = ETFMarketContextAgent.__new__(ETFMarketContextAgent)
     agent.use_deterministic = True
     agent.deterministic_market_sentiment_generation = True
-    agent.timeframes = {"leading": 10, "short_term": 21, "medium_term": 63, "long_term": 252}
+    agent.timeframes = {
+        "leading": 10,
+        "short_term": 21,
+        "medium_term": 63,
+        "long_term": 252,
+    }
 
     result = await agent._generate_market_sentiment_analysis(
         symbol="STX",
@@ -37,7 +42,12 @@ async def test_market_sentiment_uses_fallback_when_llm_returns_empty_payload():
     agent.use_deterministic = False
     agent.deterministic_market_sentiment_generation = False
     agent.market_context_model = "test-model"
-    agent.timeframes = {"leading": 10, "short_term": 21, "medium_term": 63, "long_term": 252}
+    agent.timeframes = {
+        "leading": 10,
+        "short_term": 21,
+        "medium_term": 63,
+        "long_term": 252,
+    }
     agent.timeframe_metadata = {
         "leading": {"label": "Leading (10d)", "description": "Leading"},
         "short_term": {"label": "Short-term (21d)", "description": "Short"},

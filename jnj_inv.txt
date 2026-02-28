@@ -1,0 +1,964 @@
+2026-02-22 06:18:42,436 - investigator.infrastructure.database.db - INFO - Database engine initialized successfully
+2026-02-22 06:18:42,756 - victor.core.tool_dependency_loader - INFO - Loaded tool dependency config for 'research' from /Users/vijaysingh/code/codingagent/victor/research/tool_dependencies.yaml
+2026-02-22 06:18:43,290 - victor.core.verticals.base - INFO - Discovered external vertical: investment (from victor_invest.vertical:InvestmentVertical)
+2026-02-22 06:18:43,290 - victor.core.verticals.base - INFO - Discovered 1 external vertical(s): investment
+2026-02-22 06:18:43,457 - investigator.infrastructure.database.market_data - INFO - Initialized DatabaseMarketDataFetcher with market data database
+2026-02-22 06:18:43,464 - DataSourceManager - INFO - Initialized 0 data sources
+2026-02-22 06:18:43,464 - investigator.application.orchestrator - INFO - DataSourceManager initialized for unified data access
+2026-02-22 06:18:43,465 - MetricsCollector - INFO - Metrics collector started
+2026-02-22 06:18:44,490 - investigator.application.orchestrator - INFO - Ollama pool initialized: 2/2 servers available, 68GB total capacity
+2026-02-22 06:18:44,496 - investigator.infrastructure.database.ticker_mapper - INFO - Loaded 12084 ticker mappings
+2026-02-22 06:18:44,566 - investigator.infrastructure.sec.canonical_mapper - INFO - Loading comprehensive canonical mappings with derivations from /Users/vijaysingh/code/victor-invest/resources/xbrl_mappings/comprehensive_canonical_mappings_with_derivations.json
+2026-02-22 06:18:44,566 - investigator.infrastructure.sec.canonical_mapper - INFO - Loading sector-specific mappings from /Users/vijaysingh/code/victor-invest/resources/xbrl_mappings/sector_specific_mappings.json
+2026-02-22 06:18:44,566 - investigator.domain.services.company_metadata_service - INFO - Created default database engine for stock database
+2026-02-22 06:18:44,567 - investigator.domain.services.company_metadata_service - INFO - Loaded 906 symbols from peer group sector mapping
+2026-02-22 06:18:44,567 - investigator.domain.services.company_metadata_service - INFO - Loaded 906 symbols from sector_industry_ticker_map
+2026-02-22 06:18:44,688 - investigator.domain.services.company_metadata_service - INFO - Loaded 25 sector overrides from config.yaml
+2026-02-22 06:18:44,750 - investigator.domain.services.company_metadata_service - INFO - Loaded 2 industry overrides from config.yaml
+2026-02-22 06:18:44,815 - investigator.domain.services.company_metadata_service - INFO - Created default database engine for stock database
+2026-02-22 06:18:44,815 - investigator.domain.services.company_metadata_service - INFO - Loaded 906 symbols from peer group sector mapping
+2026-02-22 06:18:44,816 - investigator.domain.services.company_metadata_service - INFO - Loaded 906 symbols from sector_industry_ticker_map
+2026-02-22 06:18:44,879 - investigator.domain.services.company_metadata_service - INFO - Loaded 25 sector overrides from config.yaml
+2026-02-22 06:18:44,940 - investigator.domain.services.company_metadata_service - INFO - Loaded 2 industry overrides from config.yaml
+2026-02-22 06:18:45,027 - victor.config.api_keys - INFO - SECRET_ACCESS: action=loaded provider=service:fred source=keyring success=True key_length=32
+2026-02-22 06:18:45,121 - EventBus - INFO - Event bus started
+2026-02-22 06:18:45,121 - investigator.application.orchestrator - INFO - Event bus started - monitoring and metrics active
+2026-02-22 06:18:45,122 - investigator.application.orchestrator - INFO - Cache cleanup service started (1 hour interval)
+2026-02-22 06:18:45,122 - investigator.application.orchestrator - INFO - Orchestrator started with 5 workers
+2026-02-22 06:18:45,250 - investigator.application.orchestrator - INFO - Analysis task JNJ_1771762725.250518 queued for JNJ with comprehensive mode
+Analysis started for JNJ (Task ID: JNJ_1771762725.250518)
+Analyzing
+2026-02-22 06:18:45,251 - investigator.application.orchestrator - INFO - Worker worker_0 started
+2026-02-22 06:18:45,251 - investigator.application.orchestrator - INFO - ✅ Execution order computed: 4 levels → [['sec'], ['technical', 'fundamental', 'market_context'], ['symbol_update'], ['synthesis']]
+2026-02-22 06:18:45,251 - investigator.application.orchestrator - INFO - Worker worker_1 started
+2026-02-22 06:18:45,252 - investigator.application.orchestrator - INFO - Worker worker_2 started
+2026-02-22 06:18:45,252 - investigator.application.orchestrator - INFO - Worker worker_3 started
+2026-02-22 06:18:45,252 - investigator.application.orchestrator - INFO - Worker worker_4 started
+2026-02-22 06:18:46,066 - investigator.application.orchestrator - INFO - Task JNJ_1771762725.250518 (JNJ): starting step_1 -> agents=[sec]
+2026-02-22 06:18:46,170 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'analysis_type': 'sec_fundamental', 'context_hash': '9855df67'}, type: <class 'dict'>, cache_type: CacheType.SEC_RESPONSE
+2026-02-22 06:18:46,170 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'analysis_type': 'sec_fundamental', 'context_hash': '9855df67'}
+2026-02-22 06:18:46,170 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/sec_cache/JNJ/quarterly_summary_2024-Q1.json.gz
+2026-02-22 06:18:46,171 - agent.sec_agent_1 - INFO - Cache hit for task JNJ_1771762725.250518_sec (period: latest)
+2026-02-22 06:18:46,171 - agent.sec_agent_1 - INFO - Task JNJ_1771762725.250518_sec completed in 0.10s (cache_hit: True)
+2026-02-22 06:18:46,171 - investigator.application.orchestrator - INFO - Task JNJ_1771762725.250518 (JNJ): step_1 -> sec completed (completed) duration=0.10s
+2026-02-22 06:18:46,171 - investigator.application.orchestrator - INFO - Task JNJ_1771762725.250518 (JNJ): finished step_1
+2026-02-22 06:18:46,171 - investigator.application.orchestrator - INFO - Task JNJ_1771762725.250518 (JNJ): starting step_2 -> agents=[technical, fundamental, market_context]
+2026-02-22 06:18:46,171 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'analysis_type': 'fundamental_analysis', 'context_hash': '2e1b12b3', 'llm_type': 'fundamental_analysis'}, type: <class 'dict'>, cache_type: CacheType.LLM_RESPONSE
+2026-02-22 06:18:46,171 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'analysis_type': 'fundamental_analysis', 'context_hash': '2e1b12b3', 'llm_type': 'fundamental_analysis'}
+2026-02-22 06:18:46,171 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/llm_cache/JNJ/fundamental_analysis.json.gz
+2026-02-22 06:18:46,171 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'analysis_type': 'market_context', 'context_hash': '5f8f58b5', 'llm_type': 'market_context'}, type: <class 'dict'>, cache_type: CacheType.LLM_RESPONSE
+2026-02-22 06:18:46,171 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'analysis_type': 'market_context', 'context_hash': '5f8f58b5', 'llm_type': 'market_context'}
+2026-02-22 06:18:46,171 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/llm_cache/JNJ/market_context.json.gz
+2026-02-22 06:18:46,172 - agent.tech_agent_1 - INFO - Performing comprehensive technical analysis for JNJ
+2026-02-22 06:18:46,172 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 Cache HIT (LLM): prompt_path=data/llm_cache/JNJ/prompt_market_context.txt.gz, response_path=data/llm_cache/JNJ/llmresponse_market_context.json.gz
+2026-02-22 06:18:46,172 - investigator.infrastructure.cache.cache_manager - WARNING - ⚠️  Cache EMPTY [FileCacheStorageHandler]: llm_response | Key: symbol:JNJ | Treating as cache miss
+2026-02-22 06:18:46,172 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 Cache HIT (LLM): prompt_path=data/llm_cache/JNJ/prompt_fundamental_analysis.txt.gz, response_path=data/llm_cache/JNJ/llmresponse_fundamental_analysis.json.gz
+2026-02-22 06:18:46,173 - investigator.infrastructure.cache.cache_manager - WARNING - ⚠️  Cache EMPTY [FileCacheStorageHandler]: llm_response | Key: symbol:JNJ | Treating as cache miss
+2026-02-22 06:18:46,194 - investigator.infrastructure.cache.cache_manager - WARNING - ⚠️  Cache EMPTY [RdbmsCacheStorageHandler]: llm_response | Key: symbol:JNJ | Treating as cache miss
+2026-02-22 06:18:46,198 - investigator.infrastructure.indicators.technical_indicators - INFO - Calculated 104 indicators for JNJ (90 data points)
+2026-02-22 06:18:46,202 - investigator.domain.agents.market_context - INFO - Starting ETF market context analysis for JNJ
+2026-02-22 06:18:46,239 - investigator.infrastructure.cache.cache_manager - WARNING - ⚠️  Cache EMPTY [RdbmsCacheStorageHandler]: llm_response | Key: symbol:JNJ | Treating as cache miss
+2026-02-22 06:18:46,303 - investigator.domain.agents.market_context - INFO - Mapped JNJ sector 'Health Care' to 'healthcare'
+2026-02-22 06:18:46,303 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'scope': 'global', 'data_type': 'macro_indicators', 'date': '2026-02-22'}, type: <class 'dict'>, cache_type: CacheType.MARKET_CONTEXT
+2026-02-22 06:18:46,303 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'scope': 'global', 'data_type': 'macro_indicators', 'date': '2026-02-22'}
+2026-02-22 06:18:46,303 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/market_context_cache/UNKNOWN/macro_indicators_2026-02-22.json.gz
+2026-02-22 06:18:46,304 - investigator.infrastructure.database.market_data - INFO - Fetching 10 days of market data for SPY from database
+2026-02-22 06:18:46,431 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 10 days of data for SPY from database
+2026-02-22 06:18:46,431 - investigator.infrastructure.database.market_data - INFO - Fetching 10 days of market data for QQQ from database
+2026-02-22 06:18:46,553 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 10 days of data for QQQ from database
+2026-02-22 06:18:46,553 - investigator.infrastructure.database.market_data - INFO - Fetching 10 days of market data for IWM from database
+2026-02-22 06:18:46,674 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 10 days of data for IWM from database
+2026-02-22 06:18:46,675 - investigator.infrastructure.database.market_data - INFO - Fetching 10 days of market data for EFA from database
+2026-02-22 06:18:46,797 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 10 days of data for EFA from database
+2026-02-22 06:18:46,798 - investigator.infrastructure.database.market_data - INFO - Fetching 10 days of market data for EEM from database
+2026-02-22 06:18:46,919 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 10 days of data for EEM from database
+2026-02-22 06:18:46,919 - investigator.infrastructure.database.market_data - INFO - Fetching 10 days of market data for AGG from database
+2026-02-22 06:18:46,951 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 10 days of data for AGG from database
+2026-02-22 06:18:46,951 - investigator.infrastructure.database.market_data - INFO - Fetching 10 days of market data for TLT from database
+2026-02-22 06:18:46,987 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 10 days of data for TLT from database
+2026-02-22 06:18:46,987 - investigator.infrastructure.database.market_data - INFO - Fetching 10 days of market data for HYG from database
+2026-02-22 06:18:47,108 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 10 days of data for HYG from database
+2026-02-22 06:18:47,109 - investigator.infrastructure.database.market_data - INFO - Fetching 10 days of market data for GLD from database
+2026-02-22 06:18:47,150 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 10 days of data for GLD from database
+2026-02-22 06:18:47,151 - investigator.infrastructure.database.market_data - INFO - Fetching 10 days of market data for SLV from database
+2026-02-22 06:18:47,275 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 10 days of data for SLV from database
+2026-02-22 06:18:47,276 - investigator.infrastructure.database.market_data - INFO - Fetching 10 days of market data for USO from database
+2026-02-22 06:18:47,395 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 10 days of data for USO from database
+2026-02-22 06:18:47,396 - investigator.infrastructure.database.market_data - INFO - Fetching 10 days of market data for DBC from database
+2026-02-22 06:18:47,515 - investigator.infrastructure.database.market_data - INFO - Low volume for DBC: 618,243 < 1,000,000 (lookback 10 days)
+2026-02-22 06:18:47,515 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 10 days of data for DBC from database
+2026-02-22 06:18:47,516 - investigator.infrastructure.database.market_data - INFO - Fetching 10 days of market data for GSG from database
+2026-02-22 06:18:47,640 - investigator.infrastructure.database.market_data - INFO - Low volume for GSG: 372,928 < 1,000,000 (lookback 10 days)
+2026-02-22 06:18:47,640 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 10 days of data for GSG from database
+2026-02-22 06:18:47,640 - investigator.infrastructure.database.market_data - INFO - Fetching 21 days of market data for SPY from database
+2026-02-22 06:18:47,679 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 21 days of data for SPY from database
+2026-02-22 06:18:47,680 - investigator.infrastructure.database.market_data - INFO - Fetching 21 days of market data for QQQ from database
+2026-02-22 06:18:47,717 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 21 days of data for QQQ from database
+2026-02-22 06:18:47,718 - investigator.infrastructure.database.market_data - INFO - Fetching 21 days of market data for IWM from database
+2026-02-22 06:18:47,755 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 21 days of data for IWM from database
+2026-02-22 06:18:47,756 - investigator.infrastructure.database.market_data - INFO - Fetching 21 days of market data for EFA from database
+2026-02-22 06:18:47,795 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 21 days of data for EFA from database
+2026-02-22 06:18:47,796 - investigator.infrastructure.database.market_data - INFO - Fetching 21 days of market data for EEM from database
+2026-02-22 06:18:47,833 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 21 days of data for EEM from database
+2026-02-22 06:18:47,834 - investigator.infrastructure.database.market_data - INFO - Fetching 21 days of market data for AGG from database
+2026-02-22 06:18:47,865 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 21 days of data for AGG from database
+2026-02-22 06:18:47,866 - investigator.infrastructure.database.market_data - INFO - Fetching 21 days of market data for TLT from database
+2026-02-22 06:18:47,905 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 21 days of data for TLT from database
+2026-02-22 06:18:47,906 - investigator.infrastructure.database.market_data - INFO - Fetching 21 days of market data for HYG from database
+2026-02-22 06:18:47,948 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 21 days of data for HYG from database
+2026-02-22 06:18:47,949 - investigator.infrastructure.database.market_data - INFO - Fetching 21 days of market data for GLD from database
+2026-02-22 06:18:47,986 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 21 days of data for GLD from database
+2026-02-22 06:18:47,988 - investigator.infrastructure.database.market_data - INFO - Fetching 21 days of market data for SLV from database
+2026-02-22 06:18:48,022 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 21 days of data for SLV from database
+2026-02-22 06:18:48,023 - investigator.infrastructure.database.market_data - INFO - Fetching 21 days of market data for USO from database
+2026-02-22 06:18:48,063 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 21 days of data for USO from database
+2026-02-22 06:18:48,064 - investigator.infrastructure.database.market_data - INFO - Fetching 21 days of market data for DBC from database
+2026-02-22 06:18:48,100 - investigator.infrastructure.database.market_data - INFO - Low volume for DBC: 574,374 < 1,000,000 (lookback 21 days)
+2026-02-22 06:18:48,100 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 21 days of data for DBC from database
+2026-02-22 06:18:48,101 - investigator.infrastructure.database.market_data - INFO - Fetching 21 days of market data for GSG from database
+2026-02-22 06:18:48,142 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 21 days of data for GSG from database
+2026-02-22 06:18:48,143 - investigator.infrastructure.database.market_data - INFO - Fetching 63 days of market data for SPY from database
+2026-02-22 06:18:48,183 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 63 days of data for SPY from database
+2026-02-22 06:18:48,184 - investigator.infrastructure.database.market_data - INFO - Fetching 63 days of market data for QQQ from database
+2026-02-22 06:18:48,222 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 63 days of data for QQQ from database
+2026-02-22 06:18:48,223 - investigator.infrastructure.database.market_data - INFO - Fetching 63 days of market data for IWM from database
+2026-02-22 06:18:48,263 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 63 days of data for IWM from database
+2026-02-22 06:18:48,264 - investigator.infrastructure.database.market_data - INFO - Fetching 63 days of market data for EFA from database
+2026-02-22 06:18:48,304 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 63 days of data for EFA from database
+2026-02-22 06:18:48,305 - investigator.infrastructure.database.market_data - INFO - Fetching 63 days of market data for EEM from database
+2026-02-22 06:18:48,345 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 63 days of data for EEM from database
+2026-02-22 06:18:48,346 - investigator.infrastructure.database.market_data - INFO - Fetching 63 days of market data for AGG from database
+2026-02-22 06:18:48,379 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 63 days of data for AGG from database
+2026-02-22 06:18:48,384 - investigator.infrastructure.database.market_data - INFO - Fetching 63 days of market data for TLT from database
+2026-02-22 06:18:48,424 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 63 days of data for TLT from database
+2026-02-22 06:18:48,425 - investigator.infrastructure.database.market_data - INFO - Fetching 63 days of market data for HYG from database
+2026-02-22 06:18:48,464 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 63 days of data for HYG from database
+2026-02-22 06:18:48,465 - investigator.infrastructure.database.market_data - INFO - Fetching 63 days of market data for GLD from database
+2026-02-22 06:18:48,503 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 63 days of data for GLD from database
+2026-02-22 06:18:48,504 - investigator.infrastructure.database.market_data - INFO - Fetching 63 days of market data for SLV from database
+2026-02-22 06:18:48,542 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 63 days of data for SLV from database
+2026-02-22 06:18:48,543 - investigator.infrastructure.database.market_data - INFO - Fetching 63 days of market data for USO from database
+2026-02-22 06:18:48,581 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 63 days of data for USO from database
+2026-02-22 06:18:48,582 - investigator.infrastructure.database.market_data - INFO - Fetching 63 days of market data for DBC from database
+2026-02-22 06:18:48,618 - investigator.infrastructure.database.market_data - WARNING - Low volume for DBC: 215,047 < 1,000,000 (lookback 63 days)
+2026-02-22 06:18:48,618 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 63 days of data for DBC from database
+2026-02-22 06:18:48,619 - investigator.infrastructure.database.market_data - INFO - Fetching 63 days of market data for GSG from database
+2026-02-22 06:18:48,662 - investigator.infrastructure.database.market_data - WARNING - Low volume for GSG: 786,789 < 1,000,000 (lookback 63 days)
+2026-02-22 06:18:48,662 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 63 days of data for GSG from database
+2026-02-22 06:18:48,664 - investigator.infrastructure.database.market_data - INFO - Fetching 252 days of market data for SPY from database
+2026-02-22 06:18:48,706 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 252 days of data for SPY from database
+2026-02-22 06:18:48,708 - investigator.infrastructure.database.market_data - INFO - Fetching 252 days of market data for QQQ from database
+2026-02-22 06:18:48,753 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 252 days of data for QQQ from database
+2026-02-22 06:18:48,754 - investigator.infrastructure.database.market_data - INFO - Fetching 252 days of market data for IWM from database
+2026-02-22 06:18:48,796 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 252 days of data for IWM from database
+2026-02-22 06:18:48,797 - investigator.infrastructure.database.market_data - INFO - Fetching 252 days of market data for EFA from database
+2026-02-22 06:18:48,841 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 252 days of data for EFA from database
+2026-02-22 06:18:48,842 - investigator.infrastructure.database.market_data - INFO - Fetching 252 days of market data for EEM from database
+2026-02-22 06:18:48,884 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 252 days of data for EEM from database
+2026-02-22 06:18:48,885 - investigator.infrastructure.database.market_data - INFO - Fetching 252 days of market data for AGG from database
+2026-02-22 06:18:48,920 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 252 days of data for AGG from database
+2026-02-22 06:18:48,921 - investigator.infrastructure.database.market_data - INFO - Fetching 252 days of market data for TLT from database
+2026-02-22 06:18:48,960 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 252 days of data for TLT from database
+2026-02-22 06:18:48,961 - investigator.infrastructure.database.market_data - INFO - Fetching 252 days of market data for HYG from database
+2026-02-22 06:18:49,001 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 252 days of data for HYG from database
+2026-02-22 06:18:49,002 - investigator.infrastructure.database.market_data - INFO - Fetching 252 days of market data for GLD from database
+2026-02-22 06:18:49,042 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 252 days of data for GLD from database
+2026-02-22 06:18:49,043 - investigator.infrastructure.database.market_data - INFO - Fetching 252 days of market data for SLV from database
+2026-02-22 06:18:49,082 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 252 days of data for SLV from database
+2026-02-22 06:18:49,083 - investigator.infrastructure.database.market_data - INFO - Fetching 252 days of market data for USO from database
+2026-02-22 06:18:49,122 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 252 days of data for USO from database
+2026-02-22 06:18:49,123 - investigator.infrastructure.database.market_data - INFO - Fetching 252 days of market data for DBC from database
+2026-02-22 06:18:49,163 - investigator.infrastructure.database.market_data - WARNING - Low volume for DBC: 653,712 < 1,000,000 (lookback 252 days)
+2026-02-22 06:18:49,163 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 252 days of data for DBC from database
+2026-02-22 06:18:49,164 - investigator.infrastructure.database.market_data - INFO - Fetching 252 days of market data for GSG from database
+2026-02-22 06:18:49,205 - investigator.infrastructure.database.market_data - WARNING - Low volume for GSG: 648,164 < 1,000,000 (lookback 252 days)
+2026-02-22 06:18:49,205 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 252 days of data for GSG from database
+2026-02-22 06:18:49,206 - investigator.infrastructure.database.market_data - INFO - Fetching 10 days of market data for XLV from database
+2026-02-22 06:18:49,332 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 10 days of data for XLV from database
+2026-02-22 06:18:49,332 - investigator.infrastructure.database.market_data - INFO - Fetching 21 days of market data for XLV from database
+2026-02-22 06:18:49,367 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 21 days of data for XLV from database
+2026-02-22 06:18:49,368 - investigator.infrastructure.database.market_data - INFO - Fetching 63 days of market data for XLV from database
+2026-02-22 06:18:49,400 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 63 days of data for XLV from database
+2026-02-22 06:18:49,401 - investigator.infrastructure.database.market_data - INFO - Fetching 252 days of market data for XLV from database
+2026-02-22 06:18:49,436 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 252 days of data for XLV from database
+2026-02-22 06:18:49,437 - investigator.infrastructure.database.market_data - INFO - Fetching 262 days of market data for JNJ from database
+2026-02-22 06:18:49,478 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 262 days of data for JNJ from database
+2026-02-22 06:18:49,478 - investigator.infrastructure.database.market_data - INFO - Fetching 262 days of market data for SPY from database
+2026-02-22 06:18:49,522 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 262 days of data for SPY from database
+2026-02-22 06:18:49,524 - investigator.infrastructure.database.market_data - INFO - Fetching 262 days of market data for XLV from database
+2026-02-22 06:18:49,564 - investigator.infrastructure.database.market_data - INFO - Successfully fetched 262 days of data for XLV from database
+2026-02-22 06:18:49,564 - investigator.domain.agents.market_context - INFO - ETF market context analysis completed for JNJ in 3.36s
+2026-02-22 06:18:49,565 - agent.tech_agent_1 - INFO - Task JNJ_1771762725.250518_technical completed in 0.03s (cache_hit: False)
+2026-02-22 06:18:49,704 - investigator.infrastructure.sec.data_strategy - WARNING - Bulk data for JNJ is stale (123 days old). Will attempt CompanyFacts API as fallback.
+2026-02-22 06:18:49,704 - investigator.infrastructure.sec.data_strategy - INFO - Bulk data unavailable or stale for JNJ. Using CompanyFacts API fallback.
+2026-02-22 06:18:49,716 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'fiscal_period': '2025-FY', 'cik': '0000200406'}, type: <class 'dict'>, cache_type: CacheType.COMPANY_FACTS
+2026-02-22 06:18:49,716 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'fiscal_period': '2025-FY', 'cik': '0000200406'}
+2026-02-22 06:18:49,716 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/sec_cache/facts/processed/JNJ/companyfacts_0000200406_2025-FY.json.gz
+2026-02-22 06:18:49,770 - investigator.infrastructure.sec.data_strategy - INFO - Bulk data unavailable or stale for JNJ. Using CompanyFacts API fallback.
+2026-02-22 06:18:49,783 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'fiscal_period': '2025-FY-latest-12', 'num_quarters': 12}, type: <class 'dict'>, cache_type: CacheType.QUARTERLY_METRICS
+2026-02-22 06:18:49,783 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'fiscal_period': '2025-FY-latest-12', 'num_quarters': '12'}
+2026-02-22 06:18:49,783 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/sec_cache/quarterlymetrics/JNJ/metrics_2024-2025-FY-latest-12.json.gz
+2026-02-22 06:18:49,798 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'fiscal_year': 2023, 'fiscal_period': '2023-Q1', 'adsh': '0000200406-22-000048'}, type: <class 'dict'>, cache_type: CacheType.QUARTERLY_METRICS
+2026-02-22 06:18:49,799 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'fiscal_year': '2023', 'fiscal_period': '2023-Q1', 'adsh': '0000200406-22-000048'}
+2026-02-22 06:18:49,799 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/sec_cache/quarterlymetrics/JNJ/metrics_2023-2023-Q1.json.gz
+2026-02-22 06:18:49,799 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'fiscal_year': 2023, 'fiscal_period': '2023-Q2', 'adsh': '0000200406-22-000071'}, type: <class 'dict'>, cache_type: CacheType.QUARTERLY_METRICS
+2026-02-22 06:18:49,799 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'fiscal_year': '2023', 'fiscal_period': '2023-Q2', 'adsh': '0000200406-22-000071'}
+2026-02-22 06:18:49,799 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/sec_cache/quarterlymetrics/JNJ/metrics_2023-2023-Q2.json.gz
+2026-02-22 06:18:49,799 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'fiscal_year': 2023, 'fiscal_period': '2023-Q3', 'adsh': '0000200406-22-000086'}, type: <class 'dict'>, cache_type: CacheType.QUARTERLY_METRICS
+2026-02-22 06:18:49,799 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'fiscal_year': '2023', 'fiscal_period': '2023-Q3', 'adsh': '0000200406-22-000086'}
+2026-02-22 06:18:49,799 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/sec_cache/quarterlymetrics/JNJ/metrics_2023-2023-Q3.json.gz
+2026-02-22 06:18:49,799 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'fiscal_year': 2023, 'fiscal_period': '2023-FY', 'adsh': '0000200406-24-000013'}, type: <class 'dict'>, cache_type: CacheType.QUARTERLY_METRICS
+2026-02-22 06:18:49,799 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'fiscal_year': '2023', 'fiscal_period': '2023-FY', 'adsh': '0000200406-24-000013'}
+2026-02-22 06:18:49,799 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/sec_cache/quarterlymetrics/JNJ/metrics_2023-2023-FY.json.gz
+2026-02-22 06:18:49,799 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'fiscal_year': 2024, 'fiscal_period': '2024-Q1', 'adsh': '0000200406-23-000056'}, type: <class 'dict'>, cache_type: CacheType.QUARTERLY_METRICS
+2026-02-22 06:18:49,799 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'fiscal_year': '2024', 'fiscal_period': '2024-Q1', 'adsh': '0000200406-23-000056'}
+2026-02-22 06:18:49,800 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/sec_cache/quarterlymetrics/JNJ/metrics_2024-2024-Q1.json.gz
+2026-02-22 06:18:49,800 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'fiscal_year': 2024, 'fiscal_period': '2024-Q2', 'adsh': '0000200406-23-000082'}, type: <class 'dict'>, cache_type: CacheType.QUARTERLY_METRICS
+2026-02-22 06:18:49,800 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'fiscal_year': '2024', 'fiscal_period': '2024-Q2', 'adsh': '0000200406-23-000082'}
+2026-02-22 06:18:49,800 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/sec_cache/quarterlymetrics/JNJ/metrics_2024-2024-Q2.json.gz
+2026-02-22 06:18:49,800 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'fiscal_year': 2024, 'fiscal_period': '2024-Q3', 'adsh': '0000200406-23-000102'}, type: <class 'dict'>, cache_type: CacheType.QUARTERLY_METRICS
+2026-02-22 06:18:49,800 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'fiscal_year': '2024', 'fiscal_period': '2024-Q3', 'adsh': '0000200406-23-000102'}
+2026-02-22 06:18:49,800 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/sec_cache/quarterlymetrics/JNJ/metrics_2024-2024-Q3.json.gz
+2026-02-22 06:18:49,800 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'fiscal_year': 2024, 'fiscal_period': '2024-FY', 'adsh': '0000200406-25-000038'}, type: <class 'dict'>, cache_type: CacheType.QUARTERLY_METRICS
+2026-02-22 06:18:49,800 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'fiscal_year': '2024', 'fiscal_period': '2024-FY', 'adsh': '0000200406-25-000038'}
+2026-02-22 06:18:49,800 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/sec_cache/quarterlymetrics/JNJ/metrics_2024-2024-FY.json.gz
+2026-02-22 06:18:49,800 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'fiscal_year': 2025, 'fiscal_period': '2025-Q1', 'adsh': '0000200406-24-000049'}, type: <class 'dict'>, cache_type: CacheType.QUARTERLY_METRICS
+2026-02-22 06:18:49,800 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'fiscal_year': '2025', 'fiscal_period': '2025-Q1', 'adsh': '0000200406-24-000049'}
+2026-02-22 06:18:49,800 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/sec_cache/quarterlymetrics/JNJ/metrics_2025-2025-Q1.json.gz
+2026-02-22 06:18:49,800 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'fiscal_year': 2025, 'fiscal_period': '2025-Q2', 'adsh': '0000200406-24-000075'}, type: <class 'dict'>, cache_type: CacheType.QUARTERLY_METRICS
+2026-02-22 06:18:49,800 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'fiscal_year': '2025', 'fiscal_period': '2025-Q2', 'adsh': '0000200406-24-000075'}
+2026-02-22 06:18:49,800 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/sec_cache/quarterlymetrics/JNJ/metrics_2025-2025-Q2.json.gz
+2026-02-22 06:18:49,800 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'fiscal_year': 2025, 'fiscal_period': '2025-Q3', 'adsh': '0000200406-24-000096'}, type: <class 'dict'>, cache_type: CacheType.QUARTERLY_METRICS
+2026-02-22 06:18:49,801 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'fiscal_year': '2025', 'fiscal_period': '2025-Q3', 'adsh': '0000200406-24-000096'}
+2026-02-22 06:18:49,801 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/sec_cache/quarterlymetrics/JNJ/metrics_2025-2025-Q3.json.gz
+2026-02-22 06:18:49,801 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'fiscal_year': 2025, 'fiscal_period': '2025-FY', 'adsh': '0000200406-26-000016'}, type: <class 'dict'>, cache_type: CacheType.QUARTERLY_METRICS
+2026-02-22 06:18:49,801 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'fiscal_year': '2025', 'fiscal_period': '2025-FY', 'adsh': '0000200406-26-000016'}
+2026-02-22 06:18:49,801 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/sec_cache/quarterlymetrics/JNJ/metrics_2025-2025-FY.json.gz
+2026-02-22 06:18:49,801 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'fiscal_year': 2026, 'fiscal_period': '2026-Q1', 'adsh': '0000200406-25-000119'}, type: <class 'dict'>, cache_type: CacheType.QUARTERLY_METRICS
+2026-02-22 06:18:49,801 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'fiscal_year': '2026', 'fiscal_period': '2026-Q1', 'adsh': '0000200406-25-000119'}
+2026-02-22 06:18:49,801 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/sec_cache/quarterlymetrics/JNJ/metrics_2026-2026-Q1.json.gz
+2026-02-22 06:18:49,801 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'fiscal_year': 2026, 'fiscal_period': '2026-Q2', 'adsh': '0000200406-25-000178'}, type: <class 'dict'>, cache_type: CacheType.QUARTERLY_METRICS
+2026-02-22 06:18:49,801 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'fiscal_year': '2026', 'fiscal_period': '2026-Q2', 'adsh': '0000200406-25-000178'}
+2026-02-22 06:18:49,801 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/sec_cache/quarterlymetrics/JNJ/metrics_2026-2026-Q2.json.gz
+2026-02-22 06:18:49,801 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'fiscal_year': 2026, 'fiscal_period': '2026-Q3', 'adsh': '0000200406-25-000209'}, type: <class 'dict'>, cache_type: CacheType.QUARTERLY_METRICS
+2026-02-22 06:18:49,801 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'fiscal_year': '2026', 'fiscal_period': '2026-Q3', 'adsh': '0000200406-25-000209'}
+2026-02-22 06:18:49,801 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/sec_cache/quarterlymetrics/JNJ/metrics_2026-2026-Q3.json.gz
+2026-02-22 06:18:50,348 - SectorValuationRouter - INFO - Biotech detected: Pre-revenue biotech (Industry match: Biotechnology: Pharmaceutical Preparations, revenue=$0.0M < $100M threshold)
+2026-02-22 06:18:50,348 - SectorValuationRouter - INFO - JNJ - Routing to biotech valuation (sector=Healthcare, industry=Biotechnology: Pharmaceutical Preparations)
+2026-02-22 06:18:50,348 - investigator.domain.services.valuation.biotech_valuation - INFO - Cash runway: $18231.0M / $486.2M/month = 37.5 months (low risk)
+2026-02-22 06:18:50,348 - investigator.domain.services.valuation.biotech_valuation - INFO - Comparable benchmark: area=default, phase=preclinical, EV range=$0.1B-$0.6B, premium=115%, fair value=$7.73
+2026-02-22 06:18:50,348 - investigator.domain.services.valuation.biotech_valuation - INFO - JNJ - Biotech valuation: Pipeline=$0.00B, Cash=$18231.0M (adj $18231.0M), EV=$18.39B, Fair value=$7.63/share, Runway=37.5 months (low)
+2026-02-22 06:18:50,348 - SectorValuationRouter - INFO - JNJ - Biotech valuation: Pipeline=$0.00B, Cash=$18231.0M, EV=$18.39B, Fair value=$7.63, Runway=37.5 months
+2026-02-22 06:18:50,418 - investigator.domain.services.valuation.dcf - INFO - JNJ - Sector: Healthcare
+2026-02-22 06:18:50,419 - investigator.domain.services.valuation.dcf - INFO - JNJ - Using sector-based DCF parameters: Sector=Healthcare, Terminal Growth=3.0%, Projection Years=7
+2026-02-22 06:18:50,420 - investigator.domain.services.quarterly_processor - INFO - [QUARTERLY_CALC_DEBUG] Fiscal periods AFTER normalization: ['Q1', 'Q2', 'Q3', 'FY', 'Q1', 'Q2', 'Q3', 'FY', 'Q1', 'Q2', 'Q3', 'FY', 'Q1', 'Q2', 'Q3']
+2026-02-22 06:18:50,420 - investigator.domain.services.quarterly_processor - INFO - [QUARTERLY_CALC_DEBUG] After separation: 3 FY periods, 12 Q periods
+2026-02-22 06:18:50,420 - investigator.domain.services.quarterly_processor - INFO - [YTD_GROUP] Created 4 fiscal year groups: [(2026, ['Q3', 'Q2', 'Q1']), (2025, ['Q3', 'Q2', 'Q1']), (2024, ['Q3', 'Q2', 'Q1']), (2023, ['Q3', 'Q2', 'Q1'])]
+2026-02-22 06:18:50,420 - investigator.domain.services.quarterly_processor - INFO - YTD to quarterly conversion complete for 4 fiscal year groups
+2026-02-22 06:18:50,420 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Before condition: compute_missing=True, quarterly_periods=12, fy_periods=3
+2026-02-22 06:18:50,420 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Entering Q4 computation block: 3 FY periods, 12 Q periods
+2026-02-22 06:18:50,420 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Current quarters: 12, Target: 12
+2026-02-22 06:18:50,420 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Will attempt to compute Q4 for ALL 3 FY periods where quarterly data available
+2026-02-22 06:18:50,420 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Processing FY 1/3: fiscal_year=2025, period_end=2025-12-28
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Searching for Q3 matching FY ending 2025-12-28
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Found Q3: fiscal_year=2025, period_end=2025-09-28, days_before_FY=91
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Available quarters for computation: Q1=True, Q2=True, Q3=True (count=3)
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] 🔄 Computing Q4 from FY=2025
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO - 🔧 [Q4_COMPUTE] Computing Q4 for FY 2025
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO -    FY data structure: cash_flow=True, income_statement=True
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO -    Available quarters: 3 quarters
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO -    Q1 (Q1): cash_flow=True, income_statement=True
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO -    Q2 (Q2): cash_flow=True, income_statement=True
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO -    Q3 (Q3): cash_flow=True, income_statement=True
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO -    ✅ operating_cash_flow: Q4=7247.0M (FY 24530.0M - Q1-Q3 17283.0M)
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO -    ✅ capital_expenditures: Q4=2020.0M (FY 4832.0M - Q1-Q3 2812.0M)
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO -    ✅ free_cash_flow: Q4=5227.0M (FY 19698.0M - Q1-Q3 14471.0M)
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO -    ✅ dividends_paid: Q4=9396.0M (FY 12381.0M - Q1-Q3 2985.0M)
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO - ✅ Computed Q4 for FY ending 2025-12-28 (fiscal_year=2025). OCF: 7247.0M, CapEx: 2020.0M
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Processing FY 2/3: fiscal_year=2024, period_end=2024-12-28
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Searching for Q3 matching FY ending 2024-12-28
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Found Q3: fiscal_year=2024, period_end=2024-09-28, days_before_FY=91
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Available quarters for computation: Q1=True, Q2=True, Q3=True (count=3)
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] 🔄 Computing Q4 from FY=2024
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO - 🔧 [Q4_COMPUTE] Computing Q4 for FY 2024
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO -    FY data structure: cash_flow=True, income_statement=True
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO -    Available quarters: 3 quarters
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO -    Q1 (Q1): cash_flow=True, income_statement=True
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO -    Q2 (Q2): cash_flow=True, income_statement=True
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO -    Q3 (Q3): cash_flow=True, income_statement=True
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO -    ✅ operating_cash_flow: Q4=9338.0M (FY 24266.0M - Q1-Q3 14928.0M)
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO -    ✅ capital_expenditures: Q4=1470.0M (FY 4424.0M - Q1-Q3 2954.0M)
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO -    ✅ free_cash_flow: Q4=7868.0M (FY 19842.0M - Q1-Q3 11974.0M)
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO -    ✅ dividends_paid: Q4=8952.0M (FY 11823.0M - Q1-Q3 2871.0M)
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO - ✅ Computed Q4 for FY ending 2024-12-28 (fiscal_year=2024). OCF: 9338.0M, CapEx: 1470.0M
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Processing FY 3/3: fiscal_year=2023, period_end=2023-12-28
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Searching for Q3 matching FY ending 2023-12-28
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Found Q3: fiscal_year=2023, period_end=2023-09-28, days_before_FY=91
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Available quarters for computation: Q1=True, Q2=True, Q3=True (count=3)
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] 🔄 Computing Q4 from FY=2023
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO - 🔧 [Q4_COMPUTE] Computing Q4 for FY 2023
+2026-02-22 06:18:50,421 - investigator.domain.services.quarterly_processor - INFO -    FY data structure: cash_flow=True, income_statement=True
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO -    Available quarters: 3 quarters
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO -    Q1 (Q1): cash_flow=True, income_statement=True
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO -    Q2 (Q2): cash_flow=True, income_statement=True
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO -    Q3 (Q3): cash_flow=True, income_statement=True
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO -    ✅ operating_cash_flow: Q4=6947.0M (FY 22791.0M - Q1-Q3 15844.0M)
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO -    ✅ capital_expenditures: Q4=2121.0M (FY 4543.0M - Q1-Q3 2422.0M)
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO -    ✅ free_cash_flow: Q4=4826.0M (FY 18248.0M - Q1-Q3 13422.0M)
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO -    ✅ dividends_paid: Q4=8800.0M (FY 11770.0M - Q1-Q3 2970.0M)
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO - ✅ Computed Q4 for FY ending 2023-12-28 (fiscal_year=2023). OCF: 6947.0M, CapEx: 2121.0M
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Computed 3 Q4 periods. Total quarterly periods after Q4 computation: 15
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO - [TTM_SELECT] After YTD filter and date sort: 15 periods available. Periods: ['Q3-2026 (2026-09-28)', 'Q2-2026 (2026-06-28)', 'Q1-2026 (2026-03-28)', 'Q4-2025 (2025-12-28)', 'Q3-2025 (2025-09-28)', 'Q2-2025 (2025-06-28)', 'Q1-2025 (2025-03-28)', 'Q4-2024 (2024-12-28)']
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO - [CONSECUTIVE_CHECK] ✅ Found 12 consecutive quarters (target: 12)
+2026-02-22 06:18:50,422 - investigator.domain.services.valuation.dcf - INFO - 🔍 [REVENUE_GROWTH] JNJ - TTM Revenue Growth (Geometric Mean - 12 quarters):
+  Current TTM: $97.52B (growth: +6.7%)
+  Prior1 TTM:  $91.36B (growth: +2.8%)
+  Prior2 TTM:  $88.87B
+  Geometric Mean Growth: 4.8%
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO - [QUARTERLY_CALC_DEBUG] Fiscal periods AFTER normalization: ['Q1', 'Q2', 'Q3', 'FY', 'Q1', 'Q2', 'Q3', 'FY', 'Q1', 'Q2', 'Q3', 'FY', 'Q1', 'Q2', 'Q3']
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO - [QUARTERLY_CALC_DEBUG] After separation: 3 FY periods, 12 Q periods
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO - [YTD_GROUP] Created 4 fiscal year groups: [(2026, ['Q3', 'Q2', 'Q1']), (2025, ['Q3', 'Q2', 'Q1']), (2024, ['Q3', 'Q2', 'Q1']), (2023, ['Q3', 'Q2', 'Q1'])]
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO - YTD to quarterly conversion complete for 4 fiscal year groups
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Before condition: compute_missing=True, quarterly_periods=12, fy_periods=3
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Entering Q4 computation block: 3 FY periods, 12 Q periods
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Current quarters: 12, Target: 4
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Will attempt to compute Q4 for ALL 3 FY periods where quarterly data available
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Processing FY 1/3: fiscal_year=2025, period_end=2025-12-28
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Searching for Q3 matching FY ending 2025-12-28
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Found Q3: fiscal_year=2025, period_end=2025-09-28, days_before_FY=91
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Available quarters for computation: Q1=True, Q2=True, Q3=True (count=3)
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] 🔄 Computing Q4 from FY=2025
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO - 🔧 [Q4_COMPUTE] Computing Q4 for FY 2025
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO -    FY data structure: cash_flow=True, income_statement=True
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO -    Available quarters: 3 quarters
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO -    Q1 (Q1): cash_flow=True, income_statement=True
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO -    Q2 (Q2): cash_flow=True, income_statement=True
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO -    Q3 (Q3): cash_flow=True, income_statement=True
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO -    ✅ operating_cash_flow: Q4=7247.0M (FY 24530.0M - Q1-Q3 17283.0M)
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO -    ✅ capital_expenditures: Q4=2020.0M (FY 4832.0M - Q1-Q3 2812.0M)
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO -    ✅ free_cash_flow: Q4=5227.0M (FY 19698.0M - Q1-Q3 14471.0M)
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO -    ✅ dividends_paid: Q4=9396.0M (FY 12381.0M - Q1-Q3 2985.0M)
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO - ✅ Computed Q4 for FY ending 2025-12-28 (fiscal_year=2025). OCF: 7247.0M, CapEx: 2020.0M
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Processing FY 2/3: fiscal_year=2024, period_end=2024-12-28
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Searching for Q3 matching FY ending 2024-12-28
+2026-02-22 06:18:50,422 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Found Q3: fiscal_year=2024, period_end=2024-09-28, days_before_FY=91
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Available quarters for computation: Q1=True, Q2=True, Q3=True (count=3)
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] 🔄 Computing Q4 from FY=2024
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO - 🔧 [Q4_COMPUTE] Computing Q4 for FY 2024
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO -    FY data structure: cash_flow=True, income_statement=True
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO -    Available quarters: 3 quarters
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO -    Q1 (Q1): cash_flow=True, income_statement=True
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO -    Q2 (Q2): cash_flow=True, income_statement=True
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO -    Q3 (Q3): cash_flow=True, income_statement=True
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO -    ✅ operating_cash_flow: Q4=9338.0M (FY 24266.0M - Q1-Q3 14928.0M)
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO -    ✅ capital_expenditures: Q4=1470.0M (FY 4424.0M - Q1-Q3 2954.0M)
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO -    ✅ free_cash_flow: Q4=7868.0M (FY 19842.0M - Q1-Q3 11974.0M)
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO -    ✅ dividends_paid: Q4=8952.0M (FY 11823.0M - Q1-Q3 2871.0M)
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO - ✅ Computed Q4 for FY ending 2024-12-28 (fiscal_year=2024). OCF: 9338.0M, CapEx: 1470.0M
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Processing FY 3/3: fiscal_year=2023, period_end=2023-12-28
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Searching for Q3 matching FY ending 2023-12-28
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Found Q3: fiscal_year=2023, period_end=2023-09-28, days_before_FY=91
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Available quarters for computation: Q1=True, Q2=True, Q3=True (count=3)
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] 🔄 Computing Q4 from FY=2023
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO - 🔧 [Q4_COMPUTE] Computing Q4 for FY 2023
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO -    FY data structure: cash_flow=True, income_statement=True
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO -    Available quarters: 3 quarters
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO -    Q1 (Q1): cash_flow=True, income_statement=True
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO -    Q2 (Q2): cash_flow=True, income_statement=True
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO -    Q3 (Q3): cash_flow=True, income_statement=True
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO -    ✅ operating_cash_flow: Q4=6947.0M (FY 22791.0M - Q1-Q3 15844.0M)
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO -    ✅ capital_expenditures: Q4=2121.0M (FY 4543.0M - Q1-Q3 2422.0M)
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO -    ✅ free_cash_flow: Q4=4826.0M (FY 18248.0M - Q1-Q3 13422.0M)
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO -    ✅ dividends_paid: Q4=8800.0M (FY 11770.0M - Q1-Q3 2970.0M)
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO - ✅ Computed Q4 for FY ending 2023-12-28 (fiscal_year=2023). OCF: 6947.0M, CapEx: 2121.0M
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Computed 3 Q4 periods. Total quarterly periods after Q4 computation: 15
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO - [TTM_SELECT] After YTD filter and date sort: 15 periods available. Periods: ['Q3-2026 (2026-09-28)', 'Q2-2026 (2026-06-28)', 'Q1-2026 (2026-03-28)', 'Q4-2025 (2025-12-28)', 'Q3-2025 (2025-09-28)', 'Q2-2025 (2025-06-28)', 'Q1-2025 (2025-03-28)', 'Q4-2024 (2024-12-28)']
+2026-02-22 06:18:50,423 - investigator.domain.services.quarterly_processor - INFO - [CONSECUTIVE_CHECK] ✅ Found 4 consecutive quarters (target: 4)
+2026-02-22 06:18:50,423 - investigator.domain.services.valuation.dcf - INFO - JNJ - Using FCF Margin: 19.9% (TTM FCF: $19.45B, TTM Revenue: $97.52B)
+2026-02-22 06:18:50,423 - investigator.domain.services.valuation.dcf - INFO - JNJ - Rule of 40: 24.7% (Revenue Growth: 4.8%, Profit Margin: 19.9%) → Classification: POOR
+2026-02-22 06:18:50,423 - investigator.domain.services.valuation.dcf - INFO - 🔍 JNJ - DCF FCF CALCULATION START (with median smoothing)
+2026-02-22 06:18:50,423 - investigator.domain.services.valuation.dcf - INFO - 🔍 JNJ - quarterly_metrics type: <class 'list'>
+2026-02-22 06:18:50,423 - investigator.domain.services.valuation.dcf - INFO - 🔍 JNJ - quarterly_metrics length: 15
+2026-02-22 06:18:50,423 - investigator.domain.services.valuation.dcf - INFO - 🔍 JNJ - Sample period keys: ['fiscal_year', 'fiscal_period', 'value_type', 'value_types_by_statement', 'shares_outstanding', 'cash_flow', 'income_statement', 'balance_sheet', 'ratios', 'data_quality']
+2026-02-22 06:18:50,423 - investigator.domain.services.valuation.dcf - INFO - [DCF_INPUT_DEBUG] JNJ - Fiscal periods in quarterly_metrics BEFORE get_cached_ttm_periods: ['Q1', 'Q2', 'Q3', 'FY', 'Q1', 'Q2', 'Q3', 'FY', 'Q1', 'Q2', 'Q3', 'FY', 'Q1', 'Q2', 'Q3']
+2026-02-22 06:18:50,423 - investigator.domain.services.valuation.dcf - INFO - [DCF_INPUT_DEBUG] JNJ - Count: 3 FY periods, 12 Q periods
+2026-02-22 06:18:50,423 - investigator.domain.services.valuation.dcf - INFO - 🔍 [FCF_SMOOTHING] JNJ - Using median of 12 quarters: $4.74B/qtr → $18.97B/yr annualized
+  Periods: ['Q3-2026', 'Q2-2026', 'Q1-2026', 'Q4-2025*', 'Q3-2025', 'Q2-2025', 'Q1-2025', 'Q4-2024*', 'Q3-2024', 'Q2-2024', 'Q1-2024', 'Q4-2023*']
+  Min: $2.39B/qtr, Max: $8.01B/qtr, Median: $4.74B/qtr
+  TTM (traditional): $19.45B/yr
+  Smoothed vs TTM: -2.5% difference
+2026-02-22 06:18:50,423 - investigator.domain.services.valuation.dcf - INFO - JNJ - Latest TTM FCF: $18966.0M
+2026-02-22 06:18:50,423 - investigator.domain.services.valuation.dcf - INFO - 🔍 [FCF_GROWTH] JNJ - Data check: multi_year_data=0 years (need >=3 OR >=8 quarters), quarterly_metrics=15 quarters
+2026-02-22 06:18:50,424 - investigator.domain.services.valuation.dcf - INFO - 🔍 [FCF_GROWTH] JNJ - Using quarterly data (15 quarters)
+2026-02-22 06:18:50,424 - investigator.domain.services.valuation.dcf - INFO - 🔍 [REVENUE_GROWTH] JNJ - TTM Revenue Growth (Geometric Mean - 12 quarters):
+  Current TTM: $97.52B (growth: +6.7%)
+  Prior1 TTM:  $91.36B (growth: +2.8%)
+  Prior2 TTM:  $88.87B
+  Geometric Mean Growth: 4.8%
+2026-02-22 06:18:50,424 - investigator.domain.services.valuation.dcf - INFO - [FCF_GROWTH_FINAL] JNJ:
+  TTM Revenue Geometric Growth = 4.8%
+  Sector Premium (Healthcare) = 2.0%
+  → Year 1 FCF Growth = 6.8%
+2026-02-22 06:18:50,424 - investigator.domain.services.valuation.dcf - INFO - JNJ - Historical FCF growth rate (final): 6.8%
+2026-02-22 06:18:50,424 - investigator.domain.services.valuation.dcf - INFO - JNJ - Using Healthcare growth caps: min=-5%, max=25%
+2026-02-22 06:18:50,497 - investigator.domain.services.valuation.dcf - INFO - 🔍 JNJ - shares_outstanding debug: top_level=0, ratios=None, balance_sheet=None
+2026-02-22 06:18:50,497 - investigator.domain.services.valuation.dcf - WARNING - JNJ - shares_outstanding not found in quarterly_metrics (top-level=0, ratios=None, balance_sheet=None)
+2026-02-22 06:18:50,567 - investigator.domain.services.valuation.dcf - INFO - JNJ - Using shares outstanding from database/market data: 2,406,070,016
+2026-02-22 06:18:50,569 - investigator.domain.services.valuation_shared.split_adjusted_market_cap - WARNING - JNJ: price_date required when shares_source='sec', defaulting to current date (may be incorrect for historical data)
+2026-02-22 06:18:50,569 - investigator.domain.services.valuation.dcf - INFO - JNJ - Fading Growth Parameters:
+  Terminal Growth (perpetuity): 3.0%
+  Base Fade Target (2.0x terminal): 6.0%
+  Historical Floor (60% of historical): 4.1%
+  Final Fade Target (Year 7): 6.0% (max of base target and historical floor, before maturity caps)
+  Historical FCF Growth: 6.8%
+  Industry Median (ceiling only): 20.0%
+  Market Cap: $583.4B
+  Rule of 40: 24.7
+2026-02-22 06:18:50,569 - investigator.domain.services.valuation.dcf - INFO - 📊 [FADING DCF] JNJ - Strategic investor / Healthy company
+  Mode: Fading DCF (realistic deceleration)
+  Revenue Growth: +4.8% | FCF Growth: +6.8% | Rule of 40: 24.7
+  Year 1: 6.8% (company-specific, adjusted for turnarounds)
+  Year 7: 6.0% (fading toward terminal, quality & maturity adjusted)
+  Terminal growth (perpetuity): 3.0% (sector-specific + Rule of 40 adjustment)
+  Method: Linear interpolation from company-specific TOWARD terminal over 7 years
+  Maturity Cap: $583.4B market cap → max Year 7 growth = 6.0%
+  Rationale: Realistic deceleration toward sustainable terminal growth rate
+2026-02-22 06:18:50,569 - investigator.domain.services.valuation.dcf - INFO - JNJ - Projected FCF Year 1: $20.25B (growth 6.75%)
+2026-02-22 06:18:50,569 - investigator.domain.services.valuation.dcf - INFO - JNJ - Projected FCF Year 2: $21.59B (growth 6.63%)
+2026-02-22 06:18:50,569 - investigator.domain.services.valuation.dcf - INFO - JNJ - Projected FCF Year 3: $22.99B (growth 6.50%)
+2026-02-22 06:18:50,570 - investigator.domain.services.valuation.dcf - INFO - JNJ - Projected FCF Year 4: $24.46B (growth 6.38%)
+2026-02-22 06:18:50,570 - investigator.domain.services.valuation.dcf - INFO - JNJ - Projected FCF Year 5: $25.99B (growth 6.25%)
+2026-02-22 06:18:50,570 - investigator.domain.services.valuation.dcf - INFO - JNJ - Projected FCF Year 6: $27.58B (growth 6.13%)
+2026-02-22 06:18:50,570 - investigator.domain.services.valuation.dcf - INFO - JNJ - Projected FCF Year 7: $29.23B (growth 6.00%)
+2026-02-22 06:18:50,570 - investigator.domain.services.valuation_shared.split_adjusted_market_cap - WARNING - JNJ: price_date required when shares_source='sec', defaulting to current date (may be incorrect for historical data)
+2026-02-22 06:18:50,570 - investigator.domain.services.valuation.dcf - INFO - 🔍 [REVENUE_GROWTH] JNJ - TTM Revenue Growth (Geometric Mean - 12 quarters):
+  Current TTM: $97.52B (growth: +6.7%)
+  Prior1 TTM:  $91.36B (growth: +2.8%)
+  Prior2 TTM:  $88.87B
+  Geometric Mean Growth: 4.8%
+2026-02-22 06:18:50,570 - investigator.domain.services.valuation.dcf - INFO - JNJ - Using FCF Margin: 19.9% (TTM FCF: $19.45B, TTM Revenue: $97.52B)
+2026-02-22 06:18:50,570 - investigator.domain.services.valuation.dcf - WARNING - 🔍 [REVENUE_GROWTH] JNJ - Using default 5% (insufficient data, need 8+ quarters)
+2026-02-22 06:18:50,570 - investigator.domain.services.valuation.dcf - INFO - 🔍 [TERMINAL_MARGIN_CONFIG] JNJ - Terminal margin determination
+  Sector: Healthcare, Size: mega_cap, Stage: growth
+  Current FCF margin: 19.4%
+  Config target margin: 28.0%
+  Terminal margin (max): 28.0%
+  Rationale: Using config target
+2026-02-22 06:18:50,570 - investigator.domain.services.valuation.dcf - INFO - 🔍 [TERMINAL_MARGIN] JNJ - Terminal FCF margin check passed
+  Implied terminal margin: 19.0%
+  Max realistic margin: 28.0% (mega_cap/growth)
+  Terminal revenue projection: $154.08B
+  Final year FCF: $29.23B (no adjustment needed)
+2026-02-22 06:18:50,570 - investigator.domain.services.valuation.dcf - INFO - JNJ - Projected Year 7 FCF: $29234.0M
+2026-02-22 06:18:50,570 - investigator.domain.services.valuation_shared.split_adjusted_market_cap - WARNING - JNJ: price_date required when shares_source='sec', defaulting to current date (may be incorrect for historical data)
+2026-02-22 06:18:50,638 - investigator.domain.services.valuation.dcf - INFO - JNJ - Using unlevered beta from market data: 0.02 (source=market)
+2026-02-22 06:18:50,778 - investigator.domain.services.valuation.dcf - INFO - JNJ - Beta treatment: sector_median_low_r2 - Low R²=0.03%, using Default median beta=1.00
+2026-02-22 06:18:50,782 - victor.config.api_keys - INFO - SECRET_ACCESS: action=loaded provider=service:fred source=keyring success=True key_length=32
+2026-02-22 06:18:50,883 - investigator.infrastructure.external.fred.macro_indicators - INFO - Fetched 1 macro indicators
+2026-02-22 06:18:50,886 - investigator.domain.services.valuation.dcf - INFO - JNJ - Using 10Y Treasury rate from FRED: 4.09% (as of 2026-02-18)
+2026-02-22 06:18:50,886 - investigator.domain.services.valuation.dcf - INFO - 🔍 [DCF_INTEREST] JNJ - Interest expense: $0.00B (nested: $0.00B, flat: $0.00B), Total debt: $45.80B, Cost of debt: 5.50% (market-implied default (interest expense not reported))
+2026-02-22 06:18:50,886 - investigator.domain.services.valuation.dcf - INFO - JNJ - WACC inputs: Market Cap $583.45B, Debt $45.80B (weights E=0.93, D=0.07)
+2026-02-22 06:18:50,886 - investigator.domain.services.valuation.dcf - INFO - JNJ - Cost of equity: 10.09% (Rf 4.09% + beta 1.00 × ERP 6.00%)
+2026-02-22 06:18:50,886 - investigator.domain.services.valuation.dcf - INFO - JNJ - Cost of debt: 5.50% (interest $0.00B)
+2026-02-22 06:18:50,886 - investigator.domain.services.valuation.dcf - INFO - JNJ - WACC: 9.67% (raw: 9.67%, bounded 7-20%, tax rate 21%)
+2026-02-22 06:18:50,886 - investigator.domain.services.valuation.dcf - INFO - JNJ - WACC: 9.67%
+2026-02-22 06:18:50,886 - investigator.domain.services.valuation.dcf - INFO - 🔍 [REVENUE_GROWTH] JNJ - TTM Revenue Growth (Geometric Mean - 12 quarters):
+  Current TTM: $97.52B (growth: +6.7%)
+  Prior1 TTM:  $91.36B (growth: +2.8%)
+  Prior2 TTM:  $88.87B
+  Geometric Mean Growth: 4.8%
+2026-02-22 06:18:50,886 - investigator.domain.services.valuation.dcf - INFO - JNJ - Using FCF Margin: 19.9% (TTM FCF: $19.45B, TTM Revenue: $97.52B)
+2026-02-22 06:18:50,886 - investigator.domain.services.valuation.dcf - INFO - JNJ - Terminal growth adjustment: +0.00% → Declining/inefficient (Rule of 40: 24.7% <40, FCF margin 19.9%)
+2026-02-22 06:18:50,886 - investigator.domain.services.valuation.dcf - INFO - JNJ - Terminal Growth (internal): base=3.00% + Rule of 40 adj=+0.00% (poor) = 3.00% (within ceiling: 3.0%)
+2026-02-22 06:18:50,886 - investigator.domain.services.valuation_shared.split_adjusted_market_cap - WARNING - JNJ: price_date required when shares_source='sec', defaulting to current date (may be incorrect for historical data)
+2026-02-22 06:18:50,959 - investigator.domain.services.valuation.dcf - INFO - JNJ - Using unlevered beta from market data: 0.02 (source=market)
+2026-02-22 06:18:51,099 - investigator.domain.services.valuation.dcf - INFO - JNJ - Beta treatment: sector_median_low_r2 - Low R²=0.03%, using Default median beta=1.00
+2026-02-22 06:18:51,104 - victor.config.api_keys - INFO - SECRET_ACCESS: action=loaded provider=service:fred source=keyring success=True key_length=32
+2026-02-22 06:18:51,205 - investigator.infrastructure.external.fred.macro_indicators - INFO - Fetched 1 macro indicators
+2026-02-22 06:18:51,208 - investigator.domain.services.valuation.dcf - INFO - JNJ - Using 10Y Treasury rate from FRED: 4.09% (as of 2026-02-18)
+2026-02-22 06:18:51,208 - investigator.domain.services.valuation.dcf - INFO - 🔍 [DCF_INTEREST] JNJ - Interest expense: $0.00B (nested: $0.00B, flat: $0.00B), Total debt: $45.80B, Cost of debt: 5.50% (market-implied default (interest expense not reported))
+2026-02-22 06:18:51,208 - investigator.domain.services.valuation.dcf - INFO - JNJ - WACC inputs: Market Cap $583.45B, Debt $45.80B (weights E=0.93, D=0.07)
+2026-02-22 06:18:51,208 - investigator.domain.services.valuation.dcf - INFO - JNJ - Cost of equity: 10.09% (Rf 4.09% + beta 1.00 × ERP 6.00%)
+2026-02-22 06:18:51,208 - investigator.domain.services.valuation.dcf - INFO - JNJ - Cost of debt: 5.50% (interest $0.00B)
+2026-02-22 06:18:51,208 - investigator.domain.services.valuation.dcf - INFO - JNJ - WACC: 9.67% (raw: 9.67%, bounded 7-20%, tax rate 21%)
+2026-02-22 06:18:51,209 - investigator.domain.services.valuation.dcf - INFO - JNJ - Terminal Value: $451.31B (growth rate: 3.0%)
+2026-02-22 06:18:51,209 - investigator.domain.services.valuation.dcf - INFO - JNJ - Discount Year 1: FCF $20.25B / (1+WACC)^1 = $18.46B
+2026-02-22 06:18:51,209 - investigator.domain.services.valuation.dcf - INFO - JNJ - Discount Year 2: FCF $21.59B / (1+WACC)^2 = $17.95B
+2026-02-22 06:18:51,209 - investigator.domain.services.valuation.dcf - INFO - JNJ - Discount Year 3: FCF $22.99B / (1+WACC)^3 = $17.43B
+2026-02-22 06:18:51,209 - investigator.domain.services.valuation.dcf - INFO - JNJ - Discount Year 4: FCF $24.46B / (1+WACC)^4 = $16.91B
+2026-02-22 06:18:51,209 - investigator.domain.services.valuation.dcf - INFO - JNJ - Discount Year 5: FCF $25.99B / (1+WACC)^5 = $16.38B
+2026-02-22 06:18:51,209 - investigator.domain.services.valuation.dcf - INFO - JNJ - Discount Year 6: FCF $27.58B / (1+WACC)^6 = $15.85B
+2026-02-22 06:18:51,209 - investigator.domain.services.valuation.dcf - INFO - JNJ - Discount Year 7: FCF $29.23B / (1+WACC)^7 = $15.32B
+2026-02-22 06:18:51,209 - investigator.domain.services.valuation.dcf - INFO - JNJ - PV of FCF: $118.29B, PV of Terminal: $236.49B
+2026-02-22 06:18:51,209 - investigator.domain.services.valuation.dcf - INFO - JNJ - Valuation sum: PV_FCF $118.29B + PV_Terminal $236.49B = Enterprise Value $354.78B
+2026-02-22 06:18:51,209 - investigator.domain.services.valuation.dcf - INFO - JNJ - Enterprise Value: $354.78B, Equity Value: $327.22B
+2026-02-22 06:18:51,209 - investigator.domain.services.valuation.dcf - INFO - JNJ - DCF Fair Share Price: $136.00 (Shares Outstanding: 2,406,070,016)
+2026-02-22 06:18:51,209 - investigator.domain.services.valuation.dcf - INFO - JNJ - Fair Value: $136.00, Current: $242.49, Upside: -43.9%
+2026-02-22 06:18:51,279 - investigator.domain.services.valuation.common.sector_multiples - INFO - Loaded sector multiples config from /Users/vijaysingh/code/victor-invest/config.yaml
+2026-02-22 06:18:51,279 - investigator.domain.services.valuation.models.pe_multiple - INFO - 🔍 [PE_TRANSPARENCY] JNJ - Target P/E calculation: sources=[sector_median=20.00, growth_adjusted=21.25] → average=20.62
+2026-02-22 06:18:51,279 - investigator.domain.services.valuation.models.ps_multiple - WARNING - PS_GRANULAR - No base P/S found (sector: Healthcare, industry: Biotechnology: Pharmaceutical Preparations)
+2026-02-22 06:18:51,282 - victor.config.api_keys - INFO - SECRET_ACCESS: action=loaded provider=service:fred source=keyring success=True key_length=32
+2026-02-22 06:18:51,458 - investigator.infrastructure.external.fred.macro_indicators - INFO - Fetched 1 macro indicators
+2026-02-22 06:18:51,461 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_START] JNJ - Initializing Gordon Growth Model valuation
+2026-02-22 06:18:51,461 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_INPUTS] JNJ - Cost of Equity (r): 7.59%
+2026-02-22 06:18:51,461 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_STAGE_1] JNJ - Checking dividend eligibility...
+2026-02-22 06:18:51,461 - investigator.domain.services.quarterly_processor - INFO - [QUARTERLY_CALC_DEBUG] Fiscal periods AFTER normalization: ['Q1', 'Q2', 'Q3', 'FY', 'Q1', 'Q2', 'Q3', 'FY', 'Q1', 'Q2', 'Q3', 'FY', 'Q1', 'Q2', 'Q3']
+2026-02-22 06:18:51,461 - investigator.domain.services.quarterly_processor - INFO - [QUARTERLY_CALC_DEBUG] After separation: 3 FY periods, 12 Q periods
+2026-02-22 06:18:51,461 - investigator.domain.services.quarterly_processor - INFO - [YTD_GROUP] Created 4 fiscal year groups: [(2026, ['Q3', 'Q2', 'Q1']), (2025, ['Q3', 'Q2', 'Q1']), (2024, ['Q3', 'Q2', 'Q1']), (2023, ['Q3', 'Q2', 'Q1'])]
+2026-02-22 06:18:51,461 - investigator.domain.services.quarterly_processor - INFO - YTD to quarterly conversion complete for 4 fiscal year groups
+2026-02-22 06:18:51,461 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Before condition: compute_missing=True, quarterly_periods=12, fy_periods=3
+2026-02-22 06:18:51,461 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Entering Q4 computation block: 3 FY periods, 12 Q periods
+2026-02-22 06:18:51,461 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Current quarters: 12, Target: 4
+2026-02-22 06:18:51,461 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Will attempt to compute Q4 for ALL 3 FY periods where quarterly data available
+2026-02-22 06:18:51,461 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Processing FY 1/3: fiscal_year=2025, period_end=2025-12-28
+2026-02-22 06:18:51,461 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Searching for Q3 matching FY ending 2025-12-28
+2026-02-22 06:18:51,461 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Found Q3: fiscal_year=2025, period_end=2025-09-28, days_before_FY=91
+2026-02-22 06:18:51,461 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Available quarters for computation: Q1=True, Q2=True, Q3=True (count=3)
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] 🔄 Computing Q4 from FY=2025
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO - 🔧 [Q4_COMPUTE] Computing Q4 for FY 2025
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    FY data structure: cash_flow=True, income_statement=True
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    Available quarters: 3 quarters
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    Q1 (Q1): cash_flow=True, income_statement=True
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    Q2 (Q2): cash_flow=True, income_statement=True
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    Q3 (Q3): cash_flow=True, income_statement=True
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    ✅ operating_cash_flow: Q4=7247.0M (FY 24530.0M - Q1-Q3 17283.0M)
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    ✅ capital_expenditures: Q4=2020.0M (FY 4832.0M - Q1-Q3 2812.0M)
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    ✅ free_cash_flow: Q4=5227.0M (FY 19698.0M - Q1-Q3 14471.0M)
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    ✅ dividends_paid: Q4=9396.0M (FY 12381.0M - Q1-Q3 2985.0M)
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO - ✅ Computed Q4 for FY ending 2025-12-28 (fiscal_year=2025). OCF: 7247.0M, CapEx: 2020.0M
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Processing FY 2/3: fiscal_year=2024, period_end=2024-12-28
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Searching for Q3 matching FY ending 2024-12-28
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Found Q3: fiscal_year=2024, period_end=2024-09-28, days_before_FY=91
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Available quarters for computation: Q1=True, Q2=True, Q3=True (count=3)
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] 🔄 Computing Q4 from FY=2024
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO - 🔧 [Q4_COMPUTE] Computing Q4 for FY 2024
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    FY data structure: cash_flow=True, income_statement=True
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    Available quarters: 3 quarters
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    Q1 (Q1): cash_flow=True, income_statement=True
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    Q2 (Q2): cash_flow=True, income_statement=True
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    Q3 (Q3): cash_flow=True, income_statement=True
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    ✅ operating_cash_flow: Q4=9338.0M (FY 24266.0M - Q1-Q3 14928.0M)
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    ✅ capital_expenditures: Q4=1470.0M (FY 4424.0M - Q1-Q3 2954.0M)
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    ✅ free_cash_flow: Q4=7868.0M (FY 19842.0M - Q1-Q3 11974.0M)
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    ✅ dividends_paid: Q4=8952.0M (FY 11823.0M - Q1-Q3 2871.0M)
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO - ✅ Computed Q4 for FY ending 2024-12-28 (fiscal_year=2024). OCF: 9338.0M, CapEx: 1470.0M
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Processing FY 3/3: fiscal_year=2023, period_end=2023-12-28
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Searching for Q3 matching FY ending 2023-12-28
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Found Q3: fiscal_year=2023, period_end=2023-09-28, days_before_FY=91
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Available quarters for computation: Q1=True, Q2=True, Q3=True (count=3)
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] 🔄 Computing Q4 from FY=2023
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO - 🔧 [Q4_COMPUTE] Computing Q4 for FY 2023
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    FY data structure: cash_flow=True, income_statement=True
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    Available quarters: 3 quarters
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    Q1 (Q1): cash_flow=True, income_statement=True
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    Q2 (Q2): cash_flow=True, income_statement=True
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    Q3 (Q3): cash_flow=True, income_statement=True
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    ✅ operating_cash_flow: Q4=6947.0M (FY 22791.0M - Q1-Q3 15844.0M)
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    ✅ capital_expenditures: Q4=2121.0M (FY 4543.0M - Q1-Q3 2422.0M)
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    ✅ free_cash_flow: Q4=4826.0M (FY 18248.0M - Q1-Q3 13422.0M)
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO -    ✅ dividends_paid: Q4=8800.0M (FY 11770.0M - Q1-Q3 2970.0M)
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO - ✅ Computed Q4 for FY ending 2023-12-28 (fiscal_year=2023). OCF: 6947.0M, CapEx: 2121.0M
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Computed 3 Q4 periods. Total quarterly periods after Q4 computation: 15
+2026-02-22 06:18:51,462 - investigator.domain.services.quarterly_processor - INFO - [TTM_SELECT] After YTD filter and date sort: 15 periods available. Periods: ['Q3-2026 (2026-09-28)', 'Q2-2026 (2026-06-28)', 'Q1-2026 (2026-03-28)', 'Q4-2025 (2025-12-28)', 'Q3-2025 (2025-09-28)', 'Q2-2025 (2025-06-28)', 'Q1-2025 (2025-03-28)', 'Q4-2024 (2024-12-28)']
+2026-02-22 06:18:51,463 - investigator.domain.services.quarterly_processor - INFO - [CONSECUTIVE_CHECK] ✅ Found 4 consecutive quarters (target: 4)
+2026-02-22 06:18:52,210 - investigator.domain.services.valuation.ggm - INFO - JNJ - TTM dividends: $12528.0M across 4 quarters (shares used: 2,409,898,936)
+2026-02-22 06:18:52,211 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_DIVIDEND] JNJ - ✅ Dividend-paying stock: TTM DPS = $5.1986
+2026-02-22 06:18:52,211 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_STAGE_2] JNJ - Calculating sustainable growth rate...
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO - [QUARTERLY_CALC_DEBUG] Fiscal periods AFTER normalization: ['Q1', 'Q2', 'Q3', 'FY', 'Q1', 'Q2', 'Q3', 'FY', 'Q1', 'Q2', 'Q3', 'FY', 'Q1', 'Q2', 'Q3']
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO - [QUARTERLY_CALC_DEBUG] After separation: 3 FY periods, 12 Q periods
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO - [YTD_GROUP] Created 4 fiscal year groups: [(2026, ['Q3', 'Q2', 'Q1']), (2025, ['Q3', 'Q2', 'Q1']), (2024, ['Q3', 'Q2', 'Q1']), (2023, ['Q3', 'Q2', 'Q1'])]
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO - YTD to quarterly conversion complete for 4 fiscal year groups
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Before condition: compute_missing=True, quarterly_periods=12, fy_periods=3
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Entering Q4 computation block: 3 FY periods, 12 Q periods
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Current quarters: 12, Target: 8
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Will attempt to compute Q4 for ALL 3 FY periods where quarterly data available
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Processing FY 1/3: fiscal_year=2025, period_end=2025-12-28
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Searching for Q3 matching FY ending 2025-12-28
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Found Q3: fiscal_year=2025, period_end=2025-09-28, days_before_FY=91
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Available quarters for computation: Q1=True, Q2=True, Q3=True (count=3)
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] 🔄 Computing Q4 from FY=2025
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO - 🔧 [Q4_COMPUTE] Computing Q4 for FY 2025
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO -    FY data structure: cash_flow=True, income_statement=True
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO -    Available quarters: 3 quarters
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO -    Q1 (Q1): cash_flow=True, income_statement=True
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO -    Q2 (Q2): cash_flow=True, income_statement=True
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO -    Q3 (Q3): cash_flow=True, income_statement=True
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO -    ✅ operating_cash_flow: Q4=7247.0M (FY 24530.0M - Q1-Q3 17283.0M)
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO -    ✅ capital_expenditures: Q4=2020.0M (FY 4832.0M - Q1-Q3 2812.0M)
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO -    ✅ free_cash_flow: Q4=5227.0M (FY 19698.0M - Q1-Q3 14471.0M)
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO -    ✅ dividends_paid: Q4=9396.0M (FY 12381.0M - Q1-Q3 2985.0M)
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO - ✅ Computed Q4 for FY ending 2025-12-28 (fiscal_year=2025). OCF: 7247.0M, CapEx: 2020.0M
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Processing FY 2/3: fiscal_year=2024, period_end=2024-12-28
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Searching for Q3 matching FY ending 2024-12-28
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Found Q3: fiscal_year=2024, period_end=2024-09-28, days_before_FY=91
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Available quarters for computation: Q1=True, Q2=True, Q3=True (count=3)
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] 🔄 Computing Q4 from FY=2024
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO - 🔧 [Q4_COMPUTE] Computing Q4 for FY 2024
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO -    FY data structure: cash_flow=True, income_statement=True
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO -    Available quarters: 3 quarters
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO -    Q1 (Q1): cash_flow=True, income_statement=True
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO -    Q2 (Q2): cash_flow=True, income_statement=True
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO -    Q3 (Q3): cash_flow=True, income_statement=True
+2026-02-22 06:18:52,211 - investigator.domain.services.quarterly_processor - INFO -    ✅ operating_cash_flow: Q4=9338.0M (FY 24266.0M - Q1-Q3 14928.0M)
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - INFO -    ✅ capital_expenditures: Q4=1470.0M (FY 4424.0M - Q1-Q3 2954.0M)
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - INFO -    ✅ free_cash_flow: Q4=7868.0M (FY 19842.0M - Q1-Q3 11974.0M)
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - INFO -    ✅ dividends_paid: Q4=8952.0M (FY 11823.0M - Q1-Q3 2871.0M)
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - INFO - ✅ Computed Q4 for FY ending 2024-12-28 (fiscal_year=2024). OCF: 9338.0M, CapEx: 1470.0M
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Processing FY 3/3: fiscal_year=2023, period_end=2023-12-28
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Searching for Q3 matching FY ending 2023-12-28
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Found Q3: fiscal_year=2023, period_end=2023-09-28, days_before_FY=91
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] Available quarters for computation: Q1=True, Q2=True, Q3=True (count=3)
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] 🔄 Computing Q4 from FY=2023
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - INFO - 🔧 [Q4_COMPUTE] Computing Q4 for FY 2023
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - INFO -    FY data structure: cash_flow=True, income_statement=True
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - INFO -    Available quarters: 3 quarters
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - INFO -    Q1 (Q1): cash_flow=True, income_statement=True
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - INFO -    Q2 (Q2): cash_flow=True, income_statement=True
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - INFO -    Q3 (Q3): cash_flow=True, income_statement=True
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - INFO -    ✅ operating_cash_flow: Q4=6947.0M (FY 22791.0M - Q1-Q3 15844.0M)
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - INFO -    ✅ capital_expenditures: Q4=2121.0M (FY 4543.0M - Q1-Q3 2422.0M)
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - INFO -    ✅ free_cash_flow: Q4=4826.0M (FY 18248.0M - Q1-Q3 13422.0M)
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - INFO -    ✅ dividends_paid: Q4=8800.0M (FY 11770.0M - Q1-Q3 2970.0M)
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - INFO - ✅ Computed Q4 for FY ending 2023-12-28 (fiscal_year=2023). OCF: 6947.0M, CapEx: 2121.0M
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - INFO - [Q4_COMPUTE] ✅ Computed 3 Q4 periods. Total quarterly periods after Q4 computation: 15
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - INFO - [TTM_SELECT] After YTD filter and date sort: 15 periods available. Periods: ['Q3-2026 (2026-09-28)', 'Q2-2026 (2026-06-28)', 'Q1-2026 (2026-03-28)', 'Q4-2025 (2025-12-28)', 'Q3-2025 (2025-09-28)', 'Q2-2025 (2025-06-28)', 'Q1-2025 (2025-03-28)', 'Q4-2024 (2024-12-28)']
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - INFO - [CONSECUTIVE_CHECK] ✅ Found 8 consecutive quarters (target: 8)
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - WARNING - Only 8 quarters available (need 12 for geometric mean). Using simple TTM growth to avoid inflated rates from incomplete prior2 period.
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - INFO - Falling back to simple 8-quarter TTM growth calculation
+2026-02-22 06:18:52,212 - investigator.domain.services.quarterly_processor - WARNING - Insufficient data for TTM YoY growth calculation
+2026-02-22 06:18:52,212 - investigator.domain.services.valuation.ggm - INFO - JNJ - Quarterly dividend analysis: YoY growth 0.0%, Trend: stable, Seasonality variance: 0.0%
+2026-02-22 06:18:52,212 - investigator.domain.services.valuation.ggm - WARNING - JNJ - Insufficient data, using default growth: 3.00%
+2026-02-22 06:18:52,212 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_GROWTH] JNJ - Sustainable growth rate (g) [internal]: 3.00%
+2026-02-22 06:18:52,212 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_STAGE_3] JNJ - Validating model constraints (g < r)...
+2026-02-22 06:18:52,212 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_CONSTRAINT_PASS] JNJ - ✅ Model constraints satisfied (g=3.00% < r=7.59%)
+2026-02-22 06:18:52,212 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_STAGE_4] JNJ - Calculating expected dividend D₁ = D₀ × (1 + g)
+2026-02-22 06:18:52,212 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_D1_CALC] JNJ - D₁ = $5.1986 × (1 + 3.00%) = $5.3545
+2026-02-22 06:18:52,212 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_STAGE_5] JNJ - Applying GGM formula: Fair Value = D₁ / (r - g)
+2026-02-22 06:18:52,212 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_FORMULA] JNJ - Fair Value = $5.3545 / (7.59% - 3.00%) = $5.3545 / 4.5900% = $116.66
+2026-02-22 06:18:52,212 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_STAGE_6] JNJ - Comparing to current market price...
+2026-02-22 06:18:52,251 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_RESULT] JNJ - Fair Value: $116.66 vs Current: $242.49 | Upside: -51.9% | Assessment: Significantly Overvalued
+2026-02-22 06:18:52,251 - investigator.domain.services.valuation.ggm - INFO - 🔍 [GGM_METRICS] JNJ - Dividend Yield: 2.14% | Growth Rate: 3.00% | Required Return: 7.59%
+2026-02-22 06:18:52,251 - investigator.domain.services.valuation.damodaran_dcf - INFO - [JNJ] Damodaran DCF: Fair Value=$52.22, EV=$125.8B, WACC=10.8%, Terminal=3.0%
+2026-02-22 06:18:52,353 - investigator.domain.services.dynamic_model_weighting - INFO - JNJ - Known Dividend Aristocrat Johnson & Johnson: High payout ratio (60.8%) - dividend_aristocrat_pure
+2026-02-22 06:18:52,353 - investigator.domain.services.dynamic_model_weighting - INFO - JNJ - Tier 'dividend_aristocrat_pure' base weights from config: {'ggm': 60, 'dcf': 20, 'pe': 15, 'ev_ebitda': 5, 'ps': 0, 'pb': 0}
+2026-02-22 06:18:52,353 - investigator.domain.services.dynamic_model_weighting - INFO - JNJ - Weights after applicability filters: {'ggm': 60, 'dcf': 20, 'pe': 15, 'ev_ebitda': 5, 'ps': 0, 'pb': 0}
+2026-02-22 06:18:52,353 - investigator.domain.services.dynamic_model_weighting - INFO - 🎯 JNJ - Dynamic Weighting: Tier=dividend_aristocrat_pure | Sector=Healthcare | Industry=Biotechnology: Pharmaceutical Preparations | Size=mega_cap | Stage=mature_profitable | Market_PE=24x | Weights: DCF=20%, GGM=60%, PE=15%, EV_EBITDA=5%
+2026-02-22 06:18:52,353 - investigator.domain.services.weight_audit_trail - INFO - ╔══════════════════════════════════════════════════════════╗
+2026-02-22 06:18:52,353 - investigator.domain.services.weight_audit_trail - INFO - ║ WEIGHT AUDIT TRAIL:                  JNJ                   ║
+2026-02-22 06:18:52,353 - investigator.domain.services.weight_audit_trail - INFO - ╠══════════════════════════════════════════════════════════╣
+2026-02-22 06:18:52,353 - investigator.domain.services.weight_audit_trail - INFO - ║ Steps: 2    Adjustments: 0    Bounds: No      ║
+2026-02-22 06:18:52,353 - investigator.domain.services.weight_audit_trail - INFO - ╠══════════════════════════════════════════════════════════╣
+2026-02-22 06:18:52,353 - investigator.domain.services.weight_audit_trail - INFO - ║ INITIAL WEIGHTS:                                         ║
+2026-02-22 06:18:52,353 - investigator.domain.services.weight_audit_trail - INFO - ║   ggm         :   60.0%                               ║
+2026-02-22 06:18:52,354 - investigator.domain.services.weight_audit_trail - INFO - ║   dcf         :   20.0%                               ║
+2026-02-22 06:18:52,354 - investigator.domain.services.weight_audit_trail - INFO - ║   pe          :   15.0%                               ║
+2026-02-22 06:18:52,354 - investigator.domain.services.weight_audit_trail - INFO - ║   ev_ebitda   :    5.0%                               ║
+2026-02-22 06:18:52,354 - investigator.domain.services.weight_audit_trail - INFO - ║   ps          :    0.0%                               ║
+2026-02-22 06:18:52,354 - investigator.domain.services.weight_audit_trail - INFO - ║   pb          :    0.0%                               ║
+2026-02-22 06:18:52,354 - investigator.domain.services.weight_audit_trail - INFO - ╠══════════════════════════════════════════════════════════╣
+2026-02-22 06:18:52,354 - investigator.domain.services.weight_audit_trail - INFO - ║ FINAL WEIGHTS:                                           ║
+2026-02-22 06:18:52,354 - investigator.domain.services.weight_audit_trail - INFO - ║   dcf         :   20.0% ( +0.0%)                     ║
+2026-02-22 06:18:52,354 - investigator.domain.services.weight_audit_trail - INFO - ║   ggm         :   60.0% ( +0.0%)                     ║
+2026-02-22 06:18:52,354 - investigator.domain.services.weight_audit_trail - INFO - ║   pe          :   15.0% ( +0.0%)                     ║
+2026-02-22 06:18:52,354 - investigator.domain.services.weight_audit_trail - INFO - ║   ps          :    0.0% ( +0.0%)                     ║
+2026-02-22 06:18:52,354 - investigator.domain.services.weight_audit_trail - INFO - ║   pb          :    0.0% ( +0.0%)                     ║
+2026-02-22 06:18:52,354 - investigator.domain.services.weight_audit_trail - INFO - ║   ev_ebitda   :    5.0% ( +0.0%)                     ║
+2026-02-22 06:18:52,354 - investigator.domain.services.weight_audit_trail - INFO - ╠══════════════════════════════════════════════════════════╣
+2026-02-22 06:18:52,354 - investigator.domain.services.weight_audit_trail - INFO - ║ LARGEST CHANGE: ggm in base_weights               ║
+2026-02-22 06:18:52,354 - investigator.domain.services.weight_audit_trail - INFO - ║   0.0% → 60.0% (+60.0%)                            ║
+2026-02-22 06:18:52,354 - investigator.domain.services.weight_audit_trail - INFO - ╚══════════════════════════════════════════════════════════╝
+2026-02-22 06:18:52,354 - investigator.domain.services.valuation.orchestrator - INFO - ✅ Using tier-based dynamic weights from DynamicModelWeightingService
+2026-02-22 06:18:52,354 - investigator.domain.services.valuation.orchestrator - INFO - 💰 JNJ - Blended Valuation Breakdown:
+2026-02-22 06:18:52,354 - investigator.domain.services.valuation.orchestrator - INFO -    Tier: dividend_aristocrat_pure | Sector: Healthcare | Industry: Biotechnology: Pharmaceutical Preparations
+2026-02-22 06:18:52,354 - investigator.domain.services.valuation.orchestrator - INFO - 
+2026-02-22 06:18:52,354 - investigator.domain.services.valuation.orchestrator - INFO -    Model Contributions:
+2026-02-22 06:18:52,354 - investigator.domain.services.valuation.orchestrator - INFO -    - DCF             $136.00 ×  20.0% = $   27.20
+2026-02-22 06:18:52,354 - investigator.domain.services.valuation.orchestrator - INFO -    - GGM             $116.66 ×  65.0% = $   75.83
+2026-02-22 06:18:52,354 - investigator.domain.services.valuation.orchestrator - INFO -    - PE              $208.79 ×  15.0% = $   31.32
+2026-02-22 06:18:52,354 - investigator.domain.services.valuation.orchestrator - INFO - 
+2026-02-22 06:18:52,354 - investigator.domain.services.valuation.orchestrator - INFO -    Blended Fair Value: $134.35
+2026-02-22 06:18:52,354 - investigator.domain.services.valuation.orchestrator - INFO - 
+2026-02-22 06:18:52,354 - investigator.domain.services.model_agreement_scorer - INFO - [JNJ] Model Agreement Analysis: low (CV: 25.8%, 3 models)
+2026-02-22 06:18:52,361 - agent.market_context_agent_1 - INFO - Task JNJ_1771762725.250518_market_context completed in 3.39s (cache_hit: False)
+2026-02-22 06:18:52,362 - investigator.application.orchestrator - INFO - Task JNJ_1771762725.250518 (JNJ): step_2 -> technical completed (completed) duration=0.03s
+2026-02-22 06:18:52,362 - investigator.application.orchestrator - INFO - Task JNJ_1771762725.250518 (JNJ): step_2 -> fundamental completed (completed) duration=6.18s
+2026-02-22 06:18:52,362 - investigator.application.orchestrator - INFO - Task JNJ_1771762725.250518 (JNJ): step_2 -> market_context completed (completed) duration=3.39s
+2026-02-22 06:18:52,362 - investigator.application.orchestrator - INFO - Task JNJ_1771762725.250518 (JNJ): finished step_2
+2026-02-22 06:18:52,362 - investigator.application.orchestrator - INFO - Task JNJ_1771762725.250518 (JNJ): starting step_3 -> agents=[symbol_update]
+2026-02-22 06:18:52,362 - agent.symbol_update_agent_1 - INFO - Pre-processing symbol update for JNJ
+2026-02-22 06:18:52,362 - agent.symbol_update_agent_1 - INFO - 🔍 Context keys available: ['symbol', 'is_etf', 'orchestrator_step', 'orchestrator_step_name', 'orchestrator_agents_in_step', 'consolidated_data', 'fundamental_analysis', 'sec_analysis']
+2026-02-22 06:18:52,362 - agent.symbol_update_agent_1 - INFO - ✅ Fundamental data validated: 14 keys, has valuation: True, has ratios: True
+2026-02-22 06:18:52,362 - agent.symbol_update_agent_1 - INFO - ✅ SEC data validated: 6 keys
+2026-02-22 06:18:52,362 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'analysis_type': 'investment_synthesis', 'context_hash': 'b1bd6113', 'llm_type': 'investment_synthesis'}, type: <class 'dict'>, cache_type: CacheType.LLM_RESPONSE
+2026-02-22 06:18:52,362 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'analysis_type': 'investment_synthesis', 'context_hash': 'b1bd6113', 'llm_type': 'investment_synthesis'}
+2026-02-22 06:18:52,362 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/llm_cache/JNJ/investment_synthesis.json.gz
+2026-02-22 06:18:52,363 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 Cache HIT (LLM): prompt_path=data/llm_cache/JNJ/prompt_investment_synthesis.txt.gz, response_path=data/llm_cache/JNJ/llmresponse_investment_synthesis.json.gz
+2026-02-22 06:18:52,363 - investigator.infrastructure.cache.cache_manager - WARNING - ⚠️  Cache EMPTY [FileCacheStorageHandler]: llm_response | Key: symbol:JNJ | Treating as cache miss
+2026-02-22 06:18:52,374 - investigator.infrastructure.cache.cache_manager - WARNING - ⚠️  Cache EMPTY [RdbmsCacheStorageHandler]: llm_response | Key: symbol:JNJ | Treating as cache miss
+2026-02-22 06:18:52,374 - agent.symbol_update_agent_1 - INFO - Updating symbol table for JNJ
+2026-02-22 06:18:52,374 - agent.symbol_update_agent_1 - INFO - Connected to stock database for symbol updates
+2026-02-22 06:18:52,526 - agent.symbol_update_agent_1 - INFO - ✅ Updated symbol table for JNJ: 23 fields, 1 row(s) affected
+2026-02-22 06:18:52,527 - agent.symbol_update_agent_1 - INFO - Symbol table updated for JNJ: 23 metrics
+2026-02-22 06:18:52,527 - investigator.application.orchestrator - INFO - Task JNJ_1771762725.250518 (JNJ): step_3 -> symbol_update completed (completed) duration=0.16s
+2026-02-22 06:18:52,527 - investigator.application.orchestrator - INFO - Task JNJ_1771762725.250518 (JNJ): finished step_3
+2026-02-22 06:18:52,527 - investigator.application.orchestrator - INFO - Task JNJ_1771762725.250518 (JNJ): starting step_4 -> agents=[synthesis]
+2026-02-22 06:18:52,527 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'analysis_type': 'investment_synthesis', 'context_hash': 'f0cdf45d', 'llm_type': 'investment_synthesis'}, type: <class 'dict'>, cache_type: CacheType.LLM_RESPONSE
+2026-02-22 06:18:52,527 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'analysis_type': 'investment_synthesis', 'context_hash': 'f0cdf45d', 'llm_type': 'investment_synthesis'}
+2026-02-22 06:18:52,527 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/llm_cache/JNJ/investment_synthesis.json.gz
+2026-02-22 06:18:52,527 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 Cache HIT (LLM): prompt_path=data/llm_cache/JNJ/prompt_investment_synthesis.txt.gz, response_path=data/llm_cache/JNJ/llmresponse_investment_synthesis.json.gz
+2026-02-22 06:18:52,528 - investigator.infrastructure.cache.cache_manager - WARNING - ⚠️  Cache EMPTY [FileCacheStorageHandler]: llm_response | Key: symbol:JNJ | Treating as cache miss
+2026-02-22 06:18:52,542 - investigator.infrastructure.cache.cache_manager - WARNING - ⚠️  Cache EMPTY [RdbmsCacheStorageHandler]: llm_response | Key: symbol:JNJ | Treating as cache miss
+2026-02-22 06:18:52,548 - root - WARNING - matplotlib unavailable or failed to initialize - chart generation disabled
+2026-02-22 06:18:52,556 - utils.chart_generator - WARNING - matplotlib not available - chart generation disabled
+2026-02-22 06:18:52,621 - agent.synth_agent_1 - WARNING - ⚠️  Payload validation issues for JNJ: market_cap=0
+2026-02-22 06:18:52,622 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'form_type': 'COMPREHENSIVE', 'period': '2026-FY', 'llm_type': 'sec'}, type: <class 'dict'>, cache_type: CacheType.LLM_RESPONSE
+2026-02-22 06:18:52,622 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'form_type': 'COMPREHENSIVE', 'period': '2026-FY', 'llm_type': 'sec'}
+2026-02-22 06:18:52,622 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/llm_cache/JNJ/sec_comprehensive.json.gz
+2026-02-22 06:18:52,622 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 Cache MISS (LLM): prompt_path=data/llm_cache/JNJ/prompt_sec_comprehensive.txt.gz exists=False, response_path=data/llm_cache/JNJ/llmresponse_sec_comprehensive.json.gz exists=False
+2026-02-22 06:18:52,635 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'form_type': 'COMPREHENSIVE', 'period': '2025-FY', 'llm_type': 'sec'}, type: <class 'dict'>, cache_type: CacheType.LLM_RESPONSE
+2026-02-22 06:18:52,635 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'form_type': 'COMPREHENSIVE', 'period': '2025-FY', 'llm_type': 'sec'}
+2026-02-22 06:18:52,635 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/llm_cache/JNJ/sec_comprehensive.json.gz
+2026-02-22 06:18:52,635 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 Cache MISS (LLM): prompt_path=data/llm_cache/JNJ/prompt_sec_comprehensive.txt.gz exists=False, response_path=data/llm_cache/JNJ/llmresponse_sec_comprehensive.json.gz exists=False
+2026-02-22 06:18:52,647 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'form_type': 'COMPREHENSIVE', 'period': '2026-FY', 'llm_type': 'sec'}, type: <class 'dict'>, cache_type: CacheType.LLM_RESPONSE
+2026-02-22 06:18:52,647 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'form_type': 'COMPREHENSIVE', 'period': '2026-FY', 'llm_type': 'sec'}
+2026-02-22 06:18:52,647 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/llm_cache/JNJ/sec_comprehensive.json.gz
+2026-02-22 06:18:52,647 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 Cache MISS (LLM): prompt_path=data/llm_cache/JNJ/prompt_sec_comprehensive.txt.gz exists=False, response_path=data/llm_cache/JNJ/llmresponse_sec_comprehensive.json.gz exists=False
+2026-02-22 06:18:52,660 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'form_type': 'COMPREHENSIVE', 'period': '2025-FY', 'llm_type': 'sec'}, type: <class 'dict'>, cache_type: CacheType.LLM_RESPONSE
+2026-02-22 06:18:52,660 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'form_type': 'COMPREHENSIVE', 'period': '2025-FY', 'llm_type': 'sec'}
+2026-02-22 06:18:52,660 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/llm_cache/JNJ/sec_comprehensive.json.gz
+2026-02-22 06:18:52,660 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 Cache MISS (LLM): prompt_path=data/llm_cache/JNJ/prompt_sec_comprehensive.txt.gz exists=False, response_path=data/llm_cache/JNJ/llmresponse_sec_comprehensive.json.gz exists=False
+2026-02-22 06:18:52,671 - investigator.infrastructure.reporting.report_generator - WARNING - No investment thesis available for JNJ
+2026-02-22 06:18:52,684 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'form_type': 'COMPREHENSIVE', 'period': '2026-FY', 'llm_type': 'sec'}, type: <class 'dict'>, cache_type: CacheType.LLM_RESPONSE
+2026-02-22 06:18:52,684 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'form_type': 'COMPREHENSIVE', 'period': '2026-FY', 'llm_type': 'sec'}
+2026-02-22 06:18:52,684 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/llm_cache/JNJ/sec_comprehensive.json.gz
+2026-02-22 06:18:52,684 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 Cache MISS (LLM): prompt_path=data/llm_cache/JNJ/prompt_sec_comprehensive.txt.gz exists=False, response_path=data/llm_cache/JNJ/llmresponse_sec_comprehensive.json.gz exists=False
+2026-02-22 06:18:52,696 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'form_type': 'COMPREHENSIVE', 'period': '2025-FY', 'llm_type': 'sec'}, type: <class 'dict'>, cache_type: CacheType.LLM_RESPONSE
+2026-02-22 06:18:52,696 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'form_type': 'COMPREHENSIVE', 'period': '2025-FY', 'llm_type': 'sec'}
+2026-02-22 06:18:52,696 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/llm_cache/JNJ/sec_comprehensive.json.gz
+2026-02-22 06:18:52,696 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 Cache MISS (LLM): prompt_path=data/llm_cache/JNJ/prompt_sec_comprehensive.txt.gz exists=False, response_path=data/llm_cache/JNJ/llmresponse_sec_comprehensive.json.gz exists=False
+2026-02-22 06:18:52,709 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Original key: {'symbol': 'JNJ', 'analysis_type': 'technical_indicators', 'llm_type': 'technical'}, type: <class 'dict'>, cache_type: CacheType.LLM_RESPONSE
+2026-02-22 06:18:52,709 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Normalized key_dict: {'symbol': 'JNJ', 'analysis_type': 'technical_indicators', 'llm_type': 'technical'}
+2026-02-22 06:18:52,710 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 FILE CACHE GET: Generated file_path: data/llm_cache/JNJ/technical_analysis.json.gz
+2026-02-22 06:18:52,710 - investigator.infrastructure.cache.file_cache_handler - INFO - 🔍 Cache MISS (LLM): prompt_path=data/llm_cache/JNJ/prompt_technical_analysis.txt.gz exists=False, response_path=data/llm_cache/JNJ/llmresponse_technical_analysis.json.gz exists=False
+2026-02-22 06:18:52,791 - investigator.infrastructure.reporting.report_generator - INFO - 📄 Generated PDF report: reports/synthesis_report_JNJ.pdf
+2026-02-22 06:18:52,793 - investigator.application.orchestrator - INFO - Task JNJ_1771762725.250518 (JNJ): step_4 -> synthesis completed (completed) duration=0.26s
+2026-02-22 06:18:52,793 - investigator.application.orchestrator - INFO - Task JNJ_1771762725.250518 (JNJ): finished step_4
+2026-02-22 06:18:52,793 - investigator.application.orchestrator - INFO - Analysis JNJ_1771762725.250518 completed
+
+============================================================
+EXECUTIVE SUMMARY
+============================================================
+Symbol: JNJ
+Recommendation: STRONG SELL
+Confidence: HIGH
+Price: $243.45 -> Target: $134.35 (-44.8%)
+Investment Grade: F
+Data Quality: Good (75.5%)
+
+Key Strengths:
+  * Market conditions improve
+  * Company executes growth strategy
+  * Valuation multiple expansion
+
+Key Risks:
+  * Market downturn
+  * Competitive pressure increases
+  * Economic headwinds
+============================================================
+
+
+[Full Analysis]
+{
+  "schema_version": "analysis.compact.v1",
+  "symbol": "JNJ",
+  "mode": "comprehensive",
+  "timing": {
+    "started_at": "2026-02-22T06:18:45.251796",
+    "completed_at": "2026-02-22T06:18:52.793264",
+    "duration_seconds": 7.54147
+  },
+  "status": {
+    "overall": "completed",
+    "agents": {
+      "sec": "success",
+      "technical": "success",
+      "fundamental": "success",
+      "market_context": "unknown",
+      "symbol_update": "success",
+      "synthesis": "success"
+    }
+  },
+  "price": {
+    "current": 243.45,
+    "target": 134.35,
+    "expected_return_pct": -44.81
+  },
+  "recommendation": {
+    "action": "strong_sell",
+    "confidence_score": 72.16,
+    "investment_grade": "B"
+  },
+  "quality": {
+    "data_quality_score": 75.5,
+    "quality_grade": "Good",
+    "completeness_score": 65.0,
+    "confidence_level": "HIGH"
+  },
+  "valuation": {
+    "basis": "ttm",
+    "blended_fair_value": 134.35,
+    "overall_confidence": 0.11,
+    "model_agreement_score": 0.74,
+    "dispersion_ratio": 0.26,
+    "divergence_flag": 0.0,
+    "applicable_models": 3.0,
+    "models": {
+      "dcf_professional": {
+        "applicable": 1.0,
+        "fair_value_per_share": 136.0,
+        "weight": 0.2,
+        "confidence_score": 0.4,
+        "assumptions": {
+          "wacc": 9.67,
+          "terminal_growth_rate": 3.0,
+          "projection_years": 7.0
+        },
+        "diagnostics": {
+          "flags": [
+            "COST_INPUT_MISSING_INTEREST_EXPENSE",
+            "COST_INPUT_MISSING_INTEREST_COVERAGE"
+          ],
+          "data_quality_score": 70.0
+        }
+      },
+      "pe": {
+        "applicable": 1.0,
+        "fair_value_per_share": 208.79,
+        "weight": 0.15,
+        "confidence_score": 0.68,
+        "assumptions": {
+          "valuation_basis": "ttm",
+          "forward_horizon": "1y",
+          "target_pe": 20.62
+        },
+        "diagnostics": {
+          "data_quality_score": 0.76,
+          "fit_score": 0.65,
+          "calibration_score": 0.35
+        }
+      },
+      "ev_ebitda": {
+        "applicable": 0.0,
+        "reason": "missing_reference_multiple",
+        "weight": 0.0,
+        "assumptions": {
+          "valuation_basis": "ttm",
+          "forward_horizon": "1y"
+        },
+        "diagnostics": {
+          "flags": [
+            "MISSING_REFERENCE_MULTIPLE"
+          ],
+          "data_quality_score": 0.76,
+          "fit_score": 0.5,
+          "calibration_score": 0.35
+        }
+      },
+      "ps": {
+        "applicable": 0.0,
+        "reason": "missing_reference_multiple",
+        "weight": 0.0,
+        "assumptions": {
+          "valuation_basis": "ttm",
+          "forward_horizon": "1y"
+        },
+        "diagnostics": {
+          "flags": [
+            "MISSING_REFERENCE_MULTIPLE"
+          ],
+          "data_quality_score": 0.76,
+          "fit_score": 0.45,
+          "calibration_score": 0.35
+        }
+      },
+      "pb": {
+        "applicable": 0.0,
+        "reason": "missing_reference_multiple",
+        "weight": 0.0,
+        "assumptions": {
+          "valuation_basis": "ttm",
+          "forward_horizon": "1y"
+        },
+        "diagnostics": {
+          "flags": [
+            "MISSING_REFERENCE_MULTIPLE"
+          ],
+          "data_quality_score": 0.76,
+          "fit_score": 0.5,
+          "calibration_score": 0.35
+        }
+      },
+      "ggm": {
+        "applicable": 1.0,
+        "fair_value_per_share": 116.66,
+        "weight": 0.65,
+        "assumptions": {
+          "current_dps": 5.2,
+          "expected_dps_next_year": 5.35,
+          "growth_rate": 3.0,
+          "required_return": 7.59,
+          "dividend_yield": 2.14
+        }
+      },
+      "damodaran_dcf": {
+        "applicable": 1.0,
+        "fair_value_per_share": 52.22,
+        "weight": 0.0,
+        "confidence_score": 0.7,
+        "assumptions": {
+          "wacc": 0.11
+        },
+        "diagnostics": {
+          "data_quality_score": 0.8
+        }
+      }
+    }
+  },
+  "technical": {
+    "recommendation": "neutral",
+    "rating": 5.8,
+    "levels": {
+      "pivot_point": 243.22,
+      "support_1": 239.55,
+      "resistance_1": 246.15,
+      "support_2": 236.62,
+      "resistance_2": 249.82
+    }
+  },
+  "market": {
+    "sector": "healthcare",
+    "market_regime": "risk_off",
+    "sector_strength": "moderate"
+  },
+  "sec": {
+    "entity_name": "Johnson & Johnson",
+    "fact_count": 1830.0,
+    "data_cached": 1.0
+  },
+  "notes": [
+    "Tier targets ignored for missing fair values \u2192 EV_EBITDA (5%)",
+    "Confidence adjusted by -8% due to low model agreement",
+    "Overall confidence below 0.5; consider gathering additional data before acting.",
+    "Applied configured tier weights to models: dcf, ggm, pe"
+  ],
+  "trace": {
+    "compact_generated": true,
+    "synthesis_report_mode": "deterministic",
+    "recommendation_adjusted_for_valuation_consistency": false
+  }
+}
+2026-02-22 06:18:54,359 - EventBus - INFO - Event bus stopped
+2026-02-22 06:18:54,359 - investigator.application.orchestrator - INFO - Event bus stopped - all events flushed
+2026-02-22 06:18:54,359 - investigator.application.orchestrator - INFO - Ollama pool closed
+2026-02-22 06:18:54,359 - investigator.application.orchestrator - INFO - Orchestrator stopped
+2026-02-22 06:18:54,360 - MetricsCollector - INFO - Metrics collector stopped

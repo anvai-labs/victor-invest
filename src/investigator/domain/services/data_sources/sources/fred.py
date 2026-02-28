@@ -146,16 +146,14 @@ class FredMacroSource(MacroDataSource):
                     category_data = {}
                     for series_id, description in series_dict.items():
                         result = conn.execute(
-                            text(
-                                """
+                            text("""
                                 SELECT v.value, v.date
                                 FROM macro_indicator_values v
                                 JOIN macro_indicators i ON v.indicator_id = i.id
                                 WHERE i.series_id = :series_id
                                 ORDER BY v.date DESC
                                 LIMIT 1
-                            """
-                            ),
+                            """),
                             {"series_id": series_id},
                         )
                         row = result.fetchone()

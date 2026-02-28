@@ -118,8 +118,7 @@ class DatabaseMarketDataFetcher:
 
             # SQL query to fetch OHLCV data - get exact N trading days using LIMIT
             # Database contains only trading days (no weekends/holidays)
-            query = text(
-                """
+            query = text("""
                 SELECT
                     date,
                     open,
@@ -132,8 +131,7 @@ class DatabaseMarketDataFetcher:
                 WHERE ticker = :symbol
                 ORDER BY date DESC
                 LIMIT :limit_days
-            """
-            )
+            """)
 
             # Execute query and fetch data
             with self.engine.connect() as conn:
@@ -200,6 +198,117 @@ class DatabaseMarketDataFetcher:
             logger.error(f"Error fetching data for {symbol} from database: {e}")
             return pd.DataFrame()
 
+    def get_stock_data_weekly(self, symbol: str, weeks: int = 104) -> pd.DataFrame:
+        """
+        Fetch weekly OHLCV data by resampling daily data.
+
+        Args:
+            symbol: Stock ticker symbol
+            weeks: Number of weeks of historical data
+
+        Returns:
+            DataFrame with weekly OHLCV data indexed by date
+        """
+        # Fetch daily data (2x weeks to account for weekends)
+        daily_days = weeks * 7
+        daily_df = self.get_stock_data(symbol, days=daily_days)
+
+        if daily_df.empty:
+            return pd.DataFrame()
+
+        # Resample to weekly (Monday as week start)
+        weekly_df = (
+            daily_df.resample("W-MON", label="left")
+            .agg(
+                {
+                    "Open": "first",
+                    "High": "max",
+                    "Low": "min",
+                    "Close": "last",
+                    "Volume": "sum",
+                }
+            )
+            .dropna()
+        )
+
+        # Take last N weeks
+        weekly_df = weekly_df.tail(weeks)
+
+        logger.info(
+            "Successfully fetched %d weeks of data for %s (resampled from daily)",
+            len(weekly_df),
+            symbol,
+        )
+
+        return weekly_df
+
+    def get_stock_data_hourly(self, symbol: str, hours: int = 120) -> pd.DataFrame:
+        """
+        Fetch hourly OHLCV data from tickerbar table.
+
+        Args:
+            symbol: Stock ticker symbol
+            hours: Number of hours of historical data
+
+        Returns:
+            DataFrame with hourly OHLCV data indexed by datetime
+        """
+        try:
+            logger.info(f"Fetching {hours} hours of intraday data for {symbol} from database")
+
+            # Check if tickerbar table exists and has data
+            query = text("""
+                SELECT
+                    timestamp,
+                    open,
+                    high,
+                    low,
+                    close,
+                    volume
+                FROM tickerbar
+                WHERE ticker = :symbol
+                ORDER BY timestamp DESC
+                LIMIT :limit_hours
+            """)
+
+            with self.engine.connect() as conn:
+                df = pd.read_sql_query(
+                    query,
+                    conn,
+                    params={"symbol": symbol.upper(), "limit_hours": hours},
+                    index_col="timestamp",
+                    parse_dates=["timestamp"],
+                )
+
+            if df.empty:
+                logger.warning(f"No hourly data returned for {symbol} - tickerbar may be empty")
+                return pd.DataFrame()
+
+            # Reverse order
+            df = df.sort_index(ascending=True)
+
+            # Rename columns
+            df.columns = ["Open", "High", "Low", "Close", "Volume"]
+
+            # Convert numeric columns
+            numeric_cols = ["Open", "High", "Low", "Close"]
+            for col in numeric_cols:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+
+            df["Volume"] = pd.to_numeric(df["Volume"], errors="coerce").fillna(0).astype(np.int64)
+
+            logger.info(
+                "Successfully fetched %d hours of data for %s from tickerbar",
+                len(df),
+                symbol,
+            )
+
+            return df
+
+        except Exception as e:
+            logger.warning(f"Hourly data unavailable for {symbol}: {e}")
+            return pd.DataFrame()
+
     def _expected_history_rows(self, requested_days: int) -> int:
         """
         Determine how many rows we reasonably expect from the database for a given request.
@@ -242,8 +351,7 @@ class DatabaseMarketDataFetcher:
             company_info = self._get_symbol_metadata(symbol)
 
             # Get latest price data for basic calculations
-            query_price = text(
-                """
+            query_price = text("""
                 SELECT 
                     close as current_price,
                     volume as current_volume
@@ -251,8 +359,7 @@ class DatabaseMarketDataFetcher:
                 WHERE ticker = :symbol
                 ORDER BY date DESC
                 LIMIT 1
-            """
-            )
+            """)
 
             with self.engine.connect() as conn:
                 price_info = conn.execute(query_price, {"symbol": symbol.upper()}).fetchone()
@@ -266,8 +373,7 @@ class DatabaseMarketDataFetcher:
                 current_volume = int(price_info.current_volume) if price_info.current_volume else None
 
             # Calculate 52-week high/low
-            query_52w = text(
-                """
+            query_52w = text("""
                 SELECT 
                     MAX(high) as week_52_high,
                     MIN(low) as week_52_low,
@@ -275,8 +381,7 @@ class DatabaseMarketDataFetcher:
                 FROM tickerdata
                 WHERE ticker = :symbol
                     AND date >= CURRENT_DATE - INTERVAL '52 weeks'
-            """
-            )
+            """)
 
             with self.engine.connect() as conn:
                 result_52w = conn.execute(query_52w, {"symbol": symbol.upper()}).fetchone()
@@ -287,6 +392,10 @@ class DatabaseMarketDataFetcher:
                 company_info.get("outstandingshares") or company_info.get("shares_outstanding")
             )
             if shares_outstanding and current_price:
+                # CRITICAL: Price from tickerdata is split-adjusted by exchanges,
+                # but shares_outstanding from tickerdata are also split-adjusted.
+                # For current market cap, we can multiply directly.
+                # For historical market cap, use split-adjusted price with split-adjusted shares.
                 market_cap = shares_outstanding * current_price
 
             # Use 12-month beta as default, fallback to longer periods if not available
@@ -399,13 +508,11 @@ class DatabaseMarketDataFetcher:
     def get_available_symbols(self) -> list:
         """Get list of available symbols in the database"""
         try:
-            query = text(
-                """
+            query = text("""
                 SELECT DISTINCT ticker 
                 FROM tickerdata 
                 ORDER BY ticker
-            """
-            )
+            """)
 
             with self.engine.connect() as conn:
                 result = conn.execute(query)
@@ -478,8 +585,7 @@ class DatabaseMarketDataFetcher:
         models = model_preference.get(beta_source, ["market"])
 
         for model in models:
-            query = text(
-                """
+            query = text("""
                 SELECT model, beta_value, r_squared, as_of_date
                 FROM symbol_beta_models
                 WHERE symbol = :symbol
@@ -487,8 +593,7 @@ class DatabaseMarketDataFetcher:
                   AND model = :model
                 ORDER BY as_of_date DESC
                 LIMIT 1
-                """
-            )
+                """)
             try:
                 with self.engine.connect() as conn:
                     row = conn.execute(

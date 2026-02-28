@@ -2,6 +2,10 @@
 
 .DEFAULT_GOAL := help
 
+# Python >=3.11 required. Prefer python3.11 if available, else fall back to python3.
+PYTHON := $(shell command -v python3.11 2>/dev/null || echo python3)
+PIP := $(PYTHON) -m pip
+
 # Colors for output
 CYAN := \033[0;36m
 GREEN := \033[0;32m
@@ -14,10 +18,10 @@ help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(RESET) %s\n", $$1, $$2}'
 
 install: ## Install package in editable mode
-	pip install -e .
+	$(PIP) install -e .
 
 dev-install: ## Install package with development dependencies
-	pip install -e ".[dev,viz,jupyter]"
+	$(PIP) install -e ".[dev,viz,jupyter]"
 
 test: ## Run tests
 	pytest tests/ -v
@@ -109,13 +113,13 @@ pre-commit: format lint type-check test ## Run all pre-commit checks
 ci: format-check lint type-check test-cov ## Run CI pipeline checks
 
 build: clean ## Build distribution packages
-	python -m build
+	$(PYTHON) -m build
 
 publish-test: build ## Publish to Test PyPI
-	python -m twine upload --repository testpypi dist/*
+	$(PYTHON) -m twine upload --repository testpypi dist/*
 
 publish: build ## Publish to PyPI
-	python -m twine upload dist/*
+	$(PYTHON) -m twine upload dist/*
 
 verify-structure: ## Verify package structure is correct
 	@echo "$(CYAN)Verifying package structure...$(RESET)"

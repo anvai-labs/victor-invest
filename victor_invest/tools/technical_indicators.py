@@ -47,7 +47,7 @@ Example:
 
 import asyncio
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 import pandas as pd
 
@@ -137,6 +137,7 @@ Returns calculated indicators as structured data suitable for analysis.
         days: int = 365,
         recent_days: int = 30,
         period: int = 14,
+        granularity: str = "daily",
         **kwargs,
     ) -> ToolResult:
         """Execute technical indicator calculation.
@@ -152,9 +153,10 @@ Returns calculated indicators as structured data suitable for analysis.
                 - "get_support_resistance": Pivot, Fib, S/R levels
                 - "get_recent": Recent data with indicators
                 - "get_summary": Technical analysis summary
-            days: Historical data lookback period
-            recent_days: Days to return for get_recent action
+            days: Historical data lookback period (weeks for weekly granularity)
+            recent_days: Days/weeks to return for get_recent action
             period: Indicator calculation period
+            granularity: "daily" (default) or "weekly" for strategic analysis
             **kwargs: Additional parameters
 
         Returns:
@@ -168,13 +170,18 @@ Returns calculated indicators as structured data suitable for analysis.
                 return ToolResult.create_failure("Symbol is required")
 
             action = action.lower().strip()
+            granularity = granularity.lower().strip()
 
             # Fetch market data first
-            df = await self._fetch_market_data(symbol, days)
+            df = await self._fetch_market_data(symbol, days, granularity)
             if df is None or df.empty:
                 return ToolResult.create_failure(
-                    f"No market data available for {symbol}",
-                    metadata={"symbol": symbol, "days": days},
+                    f"No market data available for {symbol} ({granularity})",
+                    metadata={
+                        "symbol": symbol,
+                        "days": days,
+                        "granularity": granularity,
+                    },
                 )
 
             # Calculate all indicators on full dataset
@@ -210,14 +217,13 @@ Returns calculated indicators as structured data suitable for analysis.
                 metadata={"symbol": symbol, "action": action},
             )
 
-    async def _fetch_market_data(
-        self, symbol: str, days: int
-    ) -> Optional[pd.DataFrame]:
+    async def _fetch_market_data(self, symbol: str, days: int, granularity: str = "daily") -> Optional[pd.DataFrame]:
         """Fetch market data for technical analysis.
 
         Args:
             symbol: Stock ticker
-            days: Number of days
+            days: Number of days (or weeks for weekly granularity)
+            granularity: "daily" or "weekly"
 
         Returns:
             DataFrame with OHLCV data or None
@@ -226,17 +232,29 @@ Returns calculated indicators as structured data suitable for analysis.
             if self._market_data_fetcher is None:
                 return None
             loop = asyncio.get_event_loop()
-            df = await loop.run_in_executor(
-                None, self._market_data_fetcher.get_stock_data, symbol, days
-            )
+
+            # Choose fetch method based on granularity
+            if granularity == "weekly":
+                df = cast(
+                    Optional[pd.DataFrame],
+                    await loop.run_in_executor(
+                        None,
+                        self._market_data_fetcher.get_stock_data_weekly,
+                        symbol,
+                        days,
+                    ),
+                )
+            else:  # daily (default)
+                df = cast(
+                    Optional[pd.DataFrame],
+                    await loop.run_in_executor(None, self._market_data_fetcher.get_stock_data, symbol, days),
+                )
             return df
         except Exception as e:
             logger.error(f"Error fetching market data for {symbol}: {e}")
             return None
 
-    async def _calculate_indicators(
-        self, df: pd.DataFrame, symbol: str
-    ) -> pd.DataFrame:
+    async def _calculate_indicators(self, df: pd.DataFrame, symbol: str) -> pd.DataFrame:
         """Calculate all technical indicators.
 
         Args:
@@ -250,8 +268,9 @@ Returns calculated indicators as structured data suitable for analysis.
             if self._calculator is None:
                 return df
             loop = asyncio.get_event_loop()
-            enhanced_df = await loop.run_in_executor(
-                None, self._calculator.calculate_all_indicators, df, symbol
+            enhanced_df = cast(
+                pd.DataFrame,
+                await loop.run_in_executor(None, self._calculator.calculate_all_indicators, df, symbol),
             )
             return enhanced_df
         except Exception as e:
@@ -333,9 +352,7 @@ Returns calculated indicators as structured data suitable for analysis.
             logger.error(f"Error formatting all indicators: {e}")
             return ToolResult.create_failure(f"Failed to format indicators: {str(e)}")
 
-    def _format_momentum(
-        self, symbol: str, df: pd.DataFrame, period: int
-    ) -> ToolResult:
+    def _format_momentum(self, symbol: str, df: pd.DataFrame, period: int) -> ToolResult:
         """Format momentum indicators."""
         try:
             latest = df.iloc[-1].to_dict() if not df.empty else {}
@@ -402,13 +419,8 @@ Returns calculated indicators as structured data suitable for analysis.
 
             current_price = latest.get("Close")
 
-            sma_data = {
-                f"sma_{p}": latest.get(f"SMA_{p}") for p in [5, 10, 20, 50, 100, 200]
-            }
-            ema_data = {
-                f"ema_{p}": latest.get(f"EMA_{p}")
-                for p in [5, 10, 12, 20, 26, 50, 100, 200]
-            }
+            sma_data = {f"sma_{p}": latest.get(f"SMA_{p}") for p in [5, 10, 20, 50, 100, 200]}
+            ema_data = {f"ema_{p}": latest.get(f"EMA_{p}") for p in [5, 10, 12, 20, 26, 50, 100, 200]}
 
             # Calculate price vs MA signals
             signals = {}
@@ -431,9 +443,7 @@ Returns calculated indicators as structured data suitable for analysis.
             )
 
         except Exception as e:
-            return ToolResult.create_failure(
-                f"Failed to format moving averages: {str(e)}"
-            )
+            return ToolResult.create_failure(f"Failed to format moving averages: {str(e)}")
 
     def _format_volume_indicators(self, symbol: str, df: pd.DataFrame) -> ToolResult:
         """Format volume indicators."""
@@ -671,9 +681,7 @@ Returns calculated indicators as structured data suitable for analysis.
 
         return signals
 
-    def _interpret_ma_signals(
-        self, latest: Dict, current_price: Optional[float]
-    ) -> Dict[str, str]:
+    def _interpret_ma_signals(self, latest: Dict, current_price: Optional[float]) -> Dict[str, str]:
         """Interpret moving average signals."""
         signals: dict[str, str] = {}
 
@@ -700,12 +708,7 @@ Returns calculated indicators as structured data suitable for analysis.
             sma50_curr = df["SMA_50"].iloc[-1]
             sma200_curr = df["SMA_200"].iloc[-1]
 
-            if (
-                pd.isna(sma50_prev)
-                or pd.isna(sma200_prev)
-                or pd.isna(sma50_curr)
-                or pd.isna(sma200_curr)
-            ):
+            if pd.isna(sma50_prev) or pd.isna(sma200_prev) or pd.isna(sma50_curr) or pd.isna(sma200_curr):
                 return None
 
             # Golden cross: SMA50 was below SMA200, now above
@@ -724,12 +727,7 @@ Returns calculated indicators as structured data suitable for analysis.
             sma50_curr = df["SMA_50"].iloc[-1]
             sma200_curr = df["SMA_200"].iloc[-1]
 
-            if (
-                pd.isna(sma50_prev)
-                or pd.isna(sma200_prev)
-                or pd.isna(sma50_curr)
-                or pd.isna(sma200_curr)
-            ):
+            if pd.isna(sma50_prev) or pd.isna(sma200_prev) or pd.isna(sma50_curr) or pd.isna(sma200_curr):
                 return None
 
             # Death cross: SMA50 was above SMA200, now below

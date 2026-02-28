@@ -24,7 +24,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Database connection
-ENGINE = create_engine("postgresql://stockuser:${STOCK_DB_PASSWORD}@${STOCK_DB_HOST}:5432/stock")
+ENGINE = create_engine(
+    "postgresql://stockuser:${STOCK_DB_PASSWORD}@${STOCK_DB_HOST}:5432/stock"
+)
 
 # S&P 500 constituents (fetched 2025-12-28 from slickcharts.com)
 SP500_SYMBOLS = (
@@ -53,9 +55,7 @@ UHS,VTRS,EG,BALL,AVY,SOLV,LYB,ALLE,KIM,HII,NDSN,IEX,JKHY,MAS,HRL,WYNN,REG,AKAM,H
 MRNA,BF.B,CF,UDR,AIZ,CLX,IVZ,EPAM,SWK,CPT,HAS,BLDR,ALGN,GL,DOC,DAY,BXP,RVTY,FDS,SJM,PNW,
 NCLH,MGM,CRL,AES,BAX,NWSA,SWKS,AOS,TECH,TAP,HSIC,FRT,PAYC,POOL,APA,MOH,ARE,CPB,GNRC,CAG,DVA,
 MOS,MTCH,LW,NWS
-""".replace(
-        "\n", ""
-    )
+""".replace("\n", "")
     .replace(" ", "")
     .split(",")
 )
@@ -69,9 +69,7 @@ CRWD,VRTX,ARM,CEG,CMCSA,ADP,MELI,DASH,SBUX,SNPS,CDNS,MAR,ABNB,REGN,ORLY,CTAS,MNS
 MDLZ,CSX,ADSK,AEP,FTNT,TRI,PCAR,ROST,WDAY,PYPL,NXPI,IDXX,EA,ROP,DDOG,FAST,TTWO,AXON,MSTR,
 BKR,XEL,EXC,TEAM,FANG,CTSH,CCEP,PAYX,KDP,GEHC,CPRT,ZS,MCHP,ODFL,VRSK,KHC,CSGP,CHTR,DXCM,
 BIIB,LULU,ON,GFS,TTD,CDW
-""".replace(
-        "\n", ""
-    )
+""".replace("\n", "")
     .replace(" ", "")
     .split(",")
 )
@@ -81,9 +79,7 @@ DOW30_SYMBOLS = (
     """
 AAPL,AMGN,AMZN,AXP,BA,CAT,CRM,CSCO,CVX,DIS,GS,HD,HON,IBM,JNJ,JPM,KO,MCD,MMM,MRK,MSFT,NKE,
 NVDA,PG,SHW,TRV,UNH,V,VZ,WMT
-""".replace(
-        "\n", ""
-    )
+""".replace("\n", "")
     .replace(" ", "")
     .split(",")
 )
@@ -113,7 +109,9 @@ def update_index_flag(flag_name: str, symbols: Set[str], batch_size: int = 100) 
 
     # First, reset all to FALSE
     with ENGINE.begin() as conn:
-        result = conn.execute(text(f"UPDATE symbol SET {flag_name} = FALSE WHERE {flag_name} = TRUE"))
+        result = conn.execute(
+            text(f"UPDATE symbol SET {flag_name} = FALSE WHERE {flag_name} = TRUE")
+        )
         reset_count = result.rowcount
         logger.info(f"  Reset {reset_count} existing {flag_name} flags to FALSE")
 
@@ -155,7 +153,10 @@ def update_index_flag(flag_name: str, symbols: Set[str], batch_size: int = 100) 
             batch_not_found = [row[0] for row in check_result.fetchall()]
             not_found.extend(batch_not_found)
 
-        logger.info(f"  Batch {batch_num}/{total_batches}: " f"updated {batch_updated}/{len(batch)} symbols")
+        logger.info(
+            f"  Batch {batch_num}/{total_batches}: "
+            f"updated {batch_updated}/{len(batch)} symbols"
+        )
 
     return {
         "flag": flag_name,
@@ -204,7 +205,9 @@ def infer_russell1000() -> None:
 
     with ENGINE.begin() as conn:
         # Reset existing
-        conn.execute(text("UPDATE symbol SET russell1000 = FALSE WHERE russell1000 = TRUE"))
+        conn.execute(
+            text("UPDATE symbol SET russell1000 = FALSE WHERE russell1000 = TRUE")
+        )
 
         # Set top 1000 by market cap as Russell 1000
         result = conn.execute(
@@ -270,7 +273,9 @@ def main():
             sample = r["not_found"][:10]
             logger.info(f"  Missing samples:    {', '.join(sample)}")
             if len(r["not_found"]) > 10:
-                logger.info(f"                      ... and {len(r['not_found']) - 10} more")
+                logger.info(
+                    f"                      ... and {len(r['not_found']) - 10} more"
+                )
 
     # Verify
     verify_updates()

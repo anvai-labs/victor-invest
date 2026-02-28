@@ -232,16 +232,14 @@ def status(ctx, detailed):
 
             # Recent accuracy
             result = conn.execute(
-                text(
-                    """
+                text("""
                 SELECT
                     COUNT(*) as total,
                     SUM(CASE WHEN correct THEN 1 ELSE 0 END) as correct
                 FROM rl_decisions
                 WHERE actual_return IS NOT NULL
                 AND decision_timestamp > NOW() - INTERVAL '30 days'
-            """
-                )
+            """)
             )
             row = result.fetchone()
             recent_total = row[0] if row else 0
@@ -262,8 +260,7 @@ def status(ctx, detailed):
             click.echo("\nDetailed breakdown by action:")
             with engine.connect() as conn:
                 result = conn.execute(
-                    text(
-                        """
+                    text("""
                     SELECT
                         action,
                         COUNT(*) as count,
@@ -272,11 +269,10 @@ def status(ctx, detailed):
                     FROM rl_decisions
                     WHERE actual_return IS NOT NULL
                     GROUP BY action
-                """
-                    )
+                """)
                 )
                 for row in result:
-                    click.echo(f"  {row[0]}: {row[1]} decisions, " f"conf={row[2]:.2f}, ret={row[3]:.2%}")
+                    click.echo(f"  {row[0]}: {row[1]} decisions, conf={row[2]:.2f}, ret={row[3]:.2%}")
 
     except Exception as e:
         click.echo(f"Error: {e}", err=True)

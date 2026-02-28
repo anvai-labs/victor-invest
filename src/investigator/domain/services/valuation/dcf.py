@@ -75,6 +75,16 @@ class DCFValuation:
         self._shares_outstanding_cache: Optional[float] = None
         self._current_price_cache: Optional[float] = None
 
+        # DCF metadata for RL context quality assessment
+        self._wacc_raw: Optional[float] = None
+        self._wacc_final: Optional[float] = None
+        self._wacc_was_clipped: bool = False
+        self._terminal_growth: float = self.sector_params["terminal_growth_rate"]
+        self._projection_years: int = self.sector_params["projection_years"]
+        self._fcf_quarters_available: int = 0
+        self._cost_of_debt_source: str = ""
+        self._beta_r_squared: Optional[float] = None
+
         logger.info(
             f"{self.symbol} - Using sector-based DCF parameters: "
             f"Sector={self.sector}, Terminal Growth={self.sector_params['terminal_growth_rate'] * 100:.1f}%, "
@@ -99,7 +109,12 @@ class DCFValuation:
         cache_key = (num_quarters, compute_missing)
 
         if cache_key not in self._ttm_cache:
-            from utils.quarterly_calculator import get_rolling_ttm_periods
+            try:
+                from utils.quarterly_calculator import get_rolling_ttm_periods
+            except ImportError:
+                logger.warning("utils.quarterly_calculator not available - TTM calculation limited")
+                # Return empty list if utils not available
+                return []
 
             self._ttm_cache[cache_key] = get_rolling_ttm_periods(
                 self.quarterly_metrics,
@@ -1365,10 +1380,26 @@ class DCFValuation:
 
         latest = self.quarterly_metrics[-1]
 
-        # Get market cap (equity value)
+        # Get market cap (equity value) with split adjustment
+        # Shares from SEC are actual (not split-adjusted), price from tickerdata is split-adjusted
         current_price = self._get_current_price()
         shares = self._get_shares_outstanding()
-        market_cap = current_price * shares
+
+        # Use split-adjusted market cap calculation for SEC shares
+        from investigator.domain.services.valuation_shared.split_adjusted_market_cap import (
+            calculate_market_cap,
+        )
+
+        market_cap = calculate_market_cap(
+            symbol=self.symbol,
+            price=current_price,
+            shares=shares,
+            price_date=None,  # Current date
+            shares_source="sec",  # Shares from SEC are actual
+        )
+        if market_cap is None:
+            # Fallback to simple multiplication if split adjustment fails
+            market_cap = current_price * shares
 
         # Get total debt from balance_sheet structure
         # CRITICAL FIX: Balance sheet items (debt, equity) should prefer FY data over quarterly
@@ -1507,13 +1538,20 @@ class DCFValuation:
         # WACC calculation
         wacc_raw = (weight_equity * cost_of_equity) + (weight_debt * cost_of_debt * (1 - tax_rate))
 
-        # Ensure reasonable bounds (7% minimum, 20% maximum)
-        wacc = max(0.07, min(wacc_raw, 0.20))
+        # Ensure reasonable bounds (5% minimum, 20% maximum)
+        # Lowered floor from 7% to 5% based on RL training feedback - DCF underperforms with 7% floor
+        # Many high-growth tech stocks naturally have WACC < 7%, clipping was over-discounting
+        wacc = max(0.05, min(wacc_raw, 0.20))
+
+        # Track if WACC was clipped for RL context
+        self._wacc_was_clipped = wacc_raw < 0.05 or wacc_raw > 0.20
+        self._wacc_raw = wacc_raw
+        self._wacc_final = wacc
 
         # Log warning if WACC was clipped
-        if wacc_raw < 0.07:
+        if wacc_raw < 0.05:
             logger.warning(
-                "%s - ⚠️  WACC %.2f%% is below minimum 7%%, clipping to 7%%. "
+                "%s - ⚠️  WACC %.2f%% is below minimum 5%%, clipping to 5%%. "
                 "This indicates potentially bad beta data (beta=%.3f, R²=check database). "
                 "Recommend re-running beta calculator with fresh data.",
                 self.symbol,
@@ -1529,7 +1567,7 @@ class DCFValuation:
             )
 
         logger.info(
-            "%s - WACC: %.2f%% (raw: %.2f%%, bounded 7-20%%, tax rate %.0f%%)",
+            "%s - WACC: %.2f%% (raw: %.2f%%, bounded 5-20%%, tax rate %.0f%%)",
             self.symbol,
             wacc * 100,
             wacc_raw * 100,
@@ -2171,31 +2209,50 @@ class DCFValuation:
 
             # Debug: show what values exist at each location
             top_level_value = latest.get("shares_outstanding")
+            diluted_value = latest.get("weighted_average_diluted_shares_outstanding")
             ratios_dict = latest.get("ratios", {})
             ratios_value = ratios_dict.get("shares_outstanding") if ratios_dict else None
             balance_sheet_dict = latest.get("balance_sheet", {})
             balance_sheet_value = balance_sheet_dict.get("shares_outstanding") if balance_sheet_dict else None
+            # Check income_statement for diluted shares
+            income_stmt_dict = latest.get("income_statement", {})
+            income_stmt_diluted = None
+            if income_stmt_dict:
+                income_stmt_diluted = income_stmt_dict.get("shares_outstanding_diluted")
+                if income_stmt_diluted and isinstance(income_stmt_diluted, dict):
+                    income_stmt_diluted = income_stmt_diluted.get("value")
 
             logger.info(
-                f"🔍 {self.symbol} - shares_outstanding debug: top_level={top_level_value}, ratios={ratios_value}, balance_sheet={balance_sheet_value}"
+                f"🔍 {self.symbol} - shares_outstanding debug: diluted={diluted_value}, income_stmt_diluted={income_stmt_diluted}, top_level={top_level_value}, ratios={ratios_value}, balance_sheet={balance_sheet_value}"
             )
 
-            # Try multiple locations (priority order):
-            # 1. Top level (backward compatibility)
-            shares = top_level_value
-            location = "top-level"
+            # For dual-class companies (e.g., GOOGL), prioritize diluted shares:
+            # 1. income_statement.shares_outstanding_diluted (most reliable)
+            # 2. weighted_average_diluted_shares_outstanding (top-level)
+            # 3. shares_outstanding (basic - may be single class for dual-class companies)
+            shares = None
+            location = None
 
-            # 2. Nested in ratios subdictionary
-            if not shares or shares <= 0:
-                if ratios_value and ratios_value > 0:
-                    shares = ratios_value
-                    location = "ratios subdictionary"
-
-            # 3. Nested in balance_sheet subdictionary
-            if not shares or shares <= 0:
-                if balance_sheet_value and balance_sheet_value > 0:
-                    shares = balance_sheet_value
-                    location = "balance_sheet subdictionary"
+            # Priority 1: income_statement.shares_outstanding_diluted (calculated from XBRL)
+            if income_stmt_diluted and income_stmt_diluted > 0:
+                shares = income_stmt_diluted
+                location = "income_statement.shares_outstanding_diluted"
+            # Priority 2: weighted_average_diluted_shares_outstanding (top-level from SEC)
+            elif diluted_value and diluted_value > 0:
+                shares = diluted_value
+                location = "top-level diluted"
+            # Priority 3: Top level basic shares (backward compatibility, may be single class)
+            elif top_level_value and top_level_value > 0:
+                shares = top_level_value
+                location = "top-level basic"
+            # Priority 4: Nested in ratios subdictionary
+            elif ratios_value and ratios_value > 0:
+                shares = ratios_value
+                location = "ratios subdictionary"
+            # Priority 5: Nested in balance_sheet subdictionary
+            elif balance_sheet_value and balance_sheet_value > 0:
+                shares = balance_sheet_value
+                location = "balance_sheet subdictionary"
 
             if shares and shares > 0:
                 shares_value = float(shares)
@@ -2208,6 +2265,43 @@ class DCFValuation:
                         shares_value,
                     )
                     shares_value *= 1_000_000.0
+
+                # Sanity check: For known dual-class companies, verify against database
+                # if shares are suspiciously low (< 1B for large-cap tech companies)
+                known_dual_class = {
+                    "GOOGL",
+                    "GOOG",
+                    "META",
+                    "FOX",
+                    "FOXA",
+                    "LYV",
+                    "NWS",
+                    "NWSA",
+                }
+                if self.symbol in known_dual_class and shares_value < 1_000_000_000:
+                    logger.warning(
+                        "%s - Suspiciously low shares_outstanding (%.0f) for known dual-class company; checking database",
+                        self.symbol,
+                        shares_value,
+                    )
+                    try:
+                        from investigator.config import get_config
+                        from investigator.infrastructure.database.market_data import (
+                            get_market_data_fetcher,
+                        )
+
+                        config = get_config()
+                        fetcher = get_market_data_fetcher(config)
+                        market_data = fetcher.get_stock_info(self.symbol)
+                        shares_from_db = market_data.get("shares_outstanding")
+                        if shares_from_db and shares_from_db > shares_value * 2:  # DB has significantly more shares
+                            logger.info(
+                                f"{self.symbol} - Using database shares_outstanding ({shares_from_db:,.0f}) instead of cached ({shares_value:,.0f})"
+                            )
+                            shares_value = float(shares_from_db)
+                            location = "database (dual-class override)"
+                    except Exception as e:
+                        logger.warning(f"{self.symbol} - Could not fetch shares from database: {e}")
 
                 logger.info(
                     f"{self.symbol} - Using shares outstanding from quarterly metrics ({location}): {shares_value:,.0f}"
@@ -2249,7 +2343,10 @@ class DCFValuation:
 
     def _get_market_cap(self) -> float:
         """
-        Get market capitalization (current_price × shares_outstanding)
+        Get market capitalization with split adjustment (current_price × shares_outstanding).
+
+        Shares from SEC are actual (not split-adjusted), price from tickerdata is split-adjusted.
+        Uses split-adjusted calculation to ensure accuracy for companies with stock splits.
 
         Used for applying maturity-based constraints to growth assumptions:
         - Mega-cap (>$100B): Limited growth potential due to size
@@ -2262,7 +2359,22 @@ class DCFValuation:
         try:
             current_price = self._get_current_price()
             shares = self._get_shares_outstanding()
-            market_cap = current_price * shares
+
+            # Use split-adjusted market cap calculation for SEC shares
+            from investigator.domain.services.valuation_shared.split_adjusted_market_cap import (
+                calculate_market_cap,
+            )
+
+            market_cap = calculate_market_cap(
+                symbol=self.symbol,
+                price=current_price,
+                shares=shares,
+                price_date=None,  # Current date
+                shares_source="sec",  # Shares from SEC are actual
+            )
+            if market_cap is None:
+                # Fallback to simple multiplication if split adjustment fails
+                market_cap = current_price * shares
 
             logger.debug(
                 f"{self.symbol} - Market cap: ${market_cap / 1e9:.1f}B (price=${current_price:.2f}, shares={shares:,.0f})"
@@ -2386,7 +2498,27 @@ class DCFValuation:
             return None
 
         revenue_per_share = ttm_revenue / shares_outstanding
-        market_cap = current_price * shares_outstanding if current_price > 0 else None
+
+        # Calculate market cap with split adjustment
+        # shares_outstanding is from SEC (actual), current_price from tickerdata (split-adjusted)
+        if current_price > 0:
+            from investigator.domain.services.valuation_shared.split_adjusted_market_cap import (
+                calculate_market_cap,
+            )
+
+            market_cap = calculate_market_cap(
+                symbol=self.symbol,
+                price=current_price,
+                shares=shares_outstanding,
+                price_date=None,  # Current date
+                shares_source="sec",  # Shares from SEC are actual
+            )
+            if market_cap is None:
+                # Fallback to simple multiplication
+                market_cap = current_price * shares_outstanding
+        else:
+            market_cap = None
+
         current_ps_multiple = (market_cap / ttm_revenue) if market_cap and ttm_revenue > 0 else None
 
         rule_40_config = self.dcf_config.get("rule_of_40", {})

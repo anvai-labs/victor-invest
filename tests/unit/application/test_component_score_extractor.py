@@ -142,7 +142,7 @@ class TestComponentScoreExtractorGrowth:
         llm_responses = {
             "fundamental": {
                 "Q1": {
-                    "content": "Revenue growth accelerating. Expansion in market share. " "Strong momentum in segments."
+                    "content": "Revenue growth accelerating. Expansion in market share. Strong momentum in segments."
                 }
             }
         }
@@ -181,7 +181,7 @@ class TestComponentScoreExtractorValue:
         """Should adjust down for negative keywords."""
         llm_responses = {
             "fundamental": {
-                "Q1": {"content": "Stock appears overvalued and expensive. " "Trading at a premium. Overpriced."}
+                "Q1": {"content": "Stock appears overvalued and expensive. Trading at a premium. Overpriced."}
             }
         }
         result = extractor.extract_value_score(llm_responses, {})

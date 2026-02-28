@@ -254,7 +254,38 @@ def apply_valuation_ratios(
 
     if earnings > 0 and market_cap > 0:
         ratios["pe_ratio"] = float(market_cap) / float(earnings)
-        ratios["eps"] = float(earnings) / float(shares) if shares > 0 else 0
+        calculated_eps = float(earnings) / float(shares) if shares > 0 else 0
+        ratios["eps"] = calculated_eps
+
+        # DEBUG: Log detailed EPS calculation with unit validation
+        logger.info(
+            "[EPS_DEBUG] %s - EPS Calculation: earnings=$%s, shares=%s, eps=$%.2f, market_cap=$%s",
+            symbol,
+            format(earnings, ",.0f"),
+            format(shares, ",.0f"),
+            calculated_eps,
+            format(market_cap, ",.0f"),
+        )
+
+        # Warn if EPS looks suspicious (too high or too low)
+        if calculated_eps > 1000:
+            logger.warning(
+                "[EPS_SUSPICIOUS] %s - EPS seems too high ($%.2f) - possible unit mismatch. "
+                "earnings=$%s, shares=%s. Expected EPS < $100 for normal companies.",
+                symbol,
+                calculated_eps,
+                format(earnings, ",.0f"),
+                format(shares, ",.0f"),
+            )
+        elif calculated_eps < 0.01 and calculated_eps > 0:
+            logger.warning(
+                "[EPS_SUSPICIOUS] %s - EPS seems too low ($%.4f) - possible unit mismatch. earnings=$%s, shares=%s.",
+                symbol,
+                calculated_eps,
+                format(earnings, ",.0f"),
+                format(shares, ",.0f"),
+            )
+
         if ttm_net_income > 0:
             quarterly_ni = financials.get("net_income") or 0
             logger.info(
@@ -278,7 +309,38 @@ def apply_valuation_ratios(
     revenue = ttm_revenue if ttm_revenue > 0 else (financials.get("revenues") or 0)
     if revenue > 0 and market_cap > 0:
         ratios["price_to_sales"] = float(market_cap) / float(revenue)
-        ratios["revenue_per_share"] = float(revenue) / float(shares) if shares > 0 else 0
+        calculated_rps = float(revenue) / float(shares) if shares > 0 else 0
+        ratios["revenue_per_share"] = calculated_rps
+
+        # DEBUG: Log detailed revenue_per_share calculation with unit validation
+        logger.info(
+            "[RPS_DEBUG] %s - Revenue Per Share Calculation: revenue=$%s, shares=%s, rps=$%.2f, market_cap=$%s",
+            symbol,
+            format(revenue, ",.0f"),
+            format(shares, ",.0f"),
+            calculated_rps,
+            format(market_cap, ",.0f"),
+        )
+
+        # Warn if RPS looks suspicious (too high or too low)
+        if calculated_rps > 10000:
+            logger.warning(
+                "[RPS_SUSPICIOUS] %s - Revenue per share seems too high ($%.2f) - possible unit mismatch. "
+                "revenue=$%s, shares=%s. Expected RPS < $1000 for normal companies.",
+                symbol,
+                calculated_rps,
+                format(revenue, ",.0f"),
+                format(shares, ",.0f"),
+            )
+        elif calculated_rps < 0.01 and calculated_rps > 0:
+            logger.warning(
+                "[RPS_SUSPICIOUS] %s - Revenue per share seems too low ($%.4f) - possible unit mismatch. "
+                "revenue=$%s, shares=%s.",
+                symbol,
+                calculated_rps,
+                format(revenue, ",.0f"),
+                format(shares, ",.0f"),
+            )
 
     growth_rate = calculate_growth_rate(financials, "net_income")
     if ratios.get("pe_ratio") and growth_rate > 0:
@@ -358,12 +420,31 @@ def calculate_revenue_growth_yoy(
     quarterly_data: List[Any],
     logger: Any,
 ) -> Optional[float]:
-    """Calculate YoY revenue growth from quarterly-only entries (current quarter vs 4Q prior)."""
-    if not quarterly_data or len(quarterly_data) < 5:
+    """Calculate revenue growth using TTM (Trailing Twelve Months) comparison.
+
+    Primary method: TTM Revenue Growth
+        - Compares TTM revenue now vs TTM revenue 4 quarters ago
+        - Smooths seasonality and quarter-to-quarter noise
+        - Industry standard for growth-adjusted valuation multiples
+
+    Fallback method: Same-quarter YoY
+        - Compares current quarter to same quarter in prior year
+        - More current but can be volatile
+        - Used when insufficient quarters for TTM calculation
+
+    Args:
+        quarterly_data: List of quarterly entries (dicts or QuarterlyData objects)
+        logger: Logger instance
+
+    Returns:
+        Revenue growth rate as decimal (e.g., 0.368 for 36.8%) or None
+    """
+    if not quarterly_data or len(quarterly_data) < 2:
         return None
 
     quarter_order = {"Q4": 4, "Q3": 3, "Q2": 2, "Q1": 1}
     quarterly_only = []
+
     for entry in quarterly_data:
         if isinstance(entry, dict):
             period = entry.get("fiscal_period")
@@ -375,25 +456,70 @@ def calculate_revenue_growth_yoy(
         if period and isinstance(period, str) and period.startswith("Q") and period not in ["QFY", "FY"]:
             quarterly_only.append((entry, fiscal_year, period))
 
+    if not quarterly_only:
+        return None
+
     quarterly_sorted = sorted(
         quarterly_only,
         key=lambda x: (x[1], quarter_order.get(x[2], 0)),
         reverse=True,
     )
-    revenues: List[float] = []
-    for entry, _fy, _period in quarterly_sorted[:8]:
+
+    # Extract revenues with metadata
+    quarters_with_revenue = []
+    for entry, fy, period in quarterly_sorted[:12]:
         if isinstance(entry, dict):
-            rev = entry.get("financial_data", {}).get("revenues", 0) or entry.get("revenues", 0)
+            rev = (
+                entry.get("financial_data", {}).get("revenues", 0)
+                or entry.get("revenues", 0)
+                or entry.get("total_revenue", 0)
+            )
         else:
             financial_data = getattr(entry, "financial_data", {}) or {}
-            rev = financial_data.get("revenues", 0)
-        revenues.append(float(rev) if rev else 0)
+            rev = financial_data.get("revenues", 0) or financial_data.get("total_revenue", 0)
+        quarters_with_revenue.append({"revenue": float(rev) if rev else 0, "fy": fy, "period": period})
 
-    if len(revenues) >= 5 and revenues[4] > 0:
-        yoy_growth = (revenues[0] - revenues[4]) / revenues[4]
-        logger.info(
-            "Calculated revenue_growth_yoy from quarterly data: %.1f%%",
-            yoy_growth * 100,
-        )
-        return yoy_growth
+    # Method 1: TTM Revenue Growth (preferred)
+    # Need at least 8 quarters: 4 for current TTM, 4 for prior TTM
+    if len(quarters_with_revenue) >= 8:
+        current_ttm = sum(q["revenue"] for q in quarters_with_revenue[:4])
+        prior_ttm = sum(q["revenue"] for q in quarters_with_revenue[4:8])
+
+        if prior_ttm > 0:
+            ttm_growth = (current_ttm - prior_ttm) / prior_ttm
+            logger.info(
+                "Calculated TTM revenue growth: %.1f%% (TTM: $%.0fM vs $%.0fM)",
+                ttm_growth * 100,
+                current_ttm,
+                prior_ttm,
+            )
+            return ttm_growth
+
+    # Method 2: Same-quarter YoY (fallback)
+    # Find the most recent quarter and compare to same quarter from prior year
+    if len(quarters_with_revenue) >= 2:
+        current = quarters_with_revenue[0]
+        current_period = current["period"]
+        current_revenue = current["revenue"]
+
+        # Find same quarter from prior year
+        for q in quarters_with_revenue[1:]:
+            if q["period"] == current_period and q["fy"] < current["fy"]:
+                prior_revenue = q["revenue"]
+                if prior_revenue > 0:
+                    yoy_growth = (current_revenue - prior_revenue) / prior_revenue
+                    logger.info(
+                        "Calculated same-quarter YoY growth: %.1f%% (%s %s vs %s %s: $%.0fM vs $%.0fM)",
+                        yoy_growth * 100,
+                        current["fy"],
+                        current_period,
+                        q["fy"],
+                        q["period"],
+                        current_revenue,
+                        prior_revenue,
+                    )
+                    return yoy_growth
+                break
+
+    logger.warning("Could not calculate revenue growth: insufficient data")
     return None

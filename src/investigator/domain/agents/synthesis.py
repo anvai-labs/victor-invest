@@ -262,9 +262,15 @@ class SynthesisAgent(InvestmentAgent):
                 return case_payload
             if isinstance(case_payload, list):
                 assumptions = [str(item) for item in case_payload if item][:5]
-                return {"key_assumptions": assumptions, "probability": default_probability}
+                return {
+                    "key_assumptions": assumptions,
+                    "probability": default_probability,
+                }
             if isinstance(case_payload, str) and case_payload.strip():
-                return {"summary": case_payload.strip(), "probability": default_probability}
+                return {
+                    "summary": case_payload.strip(),
+                    "probability": default_probability,
+                }
             return {}
 
         normalized = dict(candidate)
@@ -654,12 +660,10 @@ class SynthesisAgent(InvestmentAgent):
                             analysis_data, to_camel_case=False
                         )
                         self.logger.debug(
-                            f"Normalized {analysis_type} analysis to snake_case " f"({len(analysis_data)} keys)"
+                            f"Normalized {analysis_type} analysis to snake_case ({len(analysis_data)} keys)"
                         )
                     except Exception as e:
-                        self.logger.warning(
-                            f"Failed to normalize {analysis_type} analysis: {e}. " f"Using original data."
-                        )
+                        self.logger.warning(f"Failed to normalize {analysis_type} analysis: {e}. Using original data.")
                         normalized_analyses[analysis_type] = analysis_data
                 else:
                     normalized_analyses[analysis_type] = analysis_data

@@ -164,15 +164,12 @@ and investment recommendations based on current market regime.
                 return await self._get_summary()
             else:
                 return ToolResult.create_failure(
-                    f"Unknown action: {action}. Valid actions: "
-                    "curve, spread, regime, recession, history, summary"
+                    f"Unknown action: {action}. Valid actions: curve, spread, regime, recession, history, summary"
                 )
 
         except Exception as e:
             logger.error(f"TreasuryDataTool execute error: {e}")
-            return ToolResult.create_failure(
-                f"Treasury data query failed: {str(e)}", metadata={"action": action}
-            )
+            return ToolResult.create_failure(f"Treasury data query failed: {str(e)}", metadata={"action": action})
 
     async def _get_yield_curve(self) -> ToolResult:
         """Get current yield curve."""
@@ -218,9 +215,7 @@ and investment recommendations based on current market regime.
                     "days_inverted": analysis.days_inverted if analysis else 0,
                 },
                 "curve_shape": curve.curve_shape,
-                "investment_signal": analysis.investment_signal.value
-                if analysis
-                else "unknown",
+                "investment_signal": analysis.investment_signal.value if analysis else "unknown",
             },
             metadata={
                 "historical_avg_spread_bps": 90,
@@ -265,9 +260,7 @@ and investment recommendations based on current market regime.
         history = await self._treasury_client.get_yield_history(days, maturity)
 
         if not history:
-            return ToolResult.create_failure(
-                f"Could not retrieve historical data for {maturity}"
-            )
+            return ToolResult.create_failure(f"Could not retrieve historical data for {maturity}")
 
         # Calculate summary statistics
         yields = [h.get("yield") for h in history if h.get("yield") is not None]

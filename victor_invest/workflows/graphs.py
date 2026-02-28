@@ -212,22 +212,16 @@ async def fetch_sec_data(state_input) -> dict:
         sec_tool = await _get_sec_tool()
 
         # Get company facts (structured financial data from SEC CompanyFacts API)
-        facts_result = await sec_tool.execute(
-            symbol=state.symbol, action="get_company_facts"
-        )
+        facts_result = await sec_tool.execute(symbol=state.symbol, action="get_company_facts")
 
         # Extract financial metrics
-        metrics_result = await sec_tool.execute(
-            symbol=state.symbol, action="extract_metrics"
-        )
+        metrics_result = await sec_tool.execute(symbol=state.symbol, action="extract_metrics")
 
         if facts_result.success or metrics_result.success:
             state.sec_data = {
                 "symbol": state.symbol,
                 "company_facts": facts_result.output if facts_result.success else None,
-                "financial_metrics": metrics_result.output
-                if metrics_result.success
-                else None,
+                "financial_metrics": metrics_result.output if metrics_result.success else None,
                 "agent_spec": SEC_AGENT_SPEC.name,
                 "status": "success",
             }
@@ -236,9 +230,7 @@ async def fetch_sec_data(state_input) -> dict:
                 "symbol": state.symbol,
                 "status": "partial_failure",
                 "facts_error": facts_result.error if not facts_result.success else None,
-                "metrics_error": metrics_result.error
-                if not metrics_result.success
-                else None,
+                "metrics_error": metrics_result.error if not metrics_result.success else None,
             }
 
         state.mark_step_completed("fetch_sec_data")
@@ -268,14 +260,10 @@ async def fetch_market_data(state_input) -> dict:
         market_tool = await _get_market_tool()
 
         # Get current quote
-        quote_result = await market_tool.execute(
-            symbol=state.symbol, action="get_quote"
-        )
+        quote_result = await market_tool.execute(symbol=state.symbol, action="get_quote")
 
         # Get historical data (1 year for technical analysis)
-        history_result = await market_tool.execute(
-            symbol=state.symbol, action="get_history", days=365
-        )
+        history_result = await market_tool.execute(symbol=state.symbol, action="get_history", days=365)
 
         # Get company info
         info_result = await market_tool.execute(symbol=state.symbol, action="get_info")
@@ -293,9 +281,7 @@ async def fetch_market_data(state_input) -> dict:
                 "symbol": state.symbol,
                 "status": "partial_failure",
                 "quote_error": quote_result.error if not quote_result.success else None,
-                "history_error": history_result.error
-                if not history_result.success
-                else None,
+                "history_error": history_result.error if not history_result.success else None,
             }
 
         state.mark_step_completed("fetch_market_data")
@@ -329,9 +315,7 @@ async def run_fundamental_analysis(state_input) -> dict:
         market_tool = await _get_market_tool()
 
         # Get current price for valuation models
-        quote_result = await market_tool.execute(
-            symbol=state.symbol, action="get_quote"
-        )
+        quote_result = await market_tool.execute(symbol=state.symbol, action="get_quote")
         current_price = None
         if quote_result.success and quote_result.output:
             current_price = quote_result.output.get("current_price")
@@ -353,22 +337,16 @@ async def run_fundamental_analysis(state_input) -> dict:
         )
 
         # Get archetype detection (identifies company type for model weighting)
-        archetype_result = await valuation_tool.execute(
-            symbol=state.symbol, model="detect_archetype"
-        )
+        archetype_result = await valuation_tool.execute(symbol=state.symbol, model="detect_archetype")
 
         if valuation_result.success:
             state.fundamental_analysis = {
                 "symbol": state.symbol,
                 "valuation_models": valuation_result.output,
-                "archetype": archetype_result.output
-                if archetype_result.success
-                else None,
+                "archetype": archetype_result.output if archetype_result.success else None,
                 "current_price": current_price,
                 "agent_spec": FUNDAMENTAL_AGENT_SPEC.name,
-                "model_weights": SYNTHESIS_AGENT_SPEC.metadata.get(
-                    "weight_distribution", {}
-                ),
+                "model_weights": SYNTHESIS_AGENT_SPEC.metadata.get("weight_distribution", {}),
                 "status": "success",
             }
         else:
@@ -413,28 +391,20 @@ async def run_technical_analysis(state_input) -> dict:
         technical_tool = await _get_technical_tool()
 
         # Run comprehensive technical analysis
-        analysis_result = await technical_tool.execute(
-            symbol=state.symbol, action="calculate_all"
-        )
+        analysis_result = await technical_tool.execute(symbol=state.symbol, action="calculate_all")
 
         # Get technical summary with signals
-        trend_result = await technical_tool.execute(
-            symbol=state.symbol, action="get_summary"
-        )
+        trend_result = await technical_tool.execute(symbol=state.symbol, action="get_summary")
 
         # Get support/resistance levels
-        levels_result = await technical_tool.execute(
-            symbol=state.symbol, action="get_support_resistance"
-        )
+        levels_result = await technical_tool.execute(symbol=state.symbol, action="get_support_resistance")
 
         if analysis_result.success:
             state.technical_analysis = {
                 "symbol": state.symbol,
                 "indicators": analysis_result.output,
                 "trend": trend_result.output if trend_result.success else None,
-                "support_resistance": levels_result.output
-                if levels_result.success
-                else None,
+                "support_resistance": levels_result.output if levels_result.success else None,
                 "agent_spec": TECHNICAL_AGENT_SPEC.name,
                 "status": "success",
             }
@@ -487,16 +457,12 @@ async def run_market_context_analysis(state_input) -> dict:
         price_changes = {}
 
         for period in periods:
-            result = await market_tool.execute(
-                symbol=state.symbol, action="get_price_change", period=period
-            )
+            result = await market_tool.execute(symbol=state.symbol, action="get_price_change", period=period)
             if result.success:
                 price_changes[period] = result.output
 
         # Calculate relative performance vs market (SPY)
-        market_result = await market_tool.execute(
-            symbol="SPY", action="get_price_change", period="1y"
-        )
+        market_result = await market_tool.execute(symbol="SPY", action="get_price_change", period="1y")
 
         relative_performance = None
         if market_result.success and "1y" in price_changes:
@@ -536,6 +502,8 @@ async def _run_llm_synthesis(
     market_context: dict,
     composite_score: float,
     rule_based_recommendation: str,
+    provider: Optional[str] = None,
+    model: Optional[str] = None,
 ) -> Optional[dict]:
     """Use LLM to generate intelligent investment synthesis.
 
@@ -546,6 +514,8 @@ async def _run_llm_synthesis(
         market_context: Market context data
         composite_score: Rule-based composite score
         rule_based_recommendation: Rule-based recommendation
+        provider: LLM provider (ollama, anthropic, openai). If None, uses config default
+        model: Model identifier. If None, uses provider default
 
     Returns:
         LLM synthesis dict with executive_summary, catalysts, risks, etc.
@@ -554,43 +524,59 @@ async def _run_llm_synthesis(
     import json
 
     try:
-        from investigator.config import get_config
-        from investigator.infrastructure.llm import OllamaClient
+        # Use Victor framework's provider API if provider specified, otherwise use legacy
+        if provider and provider != "ollama":
+            # Use Victor's provider registry for non-Ollama providers
+            from victor.providers.registry import ProviderRegistry
 
-        config = get_config()
-        client = OllamaClient(config)
+            from investigator.config import get_config
+            from victor_invest.framework_bootstrap import (
+                PROVIDER_DEFAULT_MODELS,
+                resolve_model_from_env,
+            )
 
-        # Extract key technical data
-        trend = technical.get("trend", {})
-        current_price = trend.get("current_price", "N/A")
-        overall_signal = trend.get("overall_signal", "neutral")
-        signal_pcts = trend.get("signal_percentages", {})
+            config = get_config()
 
-        sr = technical.get("support_resistance", {})
-        week_52 = sr.get("52_week", {})
-        support = sr.get("support_levels", {}).get("support_1", "N/A")
-        resistance = sr.get("resistance_levels", {}).get("resistance_1", "N/A")
+            # Resolve model if not specified
+            resolved_model = model or resolve_model_from_env(provider, None)
+            if not resolved_model:
+                resolved_model = PROVIDER_DEFAULT_MODELS.get(provider, "gpt-oss:20b")
 
-        # Extract market context
-        sector = market_context.get("sector", "Unknown")
-        rel_perf = market_context.get("relative_performance_vs_spy", 0)
-        beta = market_context.get("beta", 1.0)
+            # Get provider class and create instance
+            provider_class = ProviderRegistry.get(provider)
+            provider_instance = provider_class(
+                model=resolved_model,
+                temperature=0.3,
+                max_tokens=4096,
+            )
 
-        # Format fundamental data
-        fund_summary = "Fundamental data not available."
-        if fundamental and fundamental.get("status") == "success":
-            valuation = fundamental.get("valuation_models", {})
-            if valuation.get("composite_fair_value"):
-                fund_summary = (
-                    f"Composite Fair Value: ${valuation['composite_fair_value']:.2f}"
-                )
-            if valuation.get("composite_upside_percent"):
-                fund_summary += (
-                    f", Upside: {valuation['composite_upside_percent']:.1f}%"
-                )
+            # Extract key technical data (same as before)
+            trend = technical.get("trend", {})
+            current_price = trend.get("current_price", "N/A")
+            overall_signal = trend.get("overall_signal", "neutral")
+            signal_pcts = trend.get("signal_percentages", {})
 
-        # Build prompt
-        prompt = f"""You are an expert investment analyst. Synthesize the following analysis data for {symbol} into a coherent investment recommendation.
+            sr = technical.get("support_resistance", {})
+            week_52 = sr.get("52_week", {})
+            support = sr.get("support_levels", {}).get("support_1", "N/A")
+            resistance = sr.get("resistance_levels", {}).get("resistance_1", "N/A")
+
+            # Extract market context
+            sector = market_context.get("sector", "Unknown")
+            rel_perf = market_context.get("relative_performance_vs_spy", 0)
+            beta = market_context.get("beta", 1.0)
+
+            # Format fundamental data
+            fund_summary = "Fundamental data not available."
+            if fundamental and fundamental.get("status") == "success":
+                valuation = fundamental.get("valuation_models", {})
+                if valuation.get("composite_fair_value"):
+                    fund_summary = f"Composite Fair Value: ${valuation['composite_fair_value']:.2f}"
+                if valuation.get("composite_upside_percent"):
+                    fund_summary += f", Upside: {valuation['composite_upside_percent']:.1f}%"
+
+            # Build prompt (same as before)
+            prompt = f"""You are an expert investment analyst. Synthesize the following analysis data for {symbol} into a coherent investment recommendation.
 
 ## Technical Analysis
 - Current Price: ${current_price}
@@ -625,23 +611,107 @@ Based on this analysis, provide a JSON response with:
 
 Respond ONLY with the JSON object, no other text."""
 
-        model = config.ollama.models.get("synthesis", "gpt-oss:20b")
+            # Use Victor provider's generate method
+            response = await provider_instance.generate(
+                prompt=prompt,
+            )
 
-        response = await client.generate(
-            prompt=prompt,
-            model=model,
-            options={"temperature": 0.3, "num_predict": 1024},
-        )
+            response_text = response.content if hasattr(response, "content") else str(response)
 
-        response_text = response.get("response", "")
+            # Parse JSON response
+            start = response_text.find("{")
+            end = response_text.rfind("}") + 1
+            if start >= 0 and end > start:
+                json_str = response_text[start:end]
+                result: dict[Any, Any] | None = json.loads(json_str)
+                return result
 
-        # Parse JSON response
-        start = response_text.find("{")
-        end = response_text.rfind("}") + 1
-        if start >= 0 and end > start:
-            json_str = response_text[start:end]
-            result: dict[Any, Any] | None = json.loads(json_str)
-            return result
+        else:
+            # Legacy path for Ollama or when provider not specified
+            from investigator.config import get_config
+            from investigator.infrastructure.llm import OllamaClient
+
+            config = get_config()
+            client = OllamaClient(config)
+
+            # Extract key technical data
+            trend = technical.get("trend", {})
+            current_price = trend.get("current_price", "N/A")
+            overall_signal = trend.get("overall_signal", "neutral")
+            signal_pcts = trend.get("signal_percentages", {})
+
+            sr = technical.get("support_resistance", {})
+            week_52 = sr.get("52_week", {})
+            support = sr.get("support_levels", {}).get("support_1", "N/A")
+            resistance = sr.get("resistance_levels", {}).get("resistance_1", "N/A")
+
+            # Extract market context
+            sector = market_context.get("sector", "Unknown")
+            rel_perf = market_context.get("relative_performance_vs_spy", 0)
+            beta = market_context.get("beta", 1.0)
+
+            # Format fundamental data
+            fund_summary = "Fundamental data not available."
+            if fundamental and fundamental.get("status") == "success":
+                valuation = fundamental.get("valuation_models", {})
+                if valuation.get("composite_fair_value"):
+                    fund_summary = f"Composite Fair Value: ${valuation['composite_fair_value']:.2f}"
+                if valuation.get("composite_upside_percent"):
+                    fund_summary += f", Upside: {valuation['composite_upside_percent']:.1f}%"
+
+            # Build prompt
+            prompt = f"""You are an expert investment analyst. Synthesize the following analysis data for {symbol} into a coherent investment recommendation.
+
+## Technical Analysis
+- Current Price: ${current_price}
+- Overall Signal: {overall_signal}
+- Bullish Signals: {signal_pcts.get("bullish_pct", 0):.0f}%
+- Bearish Signals: {signal_pcts.get("bearish_pct", 0):.0f}%
+- Support Level: ${support}
+- Resistance Level: ${resistance}
+- 52-Week Range: ${week_52.get("low", "N/A")} - ${week_52.get("high", "N/A")}
+
+## Market Context
+- Sector: {sector}
+- Relative Performance vs SPY: {rel_perf:.1f}%
+- Beta: {beta:.2f}
+
+## Fundamental Analysis
+{fund_summary}
+
+## Rule-Based Analysis
+- Composite Score: {composite_score:.1f}/100
+- Initial Recommendation: {rule_based_recommendation}
+
+Based on this analysis, provide a JSON response with:
+{{
+    "executive_summary": "2-3 sentence investment thesis explaining the recommendation",
+    "recommendation": "BUY/HOLD/SELL",
+    "confidence": "HIGH/MEDIUM/LOW",
+    "key_catalysts": ["catalyst 1", "catalyst 2", "catalyst 3"],
+    "key_risks": ["risk 1", "risk 2", "risk 3"],
+    "reasoning": "Brief explanation of the recommendation"
+}}
+
+Respond ONLY with the JSON object, no other text."""
+
+            llm_model = model or config.ollama.models.get("synthesis", "gpt-oss:20b")
+
+            response = await client.generate(
+                prompt=prompt,
+                model=llm_model,
+                options={"temperature": 0.3, "num_predict": 1024},
+            )
+
+            response_text = response.get("response", "")
+
+            # Parse JSON response
+            start = response_text.find("{")
+            end = response_text.rfind("}") + 1
+            if start >= 0 and end > start:
+                json_str = response_text[start:end]
+                result: dict[Any, Any] | None = json.loads(json_str)
+                return result
 
         return None
 
@@ -697,10 +767,7 @@ async def run_synthesis(state_input) -> dict:
         )
 
         # Process fundamental analysis
-        if (
-            state.fundamental_analysis
-            and state.fundamental_analysis.get("status") == "success"
-        ):
+        if state.fundamental_analysis and state.fundamental_analysis.get("status") == "success":
             available_analyses.append("fundamental")
             valuation_data = state.fundamental_analysis.get("valuation_models", {})
             # Extract composite score if available, otherwise estimate from upside
@@ -709,15 +776,10 @@ async def run_synthesis(state_input) -> dict:
                 if composite_upside is not None:
                     # Convert upside % to score (0-100 scale)
                     # +30% upside = 80, 0% = 50, -30% = 20
-                    scores["fundamental"] = min(
-                        100, max(0, 50 + (composite_upside * 1.0))
-                    )
+                    scores["fundamental"] = min(100, max(0, 50 + (composite_upside * 1.0)))
 
         # Process technical analysis
-        if (
-            state.technical_analysis
-            and state.technical_analysis.get("status") == "success"
-        ):
+        if state.technical_analysis and state.technical_analysis.get("status") == "success":
             available_analyses.append("technical")
             state.technical_analysis.get("indicators", {})
             trend = state.technical_analysis.get("trend", {})
@@ -776,6 +838,8 @@ async def run_synthesis(state_input) -> dict:
                 state.market_context or {},
                 composite_score,
                 recommendation_action,
+                state.llm_provider,  # Pass provider from state
+                state.llm_model,  # Pass model from state
             )
         except Exception as e:
             logger.warning(f"LLM synthesis failed, using rule-based: {e}")
@@ -791,12 +855,8 @@ async def run_synthesis(state_input) -> dict:
             "status": "success",
             # LLM-generated content (if available)
             "synthesis_method": "llm" if llm_synthesis else "rule_based",
-            "executive_summary": llm_synthesis.get("executive_summary", "")
-            if llm_synthesis
-            else "",
-            "key_catalysts": llm_synthesis.get("key_catalysts", [])
-            if llm_synthesis
-            else [],
+            "executive_summary": llm_synthesis.get("executive_summary", "") if llm_synthesis else "",
+            "key_catalysts": llm_synthesis.get("key_catalysts", []) if llm_synthesis else [],
             "key_risks": llm_synthesis.get("key_risks", []) if llm_synthesis else [],
             "reasoning": llm_synthesis.get("reasoning", "") if llm_synthesis else "",
         }
@@ -804,23 +864,15 @@ async def run_synthesis(state_input) -> dict:
         state.recommendation = {
             "symbol": state.symbol,
             "action": (
-                llm_synthesis.get("recommendation", recommendation_action)
-                if llm_synthesis
-                else recommendation_action
+                llm_synthesis.get("recommendation", recommendation_action) if llm_synthesis else recommendation_action
             ),
             "composite_score": round(composite_score, 2),
-            "confidence": llm_synthesis.get("confidence", confidence)
-            if llm_synthesis
-            else confidence,
+            "confidence": llm_synthesis.get("confidence", confidence) if llm_synthesis else confidence,
             "analyses_included": available_analyses,
             "thresholds_used": thresholds,
             "errors_during_analysis": state.errors,
-            "executive_summary": llm_synthesis.get("executive_summary", "")
-            if llm_synthesis
-            else "",
-            "key_catalysts": llm_synthesis.get("key_catalysts", [])
-            if llm_synthesis
-            else [],
+            "executive_summary": llm_synthesis.get("executive_summary", "") if llm_synthesis else "",
+            "key_catalysts": llm_synthesis.get("key_catalysts", []) if llm_synthesis else [],
             "key_risks": llm_synthesis.get("key_risks", []) if llm_synthesis else [],
         }
 
@@ -892,9 +944,7 @@ async def run_analyses_parallel_standard(state_input) -> dict:
     fundamental_task = asyncio.create_task(run_fundamental_analysis(state.to_dict()))
     technical_task = asyncio.create_task(run_technical_analysis(state.to_dict()))
 
-    results = await asyncio.gather(
-        fundamental_task, technical_task, return_exceptions=True
-    )
+    results = await asyncio.gather(fundamental_task, technical_task, return_exceptions=True)
 
     # Merge results back into state
     for result in results:
@@ -927,9 +977,7 @@ async def run_analyses_parallel_comprehensive(state_input) -> dict:
     technical_task = asyncio.create_task(run_technical_analysis(state.to_dict()))
     context_task = asyncio.create_task(run_market_context_analysis(state.to_dict()))
 
-    results = await asyncio.gather(
-        fundamental_task, technical_task, context_task, return_exceptions=True
-    )
+    results = await asyncio.gather(fundamental_task, technical_task, context_task, return_exceptions=True)
 
     # Merge results back into state
     for result in results:

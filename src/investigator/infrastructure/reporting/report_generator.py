@@ -3398,7 +3398,9 @@ class PDFReportGenerator:
                     (
                         "Favorable"
                         if trend_direction == "BULLISH"
-                        else "Concerning" if trend_direction == "BEARISH" else "Neutral"
+                        else "Concerning"
+                        if trend_direction == "BEARISH"
+                        else "Neutral"
                     ),
                 ]
             )

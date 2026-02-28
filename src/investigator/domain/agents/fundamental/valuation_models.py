@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import math
 from typing import Any, Callable, Dict, Optional, Tuple
 
@@ -46,9 +47,7 @@ def _normalize_basis_inputs(
     if basis == "ttm":
         logger.info("%s - Relative valuation input basis: TTM", symbol)
     else:
-        logger.info(
-            "%s - Relative valuation input basis: FORWARD (%s)", symbol, horizon
-        )
+        logger.info("%s - Relative valuation input basis: FORWARD (%s)", symbol, horizon)
 
     return basis, horizon
 
@@ -73,7 +72,7 @@ def _annual_growth_factor(
     growth = clamp(growth, -0.75, 2.5)
     quarters = _FORWARD_HORIZON_TO_QUARTERS.get(forward_horizon, 4)
     exponent = quarters / 4.0
-    return max((1.0 + growth) ** exponent, 0.1)
+    return float(max((1.0 + growth) ** exponent, 0.1))
 
 
 def _normalize_growth_value(value: Optional[float]) -> Optional[float]:
@@ -95,9 +94,20 @@ def _normalize_share_count(value: Any) -> Optional[float]:
         return None
     if shares <= 0:
         return None
+
+    original_shares = shares
     # Guard against SEC payloads that encode shares in millions.
     if shares < 100_000:
         shares *= 1_000_000.0
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.info(
+            "[SHARES_NORMALIZE] Shares value < 100,000 (%s) - multiplying by 1M: %s -> %s",
+            format(original_shares, ",.0f"),
+            format(original_shares, ",.0f"),
+            format(shares, ",.0f"),
+        )
     return shares
 
 
@@ -105,9 +115,11 @@ def _extract_midpoint(value: Any) -> Tuple[Optional[float], Optional[str]]:
     if not isinstance(value, dict):
         return None, None
     mid = value.get("mid")
-    if mid is None and value.get("low") is not None and value.get("high") is not None:
+    low_val = value.get("low")
+    high_val = value.get("high")
+    if mid is None and low_val is not None and high_val is not None:
         try:
-            mid = (float(value.get("low")) + float(value.get("high"))) / 2.0
+            mid = (float(low_val) + float(high_val)) / 2.0
         except (TypeError, ValueError):
             mid = None
     try:
@@ -125,9 +137,7 @@ def _annualize_by_horizon(value: float, horizon: str) -> float:
     return value * (4.0 / max(quarters, 1))
 
 
-def _is_plausible_eps_override(
-    *, annualized_eps: Optional[float], base_eps: Optional[float]
-) -> bool:
+def _is_plausible_eps_override(*, annualized_eps: Optional[float], base_eps: Optional[float]) -> bool:
     if annualized_eps is None:
         return False
     try:
@@ -170,22 +180,16 @@ def _resolve_guidance_overrides(
         "guidance_confidence_score": guidance_context.get("confidence_score"),
     }
 
-    revenue_growth = _normalize_growth_value(
-        guidance_context.get("revenue_growth_guidance")
-    )
-    earnings_growth = _normalize_growth_value(
-        guidance_context.get("earnings_growth_guidance")
-    )
+    revenue_growth = _normalize_growth_value(guidance_context.get("revenue_growth_guidance"))
+    earnings_growth = _normalize_growth_value(guidance_context.get("earnings_growth_guidance"))
     annualized_eps_override: Optional[float] = None
 
-    revenue_mid, revenue_horizon = _extract_midpoint(
-        guidance_context.get("revenue_guidance")
-    )
+    revenue_mid, revenue_horizon = _extract_midpoint(guidance_context.get("revenue_guidance"))
     if revenue_mid is not None:
         metadata["guidance_revenue_mid"] = revenue_mid
         metadata["guidance_revenue_horizon"] = revenue_horizon
         if base_revenue and base_revenue > 0:
-            annualized_revenue = _annualize_by_horizon(revenue_mid, revenue_horizon)
+            annualized_revenue = _annualize_by_horizon(revenue_mid, revenue_horizon or "1y")
             implied_growth = (annualized_revenue / float(base_revenue)) - 1.0
             implied_growth = clamp(implied_growth, -0.75, 2.5)
             metadata["guidance_revenue_growth_implied"] = implied_growth
@@ -194,10 +198,8 @@ def _resolve_guidance_overrides(
 
     eps_mid, eps_horizon = _extract_midpoint(guidance_context.get("eps_guidance"))
     if eps_mid is not None:
-        annualized_eps_candidate = _annualize_by_horizon(eps_mid, eps_horizon)
-        if _is_plausible_eps_override(
-            annualized_eps=annualized_eps_candidate, base_eps=base_eps
-        ):
+        annualized_eps_candidate = _annualize_by_horizon(eps_mid, eps_horizon or "1y")
+        if _is_plausible_eps_override(annualized_eps=annualized_eps_candidate, base_eps=base_eps):
             metadata["guidance_eps_mid"] = eps_mid
             metadata["guidance_eps_horizon"] = eps_horizon
             annualized_eps_override = annualized_eps_candidate
@@ -214,9 +216,7 @@ def _resolve_guidance_overrides(
             metadata["guidance_eps_annualized_rejected"] = annualized_eps_candidate
             if base_eps and base_eps > 0:
                 ratio = annualized_eps_candidate / float(base_eps)
-                metadata["guidance_eps_rejected_reason"] = (
-                    f"implausible_ratio_{ratio:.2f}x"
-                )
+                metadata["guidance_eps_rejected_reason"] = f"implausible_ratio_{ratio:.2f}x"
             else:
                 metadata["guidance_eps_rejected_reason"] = "implausible_eps_override"
 
@@ -230,7 +230,7 @@ def _resolve_guidance_overrides(
 
 def _attach_basis_metadata(
     *,
-    model_output: Dict[str, Any],
+    model_output: Any,
     valuation_basis: str,
     forward_horizon: str,
     denominator_label: str,
@@ -252,6 +252,26 @@ def _attach_basis_metadata(
         metadata.setdefault("forward_horizon", forward_horizon)
 
 
+_logger = logging.getLogger(__name__)
+
+
+def _lookup_industry_ev_ebitda(industry: Optional[str], config: Any) -> Optional[float]:
+    """Look up industry-level EV/EBITDA override from config."""
+    if not industry:
+        return None
+    valuation_settings = getattr(config, "valuation", None)
+    if isinstance(valuation_settings, dict):
+        overrides = valuation_settings.get("ev_ebitda_industry_overrides", {})
+    elif valuation_settings is not None:
+        overrides = getattr(valuation_settings, "ev_ebitda_industry_overrides", {})
+    else:
+        return None
+    if not isinstance(overrides, dict):
+        return None
+    value = overrides.get(industry)
+    return float(value) if value is not None else None
+
+
 def calculate_relative_valuation_models(
     *,
     symbol: str,
@@ -262,10 +282,8 @@ def calculate_relative_valuation_models(
     market_data: Dict[str, Any],
     config: Any,
     sector_specific_result: Optional[Dict[str, Any]],
-    lookup_sector_multiple: Callable[[Optional[str], str], Optional[float]],
-    calculate_enterprise_value: Callable[
-        [Dict[str, Any], Dict[str, Any]], Optional[float]
-    ],
+    lookup_sector_multiple: Callable[[Optional[str], str, Optional[str]], Optional[float]],
+    calculate_enterprise_value: Callable[[Dict[str, Any], Dict[str, Any]], Optional[float]],
     logger: Any,
     valuation_basis: str = "ttm",
     forward_horizon: str = "1y",
@@ -291,27 +309,37 @@ def calculate_relative_valuation_models(
     except (TypeError, ValueError):
         base_eps = None
 
+    # DEBUG: Log EPS source and value
+    logger.info(
+        "[VALUATION_EPS_DEBUG] %s - EPS from ratios: eps=$%.2f, eps_basic=$%.2f, eps_diluted=$%.2f -> selected=$%.2f",
+        symbol,
+        ratios.get("eps") or 0,
+        ratios.get("eps_basic") or 0,
+        ratios.get("eps_diluted") or 0,
+        base_eps or 0,
+    )
+
     # Guard against unit-mismatched EPS values (e.g., shares encoded in millions).
     if base_eps is not None and abs(base_eps) > 500:
-        net_income_candidate = (
-            financials.get("net_income")
-            or ratios.get("net_income")
-            or ratios.get("ttm_net_income")
-        )
+        net_income_candidate = financials.get("net_income") or ratios.get("net_income") or ratios.get("ttm_net_income")
         recomputed_eps = None
         if normalized_shares_outstanding and net_income_candidate is not None:
             try:
-                recomputed_eps = float(net_income_candidate) / float(
-                    normalized_shares_outstanding
-                )
+                recomputed_eps = float(net_income_candidate) / float(normalized_shares_outstanding)
             except (TypeError, ValueError, ZeroDivisionError):
                 recomputed_eps = None
 
-        if (
-            recomputed_eps is not None
-            and math.isfinite(recomputed_eps)
-            and abs(recomputed_eps) <= 500
-        ):
+        logger.info(
+            "[VALUATION_EPS_RECOMPUTE] %s - Implausible EPS=$%.2f. Attempting recompute: "
+            "net_income=$%s, shares=%s -> recomputed=$%.2f",
+            symbol,
+            base_eps,
+            format(net_income_candidate, ",.0f") if net_income_candidate else "N/A",
+            format(normalized_shares_outstanding, ",.0f") if normalized_shares_outstanding else "N/A",
+            recomputed_eps or 0,
+        )
+
+        if recomputed_eps is not None and math.isfinite(recomputed_eps) and abs(recomputed_eps) <= 500:
             logger.warning(
                 "%s - Replacing implausible EPS input %.2f with recomputed EPS %.4f (net_income/shares)",
                 symbol,
@@ -376,14 +404,23 @@ def calculate_relative_valuation_models(
     sector_median_pe = (
         company_data.get("sector_metrics", {}).get("median_pe")
         or company_data.get("sector_data", {}).get("median_pe")
-        or lookup_sector_multiple(company_profile.sector, "pe")
+        or lookup_sector_multiple(company_profile.sector, "pe", company_profile.industry)
     )
     growth_adjusted_pe = None
     peg_ratio = ratios.get("peg_ratio") or ratios.get("peg")
     if sector_median_pe:
         try:
             if revenue_growth is not None:
-                growth_multiplier = clamp(1.0 + float(revenue_growth), 0.8, 1.8)
+                # Use shared GrowthCalculator for consistency
+                try:
+                    from investigator.domain.services.valuation.common import (
+                        GrowthCalculator,
+                    )
+
+                    growth_multiplier = GrowthCalculator.calculate_growth_multiplier_pe(revenue_growth)
+                except Exception:
+                    # Fallback to inline calculation
+                    growth_multiplier = clamp(1.0 + float(revenue_growth), 0.8, 2.5)
                 growth_adjusted_pe = sector_median_pe * growth_multiplier
             elif peg_ratio and peg_ratio > 0:
                 peg_clamped = clamp(float(peg_ratio), 0.5, 3.0)
@@ -398,13 +435,38 @@ def calculate_relative_valuation_models(
         or ratios.get("current_price")
     )
 
+    # SBC earnings quality penalty: when SBC is high relative to net income,
+    # reduce earnings_quality_score to lower P/E model confidence in the blend.
+    pe_earnings_quality = company_profile.earnings_quality_score
+    sbc_for_quality = financials.get("stock_based_compensation") or financials.get("stock_based_compensation_expense")
+    net_income_for_quality = financials.get("net_income") or financials.get("net_income_common")
+    if sbc_for_quality and net_income_for_quality:
+        try:
+            sbc_val = float(sbc_for_quality)
+            ni_val = float(net_income_for_quality)
+            if sbc_val > 0 and ni_val > 0:
+                sbc_to_ni = sbc_val / ni_val
+                if sbc_to_ni > 0.30:
+                    quality_penalty = clamp(sbc_to_ni - 0.30, 0.0, 0.3)
+                    base_quality = pe_earnings_quality if pe_earnings_quality is not None else 0.7
+                    pe_earnings_quality = max(base_quality - quality_penalty, 0.3)
+                    logger.info(
+                        "%s - SBC earnings quality penalty: SBC/NI=%.1f%%, quality %.2f→%.2f",
+                        symbol,
+                        sbc_to_ni * 100,
+                        base_quality,
+                        pe_earnings_quality,
+                    )
+        except (TypeError, ValueError):
+            pass
+
     pe_model = PEMultipleModel(
         company_profile=company_profile,
         ttm_eps=ttm_eps,
         current_price=current_price,
         sector_median_pe=sector_median_pe,
         growth_adjusted_pe=growth_adjusted_pe,
-        earnings_quality_score=company_profile.earnings_quality_score,
+        earnings_quality_score=pe_earnings_quality,
     )
     normalized_pe = normalize_model_output(pe_model.calculate())
 
@@ -415,12 +477,37 @@ def calculate_relative_valuation_models(
         or ratios.get("ebitda")
         or financials.get("operating_income")
     )
-    ebitda_growth = (
-        ratios.get("ebitda_growth_yoy")
-        or ratios.get("ebitda_growth")
-        or earnings_growth
-        or revenue_growth
+
+    # SBC add-back: EBITDA should exclude SBC for EV/EBITDA comparability.
+    # Most sell-side comps use adjusted EBITDA (ex-SBC).
+    sbc_annual = (
+        financials.get("stock_based_compensation")
+        or financials.get("stock_based_compensation_expense")
+        or ratios.get("stock_based_compensation")
     )
+    if base_ttm_ebitda and sbc_annual:
+        try:
+            sbc_float = float(sbc_annual)
+            base_float = float(base_ttm_ebitda)
+            if sbc_float > 0 and base_float > 0:
+                sbc_ratio = sbc_float / base_float
+                # Only add back if SBC is material (>5% of EBITDA)
+                # Cap SBC add-back at 100% of base EBITDA to avoid extreme adjustments
+                if sbc_ratio > 0.05:
+                    sbc_addback = min(sbc_float, base_float)
+                    base_ttm_ebitda = base_float + sbc_addback
+                    logger.info(
+                        "%s - SBC-adjusted EBITDA: base=%.2fB + SBC=%.2fB = %.2fB (SBC ratio=%.1f%%)",
+                        symbol,
+                        base_float / 1e9,
+                        sbc_addback / 1e9,
+                        float(base_ttm_ebitda) / 1e9,
+                        sbc_ratio * 100,
+                    )
+        except (TypeError, ValueError):
+            pass
+
+    ebitda_growth = ratios.get("ebitda_growth_yoy") or ratios.get("ebitda_growth") or earnings_growth or revenue_growth
     ttm_ebitda = base_ttm_ebitda
     if valuation_basis == "forward" and ttm_ebitda is not None:
         ttm_ebitda = float(ttm_ebitda) * _annual_growth_factor(
@@ -432,15 +519,14 @@ def calculate_relative_valuation_models(
     sector_ev_ebitda = (
         company_data.get("sector_metrics", {}).get("median_ev_ebitda")
         or company_data.get("sector_data", {}).get("median_ev_ebitda")
-        or lookup_sector_multiple(company_profile.sector, "ev_ebitda")
+        or _lookup_industry_ev_ebitda(company_profile.industry, config)
+        or lookup_sector_multiple(company_profile.sector, "ev_ebitda", company_profile.industry)
     )
 
     leverage_adjusted_multiple = None
     if sector_ev_ebitda and company_profile.net_debt_to_ebitda is not None:
         leverage_delta = max(company_profile.net_debt_to_ebitda - 2.0, 0.0)
-        leverage_adjusted_multiple = sector_ev_ebitda * clamp(
-            1.0 - 0.06 * leverage_delta, 0.6, 1.1
-        )
+        leverage_adjusted_multiple = sector_ev_ebitda * clamp(1.0 - 0.06 * leverage_delta, 0.6, 1.1)
 
     ev_ebitda_model = EVEBITDAModel(
         company_profile=company_profile,
@@ -448,8 +534,8 @@ def calculate_relative_valuation_models(
         enterprise_value=enterprise_value,
         sector_median_ev_ebitda=sector_ev_ebitda,
         leverage_adjusted_multiple=leverage_adjusted_multiple,
-        interest_coverage=ratios.get("interest_coverage")
-        or ratios.get("interest_coverage_ratio"),
+        interest_coverage=ratios.get("interest_coverage") or ratios.get("interest_coverage_ratio"),
+        revenue_growth=_normalize_growth_value(revenue_growth),
     )
     normalized_ev_ebitda = normalize_model_output(ev_ebitda_model.calculate())
 
@@ -470,9 +556,7 @@ def calculate_relative_valuation_models(
             )
     elif annual_revenue and normalized_shares_outstanding:
         try:
-            revenue_per_share = float(annual_revenue) / float(
-                normalized_shares_outstanding
-            )
+            revenue_per_share = float(annual_revenue) / float(normalized_shares_outstanding)
         except (TypeError, ValueError, ZeroDivisionError) as exc:
             revenue_per_share = None
             logger.debug("%s - Failed to calculate revenue_per_share: %s", symbol, exc)
@@ -480,23 +564,36 @@ def calculate_relative_valuation_models(
     sector_ps = (
         company_data.get("sector_metrics", {}).get("median_ps")
         or company_data.get("sector_data", {}).get("median_ps")
-        or lookup_sector_multiple(company_profile.sector, "ps")
+        or lookup_sector_multiple(company_profile.sector, "ps", company_profile.industry)
     )
+
+    # Apply growth adjustment to P/S for consistency with victor_invest
+    try:
+        from investigator.domain.services.valuation.common import (
+            GrowthAdjustedMultiples,
+        )
+
+        growth_adjusted_ps = GrowthAdjustedMultiples.calculate_adjusted_ps(
+            sector=company_profile.sector,
+            industry=company_profile.industry,
+            base_multiple=sector_ps,
+            revenue_growth=revenue_growth,
+        )
+    except Exception:
+        growth_adjusted_ps = sector_ps
 
     valuation_settings = getattr(config, "valuation", None)
     liquidity_floor = 5_000_000
     if isinstance(valuation_settings, dict):
         liquidity_floor = valuation_settings.get("liquidity_floor_usd", liquidity_floor)
     elif valuation_settings is not None:
-        liquidity_floor = getattr(
-            valuation_settings, "liquidity_floor_usd", liquidity_floor
-        )
+        liquidity_floor = getattr(valuation_settings, "liquidity_floor_usd", liquidity_floor)
 
     ps_model = PSMultipleModel(
         company_profile=company_profile,
         revenue_per_share=revenue_per_share,
         current_price=current_price,
-        sector_median_ps=sector_ps,
+        sector_median_ps=growth_adjusted_ps,
         liquidity_floor_usd=liquidity_floor,
     )
     normalized_ps = normalize_model_output(ps_model.calculate())
@@ -504,7 +601,7 @@ def calculate_relative_valuation_models(
     sector_pb = (
         company_data.get("sector_metrics", {}).get("median_pb")
         or company_data.get("sector_data", {}).get("median_pb")
-        or lookup_sector_multiple(company_profile.sector, "pb")
+        or lookup_sector_multiple(company_profile.sector, "pb", company_profile.industry)
     )
     pb_model = PBMultipleModel(
         company_profile=company_profile,
@@ -550,8 +647,6 @@ def calculate_relative_valuation_models(
             normalized_ps,
             normalized_pb,
         ):
-            if not isinstance(output, dict):
-                continue
             assumptions = output.setdefault("assumptions", {})
             metadata = output.setdefault("metadata", {})
             if isinstance(assumptions, dict):
@@ -565,9 +660,7 @@ def calculate_relative_valuation_models(
 
     if sector_specific_result and "P/BV" in sector_specific_result.get("method", ""):
         confidence_map = {"high": 0.9, "medium": 0.7, "low": 0.5}
-        insurance_confidence = confidence_map.get(
-            sector_specific_result.get("confidence", "medium"), 0.7
-        )
+        insurance_confidence = confidence_map.get(sector_specific_result.get("confidence", "medium"), 0.7)
         normalized_pb = {
             "model": "pb",
             "fair_value_per_share": sector_specific_result.get("fair_value"),

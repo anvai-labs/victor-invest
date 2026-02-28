@@ -1,20 +1,21 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Header } from "./Header";
+import { renderWithRouter } from "@/test/utils/test-renderers";
 
 describe("Header", () => {
   it("renders the title", () => {
-    render(<Header />);
+    renderWithRouter(<Header />);
     expect(screen.getByText("Victor Research")).toBeInTheDocument();
   });
 
   it("renders dark mode toggle button", () => {
-    render(<Header />);
+    renderWithRouter(<Header />);
     expect(screen.getByRole("button", { name: "Toggle dark mode" })).toBeInTheDocument();
   });
 
   it("toggles dark class on document when clicked", async () => {
-    render(<Header />);
+    renderWithRouter(<Header />);
     const btn = screen.getByRole("button", { name: "Toggle dark mode" });
 
     // Click to toggle dark mode

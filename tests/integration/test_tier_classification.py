@@ -81,9 +81,9 @@ class TestAutoManufacturingTierClassification:
             symbol="TSLA",
         )
 
-        assert (
-            "auto_manufacturing" in sub_tier.lower()
-        ), f"Auto industry should be classified as auto_manufacturing, got: {sub_tier}"
+        assert "auto_manufacturing" in sub_tier.lower(), (
+            f"Auto industry should be classified as auto_manufacturing, got: {sub_tier}"
+        )
 
     @pytest.mark.integration
     def test_tsla_ev_leader_classification(self, weighting_service):
@@ -143,9 +143,9 @@ class TestSemiconductorTierClassification:
 
         assert "semiconductor" in tier.lower(), f"NVDA should be semiconductor, got: {tier}"
         # Should NOT be high_growth despite very high Rule of 40
-        assert (
-            "high_growth" not in tier.lower()
-        ), f"NVDA should NOT be high_growth (got: {tier}) - semiconductor should take precedence"
+        assert "high_growth" not in tier.lower(), (
+            f"NVDA should NOT be high_growth (got: {tier}) - semiconductor should take precedence"
+        )
 
 
 class TestInsuranceTierClassification:
@@ -247,9 +247,9 @@ class TestSaaSTierClassification:
 
         assert "saas" in tier.lower(), f"SNOW should be saas, got: {tier}"
         # With Rule of 40 = 64 (> 60), should be hyper_growth
-        assert (
-            "hyper" in tier.lower() or "saas" in tier.lower()
-        ), f"SNOW should be saas_hyper_growth (R40=64), got: {tier}"
+        assert "hyper" in tier.lower() or "saas" in tier.lower(), (
+            f"SNOW should be saas_hyper_growth (R40=64), got: {tier}"
+        )
 
 
 class TestDividendAristocratTierClassification:
@@ -316,12 +316,12 @@ class TestDividendAristocratTierClassification:
             ratios=ratios,
         )
 
-        assert (
-            "high_dividend_payer" not in tier.lower()
-        ), f"Extreme payout non-aristocrat should skip high_dividend_payer tier, got: {tier}"
-        assert (
-            weights.get("ggm", 0) == 0
-        ), f"GGM should be zero-weighted for excessive payout case, got: {weights.get('ggm', 0)}%"
+        assert "high_dividend_payer" not in tier.lower(), (
+            f"Extreme payout non-aristocrat should skip high_dividend_payer tier, got: {tier}"
+        )
+        assert weights.get("ggm", 0) == 0, (
+            f"GGM should be zero-weighted for excessive payout case, got: {weights.get('ggm', 0)}%"
+        )
 
 
 class TestTierClassificationWeights:
@@ -349,9 +349,9 @@ class TestTierClassificationWeights:
         )
 
         # Semiconductor tier should have EV/EBITDA >= 40%
-        assert (
-            weights.get("ev_ebitda", 0) >= 40
-        ), f"Semiconductor should have EV/EBITDA >= 40%, got: {weights.get('ev_ebitda', 0)}%"
+        assert weights.get("ev_ebitda", 0) >= 40, (
+            f"Semiconductor should have EV/EBITDA >= 40%, got: {weights.get('ev_ebitda', 0)}%"
+        )
 
     @pytest.mark.integration
     def test_insurance_has_pb_primary(self, weighting_service):
@@ -432,9 +432,9 @@ class TestEdgeCaseTierClassification:
         )
 
         # Should ALWAYS be semiconductor, never high_growth
-        assert (
-            "semiconductor" in tier.lower()
-        ), f"NVDA should always be semiconductor regardless of R40={200}, got: {tier}"
+        assert "semiconductor" in tier.lower(), (
+            f"NVDA should always be semiconductor regardless of R40={200}, got: {tier}"
+        )
         assert "high_growth" not in tier.lower(), f"NVDA should never be high_growth, got: {tier}"
 
     @pytest.mark.integration
@@ -459,9 +459,9 @@ class TestEdgeCaseTierClassification:
         )
 
         # JNJ is in KNOWN_DIVIDEND_ARISTOCRATS, should always be aristocrat
-        assert (
-            "dividend_aristocrat" in tier.lower()
-        ), f"JNJ (known aristocrat) should be dividend_aristocrat even with low payout, got: {tier}"
+        assert "dividend_aristocrat" in tier.lower(), (
+            f"JNJ (known aristocrat) should be dividend_aristocrat even with low payout, got: {tier}"
+        )
 
 
 if __name__ == "__main__":

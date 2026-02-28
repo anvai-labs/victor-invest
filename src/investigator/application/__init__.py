@@ -17,6 +17,9 @@ from investigator.application.result_formatter import (
     OutputDetailLevel,
     format_analysis_output,
 )
+from investigator.application.victor_result_converter import (
+    convert_victor_state_to_agent_format,
+)
 
 if TYPE_CHECKING:
     from investigator.application.synthesizer import InvestmentSynthesizer
@@ -40,4 +43,5 @@ __all__ = [
     "InvestmentSynthesizer",
     "OutputDetailLevel",
     "format_analysis_output",
+    "convert_victor_state_to_agent_format",
 ]

@@ -25,7 +25,9 @@ try:
     df.columns = series_ids.keys()
 except Exception as e:
     print(f"Error downloading data: {e}")
-    print("Please ensure you have 'pandas_datareader' installed and a stable internet connection.")
+    print(
+        "Please ensure you have 'pandas_datareader' installed and a stable internet connection."
+    )
     # Exit or handle error gracefully
 
 # =================================================================

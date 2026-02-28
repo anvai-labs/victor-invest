@@ -33,7 +33,9 @@ class FinancialDataAggregator:
         self.config = config or get_config()
         self.main_logger = self.config.get_main_logger("financial_aggregator")
 
-    def aggregate_quarterly_data(self, quarterly_data: List[QuarterlyData]) -> Dict[str, Any]:
+    def aggregate_quarterly_data(
+        self, quarterly_data: List[QuarterlyData]
+    ) -> Dict[str, Any]:
         """
         Aggregate quarterly data into a comprehensive financial analysis.
 
@@ -48,7 +50,9 @@ class FinancialDataAggregator:
                 return self._create_empty_aggregation()
 
             symbol = quarterly_data[0].symbol
-            symbol_logger = self.config.get_symbol_logger(symbol, "financial_aggregator")
+            symbol_logger = self.config.get_symbol_logger(
+                symbol, "financial_aggregator"
+            )
 
             symbol_logger.info(f"Aggregating {len(quarterly_data)} quarters of data")
 
@@ -67,7 +71,9 @@ class FinancialDataAggregator:
             }
 
             # Aggregate income statement data
-            aggregated["income_statement"] = self._aggregate_income_statement(quarterly_data)
+            aggregated["income_statement"] = self._aggregate_income_statement(
+                quarterly_data
+            )
 
             # Aggregate balance sheet data
             aggregated["balance_sheet"] = self._aggregate_balance_sheet(quarterly_data)
@@ -90,7 +96,9 @@ class FinancialDataAggregator:
             self.main_logger.error(f"Error aggregating quarterly data: {e}")
             return self._create_empty_aggregation()
 
-    def _aggregate_income_statement(self, quarterly_data: List[QuarterlyData]) -> Dict[str, Any]:
+    def _aggregate_income_statement(
+        self, quarterly_data: List[QuarterlyData]
+    ) -> Dict[str, Any]:
         """Aggregate income statement data across quarters"""
         try:
             income_data = {
@@ -108,7 +116,10 @@ class FinancialDataAggregator:
                 period_key = qd.period_key
 
                 # Get income statement data directly from the new structure
-                if hasattr(qd.financial_data, "income_statement") and qd.financial_data.income_statement:
+                if (
+                    hasattr(qd.financial_data, "income_statement")
+                    and qd.financial_data.income_statement
+                ):
                     income_statement = qd.financial_data.income_statement
 
                     # Extract revenue
@@ -124,27 +135,43 @@ class FinancialDataAggregator:
 
                     # Extract cost of revenue
                     cost_value = income_statement.get("cost_of_revenue", 0)
-                    income_data["cost_of_revenue"].append({"period": period_key, "value": cost_value})
+                    income_data["cost_of_revenue"].append(
+                        {"period": period_key, "value": cost_value}
+                    )
 
                     # Extract gross profit
                     gross_value = income_statement.get("gross_profit", 0)
-                    income_data["gross_profit"].append({"period": period_key, "value": gross_value})
+                    income_data["gross_profit"].append(
+                        {"period": period_key, "value": gross_value}
+                    )
 
                     # Extract operating expenses
-                    operating_expenses_value = income_statement.get("operating_expenses", 0)
-                    income_data["operating_expenses"].append({"period": period_key, "value": operating_expenses_value})
+                    operating_expenses_value = income_statement.get(
+                        "operating_expenses", 0
+                    )
+                    income_data["operating_expenses"].append(
+                        {"period": period_key, "value": operating_expenses_value}
+                    )
 
                     # Extract operating income
                     operating_income_value = income_statement.get("operating_income", 0)
-                    income_data["operating_income"].append({"period": period_key, "value": operating_income_value})
+                    income_data["operating_income"].append(
+                        {"period": period_key, "value": operating_income_value}
+                    )
 
                     # Extract net income
                     net_value = income_statement.get("net_income", 0)
-                    income_data["net_income"].append({"period": period_key, "value": net_value})
+                    income_data["net_income"].append(
+                        {"period": period_key, "value": net_value}
+                    )
 
                     # Extract EPS
-                    eps_value = income_statement.get("eps_diluted", 0) or income_statement.get("eps_basic", 0)
-                    income_data["earnings_per_share"].append({"period": period_key, "value": eps_value})
+                    eps_value = income_statement.get(
+                        "eps_diluted", 0
+                    ) or income_statement.get("eps_basic", 0)
+                    income_data["earnings_per_share"].append(
+                        {"period": period_key, "value": eps_value}
+                    )
 
             # Calculate metrics
             income_data["metrics"] = self._calculate_income_metrics(income_data)
@@ -155,7 +182,9 @@ class FinancialDataAggregator:
             self.main_logger.error(f"Error aggregating income statement: {e}")
             return {}
 
-    def _aggregate_balance_sheet(self, quarterly_data: List[QuarterlyData]) -> Dict[str, Any]:
+    def _aggregate_balance_sheet(
+        self, quarterly_data: List[QuarterlyData]
+    ) -> Dict[str, Any]:
         """Aggregate balance sheet data across quarters"""
         try:
             balance_data = {
@@ -172,34 +201,49 @@ class FinancialDataAggregator:
                 period_key = qd.period_key
 
                 # Get balance sheet data directly from the new structure
-                if hasattr(qd.financial_data, "balance_sheet") and qd.financial_data.balance_sheet:
+                if (
+                    hasattr(qd.financial_data, "balance_sheet")
+                    and qd.financial_data.balance_sheet
+                ):
                     balance_sheet = qd.financial_data.balance_sheet
 
                     # Extract total assets
                     assets_value = balance_sheet.get("total_assets", 0)
-                    balance_data["total_assets"].append({"period": period_key, "value": assets_value})
+                    balance_data["total_assets"].append(
+                        {"period": period_key, "value": assets_value}
+                    )
 
                     # Extract current assets
                     current_assets_value = balance_sheet.get("current_assets", 0)
-                    balance_data["current_assets"].append({"period": period_key, "value": current_assets_value})
+                    balance_data["current_assets"].append(
+                        {"period": period_key, "value": current_assets_value}
+                    )
 
                     # Extract total liabilities
                     liabilities_value = balance_sheet.get("total_liabilities", 0)
-                    balance_data["total_liabilities"].append({"period": period_key, "value": liabilities_value})
+                    balance_data["total_liabilities"].append(
+                        {"period": period_key, "value": liabilities_value}
+                    )
 
                     # Extract current liabilities
-                    current_liabilities_value = balance_sheet.get("current_liabilities", 0)
+                    current_liabilities_value = balance_sheet.get(
+                        "current_liabilities", 0
+                    )
                     balance_data["current_liabilities"].append(
                         {"period": period_key, "value": current_liabilities_value}
                     )
 
                     # Extract shareholders equity
                     equity_value = balance_sheet.get("stockholders_equity", 0)
-                    balance_data["shareholders_equity"].append({"period": period_key, "value": equity_value})
+                    balance_data["shareholders_equity"].append(
+                        {"period": period_key, "value": equity_value}
+                    )
 
                     # Extract cash and equivalents
                     cash_value = balance_sheet.get("cash", 0)
-                    balance_data["cash_and_equivalents"].append({"period": period_key, "value": cash_value})
+                    balance_data["cash_and_equivalents"].append(
+                        {"period": period_key, "value": cash_value}
+                    )
 
             # Calculate metrics
             balance_data["metrics"] = self._calculate_balance_metrics(balance_data)
@@ -210,7 +254,9 @@ class FinancialDataAggregator:
             self.main_logger.error(f"Error aggregating balance sheet: {e}")
             return {}
 
-    def _aggregate_cash_flow(self, quarterly_data: List[QuarterlyData]) -> Dict[str, Any]:
+    def _aggregate_cash_flow(
+        self, quarterly_data: List[QuarterlyData]
+    ) -> Dict[str, Any]:
         """Aggregate cash flow data across quarters"""
         try:
             cash_flow_data = {
@@ -226,31 +272,48 @@ class FinancialDataAggregator:
                 period_key = qd.period_key
 
                 # Get cash flow data directly from the new structure
-                if hasattr(qd.financial_data, "cash_flow_statement") and qd.financial_data.cash_flow_statement:
+                if (
+                    hasattr(qd.financial_data, "cash_flow_statement")
+                    and qd.financial_data.cash_flow_statement
+                ):
                     cash_flow = qd.financial_data.cash_flow_statement
 
                     # Extract operating cash flow
                     operating_value = cash_flow.get("operating_cash_flow", 0)
-                    cash_flow_data["operating_cash_flow"].append({"period": period_key, "value": operating_value})
+                    cash_flow_data["operating_cash_flow"].append(
+                        {"period": period_key, "value": operating_value}
+                    )
 
                     # Extract investing cash flow
                     investing_value = cash_flow.get("investing_cash_flow", 0)
-                    cash_flow_data["investing_cash_flow"].append({"period": period_key, "value": investing_value})
+                    cash_flow_data["investing_cash_flow"].append(
+                        {"period": period_key, "value": investing_value}
+                    )
 
                     # Extract financing cash flow
                     financing_value = cash_flow.get("financing_cash_flow", 0)
-                    cash_flow_data["financing_cash_flow"].append({"period": period_key, "value": financing_value})
+                    cash_flow_data["financing_cash_flow"].append(
+                        {"period": period_key, "value": financing_value}
+                    )
 
                     # Calculate free cash flow (operating - capex) if available
                     # For now, we'll use operating cash flow as a proxy
-                    free_cash_flow_value = operating_value  # Could subtract capex if available
-                    cash_flow_data["free_cash_flow"].append({"period": period_key, "value": free_cash_flow_value})
+                    free_cash_flow_value = (
+                        operating_value  # Could subtract capex if available
+                    )
+                    cash_flow_data["free_cash_flow"].append(
+                        {"period": period_key, "value": free_cash_flow_value}
+                    )
 
                     # For now, we don't have capex separately, so use 0
-                    cash_flow_data["capital_expenditures"].append({"period": period_key, "value": 0})
+                    cash_flow_data["capital_expenditures"].append(
+                        {"period": period_key, "value": 0}
+                    )
 
             # Calculate metrics
-            cash_flow_data["metrics"] = self._calculate_cash_flow_metrics(cash_flow_data)
+            cash_flow_data["metrics"] = self._calculate_cash_flow_metrics(
+                cash_flow_data
+            )
 
             return cash_flow_data
 
@@ -266,23 +329,38 @@ class FinancialDataAggregator:
                 return financial_data
 
             # If it's a FinancialStatementData object, extract the comprehensive data
-            if hasattr(financial_data, "comprehensive_data") and financial_data.comprehensive_data:
+            if (
+                hasattr(financial_data, "comprehensive_data")
+                and financial_data.comprehensive_data
+            ):
                 return financial_data.comprehensive_data
 
             # Fallback: try to build from individual fields
             result = {}
 
-            if hasattr(financial_data, "quarterly_data") and financial_data.quarterly_data:
+            if (
+                hasattr(financial_data, "quarterly_data")
+                and financial_data.quarterly_data
+            ):
                 result.update(financial_data.quarterly_data)
 
             # Add structured statement data if available
-            if hasattr(financial_data, "income_statement") and financial_data.income_statement:
+            if (
+                hasattr(financial_data, "income_statement")
+                and financial_data.income_statement
+            ):
                 result.update(financial_data.income_statement)
 
-            if hasattr(financial_data, "balance_sheet") and financial_data.balance_sheet:
+            if (
+                hasattr(financial_data, "balance_sheet")
+                and financial_data.balance_sheet
+            ):
                 result.update(financial_data.balance_sheet)
 
-            if hasattr(financial_data, "cash_flow_statement") and financial_data.cash_flow_statement:
+            if (
+                hasattr(financial_data, "cash_flow_statement")
+                and financial_data.cash_flow_statement
+            ):
                 result.update(financial_data.cash_flow_statement)
 
             return result
@@ -291,7 +369,9 @@ class FinancialDataAggregator:
             self.main_logger.error(f"Error converting financial data to dict: {e}")
             return {}
 
-    def _extract_concept_value(self, category_data: Dict, concept_name: str) -> Optional[float]:
+    def _extract_concept_value(
+        self, category_data: Dict, concept_name: str
+    ) -> Optional[float]:
         """Extract numeric value for a concept from category data"""
         try:
             concepts = category_data.get("concepts", {})
@@ -321,10 +401,15 @@ class FinancialDataAggregator:
                 period_key = qd.period_key
 
                 # Get financial data directly from the new structure
-                if hasattr(qd.financial_data, "income_statement") and qd.financial_data.income_statement:
+                if (
+                    hasattr(qd.financial_data, "income_statement")
+                    and qd.financial_data.income_statement
+                ):
                     income_statement = qd.financial_data.income_statement
                     balance_sheet = (
-                        qd.financial_data.balance_sheet if hasattr(qd.financial_data, "balance_sheet") else {}
+                        qd.financial_data.balance_sheet
+                        if hasattr(qd.financial_data, "balance_sheet")
+                        else {}
                     )
 
                     # Get key values for ratio calculations
@@ -339,7 +424,9 @@ class FinancialDataAggregator:
                     # Calculate profitability ratios
                     if revenue and revenue != 0:
                         net_margin = (net_income / revenue) * 100 if net_income else 0
-                        ratios["profitability"][period_key] = {"net_profit_margin": net_margin}
+                        ratios["profitability"][period_key] = {
+                            "net_profit_margin": net_margin
+                        }
 
                     # Calculate efficiency ratios
                     if total_assets and total_assets != 0:
@@ -350,8 +437,16 @@ class FinancialDataAggregator:
 
                     # Calculate leverage ratios
                     if stockholders_equity and stockholders_equity != 0:
-                        roe = (net_income / stockholders_equity) * 100 if net_income else 0
-                        debt_to_equity = (total_liabilities / stockholders_equity) if total_liabilities else 0
+                        roe = (
+                            (net_income / stockholders_equity) * 100
+                            if net_income
+                            else 0
+                        )
+                        debt_to_equity = (
+                            (total_liabilities / stockholders_equity)
+                            if total_liabilities
+                            else 0
+                        )
                         ratios["leverage"][period_key] = {
                             "return_on_equity": roe,
                             "debt_to_equity": debt_to_equity,
@@ -359,8 +454,14 @@ class FinancialDataAggregator:
 
                     # Calculate liquidity ratios
                     if current_liabilities and current_liabilities != 0:
-                        current_ratio = (current_assets / current_liabilities) if current_assets else 0
-                        ratios["liquidity"][period_key] = {"current_ratio": current_ratio}
+                        current_ratio = (
+                            (current_assets / current_liabilities)
+                            if current_assets
+                            else 0
+                        )
+                        ratios["liquidity"][period_key] = {
+                            "current_ratio": current_ratio
+                        }
 
             return ratios
 
@@ -379,7 +480,9 @@ class FinancialDataAggregator:
             }
 
             # Sort by period for trend analysis
-            sorted_data = sorted(quarterly_data, key=lambda x: (x.fiscal_year, x.fiscal_period))
+            sorted_data = sorted(
+                quarterly_data, key=lambda x: (x.fiscal_year, x.fiscal_period)
+            )
 
             # Calculate quarter-over-quarter growth
             for i in range(1, len(sorted_data)):
@@ -403,14 +506,18 @@ class FinancialDataAggregator:
                 previous_revenue = previous_income.get("revenue", 0)
 
                 if current_revenue and previous_revenue and previous_revenue != 0:
-                    revenue_growth = ((current_revenue - previous_revenue) / previous_revenue) * 100
-                    trends["revenue_growth"].append({"period": current.period_key, "growth_rate": revenue_growth})
+                    revenue_growth = (
+                        (current_revenue - previous_revenue) / previous_revenue
+                    ) * 100
+                    trends["revenue_growth"].append(
+                        {"period": current.period_key, "growth_rate": revenue_growth}
+                    )
 
             # Calculate trend summaries
             if trends["revenue_growth"]:
-                avg_revenue_growth = sum(t["growth_rate"] for t in trends["revenue_growth"]) / len(
-                    trends["revenue_growth"]
-                )
+                avg_revenue_growth = sum(
+                    t["growth_rate"] for t in trends["revenue_growth"]
+                ) / len(trends["revenue_growth"])
                 trends["summary"]["average_revenue_growth"] = avg_revenue_growth
 
             return trends
@@ -419,7 +526,9 @@ class FinancialDataAggregator:
             self.main_logger.error(f"Error analyzing trends: {e}")
             return {}
 
-    def _assess_data_quality(self, quarterly_data: List[QuarterlyData]) -> Dict[str, Any]:
+    def _assess_data_quality(
+        self, quarterly_data: List[QuarterlyData]
+    ) -> Dict[str, Any]:
         """Assess the quality and completeness of financial data using domain knowledge"""
         try:
             quality = {
@@ -522,7 +631,9 @@ class FinancialDataAggregator:
                     total_weight += weight
 
                 # Calculate period score
-                period_analysis["period_score"] = (weighted_score / total_weight) if total_weight > 0 else 0
+                period_analysis["period_score"] = (
+                    (weighted_score / total_weight) if total_weight > 0 else 0
+                )
                 period_scores.append(period_analysis["period_score"])
                 quality["period_analysis"].append(period_analysis)
 
@@ -533,17 +644,23 @@ class FinancialDataAggregator:
 
             # Calculate overall scores
             if period_scores:
-                quality["completeness_score"] = (sum(period_scores) / len(period_scores)) * 100
+                quality["completeness_score"] = (
+                    sum(period_scores) / len(period_scores)
+                ) * 100
 
                 # Core metrics score focuses only on tier 1 & 2
                 core_scores = []
                 for analysis in quality["period_analysis"]:
                     tier1_score = analysis["tier_scores"]["tier_1_essential"]["score"]
                     tier2_score = analysis["tier_scores"]["tier_2_important"]["score"]
-                    core_score = tier1_score * 0.7 + tier2_score * 0.3  # Weight tier 1 more heavily
+                    core_score = (
+                        tier1_score * 0.7 + tier2_score * 0.3
+                    )  # Weight tier 1 more heavily
                     core_scores.append(core_score)
 
-                quality["core_metrics_score"] = (sum(core_scores) / len(core_scores)) * 100
+                quality["core_metrics_score"] = (
+                    sum(core_scores) / len(core_scores)
+                ) * 100
 
             # Generate intelligent recommendations
             self._generate_quality_recommendations(quality)
@@ -563,13 +680,21 @@ class FinancialDataAggregator:
 
         # Core metrics assessment
         if core_score >= 90:
-            quality["recommendations"].append("✅ Excellent data quality - all critical metrics available")
+            quality["recommendations"].append(
+                "✅ Excellent data quality - all critical metrics available"
+            )
         elif core_score >= 75:
-            quality["recommendations"].append("✅ Good data quality - most critical metrics available")
+            quality["recommendations"].append(
+                "✅ Good data quality - most critical metrics available"
+            )
         elif core_score >= 50:
-            quality["recommendations"].append("⚠️ Moderate data quality - some critical metrics missing")
+            quality["recommendations"].append(
+                "⚠️ Moderate data quality - some critical metrics missing"
+            )
         else:
-            quality["recommendations"].append("❌ Poor data quality - many critical metrics missing")
+            quality["recommendations"].append(
+                "❌ Poor data quality - many critical metrics missing"
+            )
 
         # Specific missing metric guidance
         if "revenue" in critical_missing:
@@ -577,27 +702,44 @@ class FinancialDataAggregator:
                 "🚨 Critical: Revenue data missing - verify company has filed recent reports"
             )
         if "net_income" in critical_missing:
-            quality["recommendations"].append("🚨 Critical: Net income missing - essential for profitability analysis")
+            quality["recommendations"].append(
+                "🚨 Critical: Net income missing - essential for profitability analysis"
+            )
         if "total_assets" in critical_missing:
-            quality["recommendations"].append("🚨 Critical: Total assets missing - balance sheet analysis incomplete")
+            quality["recommendations"].append(
+                "🚨 Critical: Total assets missing - balance sheet analysis incomplete"
+            )
         if "stockholders_equity" in critical_missing:
-            quality["recommendations"].append("🚨 Critical: Stockholders equity missing - solvency analysis incomplete")
+            quality["recommendations"].append(
+                "🚨 Critical: Stockholders equity missing - solvency analysis incomplete"
+            )
 
         # Industry-specific guidance
-        has_inventory = any("inventory" not in analysis["missing_critical"] for analysis in quality["period_analysis"])
+        has_inventory = any(
+            "inventory" not in analysis["missing_critical"]
+            for analysis in quality["period_analysis"]
+        )
         if not has_inventory:
-            quality["recommendations"].append("ℹ️ Inventory data missing (common for service/software companies)")
+            quality["recommendations"].append(
+                "ℹ️ Inventory data missing (common for service/software companies)"
+            )
 
         # Filing type analysis
         form_types = [analysis["form_type"] for analysis in quality["period_analysis"]]
         if "10-K" not in form_types:
-            quality["recommendations"].append("📋 Consider including annual (10-K) filings for comprehensive analysis")
+            quality["recommendations"].append(
+                "📋 Consider including annual (10-K) filings for comprehensive analysis"
+            )
 
         # Overall assessment
         if overall_score >= 80:
-            quality["recommendations"].append("🎯 Data quality sufficient for comprehensive fundamental analysis")
+            quality["recommendations"].append(
+                "🎯 Data quality sufficient for comprehensive fundamental analysis"
+            )
         elif overall_score >= 60:
-            quality["recommendations"].append("🎯 Data quality adequate for basic fundamental analysis")
+            quality["recommendations"].append(
+                "🎯 Data quality adequate for basic fundamental analysis"
+            )
         else:
             quality["recommendations"].append(
                 "🎯 Data quality may limit analysis depth - consider additional data sources"
@@ -609,7 +751,9 @@ class FinancialDataAggregator:
 
         try:
             # Calculate revenue growth
-            revenue_values = [r["value"] for r in income_data["revenue"] if r["value"] is not None]
+            revenue_values = [
+                r["value"] for r in income_data["revenue"] if r["value"] is not None
+            ]
             if len(revenue_values) >= 2:
                 recent = revenue_values[0]  # Most recent
                 previous = revenue_values[1]  # Previous quarter
@@ -640,7 +784,11 @@ class FinancialDataAggregator:
 
         try:
             # Calculate asset growth
-            asset_values = [a["value"] for a in balance_data["total_assets"] if a["value"] is not None]
+            asset_values = [
+                a["value"]
+                for a in balance_data["total_assets"]
+                if a["value"] is not None
+            ]
             if len(asset_values) >= 2:
                 recent = asset_values[0]
                 previous = asset_values[1]
@@ -659,7 +807,11 @@ class FinancialDataAggregator:
 
         try:
             # Calculate free cash flow margin
-            fcf_values = [f["value"] for f in cash_flow_data["free_cash_flow"] if f["value"] is not None]
+            fcf_values = [
+                f["value"]
+                for f in cash_flow_data["free_cash_flow"]
+                if f["value"] is not None
+            ]
             if fcf_values:
                 metrics["average_free_cash_flow"] = sum(fcf_values) / len(fcf_values)
 

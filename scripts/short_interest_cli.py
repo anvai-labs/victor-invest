@@ -66,7 +66,9 @@ def format_current_output(data: dict) -> str:
     lines.append("\nSHORT INTEREST METRICS")
     short_interest = data.get("short_interest", 0)
     if short_interest >= 1_000_000:
-        lines.append(f"  Short Interest:       {short_interest / 1_000_000:.2f}M shares")
+        lines.append(
+            f"  Short Interest:       {short_interest / 1_000_000:.2f}M shares"
+        )
     else:
         lines.append(f"  Short Interest:       {short_interest:,} shares")
 
@@ -81,7 +83,9 @@ def format_current_output(data: dict) -> str:
     if data.get("short_percent_float"):
         lines.append(f"  Short % of Float:     {data['short_percent_float']:.2f}%")
     if data.get("short_percent_outstanding"):
-        lines.append(f"  Short % Outstanding:  {data['short_percent_outstanding']:.2f}%")
+        lines.append(
+            f"  Short % Outstanding:  {data['short_percent_outstanding']:.2f}%"
+        )
 
     # Previous period change
     prev = data.get("previous")
@@ -91,7 +95,9 @@ def format_current_output(data: dict) -> str:
         change_pct = prev.get("change_percent", 0)
         direction = "+" if change >= 0 else ""
         if abs(change) >= 1_000_000:
-            lines.append(f"  Change (shares):      {direction}{change / 1_000_000:.2f}M")
+            lines.append(
+                f"  Change (shares):      {direction}{change / 1_000_000:.2f}M"
+            )
         else:
             lines.append(f"  Change (shares):      {direction}{change:,}")
         lines.append(f"  Change (%):           {direction}{change_pct:.2f}%")
@@ -132,9 +138,15 @@ def format_history_output(data: dict) -> str:
     trend = data.get("trend_analysis", {})
     if trend:
         lines.append("\nTREND ANALYSIS")
-        lines.append(f"  Direction:            {trend.get('direction', 'unknown').upper().replace('_', ' ')}")
-        lines.append(f"  Avg Change/Period:    {trend.get('avg_change_per_period', 0):+.2f}%")
-        lines.append(f"  Total Change:         {trend.get('total_change_pct', 0):+.2f}%")
+        lines.append(
+            f"  Direction:            {trend.get('direction', 'unknown').upper().replace('_', ' ')}"
+        )
+        lines.append(
+            f"  Avg Change/Period:    {trend.get('avg_change_per_period', 0):+.2f}%"
+        )
+        lines.append(
+            f"  Total Change:         {trend.get('total_change_pct', 0):+.2f}%"
+        )
         lines.append(f"  Periods Increasing:   {trend.get('periods_increasing', 0)}")
         lines.append(f"  Periods Decreasing:   {trend.get('periods_decreasing', 0)}")
         if trend.get("interpretation"):
@@ -146,7 +158,9 @@ def format_history_output(data: dict) -> str:
     history = data.get("history", [])
     if history:
         lines.append("\nHISTORICAL DATA")
-        lines.append(f"  {'Settlement':<12} {'Short Interest':>15} {'Days Cover':>12} {'% Float':>10} {'Change':>10}")
+        lines.append(
+            f"  {'Settlement':<12} {'Short Interest':>15} {'Days Cover':>12} {'% Float':>10} {'Change':>10}"
+        )
         lines.append(f"  {'-' * 63}")
         for h in history[:12]:  # Limit to 12 most recent
             settle = h.get("settlement_date", "N/A")[:10]
@@ -161,7 +175,9 @@ def format_history_output(data: dict) -> str:
             prev = h.get("previous")
             change_pct = prev.get("change_percent") if prev else None
             change_str = f"{change_pct:+.1f}%" if change_pct is not None else "N/A"
-            lines.append(f"  {settle:<12} {si_str:>15} {dtc:>12.2f} {spf_str:>10} {change_str:>10}")
+            lines.append(
+                f"  {settle:<12} {si_str:>15} {dtc:>12.2f} {spf_str:>10} {change_str:>10}"
+            )
     else:
         lines.append("\n  No historical data available.")
 
@@ -181,7 +197,9 @@ def format_volume_output(data: dict) -> str:
     volume = data.get("volume", [])
     if volume:
         lines.append("\nDAILY BREAKDOWN")
-        lines.append(f"  {'Date':<12} {'Short Vol':>15} {'Total Vol':>15} {'Short %':>10}")
+        lines.append(
+            f"  {'Date':<12} {'Short Vol':>15} {'Total Vol':>15} {'Short %':>10}"
+        )
         lines.append(f"  {'-' * 55}")
         for v in volume[:15]:  # Limit to 15 most recent
             trade_date = v.get("trade_date", "N/A")[:10]
@@ -196,7 +214,9 @@ def format_volume_output(data: dict) -> str:
                 tv_str = f"{total_vol / 1_000_000:.2f}M"
             else:
                 tv_str = f"{total_vol:,}"
-            lines.append(f"  {trade_date:<12} {sv_str:>15} {tv_str:>15} {short_pct:>9.1f}%")
+            lines.append(
+                f"  {trade_date:<12} {sv_str:>15} {tv_str:>15} {short_pct:>9.1f}%"
+            )
     else:
         lines.append("\n  No short volume data available.")
 
@@ -271,7 +291,9 @@ def format_most_shorted_output(data: dict) -> str:
 
     stocks = data.get("stocks", [])
     if stocks:
-        lines.append(f"\n{'#':<4} {'Symbol':<8} {'% Float':>10} {'Days Cover':>12} {'Short Interest':>18}")
+        lines.append(
+            f"\n{'#':<4} {'Symbol':<8} {'% Float':>10} {'Days Cover':>12} {'Short Interest':>18}"
+        )
         lines.append(f"{'-' * 55}")
         for i, s in enumerate(stocks, 1):
             symbol = s.get("symbol", "N/A")
@@ -311,11 +333,21 @@ Examples:
 
     # Action arguments (mutually exclusive)
     action_group = parser.add_mutually_exclusive_group(required=True)
-    action_group.add_argument("--current", action="store_true", help="Get current short interest")
-    action_group.add_argument("--history", action="store_true", help="Get historical short interest")
-    action_group.add_argument("--volume", action="store_true", help="Get daily short volume")
-    action_group.add_argument("--squeeze", action="store_true", help="Calculate short squeeze risk")
-    action_group.add_argument("--most-shorted", action="store_true", help="Get most shorted stocks")
+    action_group.add_argument(
+        "--current", action="store_true", help="Get current short interest"
+    )
+    action_group.add_argument(
+        "--history", action="store_true", help="Get historical short interest"
+    )
+    action_group.add_argument(
+        "--volume", action="store_true", help="Get daily short volume"
+    )
+    action_group.add_argument(
+        "--squeeze", action="store_true", help="Calculate short squeeze risk"
+    )
+    action_group.add_argument(
+        "--most-shorted", action="store_true", help="Get most shorted stocks"
+    )
 
     # Options
     parser.add_argument(
@@ -336,13 +368,19 @@ Examples:
         default=20,
         help="Number of stocks for most-shorted (default: 20)",
     )
-    parser.add_argument("--json", action="store_true", help="Output raw JSON instead of formatted text")
+    parser.add_argument(
+        "--json", action="store_true", help="Output raw JSON instead of formatted text"
+    )
 
     args = parser.parse_args()
 
     # Validate symbol is provided for symbol-based actions
-    if (args.current or args.history or args.volume or args.squeeze) and not args.symbol:
-        parser.error("Symbol is required for --current, --history, --volume, and --squeeze")
+    if (
+        args.current or args.history or args.volume or args.squeeze
+    ) and not args.symbol:
+        parser.error(
+            "Symbol is required for --current, --history, --volume, and --squeeze"
+        )
 
     # Import and initialize tool
     from victor_invest.tools.short_interest import ShortInterestTool
@@ -355,7 +393,9 @@ Examples:
         result = await tool.execute(action="current", symbol=args.symbol)
         formatter = format_current_output
     elif args.history:
-        result = await tool.execute(action="history", symbol=args.symbol, periods=args.periods)
+        result = await tool.execute(
+            action="history", symbol=args.symbol, periods=args.periods
+        )
         formatter = format_history_output
     elif args.volume:
         result = await tool.execute(action="volume", symbol=args.symbol, days=args.days)

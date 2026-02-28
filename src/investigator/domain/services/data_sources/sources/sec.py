@@ -64,8 +64,7 @@ class InsiderTransactionSource(DataSource):
             with engine.connect() as conn:
                 # Get recent transactions from form4_filings
                 result = conn.execute(
-                    text(
-                        """
+                    text("""
                         SELECT
                             owner_name,
                             filing_date,
@@ -82,8 +81,7 @@ class InsiderTransactionSource(DataSource):
                         AND filing_date <= :target_date
                         ORDER BY filing_date DESC
                         LIMIT 50
-                    """
-                    ),
+                    """),
                     {
                         "symbol": symbol,
                         "start_date": start_date,
@@ -118,8 +116,7 @@ class InsiderTransactionSource(DataSource):
 
                 # Get sentiment score
                 result = conn.execute(
-                    text(
-                        """
+                    text("""
                         SELECT
                             sentiment_score,
                             buy_count,
@@ -131,8 +128,7 @@ class InsiderTransactionSource(DataSource):
                         WHERE symbol = :symbol
                         ORDER BY calculation_date DESC
                         LIMIT 1
-                    """
-                    ),
+                    """),
                     {"symbol": symbol},
                 )
                 sentiment_row = result.fetchone()
@@ -238,8 +234,7 @@ class InstitutionalHoldingsSource(DataSource):
             with engine.connect() as conn:
                 # Get latest holdings - join with institutions for manager name
                 result = conn.execute(
-                    text(
-                        """
+                    text("""
                         SELECT
                             i.name as manager_name,
                             h.shares,
@@ -252,8 +247,7 @@ class InstitutionalHoldingsSource(DataSource):
                         WHERE h.symbol = :symbol
                         ORDER BY f.report_quarter DESC, h.value_thousands DESC
                         LIMIT 100
-                    """
-                    ),
+                    """),
                     {"symbol": symbol},
                 )
 
@@ -353,8 +347,7 @@ class SECQuarterlySource(DataSource):
             with engine.connect() as conn:
                 # quarterly_metrics stores data in JSONB metrics_data column
                 result = conn.execute(
-                    text(
-                        """
+                    text("""
                         SELECT
                             fiscal_year,
                             fiscal_period,
@@ -364,8 +357,7 @@ class SECQuarterlySource(DataSource):
                         WHERE symbol = :symbol
                         ORDER BY fiscal_year DESC, fiscal_period DESC
                         LIMIT 8
-                    """
-                    ),
+                    """),
                     {"symbol": symbol},
                 )
 

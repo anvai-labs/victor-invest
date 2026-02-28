@@ -55,7 +55,9 @@ def load_active_policy():
     if not ACTIVE_POLICY_PATH.exists():
         raise FileNotFoundError(f"No active policy found at {ACTIVE_POLICY_PATH}")
     if not ACTIVE_NORMALIZER_PATH.exists():
-        raise FileNotFoundError(f"No active normalizer found at {ACTIVE_NORMALIZER_PATH}")
+        raise FileNotFoundError(
+            f"No active normalizer found at {ACTIVE_NORMALIZER_PATH}"
+        )
 
     normalizer = FeatureNormalizer()
     normalizer.load(str(ACTIVE_NORMALIZER_PATH))
@@ -162,7 +164,11 @@ def test_symbol(symbol: str, policy, config):
     print(f"  Sector: {info.get('sector', 'N/A')}")
     print(f"  Industry: {info.get('industry', 'N/A')}")
     print(f"  Current Price: ${info.get('current_price', 'N/A')}")
-    print(f"  Market Cap: ${info.get('market_cap', 0) / 1e9:.1f}B" if info.get("market_cap") else "  Market Cap: N/A")
+    print(
+        f"  Market Cap: ${info.get('market_cap', 0) / 1e9:.1f}B"
+        if info.get("market_cap")
+        else "  Market Cap: N/A"
+    )
 
     # Build context
     context = build_valuation_context(symbol, info)
@@ -184,7 +190,9 @@ def test_symbol(symbol: str, policy, config):
     # Get rule-based weights
     print("\nRule-Based Weights:")
     try:
-        rule_weights = get_rule_based_weights(symbol, info.get("sector", "Unknown"), config)
+        rule_weights = get_rule_based_weights(
+            symbol, info.get("sector", "Unknown"), config
+        )
         for model, weight in sorted(rule_weights.items(), key=lambda x: -x[1]):
             if weight > 0:
                 print(f"  {model}: {weight:.0f}%")

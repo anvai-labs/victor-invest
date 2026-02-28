@@ -221,9 +221,7 @@ class ProfitabilityClassifier:
             if value is not None:
                 margin_str = f"{margin:.1f}%" if margin is not None else "N/A"
                 logger.debug(
-                    f"Indicator {value_key}: value={value / 1e6:.1f}M, "
-                    f"margin={margin_str}, "
-                    f"positive={is_positive}"
+                    f"Indicator {value_key}: value={value / 1e6:.1f}M, margin={margin_str}, positive={is_positive}"
                 )
 
         # Count positive indicators

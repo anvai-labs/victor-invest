@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom";
+import { vi } from "vitest";
 
 // Stub window.matchMedia for jsdom (used by various UI components)
 Object.defineProperty(window, "matchMedia", {
@@ -22,3 +23,11 @@ class ResizeObserverStub {
   disconnect() {}
 }
 window.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver;
+
+// Stub IntersectionObserver for jsdom
+class IntersectionObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+window.IntersectionObserver = IntersectionObserverStub as unknown as typeof IntersectionObserver;

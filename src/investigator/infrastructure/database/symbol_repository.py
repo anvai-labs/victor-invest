@@ -52,7 +52,7 @@ class SymbolRepository:
 
     def _create_stock_engine(self) -> Engine:
         """Create stock database engine from environment variables."""
-        host = os.environ.get("STOCK_DB_HOST", "localhost")
+        host = os.environ.get("STOCK_DB_HOST", "dataserver1.singh.local")
         password = os.environ.get("STOCK_DB_PASSWORD", "")
         user = os.environ.get("STOCK_DB_USER", "stockuser")
         db = os.environ.get("STOCK_DB_NAME", "stock")
@@ -67,7 +67,7 @@ class SymbolRepository:
 
     def _create_sec_engine(self) -> Engine:
         """Create SEC database engine from environment variables."""
-        host = os.environ.get("SEC_DB_HOST", "localhost")
+        host = os.environ.get("SEC_DB_HOST", "dataserver1.singh.local")
         password = os.environ.get("SEC_DB_PASSWORD", "")
         user = os.environ.get("SEC_DB_USER", "investigator")
         db = os.environ.get("SEC_DB_NAME", "sec_database")
@@ -89,8 +89,7 @@ class SymbolRepository:
         """
         with self.stock_engine.connect() as conn:
             result = conn.execute(
-                text(
-                    """
+                text("""
                     SELECT ticker
                     FROM symbol
                     WHERE russell1000 = TRUE
@@ -98,8 +97,7 @@ class SymbolRepository:
                       AND isstock = TRUE
                       AND (isetf IS NULL OR isetf = FALSE)
                     ORDER BY mktcap DESC NULLS LAST
-                """
-                )
+                """)
             )
             symbols = [row[0] for row in result.fetchall()]
             logger.info(f"Found {len(symbols)} Russell 1000 symbols")
@@ -114,8 +112,7 @@ class SymbolRepository:
         """
         with self.stock_engine.connect() as conn:
             result = conn.execute(
-                text(
-                    """
+                text("""
                     SELECT ticker
                     FROM symbol
                     WHERE sp500 = TRUE
@@ -123,8 +120,7 @@ class SymbolRepository:
                       AND isstock = TRUE
                       AND (isetf IS NULL OR isetf = FALSE)
                     ORDER BY mktcap DESC NULLS LAST
-                """
-                )
+                """)
             )
             symbols = [row[0] for row in result.fetchall()]
             logger.info(f"Found {len(symbols)} S&P 500 symbols")
@@ -151,8 +147,7 @@ class SymbolRepository:
         with self.stock_engine.connect() as conn:
             if us_only:
                 result = conn.execute(
-                    text(
-                        f"""
+                    text(f"""
                         SELECT ticker
                         FROM symbol
                         WHERE islisted = TRUE
@@ -162,13 +157,11 @@ class SymbolRepository:
                           AND mktcap > 0
                           AND cik IS NOT NULL
                         {order_clause}
-                    """
-                    )
+                    """)
                 )
             else:
                 result = conn.execute(
-                    text(
-                        f"""
+                    text(f"""
                         SELECT ticker
                         FROM symbol
                         WHERE islisted = TRUE
@@ -177,8 +170,7 @@ class SymbolRepository:
                           AND mktcap IS NOT NULL
                           AND mktcap > 0
                         {order_clause}
-                    """
-                    )
+                    """)
                 )
             symbols = [row[0] for row in result.fetchall()]
             logger.info(f"Found {len(symbols)} total stocks (us_only={us_only}, order_by={order_by})")
@@ -198,8 +190,7 @@ class SymbolRepository:
         with self.stock_engine.connect() as conn:
             if us_only:
                 result = conn.execute(
-                    text(
-                        """
+                    text("""
                         SELECT ticker
                         FROM symbol
                         WHERE islisted = TRUE
@@ -210,14 +201,12 @@ class SymbolRepository:
                           AND cik IS NOT NULL
                         ORDER BY mktcap DESC
                         LIMIT :n
-                    """
-                    ),
+                    """),
                     {"n": n},
                 )
             else:
                 result = conn.execute(
-                    text(
-                        """
+                    text("""
                         SELECT ticker
                         FROM symbol
                         WHERE islisted = TRUE
@@ -227,12 +216,44 @@ class SymbolRepository:
                           AND mktcap > 0
                         ORDER BY mktcap DESC
                         LIMIT :n
-                    """
-                    ),
+                    """),
                     {"n": n},
                 )
             symbols = [row[0] for row in result.fetchall()]
             logger.info(f"Found {len(symbols)} top symbols by market cap")
+            return symbols
+
+    def get_sec_filing_symbols(self, order_by: str = "stockid") -> List[str]:
+        """
+        Get symbols with is_sec_filing=TRUE (symbols that have SEC filings).
+
+        Args:
+            order_by: Sort order - "mktcap" (descending), "stockid" (ascending), or "ticker" (alphabetical)
+
+        Returns:
+            List of ticker symbols sorted by specified order
+        """
+        # Build ORDER BY clause based on parameter
+        order_clause = {
+            "mktcap": "ORDER BY mktcap DESC",
+            "stockid": "ORDER BY stockid ASC",
+            "ticker": "ORDER BY ticker ASC",
+        }.get(order_by, "ORDER BY stockid ASC")
+
+        with self.stock_engine.connect() as conn:
+            result = conn.execute(
+                text(f"""
+                    SELECT ticker
+                    FROM symbol
+                    WHERE is_sec_filing = TRUE
+                      AND islisted = TRUE
+                      AND isstock = TRUE
+                      AND (isetf IS NULL OR isetf = FALSE)
+                    {order_clause}
+                """)
+            )
+            symbols = [row[0] for row in result.fetchall()]
+            logger.info(f"Found {len(symbols)} SEC filing symbols (order_by={order_by})")
             return symbols
 
     def get_domestic_filers(self) -> Set[str]:
@@ -247,13 +268,11 @@ class SymbolRepository:
         """
         with self.sec_engine.connect() as conn:
             result = conn.execute(
-                text(
-                    """
+                text("""
                     SELECT DISTINCT symbol
                     FROM sec_companyfacts_processed
                     WHERE fiscal_period IN ('Q1', 'Q2', 'Q3', 'Q4')
-                """
-                )
+                """)
             )
             domestic = {row[0] for row in result.fetchall()}
             logger.info(f"Found {len(domestic)} domestic filers with quarterly data")
@@ -274,22 +293,19 @@ class SymbolRepository:
         # Get symbols from SEC database with financial data
         with self.sec_engine.connect() as conn:
             sec_result = conn.execute(
-                text(
-                    """
+                text("""
                     SELECT DISTINCT symbol
                     FROM sec_companyfacts_processed
                     WHERE total_revenue IS NOT NULL
                       AND net_income IS NOT NULL
-                """
-                )
+                """)
             )
             sec_symbols = {row[0] for row in sec_result.fetchall()}
 
         # Get symbols from stock database with market cap
         with self.stock_engine.connect() as conn:
             stock_result = conn.execute(
-                text(
-                    """
+                text("""
                     SELECT ticker
                     FROM symbol
                     WHERE islisted = TRUE
@@ -297,17 +313,14 @@ class SymbolRepository:
                       AND (isetf IS NULL OR isetf = FALSE)
                       AND mktcap > :min_cap
                     ORDER BY mktcap DESC
-                """
-                ),
+                """),
                 {"min_cap": min_market_cap},
             )
             stock_symbols = [row[0] for row in stock_result.fetchall()]
 
         # Return intersection, maintaining market cap order
         valid_symbols = [s for s in stock_symbols if s in sec_symbols]
-        logger.info(
-            f"Found {len(valid_symbols)} symbols with both stock and SEC data " f"(min_cap=${min_market_cap:,.0f})"
-        )
+        logger.info(f"Found {len(valid_symbols)} symbols with both stock and SEC data (min_cap=${min_market_cap:,.0f})")
         return valid_symbols
 
     def filter_domestic_filers(
@@ -333,9 +346,7 @@ class SymbolRepository:
         removed = len(symbols) - len(filtered)
 
         if removed > 0:
-            logger.info(
-                f"Filtered out {removed} foreign filers (20-F/6-K) - " f"{len(filtered)} domestic filers remaining"
-            )
+            logger.info(f"Filtered out {removed} foreign filers (20-F/6-K) - {len(filtered)} domestic filers remaining")
 
         return filtered
 

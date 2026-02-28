@@ -27,6 +27,8 @@ except Exception:  # pragma: no cover - optional dependency
     # Keep profiling annotations inert when line_profiler isn't installed.
     def profile(func):  # type: ignore
         return func
+
+
 from sqlalchemy import text
 
 # Import FiscalPeriodService for centralized fiscal period handling
@@ -39,9 +41,48 @@ from investigator.infrastructure.sec.canonical_mapper import get_canonical_mappe
 from investigator.infrastructure.sec.metric_extraction import (
     MetricExtractionOrchestrator,
 )
-from utils.industry_classifier import classify_company
 
 logger = logging.getLogger(__name__)
+
+
+def calculate_frame_from_period_end(period_end_date: str) -> str:
+    """
+    Calculate CY (Calendar Year) frame from period_end_date.
+
+    The SEC Company Facts API often doesn't populate the 'frame' field correctly,
+    especially for companies with non-calendar fiscal years. This function derives
+    the correct frame from the period_end_date.
+
+    Args:
+        period_end_date: Period end date string (YYYY-MM-DD format)
+
+    Returns:
+        Frame string in format "CY{YYYY}Q{Q}" (e.g., "CY2025Q2")
+
+    Examples:
+        >>> calculate_frame_from_period_end("2025-06-27")
+        'CY2025Q2'
+        >>> calculate_frame_from_period_end("2025-03-31")
+        'CY2025Q1'
+        >>> calculate_frame_from_period_end("2024-12-31")
+        'CY2024Q4'
+    """
+    try:
+        dt = datetime.strptime(period_end_date, "%Y-%m-%d")
+        cal_year = dt.year
+        cal_quarter = (dt.month - 1) // 3 + 1
+        return f"CY{cal_year}Q{cal_quarter}"
+    except (ValueError, TypeError) as e:
+        logger.warning(f"Failed to calculate frame from period_end_date '{period_end_date}': {e}")
+        return ""
+
+
+# Try to import from utils, with fallback
+try:
+    from utils.industry_classifier import classify_company
+except ImportError:
+    classify_company = None
+    logger.warning("utils.industry_classifier not available - company classification limited")
 
 
 class SECDataProcessor:
@@ -86,16 +127,14 @@ class SECDataProcessor:
 
         try:
             with engine.begin() as conn:
-                query = text(
-                    """
+                query = text("""
                     SELECT adsh, fy, fp, period, filed
                     FROM sec_sub_data
                     WHERE cik = :cik
                       AND form IN ('10-K', '10-Q')
                     ORDER BY period DESC
                     LIMIT 50
-                """
-                )
+                """)
 
                 result = conn.execute(query, {"cik": cik_int})
 
@@ -298,7 +337,7 @@ class SECDataProcessor:
             # Only correct if different
             if expected_period_end != current_period_end:
                 logger.debug(
-                    f"{symbol} FY{fy} {fp}: Correcting period_end_date " f"{current_period_end} → {expected_period_end}"
+                    f"{symbol} FY{fy} {fp}: Correcting period_end_date {current_period_end} → {expected_period_end}"
                 )
                 filing["period_end_date"] = expected_period_end
                 corrections_made += 1
@@ -350,7 +389,7 @@ class SECDataProcessor:
         # LEAP YEAR HANDLING: Adjust Feb 29 to Feb 28 for non-leap years
         if month == 2 and day == 29:
             if not isleap(fiscal_year):
-                logger.warning(f"[Fiscal Year Start] Adjusted Feb 29 to Feb 28 for " f"non-leap year {fiscal_year}")
+                logger.warning(f"[Fiscal Year Start] Adjusted Feb 29 to Feb 28 for non-leap year {fiscal_year}")
                 day = 28
 
         try:
@@ -358,7 +397,7 @@ class SECDataProcessor:
             fy_end = date(fiscal_year, month, day)
         except ValueError as e:
             logger.error(
-                f"[Fiscal Year Start] Invalid date for FY {fiscal_year} " f"with fiscal_year_end={fiscal_year_end}: {e}"
+                f"[Fiscal Year Start] Invalid date for FY {fiscal_year} with fiscal_year_end={fiscal_year_end}: {e}"
             )
             # Fallback: Use Jan 1 of fiscal year
             return date(fiscal_year, 1, 1).strftime("%Y-%m-%d")
@@ -416,9 +455,7 @@ class SECDataProcessor:
         elif duration_days >= 120 and fp in ["Q2", "Q3"]:
             # Fallback: Use duration if fiscal_year_start not available
             is_ytd = True
-            logger.debug(
-                f"[SCORE] {symbol} {fp} {end_date}: YTD detected by duration " f"({duration_days} days >= 120)"
-            )
+            logger.debug(f"[SCORE] {symbol} {fp} {end_date}: YTD detected by duration ({duration_days} days >= 120)")
 
         # Scoring
         if not is_ytd:
@@ -1151,7 +1188,7 @@ class SECDataProcessor:
 
             # Log orchestrator failure for debugging
             logger.debug(
-                f"[Orchestrator] Failed to extract {canonical_key} for period_end={period_end}: " f"{result.error}"
+                f"[Orchestrator] Failed to extract {canonical_key} for period_end={period_end}: {result.error}"
             )
 
             # Targeted fallback: derive OCI when direct other_comprehensive_income tags are missing.
@@ -1511,8 +1548,10 @@ class SECDataProcessor:
 
                 actual_fiscal_year = period_end_date.year
 
-                # Derive fiscal period using fp field (authoritative after filtering comparative data)
-                # After filtering out entries where abs(fy - period_end_year) >= 1, the fp field is trustworthy
+                # Derive fiscal period using fp field (validated by _select_best_entry)
+                # The fp field from SEC API indicates the company's fiscal period (Q1, Q2, Q3, Q4, FY)
+                # After _select_best_entry() validates period_end_date matches expected quarter,
+                # the fp field is trustworthy for non-comparative data.
                 duration = entry.get("duration_days", 999)
                 raw_fp = entry.get("fp", "")
 
@@ -1521,11 +1560,12 @@ class SECDataProcessor:
                 if raw_fp == "FY" or duration >= 330:
                     actual_fp = "FY"
                 elif raw_fp in ["Q1", "Q2", "Q3", "Q4"]:
-                    # Use the fp field from the entry (authoritative for non-comparative data)
-                    # This handles edge cases like Oct 1-3 (Q3 ending on weekend) correctly
+                    # Use the fp field from the entry (validated by _select_best_entry)
+                    # _select_best_entry() ensures period_end_date matches expected quarter
+                    # This handles non-calendar fiscal years correctly (e.g., NVDA Jan FYE, AAPL Sep FYE)
                     actual_fp = raw_fp
                 else:
-                    # Fallback: derive quarter from end month
+                    # Fallback: derive quarter from end month (calendar year companies only)
                     # Only used if fp field is missing or invalid
                     month = period_end_date.month
                     if month <= 3:
@@ -1566,6 +1606,12 @@ class SECDataProcessor:
                             f"[Fiscal Year Adjustment] {symbol}: Failed to adjust {actual_fp} fiscal year: {e}"
                         )
 
+                # Calculate frame from period_end_date (SEC API frame field is unreliable)
+                calculated_frame = calculate_frame_from_period_end(period_end_str)
+                # Use calculated frame, but prefer SEC frame if it's valid and matches
+                # This ensures correct CY{YYYY}Q{Q} format for all entries
+                final_frame = calculated_frame if calculated_frame else entry.get("frame", "")
+
                 filings[adsh] = {
                     "symbol": symbol.upper(),
                     "cik": cik,
@@ -1576,7 +1622,7 @@ class SECDataProcessor:
                     "filed_date": entry["filed"],
                     "period_end_date": period_end_str,
                     "period_start_date": entry["start"],  # ✅ ADD THIS
-                    "frame": entry["frame"],
+                    "frame": final_frame,
                     "duration_days": duration,  # ✅ ADD THIS
                     "data": {},
                     "raw_data_id": raw_data_id,
@@ -1940,7 +1986,7 @@ class SECDataProcessor:
         if not (needs_income_normalization or needs_cashflow_normalization):
             # No normalization needed - data is already point-in-time
             logger.info(
-                f"[YTD_NORM_DEBUG] {symbol} {fiscal_year}-{fiscal_period}: " f"NO normalization needed (already PIT)"
+                f"[YTD_NORM_DEBUG] {symbol} {fiscal_year}-{fiscal_period}: NO normalization needed (already PIT)"
             )
             return normalized, income_normalized, cashflow_normalized
 
@@ -1954,7 +2000,7 @@ class SECDataProcessor:
         )
         for idx, f in enumerate(all_filings[:10]):  # Show first 10 for debugging
             logger.debug(
-                f"[YTD_NORM_DEBUG]   Filing[{idx}]: " f"{f.get('fiscal_year', 'N/A')}-{f.get('fiscal_period', 'N/A')}"
+                f"[YTD_NORM_DEBUG]   Filing[{idx}]: {f.get('fiscal_year', 'N/A')}-{f.get('fiscal_period', 'N/A')}"
             )
 
         prev_filing = next(
@@ -2108,8 +2154,7 @@ class SECDataProcessor:
 
         try:
             delete_query = text("DELETE FROM sec_companyfacts_processed WHERE symbol = :symbol")
-            insert_query = text(
-                """
+            insert_query = text("""
                 INSERT INTO sec_companyfacts_processed
                 (symbol, cik, fiscal_year, fiscal_period,
                  total_revenue, net_income, gross_profit, operating_income, cost_of_revenue,
@@ -2160,8 +2205,7 @@ class SECDataProcessor:
                  :income_statement_qtrs, :cash_flow_statement_qtrs,
                  :adsh, :form_type, :filed_date, :period_end_date, :frame,
                  :extraction_version, :data_quality_score, :raw_data_id)
-                """
-            )
+                """)
 
             with self.engine.begin() as conn:
                 conn.execute(delete_query, {"symbol": symbol_upper})
@@ -2369,8 +2413,7 @@ class SECDataProcessor:
 
             next_refresh = datetime.now() + timedelta(days=90)
 
-            query = text(
-                """
+            query = text("""
                 INSERT INTO sec_companyfacts_metadata
                 (symbol, cik, entity_name, last_fetched, last_processed, fetch_count,
                  cache_ttl_days, next_refresh_due, raw_data_complete, processing_status,
@@ -2395,8 +2438,7 @@ class SECDataProcessor:
                     total_filings = EXCLUDED.total_filings,
                     quarters_available = EXCLUDED.quarters_available,
                     updated_at = NOW()
-            """
-            )
+            """)
 
             with self.engine.connect() as conn:
                 conn.execute(

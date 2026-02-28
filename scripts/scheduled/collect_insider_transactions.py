@@ -84,7 +84,8 @@ class InsiderTransactionCollector(BaseCollector):
                 symbols = get_sp500_symbols()
 
             self.logger.info(
-                f"Fetching insider transactions for {len(symbols)} symbols " f"(lookback: {self.lookback_hours} hours)"
+                f"Fetching insider transactions for {len(symbols)} symbols "
+                f"(lookback: {self.lookback_hours} hours)"
             )
 
             conn = get_database_connection()
@@ -95,12 +96,20 @@ class InsiderTransactionCollector(BaseCollector):
             for symbol in symbols:
                 try:
                     # Get watermark for this symbol to enable incremental fetching
-                    watermark = get_watermark(cursor, "form4_fetch_watermarks", "symbol", symbol)
-                    last_accession = watermark.get("last_accession_number") if watermark else None
-                    last_filing_date = watermark.get("last_filing_date") if watermark else None
+                    watermark = get_watermark(
+                        cursor, "form4_fetch_watermarks", "symbol", symbol
+                    )
+                    last_accession = (
+                        watermark.get("last_accession_number") if watermark else None
+                    )
+                    last_filing_date = (
+                        watermark.get("last_filing_date") if watermark else None
+                    )
 
                     if last_accession:
-                        self.logger.debug(f"{symbol}: Incremental fetch after accession {last_accession}")
+                        self.logger.debug(
+                            f"{symbol}: Incremental fetch after accession {last_accession}"
+                        )
 
                     # Fetch recent Form 4 filings for symbol
                     filings = asyncio.run(
@@ -143,7 +152,11 @@ class InsiderTransactionCollector(BaseCollector):
 
                             # Get transaction type and code
                             txn_code = txn.transaction_code
-                            txn_type = txn.transaction_type.value if txn.transaction_type else txn_code
+                            txn_type = (
+                                txn.transaction_type.value
+                                if txn.transaction_type
+                                else txn_code
+                            )
 
                             # Determine significance
                             is_significant = filing.is_significant
@@ -245,7 +258,9 @@ class InsiderTransactionCollector(BaseCollector):
                                 self.metrics.records_inserted += 1
 
                     # Update watermark for this symbol
-                    if newest_accession and (last_accession is None or newest_accession > last_accession):
+                    if newest_accession and (
+                        last_accession is None or newest_accession > last_accession
+                    ):
                         update_watermark(
                             cursor,
                             "form4_fetch_watermarks",
@@ -395,8 +410,12 @@ class InsiderTransactionCollector(BaseCollector):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Collect SEC Form 4 insider transactions")
-    parser.add_argument("--symbols", type=str, help="Comma-separated list of symbols (default: S&P 500)")
+    parser = argparse.ArgumentParser(
+        description="Collect SEC Form 4 insider transactions"
+    )
+    parser.add_argument(
+        "--symbols", type=str, help="Comma-separated list of symbols (default: S&P 500)"
+    )
     parser.add_argument(
         "--hours",
         type=int,

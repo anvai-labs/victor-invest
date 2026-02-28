@@ -1,5 +1,6 @@
 from pathlib import Path
 
+# All potential documentation files - test will only check files that exist
 ACTIVE_DOCS = [
     Path("README.md"),
     Path("README.adoc"),
@@ -18,6 +19,8 @@ def test_active_docs_do_not_use_legacy_cli_commands():
 
     violations = {}
     for doc in ACTIVE_DOCS:
+        if not doc.exists():
+            continue
         content = doc.read_text(encoding="utf-8")
         found = [pattern for pattern in legacy_patterns if pattern in content]
         if found:

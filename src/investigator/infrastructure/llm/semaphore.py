@@ -83,8 +83,7 @@ class DynamicLLMSemaphore:
             self.available_vram_gb = system_info["available_memory_gb"]
 
             logger.info(
-                f"Auto-detected GPU: {self.total_vram_gb:.1f}GB total, "
-                f"{self.available_vram_gb:.1f}GB available for LLM"
+                f"Auto-detected GPU: {self.total_vram_gb:.1f}GB total, {self.available_vram_gb:.1f}GB available for LLM"
             )
 
             # Model VRAM requirements (in GB)

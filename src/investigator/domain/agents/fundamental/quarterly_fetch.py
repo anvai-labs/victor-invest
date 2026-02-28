@@ -29,8 +29,7 @@ def query_recent_processed_periods(
     logger: Any,
 ) -> List[Dict[str, Any]]:
     """Load recent FY/Q periods for a symbol from `sec_companyfacts_processed`."""
-    query = text(
-        """
+    query = text("""
         SELECT
             symbol, fiscal_year, fiscal_period, adsh,
             filed_date as filed,
@@ -58,6 +57,7 @@ def query_recent_processed_periods(
             capital_expenditures,
             free_cash_flow,
             dividends_paid,
+            depreciation_amortization,
             cash_flow_statement_qtrs,
             income_statement_qtrs,
             property_plant_equipment_net,
@@ -74,8 +74,7 @@ def query_recent_processed_periods(
                 ELSE 0
             END DESC
         LIMIT :sql_limit
-    """
-    )
+    """)
 
     sql_limit = num_quarters + 3
     with db_manager.get_session() as session:
@@ -122,6 +121,7 @@ def query_recent_processed_periods(
                 "capital_expenditures": to_float(row.capital_expenditures),
                 "free_cash_flow": to_float(row.free_cash_flow),
                 "dividends_paid": to_float(row.dividends_paid),
+                "depreciation_amortization": to_float(getattr(row, "depreciation_amortization", None)),
                 "property_plant_equipment_net": to_float(row.property_plant_equipment_net),
                 "shares_outstanding": to_float(row.shares_outstanding),
                 "cash_flow_statement_qtrs": cf_qtrs,
@@ -141,7 +141,30 @@ def query_recent_processed_periods(
         q_count,
         fy_count,
     )
-    if len(quarters_data) < num_quarters:
+
+    # CRITICAL: Apply Q4 derivation from FY filings when Q4 is missing
+    # This uses the shared q4_derivation module to ensure consistency
+    # between victor-invest and investigator CLI
+    from investigator.domain.services.valuation_shared.q4_derivation import (
+        derive_q4_from_fy,
+    )
+
+    quarters_data = derive_q4_from_fy(quarters_data, symbol)
+
+    # Filter to only Q1-Q4 periods (exclude FY) for TTM calculations
+    from investigator.domain.services.valuation_shared.q4_derivation import (
+        filter_quarters_only,
+    )
+
+    quarters_only = filter_quarters_only(quarters_data)
+    logger.info(
+        "🔄 [Q4 Derivation] Applied derivation for %s: %s total periods → %s Q-only periods",
+        symbol,
+        len(quarters_data),
+        len(quarters_only),
+    )
+
+    if len(quarters_only) < num_quarters:
         logger.warning(
             "Only %s quarters available for %s (target: %s). "
             "Company may be newly public or have incomplete filing history.",
@@ -326,8 +349,7 @@ def fetch_processed_quarter_payload(
         fiscal_period,
         adsh[:20],
     )
-    query = text(
-        """
+    query = text("""
         SELECT *
         FROM sec_companyfacts_processed
         WHERE symbol = :symbol
@@ -335,8 +357,7 @@ def fetch_processed_quarter_payload(
           AND fiscal_period = :fiscal_period
           AND adsh = :adsh
         LIMIT 1
-    """
-    )
+    """)
     with engine.connect() as conn:
         result = conn.execute(
             query,

@@ -292,9 +292,7 @@ def extract_insurance_metrics_from_xbrl(symbol: str, xbrl_data: Dict, database_u
                         value = sorted_data[0].get("val")
                         if value is not None:
                             metrics[metric_name] = float(value)
-                            logger.debug(
-                                f"{symbol} - Extracted {metric_name} from {alias}: " f"${float(value) / 1e9:.2f}B"
-                            )
+                            logger.debug(f"{symbol} - Extracted {metric_name} from {alias}: ${float(value) / 1e9:.2f}B")
                             break  # Found value, move to next metric
 
     # Log extraction summary
@@ -606,8 +604,7 @@ def _fetch_from_database(
 
         with engine.connect() as conn:
             # Query latest quarter with balance sheet data
-            query = text(
-                """
+            query = text("""
                 SELECT
                     stockholders_equity,
                     shares_outstanding,
@@ -620,8 +617,7 @@ def _fetch_from_database(
                   AND stockholders_equity IS NOT NULL
                 ORDER BY period_end_date DESC
                 LIMIT 1
-            """
-            )
+            """)
 
             result = conn.execute(query, {"symbol": symbol}).fetchone()
 
@@ -681,8 +677,7 @@ def _calculate_ttm_metrics(
 
         with engine.connect() as conn:
             # Query last 4 quarters sorted by period_end_date DESC
-            query = text(
-                """
+            query = text("""
                 SELECT
                     net_income,
                     stockholders_equity,
@@ -696,8 +691,7 @@ def _calculate_ttm_metrics(
                   AND stockholders_equity IS NOT NULL
                 ORDER BY period_end_date DESC
                 LIMIT 4
-            """
-            )
+            """)
 
             results = conn.execute(query, {"symbol": symbol}).fetchall()
 

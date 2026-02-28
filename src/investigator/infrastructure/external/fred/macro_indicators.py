@@ -188,7 +188,7 @@ class MacroIndicatorsFetcher:
             }
         """
         if not self._api_key:
-            self.logger.warning("FRED_API_KEY not configured. " "Set via: victor keys --set-service fred --keyring")
+            self.logger.warning("FRED_API_KEY not configured. Set via: victor keys --set-service fred --keyring")
             return {}
 
         result: Dict[str, Any] = {
@@ -295,8 +295,7 @@ class MacroIndicatorsFetcher:
                 # Get latest value for each indicator
                 # Build the query with dynamic interval
                 lookback_interval = f"{lookback_days} days"
-                query = text(
-                    f"""
+                query = text(f"""
                     WITH latest_values AS (
                         SELECT DISTINCT ON (indicator_id)
                             indicator_id,
@@ -333,8 +332,7 @@ class MacroIndicatorsFetcher:
                     LEFT JOIN previous_values pv ON lv.indicator_id = pv.indicator_id
                     INNER JOIN macro_indicators mi ON lv.indicator_id = mi.id
                     ORDER BY lv.indicator_id
-                """
-                )
+                """)
 
                 result = session.execute(query, {"indicators": indicator_ids})
 
@@ -406,8 +404,7 @@ class MacroIndicatorsFetcher:
         """
         try:
             with self.get_session() as session:
-                query = text(
-                    """
+                query = text("""
                     SELECT date, value
                     FROM macro_indicator_values
                     WHERE indicator_id = :indicator_id
@@ -416,8 +413,7 @@ class MacroIndicatorsFetcher:
                       AND (:end_date IS NULL OR date <= :end_date)
                     ORDER BY date DESC
                     LIMIT :limit
-                """
-                )
+                """)
 
                 result = session.execute(
                     query,
@@ -449,15 +445,13 @@ class MacroIndicatorsFetcher:
         """
         try:
             with self.get_session() as session:
-                query = text(
-                    """
+                query = text("""
                     SELECT close, date
                     FROM tickerdata
                     WHERE ticker = 'VTI'
                     ORDER BY date DESC
                     LIMIT 1
-                """
-                )
+                """)
                 result = session.execute(query)
                 row = result.first()
 

@@ -306,8 +306,7 @@ class DataSourceFacade:
             db = get_db_manager()
             with db.get_session() as session:
                 result = session.execute(
-                    text(
-                        """
+                    text("""
                         SELECT sentiment_score, buy_count, sell_count,
                                buy_value, sell_value, cluster_detected
                         FROM insider_sentiment
@@ -316,8 +315,7 @@ class DataSourceFacade:
                           AND period_days = :period_days
                         ORDER BY calculation_date DESC
                         LIMIT 1
-                    """
-                    ),
+                    """),
                     {
                         "symbol": symbol,
                         "as_of_date": as_of_date,
@@ -354,8 +352,7 @@ class DataSourceFacade:
             with db.get_session() as session:
                 # Join holdings with filings to get report dates
                 result = session.execute(
-                    text(
-                        """
+                    text("""
                         SELECT
                             SUM(h.shares) as total_shares,
                             COUNT(DISTINCT f.institution_id) as num_institutions,
@@ -365,8 +362,7 @@ class DataSourceFacade:
                         WHERE h.symbol = :symbol
                           AND f.report_quarter <= :as_of_date
                           AND f.report_quarter >= :as_of_date - INTERVAL '90 days'
-                    """
-                    ),
+                    """),
                     {"symbol": symbol, "as_of_date": as_of_date},
                 )
                 row = result.fetchone()
@@ -395,8 +391,7 @@ class DataSourceFacade:
             db = get_db_manager()
             with db.get_session() as session:
                 result = session.execute(
-                    text(
-                        """
+                    text("""
                         SELECT short_interest, avg_daily_volume,
                                days_to_cover, short_interest_ratio
                         FROM short_interest
@@ -404,8 +399,7 @@ class DataSourceFacade:
                           AND settlement_date <= :as_of_date
                         ORDER BY settlement_date DESC
                         LIMIT 1
-                    """
-                    ),
+                    """),
                     {"symbol": symbol, "as_of_date": as_of_date},
                 )
                 row = result.fetchone()
@@ -435,8 +429,7 @@ class DataSourceFacade:
             db = get_db_manager()
             with db.get_session() as session:
                 result = session.execute(
-                    text(
-                        """
+                    text("""
                         SELECT yield_1m, yield_3m, yield_6m, yield_1y,
                                yield_2y, yield_5y, yield_10y, yield_30y,
                                spread_10y_2y, spread_10y_3m, is_inverted
@@ -444,8 +437,7 @@ class DataSourceFacade:
                         WHERE date <= :as_of_date
                         ORDER BY date DESC
                         LIMIT 1
-                    """
-                    ),
+                    """),
                     {"as_of_date": as_of_date},
                 )
                 row = result.fetchone()
@@ -492,16 +484,14 @@ class DataSourceFacade:
 
                 # Join with macro_indicators to get series_id
                 result = session.execute(
-                    text(
-                        """
+                    text("""
                         SELECT mi.series_id, mv.value
                         FROM macro_indicator_values mv
                         JOIN macro_indicators mi ON mv.indicator_id = mi.id
                         WHERE mi.series_id IN :indicators
                           AND mv.date <= :as_of_date
                         ORDER BY mi.series_id, mv.date DESC
-                    """
-                    ),
+                    """),
                     {"indicators": tuple(key_indicators), "as_of_date": as_of_date},
                 )
                 rows = result.fetchall()
@@ -532,8 +522,7 @@ class DataSourceFacade:
             db = get_db_manager()
             with db.get_session() as session:
                 result = session.execute(
-                    text(
-                        """
+                    text("""
                         SELECT regime, credit_cycle_phase, volatility_regime,
                                recession_probability, yield_curve_inverted,
                                risk_off_signal
@@ -541,8 +530,7 @@ class DataSourceFacade:
                         WHERE snapshot_date <= :as_of_date
                         ORDER BY snapshot_date DESC
                         LIMIT 1
-                    """
-                    ),
+                    """),
                     {"as_of_date": as_of_date},
                 )
                 row = result.fetchone()
@@ -574,8 +562,7 @@ class DataSourceFacade:
             db = get_db_manager()
             with db.get_session() as session:
                 result = session.execute(
-                    text(
-                        """
+                    text("""
                         SELECT altman_z_score, beneish_m_score,
                                piotroski_f_score, distress_tier
                         FROM credit_risk_scores
@@ -583,8 +570,7 @@ class DataSourceFacade:
                           AND calculation_date <= :as_of_date
                         ORDER BY calculation_date DESC
                         LIMIT 1
-                    """
-                    ),
+                    """),
                     {"symbol": symbol, "as_of_date": as_of_date},
                 )
                 row = result.fetchone()
@@ -636,16 +622,14 @@ class DataSourceFacade:
 
             with stock_engine.connect() as conn:
                 result = conn.execute(
-                    text(
-                        """
+                    text("""
                         SELECT adjclose
                         FROM tickerdata
                         WHERE ticker = :symbol
                           AND date <= :as_of_date
                         ORDER BY date DESC
                         LIMIT 1
-                    """
-                    ),
+                    """),
                     {"symbol": symbol.upper(), "as_of_date": as_of_date},
                 )
                 row = result.fetchone()
@@ -684,14 +668,12 @@ class DataSourceFacade:
             with db.get_session() as session:
                 # Fetch all regional Fed indicators for the date
                 result = session.execute(
-                    text(
-                        """
+                    text("""
                         SELECT district, indicator_name, indicator_data, observation_date
                         FROM regional_fed_indicators
                         WHERE observation_date <= :as_of_date
                         ORDER BY district, indicator_name, observation_date DESC
-                    """
-                    ),
+                    """),
                     {"as_of_date": as_of_date},
                 )
                 rows = result.fetchall()
@@ -774,7 +756,7 @@ class DataSourceFacade:
         return None
 
     def _fetch_cboe_data_sync(self, as_of_date: date) -> Dict[str, Any]:
-        """Fetch CBOE volatility data from database or cache (synchronous).
+        """Fetch CBOE volatility data from stock database macro_indicator_values table.
 
         Returns:
         - VIX: Current volatility level
@@ -784,23 +766,31 @@ class DataSourceFacade:
         - Volatility regime classification
         """
         try:
-            from sqlalchemy import text
+            from sqlalchemy import create_engine, text
 
-            from investigator.infrastructure.database.db import get_db_manager
+            from investigator.config import get_config
 
-            db = get_db_manager()
-            with db.get_session() as session:
-                # First try regional_fed_indicators (where CBOE data is stored)
-                result = session.execute(
-                    text(
-                        """
-                        SELECT indicator_name, indicator_data, observation_date
-                        FROM regional_fed_indicators
-                        WHERE district = 'cboe'
-                          AND observation_date <= :as_of_date
-                        ORDER BY indicator_name, observation_date DESC
-                    """
-                    ),
+            config = get_config()
+            db_config = config.database
+
+            # Build connection URL for stock database where macro indicators are stored
+            stock_db_url = (
+                f"postgresql://{db_config.username}:{db_config.password}@{db_config.host}:{db_config.port}/stock"
+            )
+
+            engine = create_engine(stock_db_url)
+
+            with engine.connect() as conn:
+                # Fetch VIX, VIX3M, and SKEW from macro_indicator_values
+                result = conn.execute(
+                    text("""
+                        SELECT indicator_id, value, date
+                        FROM macro_indicator_values
+                        WHERE indicator_id IN ('VIXCLS', 'VIX3M', 'SKEW')
+                          AND is_current = true
+                          AND date <= :as_of_date
+                        ORDER BY indicator_id, date DESC
+                    """),
                     {"as_of_date": as_of_date},
                 )
                 rows = result.fetchall()
@@ -810,20 +800,17 @@ class DataSourceFacade:
                 for row in rows:
                     indicator = row[0]
                     if indicator not in seen:
-                        data = row[1]
-                        if isinstance(data, str):
-                            import json
-
-                            data = json.loads(data)
-
-                        # Extract value
-                        value = data.get("value") if isinstance(data, dict) else data
-                        cboe_data[indicator] = {
-                            "value": value,
+                        # Map FRED indicator IDs to our naming
+                        name_map = {
+                            "VIXCLS": "vix",
+                            "VIX3M": "vix3m",
+                            "SKEW": "skew",
+                        }
+                        name = name_map.get(indicator, indicator.lower())
+                        cboe_data[name] = {
+                            "value": float(row[1]),
                             "date": row[2].isoformat() if row[2] else None,
                         }
-                        if isinstance(data, dict) and "ohlcv" in data:
-                            cboe_data[indicator]["ohlcv"] = data["ohlcv"]
                         seen.add(indicator)
 
                 # Extract key values for RL features

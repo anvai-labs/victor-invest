@@ -276,18 +276,31 @@ class TestFormatAnalysisOutput:
                         },
                     },
                     "ratios": {"current_price": 200.0},
-                    "data_quality": {"data_quality_score": 75.0, "quality_grade": "Good"},
-                    "confidence": {"confidence_level": "HIGH", "confidence_score": 80.0},
+                    "data_quality": {
+                        "data_quality_score": 75.0,
+                        "quality_grade": "Good",
+                    },
+                    "confidence": {
+                        "confidence_level": "HIGH",
+                        "confidence_score": 80.0,
+                    },
                 },
                 "technical": {
                     "status": "success",
                     "recommendation": "neutral",
                     "technical_rating": 0.0,
-                    "levels": {"pivot_point": 201.0, "support_1": 190.0, "resistance_1": 210.0},
+                    "levels": {
+                        "pivot_point": 201.0,
+                        "support_1": 190.0,
+                        "resistance_1": 210.0,
+                    },
                 },
                 "synthesis": {
                     "status": "success",
-                    "recommendation": {"final_recommendation": "hold", "confidence": 70.0},
+                    "recommendation": {
+                        "final_recommendation": "hold",
+                        "confidence": 70.0,
+                    },
                     "synthesis": {"report_mode": "deterministic"},
                 },
                 "market_context": {
@@ -298,7 +311,10 @@ class TestFormatAnalysisOutput:
                 },
                 "sec": {
                     "status": "success",
-                    "companyfacts_summary": {"entityName": "Seagate", "fact_count": 1000},
+                    "companyfacts_summary": {
+                        "entityName": "Seagate",
+                        "fact_count": 1000,
+                    },
                     "forward_guidance": {
                         "source": "sec_filing_regex",
                         "source_form": "8-K",
@@ -341,8 +357,14 @@ class TestFormatAnalysisOutput:
                         },
                     },
                     "ratios": {"current_price": 200.0},
-                    "data_quality": {"data_quality_score": 70.0, "quality_grade": "Good"},
-                    "confidence": {"confidence_level": "HIGH", "confidence_score": 80.0},
+                    "data_quality": {
+                        "data_quality_score": 70.0,
+                        "quality_grade": "Good",
+                    },
+                    "confidence": {
+                        "confidence_level": "HIGH",
+                        "confidence_score": 80.0,
+                    },
                 },
                 "technical": {"status": "success"},
                 "synthesis": {"status": "success"},

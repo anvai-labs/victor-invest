@@ -257,8 +257,13 @@ def sizes(ctx):
     is_flag=True,
     help="Bypass 90-day SEC raw cache reuse and fetch fresh CompanyFacts from SEC API",
 )
+@click.option(
+    "--include-submissions",
+    is_flag=True,
+    help="Also fetch and cache submissions (filing list) along with CompanyFacts",
+)
 @click.pass_context
-def warm(ctx, symbols, symbols_file, parallel, process_raw, force_refresh):
+def warm(ctx, symbols, symbols_file, parallel, process_raw, force_refresh, include_submissions):
     """Warm up cache for symbols
 
     Pre-fetch data for symbols without running full analysis.
@@ -267,6 +272,7 @@ def warm(ctx, symbols, symbols_file, parallel, process_raw, force_refresh):
         investigator cache warm --symbols AAPL,MSFT,GOOGL
         investigator cache warm --file sp100.txt --parallel 10
         investigator cache warm --symbols STX --process-raw --force-refresh
+        investigator cache warm --symbols AAPL --include-submissions
     """
     import asyncio
 
@@ -287,12 +293,14 @@ def warm(ctx, symbols, symbols_file, parallel, process_raw, force_refresh):
         "Mode: "
         + ("raw + processed ingestion" if process_raw else "raw-only cache")
         + (", force-refresh enabled" if force_refresh else "")
+        + (", +submissions" if include_submissions else "")
     )
 
     async def warm_cache():
         from investigator.domain.agents.sec import SECAnalysisAgent
         from investigator.infrastructure.cache import get_cache_manager
         from investigator.infrastructure.events import EventBus
+        from investigator.infrastructure.sec.sec_api import SECApiClient
 
         cache_manager = get_cache_manager()
         event_bus = EventBus()
@@ -302,6 +310,7 @@ def warm(ctx, symbols, symbols_file, parallel, process_raw, force_refresh):
             event_bus=event_bus,
             cache_manager=cache_manager,
         )
+        sec_client = SECApiClient()
 
         sem = asyncio.Semaphore(parallel)
         results = []
@@ -309,13 +318,25 @@ def warm(ctx, symbols, symbols_file, parallel, process_raw, force_refresh):
         async def fetch(symbol: str):
             async with sem:
                 try:
+                    # Step 1: Fetch CompanyFacts
                     await sec_agent._fetch_and_cache_companyfacts(
                         symbol,
                         process_raw=process_raw,
                         force_refresh=force_refresh,
                     )
                     results.append((symbol, True, ""))
-                    click.echo(f"  Cached: {symbol}" f"{' (processed)' if process_raw else ' (raw-only)'}")
+                    click.echo(f"  Cached: {symbol}{' (processed)' if process_raw else ' (raw-only)'}")
+
+                    # Step 2: Optionally fetch submissions
+                    if include_submissions:
+                        try:
+                            cik = sec_client._resolve_cik(symbol)
+                            if cik:
+                                await sec_client._load_submissions(symbol, cik)
+                                click.echo(f"    + Submissions cached for {symbol}")
+                        except Exception as e:
+                            click.echo(f"    ! Submissions fetch failed for {symbol}: {e}")
+
                 except Exception as e:
                     results.append((symbol, False, str(e)))
                     click.echo(f"  Failed: {symbol} - {e}")
@@ -368,3 +389,139 @@ def stats(ctx, json_output):
 
     if "avg_latency_ms" in stats:
         click.echo(f"  Avg Latency: {stats['avg_latency_ms']:.1f}ms")
+
+
+@cache.command("refresh-submissions")
+@click.option("--symbols", "-s", help="Comma-separated symbols to refresh")
+@click.option(
+    "--file",
+    "-f",
+    "symbols_file",
+    type=click.Path(exists=True),
+    help="File with symbols",
+)
+@click.option("--verbose", "-v", is_flag=True, help="Show detailed information")
+@click.pass_context
+def refresh_submissions(ctx, symbols, symbols_file, verbose):
+    """Refresh SEC submissions cache from EDGAR
+
+    Force refresh only the submissions (filing list) cache from SEC EDGAR.
+    This fetches the latest 10-K, 10-Q, 8-K and other filings without
+    touching CompanyFacts or other cached data.
+
+    Use this after a company files earnings to get the latest filings.
+
+    Examples:
+        investigator cache refresh-submissions --symbols ZS
+        investigator cache refresh-submissions --file earnings_watchlist.txt
+        investigator cache refresh-submissions --symbols AAPL,MSFT --verbose
+    """
+    import asyncio
+
+    from investigator.infrastructure.cache.cache_types import CacheType
+    from investigator.infrastructure.cache.file_cache_handler import (
+        FileCacheStorageHandler,
+    )
+    from investigator.infrastructure.sec.sec_api import SECApiClient
+
+    # Load symbols
+    symbol_list = []
+    if symbols:
+        symbol_list = [s.strip().upper() for s in symbols.split(",")]
+    elif symbols_file:
+        with open(symbols_file) as f:
+            symbol_list = [line.strip().upper() for line in f if line.strip() and not line.startswith("#")]
+    else:
+        click.echo("Provide --symbols or --file", err=True)
+        sys.exit(1)
+
+    click.echo(f"Refreshing submissions cache for {len(symbol_list)} symbols...")
+    click.echo()
+
+    async def refresh_symbol(symbol: str) -> dict:
+        """Refresh submissions for a single symbol"""
+        result = {
+            "symbol": symbol,
+            "success": False,
+            "cik": None,
+            "latest_filings": [],
+            "error": None,
+        }
+
+        try:
+            # Initialize SEC API client
+            client = SECApiClient()
+
+            # Resolve CIK
+            cik = client._resolve_cik(symbol)
+            if not cik:
+                result["error"] = "Could not resolve CIK"
+                return result
+
+            result["cik"] = cik
+
+            # Delete existing submissions cache
+            cache_key = {"symbol": symbol, "cik": cik}
+            cache_manager = client.cache_manager
+
+            # Try to delete from file cache
+            try:
+                for handlers in cache_manager.handlers.get(CacheType.SUBMISSION_DATA, []):
+                    if isinstance(handlers, FileCacheStorageHandler):
+                        handlers.delete(cache_key)
+                        if verbose:
+                            click.echo(f"  {symbol}: Deleted old submissions cache")
+            except Exception as e:
+                if verbose:
+                    click.echo(f"  {symbol}: No existing cache to delete ({e})")
+
+            # Fetch fresh submissions from SEC
+            submissions = await client._load_submissions(symbol, cik)
+
+            # Extract recent filings info
+            recent = submissions.get("filings", {}).get("recent", {})
+            forms = recent.get("form", [])
+            dates = recent.get("filingDate", [])
+            accs = recent.get("accessionNumber", [])
+
+            # Get latest 5 filings
+            for i in range(min(len(forms), 5)):
+                result["latest_filings"].append(
+                    {
+                        "form": forms[i],
+                        "filed": dates[i],
+                        "accession": accs[i],
+                    }
+                )
+
+            result["success"] = True
+
+        except Exception as e:
+            result["error"] = str(e)
+
+        return result
+
+    async def refresh_all():
+        """Refresh all symbols"""
+        tasks = [refresh_symbol(s) for s in symbol_list]
+        results = await asyncio.gather(*tasks)
+
+        # Display results
+        success = 0
+        for r in results:
+            symbol = r["symbol"]
+            if r["success"]:
+                success += 1
+                click.echo(f"✅ {symbol}: Refreshed successfully")
+                if verbose:
+                    click.echo(f"   CIK: {r['cik']}")
+                    click.echo("   Latest filings:")
+                    for f in r["latest_filings"]:
+                        click.echo(f"     {f['form']:8} | {f['filed']} | {f['accession']}")
+            else:
+                click.echo(f"❌ {symbol}: Failed - {r['error']}", err=True)
+
+        click.echo()
+        click.echo(f"Completed: {success}/{len(results)} symbols refreshed")
+
+    asyncio.run(refresh_all())

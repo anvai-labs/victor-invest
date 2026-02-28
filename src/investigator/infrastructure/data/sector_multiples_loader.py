@@ -42,13 +42,17 @@ class SectorMultiplesLoader:
 
     def load(self) -> Dict[str, MultiplesRecord]:
         if not self.reference_path.exists():
-            logger.warning("Sector multiples reference not found at %s", self.reference_path)
+            logger.warning(
+                "Sector multiples reference not found at %s", self.reference_path
+            )
             return {}
 
         try:
             data = json.loads(self.reference_path.read_text())
         except Exception as exc:
-            logger.error("Failed to read sector multiples from %s: %s", self.reference_path, exc)
+            logger.error(
+                "Failed to read sector multiples from %s: %s", self.reference_path, exc
+            )
             return {}
 
         metadata = data.get("_metadata", {})
@@ -83,19 +87,29 @@ class SectorMultiplesLoader:
             self._validated_sectors.add(sector_key)
         return record
 
-    def _validate_record(self, record: MultiplesRecord, metadata: Dict[str, Any]) -> None:
+    def _validate_record(
+        self, record: MultiplesRecord, metadata: Dict[str, Any]
+    ) -> None:
         if record.last_updated:
             # Ensure both datetimes are timezone-aware for comparison
             now = datetime.now(timezone.utc)
             last_updated = (
-                record.last_updated if record.last_updated.tzinfo else record.last_updated.replace(tzinfo=timezone.utc)
+                record.last_updated
+                if record.last_updated.tzinfo
+                else record.last_updated.replace(tzinfo=timezone.utc)
             )
             age = now - last_updated
             if age > timedelta(days=self.freshness_days):
                 # Keep stale data visible, but reserve WARNING for severely stale references.
                 severe_stale_days = max(self.freshness_days * 12, 365)
-                log_fn = logger.warning if age.days >= severe_stale_days else logger.info
-                log_fn("Sector multiples for %s are stale (age %s days)", record.sector, age.days)
+                log_fn = (
+                    logger.warning if age.days >= severe_stale_days else logger.info
+                )
+                log_fn(
+                    "Sector multiples for %s are stale (age %s days)",
+                    record.sector,
+                    age.days,
+                )
 
         if record.sample_size is not None and record.sample_size < 5:
             logger.warning(
@@ -104,8 +118,14 @@ class SectorMultiplesLoader:
                 record.sample_size,
             )
 
-        previous_container = metadata.get("previous") if isinstance(metadata, dict) else None
-        previous = {} if not isinstance(previous_container, dict) else previous_container.get(record.sector, {})
+        previous_container = (
+            metadata.get("previous") if isinstance(metadata, dict) else None
+        )
+        previous = (
+            {}
+            if not isinstance(previous_container, dict)
+            else previous_container.get(record.sector, {})
+        )
         for key in ("pe", "ev_ebitda", "ps", "pb"):
             old_value = self._to_float(previous.get(key))
             new_value = getattr(record, key)

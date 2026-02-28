@@ -63,7 +63,9 @@ class ComprehensiveTechnicalAnalyzer:
         self.config = config
         self.data_fetcher = MarketDataFetcher(config)
         self.cache_manager = CacheManager(config)  # Use cache manager with config
-        self.ollama = create_llm_facade(config, self.cache_manager)  # Pass cache manager to LLM facade
+        self.ollama = create_llm_facade(
+            config, self.cache_manager
+        )  # Pass cache manager to LLM facade
         # Note: Technical indicators use parquet-only storage, no database
 
         # Create price cache directory
@@ -84,7 +86,9 @@ class ComprehensiveTechnicalAnalyzer:
         symbol_logger = self.config.get_symbol_logger(symbol, "yahoo_technical")
 
         logger.info(f"Starting comprehensive technical analysis for {symbol}")
-        symbol_logger.info(f"Starting comprehensive technical analysis - {days} days lookback")
+        symbol_logger.info(
+            f"Starting comprehensive technical analysis - {days} days lookback"
+        )
 
         try:
             # Check cache first for recent technical data
@@ -103,7 +107,9 @@ class ComprehensiveTechnicalAnalyzer:
                     # If data is less than 24 hours old and market is closed, use cached data
                     if age < timedelta(hours=24):
                         symbol_logger.info(f"Using cached technical data (age: {age})")
-                        logger.info(f"Using cached technical data for {symbol} (age: {age})")
+                        logger.info(
+                            f"Using cached technical data for {symbol} (age: {age})"
+                        )
 
                         # Extract dataframe and perform analysis
                         if "dataframe" in cached_data:
@@ -116,9 +122,13 @@ class ComprehensiveTechnicalAnalyzer:
                         # Use cached enhanced data with pre-calculated indicators
                         # Extract indicators and generate CSV from cached enhanced data
                         calculator = get_technical_calculator()
-                        recent_data = calculator.extract_recent_data_for_llm(df, days=30)
+                        recent_data = calculator.extract_recent_data_for_llm(
+                            df, days=30
+                        )
                         csv_data = self._generate_csv_for_llm_from_enhanced(recent_data)
-                        indicators = self._create_indicators_from_enhanced_df(df, symbol)
+                        indicators = self._create_indicators_from_enhanced_df(
+                            df, symbol
+                        )
 
                         if indicators:
                             # Perform AI analysis
@@ -145,7 +155,9 @@ class ComprehensiveTechnicalAnalyzer:
                             }
 
                             # Save to database
-                            symbol_logger.info("Saving analysis results to database (from cache)")
+                            symbol_logger.info(
+                                "Saving analysis results to database (from cache)"
+                            )
                             self._save_analysis_to_db(symbol, analysis_result)
 
                             return analysis_result
@@ -157,7 +169,9 @@ class ComprehensiveTechnicalAnalyzer:
                 raise RuntimeError(f"No market data available for {symbol}")
 
             # Calculate all technical indicators using centralized calculator
-            symbol_logger.info(f"Calculating comprehensive technical indicators for {symbol}")
+            symbol_logger.info(
+                f"Calculating comprehensive technical indicators for {symbol}"
+            )
             calculator = get_technical_calculator()
             enhanced_df = calculator.calculate_all_indicators(df, symbol)
 
@@ -167,7 +181,9 @@ class ComprehensiveTechnicalAnalyzer:
                 raise RuntimeError(f"Failed to create indicators object for {symbol}")
 
             # Save enhanced data with all indicators to parquet FIRST
-            symbol_logger.info(f"Caching enhanced data with indicators to parquet for {symbol}")
+            symbol_logger.info(
+                f"Caching enhanced data with indicators to parquet for {symbol}"
+            )
             self._save_to_parquet(symbol, enhanced_df, days)
 
             # Get stock info
@@ -179,7 +195,9 @@ class ComprehensiveTechnicalAnalyzer:
             csv_data = self._generate_csv_for_llm_from_enhanced(recent_data)
 
             # Perform AI analysis
-            ai_analysis = self._perform_comprehensive_ai_analysis(symbol, csv_data, indicators, stock_info)
+            ai_analysis = self._perform_comprehensive_ai_analysis(
+                symbol, csv_data, indicators, stock_info
+            )
 
             # Use AI technical score instead of manual calculation
             technical_score = ai_analysis.get("technical_score", 5.0)
@@ -212,8 +230,12 @@ class ComprehensiveTechnicalAnalyzer:
                     processing_time_ms=ai_analysis.get("processing_time_ms", 0),
                 )
 
-            symbol_logger.info(f"Technical analysis completed - Score: {technical_score}/10, Data points: {len(df)}")
-            logger.info(f"Completed comprehensive technical analysis for {symbol} - Score: {technical_score}/10")
+            symbol_logger.info(
+                f"Technical analysis completed - Score: {technical_score}/10, Data points: {len(df)}"
+            )
+            logger.info(
+                f"Completed comprehensive technical analysis for {symbol} - Score: {technical_score}/10"
+            )
             return analysis_result
 
         except Exception as e:
@@ -224,7 +246,9 @@ class ComprehensiveTechnicalAnalyzer:
             logger.error(f"Traceback: {traceback.format_exc()}")
             raise RuntimeError(f"Technical analysis failed for {symbol}: {str(e)}")
 
-    def _create_indicators_from_enhanced_df(self, enhanced_df: pd.DataFrame, symbol: str) -> TechnicalAnalysisData:
+    def _create_indicators_from_enhanced_df(
+        self, enhanced_df: pd.DataFrame, symbol: str
+    ) -> TechnicalAnalysisData:
         """
         Create TechnicalAnalysisData object from enhanced DataFrame with pre-calculated indicators
         Extracts the latest values from all calculated indicators
@@ -241,11 +265,15 @@ class ComprehensiveTechnicalAnalyzer:
             for period in [5, 10, 12, 20, 26, 50, 100, 200]:
                 if f"SMA_{period}" in enhanced_df.columns:
                     moving_averages[f"sma_{period}"] = (
-                        round_for_prompt(latest[f"SMA_{period}"], 2) if not pd.isna(latest[f"SMA_{period}"]) else 0.0
+                        round_for_prompt(latest[f"SMA_{period}"], 2)
+                        if not pd.isna(latest[f"SMA_{period}"])
+                        else 0.0
                     )
                 if f"EMA_{period}" in enhanced_df.columns:
                     moving_averages[f"ema_{period}"] = (
-                        round_for_prompt(latest[f"EMA_{period}"], 2) if not pd.isna(latest[f"EMA_{period}"]) else 0.0
+                        round_for_prompt(latest[f"EMA_{period}"], 2)
+                        if not pd.isna(latest[f"EMA_{period}"])
+                        else 0.0
                     )
 
             # Create momentum indicators dict with judicious rounding (2 decimal places)
@@ -253,7 +281,9 @@ class ComprehensiveTechnicalAnalyzer:
             for period in [9, 14, 21]:
                 if f"RSI_{period}" in enhanced_df.columns:
                     momentum_indicators[f"rsi_{period}"] = (
-                        round_for_prompt(latest[f"RSI_{period}"], 2) if not pd.isna(latest[f"RSI_{period}"]) else 0.0
+                        round_for_prompt(latest[f"RSI_{period}"], 2)
+                        if not pd.isna(latest[f"RSI_{period}"])
+                        else 0.0
                     )
 
             momentum_indicators.update(
@@ -265,32 +295,38 @@ class ComprehensiveTechnicalAnalyzer:
                     ),
                     "macd_signal": (
                         round_for_prompt(latest["MACD_Signal"], 2)
-                        if "MACD_Signal" in enhanced_df.columns and not pd.isna(latest["MACD_Signal"])
+                        if "MACD_Signal" in enhanced_df.columns
+                        and not pd.isna(latest["MACD_Signal"])
                         else 0.0
                     ),
                     "macd_histogram": (
                         round_for_prompt(latest["MACD_Histogram"], 2)
-                        if "MACD_Histogram" in enhanced_df.columns and not pd.isna(latest["MACD_Histogram"])
+                        if "MACD_Histogram" in enhanced_df.columns
+                        and not pd.isna(latest["MACD_Histogram"])
                         else 0.0
                     ),
                     "stoch_k": (
                         round_for_prompt(latest["Stoch_K"], 2)
-                        if "Stoch_K" in enhanced_df.columns and not pd.isna(latest["Stoch_K"])
+                        if "Stoch_K" in enhanced_df.columns
+                        and not pd.isna(latest["Stoch_K"])
                         else 0.0
                     ),
                     "stoch_d": (
                         round_for_prompt(latest["Stoch_D"], 2)
-                        if "Stoch_D" in enhanced_df.columns and not pd.isna(latest["Stoch_D"])
+                        if "Stoch_D" in enhanced_df.columns
+                        and not pd.isna(latest["Stoch_D"])
                         else 0.0
                     ),
                     "williams_r": (
                         round_for_prompt(latest["Williams_R"], 2)
-                        if "Williams_R" in enhanced_df.columns and not pd.isna(latest["Williams_R"])
+                        if "Williams_R" in enhanced_df.columns
+                        and not pd.isna(latest["Williams_R"])
                         else 0.0
                     ),
                     "mfi_14": (
                         round_for_prompt(latest["MFI_14"], 2)
-                        if "MFI_14" in enhanced_df.columns and not pd.isna(latest["MFI_14"])
+                        if "MFI_14" in enhanced_df.columns
+                        and not pd.isna(latest["MFI_14"])
                         else 0.0
                     ),
                 }
@@ -300,22 +336,26 @@ class ComprehensiveTechnicalAnalyzer:
             volatility_indicators = {
                 "bb_upper": (
                     round_for_prompt(latest["BB_Upper"], 2)
-                    if "BB_Upper" in enhanced_df.columns and not pd.isna(latest["BB_Upper"])
+                    if "BB_Upper" in enhanced_df.columns
+                    and not pd.isna(latest["BB_Upper"])
                     else 0.0
                 ),
                 "bb_middle": (
                     round_for_prompt(latest["BB_Middle"], 2)
-                    if "BB_Middle" in enhanced_df.columns and not pd.isna(latest["BB_Middle"])
+                    if "BB_Middle" in enhanced_df.columns
+                    and not pd.isna(latest["BB_Middle"])
                     else 0.0
                 ),
                 "bb_lower": (
                     round_for_prompt(latest["BB_Lower"], 2)
-                    if "BB_Lower" in enhanced_df.columns and not pd.isna(latest["BB_Lower"])
+                    if "BB_Lower" in enhanced_df.columns
+                    and not pd.isna(latest["BB_Lower"])
                     else 0.0
                 ),
                 "bb_width": (
                     round_for_prompt(latest["BB_Width"], 2)
-                    if "BB_Width" in enhanced_df.columns and not pd.isna(latest["BB_Width"])
+                    if "BB_Width" in enhanced_df.columns
+                    and not pd.isna(latest["BB_Width"])
                     else 0.0
                 ),
                 "atr_14": (
@@ -325,7 +365,8 @@ class ComprehensiveTechnicalAnalyzer:
                 ),
                 "volatility_20": (
                     round_for_prompt(latest["Volatility_20"], 2)
-                    if "Volatility_20" in enhanced_df.columns and not pd.isna(latest["Volatility_20"])
+                    if "Volatility_20" in enhanced_df.columns
+                    and not pd.isna(latest["Volatility_20"])
                     else 0.0
                 ),
                 # Add Fibonacci levels
@@ -336,73 +377,88 @@ class ComprehensiveTechnicalAnalyzer:
                 ),
                 "fib_23_6": (
                     round_for_prompt(latest["Fib_23_6"], 2)
-                    if "Fib_23_6" in enhanced_df.columns and not pd.isna(latest["Fib_23_6"])
+                    if "Fib_23_6" in enhanced_df.columns
+                    and not pd.isna(latest["Fib_23_6"])
                     else 0.0
                 ),
                 "fib_38_2": (
                     round_for_prompt(latest["Fib_38_2"], 2)
-                    if "Fib_38_2" in enhanced_df.columns and not pd.isna(latest["Fib_38_2"])
+                    if "Fib_38_2" in enhanced_df.columns
+                    and not pd.isna(latest["Fib_38_2"])
                     else 0.0
                 ),
                 "fib_50_0": (
                     round_for_prompt(latest["Fib_50_0"], 2)
-                    if "Fib_50_0" in enhanced_df.columns and not pd.isna(latest["Fib_50_0"])
+                    if "Fib_50_0" in enhanced_df.columns
+                    and not pd.isna(latest["Fib_50_0"])
                     else 0.0
                 ),
                 "fib_61_8": (
                     round_for_prompt(latest["Fib_61_8"], 2)
-                    if "Fib_61_8" in enhanced_df.columns and not pd.isna(latest["Fib_61_8"])
+                    if "Fib_61_8" in enhanced_df.columns
+                    and not pd.isna(latest["Fib_61_8"])
                     else 0.0
                 ),
                 "fib_78_6": (
                     round_for_prompt(latest["Fib_78_6"], 2)
-                    if "Fib_78_6" in enhanced_df.columns and not pd.isna(latest["Fib_78_6"])
+                    if "Fib_78_6" in enhanced_df.columns
+                    and not pd.isna(latest["Fib_78_6"])
                     else 0.0
                 ),
                 "fib_100": (
                     round_for_prompt(latest["Fib_100"], 2)
-                    if "Fib_100" in enhanced_df.columns and not pd.isna(latest["Fib_100"])
+                    if "Fib_100" in enhanced_df.columns
+                    and not pd.isna(latest["Fib_100"])
                     else 0.0
                 ),
                 # Add pivot points
                 "pivot_point": (
                     round_for_prompt(latest["Pivot_Point"], 2)
-                    if "Pivot_Point" in enhanced_df.columns and not pd.isna(latest["Pivot_Point"])
+                    if "Pivot_Point" in enhanced_df.columns
+                    and not pd.isna(latest["Pivot_Point"])
                     else 0.0
                 ),
                 "pivot_r1": (
                     round_for_prompt(latest["Pivot_R1"], 2)
-                    if "Pivot_R1" in enhanced_df.columns and not pd.isna(latest["Pivot_R1"])
+                    if "Pivot_R1" in enhanced_df.columns
+                    and not pd.isna(latest["Pivot_R1"])
                     else 0.0
                 ),
                 "pivot_r2": (
                     round_for_prompt(latest["Pivot_R2"], 2)
-                    if "Pivot_R2" in enhanced_df.columns and not pd.isna(latest["Pivot_R2"])
+                    if "Pivot_R2" in enhanced_df.columns
+                    and not pd.isna(latest["Pivot_R2"])
                     else 0.0
                 ),
                 "pivot_s1": (
                     round_for_prompt(latest["Pivot_S1"], 2)
-                    if "Pivot_S1" in enhanced_df.columns and not pd.isna(latest["Pivot_S1"])
+                    if "Pivot_S1" in enhanced_df.columns
+                    and not pd.isna(latest["Pivot_S1"])
                     else 0.0
                 ),
                 "pivot_s2": (
                     round_for_prompt(latest["Pivot_S2"], 2)
-                    if "Pivot_S2" in enhanced_df.columns and not pd.isna(latest["Pivot_S2"])
+                    if "Pivot_S2" in enhanced_df.columns
+                    and not pd.isna(latest["Pivot_S2"])
                     else 0.0
                 ),
             }
 
             # Create volume indicators dict with judicious rounding (0 decimals for volume, 2 for prices)
             volume_indicators = {
-                "volume": round_for_prompt(latest["Volume"], 0) if not pd.isna(latest["Volume"]) else 0.0,
+                "volume": round_for_prompt(latest["Volume"], 0)
+                if not pd.isna(latest["Volume"])
+                else 0.0,
                 "volume_sma_20": (
                     round_for_prompt(latest["Volume_SMA_20"], 0)
-                    if "Volume_SMA_20" in enhanced_df.columns and not pd.isna(latest["Volume_SMA_20"])
+                    if "Volume_SMA_20" in enhanced_df.columns
+                    and not pd.isna(latest["Volume_SMA_20"])
                     else 0.0
                 ),
                 "volume_ratio": (
                     round_for_prompt(latest["Volume_Ratio"], 2)
-                    if "Volume_Ratio" in enhanced_df.columns and not pd.isna(latest["Volume_Ratio"])
+                    if "Volume_Ratio" in enhanced_df.columns
+                    and not pd.isna(latest["Volume_Ratio"])
                     else 0.0
                 ),
                 "obv": (
@@ -433,19 +489,27 @@ class ComprehensiveTechnicalAnalyzer:
 
             if "Support_1" in enhanced_df.columns:
                 support_levels.append(
-                    round_for_prompt(latest["Support_1"], 2) if not pd.isna(latest["Support_1"]) else 0.0
+                    round_for_prompt(latest["Support_1"], 2)
+                    if not pd.isna(latest["Support_1"])
+                    else 0.0
                 )
             if "Support_2" in enhanced_df.columns:
                 support_levels.append(
-                    round_for_prompt(latest["Support_2"], 2) if not pd.isna(latest["Support_2"]) else 0.0
+                    round_for_prompt(latest["Support_2"], 2)
+                    if not pd.isna(latest["Support_2"])
+                    else 0.0
                 )
             if "Resistance_1" in enhanced_df.columns:
                 resistance_levels.append(
-                    round_for_prompt(latest["Resistance_1"], 2) if not pd.isna(latest["Resistance_1"]) else 0.0
+                    round_for_prompt(latest["Resistance_1"], 2)
+                    if not pd.isna(latest["Resistance_1"])
+                    else 0.0
                 )
             if "Resistance_2" in enhanced_df.columns:
                 resistance_levels.append(
-                    round_for_prompt(latest["Resistance_2"], 2) if not pd.isna(latest["Resistance_2"]) else 0.0
+                    round_for_prompt(latest["Resistance_2"], 2)
+                    if not pd.isna(latest["Resistance_2"])
+                    else 0.0
                 )
 
             # Create TechnicalAnalysisData object with rounded prices
@@ -453,10 +517,13 @@ class ComprehensiveTechnicalAnalyzer:
                 symbol=symbol,
                 period="365d",
                 analysis_date=datetime.now(),
-                current_price=round_for_prompt(latest["Close"], 2) if not pd.isna(latest["Close"]) else 0.0,
+                current_price=round_for_prompt(latest["Close"], 2)
+                if not pd.isna(latest["Close"])
+                else 0.0,
                 price_change=(
                     round_for_prompt(latest["Price_Change_1D"], 2)
-                    if "Price_Change_1D" in enhanced_df.columns and not pd.isna(latest["Price_Change_1D"])
+                    if "Price_Change_1D" in enhanced_df.columns
+                    and not pd.isna(latest["Price_Change_1D"])
                     else 0.0
                 ),
                 moving_averages=moving_averages,
@@ -474,7 +541,9 @@ class ComprehensiveTechnicalAnalyzer:
             return indicators
 
         except Exception as e:
-            logger.error(f"Error creating indicators from enhanced DataFrame for {symbol}: {e}")
+            logger.error(
+                f"Error creating indicators from enhanced DataFrame for {symbol}: {e}"
+            )
             return None
 
     def _generate_csv_for_llm_from_enhanced(self, recent_df: pd.DataFrame) -> str:
@@ -664,7 +733,9 @@ Price Performance:
 
             # Parse JSON response with metadata
             {
-                "model": self.config.ollama.models.get("technical_analysis", "deepseek-r1:32b"),
+                "model": self.config.ollama.models.get(
+                    "technical_analysis", "deepseek-r1:32b"
+                ),
                 "processing_time_ms": processing_time_ms,
                 "symbol": symbol,
                 "analysis_type": "technical_analysis",
@@ -674,20 +745,28 @@ Price Performance:
             # technical_result should be a properly processed dict
             if isinstance(technical_result, dict) and "error" not in technical_result:
                 analysis_result = technical_result
-                symbol_logger.info("Successfully received processed technical analysis response")
+                symbol_logger.info(
+                    "Successfully received processed technical analysis response"
+                )
             else:
                 error_msg = f"LLM facade returned error for technical analysis of {symbol}: {technical_result.get('error', 'Unknown error')}"
                 symbol_logger.error(error_msg)
                 analysis_result = technical_result  # Return error response as-is
 
             # Save prompts to cache
-            self._save_technical_prompts_to_cache(symbol, analysis_prompt, system_prompt, ai_response)
+            self._save_technical_prompts_to_cache(
+                symbol, analysis_prompt, system_prompt, ai_response
+            )
 
             # Note: LLM facade already handles response processing and caching internally
             # No need to manually save LLM responses here
 
-            symbol_logger.info(f"AI technical analysis completed in {processing_time_ms}ms")
-            logger.info(f"✅ Completed AI technical analysis for {symbol} in {processing_time_ms}ms")
+            symbol_logger.info(
+                f"AI technical analysis completed in {processing_time_ms}ms"
+            )
+            logger.info(
+                f"✅ Completed AI technical analysis for {symbol} in {processing_time_ms}ms"
+            )
             return analysis_result
 
         except Exception as e:
@@ -749,7 +828,9 @@ Price Performance:
             if insights_match:
                 insights_text = insights_match.group(1).strip()
                 result["key_insights"] = [
-                    line.strip("- ").strip() for line in insights_text.split("\n") if line.strip().startswith("-")
+                    line.strip("- ").strip()
+                    for line in insights_text.split("\n")
+                    if line.strip().startswith("-")
                 ]
 
             risks_match = re.search(
@@ -760,7 +841,9 @@ Price Performance:
             if risks_match:
                 risks_text = risks_match.group(1).strip()
                 result["risk_factors"] = [
-                    line.strip("- ").strip() for line in risks_text.split("\n") if line.strip().startswith("-")
+                    line.strip("- ").strip()
+                    for line in risks_text.split("\n")
+                    if line.strip().startswith("-")
                 ]
 
             return result
@@ -773,7 +856,9 @@ Price Performance:
                 "error": str(e),
             }
 
-    def _calculate_comprehensive_score(self, indicators: TechnicalAnalysisData) -> float:
+    def _calculate_comprehensive_score(
+        self, indicators: TechnicalAnalysisData
+    ) -> float:
         """Calculate comprehensive technical score based on all indicators"""
         try:
             # Get values from dictionaries
@@ -864,8 +949,14 @@ Price Performance:
             sr_score = 5.0
 
             # Position relative to support/resistance
-            resistance_level_1 = indicators.resistance_levels[0] if indicators.resistance_levels else current
-            support_level_1 = indicators.support_levels[0] if indicators.support_levels else current
+            resistance_level_1 = (
+                indicators.resistance_levels[0]
+                if indicators.resistance_levels
+                else current
+            )
+            support_level_1 = (
+                indicators.support_levels[0] if indicators.support_levels else current
+            )
 
             if current > resistance_level_1:
                 sr_score += 1.0  # Above resistance
@@ -917,7 +1008,9 @@ Price Performance:
             logger.error(f"Error calculating comprehensive score: {e}")
             return 5.0
 
-    def _save_technical_prompts_to_cache(self, symbol: str, prompt: str, system_prompt: str, response: str):
+    def _save_technical_prompts_to_cache(
+        self, symbol: str, prompt: str, system_prompt: str, response: str
+    ):
         """Save technical analysis prompts to cache"""
         try:
             # Use symbol-specific LLM cache directory (matching sec_fundamental.py pattern)
@@ -941,7 +1034,9 @@ Price Performance:
                 f.write("\n=== AI RESPONSE ===\n")
                 f.write(response)
 
-            logger.info(f"📝 Saved technical analysis prompts to data/llm_cache/{symbol}/ for {symbol}")
+            logger.info(
+                f"📝 Saved technical analysis prompts to data/llm_cache/{symbol}/ for {symbol}"
+            )
 
         except Exception as e:
             logger.warning(f"Error saving technical prompts to cache: {e}")
@@ -994,7 +1089,9 @@ Price Performance:
 
             # Prepare model info
             model_info = {
-                "model": self.config.ollama.models.get("technical_analysis", "qwen2.5:32b-instruct-q4_K_M"),
+                "model": self.config.ollama.models.get(
+                    "technical_analysis", "qwen2.5:32b-instruct-q4_K_M"
+                ),
                 "temperature": 0.1,
                 "top_p": 0.9,
                 "num_ctx": 4096,
@@ -1028,7 +1125,9 @@ Price Performance:
             if response_type == "text":
                 parsed_data = self._parse_technical_analysis(response)
                 if parsed_data:
-                    metadata["extracted_scores"] = {"technical_score": parsed_data.get("technical_score", 5.0)}
+                    metadata["extracted_scores"] = {
+                        "technical_score": parsed_data.get("technical_score", 5.0)
+                    }
                     metadata["summary"] = parsed_data.get("trend_analysis", "")
 
             # Determine fiscal period for cache key
@@ -1052,12 +1151,18 @@ Price Performance:
             }
 
             # Store with negative priority for LLM responses (audit-only, no lookup)
-            success = self.cache_manager.set(CacheType.LLM_RESPONSE, cache_key, cache_value)
+            success = self.cache_manager.set(
+                CacheType.LLM_RESPONSE, cache_key, cache_value
+            )
 
             if success:
-                logger.info(f"💾 Stored technical analysis LLM response for {symbol} (type: {response_type})")
+                logger.info(
+                    f"💾 Stored technical analysis LLM response for {symbol} (type: {response_type})"
+                )
             else:
-                logger.error(f"Failed to store technical analysis LLM response for {symbol}")
+                logger.error(
+                    f"Failed to store technical analysis LLM response for {symbol}"
+                )
 
         except Exception as e:
             logger.error(f"Error saving LLM response to database: {e}")
@@ -1082,7 +1187,9 @@ Price Performance:
         """Technical analysis results are saved to parquet files only (no database)"""
         try:
             # Technical indicators use parquet-only storage as configured centrally
-            logger.info(f"💾 Technical analysis for {symbol} saved to parquet storage only")
+            logger.info(
+                f"💾 Technical analysis for {symbol} saved to parquet storage only"
+            )
         except Exception as e:
             logger.warning(f"Note: Technical analysis uses parquet-only storage: {e}")
 
@@ -1161,7 +1268,8 @@ Price Performance:
                     "fibonacci_included": any("Fib_" in col for col in df.columns),
                     "pivot_points_included": any("Pivot_" in col for col in df.columns),
                     "volume_indicators_included": any(
-                        x in str(df.columns) for x in ["OBV", "VPT", "AD", "VWAP", "Volume_Ratio"]
+                        x in str(df.columns)
+                        for x in ["OBV", "VPT", "AD", "VWAP", "Volume_Ratio"]
                     ),
                     "calculation_method": "centralized_technical_calculator",
                     "data_source": "yahoo_finance",
@@ -1170,7 +1278,9 @@ Price Performance:
             }
 
             # Save to cache using ParquetCacheStorageHandler (pandas → parquet.gz conversion)
-            success = self.cache_manager.set(CacheType.TECHNICAL_DATA, cache_key, cache_value)
+            success = self.cache_manager.set(
+                CacheType.TECHNICAL_DATA, cache_key, cache_value
+            )
 
             if success:
                 logger.info(
@@ -1179,16 +1289,22 @@ Price Performance:
 
                 # Verify cache retrieval to confirm pandas DataFrame flow
                 try:
-                    cached_info = self.cache_manager.get(CacheType.TECHNICAL_DATA, cache_key)
+                    cached_info = self.cache_manager.get(
+                        CacheType.TECHNICAL_DATA, cache_key
+                    )
                     if cached_info and "dataframe" in cached_info:
                         cached_df = cached_info["dataframe"]
                         cache_metadata = cached_info.get("cache_info", {})
                         logger.info(
                             f"📊 Cache verification: {len(cached_df)} records, {cache_metadata.get('compression', 'unknown')} compression, {len(cached_df.columns)} columns"
                         )
-                        logger.debug(f"🔍 Sample columns: {list(cached_df.columns)[:10]}...")
+                        logger.debug(
+                            f"🔍 Sample columns: {list(cached_df.columns)[:10]}..."
+                        )
                     else:
-                        logger.warning("Cache verification failed: no dataframe in cached data")
+                        logger.warning(
+                            "Cache verification failed: no dataframe in cached data"
+                        )
                 except Exception as verify_error:
                     logger.warning(f"Cache verification failed: {verify_error}")
 
@@ -1198,7 +1314,9 @@ Price Performance:
                 try:
                     parquet_file = self.price_cache_dir / f"{symbol}.parquet"
                     df.to_parquet(parquet_file, compression="gzip", index=True)
-                    logger.info(f"📄 Fallback: saved legacy parquet file with gzip compression: {parquet_file}")
+                    logger.info(
+                        f"📄 Fallback: saved legacy parquet file with gzip compression: {parquet_file}"
+                    )
                 except Exception as fallback_error:
                     logger.error(f"Fallback parquet save also failed: {fallback_error}")
 
@@ -1244,7 +1362,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Comprehensive Technical Analysis")
     parser.add_argument("--symbol", required=True, help="Stock symbol to analyze")
-    parser.add_argument("--days", type=int, default=365, help="Number of days of data to fetch")
+    parser.add_argument(
+        "--days", type=int, default=365, help="Number of days of data to fetch"
+    )
     parser.add_argument("--test-data", action="store_true", help="Test data fetching")
 
     args = parser.parse_args()

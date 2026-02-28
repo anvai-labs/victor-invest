@@ -93,7 +93,9 @@ class IAnalysisObserver(ABC):
         pass
 
     @abstractmethod
-    def on_data_fetched(self, source: DataSourceType, symbol: str, data_size: int) -> None:
+    def on_data_fetched(
+        self, source: DataSourceType, symbol: str, data_size: int
+    ) -> None:
         """Called when data is fetched from a source"""
         pass
 
@@ -235,7 +237,9 @@ class IDataSourceAdapter(ABC):
     """Adapter interface for external data sources"""
 
     @abstractmethod
-    def adapt_data(self, raw_data: Dict[str, Any], symbol: str) -> List[QuarterlyMetrics]:
+    def adapt_data(
+        self, raw_data: Dict[str, Any], symbol: str
+    ) -> List[QuarterlyMetrics]:
         """Adapt external data to internal format"""
         pass
 
@@ -303,7 +307,9 @@ class IAnalysisRepository(ABC):
         pass
 
     @abstractmethod
-    def get_analysis_history(self, symbol: str, limit: int = 10) -> List[AnalysisResult]:
+    def get_analysis_history(
+        self, symbol: str, limit: int = 10
+    ) -> List[AnalysisResult]:
         """Get analysis history for symbol"""
         pass
 
@@ -379,7 +385,9 @@ class IFundamentalAnalysisFacade(ABC):
         pass
 
     @abstractmethod
-    def analyze_portfolio(self, symbols: List[str], **options) -> Dict[str, AnalysisResult]:
+    def analyze_portfolio(
+        self, symbols: List[str], **options
+    ) -> Dict[str, AnalysisResult]:
         """Simplified interface for portfolio analysis"""
         pass
 
@@ -437,7 +445,9 @@ class IAnalysisTemplate(ABC):
         pass
 
     @abstractmethod
-    def _generate_insights(self, aggregated_data: Dict[str, Any], scores: Dict[str, float]) -> Dict[str, List[str]]:
+    def _generate_insights(
+        self, aggregated_data: Dict[str, Any], scores: Dict[str, float]
+    ) -> Dict[str, List[str]]:
         """Generate insights and risks"""
         pass
 
@@ -453,6 +463,8 @@ class IAnalysisTemplate(ABC):
         pass
 
     @abstractmethod
-    def _handle_error(self, request: AnalysisRequest, error: Exception) -> AnalysisResult:
+    def _handle_error(
+        self, request: AnalysisRequest, error: Exception
+    ) -> AnalysisResult:
         """Handle analysis errors"""
         pass

@@ -18,8 +18,14 @@ from investigator.domain.services.valuation.models.base import (
     ModelNotApplicable,
     ValuationModelResult,
 )
-from investigator.domain.services.valuation.models.common import baseline_multiple_context, clamp
-from investigator.domain.services.valuation.models.company_profile import CompanyProfile, DataQualityFlag
+from investigator.domain.services.valuation.models.common import (
+    baseline_multiple_context,
+    clamp,
+)
+from investigator.domain.services.valuation.models.company_profile import (
+    CompanyProfile,
+    DataQualityFlag,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +53,7 @@ class EVEBITDAModel(BaseValuationModel):
         max_multiple: float = 30.0,
         min_multiple: float = 4.0,
         interest_coverage: Optional[float] = None,
+        revenue_growth: Optional[float] = None,
     ) -> None:
         super().__init__(company_profile=company_profile)
         self.ttm_ebitda = ttm_ebitda
@@ -56,11 +63,20 @@ class EVEBITDAModel(BaseValuationModel):
         self.max_multiple = max_multiple
         self.min_multiple = min_multiple
         self.interest_coverage = interest_coverage
+        self.revenue_growth = revenue_growth
 
     def calculate(self, **_: Any) -> ValuationModelResult | ModelNotApplicable:
+        # Debug: Log sector classification
+        sector = (self.company_profile.sector or "").strip().lower()
+        logger.info(
+            f"[EV_EBITDA] Sector check: sector='{self.company_profile.sector}', "
+            f"is_financial={self._is_financial_sector()}"
+        )
+
         if self._is_financial_sector():
             diagnostics = self._build_baseline_diagnostics()
             diagnostics.flags.append("UNSUPPORTED_FINANCIAL_SECTOR")
+            logger.info(f"[EV_EBITDA] Blocked: sector='{self.company_profile.sector}' contains financial sector token")
             return ModelNotApplicable(
                 model_name=self.model_name,
                 reason="unsupported_financial_sector",
@@ -70,6 +86,7 @@ class EVEBITDAModel(BaseValuationModel):
         if not self._is_applicable():
             diagnostics = self._build_baseline_diagnostics()
             diagnostics.flags.append(DataQualityFlag.NEGATIVE_DENOMINATOR.name)
+            logger.info(f"[EV_EBITDA] Not applicable: ttm_ebitda={self.ttm_ebitda} (must be > 0)")
             return ModelNotApplicable(
                 model_name=self.model_name,
                 reason="negative_or_missing_ebitda",
@@ -80,17 +97,20 @@ class EVEBITDAModel(BaseValuationModel):
         if target_multiple is None:
             diagnostics = self._build_baseline_diagnostics()
             diagnostics.flags.append("MISSING_REFERENCE_MULTIPLE")
+            logger.info(f"[EV_EBITDA] Not applicable: target_multiple is None")
             return ModelNotApplicable(
                 model_name=self.model_name,
                 reason="missing_reference_multiple",
                 diagnostics=diagnostics,
             )
 
+        assert self.ttm_ebitda is not None  # guaranteed by _is_applicable()
         fair_value_ev = float(self.ttm_ebitda) * target_multiple
         equity_value = self._convert_ev_to_equity(fair_value_ev)
         if equity_value is None:
             diagnostics = self._build_baseline_diagnostics()
             diagnostics.flags.append("MISSING_NET_DEBT")
+            logger.info(f"[EV_EBITDA] Not applicable: equity_value is None (net_debt calculation failed)")
             return ModelNotApplicable(
                 model_name=self.model_name,
                 reason="missing_net_debt",
@@ -101,6 +121,7 @@ class EVEBITDAModel(BaseValuationModel):
         if shares_outstanding is None or shares_outstanding <= 0:
             diagnostics = self._build_baseline_diagnostics()
             diagnostics.flags.append("MISSING_SHARES")
+            logger.info(f"[EV_EBITDA] Not applicable: shares_outstanding={shares_outstanding}")
             return ModelNotApplicable(
                 model_name=self.model_name,
                 reason="missing_shares_outstanding",
@@ -108,6 +129,12 @@ class EVEBITDAModel(BaseValuationModel):
             )
 
         fair_value = equity_value / shares_outstanding
+        logger.info(
+            f"[EV_EBITDA] SUCCESS: fair_value=${fair_value:.2f} "
+            f"(ebitda=${self.ttm_ebitda:,.0f}, multiple={target_multiple:.1f}x, "
+            f"equity=${equity_value:,.0f}, shares={shares_outstanding:,.0f})"
+        )
+
         diagnostics = self._build_diagnostics(target_multiple=target_multiple)
         confidence = self.estimate_confidence({"target_multiple": target_multiple})
 
@@ -161,6 +188,19 @@ class EVEBITDAModel(BaseValuationModel):
         if not candidates:
             return None
         multiple = sum(candidates) / len(candidates)
+
+        # Growth adjustment: scale 1.0x at 0% growth to 1.6x at 30%+ growth
+        if self.revenue_growth is not None and self.revenue_growth > 0:
+            growth_factor = clamp(1.0 + self.revenue_growth * 1.5, 1.0, 1.6)
+            logger.info(
+                "EV/EBITDA growth adjustment: revenue_growth=%.1f%%, factor=%.2fx, multiple %.1f→%.1f",
+                self.revenue_growth * 100,
+                growth_factor,
+                multiple,
+                multiple * growth_factor,
+            )
+            multiple *= growth_factor
+
         return clamp(multiple, self.min_multiple, self.max_multiple)
 
     def _convert_ev_to_equity(self, fair_ev: float) -> Optional[float]:
@@ -213,7 +253,12 @@ class EVEBITDAModel(BaseValuationModel):
             diagnostics.flags.append("HIGH_LEVERAGE")
             diagnostics.fit_score = clamp(diagnostics.fit_score - 0.1, 0.0, 1.0)
 
-        if target_multiple and self.enterprise_value is not None and self.ttm_ebitda not in (None, 0):
+        if (
+            target_multiple
+            and self.enterprise_value is not None
+            and self.ttm_ebitda is not None
+            and self.ttm_ebitda != 0
+        ):
             try:
                 observed_multiple = float(self.enterprise_value) / float(self.ttm_ebitda)
                 delta = abs(observed_multiple - target_multiple) / target_multiple

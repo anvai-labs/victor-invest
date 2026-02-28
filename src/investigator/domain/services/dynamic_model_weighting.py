@@ -148,6 +148,24 @@ class DynamicModelWeightingService:
             )
             if keyword
         )
+        # Property & Casualty insurance configuration (P/B is primary valuation metric)
+        self.property_casualty_insurance_symbols = {
+            str(symbol).upper() for symbol in valuation_config.get("property_casualty_insurance_symbols", []) if symbol
+        }
+        self.property_casualty_insurance_industry_keywords = tuple(
+            str(keyword).lower()
+            for keyword in valuation_config.get(
+                "property_casualty_insurance_industry_keywords",
+                [
+                    "property & casualty insurance",
+                    "property-casualty insurance",
+                    "property casualty insurers",
+                    "p&c insurance",
+                    "insurance-property & casualty",
+                ],
+            )
+            if keyword
+        )
 
         # Initialize shared services
         self.metadata_service = CompanyMetadataService(
@@ -651,6 +669,43 @@ class DynamicModelWeightingService:
         # Insurance and managed care companies should use P/BV valuation, not DCF or P/S
         # Note: Managed care (CNC, UNH, HUM, CI) are in Health Care sector, not Financials!
         if self._is_insurance_or_managed_care(sector, industry, symbol):
+            # Check for Property & Casualty insurance - P/B is primary valuation metric
+            # P&C insurers: ALL, TRV, HIG, PGR, CB, AIG, etc.
+            if self._is_property_casualty_insurance(industry, symbol):
+                # If stockholders_equity is missing, try to fetch from database
+                if stockholders_equity <= 0 and symbol:
+                    try:
+                        from investigator.domain.services.valuation.insurance_valuation import (
+                            _fetch_from_database,
+                        )
+
+                        db_equity, _, _ = _fetch_from_database(symbol, None)  # Will use config
+                        if db_equity:
+                            stockholders_equity = db_equity
+                            logger.info(
+                                f"{symbol} - P&C Insurance: Fetched stockholders_equity from database: ${stockholders_equity / 1e9:.2f}B"
+                            )
+                    except Exception as e:
+                        logger.warning(f"{symbol} - P&C Insurance: Could not fetch equity from database: {e}")
+
+                # Calculate ROE if we have the data
+                if net_income > 0 and stockholders_equity > 0:
+                    roe = (net_income / stockholders_equity) * 100
+                    logger.info(
+                        f"{symbol or 'UNKNOWN'} - P&C Insurance tier classification: ROE={roe:.1f}% (NI=${net_income / 1e9:.2f}B, Equity=${stockholders_equity / 1e9:.2f}B)"
+                    )
+                    if roe >= 12:
+                        return ("insurance", "insurance_property_casualty")
+                    elif roe >= 8:
+                        return ("insurance", "insurance_property_casualty")
+                    else:
+                        return ("insurance", "insurance_property_casualty")
+                else:
+                    # No ROE data, use P&C tier
+                    logger.warning(f"{symbol or 'UNKNOWN'} - P&C Insurance: Cannot calculate ROE, using P&C tier")
+                    return ("insurance", "insurance_property_casualty")
+
+            # For other insurance (managed care, life, reinsurance), use ROE-based tier
             # If stockholders_equity is missing, try to fetch from database
             if stockholders_equity <= 0 and symbol:
                 try:
@@ -1101,7 +1156,7 @@ class DynamicModelWeightingService:
 
         # Log market context adjustments
         logger.info(
-            f"{symbol} - Market context adjustments applied: {market_context}. " f"Multipliers: {multipliers_applied}"
+            f"{symbol} - Market context adjustments applied: {market_context}. Multipliers: {multipliers_applied}"
         )
         logger.debug(
             f"{symbol} - Weight changes: "
@@ -1511,7 +1566,10 @@ class DynamicModelWeightingService:
         return any(keyword in industry_lower for keyword in self.fee_based_insurance_industry_keywords)
 
     def _is_insurance_or_managed_care(
-        self, sector: Optional[str], industry: Optional[str], symbol: Optional[str] = None
+        self,
+        sector: Optional[str],
+        industry: Optional[str],
+        symbol: Optional[str] = None,
     ) -> bool:
         """
         Check if the company is an insurance or managed care company.
@@ -1572,6 +1630,36 @@ class DynamicModelWeightingService:
                 return True
 
         return False
+
+    def _is_property_casualty_insurance(self, industry: Optional[str], symbol: Optional[str] = None) -> bool:
+        """
+        Check if company is a Property & Casualty insurance company.
+
+        P&C insurers should use P/B as primary valuation metric because:
+        - Earnings are volatile due to claim frequency/severity
+        - Book value (reserves + surplus) is more stable
+        - P/B is standard valuation metric for P&C insurance
+
+        Configuration: property_casualty_insurance_symbols and
+                      property_casualty_insurance_industry_keywords in config.yaml
+
+        Args:
+            industry: Industry name
+            symbol: Stock symbol
+
+        Returns:
+            True if P&C insurance company
+        """
+        # Direct symbol lookup from config
+        if symbol and symbol.upper() in self.property_casualty_insurance_symbols:
+            return True
+
+        if not industry:
+            return False
+
+        # Industry keywords from config
+        industry_lower = industry.lower()
+        return any(keyword in industry_lower for keyword in self.property_casualty_insurance_industry_keywords)
 
     def _is_low_margin_industry(self, sector: Optional[str], industry: Optional[str]) -> bool:
         """

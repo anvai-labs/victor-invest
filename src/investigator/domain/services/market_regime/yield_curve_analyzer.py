@@ -161,7 +161,7 @@ class YieldCurveAnalysis:
                 "Banks typically benefit from wider margins."
             ),
             YieldCurveShape.NORMAL: (
-                "Normal curve indicates balanced growth outlook. " "Maintain diversified positioning across sectors."
+                "Normal curve indicates balanced growth outlook. Maintain diversified positioning across sectors."
             ),
             YieldCurveShape.FLAT: (
                 "Flat curve suggests economic uncertainty or late-cycle. "

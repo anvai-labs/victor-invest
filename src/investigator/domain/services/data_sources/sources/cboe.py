@@ -66,8 +66,7 @@ class CBOEVolatilitySource(DataSource):
             with engine.connect() as conn:
                 # Fetch VIX from macro_indicator_values
                 result = conn.execute(
-                    text(
-                        """
+                    text("""
                         SELECT v.value, v.date
                         FROM macro_indicator_values v
                         JOIN macro_indicators i ON v.indicator_id = i.id
@@ -75,8 +74,7 @@ class CBOEVolatilitySource(DataSource):
                         AND v.date <= :target_date
                         ORDER BY v.date DESC
                         LIMIT 1
-                    """
-                    ),
+                    """),
                     {"target_date": target_date},
                 )
                 row = result.fetchone()
@@ -86,8 +84,7 @@ class CBOEVolatilitySource(DataSource):
 
                 # Fetch from regional_fed_indicators for CBOE data
                 result = conn.execute(
-                    text(
-                        """
+                    text("""
                         SELECT indicator_name,
                                (indicator_data->>'value')::float as value,
                                observation_date
@@ -95,8 +92,7 @@ class CBOEVolatilitySource(DataSource):
                         WHERE district = 'cboe'
                         AND observation_date <= :target_date
                         ORDER BY observation_date DESC
-                    """
-                    ),
+                    """),
                     {"target_date": target_date},
                 )
                 for row in result:
@@ -225,7 +221,11 @@ class CBOEVolatilitySource(DataSource):
             else (
                 "fear"
                 if fear_score > 60
-                else "neutral" if fear_score > 40 else "greed" if fear_score > 20 else "extreme_greed"
+                else "neutral"
+                if fear_score > 40
+                else "greed"
+                if fear_score > 20
+                else "extreme_greed"
             )
         )
 
@@ -245,16 +245,14 @@ class CBOEVolatilitySource(DataSource):
 
             with engine.connect() as conn:
                 result = conn.execute(
-                    text(
-                        """
+                    text("""
                         SELECT v.value
                         FROM macro_indicator_values v
                         JOIN macro_indicators i ON v.indicator_id = i.id
                         WHERE i.series_id = 'VIXCLS'
                         AND v.date >= :start_date
                         ORDER BY v.value
-                    """
-                    ),
+                    """),
                     {"start_date": start_date},
                 )
                 values = [float(r[0]) for r in result]

@@ -204,7 +204,7 @@ def extract_backlog_metrics_from_xbrl(
                         if value is not None:
                             extracted_values[canonical_name] = float(value)
                             logger.debug(
-                                f"{symbol} - Extracted {canonical_name} from {alias}: " f"${float(value) / 1e9:.2f}B"
+                                f"{symbol} - Extracted {canonical_name} from {alias}: ${float(value) / 1e9:.2f}B"
                             )
                             break  # Found value, move to next canonical name
 
@@ -300,7 +300,7 @@ def calculate_backlog_premium(backlog: float, annual_revenue: float) -> float:
         premium = 1.0  # No adjustment
         quality = "average"
 
-    logger.info(f"Backlog premium calculated: {premium:.2f}x " f"(ratio={backlog_ratio:.2f}x, quality={quality})")
+    logger.info(f"Backlog premium calculated: {premium:.2f}x (ratio={backlog_ratio:.2f}x, quality={quality})")
 
     return premium
 
@@ -396,7 +396,7 @@ def calculate_contract_mix_adjustment(cost_plus_pct: float) -> float:
         adjustment = 1.0
         mix_type = "balanced"
 
-    logger.info(f"Contract mix adjustment: {adjustment:.2f}x " f"(cost-plus={cost_plus_pct:.0%}, mix={mix_type})")
+    logger.info(f"Contract mix adjustment: {adjustment:.2f}x (cost-plus={cost_plus_pct:.0%}, mix={mix_type})")
 
     return adjustment
 

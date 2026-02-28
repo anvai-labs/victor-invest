@@ -54,7 +54,11 @@ def format_trend_context(company_data: Dict[str, Any]) -> str:
     quality_rating = (
         "EXCELLENT"
         if quality_score >= 90
-        else "GOOD" if quality_score >= 75 else "FAIR" if quality_score >= 60 else "POOR"
+        else "GOOD"
+        if quality_score >= 75
+        else "FAIR"
+        if quality_score >= 60
+        else "POOR"
     )
 
     return (

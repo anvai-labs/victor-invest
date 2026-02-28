@@ -240,8 +240,7 @@ class ModelAgreementScorer:
 
         # Log analysis
         logger.info(
-            f"[{symbol}] Model Agreement Analysis: "
-            f"{agreement_level.value} (CV: {cv:.1%}, {len(valid_values)} models)"
+            f"[{symbol}] Model Agreement Analysis: {agreement_level.value} (CV: {cv:.1%}, {len(valid_values)} models)"
         )
 
         if outlier_models:
@@ -283,7 +282,7 @@ class ModelAgreementScorer:
         for model, weight in weights.items():
             if model in outlier_models:
                 adjusted[model] = weight * (1 - self.config.outlier_weight_penalty)
-                logger.debug(f"Outlier penalty applied to {model}: " f"{weight:.1f}% -> {adjusted[model]:.1f}%")
+                logger.debug(f"Outlier penalty applied to {model}: {weight:.1f}% -> {adjusted[model]:.1f}%")
             else:
                 adjusted[model] = weight
 

@@ -46,7 +46,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 import aiohttp
-import requests  # type: ignore[import-untyped]
+import requests
 
 try:
     import certifi
@@ -186,20 +186,12 @@ class Form4Filing:
     @property
     def total_purchase_value(self) -> float:
         """Total value of purchase transactions."""
-        return sum(
-            t.total_value
-            for t in self.transactions
-            if t.transaction_type and t.transaction_type.is_buy
-        )
+        return sum(t.total_value for t in self.transactions if t.transaction_type and t.transaction_type.is_buy)
 
     @property
     def total_sale_value(self) -> float:
         """Total value of sale transactions."""
-        return sum(
-            t.total_value
-            for t in self.transactions
-            if t.transaction_type and t.transaction_type.is_sell
-        )
+        return sum(t.total_value for t in self.transactions if t.transaction_type and t.transaction_type.is_sell)
 
     @property
     def net_value(self) -> float:
@@ -232,18 +224,10 @@ class Form4Filing:
                 "cik": self.reporting_owner.cik if self.reporting_owner else None,
                 "name": self.reporting_owner.name if self.reporting_owner else None,
                 "title": self.reporting_owner.title if self.reporting_owner else None,
-                "is_director": self.reporting_owner.is_director
-                if self.reporting_owner
-                else False,
-                "is_officer": self.reporting_owner.is_officer
-                if self.reporting_owner
-                else False,
-                "is_ten_percent_owner": self.reporting_owner.is_ten_percent_owner
-                if self.reporting_owner
-                else False,
-                "is_key_insider": self.reporting_owner.is_key_insider
-                if self.reporting_owner
-                else False,
+                "is_director": self.reporting_owner.is_director if self.reporting_owner else False,
+                "is_officer": self.reporting_owner.is_officer if self.reporting_owner else False,
+                "is_ten_percent_owner": self.reporting_owner.is_ten_percent_owner if self.reporting_owner else False,
+                "is_key_insider": self.reporting_owner.is_key_insider if self.reporting_owner else False,
             },
             "transactions": [
                 {
@@ -345,9 +329,7 @@ class InsiderTransactionFetcher:
             logger.error(f"Error fetching {url}: {e}")
             return None
 
-    async def fetch_recent_filings(
-        self, symbol: str, days: int = 30, cik: Optional[str] = None
-    ) -> List[Form4Filing]:
+    async def fetch_recent_filings(self, symbol: str, days: int = 30, cik: Optional[str] = None) -> List[Form4Filing]:
         """Fetch recent Form 4 filings for a symbol.
 
         Args:
@@ -398,15 +380,10 @@ class InsiderTransactionFetcher:
                             # Fetch and parse the XML
                             accession = accession_numbers[i].replace("-", "")
                             # Use www.sec.gov for XML files (data.sec.gov returns 403)
-                            base_url = (
-                                f"{self.SEC_BASE_URL}/Archives/edgar/data/"
-                                f"{int(cik)}/{accession}"
-                            )
+                            base_url = f"{self.SEC_BASE_URL}/Archives/edgar/data/{int(cik)}/{accession}"
 
                             # Get the actual Form 4 XML (not XSLT-transformed view)
-                            xml_url = await self._find_form4_xml_url(
-                                base_url, primary_docs[i]
-                            )
+                            xml_url = await self._find_form4_xml_url(base_url, primary_docs[i])
 
                             if xml_url:
                                 xml_content = await self._rate_limited_request(xml_url)
@@ -460,19 +437,11 @@ class InsiderTransactionFetcher:
                     owner.cik = self._get_xml_text(owner_id, "rptOwnerCik")
                     owner.name = self._get_xml_text(owner_id, "rptOwnerName")
 
-                relationship = reporting_owner_elem.find(
-                    ".//reportingOwnerRelationship"
-                )
+                relationship = reporting_owner_elem.find(".//reportingOwnerRelationship")
                 if relationship is not None:
-                    owner.is_director = (
-                        self._get_xml_text(relationship, "isDirector") == "1"
-                    )
-                    owner.is_officer = (
-                        self._get_xml_text(relationship, "isOfficer") == "1"
-                    )
-                    owner.is_ten_percent_owner = (
-                        self._get_xml_text(relationship, "isTenPercentOwner") == "1"
-                    )
+                    owner.is_director = self._get_xml_text(relationship, "isDirector") == "1"
+                    owner.is_officer = self._get_xml_text(relationship, "isOfficer") == "1"
+                    owner.is_ten_percent_owner = self._get_xml_text(relationship, "isTenPercentOwner") == "1"
                     owner.is_other = self._get_xml_text(relationship, "isOther") == "1"
                     owner.title = self._get_xml_text(relationship, "officerTitle")
 
@@ -502,9 +471,7 @@ class InsiderTransactionFetcher:
             logger.error(f"Error parsing Form 4 XML: {e}")
             return None
 
-    def _parse_transaction(
-        self, elem: ET.Element, is_derivative: bool = False
-    ) -> Optional[InsiderTransaction]:
+    def _parse_transaction(self, elem: ET.Element, is_derivative: bool = False) -> Optional[InsiderTransaction]:
         """Parse a single transaction element."""
         try:
             trans = InsiderTransaction(is_derivative=is_derivative)
@@ -515,24 +482,16 @@ class InsiderTransactionFetcher:
                 trans.transaction_date = datetime.strptime(date_str, "%Y-%m-%d").date()
 
             # Transaction code
-            trans.transaction_code = self._get_xml_text(
-                elem, ".//transactionCoding/transactionCode"
-            )
+            trans.transaction_code = self._get_xml_text(elem, ".//transactionCoding/transactionCode")
             if trans.transaction_code:
-                trans.transaction_type = TransactionType.from_code(
-                    trans.transaction_code
-                )
+                trans.transaction_type = TransactionType.from_code(trans.transaction_code)
 
             # Transaction amounts
             amounts = elem.find(".//transactionAmounts")
             if amounts is not None:
                 shares_str = self._get_xml_text(amounts, "transactionShares/value")
-                price_str = self._get_xml_text(
-                    amounts, "transactionPricePerShare/value"
-                )
-                acq_disp = self._get_xml_text(
-                    amounts, "transactionAcquiredDisposedCode/value"
-                )
+                price_str = self._get_xml_text(amounts, "transactionPricePerShare/value")
+                acq_disp = self._get_xml_text(amounts, "transactionAcquiredDisposedCode/value")
 
                 trans.shares = float(shares_str) if shares_str else 0.0
                 trans.price_per_share = float(price_str) if price_str else 0.0
@@ -541,14 +500,10 @@ class InsiderTransactionFetcher:
 
             # Security title (for derivatives)
             if is_derivative:
-                trans.security_title = self._get_xml_text(
-                    elem, ".//securityTitle/value"
-                )
+                trans.security_title = self._get_xml_text(elem, ".//securityTitle/value")
 
             # Post-transaction holdings
-            post_shares = self._get_xml_text(
-                elem, ".//postTransactionAmounts/sharesOwnedFollowingTransaction/value"
-            )
+            post_shares = self._get_xml_text(elem, ".//postTransactionAmounts/sharesOwnedFollowingTransaction/value")
             if post_shares:
                 trans.post_transaction_shares = float(post_shares)
 
@@ -558,9 +513,7 @@ class InsiderTransactionFetcher:
             logger.debug(f"Error parsing transaction: {e}")
             return None
 
-    def _get_xml_text(
-        self, elem: Optional[ET.Element], path: str, default: str = ""
-    ) -> str:
+    def _get_xml_text(self, elem: Optional[ET.Element], path: str, default: str = "") -> str:
         """Safely get text from XML element."""
         if elem is None:
             return default
@@ -571,9 +524,7 @@ class InsiderTransactionFetcher:
 
         return default
 
-    async def _find_form4_xml_url(
-        self, base_url: str, primary_doc: str
-    ) -> Optional[str]:
+    async def _find_form4_xml_url(self, base_url: str, primary_doc: str) -> Optional[str]:
         """Find the actual Form 4 XML file URL.
 
         The primaryDocument field often points to XSLT-transformed views

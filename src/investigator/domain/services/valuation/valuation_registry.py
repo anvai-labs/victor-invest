@@ -294,9 +294,7 @@ class ValuationRegistry:
 
         # No match, return default
         if self._default_handler:
-            self.logger.debug(
-                f"{symbol or 'Unknown'} - Using default handler " f"(sector={sector}, industry={industry})"
-            )
+            self.logger.debug(f"{symbol or 'Unknown'} - Using default handler (sector={sector}, industry={industry})")
             return (None, self._default_handler)
 
         return (None, None)

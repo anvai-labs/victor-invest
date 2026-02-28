@@ -113,13 +113,11 @@ class SECAnalysisAgent(InvestmentAgent):
         db_manager = get_db_manager()
         with db_manager.engine.connect() as conn:
             result = conn.execute(
-                text(
-                    """
+                text("""
                     SELECT COUNT(*) as count
                     FROM sec_companyfacts_processed
                     WHERE symbol = :symbol
-                """
-                ),
+                """),
                 {"symbol": symbol},
             ).fetchone()
 
@@ -623,7 +621,14 @@ TEXT:
         if earnings_growth is not None and abs(earnings_growth) > 2.0:
             earnings_growth /= 100.0
 
-        if not any([revenue_guidance, eps_guidance, revenue_growth is not None, earnings_growth is not None]):
+        if not any(
+            [
+                revenue_guidance,
+                eps_guidance,
+                revenue_growth is not None,
+                earnings_growth is not None,
+            ]
+        ):
             return {}
 
         confidence = 0.0
@@ -737,15 +742,13 @@ TEXT:
 
         with db_manager.engine.connect() as conn:
             result = conn.execute(
-                text(
-                    """
+                text("""
                     SELECT id, companyfacts, fetched_at
                     FROM sec_companyfacts_raw
                     WHERE symbol = :symbol
                     ORDER BY fetched_at DESC
                     LIMIT 1
-                """
-                ),
+                """),
                 {"symbol": symbol},
             ).fetchone()
 
@@ -767,13 +770,11 @@ TEXT:
 
                     # Check if processed data exists, if not trigger processing
                     proc_result = conn.execute(
-                        text(
-                            """
+                        text("""
                             SELECT COUNT(*) as count
                             FROM sec_companyfacts_processed
                             WHERE symbol = :symbol
-                        """
-                        ),
+                        """),
                         {"symbol": symbol},
                     ).fetchone()
 
@@ -818,7 +819,7 @@ TEXT:
 
         us_gaap_tag_count = len(api_data["facts"]["us-gaap"])
         self.logger.info(
-            f"[SEC Agent] ✅ Fetched raw CompanyFacts from SEC API: " f"{symbol} has {us_gaap_tag_count} us-gaap tags"
+            f"[SEC Agent] ✅ Fetched raw CompanyFacts from SEC API: {symbol} has {us_gaap_tag_count} us-gaap tags"
         )
 
         # Step 3: Save to sec_companyfacts_raw (with hash-based deduplication)
@@ -848,13 +849,11 @@ TEXT:
         with db_manager.engine.connect() as conn:
             # Check if existing data has same hash
             existing = conn.execute(
-                text(
-                    """
+                text("""
                     SELECT id, companyfacts
                     FROM sec_companyfacts_raw
                     WHERE symbol = :symbol
-                """
-                ),
+                """),
                 {"symbol": symbol},
             ).fetchone()
 
@@ -884,14 +883,12 @@ TEXT:
                         f"(old: {existing_hash[:8]}..., new: {new_data_hash[:8]}...), updating database"
                     )
                     result = conn.execute(
-                        text(
-                            """
+                        text("""
                             UPDATE sec_companyfacts_raw
                             SET companyfacts = :companyfacts, fetched_at = NOW()
                             WHERE symbol = :symbol
                             RETURNING id
-                        """
-                        ),
+                        """),
                         {"symbol": symbol, "companyfacts": new_data_json},
                     )
                     conn.commit()
@@ -902,13 +899,11 @@ TEXT:
             else:
                 # No existing data, insert new
                 result = conn.execute(
-                    text(
-                        """
+                    text("""
                         INSERT INTO sec_companyfacts_raw (symbol, cik, companyfacts, fetched_at)
                         VALUES (:symbol, :cik, :companyfacts, NOW())
                         RETURNING id
-                    """
-                    ),
+                    """),
                     {
                         "symbol": symbol,
                         "cik": cik_padded,

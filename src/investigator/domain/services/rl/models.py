@@ -400,7 +400,11 @@ class RewardSignal:
     Attributes:
         reward_30d: Reward based on 30-day outcome (-1 to 1)
         reward_90d: Reward based on 90-day outcome (-1 to 1)
+        reward_180d: Reward based on 180-day outcome (-1 to 1)
         reward_365d: Reward based on 365-day outcome (-1 to 1)
+        reward_548d: Reward based on 548-day outcome (-1 to 1)
+        reward_730d: Reward based on 730-day outcome (-1 to 1)
+        reward_1095d: Reward based on 1095-day outcome (-1 to 1)
         direction_correct_30d: Did we predict direction correctly at 30d?
         direction_correct_90d: Did we predict direction correctly at 90d?
         error_pct_30d: Absolute percentage error at 30d
@@ -413,7 +417,11 @@ class RewardSignal:
 
     reward_30d: Optional[float] = None
     reward_90d: Optional[float] = None
+    reward_180d: Optional[float] = None
     reward_365d: Optional[float] = None
+    reward_548d: Optional[float] = None
+    reward_730d: Optional[float] = None
+    reward_1095d: Optional[float] = None
     direction_correct_30d: Optional[bool] = None
     direction_correct_90d: Optional[bool] = None
     error_pct_30d: Optional[float] = None

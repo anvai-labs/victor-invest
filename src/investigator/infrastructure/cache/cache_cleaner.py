@@ -165,7 +165,7 @@ class CacheCleanupService:
                     self.stats["total_bytes_freed"] += file_size
 
                     logger.debug(
-                        f"Removed expired cache file: {cache_file.name} " f"(mtime: {mtime.strftime('%Y-%m-%d %H:%M')})"
+                        f"Removed expired cache file: {cache_file.name} (mtime: {mtime.strftime('%Y-%m-%d %H:%M')})"
                     )
 
             except Exception as e:
@@ -173,9 +173,7 @@ class CacheCleanupService:
 
         if files_removed > 0:
             logger.info(
-                f"Cleaned {cache_type.value}: "
-                f"removed {files_removed} files, "
-                f"freed {bytes_freed / (1024 * 1024):.2f} MB"
+                f"Cleaned {cache_type.value}: removed {files_removed} files, freed {bytes_freed / (1024 * 1024):.2f} MB"
             )
 
     def _get_expires_at_from_file(self, cache_file: Path) -> Optional[datetime]:

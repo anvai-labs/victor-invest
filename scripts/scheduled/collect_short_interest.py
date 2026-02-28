@@ -101,9 +101,13 @@ class ShortInterestCollector(BaseCollector):
                     avg_volume = data.get("avg_daily_volume", 1)
                     shares_outstanding = data.get("shares_outstanding", 0)
 
-                    days_to_cover = short_interest / avg_volume if avg_volume > 0 else None
+                    days_to_cover = (
+                        short_interest / avg_volume if avg_volume > 0 else None
+                    )
                     short_interest_ratio = (
-                        (short_interest / shares_outstanding * 100) if shares_outstanding > 0 else None
+                        (short_interest / shares_outstanding * 100)
+                        if shares_outstanding > 0
+                        else None
                     )
 
                     # Detect squeeze potential
@@ -155,7 +159,9 @@ class ShortInterestCollector(BaseCollector):
             cursor.close()
             conn.close()
 
-            self.logger.info(f"Collected short interest for {self.metrics.records_inserted} symbols")
+            self.logger.info(
+                f"Collected short interest for {self.metrics.records_inserted} symbols"
+            )
 
         except ImportError as e:
             self.logger.error(f"Short interest fetcher not available: {e}")
@@ -193,7 +199,11 @@ class ShortInterestCollector(BaseCollector):
                 current_short_interest = data.get("short_interest", 0)
 
                 if prev_short_interest and prev_short_interest > 0:
-                    pct_change = (current_short_interest - prev_short_interest) / prev_short_interest * 100
+                    pct_change = (
+                        (current_short_interest - prev_short_interest)
+                        / prev_short_interest
+                        * 100
+                    )
 
                     cursor.execute(
                         """
@@ -211,7 +221,9 @@ class ShortInterestCollector(BaseCollector):
 
 def main():
     parser = argparse.ArgumentParser(description="Collect FINRA short interest data")
-    parser.add_argument("--symbols", type=str, help="Comma-separated list of symbols (default: S&P 500)")
+    parser.add_argument(
+        "--symbols", type=str, help="Comma-separated list of symbols (default: S&P 500)"
+    )
     parser.add_argument(
         "--threshold",
         type=float,

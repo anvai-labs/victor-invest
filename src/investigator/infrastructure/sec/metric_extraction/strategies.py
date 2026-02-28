@@ -361,9 +361,7 @@ class ByFrameFieldMatcher(PeriodMatchStrategy):
                 frame_matches.append(entry)
 
         if frame_matches:
-            logger.debug(
-                f"[{self.name}] Found {len(frame_matches)} entries with " f"frame matching {expected_patterns}"
-            )
+            logger.debug(f"[{self.name}] Found {len(frame_matches)} entries with frame matching {expected_patterns}")
             return MatchResult(matched=True, entries=frame_matches, method=self.match_method)
 
         return MatchResult(

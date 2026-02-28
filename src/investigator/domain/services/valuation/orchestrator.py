@@ -184,6 +184,36 @@ class MultiModelValuationOrchestrator:
             for model in applicable:
                 model["weight"] = equal_weight
 
+        # Apply industry-specific model exclusions
+        # P/S is not meaningful for insurance and banking industries
+        symbol = company_profile.symbol if hasattr(company_profile, "symbol") else "UNKNOWN"
+        sector = company_profile.sector if hasattr(company_profile, "sector") else "N/A"
+        industry = company_profile.industry if hasattr(company_profile, "industry") else None
+
+        # Check if this is an insurance or banking company
+        is_insurance = (industry and "insur" in industry.lower()) or sector.lower() == "insurance"
+        is_bank = (industry and "bank" in industry.lower()) or sector.lower() == "banks"
+
+        # Zero out P/S model weight for insurance/banks
+        if is_insurance or is_bank:
+            for model in applicable:
+                model_name = model.get("model", "").lower()
+                if model_name == "ps":
+                    original_weight = model.get("weight", 0.0)
+                    model["weight"] = 0.0
+                    if original_weight > 0:
+                        logger.info(
+                            f"   [{symbol}] {sector} | {industry}: "
+                            f"Excluding P/S model (weight {original_weight * 100:.1f}% → 0%)"
+                        )
+
+            # Re-normalize remaining weights to sum to 1.0
+            total_weight = sum(m.get("weight", 0.0) for m in applicable)
+            if total_weight > 0:
+                for model in applicable:
+                    model["weight"] = model.get("weight", 0.0) / total_weight
+                logger.info(f"   [{symbol}] Re-normalized weights after P/S exclusion")
+
         blended_fair_value = sum(
             (model.get("fair_value_per_share") or 0.0) * model.get("weight", 0.0) for model in applicable
         )
@@ -231,7 +261,8 @@ class MultiModelValuationOrchestrator:
             if model.get("fair_value_per_share") is not None
         }
         model_weights_for_agreement = {
-            model.get("model"): model.get("weight", 0.0) * 100 for model in applicable  # Convert to percentage
+            model.get("model"): model.get("weight", 0.0) * 100
+            for model in applicable  # Convert to percentage
         }
 
         agreement_result = self.agreement_scorer.analyze(

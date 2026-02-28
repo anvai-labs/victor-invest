@@ -1931,8 +1931,7 @@ def calculate_ttm_weighted(quarters: List[Dict[str, Any]], weights: Optional[Lis
             ttm_data[key] *= scaling_factor
         scaling_applied = True
         warnings.append(
-            f"TTM scaled from {num_quarters} quarters to 4-quarter equivalent "
-            f"(scaling factor: {scaling_factor:.2f}x)"
+            f"TTM scaled from {num_quarters} quarters to 4-quarter equivalent (scaling factor: {scaling_factor:.2f}x)"
         )
 
     # Calculate quality score

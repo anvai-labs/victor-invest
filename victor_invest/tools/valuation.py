@@ -57,6 +57,9 @@ from investigator.domain.services.market_data import (
     SymbolMetadataService,
 )
 
+# Sector name mapper for normalization
+from investigator.domain.services.sector_name_mapper import SectorIndustryMapper
+
 # Shared valuation config services (single source of truth for sector multiples, CAPM, GGM)
 from investigator.domain.services.valuation_shared import (
     SectorMultiplesService,
@@ -196,9 +199,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             # Single source of truth for sector multiples, CAPM, GGM defaults
             try:
                 self._valuation_config_service = ValuationConfigService()
-                self._sector_multiples_service = SectorMultiplesService(
-                    self._valuation_config_service
-                )
+                self._sector_multiples_service = SectorMultiplesService(self._valuation_config_service)
                 logger.debug("Shared valuation config services initialized")
             except Exception as e:
                 logger.warning(f"Could not initialize valuation config services: {e}")
@@ -283,9 +284,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     terminal_growth_rate,
                 )
             elif model == "sector_routed":
-                return await self._run_sector_routed(
-                    symbol, quarterly_metrics, multi_year_data, current_price
-                )
+                return await self._run_sector_routed(symbol, quarterly_metrics, multi_year_data, current_price)
             elif model == "dcf":
                 return await self._run_dcf(
                     symbol,
@@ -305,25 +304,16 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     terminal_growth_rate,
                 )
             elif model == "pe":
-                return await self._run_pe_multiple(
-                    symbol, quarterly_metrics, current_price
-                )
+                return await self._run_pe_multiple(symbol, quarterly_metrics, current_price)
             elif model == "ps":
-                return await self._run_ps_multiple(
-                    symbol, quarterly_metrics, current_price
-                )
+                return await self._run_ps_multiple(symbol, quarterly_metrics, current_price)
             elif model == "pb":
-                return await self._run_pb_multiple(
-                    symbol, quarterly_metrics, current_price
-                )
+                return await self._run_pb_multiple(symbol, quarterly_metrics, current_price)
             elif model == "ev_ebitda":
-                return await self._run_ev_ebitda(
-                    symbol, quarterly_metrics, current_price
-                )
+                return await self._run_ev_ebitda(symbol, quarterly_metrics, current_price)
             else:
                 return ToolResult.create_failure(
-                    f"Unknown model: {model}. Valid models: "
-                    "dcf, ggm, pe, ps, pb, ev_ebitda, sector_routed, all"
+                    f"Unknown model: {model}. Valid models: dcf, ggm, pe, ps, pb, ev_ebitda, sector_routed, all"
                 )
 
         except Exception as e:
@@ -366,9 +356,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     multi_year_data = await loop.run_in_executor(
                         None,
                         lambda: (
-                            db_manager.get_multi_year_data(symbol)
-                            if hasattr(db_manager, "get_multi_year_data")
-                            else []
+                            db_manager.get_multi_year_data(symbol) if hasattr(db_manager, "get_multi_year_data") else []
                         ),
                     )
                 except Exception as e:
@@ -382,17 +370,19 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     sec_tool = SECFilingTool()
                     await sec_tool.initialize()
 
-                    # Get financial metrics from SEC (action is "extract_metrics")
-                    metrics_result = await sec_tool.execute(
+                    # Get quarterly financial data from processed table
+                    quarterly_result = await sec_tool.execute(
                         {},
                         symbol=symbol,
-                        action="extract_metrics",  # _exec_ctx (required)
+                        action="get_quarterly_financials",
+                        num_periods=12,
                     )
 
-                    if metrics_result.success and metrics_result.output:
-                        # SEC data comes in nested format - wrap it in a list
-                        quarterly_metrics = [metrics_result.output]
-                        logger.info(f"Fetched SEC financial metrics for {symbol}")
+                    if quarterly_result.success and quarterly_result.output:
+                        quarterly_metrics = quarterly_result.output.get("quarterly_metrics", [])
+                        logger.info(
+                            f"Fetched {len(quarterly_metrics)} quarterly periods from SEC processed data for {symbol}"
+                        )
 
                 except Exception as e:
                     logger.debug(f"SEC fetch failed for {symbol}: {e}")
@@ -451,10 +441,19 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     if self._shares_service:
                         sec_shares = self._shares_service.get_sec_shares(symbol)
 
+                    # Normalize shares outstanding (handle millions-based reporting)
+                    shares = sec_shares or metadata.shares_outstanding
+                    if shares and shares < 100_000:
+                        logger.info(
+                            f"[SHARES_NORMALIZE] {symbol} - Shares {shares:,.0f} < 100,000, "
+                            f"multiplying by 1M → {shares * 1_000_000:,.0f}"
+                        )
+                        shares *= 1_000_000
+
                     return {
                         "sector": metadata.sector,
                         "industry": metadata.industry,
-                        "shares_outstanding": sec_shares or metadata.shares_outstanding,
+                        "shares_outstanding": shares,
                         "market_cap": metadata.market_cap,
                         "beta": metadata.beta,
                     }
@@ -471,9 +470,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             logger.warning(f"Could not get stock info for {symbol}: {e}")
             return {}
 
-    def _build_company_profile(
-        self, symbol: str, stock_info: Dict[str, Any], quarterly_metrics: List[Dict]
-    ):
+    def _build_company_profile(self, symbol: str, stock_info: Dict[str, Any], quarterly_metrics: List[Dict]):
         """Build a CompanyProfile from available data.
 
         Handles two formats:
@@ -493,8 +490,66 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             has_positive_earnings = None
             ttm_fcf = None
             fcf_margin = None
+            total_debt = None
+            cash = None
+            net_debt_to_ebitda = None
+            total_revenue_val = None
 
             if quarterly_metrics:
+                q = quarterly_metrics[0]
+
+                # Calculate total_debt and cash - check both nested and flat formats
+                def get_metric(q, keys):
+                    """Get metric from nested balance_sheet or flat format."""
+                    # Try flat format first
+                    for key in keys:
+                        val = q.get(key)
+                        if val is not None:
+                            return val
+                    # Try nested format (balance_sheet.xxx)
+                    if "balance_sheet" in q:
+                        balance = q.get("balance_sheet", {})
+                        for key in keys:
+                            val = balance.get(key)
+                            if val is not None:
+                                return val
+                    return 0
+
+                # Get long_term_debt (try multiple key variants)
+                long_term_debt = get_metric(q, ["long_term_debt", "longTermDebt", "long_debt"])
+
+                # Get short_term_debt (try multiple key variants)
+                short_term_debt = get_metric(
+                    q,
+                    [
+                        "short_term_debt",
+                        "short_term_debt_current",
+                        "shortTermDebt",
+                    ],
+                )
+
+                total_debt = long_term_debt + short_term_debt if (long_term_debt or short_term_debt) else None
+
+                # Get cash (try multiple key variants)
+                cash = get_metric(
+                    q,
+                    [
+                        "cash_and_equivalents",
+                        "cash_equivalents",
+                        "cash",
+                        "cash_and_cash_equivalents",
+                    ],
+                )
+
+                # Get EBITDA for net_debt_to_ebitda calculation
+                ebitda = q.get("ebitda")
+                if total_debt is not None and cash is not None and ebitda and ebitda > 0:
+                    net_debt = total_debt - cash
+                    net_debt_to_ebitda = net_debt / ebitda
+
+                # Get total revenue for margin calculation
+                total_revenue_val = q.get("total_revenue") or q.get("revenue")
+
                 # Handle SEC filing tool format (nested structure)
                 if "income_statement" in quarterly_metrics[0]:
                     sec_data = quarterly_metrics[0]
@@ -502,60 +557,86 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     cash_flow = sec_data.get("cash_flow", {})
 
                     total_fcf = cash_flow.get("free_cash_flow") or 0
-                    total_earnings = (
-                        income.get("net_income") or income.get("net_income_loss") or 0
-                    )
-                    total_revenue = (
-                        income.get("total_revenue") or income.get("revenue") or 0
-                    )
+                    total_earnings = income.get("net_income") or income.get("net_income_loss") or 0
+                    total_revenue = income.get("total_revenue") or income.get("revenue") or 0
+                    total_revenue_val = total_revenue_val or total_revenue
 
                     has_positive_fcf = total_fcf > 0 if total_fcf else None
-                    has_positive_earnings = (
-                        total_earnings > 0 if total_earnings else None
-                    )
+                    has_positive_earnings = total_earnings > 0 if total_earnings else None
                     ttm_fcf = total_fcf if total_fcf else None
-                    fcf_margin = (
-                        total_fcf / total_revenue
-                        if total_revenue and total_fcf
-                        else None
-                    )
+                    fcf_margin = total_fcf / total_revenue if total_revenue and total_fcf else None
 
                 elif len(quarterly_metrics) >= 4:
                     # Sum last 4 quarters for TTM values
+                    # Handle both nested format (income_statement/cash_flow) and flat format
                     recent_quarters = quarterly_metrics[:4]
-                    total_fcf = sum(
-                        q.get("free_cash_flow", 0) or 0 for q in recent_quarters
-                    )
-                    total_earnings = sum(
-                        q.get("net_income", 0) or 0 for q in recent_quarters
-                    )
-                    total_revenue = sum(
-                        q.get("revenue", 0) or 0 for q in recent_quarters
-                    )
+
+                    # Check if data is in nested format
+                    if "income_statement" in recent_quarters[0]:
+                        total_fcf = sum(q.get("cash_flow", {}).get("free_cash_flow") or 0 for q in recent_quarters)
+                        total_earnings = sum(
+                            q.get("income_statement", {}).get("net_income") or 0 for q in recent_quarters
+                        )
+                        total_revenue = sum(
+                            q.get("income_statement", {}).get("total_revenue") or 0 for q in recent_quarters
+                        )
+                    else:
+                        # Flat format
+                        total_fcf = sum(q.get("free_cash_flow", 0) or 0 for q in recent_quarters)
+                        total_earnings = sum(q.get("net_income", 0) or 0 for q in recent_quarters)
+                        total_revenue = sum(
+                            q.get("revenue", 0) or q.get("total_revenue", 0) or 0 for q in recent_quarters
+                        )
 
                     has_positive_fcf = total_fcf > 0
                     has_positive_earnings = total_earnings > 0
                     ttm_fcf = total_fcf
-                    fcf_margin = (
-                        total_fcf / total_revenue if total_revenue > 0 else None
-                    )
+                    fcf_margin = total_fcf / total_revenue if total_revenue > 0 else None
                 else:
                     # Single quarter - use as approximation
                     q = quarterly_metrics[0]
-                    total_fcf = q.get("free_cash_flow", 0) or 0
-                    total_earnings = q.get("net_income", 0) or 0
-                    total_revenue = q.get("revenue", 0) or 0
+
+                    # Handle nested format
+                    if "income_statement" in q:
+                        total_fcf = q.get("cash_flow", {}).get("free_cash_flow") or 0
+                        total_earnings = q.get("income_statement", {}).get("net_income") or 0
+                        total_revenue = q.get("income_statement", {}).get("total_revenue") or 0
+                    else:
+                        # Flat format
+                        total_fcf = q.get("free_cash_flow", 0) or 0
+                        total_earnings = q.get("net_income", 0) or 0
+                        total_revenue = q.get("revenue", 0) or q.get("total_revenue", 0) or 0
 
                     has_positive_fcf = total_fcf > 0 if total_fcf else None
-                    has_positive_earnings = (
-                        total_earnings > 0 if total_earnings else None
-                    )
+                    has_positive_earnings = total_earnings > 0 if total_earnings else None
                     ttm_fcf = total_fcf if total_fcf else None
-                    fcf_margin = (
-                        total_fcf / total_revenue
-                        if total_revenue and total_fcf
-                        else None
-                    )
+                    fcf_margin = total_fcf / total_revenue if total_revenue and total_fcf else None
+
+            # Calculate shares outstanding for EV/EBITDA model
+            shares_outstanding_val = None
+            revenue_growth_yoy = None
+            if quarterly_metrics:
+                shares_from_q = quarterly_metrics[0].get("shares_outstanding")
+                if shares_from_q:
+                    shares_outstanding_val = float(shares_from_q)
+                    # Normalize shares if reported in millions (SEC data issue)
+                    # If shares < 100,000, they're likely in millions
+                    if shares_outstanding_val < 100_000:
+                        logger.info(
+                            f"[SHARES_NORMALIZE] {symbol} - Shares value {shares_outstanding_val:,.0f} < 100,000, "
+                            f"multiplying by 1M to get {shares_outstanding_val * 1_000_000:,.0f}"
+                        )
+                        shares_outstanding_val *= 1_000_000
+
+                # Calculate revenue growth using shared GrowthCalculator
+                from investigator.domain.services.valuation.common import (
+                    GrowthCalculator,
+                )
+
+                revenue_growth_yoy = GrowthCalculator.calculate_revenue_growth_ttm(
+                    quarterly_data=quarterly_metrics,
+                    logger=logger,
+                )
 
             return CompanyProfile(
                 symbol=symbol,
@@ -565,6 +646,14 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 has_positive_earnings=has_positive_earnings,
                 ttm_fcf=ttm_fcf,
                 fcf_margin=fcf_margin,
+                total_debt=total_debt,
+                cash=cash,
+                net_debt_to_ebitda=net_debt_to_ebitda,
+                shares_outstanding=shares_outstanding_val,
+                revenue=total_revenue_val,
+                net_income=q.get("net_income") if quarterly_metrics else None,
+                ebitda=q.get("ebitda") if quarterly_metrics else None,
+                revenue_growth_yoy=revenue_growth_yoy,
             )
 
         except ImportError:
@@ -579,6 +668,8 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
         Handles two formats:
         1. Direct quarterly metrics: [{"net_income": x, "revenue": y, ...}]
         2. SEC filing tool format: [{"income_statement": {...}, "balance_sheet": {...}}]
+
+        Uses shared TTMMetrics from valuation.common for standardized calculations.
         """
         result: Dict[str, Optional[float]] = {
             "ttm_eps": None,
@@ -592,53 +683,244 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
         if not quarterly_metrics:
             return result
 
-        # Handle SEC filing tool format (nested structure)
+        # DEBUG: Log input data for unit analysis
+        symbol = quarterly_metrics[0].get("symbol", "UNKNOWN") if isinstance(quarterly_metrics[0], dict) else "UNKNOWN"
+        logger.info(
+            f"[TTM_DEBUG] {symbol} - Input: {len(quarterly_metrics)} quarters, "
+            f"shares_outstanding={shares_outstanding or 0:,.0f}"
+        )
+
+        # Handle SEC filing tool format (nested structure) - use shared TTMMetrics
         if quarterly_metrics and "income_statement" in quarterly_metrics[0]:
-            sec_data = quarterly_metrics[0]
-            income = sec_data.get("income_statement", {})
-            balance = sec_data.get("balance_sheet", {})
-            sec_data.get("cash_flow", {})
+            try:
+                from investigator.domain.services.valuation.common import TTMMetrics
 
-            ttm_net_income = income.get("net_income") or income.get("net_income_loss")
-            ttm_revenue = income.get("total_revenue") or income.get("revenue")
-            ttm_ebitda = income.get("ebitda")
-            book_value = balance.get("stockholders_equity") or balance.get(
-                "total_equity"
+                # CRITICAL FIX: Filter out FY (full year) periods to avoid double-counting
+                # FY periods contain Q1+Q2+Q3+Q4 data and should not be included in TTM sum
+                from investigator.domain.services.valuation_shared.q4_derivation import (
+                    filter_quarters_only,
+                )
+
+                # DEBUG: Inspect first quarter data for unit analysis
+                first_q = quarterly_metrics[0]
+                income_stmt = first_q.get("income_statement", {})
+                sample_revenue = (
+                    income_stmt.get("revenues") or income_stmt.get("total_revenue") or income_stmt.get("revenue")
+                )
+                sample_ni = income_stmt.get("net_income") or income_stmt.get("net_income_loss")
+                logger.info(
+                    f"[TTM_DEBUG] {symbol} - Sample quarter data: "
+                    f"revenue=${sample_revenue or 0:,.0f}, net_income=${sample_ni or 0:,.0f}"
+                )
+
+                quarterly_only = filter_quarters_only(quarterly_metrics)
+
+                # Ensure we have at least 4 quarterly periods (not FY)
+                if len(quarterly_only) >= 4:
+                    result["ttm_eps"] = TTMMetrics.calculate_ttm_eps(
+                        quarterly_data=quarterly_only,
+                        shares_outstanding=shares_outstanding,
+                    )
+                    result["ttm_revenue"] = TTMMetrics.calculate_ttm_revenue(quarterly_data=quarterly_only)
+                    result["ttm_ebitda"] = TTMMetrics.calculate_ttm_ebitda(quarterly_data=quarterly_only)
+                else:
+                    # Fallback to all quarters if not enough Q periods
+                    result["ttm_eps"] = TTMMetrics.calculate_ttm_eps(
+                        quarterly_data=quarterly_metrics,
+                        shares_outstanding=shares_outstanding,
+                    )
+                    result["ttm_revenue"] = TTMMetrics.calculate_ttm_revenue(quarterly_data=quarterly_metrics)
+                    result["ttm_ebitda"] = TTMMetrics.calculate_ttm_ebitda(quarterly_data=quarterly_metrics)
+
+                # DEBUG: Log computed TTM values
+                logger.info(
+                    f"[TTM_DEBUG] {symbol} - Computed: ttm_eps=${result['ttm_eps'] or 0:.4f}, "
+                    f"ttm_revenue=${result['ttm_revenue'] or 0:,.0f}"
+                )
+
+                # Book value from balance sheet - try multiple keys and nested structures
+                if quarterly_metrics:
+                    sec_data = quarterly_metrics[0]
+                    balance = sec_data.get("balance_sheet", {})
+
+                    # Debug: Log structure details (use INFO level to ensure visibility)
+                    logger.info(
+                        f"[BOOK_VALUE_DEBUG] {symbol} - sec_data type: {type(sec_data)}, "
+                        f"has balance_sheet: {'balance_sheet' in sec_data}, "
+                        f"balance type: {type(balance)}, balance keys: {list(balance.keys())[:10] if balance else 'empty'}"
+                    )
+
+                    # Try multiple possible keys for stockholders equity
+                    # Handle both nested (income_statement.xxx) and flat formats
+                    book_value_keys = [
+                        "stockholders_equity",
+                        "total_stockholders_equity",
+                        "shareholders_equity",
+                        "total_equity",
+                        "stockholder_equity",
+                        "common_stock_equity",
+                        "total_assets",  # Fallback
+                    ]
+
+                    book_value = None
+                    found_key = None
+
+                    # First try nested structure (balance_sheet.xxx)
+                    if balance:
+                        for key in book_value_keys:
+                            val = balance.get(key)
+                            logger.info(f"[BOOK_VALUE_DEBUG] {symbol} - Checking balance_sheet.{key}: {val}")
+                            if val is not None:
+                                book_value = val
+                                found_key = f"balance_sheet.{key}"
+                                logger.info(
+                                    f"[BOOK_VALUE_DEBUG] {symbol} - Found book_value via '{found_key}': ${book_value:,.0f}"
+                                )
+                                break
+                    else:
+                        logger.warning(f"[BOOK_VALUE_DEBUG] {symbol} - balance_sheet is empty or not a dict")
+
+                    # If not found in nested structure, try flat structure (sec_data.xxx)
+                    if book_value is None:
+                        for key in book_value_keys:
+                            val = sec_data.get(key)
+                            logger.info(f"[BOOK_VALUE_DEBUG] {symbol} - Checking flat key '{key}': {val}")
+                            if val is not None:
+                                book_value = val
+                                found_key = key
+                                logger.info(
+                                    f"[BOOK_VALUE_DEBUG] {symbol} - Found book_value via flat key '{found_key}': ${book_value:,.0f}"
+                                )
+                                break
+
+                    if book_value is not None:
+                        logger.info(
+                            f"[BOOK_VALUE_DEBUG] {symbol} - Found book_value=${book_value:,.0f} via '{found_key}'"
+                        )
+                    else:
+                        logger.warning(
+                            f"[BOOK_VALUE_DEBUG] {symbol} - Could not find book_value, tried keys: {book_value_keys}"
+                        )
+
+                    result["book_value"] = book_value
+
+                    if shares_outstanding and shares_outstanding > 0:
+                        result["revenue_per_share"] = (
+                            result["ttm_revenue"] / shares_outstanding if result["ttm_revenue"] else None
+                        )
+                        result["book_value_per_share"] = book_value / shares_outstanding if book_value else None
+
+                        # Log the calculated book value per share
+                        if result["book_value_per_share"]:
+                            logger.info(
+                                f"[BOOK_VALUE_DEBUG] {symbol} - Calculated BV/share: ${result['book_value_per_share']:.2f} "
+                                f"(book_value=${book_value or 0:,.0f}, shares={shares_outstanding:,.0f})"
+                            )
+                        else:
+                            logger.warning(
+                                f"[BOOK_VALUE_DEBUG] {symbol} - Could not calculate BV/share: "
+                                f"book_value={book_value}, shares={shares_outstanding}"
+                            )
+
+                return result
+
+            except Exception as e:
+                logger.debug(f"TTMMetrics failed for SEC format, using fallback: {e}")
+
+                # Fallback to direct extraction from nested structure
+                sec_data = quarterly_metrics[0]
+                income = sec_data.get("income_statement", {})
+                balance = sec_data.get("balance_sheet", {})
+
+                ttm_net_income = income.get("net_income") or income.get("net_income_loss")
+                ttm_revenue = income.get("total_revenue") or income.get("revenue")
+                ttm_ebitda = income.get("ebitda")
+
+                # Try multiple keys for book value
+                book_value_keys = [
+                    "stockholders_equity",
+                    "total_stockholders_equity",
+                    "shareholders_equity",
+                    "total_equity",
+                    "stockholder_equity",
+                ]
+                book_value = None
+                for key in book_value_keys:
+                    val = balance.get(key)
+                    if val is not None and val != 0:
+                        book_value = val
+                        break
+
+                result["ttm_revenue"] = ttm_revenue
+                result["ttm_ebitda"] = ttm_ebitda
+                result["book_value"] = book_value
+
+                if shares_outstanding and shares_outstanding > 0:
+                    result["ttm_eps"] = ttm_net_income / shares_outstanding if ttm_net_income else None
+                    result["revenue_per_share"] = ttm_revenue / shares_outstanding if ttm_revenue else None
+                    result["book_value_per_share"] = book_value / shares_outstanding if book_value else None
+
+                return result
+
+        # Handle direct quarterly metrics format - use shared TTMMetrics
+        try:
+            from investigator.domain.services.valuation.common import TTMMetrics
+
+            result["ttm_eps"] = TTMMetrics.calculate_ttm_eps(
+                quarterly_data=quarterly_metrics,
+                shares_outstanding=shares_outstanding,
             )
+            result["ttm_revenue"] = TTMMetrics.calculate_ttm_revenue(quarterly_data=quarterly_metrics)
+            result["ttm_ebitda"] = TTMMetrics.calculate_ttm_ebitda(quarterly_data=quarterly_metrics)
 
-            result["ttm_revenue"] = ttm_revenue
-            result["ttm_ebitda"] = ttm_ebitda
-            result["book_value"] = book_value
+            # Book value and per-share metrics (not in TTMMetrics yet)
+            if quarterly_metrics:
+                most_recent = quarterly_metrics[0]
+                # Try multiple possible keys for book value
+                book_value_keys = [
+                    "stockholders_equity",
+                    "total_stockholders_equity",
+                    "shareholders_equity",
+                    "total_equity",
+                    "book_value",
+                ]
+                book_value = None
+                for key in book_value_keys:
+                    val = most_recent.get(key)
+                    if val is not None and val != 0:
+                        book_value = val
+                        break
+                result["book_value"] = book_value
 
-            if shares_outstanding and shares_outstanding > 0:
-                result["ttm_eps"] = (
-                    ttm_net_income / shares_outstanding if ttm_net_income else None
-                )
-                result["revenue_per_share"] = (
-                    ttm_revenue / shares_outstanding if ttm_revenue else None
-                )
-                result["book_value_per_share"] = (
-                    book_value / shares_outstanding if book_value else None
-                )
+                if shares_outstanding and shares_outstanding > 0:
+                    result["revenue_per_share"] = (
+                        result["ttm_revenue"] / shares_outstanding if result["ttm_revenue"] else None
+                    )
+                    result["book_value_per_share"] = book_value / shares_outstanding if book_value else None
 
             return result
 
-        # Handle direct quarterly metrics format (4+ quarters for TTM)
+        except Exception as e:
+            logger.debug(f"Shared TTMMetrics not available, using fallback: {e}")
+
+        # Fallback to inline calculation for direct quarterly metrics format
         if len(quarterly_metrics) < 4:
             # For single quarter data, use as TTM approximation
             q = quarterly_metrics[0]
             ttm_net_income = q.get("net_income", 0) or 0
-            ttm_revenue = q.get("revenue", 0) or 0
+            ttm_revenue = q.get("total_revenue") or q.get("revenue", 0) or 0
             ttm_ebitda = q.get("ebitda", 0) or 0
-            book_value = q.get("total_stockholders_equity") or q.get("book_value")
+            book_value = q.get("stockholders_equity") or q.get("total_stockholders_equity") or q.get("book_value")
         else:
             # Sum last 4 quarters for TTM values
             recent_quarters = quarterly_metrics[:4]
             ttm_net_income = sum(q.get("net_income", 0) or 0 for q in recent_quarters)
-            ttm_revenue = sum(q.get("revenue", 0) or 0 for q in recent_quarters)
+            ttm_revenue = sum(q.get("total_revenue") or q.get("revenue", 0) or 0 for q in recent_quarters)
             ttm_ebitda = sum(q.get("ebitda", 0) or 0 for q in recent_quarters)
             # Book value from most recent quarter
-            book_value = recent_quarters[0].get("total_stockholders_equity")
+            book_value = recent_quarters[0].get("stockholders_equity")
+            if book_value is None:
+                book_value = recent_quarters[0].get("total_stockholders_equity")
             if book_value is None:
                 book_value = recent_quarters[0].get("book_value")
 
@@ -647,51 +929,72 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
         result["book_value"] = book_value
 
         if shares_outstanding and shares_outstanding > 0:
-            result["ttm_eps"] = (
-                ttm_net_income / shares_outstanding if ttm_net_income else None
-            )
-            result["revenue_per_share"] = (
-                ttm_revenue / shares_outstanding if ttm_revenue else None
-            )
-            result["book_value_per_share"] = (
-                book_value / shares_outstanding if book_value else None
-            )
+            result["ttm_eps"] = ttm_net_income / shares_outstanding if ttm_net_income else None
+            result["revenue_per_share"] = ttm_revenue / shares_outstanding if ttm_revenue else None
+            result["book_value_per_share"] = book_value / shares_outstanding if book_value else None
 
         return result
 
-    def _get_sector_multiples(
-        self, sector: str, industry: str | None = None
-    ) -> Dict[str, float]:
+    def _get_sector_multiples(self, sector: str, industry: str | None = None) -> Dict[str, float]:
         """Get sector median multiples with industry override.
 
-        Uses shared SectorMultiplesService for config-driven lookups.
-        Falls back to hardcoded defaults only if service is not available.
+        Uses normalized sector/industry names and prioritizes config overrides.
+        Falls back to historical database lookups and static values.
 
         Args:
-            sector: The company's sector (e.g., "Technology", "Financials")
+            sector: The company's sector (will be normalized, e.g., "Information Technology" -> "Technology")
             industry: The company's specific industry (e.g., "Semiconductors", "Major Banks")
 
         Returns:
             Dict with pe, ps, pb, ev_ebitda multiples. If industry is provided and
-            has a P/E fallback defined, the pe value will be overridden.
+            has config override defined, that value will be used.
         """
-        # Use shared config service if available (single source of truth)
-        if self._sector_multiples_service:
-            result: dict[str, float] = self._sector_multiples_service.get_multiples(
-                sector, industry
-            )
-            return result
+        # Normalize sector and industry names
+        normalized = SectorIndustryMapper.normalize_metadata(sector, industry)
+        standard_sector = normalized["sector"] or "Unknown"
+        standard_industry = normalized["industry"]
 
-        # Fallback to hardcoded values if service not initialized
-        logger.debug(
-            f"Using fallback sector multiples for {sector} (service not available)"
-        )
-        base = DEFAULT_SECTOR_MULTIPLES.get(
-            sector, DEFAULT_SECTOR_MULTIPLES.get("Industrials", {})
-        )
-        if industry and industry in INDUSTRY_PE_FALLBACKS:
+        # Use the updated get_pe(), get_pb(), get_ps() methods that prioritize config overrides
+        if self._sector_multiples_service:
+            try:
+                return {
+                    "pe": self._sector_multiples_service.get_pe(standard_sector, standard_industry),
+                    "ps": self._sector_multiples_service.get_ps(standard_sector, standard_industry),
+                    "pb": self._sector_multiples_service.get_pb(standard_sector, standard_industry),
+                    "ev_ebitda": self._sector_multiples_service.get_ev_ebitda(standard_sector, standard_industry),
+                }
+            except Exception as e:
+                logger.debug(f"Config-aware multiple lookup failed for {standard_sector}: {e}")
+
+        # Fallback to shared SectorMultiples module if available
+        try:
+            from investigator.domain.services.valuation.common import SectorMultiples
+
+            return {
+                "pe": SectorMultiples.get_multiple_with_override(
+                    sector=standard_sector, industry=standard_industry, metric="pe"
+                ),
+                "ps": SectorMultiples.get_multiple_with_override(
+                    sector=standard_sector, industry=standard_industry, metric="ps"
+                ),
+                "pb": SectorMultiples.get_multiple_with_override(
+                    sector=standard_sector, industry=standard_industry, metric="pb"
+                ),
+                "ev_ebitda": SectorMultiples.get_multiple_with_override(
+                    sector=standard_sector,
+                    industry=standard_industry,
+                    metric="ev_ebitda",
+                ),
+            }
+        except Exception as e:
+            logger.debug(f"Shared SectorMultiples not available, using fallback: {e}")
+
+        # Final fallback to hardcoded values
+        logger.debug(f"Using fallback sector multiples for {standard_sector} (service not available)")
+        base = DEFAULT_SECTOR_MULTIPLES.get(standard_sector, DEFAULT_SECTOR_MULTIPLES.get("Industrials", {}))
+        if standard_industry and standard_industry in INDUSTRY_PE_FALLBACKS:
             base = base.copy()
-            base["pe"] = INDUSTRY_PE_FALLBACKS[industry]
+            base["pe"] = INDUSTRY_PE_FALLBACKS[standard_industry]
         return base
 
     async def _run_all_models(
@@ -749,33 +1052,25 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 warnings.append(f"GGM: {ggm_result.error}")
 
             # Run multiple models
-            pe_result = await self._run_pe_multiple(
-                symbol, quarterly_metrics, current_price
-            )
+            pe_result = await self._run_pe_multiple(symbol, quarterly_metrics, current_price)
             if pe_result.success:
                 results["pe"] = pe_result.output
             else:
                 warnings.append(f"P/E: {pe_result.error}")
 
-            ps_result = await self._run_ps_multiple(
-                symbol, quarterly_metrics, current_price
-            )
+            ps_result = await self._run_ps_multiple(symbol, quarterly_metrics, current_price)
             if ps_result.success:
                 results["ps"] = ps_result.output
             else:
                 warnings.append(f"P/S: {ps_result.error}")
 
-            pb_result = await self._run_pb_multiple(
-                symbol, quarterly_metrics, current_price
-            )
+            pb_result = await self._run_pb_multiple(symbol, quarterly_metrics, current_price)
             if pb_result.success:
                 results["pb"] = pb_result.output
             else:
                 warnings.append(f"P/B: {pb_result.error}")
 
-            ev_ebitda_result = await self._run_ev_ebitda(
-                symbol, quarterly_metrics, current_price
-            )
+            ev_ebitda_result = await self._run_ev_ebitda(symbol, quarterly_metrics, current_price)
             if ev_ebitda_result.success:
                 results["ev_ebitda"] = ev_ebitda_result.output
             else:
@@ -787,30 +1082,267 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     metadata={"symbol": symbol, "warnings": warnings},
                 )
 
-            # Calculate consensus fair value
-            fair_values = [
-                r.get("fair_value_per_share")
-                for r in results.values()
-                if r.get("fair_value_per_share") and r.get("fair_value_per_share") > 0
-            ]
+            # Calculate blended fair value using shared MultiModelValuationOrchestrator
+            # This ensures victor-invest produces identical results to investigator CLI
+            try:
+                import yaml
 
-            consensus = None
-            if fair_values:
-                consensus = sum(fair_values) / len(fair_values)
+                from investigator.domain.services.company_metadata_service import (
+                    CompanyMetadataService,
+                )
+                from investigator.domain.services.dynamic_model_weighting import (
+                    DynamicModelWeightingService,
+                )
+                from investigator.domain.services.valuation.orchestrator import (
+                    MultiModelValuationOrchestrator,
+                )
+
+                # Load valuation config directly from YAML
+                with open("config.yaml", "r") as f:
+                    config = yaml.safe_load(f)
+                valuation_config = config.get("valuation", {})
+
+                # Initialize metadata service for sector/industry lookup
+                metadata_service = CompanyMetadataService(
+                    sector_normalization=valuation_config.get("sector_normalization", {})
+                )
+
+                # Get sector/industry from metadata service (database + config lookup)
+                sector, industry = metadata_service.get_sector_industry(symbol)
+                logger.info(f"{symbol}: Retrieved sector={sector}, industry={industry} from CompanyMetadataService")
+
+                # Build CompanyProfile using existing helper method
+                stock_info = await self._get_stock_info(symbol)
+                stock_info["sector"] = sector  # Ensure sector is set from metadata service
+                stock_info["industry"] = industry  # Ensure industry is set
+
+                company_profile = self._build_company_profile(symbol, stock_info, quarterly_metrics)
+                if company_profile is None:
+                    raise ValueError("Could not build company profile")
+
+                # Build minimal financials dict for weight calculation
+                # CRITICAL: Must include all fields required by ModelApplicabilityRules.is_applicable()
+                financials = {
+                    "net_income": None,
+                    "revenue": None,
+                    "shareholders_equity": None,
+                    "book_value": None,  # Required for P/B model applicability
+                    "market_cap": None,
+                    "ebitda": None,  # Required for EV/EBITDA model applicability
+                    "dividends_paid": None,  # Required for GGM model applicability
+                    "fcf_quarters_count": 0,  # Required for DCF model applicability
+                    "sector": None,  # Required for insurance/managed care DCF filter
+                    "industry": None,  # Required for insurance/managed care DCF filter
+                }
+
+                # Try to extract TTM financials from quarterly_metrics
+                if quarterly_metrics and len(quarterly_metrics) >= 4:
+                    # Get TTM (last 4 quarters)
+                    ttm = quarterly_metrics[:4]
+
+                    # Helper function to extract metric from nested or flat format
+                    def extract_ttm_metric(keys: List[str]) -> float:
+                        """Extract TTM metric from quarterly data, handling both nested and flat formats."""
+                        total = 0.0
+                        for q in ttm:
+                            # Try nested format first (income_statement.total_revenue)
+                            if "income_statement" in q:
+                                for key in keys:
+                                    val = q.get("income_statement", {}).get(key)
+                                    if val is not None:
+                                        total += val or 0
+                                        break
+                            # Try flat format
+                            else:
+                                for key in keys:
+                                    val = q.get(key)
+                                    if val is not None:
+                                        total += val or 0
+                                        break
+                        return total
+
+                    financials["net_income"] = extract_ttm_metric(["net_income", "net_income_loss"])  # type: ignore[assignment]
+                    financials["revenue"] = extract_ttm_metric(["total_revenue", "revenue"])  # type: ignore[assignment]
+
+                    # Use latest quarter's shareholders_equity for both fields
+                    latest_q = ttm[0]
+                    equity_value = None
+                    if "balance_sheet" in latest_q:
+                        equity_value = latest_q.get("balance_sheet", {}).get("stockholders_equity") or latest_q.get(
+                            "shareholders_equity", 0
+                        )
+                    else:
+                        equity_value = latest_q.get(
+                            "stockholders_equity",
+                            latest_q.get("shareholders_equity", 0),
+                        )
+
+                    financials["shareholders_equity"] = equity_value
+                    financials["book_value"] = equity_value  # Required for P/B model applicability
+
+                    # Calculate TTM EBITDA from operating_income and depreciation_amortization
+                    ebitda_total = 0.0
+                    for q in ttm:
+                        if "income_statement" in q:
+                            inc_stmt = q.get("income_statement", {})
+                            operating_income = inc_stmt.get("operating_income", 0) or 0
+                            depr_amort = inc_stmt.get("depreciation_amortization", 0) or 0
+                            ebitda_total += operating_income + depr_amort
+                        else:
+                            operating_income = q.get("operating_income", 0) or 0
+                            depr_amort = q.get("depreciation_amortization", 0) or 0
+                            ebitda_total += operating_income + depr_amort
+                    financials["ebitda"] = ebitda_total
+
+                    # Calculate TTM dividends for GGM applicability
+                    dividends_total = 0.0
+                    fcf_count = 0
+                    for q in ttm:
+                        # Try cash flow nested format
+                        if "cash_flow" in q:
+                            divs = q.get("cash_flow", {}).get("dividends_paid", 0) or 0
+                        else:
+                            divs = q.get("dividends_paid", 0) or 0
+
+                        if divs is not None and divs != 0:
+                            dividends_total += abs(divs)
+
+                        # Count FCF data availability for DCF
+                        if "cash_flow" in q:
+                            fcf = q.get("cash_flow", {}).get("free_cash_flow", None)
+                        else:
+                            fcf = q.get("free_cash_flow", None)
+
+                        if fcf is not None:
+                            fcf_count += 1
+
+                    financials["dividends_paid"] = dividends_total
+                    financials["fcf_quarters_count"] = fcf_count
+
+                # Calculate market_cap if we have price and shares
+                if current_price and quarterly_metrics:
+                    shares = quarterly_metrics[0].get("shares_outstanding")
+                    if shares:
+                        financials["market_cap"] = current_price * shares
+
+                # Build ratios dict for weight calculation
+                ratios = {
+                    "roe": None,
+                    "payout_ratio": None,
+                    "revenue_growth_yoy": None,
+                    "earnings_growth_yoy": None,
+                    "pe_ratio": None,
+                    "pb_ratio": None,
+                    "dividend_yield": None,
+                }
+
+                # Calculate ROE if we have the data
+                if (
+                    financials.get("net_income")
+                    and financials.get("shareholders_equity")
+                    and financials["shareholders_equity"] > 0
+                ):
+                    ratios["roe"] = financials["net_income"] / financials["shareholders_equity"] * 100
+
+                # Create weighting service to determine tier weights
+                weighting_service = DynamicModelWeightingService(valuation_config=valuation_config)
+
+                # Get tier-based weights (these will be passed as fallback_weights to orchestrator)
+                weights, tier, audit_trail = weighting_service.determine_weights(
+                    symbol=symbol,
+                    financials=financials,
+                    ratios=ratios,
+                    data_quality=None,
+                    market_context=None,
+                )
+
+                # Convert results dict to model_outputs format for orchestrator
+                model_outputs = []
+                for model_name, model_result in results.items():
+                    if isinstance(model_result, dict) and model_result.get("fair_value_per_share"):
+                        model_outputs.append(
+                            {
+                                "model": model_name,
+                                "fair_value_per_share": model_result["fair_value_per_share"],
+                                "confidence_score": model_result.get("confidence_score", 0.7),
+                                "applicable": True,
+                            }
+                        )
+
+                # Initialize shared orchestrator with same config as investigator CLI
+                orchestrator = MultiModelValuationOrchestrator(
+                    divergence_threshold=valuation_config.get("agreement", {}).get("divergence_threshold", 0.35),
+                    agreement_config=valuation_config.get("agreement", {}),
+                    bounds_config=valuation_config.get("bounds_validation", {}),
+                )
+
+                # Use shared orchestrator for blending (ensures parity with investigator CLI)
+                orchestrator_result = orchestrator.combine(
+                    company_profile=company_profile,
+                    model_outputs=model_outputs,
+                    fallback_weights=weights,
+                    tier_classification=tier,
+                )
+
+                consensus = orchestrator_result["blended_fair_value"]
+                overall_confidence = orchestrator_result.get("overall_confidence", 0.7)
+                model_agreement_score = orchestrator_result.get("model_agreement_score")
+                divergence_flag = orchestrator_result.get("divergence_flag", False)
+
+                # Log orchestrator diagnostics
+                consensus_str = f"${consensus:.2f}" if consensus is not None else "N/A"
+                logger.info(
+                    f"{symbol}: Using MultiModelValuationOrchestrator (tier={tier}) → "
+                    f"{consensus_str} | Agreement: {model_agreement_score:.2f} | "
+                    f"Divergence: {divergence_flag} | Confidence: {overall_confidence:.2f}"
+                )
+
+                # Update model results with weights applied by orchestrator
+                for model in orchestrator_result.get("models", []):
+                    model_name = model.get("model")
+                    if model_name and model_name in results:
+                        results[model_name]["weight"] = model.get("weight", 0.0)
+
+            except Exception as e:
+                # Fallback to simple average on any error
+                logger.warning(f"{symbol}: Could not use MultiModelValuationOrchestrator ({e}), using simple average")
+                fair_values = [
+                    r.get("fair_value_per_share")
+                    for r in results.values()
+                    if isinstance(r, dict) and r.get("fair_value_per_share")
+                ]
+                consensus = sum(fair_values) / len(fair_values) if fair_values else None
+
+            # Build output with orchestrator results if available
+            output_dict = {
+                "symbol": symbol,
+                "current_price": current_price,
+                "models": results,
+                "models_applied": list(results.keys()),
+                "consensus_fair_value": consensus,
+                "consensus_upside": (((consensus / current_price) - 1) * 100 if consensus and current_price else None),
+            }
+
+            # Add orchestrator-specific outputs if available
+            if "orchestrator_result" in locals():
+                output_dict.update(
+                    {
+                        "overall_confidence": orchestrator_result.get("overall_confidence"),
+                        "model_agreement_score": orchestrator_result.get("model_agreement_score"),
+                        "divergence_flag": orchestrator_result.get("divergence_flag"),
+                        "agreement_level": orchestrator_result.get("agreement_level"),
+                        "outlier_models": orchestrator_result.get("outlier_models"),
+                        "tier_classification": orchestrator_result.get("tier_classification"),
+                        "bounds_valid": orchestrator_result.get("bounds_valid"),
+                        "dispersion_ratio": orchestrator_result.get("dispersion_ratio"),
+                    }
+                )
+                # Add notes from orchestrator
+                if orchestrator_result.get("notes"):
+                    warnings.extend(orchestrator_result["notes"])
 
             return ToolResult.create_success(
-                output={
-                    "symbol": symbol,
-                    "current_price": current_price,
-                    "models": results,
-                    "models_applied": list(results.keys()),
-                    "consensus_fair_value": consensus,
-                    "consensus_upside": (
-                        ((consensus / current_price) - 1) * 100
-                        if consensus and current_price
-                        else None
-                    ),
-                },
+                output=output_dict,
                 metadata={"model_count": len(results), "warnings": warnings},
             )
 
@@ -850,11 +1382,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 )
 
             fair_value = result.get("fair_value_per_share", 0)
-            upside = (
-                ((fair_value / current_price) - 1) * 100
-                if current_price and fair_value
-                else None
-            )
+            upside = ((fair_value / current_price) - 1) * 100 if current_price and fair_value else None
 
             return ToolResult.create_success(
                 output={
@@ -905,9 +1433,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             else:
                 coe = 0.08  # Fallback to 8% if config service not available
 
-            result = await loop.run_in_executor(
-                None, ggm.calculate_ggm_valuation, coe, terminal_growth_rate
-            )
+            result = await loop.run_in_executor(None, ggm.calculate_ggm_valuation, coe, terminal_growth_rate)
 
             if not result or not result.get("applicable", False):
                 return ToolResult.create_failure(
@@ -916,11 +1442,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 )
 
             fair_value = result.get("fair_value_per_share", 0)
-            upside = (
-                ((fair_value / current_price) - 1) * 100
-                if current_price and fair_value
-                else None
-            )
+            upside = ((fair_value / current_price) - 1) * 100 if current_price and fair_value else None
 
             return ToolResult.create_success(
                 output={
@@ -956,11 +1478,11 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             stock_info = await self._get_stock_info(symbol)
             shares_outstanding = stock_info.get("shares_outstanding")
             sector = stock_info.get("sector", "Unknown")
+            industry = stock_info.get("industry")
+            industry = stock_info.get("industry")
 
             # Build company profile
-            company_profile = self._build_company_profile(
-                symbol, stock_info, quarterly_metrics
-            )
+            company_profile = self._build_company_profile(symbol, stock_info, quarterly_metrics)
             if company_profile is None:
                 return ToolResult.create_failure(
                     "Could not build company profile",
@@ -968,14 +1490,27 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 )
 
             # Calculate TTM metrics
-            ttm_metrics = self._calculate_ttm_metrics(
-                quarterly_metrics, shares_outstanding
-            )
+            ttm_metrics = self._calculate_ttm_metrics(quarterly_metrics, shares_outstanding)
             ttm_eps = ttm_metrics.get("ttm_eps")
 
-            # Get sector multiples
-            sector_multiples = self._get_sector_multiples(sector)
+            # Get sector multiples (pass industry for more specific multiples)
+            sector_multiples = self._get_sector_multiples(sector, industry)
             sector_median_pe = sector_multiples.get("pe", 15.0)
+
+            # Calculate growth-adjusted P/E using shared GrowthAdjustedMultiples
+            growth_adjusted_pe = None
+            if company_profile and company_profile.revenue_growth_yoy is not None:
+                from investigator.domain.services.valuation.common import (
+                    GrowthAdjustedMultiples,
+                )
+
+                industry = company_profile.industry if hasattr(company_profile, "industry") else None
+                growth_adjusted_pe = GrowthAdjustedMultiples.calculate_adjusted_pe(
+                    sector=sector,
+                    industry=industry,
+                    revenue_growth=company_profile.revenue_growth_yoy,
+                    sector_pe_override=sector_median_pe,
+                )
 
             # Create model with required arguments
             model = PEMultipleModel(
@@ -983,6 +1518,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 ttm_eps=ttm_eps,
                 current_price=current_price,
                 sector_median_pe=sector_median_pe,
+                growth_adjusted_pe=growth_adjusted_pe,
             )
 
             result = await loop.run_in_executor(None, model.calculate)
@@ -1027,11 +1563,11 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             stock_info = await self._get_stock_info(symbol)
             shares_outstanding = stock_info.get("shares_outstanding")
             sector = stock_info.get("sector", "Unknown")
+            industry = stock_info.get("industry")
+            industry = stock_info.get("industry")
 
             # Build company profile
-            company_profile = self._build_company_profile(
-                symbol, stock_info, quarterly_metrics
-            )
+            company_profile = self._build_company_profile(symbol, stock_info, quarterly_metrics)
             if company_profile is None:
                 return ToolResult.create_failure(
                     "Could not build company profile",
@@ -1039,21 +1575,35 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 )
 
             # Calculate TTM metrics
-            ttm_metrics = self._calculate_ttm_metrics(
-                quarterly_metrics, shares_outstanding
-            )
+            ttm_metrics = self._calculate_ttm_metrics(quarterly_metrics, shares_outstanding)
             revenue_per_share = ttm_metrics.get("revenue_per_share")
 
-            # Get sector multiples
-            sector_multiples = self._get_sector_multiples(sector)
+            # Get sector multiples and apply growth adjustment
+            sector_multiples = self._get_sector_multiples(sector, industry)
             sector_median_ps = sector_multiples.get("ps", 2.0)
 
-            # Create model with required arguments
+            # Apply growth adjustment using shared module
+            try:
+                from investigator.domain.services.valuation.common import (
+                    GrowthAdjustedMultiples,
+                )
+
+                growth_adjusted_ps = GrowthAdjustedMultiples.calculate_adjusted_ps(
+                    sector=sector,
+                    industry=industry,
+                    base_multiple=sector_median_ps,
+                    revenue_growth=company_profile.revenue_growth_yoy,
+                )
+            except Exception as e:
+                logger.debug(f"Growth-adjusted P/S not available, using base: {e}")
+                growth_adjusted_ps = sector_median_ps
+
+            # Create model with growth-adjusted P/S
             model = PSMultipleModel(
                 company_profile=company_profile,
                 revenue_per_share=revenue_per_share,
                 current_price=current_price,
-                sector_median_ps=sector_median_ps,
+                sector_median_ps=growth_adjusted_ps,
             )
 
             result = await loop.run_in_executor(None, model.calculate)
@@ -1073,6 +1623,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     "ps_ratio": result.assumptions.get("target_ps"),
                     "revenue_per_share": revenue_per_share,
                     "sector_ps": sector_median_ps,
+                    "growth_adjusted_ps": growth_adjusted_ps,
                     "confidence": result.confidence_score,
                 },
                 metadata={"model": "ps", "symbol": symbol},
@@ -1098,11 +1649,10 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             stock_info = await self._get_stock_info(symbol)
             shares_outstanding = stock_info.get("shares_outstanding")
             sector = stock_info.get("sector", "Unknown")
+            industry = stock_info.get("industry")
 
             # Build company profile
-            company_profile = self._build_company_profile(
-                symbol, stock_info, quarterly_metrics
-            )
+            company_profile = self._build_company_profile(symbol, stock_info, quarterly_metrics)
             if company_profile is None:
                 return ToolResult.create_failure(
                     "Could not build company profile",
@@ -1110,13 +1660,25 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 )
 
             # Calculate TTM metrics
-            ttm_metrics = self._calculate_ttm_metrics(
-                quarterly_metrics, shares_outstanding
-            )
+            ttm_metrics = self._calculate_ttm_metrics(quarterly_metrics, shares_outstanding)
             book_value_per_share = ttm_metrics.get("book_value_per_share")
+            book_value = ttm_metrics.get("book_value")
 
-            # Get sector multiples
-            sector_multiples = self._get_sector_multiples(sector)
+            logger.debug(
+                f"[PB_DEBUG] {symbol} - book_value=${book_value or 0:,.0f}, "
+                f"book_value_per_share=${book_value_per_share or 0:.2f}, "
+                f"shares={shares_outstanding or 0:,.0f}"
+            )
+
+            # Check if we have the minimum required data
+            if not book_value_per_share or book_value_per_share <= 0:
+                return ToolResult.create_failure(
+                    f"P/B not applicable: Book value per share is ${book_value_per_share or 0:.2f} (must be positive)",
+                    metadata={"model": "pb", "symbol": symbol},
+                )
+
+            # Get sector multiples (pass industry for more specific multiples)
+            sector_multiples = self._get_sector_multiples(sector, industry)
             sector_median_pb = sector_multiples.get("pb", 2.5)
 
             # Create model with required arguments
@@ -1169,12 +1731,17 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             stock_info = await self._get_stock_info(symbol)
             shares_outstanding = stock_info.get("shares_outstanding")
             sector = stock_info.get("sector", "Unknown")
+            industry = stock_info.get("industry")
+            industry = stock_info.get("industry")
             market_cap = stock_info.get("market_cap")
 
-            # Build company profile
-            company_profile = self._build_company_profile(
-                symbol, stock_info, quarterly_metrics
+            logger.debug(
+                f"[EV_EBITDA_DEBUG] {symbol} - sector={sector}, industry={industry}, "
+                f"market_cap={market_cap or 0:,.0f}, shares={shares_outstanding or 0:,.0f}"
             )
+
+            # Build company profile
+            company_profile = self._build_company_profile(symbol, stock_info, quarterly_metrics)
             if company_profile is None:
                 return ToolResult.create_failure(
                     "Could not build company profile",
@@ -1182,35 +1749,111 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 )
 
             # Calculate TTM metrics
-            ttm_metrics = self._calculate_ttm_metrics(
-                quarterly_metrics, shares_outstanding
-            )
+            ttm_metrics = self._calculate_ttm_metrics(quarterly_metrics, shares_outstanding)
             ttm_ebitda = ttm_metrics.get("ttm_ebitda")
+
+            logger.debug(f"[EV_EBITDA_DEBUG] {symbol} - TTM EBITDA=${ttm_ebitda or 0:,.0f}")
 
             # Calculate enterprise value: market_cap + total_debt - cash
             enterprise_value = None
+            total_debt = 0
+            cash = 0
+
             if market_cap:
                 # Try to get debt and cash from quarterly metrics
                 if quarterly_metrics:
                     latest_q = quarterly_metrics[0]
-                    total_debt = (latest_q.get("long_term_debt") or 0) + (
-                        latest_q.get("short_term_debt") or 0
+
+                    # Handle both nested and flat formats for debt and cash
+                    def extract_metric(q, keys):
+                        """Extract metric from nested or flat format."""
+                        # Try flat format first
+                        for key in keys:
+                            val = q.get(key)
+                            if val is not None:
+                                return val
+                        # Try nested format (balance_sheet.xxx)
+                        if "balance_sheet" in q:
+                            balance = q.get("balance_sheet", {})
+                            for key in keys:
+                                val = balance.get(key)
+                                if val is not None:
+                                    return val
+                        return 0
+
+                    # Extract long-term debt
+                    long_term_debt = extract_metric(
+                        latest_q,
+                        [
+                            "long_term_debt",
+                            "longTermDebt",
+                            "long_debt",
+                            "long_term_debt_non_current",
+                        ],
                     )
-                    cash = latest_q.get("cash_and_equivalents") or 0
+
+                    # Extract short-term debt
+                    short_term_debt = extract_metric(
+                        latest_q,
+                        [
+                            "short_term_debt",
+                            "short_term_debt_current",
+                            "short_term_debt_and_capital_lease_obligation",
+                            "shortTermDebt",
+                        ],
+                    )
+
+                    # Extract cash and equivalents
+                    cash = extract_metric(
+                        latest_q,
+                        [
+                            "cash_and_equivalents",
+                            "cash_equivalents",
+                            "cash",
+                            "cash_and_cash_equivalents",
+                        ],
+                    )
+
+                    total_debt = (long_term_debt or 0) + (short_term_debt or 0)
                     enterprise_value = market_cap + total_debt - cash
+
+                    logger.debug(
+                        f"[EV_EBITDA_DEBUG] {symbol} - debt={total_debt:,.0f}, "
+                        f"cash={cash:,.0f}, EV={enterprise_value:,.0f}"
+                    )
                 else:
                     enterprise_value = market_cap  # Approximate
 
-            # Get sector multiples
-            sector_multiples = self._get_sector_multiples(sector)
+            # Check if we have the minimum required data
+            if not ttm_ebitda or ttm_ebitda <= 0:
+                return ToolResult.create_failure(
+                    f"EV/EBITDA not applicable: TTM EBITDA is ${ttm_ebitda or 0:,.0f} (must be positive)",
+                    metadata={"model": "ev_ebitda", "symbol": symbol},
+                )
+
+            if not enterprise_value or enterprise_value <= 0:
+                return ToolResult.create_failure(
+                    f"EV/EBITDA not applicable: Enterprise value is ${enterprise_value or 0:,.0f} (must be positive)",
+                    metadata={"model": "ev_ebitda", "symbol": symbol},
+                )
+
+            if not shares_outstanding or shares_outstanding <= 0:
+                return ToolResult.create_failure(
+                    f"EV/EBITDA not applicable: Shares outstanding is {shares_outstanding or 0:,.0f} (must be positive)",
+                    metadata={"model": "ev_ebitda", "symbol": symbol},
+                )
+
+            # Get sector multiples with industry override
+            sector_multiples = self._get_sector_multiples(sector, industry)
             sector_median_ev_ebitda = sector_multiples.get("ev_ebitda", 12.0)
 
-            # Create model with required arguments
+            # Create model with required arguments including revenue growth
             model = EVEBITDAModel(
                 company_profile=company_profile,
                 ttm_ebitda=ttm_ebitda,
                 enterprise_value=enterprise_value,
                 sector_median_ev_ebitda=sector_median_ev_ebitda,
+                revenue_growth=company_profile.revenue_growth_yoy,
             )
 
             result = await loop.run_in_executor(None, model.calculate)
@@ -1231,6 +1874,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     "enterprise_value": enterprise_value,
                     "ebitda_ttm": ttm_ebitda,
                     "sector_ev_ebitda": sector_median_ev_ebitda,
+                    "revenue_growth": company_profile.revenue_growth_yoy,
                     "confidence": result.confidence_score,
                 },
                 metadata={"model": "ev_ebitda", "symbol": symbol},
@@ -1288,9 +1932,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
         except Exception as e:
             logger.error(f"Sector-routed valuation error for {symbol}: {e}")
-            return ToolResult.create_failure(
-                f"Sector-routed valuation failed: {str(e)}"
-            )
+            return ToolResult.create_failure(f"Sector-routed valuation failed: {str(e)}")
 
     def get_schema(self) -> Dict[str, Any]:
         """Get JSON schema for Valuation Tool parameters."""

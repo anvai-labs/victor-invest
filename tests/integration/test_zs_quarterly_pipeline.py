@@ -35,7 +35,12 @@ class TestZSPipeline:
     @pytest.fixture
     def fundamental_agent(self):
         """Create Fundamental agent instance"""
-        return FundamentalAnalysisAgent(agent_id="fundamental", ollama_client=None, event_bus=None, cache_manager=None)
+        return FundamentalAnalysisAgent(
+            agent_id="fundamental",
+            ollama_client=None,
+            event_bus=None,
+            cache_manager=None,
+        )
 
     @pytest.mark.asyncio
     @pytest.mark.integration
@@ -94,10 +99,28 @@ class TestZSPipeline:
             assert key in rd, f"Missing required key: {key}"
 
         # Recommendation must be a valid value
-        assert rd["recommendation"] in ("strong_buy", "buy", "hold", "sell", "strong_sell")
+        assert rd["recommendation"] in (
+            "strong_buy",
+            "buy",
+            "hold",
+            "sell",
+            "strong_sell",
+        )
 
         # Investment grade must be a letter grade
-        assert rd["investment_grade"] in ("A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "F")
+        assert rd["investment_grade"] in (
+            "A+",
+            "A",
+            "A-",
+            "B+",
+            "B",
+            "B-",
+            "C+",
+            "C",
+            "C-",
+            "D",
+            "F",
+        )
 
         # Fiscal period should reflect ZS's July FY end
         assert rd["fiscal_period"] is not None
@@ -219,7 +242,10 @@ class TestMultiCompanyPipeline:
         - ZS: Fiscal year ends July 31
         """
         agent = FundamentalAnalysisAgent(
-            agent_id="fundamental", ollama_client=None, event_bus=None, cache_manager=None
+            agent_id="fundamental",
+            ollama_client=None,
+            event_bus=None,
+            cache_manager=None,
         )
 
         test_symbols = ["ZS"]

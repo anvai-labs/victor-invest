@@ -62,7 +62,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, Dict, List, Optional
 
-from dateutil.relativedelta import relativedelta  # type: ignore[import-untyped]
+from dateutil.relativedelta import relativedelta
 from victor.framework.graph import END, StateGraph
 
 from victor_invest.tools import RLBacktestTool, ValuationTool
@@ -480,10 +480,7 @@ async def finalize_backtest(state_input) -> dict:
     }
 
     state.mark_step_completed("finalize_backtest")
-    logger.info(
-        f"Backtest complete for {state.symbol}: "
-        f"{successful} recorded, {failed} failed, {skipped} skipped"
-    )
+    logger.info(f"Backtest complete for {state.symbol}: {successful} recorded, {failed} failed, {skipped} skipped")
 
     return _state_to_dict(state)
 
@@ -603,14 +600,10 @@ async def run_rl_backtest(
             )
 
             # Convert to RLBacktestWorkflowState
-            return _convert_yaml_result_to_state(
-                symbol, lookback_months_list, interval, workflow_result
-            )
+            return _convert_yaml_result_to_state(symbol, lookback_months_list, interval, workflow_result)
 
         except Exception as e:
-            logger.warning(
-                f"YAML workflow execution failed, falling back to Python: {e}"
-            )
+            logger.warning(f"YAML workflow execution failed, falling back to Python: {e}")
 
     # Fallback: Python StateGraph execution
     state = RLBacktestWorkflowState(

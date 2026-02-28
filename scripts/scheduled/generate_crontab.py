@@ -205,7 +205,9 @@ def install_crontab(crontab_content: str) -> bool:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate crontab entries for scheduled jobs")
+    parser = argparse.ArgumentParser(
+        description="Generate crontab entries for scheduled jobs"
+    )
     parser.add_argument(
         "--config",
         type=str,
@@ -214,7 +216,9 @@ def main():
     )
     parser.add_argument("--output", type=str, help="Output file path (default: stdout)")
     parser.add_argument("--show", action="store_true", help="Show generated crontab")
-    parser.add_argument("--install", action="store_true", help="Install crontab entries")
+    parser.add_argument(
+        "--install", action="store_true", help="Install crontab entries"
+    )
     parser.add_argument("--python", type=str, help="Path to Python interpreter")
     args = parser.parse_args()
 

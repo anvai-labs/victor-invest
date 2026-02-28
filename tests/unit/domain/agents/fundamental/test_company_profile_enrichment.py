@@ -107,3 +107,76 @@ def test_enrich_company_profile_sets_quality_flags_and_financial_archetype():
     assert profile.has_flag(DataQualityFlag.MISSING_QUARTERS)
     assert profile.has_flag(DataQualityFlag.OUTLIER_DETECTED)
     assert profile.has_flag(DataQualityFlag.STALE_REFERENCE_DATA)
+
+
+def test_enrich_company_profile_prioritizes_diluted_shares_for_dual_class_companies():
+    """Test that shares_outstanding_diluted is prioritized for dual-class companies like GOOGL.
+
+    This is a regression test for the bug where GOOGL DCF valuation produced $2,291.66
+    instead of ~$75 because it used 662M Class A shares instead of 13B total diluted shares.
+    """
+    profile = CompanyProfile(symbol="GOOGL", sector="Technology", industry="Internet")
+    company_data = {
+        "quarterly_data": [{} for _ in range(4)],
+        "rule_of_40_score": 35.0,
+    }
+
+    # Simulate GOOGL's dual-class share structure:
+    # - shares_outstanding: 662M (Class A only)
+    # - shares_outstanding_diluted: 13B (all classes)
+    financials = {
+        "shares_outstanding": 662_121_000,  # Class A only (WRONG for valuation)
+        "shares_outstanding_diluted": 13_078_000_000,  # Total diluted (CORRECT)
+        "revenues": 300_000_000_000,
+        "net_income": 80_000_000_000,
+    }
+    market_data = {"current_price": 150.0, "average_daily_volume": 20_000_000}
+
+    enrich_company_profile(
+        profile=profile,
+        symbol="GOOGL",
+        sector="Technology",
+        company_data=company_data,
+        ratios={},
+        financials=financials,
+        market_data=market_data,
+        data_quality={},
+        logger=MagicMock(),
+    )
+
+    # Should use diluted shares, not basic shares
+    assert profile.shares_outstanding == 13_078_000_000
+    assert profile.shares_outstanding != 662_121_000
+
+
+def test_enrich_company_profile_falls_back_to_basic_shares_when_diluted_unavailable():
+    """Test that basic shares_outstanding is used when diluted is not available."""
+    profile = CompanyProfile(symbol="AAPL", sector="Technology", industry="Consumer Electronics")
+    company_data = {
+        "quarterly_data": [{} for _ in range(4)],
+        "rule_of_40_score": 40.0,
+    }
+
+    # Single-class company without diluted shares data
+    financials = {
+        "shares_outstanding": 15_000_000_000,  # Basic shares
+        # No shares_outstanding_diluted
+        "revenues": 400_000_000_000,
+        "net_income": 100_000_000_000,
+    }
+    market_data = {"current_price": 180.0, "average_daily_volume": 50_000_000}
+
+    enrich_company_profile(
+        profile=profile,
+        symbol="AAPL",
+        sector="Technology",
+        company_data=company_data,
+        ratios={},
+        financials=financials,
+        market_data=market_data,
+        data_quality={},
+        logger=MagicMock(),
+    )
+
+    # Should fall back to basic shares when diluted is unavailable
+    assert profile.shares_outstanding == 15_000_000_000

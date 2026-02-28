@@ -167,9 +167,15 @@ def format_changes_output(data: dict) -> str:
     trend = data.get("trend_analysis", {})
     if trend:
         lines.append("\nTREND ANALYSIS")
-        lines.append(f"  Direction:            {trend.get('direction', 'unknown').upper()}")
-        lines.append(f"  Avg Quarterly Change: {trend.get('avg_quarterly_change_pct', 0):+.2f}%")
-        lines.append(f"  Total Period Change:  {trend.get('total_change_pct', 0):+.2f}%")
+        lines.append(
+            f"  Direction:            {trend.get('direction', 'unknown').upper()}"
+        )
+        lines.append(
+            f"  Avg Quarterly Change: {trend.get('avg_quarterly_change_pct', 0):+.2f}%"
+        )
+        lines.append(
+            f"  Total Period Change:  {trend.get('total_change_pct', 0):+.2f}%"
+        )
         lines.append(f"  Up Quarters:          {trend.get('up_quarters', 0)}")
         lines.append(f"  Down Quarters:        {trend.get('down_quarters', 0)}")
         if trend.get("interpretation"):
@@ -179,7 +185,9 @@ def format_changes_output(data: dict) -> str:
     changes = data.get("changes", [])
     if changes:
         lines.append("\nQUARTERLY BREAKDOWN")
-        lines.append(f"  {'Quarter':<12} {'Institutions':>12} {'Shares':>18} {'Change':>12}")
+        lines.append(
+            f"  {'Quarter':<12} {'Institutions':>12} {'Shares':>18} {'Change':>12}"
+        )
         lines.append(f"  {'-' * 58}")
         for change in changes:
             quarter = change.get("quarter", "N/A")[:12]
@@ -214,7 +222,9 @@ def format_institution_output(data: dict) -> str:
     holdings = data.get("top_holdings", [])
     if holdings:
         lines.append("\nTOP HOLDINGS")
-        lines.append(f"{'#':<3} {'Symbol':<8} {'Issuer':<30} {'Value':>15} {'Shares':>15}")
+        lines.append(
+            f"{'#':<3} {'Symbol':<8} {'Issuer':<30} {'Value':>15} {'Shares':>15}"
+        )
         lines.append(f"{'-' * 75}")
         for i, h in enumerate(holdings[:25], 1):
             symbol = (h.get("symbol") or h.get("cusip", "N/A"))[:7]
@@ -227,7 +237,9 @@ def format_institution_output(data: dict) -> str:
                 value_str = f"${value / 1_000_000:.2f}M"
             else:
                 value_str = f"${value:,.0f}"
-            lines.append(f"{i:<3} {symbol:<8} {issuer:<30} {value_str:>15} {shares:>15,}")
+            lines.append(
+                f"{i:<3} {symbol:<8} {issuer:<30} {value_str:>15} {shares:>15,}"
+            )
     else:
         lines.append("\n  No holdings found for this institution.")
 
@@ -253,7 +265,9 @@ def format_search_output(data: dict) -> str:
             filing = inst.get("latest_filing", "N/A")[:14]
             lines.append(f"{cik:<12} {name:<45} {filing:<15}")
 
-        lines.append("\nUse --institution <CIK> to view holdings for a specific institution")
+        lines.append(
+            "\nUse --institution <CIK> to view holdings for a specific institution"
+        )
     else:
         lines.append("\n  No institutions found matching your query.")
 
@@ -280,15 +294,23 @@ Examples:
 
     # Action arguments (mutually exclusive)
     action_group = parser.add_mutually_exclusive_group(required=True)
-    action_group.add_argument("--holdings", action="store_true", help="Get institutional holdings for symbol")
-    action_group.add_argument("--top-holders", action="store_true", help="Get top institutional holders")
-    action_group.add_argument("--changes", action="store_true", help="Get ownership changes over time")
+    action_group.add_argument(
+        "--holdings", action="store_true", help="Get institutional holdings for symbol"
+    )
+    action_group.add_argument(
+        "--top-holders", action="store_true", help="Get top institutional holders"
+    )
+    action_group.add_argument(
+        "--changes", action="store_true", help="Get ownership changes over time"
+    )
     action_group.add_argument(
         "--institution",
         metavar="CIK",
         help="Get holdings for a specific institution by CIK",
     )
-    action_group.add_argument("--search", metavar="QUERY", help="Search for institutions by name")
+    action_group.add_argument(
+        "--search", metavar="QUERY", help="Search for institutions by name"
+    )
 
     # Options
     parser.add_argument(
@@ -303,8 +325,12 @@ Examples:
         default=4,
         help="Number of quarters for change analysis (default: 4)",
     )
-    parser.add_argument("--quarter", type=str, help="Specific quarter (e.g., '2024-Q4')")
-    parser.add_argument("--json", action="store_true", help="Output raw JSON instead of formatted text")
+    parser.add_argument(
+        "--quarter", type=str, help="Specific quarter (e.g., '2024-Q4')"
+    )
+    parser.add_argument(
+        "--json", action="store_true", help="Output raw JSON instead of formatted text"
+    )
 
     args = parser.parse_args()
 
@@ -320,19 +346,29 @@ Examples:
 
     # Determine action and execute
     if args.holdings:
-        result = await tool.execute(action="holdings", symbol=args.symbol, quarter=args.quarter)
+        result = await tool.execute(
+            action="holdings", symbol=args.symbol, quarter=args.quarter
+        )
         formatter = format_holdings_output
     elif args.top_holders:
-        result = await tool.execute(action="top_holders", symbol=args.symbol, limit=args.limit)
+        result = await tool.execute(
+            action="top_holders", symbol=args.symbol, limit=args.limit
+        )
         formatter = format_top_holders_output
     elif args.changes:
-        result = await tool.execute(action="changes", symbol=args.symbol, quarters=args.quarters)
+        result = await tool.execute(
+            action="changes", symbol=args.symbol, quarters=args.quarters
+        )
         formatter = format_changes_output
     elif args.institution:
-        result = await tool.execute(action="institution", cik=args.institution, quarter=args.quarter)
+        result = await tool.execute(
+            action="institution", cik=args.institution, quarter=args.quarter
+        )
         formatter = format_institution_output
     elif args.search:
-        result = await tool.execute(action="search", query=args.search, limit=args.limit)
+        result = await tool.execute(
+            action="search", query=args.search, limit=args.limit
+        )
         formatter = format_search_output
     else:
         print("Error: No action specified", file=sys.stderr)

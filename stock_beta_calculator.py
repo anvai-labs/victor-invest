@@ -28,7 +28,9 @@ class DatabaseConnection:
 
     def __init__(self, user: str, password: str, database: str, host: str, port: int):
         """Initialize database connection"""
-        self.engine = create_engine(f"postgresql://{user}:{password}@{host}:{port}/{database}")
+        self.engine = create_engine(
+            f"postgresql://{user}:{password}@{host}:{port}/{database}"
+        )
 
     def execute_query(self, query: str, params: dict = None) -> pd.DataFrame:
         """
@@ -144,7 +146,9 @@ class StockDataFetcher:
         ORDER BY actual_date;
         """
 
-        df = self.db.execute_query(query, {"fromdt": start_date.strftime("%Y-%m-%d"), "ticker": str(ticker)})
+        df = self.db.execute_query(
+            query, {"fromdt": start_date.strftime("%Y-%m-%d"), "ticker": str(ticker)}
+        )
         # Convert to datetime with UTC timezone, then convert to timezone-naive
         df["wkdt"] = pd.to_datetime(df["wkdt"], utc=True).dt.tz_convert(None)
         return df.set_index("wkdt")
@@ -171,7 +175,9 @@ class BetaCalculator:
         returns = prices[["close"]].pct_change()
         return returns.dropna()
 
-    def validate_beta(self, beta: float, r_squared: float, ticker: str, period: int) -> bool:
+    def validate_beta(
+        self, beta: float, r_squared: float, ticker: str, period: int
+    ) -> bool:
         """
         Validate beta calculation results.
 
@@ -181,19 +187,25 @@ class BetaCalculator:
         - Very low betas (< 0.10) with low R² are likely noise
         """
         if abs(beta) > 40:
-            logging.warning(f"Unusual beta value ({beta:.2f}) for {ticker} {period}-month calculation")
+            logging.warning(
+                f"Unusual beta value ({beta:.2f}) for {ticker} {period}-month calculation"
+            )
             return False
 
         # CRITICAL FIX: Increased R² threshold from 2.5% to 5%
         # 2.5% R² means only 2.5% of variance explained - statistically weak
         R2_THRESHOLD = 0.05  # 5% minimum
         if r_squared < R2_THRESHOLD:
-            logging.warning(f"Low R-squared ({r_squared:.4f} < {R2_THRESHOLD}) for {ticker} {period}-month beta")
+            logging.warning(
+                f"Low R-squared ({r_squared:.4f} < {R2_THRESHOLD}) for {ticker} {period}-month beta"
+            )
             return False
 
         # Additional check: very low beta with marginal R² is likely noise
         if abs(beta) < 0.10 and r_squared < 0.10:
-            logging.warning(f"Statistically weak beta ({beta:.4f}) with low R² ({r_squared:.4f}) for {ticker}")
+            logging.warning(
+                f"Statistically weak beta ({beta:.4f}) with low R² ({r_squared:.4f}) for {ticker}"
+            )
             return False
 
         return True
@@ -237,7 +249,9 @@ class BetaCalculator:
             )
 
         except Exception as e:
-            logging.error(f"Error calculating {period}-month beta for {ticker}: {str(e)}")
+            logging.error(
+                f"Error calculating {period}-month beta for {ticker}: {str(e)}"
+            )
             return None
 
 
@@ -264,9 +278,7 @@ class BetaProcessor:
         SET {column} = CAST({beta} AS DECIMAL(7,4)),
             lastupdts = CURRENT_TIMESTAMP
         WHERE ticker = '{ticker}'
-        """.format(
-            column=column, beta=beta_result.beta, ticker=ticker
-        )
+        """.format(column=column, beta=beta_result.beta, ticker=ticker)
 
         self.db.execute_update(update_sql)
 
@@ -286,17 +298,23 @@ class BetaProcessor:
                 beta_column = f"b_{period}_month"
                 if beta_column not in column_cases:
                     column_cases[beta_column] = []
-                column_cases[beta_column].append(f"WHEN ticker = '{ticker}' THEN CAST({beta} AS DECIMAL(7,4))")
+                column_cases[beta_column].append(
+                    f"WHEN ticker = '{ticker}' THEN CAST({beta} AS DECIMAL(7,4))"
+                )
 
                 # R² column cases
                 r2_column = f"r2_{period}_month"
                 if r2_column not in column_cases:
                     column_cases[r2_column] = []
-                column_cases[r2_column].append(f"WHEN ticker = '{ticker}' THEN CAST({r_squared} AS DECIMAL(7,4))")
+                column_cases[r2_column].append(
+                    f"WHEN ticker = '{ticker}' THEN CAST({r_squared} AS DECIMAL(7,4))"
+                )
 
             set_clauses = []
             for column, cases in column_cases.items():
-                set_clauses.append(f"{column} = CASE {' '.join(cases)} ELSE {column} END")
+                set_clauses.append(
+                    f"{column} = CASE {' '.join(cases)} ELSE {column} END"
+                )
 
             tickers = {update[0] for update in self.beta_updates}
             ticker_list = "', '".join(tickers)
@@ -309,16 +327,22 @@ class BetaProcessor:
             """
 
             self.db.execute_update(update_sql)
-            logging.info(f"Successfully updated betas and R² values for {len(tickers)} tickers")
+            logging.info(
+                f"Successfully updated betas and R² values for {len(tickers)} tickers"
+            )
             self.beta_updates = []
 
         except Exception as e:
             logging.error(f"Error in batch beta update: {str(e)}")
             raise
 
-    def add_beta_update(self, ticker: str, period: int, beta_result: BetaResult) -> None:
+    def add_beta_update(
+        self, ticker: str, period: int, beta_result: BetaResult
+    ) -> None:
         """Add a beta and R² update to the batch"""
-        self.beta_updates.append((ticker, period, beta_result.beta, beta_result.r_squared))
+        self.beta_updates.append(
+            (ticker, period, beta_result.beta, beta_result.r_squared)
+        )
 
     def process_all_periods(self, periods: List[int], end_date: datetime) -> None:
         """
@@ -364,12 +388,20 @@ class BetaProcessor:
                         if period_start.tzinfo is not None:
                             period_start = period_start.replace(tzinfo=None)
 
-                        period_returns = stock_returns[stock_returns.index >= period_start]
-                        period_spy_returns = spy_returns[spy_returns.index >= period_start]
+                        period_returns = stock_returns[
+                            stock_returns.index >= period_start
+                        ]
+                        period_spy_returns = spy_returns[
+                            spy_returns.index >= period_start
+                        ]
 
-                        aligned_returns = pd.concat([period_returns, period_spy_returns], axis=1, join="inner")
+                        aligned_returns = pd.concat(
+                            [period_returns, period_spy_returns], axis=1, join="inner"
+                        )
                         if aligned_returns.empty:
-                            logging.warning(f"No aligned data for {ticker} in {period}-month period")
+                            logging.warning(
+                                f"No aligned data for {ticker} in {period}-month period"
+                            )
                             continue
 
                         beta_result = self.calculator.calculate_single_beta(

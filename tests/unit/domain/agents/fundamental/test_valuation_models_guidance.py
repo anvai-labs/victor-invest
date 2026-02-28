@@ -8,7 +8,11 @@ def test_resolve_guidance_overrides_from_ranges():
     guidance = {
         "source_form": "8-K",
         "confidence_score": 0.8,
-        "revenue_guidance": {"low": 11_000_000_000, "high": 13_000_000_000, "horizon": "1y"},
+        "revenue_guidance": {
+            "low": 11_000_000_000,
+            "high": 13_000_000_000,
+            "horizon": "1y",
+        },
         "eps_guidance": {"low": 2.4, "high": 2.6, "horizon": "1q"},
     }
 

@@ -303,8 +303,7 @@ def treasury(ctx, view, json_output):
     with engine.connect() as conn:
         # Get latest Treasury yields
         result = conn.execute(
-            text(
-                """
+            text("""
             SELECT series_id, value, observation_date
             FROM fred_economic_data
             WHERE series_id IN ('DGS1MO', 'DGS3MO', 'DGS6MO', 'DGS1', 'DGS2', 'DGS5', 'DGS10', 'DGS30')
@@ -323,8 +322,7 @@ def treasury(ctx, view, json_output):
                     WHEN 'DGS10' THEN 7
                     WHEN 'DGS30' THEN 8
                 END
-        """
-            )
+        """)
         )
         yields = {row[0]: {"value": float(row[1]), "date": row[2]} for row in result}
 

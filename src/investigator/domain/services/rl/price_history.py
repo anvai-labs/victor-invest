@@ -132,16 +132,14 @@ class PriceHistoryService:
 
             # Query for exact date or nearest trading day
             # Note: target_date is already a Python date, no PostgreSQL cast needed
-            query = text(
-                f"""
+            query = text(f"""
                 SELECT {price_column}, date
                 FROM tickerdata
                 WHERE ticker = :symbol
                   AND date BETWEEN :start_date AND :end_date
                 ORDER BY ABS(date - :target_date) ASC
                 LIMIT 1
-            """
-            )
+            """)
 
             start_date = target_date - timedelta(days=search_days)
             end_date = target_date + timedelta(days=search_days)
@@ -219,8 +217,7 @@ class PriceHistoryService:
 
             # Query for all symbols at once
             # Note: target_date is already a Python date, no PostgreSQL cast needed
-            query = text(
-                f"""
+            query = text(f"""
                 WITH target_prices AS (
                     SELECT
                         ticker,
@@ -237,8 +234,7 @@ class PriceHistoryService:
                 SELECT ticker, price, date
                 FROM target_prices
                 WHERE rn = 1
-            """
-            )
+            """)
 
             start_date = target_date - timedelta(days=5)
             end_date = target_date + timedelta(days=5)
@@ -317,15 +313,13 @@ class PriceHistoryService:
         try:
             price_column = "adjclose" if use_adj_close else "close"
 
-            query = text(
-                f"""
+            query = text(f"""
                 SELECT date, {price_column}
                 FROM tickerdata
                 WHERE ticker = :symbol
                   AND date BETWEEN :start_date AND :end_date
                 ORDER BY date ASC
-            """
-            )
+            """)
 
             with self.engine.connect() as conn:
                 results = conn.execute(
@@ -365,15 +359,13 @@ class PriceHistoryService:
             Most recent closing price, or None if not found.
         """
         try:
-            query = text(
-                """
+            query = text("""
                 SELECT adjclose
                 FROM tickerdata
                 WHERE ticker = :symbol
                 ORDER BY date DESC
                 LIMIT 1
-            """
-            )
+            """)
 
             with self.engine.connect() as conn:
                 result = conn.execute(query, {"symbol": symbol.upper()}).fetchone()

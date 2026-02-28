@@ -46,17 +46,60 @@ class ApplicationSettings(BaseSettings):
 
 
 class DatabaseSettings(BaseSettings):
-    """Database connection configuration."""
+    """Database connection configuration.
 
-    model_config = SettingsConfigDict(env_prefix="DB_")
+    Supports both SEC_DB_* and DB_* environment variable prefixes.
+    Resolution order:
+    1. SEC_DB_* (SEC database specific)
+    2. DB_* (legacy/general database)
+    3. Defaults or fallback values
+    """
 
-    host: str = Field(default="localhost")
+    model_config = SettingsConfigDict(
+        env_prefix="DB_",
+        # Use extra="allow" to support custom env variable resolution
+        extra="allow",
+    )
+
+    host: str = Field(default="dataserver1.singh.local")
     port: int = Field(default=5432)
     database: str = Field(default="sec_database")
     username: str = Field(default="investigator")
     password: str = Field(default="")
     pool_size: int = Field(default=10)
     max_overflow: int = Field(default=20)
+
+    def __init__(self, **kwargs):
+        """Initialize with SEC_DB_* prefix support."""
+        # First, check SEC_DB_* environment variables
+        import os
+
+        sec_env_mapping = {
+            "host": "SEC_DB_HOST",
+            "port": "SEC_DB_PORT",
+            "database": "SEC_DB_NAME",
+            "username": "SEC_DB_USER",
+            "password": "SEC_DB_PASSWORD",
+        }
+
+        # Map SEC_DB_* to the field names if not already provided
+        for field_name, env_var in sec_env_mapping.items():
+            if env_var in os.environ and field_name not in kwargs:
+                value = os.environ[env_var]
+                if field_name == "port":
+                    value = int(value)
+                kwargs[field_name] = value
+
+        # Fallback: if username not set, use database name as username
+        if "username" not in kwargs:
+            if "database" in kwargs:
+                kwargs["username"] = kwargs["database"]
+            elif os.getenv("SEC_DB_NAME"):
+                kwargs["username"] = os.getenv("SEC_DB_NAME")
+            elif os.getenv("DB_NAME"):
+                kwargs["username"] = os.getenv("DB_NAME")
+
+        super().__init__(**kwargs)
 
     @property
     def url(self) -> str:

@@ -136,14 +136,14 @@ class TestIssue1FiscalPeriodSortingRegression:
 
         # Q3 should come before Q2, Q2 before Q1 (reverse chronological)
         if "Q3" in fiscal_periods and "Q2" in fiscal_periods:
-            assert fiscal_periods.index("Q3") < fiscal_periods.index(
-                "Q2"
-            ), "Q3 should come before Q2 in reverse chronological order"
+            assert fiscal_periods.index("Q3") < fiscal_periods.index("Q2"), (
+                "Q3 should come before Q2 in reverse chronological order"
+            )
 
         if "Q2" in fiscal_periods and "Q1" in fiscal_periods:
-            assert fiscal_periods.index("Q2") < fiscal_periods.index(
-                "Q1"
-            ), "Q2 should come before Q1 in reverse chronological order"
+            assert fiscal_periods.index("Q2") < fiscal_periods.index("Q1"), (
+                "Q2 should come before Q1 in reverse chronological order"
+            )
 
 
 class TestIssue2YTDConversionRegression:

@@ -106,16 +106,14 @@ class PriceService:
         """
         with self.stock_engine.connect() as conn:
             result = conn.execute(
-                text(
-                    """
+                text("""
                     SELECT close
                     FROM tickerdata
                     WHERE ticker = :symbol
                       AND date <= :target_date
                     ORDER BY date DESC
                     LIMIT 1
-                """
-                ),
+                """),
                 {"symbol": symbol, "target_date": target_date},
             ).fetchone()
 
@@ -152,16 +150,14 @@ class PriceService:
         """
         with self.stock_engine.connect() as conn:
             result = conn.execute(
-                text(
-                    """
+                text("""
                     SELECT date, open, high, low, close, volume
                     FROM tickerdata
                     WHERE ticker = :symbol
                       AND date <= :target_date
                     ORDER BY date DESC
                     LIMIT 1
-                """
-                ),
+                """),
                 {"symbol": symbol, "target_date": target_date},
             ).fetchone()
 
@@ -199,16 +195,14 @@ class PriceService:
 
         with self.stock_engine.connect() as conn:
             result = conn.execute(
-                text(
-                    """
+                text("""
                     SELECT date, open, high, low, close, volume
                     FROM tickerdata
                     WHERE ticker = :symbol
                       AND date >= :start_date
                       AND date <= :end_date
                     ORDER BY date ASC
-                """
-                ),
+                """),
                 {"symbol": symbol, "start_date": start_date, "end_date": end_date},
             ).fetchall()
 

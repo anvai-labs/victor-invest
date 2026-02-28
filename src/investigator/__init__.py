@@ -8,4 +8,8 @@ Design Patterns Package
 Top-level package for all design pattern implementations
 """
 
-# Empty for now - subpackages can be imported directly
+# Ensure project root is in path for utils module imports
+# This must be done before any other imports that might use utils
+from investigator._path_setup import ensure_project_root_in_path
+
+ensure_project_root_in_path()
