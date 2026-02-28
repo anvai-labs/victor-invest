@@ -65,13 +65,12 @@ try:
 except ImportError:
     Agent = None
 
+# Include sector analysis router
+from victor_invest.api.sectors import router as sectors_router
 from victor_invest.workflows import (
     AnalysisMode,
 )
 from victor_invest.workflows import run_yaml_analysis as run_workflow_analysis
-
-# Include sector analysis router
-from victor_invest.api.sectors import router as sectors_router
 
 logger = logging.getLogger(__name__)
 ALLOWED_API_ANALYSIS_MODES = (

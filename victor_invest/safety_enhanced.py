@@ -46,8 +46,8 @@ except ImportError:
     # Provide stub types for compatibility
     SAFETY_COORDINATOR_AVAILABLE = False
 
-    from enum import Enum
     from dataclasses import dataclass
+    from enum import Enum
 
     class SafetyAction(str, Enum):
         BLOCK = "block"

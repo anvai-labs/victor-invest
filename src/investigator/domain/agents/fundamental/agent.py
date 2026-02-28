@@ -26,12 +26,8 @@ from investigator.domain.services.dynamic_model_weighting import (
     DynamicModelWeightingService,
 )
 from investigator.domain.services.fiscal_period_service import get_fiscal_period_service
-from investigator.domain.services.safe_formatters import (
-    format_currency as _fmt_currency,
-)
-from investigator.domain.services.safe_formatters import (
-    format_int_with_commas as _fmt_int_comma,
-)
+from investigator.domain.services.safe_formatters import format_currency as _fmt_currency
+from investigator.domain.services.safe_formatters import format_int_with_commas as _fmt_int_comma
 from investigator.domain.services.safe_formatters import format_percentage as _fmt_pct
 from investigator.domain.services.toon_formatter import TOONFormatter, to_toon_quarterly
 from investigator.domain.services.valuation import (  # Sector-aware valuation routing
@@ -86,15 +82,9 @@ from .constants import (
     PROCESSED_ADDITIONAL_FINANCIAL_KEYS,
     PROCESSED_RATIO_KEYS,
 )
-from .cost_of_capital import (
-    apply_cost_of_capital_penalty as apply_cost_of_capital_penalty_helper,
-)
-from .cost_of_capital import (
-    evaluate_cost_of_capital_inputs as evaluate_cost_of_capital_inputs_helper,
-)
-from .cost_of_capital import (
-    hydrate_cost_of_capital_inputs as hydrate_cost_of_capital_inputs_helper,
-)
+from .cost_of_capital import apply_cost_of_capital_penalty as apply_cost_of_capital_penalty_helper
+from .cost_of_capital import evaluate_cost_of_capital_inputs as evaluate_cost_of_capital_inputs_helper
+from .cost_of_capital import hydrate_cost_of_capital_inputs as hydrate_cost_of_capital_inputs_helper
 from .cost_of_equity import calculate_cost_of_equity_capm
 from .data_quality_assessor import get_data_quality_assessor
 from .deterministic_analyzer import DeterministicAnalyzer

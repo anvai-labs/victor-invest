@@ -528,11 +528,12 @@ async def _run_llm_synthesis(
         if provider and provider != "ollama":
             # Use Victor's provider registry for non-Ollama providers
             from victor.providers.registry import ProviderRegistry
-            from victor_invest.framework_bootstrap import (
-                resolve_model_from_env,
-                PROVIDER_DEFAULT_MODELS,
-            )
+
             from investigator.config import get_config
+            from victor_invest.framework_bootstrap import (
+                PROVIDER_DEFAULT_MODELS,
+                resolve_model_from_env,
+            )
 
             config = get_config()
 

@@ -320,13 +320,13 @@ Parameters:
             ToolResult with quarterly financial data in dict format
         """
         try:
+            from investigator.domain.agents.fundamental.quarterly_fetch import (
+                query_recent_processed_periods,
+            )
             from investigator.domain.services.fiscal_period_service import (
                 get_fiscal_period_service,
             )
             from investigator.infrastructure.database.db import get_db_manager
-            from investigator.domain.agents.fundamental.quarterly_fetch import (
-                query_recent_processed_periods,
-            )
 
             db_manager = get_db_manager()
             fiscal_period_service = get_fiscal_period_service()

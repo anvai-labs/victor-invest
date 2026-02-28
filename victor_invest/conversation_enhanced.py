@@ -31,8 +31,8 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 # ConversationCoordinator was removed/renamed in Victor 0.5.6, make import optional
 try:

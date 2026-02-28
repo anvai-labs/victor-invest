@@ -1040,11 +1040,12 @@ Provide your response as a JSON object with this exact structure:
         Returns LLM-generated synthesis dict or None if unavailable.
         """
         try:
-            from victor.providers.registry import ProviderRegistry
             from victor.providers.base import Message
+            from victor.providers.registry import ProviderRegistry
+
             from victor_invest.framework_bootstrap import (
-                resolve_model_from_env,
                 PROVIDER_DEFAULT_MODELS,
+                resolve_model_from_env,
             )
 
             # Resolve model if not specified

@@ -20,9 +20,7 @@ from investigator.infrastructure.cache.cache_types import CacheType
 from investigator.infrastructure.database.market_data import (  # Uses singleton pattern
     get_market_data_fetcher,
 )
-from investigator.infrastructure.indicators import (
-    TechnicalIndicatorCalculator as TechnicalIndicators,
-)
+from investigator.infrastructure.indicators import TechnicalIndicatorCalculator as TechnicalIndicators
 
 
 class TechnicalAnalysisAgent(InvestmentAgent):

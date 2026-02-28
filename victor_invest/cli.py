@@ -595,8 +595,8 @@ def batch(
 
     # Resolve provider/model from environment variables
     from victor_invest.framework_bootstrap import (
-        resolve_provider_from_env,
         resolve_model_from_env,
+        resolve_provider_from_env,
     )
 
     resolved_provider = resolve_provider_from_env(fallback=provider or "ollama")
@@ -758,8 +758,8 @@ def compare(
 
     # Resolve provider/model from environment variables
     from victor_invest.framework_bootstrap import (
-        resolve_provider_from_env,
         resolve_model_from_env,
+        resolve_provider_from_env,
     )
 
     resolved_provider = resolve_provider_from_env(fallback=provider or "ollama")
@@ -1136,8 +1136,8 @@ def _display_results(result, symbol: str, detail: str = "standard"):
         console.print("\n[dim]Cache Status:[/dim]")
 
         # Check if there's cache info in the state
-        from pathlib import Path
         import time
+        from pathlib import Path
 
         cache_root = Path("data/cache")
         symbol_upper = symbol.upper() if symbol else ""
