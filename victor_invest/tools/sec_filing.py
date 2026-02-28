@@ -38,6 +38,13 @@ Example:
         action="get_company_facts"
     )
 
+    # Get quarterly financial data from processed table
+    result = await tool.execute(
+        symbol="AAPL",
+        action="get_quarterly_financials",
+        num_periods=12
+    )
+
     # Search for filings
     result = await tool.execute(
         symbol="AAPL",
@@ -718,6 +725,7 @@ Parameters:
                     "enum": [
                         "get_filing",
                         "get_company_facts",
+                        "get_quarterly_financials",
                         "search_filings",
                         "extract_metrics",
                         "parse_xbrl",
