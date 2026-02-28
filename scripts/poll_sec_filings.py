@@ -49,7 +49,7 @@ class SECFilingPoller:
         db_url: str,
         stock_db_url: Optional[str] = None,
         stale_days: int = 90,
-        check_table: str = "sec_companyfacts_processed",
+        check_table: str = "sec_companyfacts_raw",
     ):
         """
         Initialize the SEC filing poller.
@@ -58,8 +58,9 @@ class SECFilingPoller:
             db_url: SEC database connection URL
             stock_db_url: Stock database connection URL (for symbol metadata)
             stale_days: Days after which data is considered stale (default: 90)
-            check_table: Table to check for latest filing date
-                        Options: sec_companyfacts_processed, sec_companyfacts_raw
+            check_table: Table to check for latest fetch date
+                        Options: sec_companyfacts_raw (fetched_at), sec_companyfacts_processed (filed_date)
+                        Default: sec_companyfacts_raw (checks when we last fetched from SEC)
         """
         self.db_url = db_url
         self.stock_db_url = stock_db_url
@@ -92,6 +93,9 @@ class SECFilingPoller:
         """
         Get the latest filing date from the configured table.
 
+        For sec_companyfacts_processed, checks filed_date (SEC filing date).
+        For sec_companyfacts_raw, checks fetched_at (when we last fetched from SEC).
+
         Args:
             symbol: Filter by specific symbol (None = all symbols)
 
@@ -104,7 +108,7 @@ class SECFilingPoller:
         try:
             with self.engine.connect() as conn:
                 if self.check_table == "sec_companyfacts_processed":
-                    # Check processed table
+                    # Check processed table - use filed_date (SEC filing date)
                     if symbol:
                         query = text("""
                             SELECT MAX(filed_date) as latest_date
@@ -119,17 +123,17 @@ class SECFilingPoller:
                         """)
                         result = conn.execute(query)
                 elif self.check_table == "sec_companyfacts_raw":
-                    # Check raw table
+                    # Check raw table for fetched_at (when we last fetched from SEC)
                     if symbol:
                         query = text("""
-                            SELECT MAX(filed) as latest_date
+                            SELECT MAX(fetched_at) as latest_date
                             FROM sec_companyfacts_raw
-                            WHERE ticker = :symbol
+                            WHERE symbol = :symbol
                         """)
                         result = conn.execute(query, {"symbol": symbol})
                     else:
                         query = text("""
-                            SELECT MAX(filed) as latest_date
+                            SELECT MAX(fetched_at) as latest_date
                             FROM sec_companyfacts_raw
                         """)
                         result = conn.execute(query)
@@ -471,56 +475,52 @@ class SECFilingPoller:
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="Poll SEC database for stale filing data",
+        description="Poll SEC database for stale filing data and refresh+analyze when needed",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Check single symbol
+  # Check all symbols (default behavior - refreshes stale, runs analysis)
+  python %(prog)s
+
+  # Check specific symbol
   python %(prog)s --symbol AAPL
 
   # Check multiple symbols (use --symbol multiple times)
   python %(prog)s --symbol AAPL --symbol TRV --symbol HIG
 
-  # Check all symbols
-  python %(prog)s --all-symbols
+  # Check only, don't analyze
+  python %(prog)s --no-analyze
+
+  # Quick analysis instead of standard
+  python %(prog)s --mode quick
+
+  # Don't include submissions
+  python %(prog)s --no-include-submissions
 
   # Continuous polling with custom interval
-  python %(prog)s --all-symbols --interval 7200 --continuous
+  python %(prog)s --interval 7200 --continuous
 
-  # Use raw table instead of processed
-  python %(prog)s --all-symbols --table sec_companyfacts_raw
+  # Use processed table filing date instead of fetch date
+  python %(prog)s --table sec_companyfacts_processed
 
   # Custom stale threshold (default: 90 days)
-  python %(prog)s --symbol AAPL --stale-days 60
-
-  # Include submissions when refreshing
-  python %(prog)s --symbol AAPL --include-submissions
-
-  # Refresh and run analysis
-  python %(prog)s --symbol AAPL --analyze --mode quick
-
-  # Refresh all stale symbols and run comprehensive analysis
-  python %(prog)s --all-symbols --analyze --mode comprehensive
+  python %(prog)s --stale-days 60
         """,
     )
 
     parser.add_argument(
         "--symbol",
         "-s",
-        help="Check specific symbol (can be specified multiple times: --symbol AAPL --symbol TRV)",
+        help="Check specific symbol (can be specified multiple times: --symbol AAPL --symbol TRV). If not specified, checks all SEC filing symbols.",
         action="append",
         dest="symbols",
-    )
-    parser.add_argument(
-        "--all-symbols",
-        help="Check all symbols in database table",
-        action="store_true",
+        default=None,
     )
     parser.add_argument(
         "--table",
         choices=["sec_companyfacts_processed", "sec_companyfacts_raw"],
-        default="sec_companyfacts_processed",
-        help="Table to check for latest filing (default: sec_companyfacts_processed)",
+        default="sec_companyfacts_raw",
+        help="Table to check for latest filing (default: sec_companyfacts_raw - checks fetched_at). Use sec_companyfacts_processed to check SEC filing date.",
     )
     parser.add_argument(
         "--stale-days",
@@ -553,23 +553,23 @@ Examples:
     parser.add_argument(
         "--no-filter",
         action="store_true",
-        help="Don't filter by is_sec_filing=true when using --all-symbols",
+        help="Don't filter by is_sec_filing=true (default: filters for SEC filing symbols)",
     )
     parser.add_argument(
-        "--include-submissions",
+        "--no-include-submissions",
         action="store_true",
-        help="Also fetch submissions along with CompanyFacts during refresh",
+        help="Don't fetch submissions along with CompanyFacts during refresh (default: includes submissions)",
     )
     parser.add_argument(
-        "--analyze",
+        "--no-analyze",
         action="store_true",
-        help="Run victor-invest analysis after successful refresh",
+        help="Don't run victor-invest analysis after refresh (default: runs analysis)",
     )
     parser.add_argument(
         "--mode",
         choices=["quick", "standard", "comprehensive"],
         default="standard",
-        help="Analysis mode (default: standard, used with --analyze)",
+        help="Analysis mode (default: standard)",
     )
 
     args = parser.parse_args()
@@ -601,14 +601,10 @@ Examples:
 
     # Determine which symbols to check and filter settings
     filter_sec_filing = not args.no_filter
-    include_submissions = args.include_submissions
-    analyze = args.analyze
+    include_submissions = not args.no_include_submissions  # Default: True
+    analyze = not args.no_analyze  # Default: True
     analysis_mode = args.mode
-    symbols = args.symbols  # Directly specified symbols (overrides all filters)
-    use_all_symbols = args.all_symbols
-
-    if not symbols and not use_all_symbols:
-        parser.error("Must specify --symbol or --all-symbols")
+    symbols = args.symbols  # Directly specified symbols, None means use all SEC filing symbols
 
     # Create poller and run
     poller = SECFilingPoller(
@@ -635,6 +631,8 @@ Examples:
             symbols = poller.poll_all_symbols(filter_sec_filing=filter_sec_filing)
 
         print(f"\nProcessing {len(symbols)} symbols sequentially...")
+        if include_submissions:
+            print("Include submissions: enabled")
         if analyze:
             print(f"Analysis mode: {analysis_mode}")
         print("=" * 60)
