@@ -517,17 +517,54 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             if quarterly_metrics:
                 q = quarterly_metrics[0]
 
-                # Calculate total_debt from processed data
-                long_term_debt = q.get("long_term_debt") or 0
-                short_term_debt = q.get("short_term_debt") or 0
+                # Calculate total_debt and cash - check both nested and flat formats
+                def get_metric(q, keys):
+                    """Get metric from nested balance_sheet or flat format."""
+                    # Try flat format first
+                    for key in keys:
+                        val = q.get(key)
+                        if val is not None:
+                            return val
+                    # Try nested format (balance_sheet.xxx)
+                    if "balance_sheet" in q:
+                        balance = q.get("balance_sheet", {})
+                        for key in keys:
+                            val = balance.get(key)
+                            if val is not None:
+                                return val
+                    return 0
+
+                # Get long_term_debt (try multiple key variants)
+                long_term_debt = get_metric(
+                    q, ["long_term_debt", "longTermDebt", "long_debt"]
+                )
+
+                # Get short_term_debt (try multiple key variants)
+                short_term_debt = get_metric(
+                    q,
+                    [
+                        "short_term_debt",
+                        "short_term_debt_current",
+                        "shortTermDebt",
+                    ],
+                )
+
                 total_debt = (
                     long_term_debt + short_term_debt
                     if (long_term_debt or short_term_debt)
                     else None
                 )
 
-                # Get cash
-                cash = q.get("cash_and_equivalents")
+                # Get cash (try multiple key variants)
+                cash = get_metric(
+                    q,
+                    [
+                        "cash_and_equivalents",
+                        "cash_equivalents",
+                        "cash",
+                        "cash_and_cash_equivalents",
+                    ],
+                )
 
                 # Get EBITDA for net_debt_to_ebitda calculation
                 ebitda = q.get("ebitda")
@@ -740,9 +777,8 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     or income_stmt.get("total_revenue")
                     or income_stmt.get("revenue")
                 )
-                sample_ni = (
-                    income_stmt.get("net_income")
-                    or income_stmt.get("net_income_loss")
+                sample_ni = income_stmt.get("net_income") or income_stmt.get(
+                    "net_income_loss"
                 )
                 logger.info(
                     f"[TTM_DEBUG] {symbol} - Sample quarter data: "
@@ -782,13 +818,76 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     f"ttm_revenue=${result['ttm_revenue'] or 0:,.0f}"
                 )
 
-                # Book value from balance sheet
+                # Book value from balance sheet - try multiple keys and nested structures
                 if quarterly_metrics:
                     sec_data = quarterly_metrics[0]
                     balance = sec_data.get("balance_sheet", {})
-                    book_value = balance.get("stockholders_equity") or balance.get(
-                        "total_equity"
+
+                    # Debug: Log structure details (use INFO level to ensure visibility)
+                    logger.info(
+                        f"[BOOK_VALUE_DEBUG] {symbol} - sec_data type: {type(sec_data)}, "
+                        f"has balance_sheet: {'balance_sheet' in sec_data}, "
+                        f"balance type: {type(balance)}, balance keys: {list(balance.keys())[:10] if balance else 'empty'}"
                     )
+
+                    # Try multiple possible keys for stockholders equity
+                    # Handle both nested (income_statement.xxx) and flat formats
+                    book_value_keys = [
+                        "stockholders_equity",
+                        "total_stockholders_equity",
+                        "shareholders_equity",
+                        "total_equity",
+                        "stockholder_equity",
+                        "common_stock_equity",
+                        "total_assets",  # Fallback
+                    ]
+
+                    book_value = None
+                    found_key = None
+
+                    # First try nested structure (balance_sheet.xxx)
+                    if balance:
+                        for key in book_value_keys:
+                            val = balance.get(key)
+                            logger.info(
+                                f"[BOOK_VALUE_DEBUG] {symbol} - Checking balance_sheet.{key}: {val}"
+                            )
+                            if val is not None:
+                                book_value = val
+                                found_key = f"balance_sheet.{key}"
+                                logger.info(
+                                    f"[BOOK_VALUE_DEBUG] {symbol} - Found book_value via '{found_key}': ${book_value:,.0f}"
+                                )
+                                break
+                    else:
+                        logger.warning(
+                            f"[BOOK_VALUE_DEBUG] {symbol} - balance_sheet is empty or not a dict"
+                        )
+
+                    # If not found in nested structure, try flat structure (sec_data.xxx)
+                    if book_value is None:
+                        for key in book_value_keys:
+                            val = sec_data.get(key)
+                            logger.info(
+                                f"[BOOK_VALUE_DEBUG] {symbol} - Checking flat key '{key}': {val}"
+                            )
+                            if val is not None:
+                                book_value = val
+                                found_key = key
+                                logger.info(
+                                    f"[BOOK_VALUE_DEBUG] {symbol} - Found book_value via flat key '{found_key}': ${book_value:,.0f}"
+                                )
+                                break
+
+                    if book_value is not None:
+                        logger.info(
+                            f"[BOOK_VALUE_DEBUG] {symbol} - Found book_value=${book_value:,.0f} via '{found_key}'"
+                        )
+                    else:
+                        logger.warning(
+                            f"[BOOK_VALUE_DEBUG] {symbol} - Could not find book_value, tried keys: {book_value_keys}"
+                        )
+
                     result["book_value"] = book_value
 
                     if shares_outstanding and shares_outstanding > 0:
@@ -800,6 +899,18 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                         result["book_value_per_share"] = (
                             book_value / shares_outstanding if book_value else None
                         )
+
+                        # Log the calculated book value per share
+                        if result["book_value_per_share"]:
+                            logger.info(
+                                f"[BOOK_VALUE_DEBUG] {symbol} - Calculated BV/share: ${result['book_value_per_share']:.2f} "
+                                f"(book_value=${book_value or 0:,.0f}, shares={shares_outstanding:,.0f})"
+                            )
+                        else:
+                            logger.warning(
+                                f"[BOOK_VALUE_DEBUG] {symbol} - Could not calculate BV/share: "
+                                f"book_value={book_value}, shares={shares_outstanding}"
+                            )
 
                 return result
 
@@ -816,9 +927,21 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 )
                 ttm_revenue = income.get("total_revenue") or income.get("revenue")
                 ttm_ebitda = income.get("ebitda")
-                book_value = balance.get("stockholders_equity") or balance.get(
-                    "total_equity"
-                )
+
+                # Try multiple keys for book value
+                book_value_keys = [
+                    "stockholders_equity",
+                    "total_stockholders_equity",
+                    "shareholders_equity",
+                    "total_equity",
+                    "stockholder_equity",
+                ]
+                book_value = None
+                for key in book_value_keys:
+                    val = balance.get(key)
+                    if val is not None and val != 0:
+                        book_value = val
+                        break
 
                 result["ttm_revenue"] = ttm_revenue
                 result["ttm_ebitda"] = ttm_ebitda
@@ -855,11 +978,20 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             # Book value and per-share metrics (not in TTMMetrics yet)
             if quarterly_metrics:
                 most_recent = quarterly_metrics[0]
-                book_value = (
-                    most_recent.get("stockholders_equity")
-                    or most_recent.get("total_stockholders_equity")
-                    or most_recent.get("book_value")
-                )
+                # Try multiple possible keys for book value
+                book_value_keys = [
+                    "stockholders_equity",
+                    "total_stockholders_equity",
+                    "shareholders_equity",
+                    "total_equity",
+                    "book_value",
+                ]
+                book_value = None
+                for key in book_value_keys:
+                    val = most_recent.get(key)
+                    if val is not None and val != 0:
+                        book_value = val
+                        break
                 result["book_value"] = book_value
 
                 if shares_outstanding and shares_outstanding > 0:
@@ -1542,6 +1674,8 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             stock_info = await self._get_stock_info(symbol)
             shares_outstanding = stock_info.get("shares_outstanding")
             sector = stock_info.get("sector", "Unknown")
+            industry = stock_info.get("industry")
+            industry = stock_info.get("industry")
 
             # Build company profile
             company_profile = self._build_company_profile(
@@ -1559,8 +1693,8 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             )
             ttm_eps = ttm_metrics.get("ttm_eps")
 
-            # Get sector multiples
-            sector_multiples = self._get_sector_multiples(sector)
+            # Get sector multiples (pass industry for more specific multiples)
+            sector_multiples = self._get_sector_multiples(sector, industry)
             sector_median_pe = sector_multiples.get("pe", 15.0)
 
             # Calculate growth-adjusted P/E using shared GrowthAdjustedMultiples
@@ -1633,6 +1767,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             stock_info = await self._get_stock_info(symbol)
             shares_outstanding = stock_info.get("shares_outstanding")
             sector = stock_info.get("sector", "Unknown")
+            industry = stock_info.get("industry")
             industry = stock_info.get("industry")
 
             # Build company profile
@@ -1722,6 +1857,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             stock_info = await self._get_stock_info(symbol)
             shares_outstanding = stock_info.get("shares_outstanding")
             sector = stock_info.get("sector", "Unknown")
+            industry = stock_info.get("industry")
 
             # Build company profile
             company_profile = self._build_company_profile(
@@ -1738,9 +1874,23 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 quarterly_metrics, shares_outstanding
             )
             book_value_per_share = ttm_metrics.get("book_value_per_share")
+            book_value = ttm_metrics.get("book_value")
 
-            # Get sector multiples
-            sector_multiples = self._get_sector_multiples(sector)
+            logger.debug(
+                f"[PB_DEBUG] {symbol} - book_value=${book_value or 0:,.0f}, "
+                f"book_value_per_share=${book_value_per_share or 0:.2f}, "
+                f"shares={shares_outstanding or 0:,.0f}"
+            )
+
+            # Check if we have the minimum required data
+            if not book_value_per_share or book_value_per_share <= 0:
+                return ToolResult.create_failure(
+                    f"P/B not applicable: Book value per share is ${book_value_per_share or 0:.2f} (must be positive)",
+                    metadata={"model": "pb", "symbol": symbol},
+                )
+
+            # Get sector multiples (pass industry for more specific multiples)
+            sector_multiples = self._get_sector_multiples(sector, industry)
             sector_median_pb = sector_multiples.get("pb", 2.5)
 
             # Create model with required arguments
@@ -1794,7 +1944,13 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             shares_outstanding = stock_info.get("shares_outstanding")
             sector = stock_info.get("sector", "Unknown")
             industry = stock_info.get("industry")
+            industry = stock_info.get("industry")
             market_cap = stock_info.get("market_cap")
+
+            logger.debug(
+                f"[EV_EBITDA_DEBUG] {symbol} - sector={sector}, industry={industry}, "
+                f"market_cap={market_cap or 0:,.0f}, shares={shares_outstanding or 0:,.0f}"
+            )
 
             # Build company profile
             company_profile = self._build_company_profile(
@@ -1812,19 +1968,98 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             )
             ttm_ebitda = ttm_metrics.get("ttm_ebitda")
 
+            logger.debug(
+                f"[EV_EBITDA_DEBUG] {symbol} - TTM EBITDA=${ttm_ebitda or 0:,.0f}"
+            )
+
             # Calculate enterprise value: market_cap + total_debt - cash
             enterprise_value = None
+            total_debt = 0
+            cash = 0
+
             if market_cap:
                 # Try to get debt and cash from quarterly metrics
                 if quarterly_metrics:
                     latest_q = quarterly_metrics[0]
-                    total_debt = (latest_q.get("long_term_debt") or 0) + (
-                        latest_q.get("short_term_debt") or 0
+
+                    # Handle both nested and flat formats for debt and cash
+                    def extract_metric(q, keys):
+                        """Extract metric from nested or flat format."""
+                        # Try flat format first
+                        for key in keys:
+                            val = q.get(key)
+                            if val is not None:
+                                return val
+                        # Try nested format (balance_sheet.xxx)
+                        if "balance_sheet" in q:
+                            balance = q.get("balance_sheet", {})
+                            for key in keys:
+                                val = balance.get(key)
+                                if val is not None:
+                                    return val
+                        return 0
+
+                    # Extract long-term debt
+                    long_term_debt = extract_metric(
+                        latest_q,
+                        [
+                            "long_term_debt",
+                            "longTermDebt",
+                            "long_debt",
+                            "long_term_debt_non_current",
+                        ],
                     )
-                    cash = latest_q.get("cash_and_equivalents") or 0
+
+                    # Extract short-term debt
+                    short_term_debt = extract_metric(
+                        latest_q,
+                        [
+                            "short_term_debt",
+                            "short_term_debt_current",
+                            "short_term_debt_and_capital_lease_obligation",
+                            "shortTermDebt",
+                        ],
+                    )
+
+                    # Extract cash and equivalents
+                    cash = extract_metric(
+                        latest_q,
+                        [
+                            "cash_and_equivalents",
+                            "cash_equivalents",
+                            "cash",
+                            "cash_and_cash_equivalents",
+                        ],
+                    )
+
+                    total_debt = (long_term_debt or 0) + (short_term_debt or 0)
                     enterprise_value = market_cap + total_debt - cash
+
+                    logger.debug(
+                        f"[EV_EBITDA_DEBUG] {symbol} - debt={total_debt:,.0f}, "
+                        f"cash={cash:,.0f}, EV={enterprise_value:,.0f}"
+                    )
                 else:
                     enterprise_value = market_cap  # Approximate
+
+            # Check if we have the minimum required data
+            if not ttm_ebitda or ttm_ebitda <= 0:
+                return ToolResult.create_failure(
+                    f"EV/EBITDA not applicable: TTM EBITDA is ${ttm_ebitda or 0:,.0f} (must be positive)",
+                    metadata={"model": "ev_ebitda", "symbol": symbol},
+                )
+
+            if not enterprise_value or enterprise_value <= 0:
+                return ToolResult.create_failure(
+                    f"EV/EBITDA not applicable: Enterprise value is ${enterprise_value or 0:,.0f} (must be positive)",
+                    metadata={"model": "ev_ebitda", "symbol": symbol},
+                )
+
+            if not shares_outstanding or shares_outstanding <= 0:
+                return ToolResult.create_failure(
+                    f"EV/EBITDA not applicable: Shares outstanding is {shares_outstanding or 0:,.0f} (must be positive)",
+                    metadata={"model": "ev_ebitda", "symbol": symbol},
+                )
 
             # Get sector multiples with industry override
             sector_multiples = self._get_sector_multiples(sector, industry)
