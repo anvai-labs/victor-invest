@@ -47,6 +47,7 @@ class SECFilingPoller:
     def __init__(
         self,
         db_url: str,
+        stock_db_url: Optional[str] = None,
         stale_days: int = 90,
         check_table: str = "sec_companyfacts_processed",
     ):
@@ -54,15 +55,18 @@ class SECFilingPoller:
         Initialize the SEC filing poller.
 
         Args:
-            db_url: Database connection URL
+            db_url: SEC database connection URL
+            stock_db_url: Stock database connection URL (for symbol metadata)
             stale_days: Days after which data is considered stale (default: 90)
             check_table: Table to check for latest filing date
                         Options: sec_companyfacts_processed, sec_companyfacts_raw
         """
         self.db_url = db_url
+        self.stock_db_url = stock_db_url
         self.stale_days = stale_days
         self.check_table = check_table
         self.engine: Optional[Engine] = None
+        self.stock_engine: Optional[Engine] = None
 
     def connect(self) -> Engine:
         """Establish database connection."""
@@ -70,7 +74,18 @@ class SECFilingPoller:
             self.engine = create_engine(self.db_url)
             return self.engine
         except Exception as e:
-            logger.error(f"Failed to connect to database: {e}")
+            logger.error(f"Failed to connect to SEC database: {e}")
+            raise
+
+    def connect_stock_db(self) -> Engine:
+        """Establish connection to stock database for symbol metadata."""
+        if not self.stock_db_url:
+            raise ValueError("stock_db_url not configured")
+        try:
+            self.stock_engine = create_engine(self.stock_db_url)
+            return self.stock_engine
+        except Exception as e:
+            logger.error(f"Failed to connect to stock database: {e}")
             raise
 
     def get_latest_filing_date(self, symbol: Optional[str] = None) -> Optional[datetime]:
@@ -260,7 +275,7 @@ class SECFilingPoller:
         self, filter_sec_filing: bool = True, override_symbols: Optional[List[str]] = None
     ) -> List[str]:
         """
-        Get all symbols that have data in the checked table.
+        Get all symbols from the stock database that should be monitored.
 
         Args:
             filter_sec_filing: If True, filter by is_sec_filing=true or is_sec_files=true
@@ -273,66 +288,39 @@ class SECFilingPoller:
             logger.info(f"Using override symbols: {len(override_symbols)} symbols")
             return override_symbols
 
-        if not self.engine:
-            self.connect()
+        if not self.stock_db_url:
+            raise ValueError(
+                "stock_db_url must be configured for --all-symbols. "
+                "Set STOCK_DB_HOST, STOCK_DB_NAME, STOCK_DB_USER, STOCK_DB_PASSWORD environment variables."
+            )
+
+        if not self.stock_engine:
+            self.connect_stock_db()
 
         try:
-            with self.engine.connect() as conn:
-                if self.check_table == "sec_companyfacts_processed":
-                    # Join with stock.symbol to get is_sec_filing filter and stock_id ordering
+            with self.stock_engine.connect() as conn:
+                # Query from symbol table in stock database
+                if filter_sec_filing:
                     query = text("""
-                        SELECT DISTINCT scp.symbol
-                        FROM sec_companyfacts_processed scp
-                        JOIN stock.symbol s ON scp.symbol = s.symbol
-                        WHERE 1=1
-                        :filter_clause
-                        ORDER BY s.stock_id
+                        SELECT ticker
+                        FROM symbol
+                        WHERE is_sec_filing = true OR is_sec_files = true
+                        ORDER BY stockid
                     """)
-                    # Build filter clause
-                    if filter_sec_filing:
-                        filter_clause = """
-                        AND (s.is_sec_filing = true OR s.is_sec_files = true)
-                        """
-                    else:
-                        filter_clause = ""
-
-                    # Replace the placeholder
-                    query_str = str(query).replace(":filter_clause", filter_clause)
-                    query = text(query_str)
-
-                elif self.check_table == "sec_companyfacts_raw":
-                    # Join with stock.symbol to get is_sec_filing filter and stock_id ordering
-                    query = text("""
-                        SELECT DISTINCT scr.ticker as symbol
-                        FROM sec_companyfacts_raw scr
-                        JOIN stock.symbol s ON scr.ticker = s.symbol
-                        WHERE 1=1
-                        :filter_clause
-                        ORDER BY s.stock_id
-                    """)
-                    # Build filter clause
-                    if filter_sec_filing:
-                        filter_clause = """
-                        AND (s.is_sec_filing = true OR s.is_sec_files = true)
-                        """
-                    else:
-                        filter_clause = ""
-
-                    # Replace the placeholder
-                    query_str = str(query).replace(":filter_clause", filter_clause)
-                    query = text(query_str)
                 else:
-                    raise ValueError(f"Unknown table: {self.check_table}")
+                    query = text("""
+                        SELECT ticker
+                        FROM symbol
+                        ORDER BY stockid
+                    """)
 
                 result = conn.execute(query)
                 symbols = [row[0] for row in result.fetchall()]
-                logger.info(
-                    f"Found {len(symbols)} symbols in {self.check_table} (filter_sec_filing={filter_sec_filing})"
-                )
+                logger.info(f"Found {len(symbols)} symbols in stock.symbol (filter_sec_filing={filter_sec_filing})")
                 return symbols
 
         except Exception as e:
-            logger.error(f"Error fetching symbols: {e}")
+            logger.error(f"Error fetching symbols from stock database: {e}")
             return []
 
     def run_polling_loop(
@@ -484,6 +472,15 @@ Examples:
 
     db_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 
+    # Stock database for symbol metadata
+    stock_db_host = os.getenv("STOCK_DB_HOST") or os.getenv("DB_HOST", "localhost")
+    stock_db_port = os.getenv("STOCK_DB_PORT") or os.getenv("DB_PORT", "5432")
+    stock_db_name = os.getenv("STOCK_DB_NAME") or os.getenv("DB_NAME", "stock")
+    stock_db_user = os.getenv("STOCK_DB_USER") or os.getenv("DB_USER", stock_db_name)
+    stock_db_password = os.getenv("STOCK_DB_PASSWORD") or os.getenv("DB_PASSWORD", "")
+
+    stock_db_url = f"postgresql://{stock_db_user}:{stock_db_password}@{stock_db_host}:{stock_db_port}/{stock_db_name}"
+
     # Determine which symbols to check and filter settings
     filter_sec_filing = not args.no_filter
     symbols = args.symbols  # Directly specified symbols (overrides all filters)
@@ -495,6 +492,7 @@ Examples:
     # Create poller and run
     poller = SECFilingPoller(
         db_url=db_url,
+        stock_db_url=stock_db_url,
         stale_days=args.stale_days,
         check_table=args.table,
     )
