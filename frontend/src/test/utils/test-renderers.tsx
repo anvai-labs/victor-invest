@@ -1,5 +1,5 @@
 import { render, RenderOptions } from "@testing-library/react";
-import { ReactElement } from "react";
+import { ReactNode } from "react";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
@@ -8,7 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
  * for components that use React Router hooks (useNavigate, Link, etc.)
  */
 export function renderWithRouter(
-  ui: ReactElement,
+  ui: ReactNode,
   options?: Omit<RenderOptions, "wrapper">
 ) {
   const queryClient = new QueryClient({
@@ -20,7 +20,7 @@ export function renderWithRouter(
     },
   });
 
-  function Wrapper({ children }: { children: ReactElement }) {
+  function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
@@ -36,4 +36,5 @@ export function renderWithRouter(
 /**
  * Re-export everything from testing-library react
  */
+/* eslint-disable react-refresh/only-export-components */
 export * from "@testing-library/react";
