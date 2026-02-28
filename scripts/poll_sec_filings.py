@@ -443,6 +443,9 @@ Examples:
   # Check single symbol
   python %(prog)s --symbol AAPL
 
+  # Check multiple symbols (use --symbol multiple times)
+  python %(prog)s --symbol AAPL --symbol TRV --symbol HIG
+
   # Check all symbols
   python %(prog)s --all-symbols
 
@@ -454,12 +457,16 @@ Examples:
 
   # Custom stale threshold (default: 90 days)
   python %(prog)s --symbol AAPL --stale-days 60
+
+  # Include submissions when refreshing
+  python %(prog)s --symbol AAPL --include-submissions
         """,
     )
 
     parser.add_argument(
         "--symbol",
-        help="Check specific symbol (can be used multiple times)",
+        "-s",
+        help="Check specific symbol (can be specified multiple times: --symbol AAPL --symbol TRV)",
         action="append",
         dest="symbols",
     )
