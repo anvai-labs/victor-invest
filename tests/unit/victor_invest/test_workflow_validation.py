@@ -16,6 +16,7 @@ def test_workflows_validate_and_handlers_resolve():
     # The compatibility layer supports newer Victor versions better
     if not hasattr(registry, "get_handler") and not hasattr(registry, "get"):
         import pytest
+
         pytest.skip("Victor 0.5.0 detected; handler registration API differs significantly")
 
     provider = InvestmentWorkflowProvider()
