@@ -113,7 +113,11 @@ def clean_and_validate_data(y: np.ndarray) -> np.ndarray:
 
     # Create mask for valid values
     valid_mask = (
-        ~np.isinf(y) & ~np.isnan(y) & (np.abs(y) < 1e100)  # Remove infinity  # Remove NaN  # Remove too large values
+        ~np.isinf(y)
+        & ~np.isnan(y)
+        & (
+            np.abs(y) < 1e100
+        )  # Remove infinity  # Remove NaN  # Remove too large values
     )
 
     # Apply mask
@@ -235,7 +239,9 @@ if __name__ == "__main__":
         level=logging.INFO,
         handlers=[
             logging.FileHandler(
-                "/var/log/saveBetaForStock.{currdatestr}.log".format(currdatestr=currdate.strftime("%Y-%m-%d"))
+                "/var/log/saveBetaForStock.{currdatestr}.log".format(
+                    currdatestr=currdate.strftime("%Y-%m-%d")
+                )
             ),
             logging.StreamHandler(sys.stdout),
         ],

@@ -271,6 +271,7 @@ class CreditCycleAnalyzer:
         """Get BAA-10Y credit spread from stock database macro_indicator_values table."""
         try:
             from sqlalchemy import create_engine, text
+
             from investigator.config import get_config
 
             config = get_config()
@@ -330,9 +331,11 @@ class CreditCycleAnalyzer:
     async def _get_vix(self) -> Optional[Dict[str, Any]]:
         """Get VIX level from stock database macro_indicator_values table."""
         try:
-            from sqlalchemy import create_engine, text
-            from investigator.config import get_config
             import os
+
+            from sqlalchemy import create_engine, text
+
+            from investigator.config import get_config
 
             config = get_config()
             db_config = config.database
@@ -370,6 +373,7 @@ class CreditCycleAnalyzer:
         """Get Fed funds rate from stock database macro_indicator_values table."""
         try:
             from sqlalchemy import create_engine, text
+
             from investigator.config import get_config
 
             config = get_config()

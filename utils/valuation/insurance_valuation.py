@@ -70,7 +70,9 @@ def value_insurance_company(
     if ttm_net_income and avg_equity:
         net_income = ttm_net_income
         roe = (net_income / avg_equity) * 100
-        logger.info(f"{symbol} - Using TTM metrics: NI=${net_income / 1e9:.2f}B, Avg Equity=${avg_equity / 1e9:.2f}B")
+        logger.info(
+            f"{symbol} - Using TTM metrics: NI=${net_income / 1e9:.2f}B, Avg Equity=${avg_equity / 1e9:.2f}B"
+        )
     else:
         net_income = financials.get("net_income", 0)
         if not net_income:
@@ -172,13 +174,17 @@ def _calculate_ttm_metrics(
                     f"{symbol} - Only found {len(results)} quarters for TTM calculation "
                     f"(need 4). Falling back to quarterly data."
                 )
-                warnings.append(f"Insufficient quarterly data ({len(results)}/4 quarters)")
+                warnings.append(
+                    f"Insufficient quarterly data ({len(results)}/4 quarters)"
+                )
                 return None, None
 
             # Calculate TTM net income (sum) and average equity
             # Convert Decimal to float to avoid type issues
             ttm_net_income = float(sum(row.net_income for row in results))
-            avg_equity = float(sum(row.stockholders_equity for row in results)) / len(results)
+            avg_equity = float(sum(row.stockholders_equity for row in results)) / len(
+                results
+            )
 
             logger.info(
                 f"{symbol} - TTM calculation: "
@@ -195,7 +201,9 @@ def _calculate_ttm_metrics(
         return None, None
 
 
-def _determine_target_pb(symbol: str, roe: float, net_margin: float, warnings: List[str]) -> tuple[float, str]:
+def _determine_target_pb(
+    symbol: str, roe: float, net_margin: float, warnings: List[str]
+) -> tuple[float, str]:
     """
     Determine target P/BV ratio based on ROE and underwriting quality
 
@@ -241,14 +249,18 @@ def _determine_target_pb(symbol: str, roe: float, net_margin: float, warnings: L
     elif roe >= 8 and net_margin >= 3:
         target_pb = 0.85
         confidence = "medium"
-        warnings.append(f"Below-average profitability (ROE={roe:.1f}%, Margin={net_margin:.1f}%)")
+        warnings.append(
+            f"Below-average profitability (ROE={roe:.1f}%, Margin={net_margin:.1f}%)"
+        )
         logger.info(f"{symbol} - Below-average insurer profile → P/BV={target_pb:.2f}x")
 
     # Weak insurers: ROE < 8% or Margin < 3%
     else:
         target_pb = 0.70
         confidence = "low"
-        warnings.append(f"Weak profitability (ROE={roe:.1f}%, Margin={net_margin:.1f}%) suggests distressed insurer")
+        warnings.append(
+            f"Weak profitability (ROE={roe:.1f}%, Margin={net_margin:.1f}%) suggests distressed insurer"
+        )
         logger.warning(f"{symbol} - Weak insurer profile → P/BV={target_pb:.2f}x")
 
     return target_pb, confidence
@@ -277,7 +289,9 @@ def calculate_insurance_specific_metrics(symbol: str, financials: Dict) -> Dict:
     # These would come from insurance-specific XBRL tags
     # For now, return placeholders
     metrics["premiums_earned"] = financials.get("total_revenue")
-    metrics["combined_ratio"] = None  # Would calculate: (claims + expenses) / premiums_earned
+    metrics["combined_ratio"] = (
+        None  # Would calculate: (claims + expenses) / premiums_earned
+    )
     metrics["loss_ratio"] = None
     metrics["expense_ratio"] = None
     metrics["float"] = None  # Unearned premiums + loss reserves

@@ -103,7 +103,9 @@ class NewsSentimentCollector(BaseCollector):
         self.rate_limiter = get_finnhub_rate_limiter()
 
         if not self.api_key:
-            self.logger.warning("FINNHUB_API_KEY not set. Set environment variable to enable collection.")
+            self.logger.warning(
+                "FINNHUB_API_KEY not set. Set environment variable to enable collection."
+            )
 
     def _make_request(self, endpoint: str, params: Dict[str, Any]) -> Optional[Dict]:
         """Make a rate-limited request to Finnhub API with Fibonacci backoff."""
@@ -157,7 +159,9 @@ class NewsSentimentCollector(BaseCollector):
                     self.metrics.records_processed += 1
 
                     # Get last sentiment date for incremental fetch
-                    last_date = get_last_date(cursor, "news_sentiment", "sentiment_date", "symbol", symbol)
+                    last_date = get_last_date(
+                        cursor, "news_sentiment", "sentiment_date", "symbol", symbol
+                    )
 
                     if last_date:
                         start_date = last_date + timedelta(days=1)
@@ -183,7 +187,9 @@ class NewsSentimentCollector(BaseCollector):
                     buzz_score = buzz.get("buzz", 0)
 
                     # Sentiment breakdown isn't in this endpoint, use score
-                    sentiment_score = sentiment.get("bearishPercent", 0) * -1 + sentiment.get("bullishPercent", 0)
+                    sentiment_score = sentiment.get(
+                        "bearishPercent", 0
+                    ) * -1 + sentiment.get("bullishPercent", 0)
 
                     record_hash = compute_record_hash(
                         {
@@ -224,7 +230,8 @@ class NewsSentimentCollector(BaseCollector):
                                 sentiment_score,
                                 buzz_score,
                                 company_news_score,
-                                data.get("sectorAverageBullishPercent", 0) - data.get("sectorAverageBearishPercent", 0),
+                                data.get("sectorAverageBullishPercent", 0)
+                                - data.get("sectorAverageBearishPercent", 0),
                                 data.get("sectorAverageNewsScore", 0),
                                 record_hash,
                                 symbol,
@@ -249,7 +256,8 @@ class NewsSentimentCollector(BaseCollector):
                                 sentiment_score,
                                 buzz_score,
                                 company_news_score,
-                                data.get("sectorAverageBullishPercent", 0) - data.get("sectorAverageBearishPercent", 0),
+                                data.get("sectorAverageBullishPercent", 0)
+                                - data.get("sectorAverageBearishPercent", 0),
                                 data.get("sectorAverageNewsScore", 0),
                                 record_hash,
                             ),
@@ -298,8 +306,12 @@ class NewsSentimentCollector(BaseCollector):
 
 def main():
     parser = argparse.ArgumentParser(description="Collect news sentiment data")
-    parser.add_argument("--symbols", type=str, help="Comma-separated list of symbols (default: S&P 500)")
-    parser.add_argument("--days", type=int, default=7, help="Number of days to look back (default: 7)")
+    parser.add_argument(
+        "--symbols", type=str, help="Comma-separated list of symbols (default: S&P 500)"
+    )
+    parser.add_argument(
+        "--days", type=int, default=7, help="Number of days to look back (default: 7)"
+    )
     args = parser.parse_args()
 
     symbols = None

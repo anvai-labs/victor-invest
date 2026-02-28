@@ -123,11 +123,16 @@
   "net_income": {
     "description": "Net Income/Loss",
     "global_fallback": [
-      "NetIncomeLoss",
+      "IncomeLossFromContinuingOperations",
+      "IncomeLossFromContinuingOperationsAttributableToParent",
       "NetIncomeLossAvailableToCommonStockholdersBasic",
+      "NetIncomeLossAvailableToCommonStockholdersDiluted",
+      "NetIncomeLoss",
+      "NetIncomeLossIncludingPortionAttributableToNoncontrollingInterest",
       "ProfitLoss"
     ],
-    "sector_specific": {}
+    "sector_specific": {},
+    "explanation": "Prioritizes IncomeLossFromContinuingOperations to exclude discontinued operations and one-time items (e.g., spin-offs). Falls back to NetIncomeLoss if continuing operations not available."
   },
   "operating_income": {
     "description": "Operating Income/EBIT",

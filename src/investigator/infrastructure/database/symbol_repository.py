@@ -227,6 +227,41 @@ class SymbolRepository:
             logger.info(f"Found {len(symbols)} top symbols by market cap")
             return symbols
 
+    def get_sec_filing_symbols(self, order_by: str = "stockid") -> List[str]:
+        """
+        Get symbols with is_sec_filing=TRUE (symbols that have SEC filings).
+
+        Args:
+            order_by: Sort order - "mktcap" (descending), "stockid" (ascending), or "ticker" (alphabetical)
+
+        Returns:
+            List of ticker symbols sorted by specified order
+        """
+        # Build ORDER BY clause based on parameter
+        order_clause = {
+            "mktcap": "ORDER BY mktcap DESC",
+            "stockid": "ORDER BY stockid ASC",
+            "ticker": "ORDER BY ticker ASC",
+        }.get(order_by, "ORDER BY stockid ASC")
+
+        with self.stock_engine.connect() as conn:
+            result = conn.execute(
+                text(f"""
+                    SELECT ticker
+                    FROM symbol
+                    WHERE is_sec_filing = TRUE
+                      AND islisted = TRUE
+                      AND isstock = TRUE
+                      AND (isetf IS NULL OR isetf = FALSE)
+                    {order_clause}
+                """)
+            )
+            symbols = [row[0] for row in result.fetchall()]
+            logger.info(
+                f"Found {len(symbols)} SEC filing symbols (order_by={order_by})"
+            )
+            return symbols
+
     def get_domestic_filers(self) -> Set[str]:
         """
         Get symbols that file 10-K/10-Q (domestic filers).

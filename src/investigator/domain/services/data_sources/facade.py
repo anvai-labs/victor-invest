@@ -812,6 +812,7 @@ class DataSourceFacade:
         """
         try:
             from sqlalchemy import create_engine, text
+
             from investigator.config import get_config
 
             config = get_config()

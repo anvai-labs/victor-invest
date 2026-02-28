@@ -33,6 +33,7 @@ def test_resolve_model_non_ollama_defaults_to_provider_specific():
 
     # First, ensure VICTOR_MODEL is not set
     import os
+
     if "VICTOR_MODEL" in os.environ:
         del os.environ["VICTOR_MODEL"]
 

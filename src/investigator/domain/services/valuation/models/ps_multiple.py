@@ -44,13 +44,26 @@ INDUSTRY_BASE_PS = {
     # Technology - Internet & E-commerce
     "Technology/Services-Computer Programming": 9.0,
     "Technology/Retail": 1.5,
-    # Healthcare - Biotech & Pharma
+    # Healthcare - Biotech & Pharma (High P/S appropriate for growth/R&D)
     "Health Care/Biotechnology: Biological Products (No Diagnostic Substances)": 8.0,
+    "Health Care/Biotechnology: Pharmaceutical Preparations": 8.0,
     "Health Care/Pharmaceutical Preparations": 5.0,
+    # Healthcare - Insurance & Managed Care (P/S NOT meaningful - revenue = premiums)
+    "Health Care/Managed Health Care": 1.0,
+    "Health Care/Hospital/Nursing Management": 1.0,
+    "Health Care/Medical/Nursing Services": 1.0,
+    # Healthcare - Medical Devices & Supplies
+    "Health Care/Medical/Dental Instruments": 2.5,
+    "Health Care/Medical Specialities": 2.0,
+    "Health Care/Ophthalmic Goods": 2.0,
+    # Healthcare - Other
+    "Health Care/Other Pharmaceuticals": 3.0,
+    "Health Care/Medicinal Chemicals and Botanical Products": 2.0,
     # Financial Services
     "Financials/Security Brokers, Dealers & Flotation Companies": 3.0,  # Fintech
     "Financials/Banks": 2.0,
     "Financials/Insurance": 1.5,
+    "Financials/Accident & Health Insurance": 1.5,
     # Consumer
     "Consumer Discretionary/Catalog & Mail-Order Houses": 2.0,  # E-commerce
     "Consumer Discretionary/Restaurants": 1.5,

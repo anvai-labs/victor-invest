@@ -33,7 +33,9 @@ import os
 
 def get_database_url():
     """Get database URL from environment."""
-    db_host = os.environ.get("SEC_DB_HOST", os.environ.get("DB_HOST", "dataserver1.singh.local"))
+    db_host = os.environ.get(
+        "SEC_DB_HOST", os.environ.get("DB_HOST", "dataserver1.singh.local")
+    )
     db_port = os.environ.get("SEC_DB_PORT", os.environ.get("DB_PORT", "5432"))
     db_name = os.environ.get(
         "SEC_DB_NAME", os.environ.get("DB_DATABASE", "sec_database")

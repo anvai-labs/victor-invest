@@ -435,6 +435,9 @@ Parameters:
                     )
                     or q.get("shares_outstanding"),
                     # Also include flat fields for backward compatibility with DynamicModelWeightingService
+                    "_derived": q.get(
+                        "_derived"
+                    ),  # Flag for derived Q4 entries (important for TTM filtering)
                     "total_revenue": q.get("total_revenue"),
                     "net_income": q.get("net_income"),
                     "gross_profit": q.get("gross_profit"),

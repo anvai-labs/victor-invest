@@ -88,14 +88,21 @@ class SectorValuationRouter:
             method_key = (sector, industry)
             valuation_type = self.VALUATION_METHODS.get(
                 method_key,
-                self.VALUATION_METHODS.get((sector, None), self.VALUATION_METHODS[("default", None)]),
+                self.VALUATION_METHODS.get(
+                    (sector, None), self.VALUATION_METHODS[("default", None)]
+                ),
             )
 
-        self.logger.info(f"{symbol} - Routing to {valuation_type} valuation " f"(sector={sector}, industry={industry})")
+        self.logger.info(
+            f"{symbol} - Routing to {valuation_type} valuation "
+            f"(sector={sector}, industry={industry})"
+        )
 
         # Route to appropriate method
         if valuation_type == "insurance":
-            return self._value_insurance(symbol, financials, current_price, database_url)
+            return self._value_insurance(
+                symbol, financials, current_price, database_url
+            )
         elif valuation_type == "bank":
             return self._value_bank(symbol, financials, current_price)
         elif valuation_type == "reit":
@@ -123,7 +130,9 @@ class SectorValuationRouter:
         from utils.insurance_valuation import value_insurance_company
 
         try:
-            result = value_insurance_company(symbol, financials, current_price, database_url)
+            result = value_insurance_company(
+                symbol, financials, current_price, database_url
+            )
 
             upside = ((result["fair_value"] - current_price) / current_price) * 100
 
@@ -146,7 +155,9 @@ class SectorValuationRouter:
             self.logger.warning(f"{symbol} - Insurance valuation failed: {e}")
             raise
 
-    def _value_bank(self, symbol: str, financials: Dict, current_price: float) -> ValuationResult:
+    def _value_bank(
+        self, symbol: str, financials: Dict, current_price: float
+    ) -> ValuationResult:
         """
         Value bank using ROE multiples method
 
@@ -204,7 +215,9 @@ class SectorValuationRouter:
                     "roe": roe,
                     "book_value_per_share": book_value_per_share,
                     "target_pb_ratio": target_pb,
-                    "current_pb_ratio": current_price / book_value_per_share if book_value_per_share > 0 else 0,
+                    "current_pb_ratio": current_price / book_value_per_share
+                    if book_value_per_share > 0
+                    else 0,
                 },
                 warnings=warnings,
             )
@@ -213,7 +226,9 @@ class SectorValuationRouter:
             self.logger.warning(f"{symbol} - Bank valuation failed: {e}")
             raise
 
-    def _value_reit(self, symbol: str, financials: Dict, current_price: float) -> ValuationResult:
+    def _value_reit(
+        self, symbol: str, financials: Dict, current_price: float
+    ) -> ValuationResult:
         """
         Value REIT using FFO (Funds from Operations) multiples
 
@@ -265,7 +280,9 @@ class SectorValuationRouter:
                 details={
                     "ffo_per_share": ffo_per_share,
                     "ffo_multiple": target_ffo_multiple,
-                    "current_ffo_yield": (ffo_per_share / current_price * 100) if current_price > 0 else 0,
+                    "current_ffo_yield": (ffo_per_share / current_price * 100)
+                    if current_price > 0
+                    else 0,
                 },
                 warnings=warnings,
             )

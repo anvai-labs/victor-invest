@@ -13,9 +13,10 @@ Test Coverage:
 - Derived flag is set correctly
 """
 
-import pytest
-from unittest.mock import Mock, patch
 from datetime import datetime
+from unittest.mock import Mock, patch
+
+import pytest
 
 
 class TestQ4Derivation:

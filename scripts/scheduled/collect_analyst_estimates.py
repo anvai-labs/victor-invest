@@ -102,7 +102,9 @@ class AnalystEstimatesCollector(BaseCollector):
         self.rate_limiter = get_finnhub_rate_limiter()
 
         if not self.api_key:
-            self.logger.warning("FINNHUB_API_KEY not set. Set environment variable to enable collection.")
+            self.logger.warning(
+                "FINNHUB_API_KEY not set. Set environment variable to enable collection."
+            )
 
     def _make_request(self, endpoint: str, params: Dict[str, Any]) -> Optional[Dict]:
         """Make a rate-limited request to Finnhub API with Fibonacci backoff."""
@@ -414,10 +416,18 @@ class AnalystEstimatesCollector(BaseCollector):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Collect analyst estimates and price targets")
-    parser.add_argument("--symbols", type=str, help="Comma-separated list of symbols (default: S&P 500)")
-    parser.add_argument("--no-recommendations", action="store_true", help="Skip analyst recommendations")
-    parser.add_argument("--no-price-targets", action="store_true", help="Skip price targets")
+    parser = argparse.ArgumentParser(
+        description="Collect analyst estimates and price targets"
+    )
+    parser.add_argument(
+        "--symbols", type=str, help="Comma-separated list of symbols (default: S&P 500)"
+    )
+    parser.add_argument(
+        "--no-recommendations", action="store_true", help="Skip analyst recommendations"
+    )
+    parser.add_argument(
+        "--no-price-targets", action="store_true", help="Skip price targets"
+    )
     args = parser.parse_args()
 
     symbols = None

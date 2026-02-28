@@ -321,6 +321,10 @@ class BatchAnalysisRunner:
         """Delegate to shared SymbolRepository."""
         return self.symbol_repo.get_sp500_symbols()
 
+    def get_sec_filing_symbols(self, order_by: str = "stockid") -> List[str]:
+        """Get symbols with is_sec_filing=TRUE."""
+        return self.symbol_repo.get_sec_filing_symbols(order_by=order_by)
+
     def get_already_processed_symbols(self) -> Set[str]:
         """Get symbols that already have SEC processed data."""
         with self.sec_engine.connect() as conn:
@@ -1074,6 +1078,11 @@ def main():
     source_group.add_argument(
         "--symbols", type=str, nargs="+", help="Process specific symbols"
     )
+    source_group.add_argument(
+        "--sec-filing",
+        action="store_true",
+        help="Process symbols with is_sec_filing=TRUE",
+    )
 
     # Processing options
     parser.add_argument(
@@ -1172,6 +1181,13 @@ def main():
     elif args.symbols:
         symbols = args.symbols
         print(f"  Processing {len(symbols)} specified symbols", flush=True)
+    elif getattr(args, "sec_filing", False):
+        print(
+            f"  Fetching SEC filing symbols (is_sec_filing=TRUE, order: {args.order_by})...",
+            flush=True,
+        )
+        symbols = runner.get_sec_filing_symbols(order_by=args.order_by)
+        print(f"  Found {len(symbols)} symbols", flush=True)
 
     # Run the batch analysis
     skip_domestic = getattr(args, "skip_domestic_filter", False)

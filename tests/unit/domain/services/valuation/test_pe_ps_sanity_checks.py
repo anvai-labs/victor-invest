@@ -6,10 +6,10 @@ Unit tests for P/E and P/S model sanity checks.
 Tests that the models correctly reject implausible fair values caused by unit mismatches.
 """
 
+from investigator.domain.services.valuation.models.base import ModelNotApplicable
+from investigator.domain.services.valuation.models.company_profile import CompanyProfile
 from investigator.domain.services.valuation.models.pe_multiple import PEMultipleModel
 from investigator.domain.services.valuation.models.ps_multiple import PSMultipleModel
-from investigator.domain.services.valuation.models.company_profile import CompanyProfile
-from investigator.domain.services.valuation.models.base import ModelNotApplicable
 
 
 class TestPEModelSanityChecks:
