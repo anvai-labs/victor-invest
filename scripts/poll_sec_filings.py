@@ -194,14 +194,11 @@ class SECFilingPoller:
                 days_since_filing = (today - latest_date_only).days
 
                 # Determine skip interval based on filing age
-                if days_since_filing >= 150:
-                    # Very stale - check every day (high probability of new filing)
-                    skip_threshold = 1
-                elif days_since_filing >= 90:
-                    # Moderately stale - check every 3 days
-                    skip_threshold = 3
+                if days_since_filing >= 90:
+                    # 90+ days stale - check every 2 days
+                    skip_threshold = 2
                 else:
-                    # Fresh but still over threshold - check every 7 days
+                    # < 90 days - check every 7 days
                     skip_threshold = 7
 
                 # Always skip if checked today (avoid same-day redundant checks)
