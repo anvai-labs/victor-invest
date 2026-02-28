@@ -13,6 +13,7 @@ Logic:
 Usage:
     python scripts/poll_sec_filings.py --symbol AAPL --interval 3600
     python scripts/poll_sec_filings.py --all-symbols --interval 7200 --verbose
+    python scripts/poll_sec_filings.py --all-symbols --continuous --include-submissions
 
 Author: InvestiGator Team
 Date: 2026-02-28
@@ -183,17 +184,21 @@ class SECFilingPoller:
 
         return is_stale, latest_date, stale_date
 
-    def trigger_refresh(self, symbols: List[str]) -> bool:
+    def trigger_refresh(self, symbols: List[str], include_submissions: bool = False) -> bool:
         """
         Trigger SEC data refresh for specified symbols.
 
         Args:
             symbols: List of symbols to refresh
+            include_submissions: Also fetch submissions along with CompanyFacts
 
         Returns:
             True if refresh triggered successfully
         """
-        logger.info(f"Triggering SEC data refresh for {len(symbols)} symbols...")
+        logger.info(
+            f"Triggering SEC data refresh for {len(symbols)} symbols"
+            + (" (with submissions)" if include_submissions else "")
+        )
 
         # Run the investigator cache warm command
         import subprocess
@@ -207,6 +212,9 @@ class SECFilingPoller:
             "--process-raw",
             "--force-refresh",
         ]
+
+        if include_submissions:
+            cmd.append("--include-submissions")
 
         try:
             result = subprocess.run(
@@ -333,6 +341,7 @@ class SECFilingPoller:
         interval_seconds: int = 3600,
         refresh_on_stale: bool = True,
         filter_sec_filing: bool = True,
+        include_submissions: bool = False,
     ):
         """
         Run continuous polling loop.
@@ -342,9 +351,12 @@ class SECFilingPoller:
             interval_seconds: Seconds between polls (default: 3600 = 1 hour)
             refresh_on_stale: Whether to trigger refresh when stale data detected
             filter_sec_filing: Filter by is_sec_filing=true when symbols=None
+            include_submissions: Also fetch submissions along with CompanyFacts
         """
         logger.info(f"Starting SEC filing polling loop (interval: {interval_seconds}s)")
         logger.info(f"Checking table: {self.check_table} | Stale threshold: {self.stale_days} days")
+        if include_submissions:
+            logger.info("Submissions will be fetched along with CompanyFacts")
 
         if symbols is None:
             symbols = self.poll_all_symbols(filter_sec_filing=filter_sec_filing)
@@ -362,7 +374,7 @@ class SECFilingPoller:
                 # Trigger refresh if any stale data found
                 if stale_symbols and refresh_on_stale:
                     logger.info(f"Found {len(stale_symbols)} stale symbols, triggering refresh...")
-                    self.trigger_refresh(stale_symbols)
+                    self.trigger_refresh(stale_symbols, include_submissions=include_submissions)
 
                 # Log summary and wait
                 logger.info(
@@ -457,6 +469,11 @@ Examples:
         action="store_true",
         help="Don't filter by is_sec_filing=true when using --all-symbols",
     )
+    parser.add_argument(
+        "--include-submissions",
+        action="store_true",
+        help="Also fetch submissions along with CompanyFacts during refresh",
+    )
 
     args = parser.parse_args()
 
@@ -487,6 +504,7 @@ Examples:
 
     # Determine which symbols to check and filter settings
     filter_sec_filing = not args.no_filter
+    include_submissions = args.include_submissions
     symbols = args.symbols  # Directly specified symbols (overrides all filters)
     use_all_symbols = args.all_symbols
 
@@ -507,6 +525,7 @@ Examples:
             interval_seconds=args.interval,
             refresh_on_stale=not args.no_refresh,
             filter_sec_filing=filter_sec_filing,
+            include_submissions=include_submissions,
         )
     else:
         # Single poll check
@@ -531,8 +550,10 @@ Examples:
 
             if not args.no_refresh:
                 stale_symbols = [s["symbol"] for s in results["stale_symbols"]]
-                print(f"\nTriggering refresh for {len(stale_symbols)} stale symbols...")
-                poller.trigger_refresh(stale_symbols)
+                print(
+                    f"\nTriggering refresh for {len(stale_symbols)} stale symbols{' (with submissions)' if include_submissions else ''}..."
+                )
+                poller.trigger_refresh(stale_symbols, include_submissions=include_submissions)
 
         sys.exit(0 if not results["stale_symbols"] else 1)
 

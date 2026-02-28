@@ -257,8 +257,13 @@ def sizes(ctx):
     is_flag=True,
     help="Bypass 90-day SEC raw cache reuse and fetch fresh CompanyFacts from SEC API",
 )
+@click.option(
+    "--include-submissions",
+    is_flag=True,
+    help="Also fetch and cache submissions (filing list) along with CompanyFacts",
+)
 @click.pass_context
-def warm(ctx, symbols, symbols_file, parallel, process_raw, force_refresh):
+def warm(ctx, symbols, symbols_file, parallel, process_raw, force_refresh, include_submissions):
     """Warm up cache for symbols
 
     Pre-fetch data for symbols without running full analysis.
@@ -267,6 +272,7 @@ def warm(ctx, symbols, symbols_file, parallel, process_raw, force_refresh):
         investigator cache warm --symbols AAPL,MSFT,GOOGL
         investigator cache warm --file sp100.txt --parallel 10
         investigator cache warm --symbols STX --process-raw --force-refresh
+        investigator cache warm --symbols AAPL --include-submissions
     """
     import asyncio
 
@@ -287,12 +293,14 @@ def warm(ctx, symbols, symbols_file, parallel, process_raw, force_refresh):
         "Mode: "
         + ("raw + processed ingestion" if process_raw else "raw-only cache")
         + (", force-refresh enabled" if force_refresh else "")
+        + (", +submissions" if include_submissions else "")
     )
 
     async def warm_cache():
         from investigator.domain.agents.sec import SECAnalysisAgent
         from investigator.infrastructure.cache import get_cache_manager
         from investigator.infrastructure.events import EventBus
+        from investigator.infrastructure.sec.sec_api import SECApiClient
 
         cache_manager = get_cache_manager()
         event_bus = EventBus()
@@ -302,6 +310,7 @@ def warm(ctx, symbols, symbols_file, parallel, process_raw, force_refresh):
             event_bus=event_bus,
             cache_manager=cache_manager,
         )
+        sec_client = SECApiClient()
 
         sem = asyncio.Semaphore(parallel)
         results = []
@@ -309,6 +318,7 @@ def warm(ctx, symbols, symbols_file, parallel, process_raw, force_refresh):
         async def fetch(symbol: str):
             async with sem:
                 try:
+                    # Step 1: Fetch CompanyFacts
                     await sec_agent._fetch_and_cache_companyfacts(
                         symbol,
                         process_raw=process_raw,
@@ -316,6 +326,17 @@ def warm(ctx, symbols, symbols_file, parallel, process_raw, force_refresh):
                     )
                     results.append((symbol, True, ""))
                     click.echo(f"  Cached: {symbol}{' (processed)' if process_raw else ' (raw-only)'}")
+
+                    # Step 2: Optionally fetch submissions
+                    if include_submissions:
+                        try:
+                            cik = sec_client._resolve_cik(symbol)
+                            if cik:
+                                await sec_client._load_submissions(symbol, cik)
+                                click.echo(f"    + Submissions cached for {symbol}")
+                        except Exception as e:
+                            click.echo(f"    ! Submissions fetch failed for {symbol}: {e}")
+
                 except Exception as e:
                     results.append((symbol, False, str(e)))
                     click.echo(f"  Failed: {symbol} - {e}")
