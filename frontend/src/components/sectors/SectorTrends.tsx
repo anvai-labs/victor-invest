@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
 
+interface SectorMetricData {
+  fiscal_year: number;
+  pe?: number;
+  ps?: number;
+  pb?: number;
+}
+
 interface TrendData {
   sector: string;
   current_pe: number;
@@ -59,7 +66,7 @@ export function SectorTrends() {
       });
   }, [availableSectors]);
 
-  const calculateTrendMetrics = (sector: string, data: any[]): TrendData | null => {
+  const calculateTrendMetrics = (sector: string, data: SectorMetricData[]): TrendData | null => {
     const sortedData = [...data].sort((a, b) => b.fiscal_year - a.fiscal_year);
     const latest = sortedData[0];
     const last3years = sortedData.slice(0, 3);

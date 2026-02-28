@@ -1154,13 +1154,11 @@ def _load_symbol_metadata(symbols: List[str]) -> Dict[str, Dict[str, Any]]:
 
         with engine.connect() as conn:
             col_rows = conn.execute(
-                text(
-                    """
+                text("""
                     SELECT column_name
                     FROM information_schema.columns
                     WHERE table_name = 'symbol'
-                """
-                )
+                """)
             ).fetchall()
             available_cols = {str(row[0]) for row in col_rows}
 
@@ -2136,8 +2134,7 @@ async def ui_search_symbols(
         )
 
         repo = SymbolRepository()
-        sql = text(
-            """
+        sql = text("""
             SELECT
                 ticker,
                 COALESCE(description, ticker) AS description,
@@ -2161,8 +2158,7 @@ async def ui_search_symbols(
               END,
               mktcap DESC NULLS LAST
             LIMIT :limit
-            """
-        )
+            """)
 
         with repo.stock_engine.connect() as conn:
             rows = conn.execute(

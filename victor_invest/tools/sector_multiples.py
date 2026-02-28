@@ -442,11 +442,13 @@ class SectorMultiplesTool:
                                 "start": start_val,
                                 "end": end_val,
                                 "change_pct": change_pct,
-                                "status": "SWELLING"
-                                if change_pct > 5
-                                else "SHRINKING"
-                                if change_pct < -5
-                                else "STABLE",
+                                "status": (
+                                    "SWELLING"
+                                    if change_pct > 5
+                                    else "SHRINKING"
+                                    if change_pct < -5
+                                    else "STABLE"
+                                ),
                             }
 
         logger.info(
@@ -503,7 +505,7 @@ class SectorMultiplesTool:
         }
 
         for row in trend_data:
-            result_data["data"].append(  # type: ignore[arg-type]
+            result_data["data"].append(
                 {
                     "fiscal_year": row["fiscal_year"],
                     "snapshot_date": row.get("snapshot_date"),
@@ -512,7 +514,7 @@ class SectorMultiplesTool:
                     "pb": row.get("pb"),
                     "sample_size": row.get("sample_size"),
                 }
-            )  # type: ignore[arg-type]
+            )
 
         # Calculate trend analysis
         if len(trend_data) > 1:

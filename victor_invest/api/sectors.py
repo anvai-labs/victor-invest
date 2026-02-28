@@ -48,7 +48,7 @@ async def get_sector_multiples(
     engine = _get_engine()
 
     where_clauses = ["group_type = 'sector'"]
-    params_list = []
+    params_list: list[Any] = []
 
     if fiscal_year:
         where_clauses.append("fiscal_year = %s")
@@ -240,6 +240,9 @@ async def get_representative_stocks(
     engine = _get_engine()
 
     # Build query with parameters - use %s placeholders for pandas.read_sql
+    query: str
+    params: tuple[Any, ...]
+
     if sector:
         query = """
             WITH ranked_stocks AS (

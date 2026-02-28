@@ -53,7 +53,7 @@ try:
     SECTOR_MAPPER_AVAILABLE = True
 except ImportError:
     SECTOR_MAPPER_AVAILABLE = False
-    SectorIndustryMapper = None  # type: ignore
+    SectorIndustryMapper = None
 
 
 # =============================================================================
@@ -1022,11 +1022,19 @@ Provide your response as a JSON object with this exact structure:
         The legacy OllamaClient path has been removed to ensure consistent behavior.
         """
         # Resolve provider: use provided, or default to env var
-        from victor_invest.framework_bootstrap import resolve_model_from_env
+        from victor_invest.framework_bootstrap import (
+            resolve_model_from_env,
+            resolve_provider_from_env,
+        )
 
         if not llm_provider:
             # No provider specified - resolve from environment
-            llm_provider, llm_model = resolve_model_from_env(llm_model)
+            llm_provider = resolve_provider_from_env()
+        if not llm_model:
+            # No model specified - resolve from environment
+            llm_model = resolve_model_from_env(llm_provider or "", llm_model)
+            if not llm_model:
+                llm_model = "default"  # Fallback to provider default
 
         # Always use Victor's provider framework (ollama, anthropic, openai, etc.)
         # This gives us proper retry logic, error handling, and re-request capabilities
@@ -1036,8 +1044,8 @@ Provide your response as a JSON object with this exact structure:
             fundamental,
             market_context,
             peer_data,
-            llm_provider,
-            llm_model,
+            llm_provider or "ollama",  # Default to ollama if still None
+            llm_model if llm_model else "default",
         )
 
     async def _llm_synthesis_victor(
@@ -2241,8 +2249,7 @@ class IdentifyPeersHandler(BaseHandler):
                 # First: Get peers with EXACT industry match + recent valuation metrics
                 if industry:
                     result = conn.execute(
-                        text(
-                            """
+                        text("""
                             SELECT DISTINCT ON (s.symbol)
                                 s.symbol, s.name, s.market_cap, s.industry, s.sector,
                                 v.pe_fair_value, v.ps_fair_value, v.blended_fair_value,
@@ -2263,8 +2270,7 @@ class IdentifyPeersHandler(BaseHandler):
                             AND s.is_active = true
                             ORDER BY s.symbol, v.analysis_date DESC NULLS LAST, s.market_cap DESC NULLS LAST
                             LIMIT 5
-                        """
-                        ),
+                        """),
                         {"industry": industry, "target": symbol},
                     )
                     for row in result:
@@ -2306,8 +2312,7 @@ class IdentifyPeersHandler(BaseHandler):
                     remaining_slots = 5 - len(peers)
 
                     result = conn.execute(
-                        text(
-                            """
+                        text("""
                             SELECT DISTINCT ON (s.symbol)
                                 s.symbol, s.name, s.market_cap, s.industry, s.sector,
                                 v.pe_fair_value, v.ps_fair_value, v.blended_fair_value,
@@ -2328,8 +2333,7 @@ class IdentifyPeersHandler(BaseHandler):
                             AND s.is_active = true
                             ORDER BY s.symbol, v.analysis_date DESC NULLS LAST, s.market_cap DESC NULLS LAST
                             LIMIT :limit
-                        """
-                        ),
+                        """),
                         {
                             "sector": sector,
                             "target": symbol,

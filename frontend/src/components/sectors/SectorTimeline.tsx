@@ -75,6 +75,7 @@ export function SectorTimeline({ selectedSectors }: SectorTimelineProps) {
 
   useEffect(() => {
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSectors]);
 
   const fetchData = async () => {
@@ -114,6 +115,7 @@ export function SectorTimeline({ selectedSectors }: SectorTimelineProps) {
         }
       });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timelineData, stockData]);
 
   const renderPlotForMetric = (metric: string) => {
@@ -122,7 +124,17 @@ export function SectorTimeline({ selectedSectors }: SectorTimelineProps) {
 
     // Dynamically import Plotly
     import("plotly.js-dist-min").then((Plotly) => {
-      const traces: any[] = [];
+      const traces: Array<{
+        x: number[];
+        y: number[];
+        mode: string;
+        name: string;
+        line?: { color: string; width: number };
+        marker?: { size: number; color?: string; opacity?: number };
+        hovertemplate: string;
+        text?: string[];
+        showlegend?: boolean;
+      }> = [];
 
       // Add sector lines
       Object.entries(timelineData.data).forEach(([sector, info]) => {
