@@ -183,13 +183,21 @@ class SECFilingPoller:
 
         return is_stale, latest_date, stale_date
 
-    def trigger_refresh(self, symbols: List[str], include_submissions: bool = False) -> bool:
+    def trigger_refresh(
+        self,
+        symbols: List[str],
+        include_submissions: bool = False,
+        analyze: bool = False,
+        analysis_mode: str = "standard",
+    ) -> bool:
         """
         Trigger SEC data refresh for specified symbols.
 
         Args:
             symbols: List of symbols to refresh
             include_submissions: Also fetch submissions along with CompanyFacts
+            analyze: Run victor-invest analysis after refresh
+            analysis_mode: Analysis mode (quick, standard, comprehensive)
 
         Returns:
             True if refresh triggered successfully
@@ -197,6 +205,7 @@ class SECFilingPoller:
         logger.info(
             f"Triggering SEC data refresh for {len(symbols)} symbols"
             + (" (with submissions)" if include_submissions else "")
+            + (f" + analysis ({analysis_mode})" if analyze else "")
         )
 
         # Run the investigator cache warm command
@@ -225,6 +234,18 @@ class SECFilingPoller:
 
             if result.returncode == 0:
                 logger.info("SEC data refresh completed successfully")
+
+                # Run analysis if requested
+                if analyze:
+                    for symbol in symbols:
+                        logger.info(f"Running {analysis_mode} analysis for {symbol}...")
+                        analyze_cmd = ["victor-invest", "analyze", symbol, "--mode", analysis_mode]
+                        analyze_result = subprocess.run(analyze_cmd, capture_output=True, text=True, timeout=1800)
+                        if analyze_result.returncode == 0:
+                            logger.info(f"Analysis completed for {symbol}")
+                        else:
+                            logger.warning(f"Analysis failed for {symbol}: {analyze_result.stderr}")
+
                 return True
             else:
                 logger.error(f"SEC data refresh failed: {result.stderr}")
@@ -242,6 +263,8 @@ class SECFilingPoller:
         symbols: List[str],
         refresh_on_stale: bool = True,
         include_submissions: bool = False,
+        analyze: bool = False,
+        analysis_mode: str = "standard",
         on_progress=None,
     ) -> dict:
         """
@@ -253,6 +276,8 @@ class SECFilingPoller:
             symbols: List of symbols to check and potentially refresh
             refresh_on_stale: Whether to trigger refresh when stale data detected
             include_submissions: Also fetch submissions along with CompanyFacts
+            analyze: Run victor-invest analysis after refresh
+            analysis_mode: Analysis mode (quick, standard, comprehensive)
             on_progress: Optional callback function(symbol, status) for progress updates
 
         Returns:
@@ -287,6 +312,8 @@ class SECFilingPoller:
                         success = self.trigger_refresh(
                             [symbol],
                             include_submissions=include_submissions,
+                            analyze=analyze,
+                            analysis_mode=analysis_mode,
                         )
                         if success:
                             results["refreshed"].append(symbol)
@@ -371,6 +398,8 @@ class SECFilingPoller:
         refresh_on_stale: bool = True,
         filter_sec_filing: bool = True,
         include_submissions: bool = False,
+        analyze: bool = False,
+        analysis_mode: str = "standard",
     ):
         """
         Run continuous polling loop.
@@ -381,11 +410,15 @@ class SECFilingPoller:
             refresh_on_stale: Whether to trigger refresh when stale data detected
             filter_sec_filing: Filter by is_sec_filing=true when symbols=None
             include_submissions: Also fetch submissions along with CompanyFacts
+            analyze: Run victor-invest analysis after refresh
+            analysis_mode: Analysis mode (quick, standard, comprehensive)
         """
         logger.info(f"Starting SEC filing polling loop (interval: {interval_seconds}s)")
         logger.info(f"Checking table: {self.check_table} | Stale threshold: {self.stale_days} days")
         if include_submissions:
             logger.info("Submissions will be fetched along with CompanyFacts")
+        if analyze:
+            logger.info(f"Analysis ({analysis_mode}) will run after each successful refresh")
 
         if symbols is None:
             symbols = self.poll_all_symbols(filter_sec_filing=filter_sec_filing)
@@ -402,6 +435,8 @@ class SECFilingPoller:
                     symbols=symbols,
                     refresh_on_stale=refresh_on_stale,
                     include_submissions=include_submissions,
+                    analyze=analyze,
+                    analysis_mode=analysis_mode,
                     on_progress=log_progress,
                 )
 
@@ -460,6 +495,12 @@ Examples:
 
   # Include submissions when refreshing
   python %(prog)s --symbol AAPL --include-submissions
+
+  # Refresh and run analysis
+  python %(prog)s --symbol AAPL --analyze --mode quick
+
+  # Refresh all stale symbols and run comprehensive analysis
+  python %(prog)s --all-symbols --analyze --mode comprehensive
         """,
     )
 
@@ -519,6 +560,17 @@ Examples:
         action="store_true",
         help="Also fetch submissions along with CompanyFacts during refresh",
     )
+    parser.add_argument(
+        "--analyze",
+        action="store_true",
+        help="Run victor-invest analysis after successful refresh",
+    )
+    parser.add_argument(
+        "--mode",
+        choices=["quick", "standard", "comprehensive"],
+        default="standard",
+        help="Analysis mode (default: standard, used with --analyze)",
+    )
 
     args = parser.parse_args()
 
@@ -550,6 +602,8 @@ Examples:
     # Determine which symbols to check and filter settings
     filter_sec_filing = not args.no_filter
     include_submissions = args.include_submissions
+    analyze = args.analyze
+    analysis_mode = args.mode
     symbols = args.symbols  # Directly specified symbols (overrides all filters)
     use_all_symbols = args.all_symbols
 
@@ -571,6 +625,8 @@ Examples:
             refresh_on_stale=not args.no_refresh,
             filter_sec_filing=filter_sec_filing,
             include_submissions=include_submissions,
+            analyze=analyze,
+            analysis_mode=analysis_mode,
         )
     else:
         # Single run - process symbols sequentially with immediate refresh
@@ -579,6 +635,8 @@ Examples:
             symbols = poller.poll_all_symbols(filter_sec_filing=filter_sec_filing)
 
         print(f"\nProcessing {len(symbols)} symbols sequentially...")
+        if analyze:
+            print(f"Analysis mode: {analysis_mode}")
         print("=" * 60)
 
         # Progress callback for terminal output
@@ -597,6 +655,8 @@ Examples:
             symbols=symbols,
             refresh_on_stale=not args.no_refresh,
             include_submissions=include_submissions,
+            analyze=analyze,
+            analysis_mode=analysis_mode,
             on_progress=log_progress,
         )
 
