@@ -300,11 +300,15 @@ class SECFilingPoller:
         try:
             with self.stock_engine.connect() as conn:
                 # Query from symbol table in stock database
+                # Use same filters as get_sec_filing_symbols() in symbol_repository.py
                 if filter_sec_filing:
                     query = text("""
                         SELECT ticker
                         FROM symbol
-                        WHERE is_sec_filing = true OR is_sec_files = true
+                        WHERE is_sec_filing = TRUE
+                          AND islisted = TRUE
+                          AND isstock = TRUE
+                          AND (isetf IS NULL OR isetf = FALSE)
                         ORDER BY stockid
                     """)
                 else:
