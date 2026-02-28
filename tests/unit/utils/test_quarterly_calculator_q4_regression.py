@@ -183,7 +183,10 @@ class TestQ4ComputationRegression:
         q4_count = periods.count("Q4")
 
         # ASSERTION: Should have 3 Q4 periods (2025, 2024, 2023)
-        assert q4_count == 3, f"Expected 3 Q4 periods (2025, 2024, 2023), got {q4_count}. " f"Periods: {periods}"
+        assert q4_count == 3, (
+            f"Expected 3 Q4 periods (2025, 2024, 2023), got {q4_count}. "
+            f"Periods: {periods}"
+        )
 
         # Verify specific Q4 periods exist
         q4_periods = [p for p in result if p["fiscal_period"] == "Q4"]
@@ -211,29 +214,37 @@ class TestQ4ComputationRegression:
 
         # Find Q4-2025
         q4_2025 = next(
-            (p for p in result if p["fiscal_period"] == "Q4" and p["fiscal_year"] == 2025),
+            (
+                p
+                for p in result
+                if p["fiscal_period"] == "Q4" and p["fiscal_year"] == 2025
+            ),
             None,
         )
         assert q4_2025 is not None, "Q4-2025 should be computed"
 
         # Verify calculation: 1000 - (100 + 150 + 200) = 550
         expected_fcf = 1000.0 - (100.0 + 150.0 + 200.0)
-        assert (
-            q4_2025["free_cash_flow"] == expected_fcf
-        ), f"Q4-2025 FCF should be {expected_fcf}, got {q4_2025['free_cash_flow']}"
+        assert q4_2025["free_cash_flow"] == expected_fcf, (
+            f"Q4-2025 FCF should be {expected_fcf}, got {q4_2025['free_cash_flow']}"
+        )
 
         # Find Q4-2024
         q4_2024 = next(
-            (p for p in result if p["fiscal_period"] == "Q4" and p["fiscal_year"] == 2024),
+            (
+                p
+                for p in result
+                if p["fiscal_period"] == "Q4" and p["fiscal_year"] == 2024
+            ),
             None,
         )
         assert q4_2024 is not None, "Q4-2024 should be computed"
 
         # Verify calculation: 800 - (90 + 140 + 180) = 390
         expected_fcf_2024 = 800.0 - (90.0 + 140.0 + 180.0)
-        assert (
-            q4_2024["free_cash_flow"] == expected_fcf_2024
-        ), f"Q4-2024 FCF should be {expected_fcf_2024}, got {q4_2024['free_cash_flow']}"
+        assert q4_2024["free_cash_flow"] == expected_fcf_2024, (
+            f"Q4-2024 FCF should be {expected_fcf_2024}, got {q4_2024['free_cash_flow']}"
+        )
 
     def test_no_184_day_gaps_after_q4_computation(self, zs_fiscal_periods):
         """
@@ -258,22 +269,31 @@ class TestQ4ComputationRegression:
         # Check gaps between consecutive periods
         gaps_over_150_days = []
         for i in range(len(sorted_periods) - 1):
-            current = datetime.strptime(sorted_periods[i]["period_end_date"], "%Y-%m-%d")
-            next_period = datetime.strptime(sorted_periods[i + 1]["period_end_date"], "%Y-%m-%d")
+            current = datetime.strptime(
+                sorted_periods[i]["period_end_date"], "%Y-%m-%d"
+            )
+            next_period = datetime.strptime(
+                sorted_periods[i + 1]["period_end_date"], "%Y-%m-%d"
+            )
             gap_days = (current - next_period).days
 
             if gap_days > 150:  # Typical fiscal quarter is ~90 days, allow up to 150
                 gaps_over_150_days.append(
                     {
-                        "from": sorted_periods[i]["fiscal_period"] + "-" + str(sorted_periods[i]["fiscal_year"]),
-                        "to": sorted_periods[i + 1]["fiscal_period"] + "-" + str(sorted_periods[i + 1]["fiscal_year"]),
+                        "from": sorted_periods[i]["fiscal_period"]
+                        + "-"
+                        + str(sorted_periods[i]["fiscal_year"]),
+                        "to": sorted_periods[i + 1]["fiscal_period"]
+                        + "-"
+                        + str(sorted_periods[i + 1]["fiscal_year"]),
                         "gap_days": gap_days,
                     }
                 )
 
         # ASSERTION: No gaps over 150 days (184-day gap should be eliminated)
         assert len(gaps_over_150_days) == 0, (
-            f"Found {len(gaps_over_150_days)} gaps over 150 days (expected 0). " f"Gaps: {gaps_over_150_days}"
+            f"Found {len(gaps_over_150_days)} gaps over 150 days (expected 0). "
+            f"Gaps: {gaps_over_150_days}"
         )
 
     @pytest.mark.skip(reason=SKIP_REASON)
@@ -298,7 +318,8 @@ class TestQ4ComputationRegression:
         # We have 3 FY periods (2025, 2024, 2023) with complete Q1+Q2+Q3
         # So we should have 3 Q4s computed
         assert len(q4_periods) == 3, (
-            f"Expected 3 Q4 periods (not stopped by target), got {len(q4_periods)}. " f"Total periods: {total_periods}"
+            f"Expected 3 Q4 periods (not stopped by target), got {len(q4_periods)}. "
+            f"Total periods: {total_periods}"
         )
 
     @pytest.mark.skip(reason=SKIP_REASON)
@@ -367,7 +388,9 @@ class TestQ4ComputationRegression:
 
         # Should NOT compute Q4 (Q3 is missing)
         q4_periods = [p for p in result if p["fiscal_period"] == "Q4"]
-        assert len(q4_periods) == 0, f"Should not compute Q4 when Q3 is missing, got {len(q4_periods)} Q4 periods"
+        assert len(q4_periods) == 0, (
+            f"Should not compute Q4 when Q3 is missing, got {len(q4_periods)} Q4 periods"
+        )
 
     @pytest.mark.skip(reason=SKIP_REASON)
     def test_edge_case_fy_equals_sum_of_quarters(self):
@@ -419,13 +442,17 @@ class TestQ4ComputationRegression:
 
         # Should compute Q4 = 0.0
         q4_2025 = next(
-            (p for p in result if p["fiscal_period"] == "Q4" and p["fiscal_year"] == 2025),
+            (
+                p
+                for p in result
+                if p["fiscal_period"] == "Q4" and p["fiscal_year"] == 2025
+            ),
             None,
         )
         assert q4_2025 is not None, "Q4-2025 should be computed (even if 0.0)"
-        assert (
-            q4_2025["free_cash_flow"] == 0.0
-        ), f"Q4-2025 should be 0.0 (FY = Q1+Q2+Q3), got {q4_2025['free_cash_flow']}"
+        assert q4_2025["free_cash_flow"] == 0.0, (
+            f"Q4-2025 should be 0.0 (FY = Q1+Q2+Q3), got {q4_2025['free_cash_flow']}"
+        )
 
 
 class TestQ4DateComputation:
@@ -476,10 +503,14 @@ class TestQ4DateComputation:
         result = convert_ytd_to_quarterly(periods)
 
         q4_2025 = next(
-            (p for p in result if p["fiscal_period"] == "Q4" and p["fiscal_year"] == 2025),
+            (
+                p
+                for p in result
+                if p["fiscal_period"] == "Q4" and p["fiscal_year"] == 2025
+            ),
             None,
         )
         assert q4_2025 is not None, "Q4-2025 should be computed"
-        assert (
-            q4_2025["period_end_date"] == "2025-07-31"
-        ), f"Q4 period_end_date should match FY (2025-07-31), got {q4_2025['period_end_date']}"
+        assert q4_2025["period_end_date"] == "2025-07-31", (
+            f"Q4 period_end_date should match FY (2025-07-31), got {q4_2025['period_end_date']}"
+        )

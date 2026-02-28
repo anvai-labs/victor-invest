@@ -43,9 +43,15 @@ import aiohttp
 logger = logging.getLogger(__name__)
 
 # Chicago Fed data URLs
-CFNAI_URL = "https://www.chicagofed.org/~/media/publications/cfnai/cfnai-data-series-xlsx.xlsx"
-CFNAI_HISTORICAL_URL = "https://www.chicagofed.org/~/media/publications/cfnai/cfnai-history-xlsx.xlsx"
-NFCI_URL = "https://www.chicagofed.org/~/media/publications/nfci/nfci-data-series-xlsx.xlsx"
+CFNAI_URL = (
+    "https://www.chicagofed.org/~/media/publications/cfnai/cfnai-data-series-xlsx.xlsx"
+)
+CFNAI_HISTORICAL_URL = (
+    "https://www.chicagofed.org/~/media/publications/cfnai/cfnai-history-xlsx.xlsx"
+)
+NFCI_URL = (
+    "https://www.chicagofed.org/~/media/publications/nfci/nfci-data-series-xlsx.xlsx"
+)
 
 
 class EconomicCondition(Enum):
@@ -286,7 +292,9 @@ class ChicagoFedClient:
             sales_col = find_col(["sales"]) or find_col(["orders"])
 
             cfnai = float(latest[cfnai_col])
-            cfnai_ma3 = float(latest[ma3_col]) if ma3_col else cfnai  # Fallback to current
+            cfnai_ma3 = (
+                float(latest[ma3_col]) if ma3_col else cfnai
+            )  # Fallback to current
 
             return CFNAIData(
                 date=obs_date,
@@ -295,7 +303,9 @@ class ChicagoFedClient:
                 production_income=float(latest[prod_col]) if prod_col else None,
                 employment=float(latest[emp_col]) if emp_col else None,
                 consumption_housing=float(latest[cons_col]) if cons_col else None,
-                sales_orders_inventories=float(latest[sales_col]) if sales_col else None,
+                sales_orders_inventories=float(latest[sales_col])
+                if sales_col
+                else None,
             )
         except Exception as e:
             logger.debug(f"Could not parse CFNAI Excel: {e}")

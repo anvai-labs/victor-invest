@@ -23,4 +23,6 @@ def test_active_docs_do_not_use_legacy_cli_commands():
         if found:
             violations[str(doc)] = found
 
-    assert not violations, f"Legacy CLI command references found in active docs: {violations}"
+    assert not violations, (
+        f"Legacy CLI command references found in active docs: {violations}"
+    )

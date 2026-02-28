@@ -19,13 +19,19 @@ from investigator.infrastructure.cache.cache_types import CacheType
 def test_resolve_cik_for_symbol_handles_failures():
     mapper = MagicMock()
     mapper.resolve_cik.side_effect = RuntimeError("not found")
-    cik = resolve_cik_for_symbol(symbol="AAPL", ticker_mapper=mapper, logger=MagicMock())
+    cik = resolve_cik_for_symbol(
+        symbol="AAPL", ticker_mapper=mapper, logger=MagicMock()
+    )
     assert cik is None
 
 
 def test_build_company_cache_key_includes_cik_when_present():
-    with_cik = build_company_cache_key(symbol="AAPL", fiscal_period="2025-Q1", cik="0000320193")
-    without_cik = build_company_cache_key(symbol="AAPL", fiscal_period="2025-Q1", cik=None)
+    with_cik = build_company_cache_key(
+        symbol="AAPL", fiscal_period="2025-Q1", cik="0000320193"
+    )
+    without_cik = build_company_cache_key(
+        symbol="AAPL", fiscal_period="2025-Q1", cik=None
+    )
     assert with_cik == {
         "symbol": "AAPL",
         "fiscal_period": "2025-Q1",
@@ -38,11 +44,15 @@ def test_get_cached_company_data_requires_financials():
     cache = MagicMock()
     key = {"symbol": "AAPL", "fiscal_period": "2025-Q1"}
     cache.get.return_value = {"financials": {"revenues": 100}}
-    cached = get_cached_company_data(cache=cache, cache_key=key, symbol="AAPL", logger=MagicMock())
+    cached = get_cached_company_data(
+        cache=cache, cache_key=key, symbol="AAPL", logger=MagicMock()
+    )
     assert cached is not None
 
     cache.get.return_value = {"financials": {}}
-    cached = get_cached_company_data(cache=cache, cache_key=key, symbol="AAPL", logger=MagicMock())
+    cached = get_cached_company_data(
+        cache=cache, cache_key=key, symbol="AAPL", logger=MagicMock()
+    )
     assert cached is None
 
 

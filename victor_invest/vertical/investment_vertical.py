@@ -423,7 +423,11 @@ class InvestmentVertical(VerticalBase):
             )
             # Convert WorkflowResult to dict
             if hasattr(result, "context") and result.context:
-                return result.context.to_dict() if hasattr(result.context, "to_dict") else dict(result.context)
+                return (
+                    result.context.to_dict()
+                    if hasattr(result.context, "to_dict")
+                    else dict(result.context)
+                )
             return {"success": result.success, "error": getattr(result, "error", None)}
 
         # Fallback to direct workflow call

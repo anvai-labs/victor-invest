@@ -43,9 +43,13 @@ except Exception:
 
             start_time = time.time()
             try:
-                output, tool_calls_used = await self.execute(node, context, tool_registry)
+                output, tool_calls_used = await self.execute(
+                    node, context, tool_registry
+                )
 
-                output_key = getattr(node, "output_key", None) or getattr(node, "id", "output")
+                output_key = getattr(node, "output_key", None) or getattr(
+                    node, "id", "output"
+                )
                 if hasattr(context, "set"):
                     context.set(output_key, output)
                 elif isinstance(context, dict):
@@ -105,7 +109,9 @@ except Exception:
                     description=description,
                 )
             except Exception as exc:
-                logger.debug("Handler registry registration skipped for %s: %s", name, exc)
+                logger.debug(
+                    "Handler registry registration skipped for %s: %s", name, exc
+                )
         except Exception as exc:
             logger.debug("Handler registry registration skipped for %s: %s", name, exc)
 
@@ -129,7 +135,9 @@ except Exception:
             try:
                 instance = handler_cls()
             except Exception as exc:
-                logger.warning("Could not instantiate handler %s for registration: %s", name, exc)
+                logger.warning(
+                    "Could not instantiate handler %s for registration: %s", name, exc
+                )
                 return handler_cls
 
             _register_with_handler_registry(name, instance, vertical, description)

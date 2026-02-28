@@ -461,7 +461,9 @@ class TestWeightAuditTrailEdgeCases:
     def test_many_adjustments(self):
         """Test with many adjustments in one step."""
         trail = WeightAuditTrail(symbol="TEST")
-        adjustments = [WeightAdjustment(f"model_{i}", "source", 1.0 + i * 0.1) for i in range(20)]
+        adjustments = [
+            WeightAdjustment(f"model_{i}", "source", 1.0 + i * 0.1) for i in range(20)
+        ]
         trail.capture(
             step_number=1,
             step_name="many",

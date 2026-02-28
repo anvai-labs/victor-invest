@@ -33,7 +33,9 @@ class FedDistrictSource(MacroDataSource):
     INDICATORS: List[str] = []
 
     def __init__(self):
-        super().__init__(f"{self.DISTRICT_NAME.lower().replace(' ', '_')}_fed", DataFrequency.DAILY)
+        super().__init__(
+            f"{self.DISTRICT_NAME.lower().replace(' ', '_')}_fed", DataFrequency.DAILY
+        )
         # District names in DB include "_fed" suffix (e.g., "chicago_fed")
         self.district = f"{self.DISTRICT_NAME.lower().replace(' ', '_')}_fed"
 

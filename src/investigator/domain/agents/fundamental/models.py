@@ -96,12 +96,16 @@ class QuarterlyData:
     def __post_init__(self) -> None:
         valid_periods = ["Q1", "Q2", "Q3", "Q4", "FY"]
         if self.fiscal_period not in valid_periods:
-            raise ValueError(f"Invalid fiscal_period: {self.fiscal_period}. Must be one of {valid_periods}")
+            raise ValueError(
+                f"Invalid fiscal_period: {self.fiscal_period}. Must be one of {valid_periods}"
+            )
 
         # TD3 FIX: Validate value_type
         valid_value_types = ["quarterly", "ytd", "annual", "ttm"]
         if self.value_type not in valid_value_types:
-            raise ValueError(f"Invalid value_type: {self.value_type}. Must be one of {valid_value_types}")
+            raise ValueError(
+                f"Invalid value_type: {self.value_type}. Must be one of {valid_value_types}"
+            )
 
         # TD3 FIX: Sync legacy flags with new value_type for backward compatibility
         if self.value_type == "ytd":
@@ -119,7 +123,9 @@ class QuarterlyData:
                 # If only one is YTD, keep as quarterly but set value_types_by_statement
                 elif self.value_types_by_statement is None:
                     self.value_types_by_statement = {
-                        "income_statement": "ytd" if self.is_ytd_income else "quarterly",
+                        "income_statement": "ytd"
+                        if self.is_ytd_income
+                        else "quarterly",
                         "cash_flow": "ytd" if self.is_ytd_cashflow else "quarterly",
                         "balance_sheet": "quarterly",  # Balance sheet is never YTD
                     }
@@ -165,7 +171,9 @@ class QuarterlyData:
         statement_types = self.value_types_by_statement or {}
         income_value_type = statement_types.get("income_statement", self.value_type)
         cashflow_value_type = statement_types.get("cash_flow", self.value_type)
-        balance_value_type = statement_types.get("balance_sheet", "quarterly")  # Always point-in-time
+        balance_value_type = statement_types.get(
+            "balance_sheet", "quarterly"
+        )  # Always point-in-time
 
         return {
             "fiscal_year": self.fiscal_year,
@@ -207,10 +215,13 @@ class QuarterlyData:
                 "accounts_receivable": fd.get("accounts_receivable", 0),
                 "inventory": fd.get("inventory", 0),
                 "cash_and_equivalents": fd.get("cash_and_equivalents", 0),
-                "property_plant_equipment_net": fd.get("property_plant_equipment_net", 0),
+                "property_plant_equipment_net": fd.get(
+                    "property_plant_equipment_net", 0
+                ),
                 "total_debt": fd.get("total_debt", 0),
                 "long_term_debt": fd.get("long_term_debt", 0),
-                "short_term_debt": fd.get("short_term_debt", 0) or fd.get("debt_current", 0),
+                "short_term_debt": fd.get("short_term_debt", 0)
+                or fd.get("debt_current", 0),
                 "value_type": balance_value_type,  # TD3 FIX: Always "quarterly" (point-in-time)
             },
             "ratios": self.ratios or {},
@@ -240,8 +251,12 @@ class QuarterlyData:
                 balance = {}
 
             # TD3 FIX: Prefer new value_type field, fall back to legacy is_ytd
-            is_ytd_cashflow = cash_flow.get("value_type") == "ytd" or cash_flow.get("is_ytd", False)
-            is_ytd_income = income.get("value_type") == "ytd" or income.get("is_ytd", False)
+            is_ytd_cashflow = cash_flow.get("value_type") == "ytd" or cash_flow.get(
+                "is_ytd", False
+            )
+            is_ytd_income = income.get("value_type") == "ytd" or income.get(
+                "is_ytd", False
+            )
 
             financial_data = {
                 "operating_cash_flow": cash_flow.get("operating_cash_flow", 0),
@@ -264,10 +279,13 @@ class QuarterlyData:
                 "accounts_receivable": balance.get("accounts_receivable", 0),
                 "inventory": balance.get("inventory", 0),
                 "cash_and_equivalents": balance.get("cash_and_equivalents", 0),
-                "property_plant_equipment_net": balance.get("property_plant_equipment_net", 0),
+                "property_plant_equipment_net": balance.get(
+                    "property_plant_equipment_net", 0
+                ),
                 "total_debt": balance.get("total_debt", 0),
                 "long_term_debt": balance.get("long_term_debt", 0),
-                "short_term_debt": balance.get("short_term_debt", 0) or balance.get("debt_current", 0),
+                "short_term_debt": balance.get("short_term_debt", 0)
+                or balance.get("debt_current", 0),
             }
         else:
             financial_data = data.get("financial_data", {})
@@ -281,7 +299,11 @@ class QuarterlyData:
             data_quality = {
                 "score": float(data_quality_raw),
                 "quality_level": (
-                    "Excellent" if data_quality_raw >= 90 else "Good" if data_quality_raw >= 70 else "Fair"
+                    "Excellent"
+                    if data_quality_raw >= 90
+                    else "Good"
+                    if data_quality_raw >= 70
+                    else "Fair"
                 ),
                 "missing_core": [],
             }

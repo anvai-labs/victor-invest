@@ -261,25 +261,54 @@ class FinancialDataService:
         quarterly = self.get_quarterly_metrics(symbol, as_of_date, num_quarters=4)
 
         if len(quarterly) < 4:
-            logger.warning(f"Insufficient quarterly data for TTM: {symbol} has {len(quarterly)} quarters")
+            logger.warning(
+                f"Insufficient quarterly data for TTM: {symbol} has {len(quarterly)} quarters"
+            )
             return {}
 
         # Sum flow metrics (last 4 quarters)
         ttm = {
             "income_statement": {
-                "total_revenue": sum(q["income_statement"].get("total_revenue", 0) or 0 for q in quarterly),
-                "net_income": sum(q["income_statement"].get("net_income", 0) or 0 for q in quarterly),
-                "gross_profit": sum(q["income_statement"].get("gross_profit", 0) or 0 for q in quarterly),
-                "operating_income": sum(q["income_statement"].get("operating_income", 0) or 0 for q in quarterly),
-                "interest_expense": sum(q["income_statement"].get("interest_expense", 0) or 0 for q in quarterly),
-                "income_tax_expense": sum(q["income_statement"].get("income_tax_expense", 0) or 0 for q in quarterly),
-                "ebitda": sum(q["income_statement"].get("ebitda", 0) or 0 for q in quarterly),
+                "total_revenue": sum(
+                    q["income_statement"].get("total_revenue", 0) or 0
+                    for q in quarterly
+                ),
+                "net_income": sum(
+                    q["income_statement"].get("net_income", 0) or 0 for q in quarterly
+                ),
+                "gross_profit": sum(
+                    q["income_statement"].get("gross_profit", 0) or 0 for q in quarterly
+                ),
+                "operating_income": sum(
+                    q["income_statement"].get("operating_income", 0) or 0
+                    for q in quarterly
+                ),
+                "interest_expense": sum(
+                    q["income_statement"].get("interest_expense", 0) or 0
+                    for q in quarterly
+                ),
+                "income_tax_expense": sum(
+                    q["income_statement"].get("income_tax_expense", 0) or 0
+                    for q in quarterly
+                ),
+                "ebitda": sum(
+                    q["income_statement"].get("ebitda", 0) or 0 for q in quarterly
+                ),
             },
             "cash_flow": {
-                "operating_cash_flow": sum(q["cash_flow"].get("operating_cash_flow", 0) or 0 for q in quarterly),
-                "free_cash_flow": sum(q["cash_flow"].get("free_cash_flow", 0) or 0 for q in quarterly),
-                "capital_expenditures": sum(q["cash_flow"].get("capital_expenditures", 0) or 0 for q in quarterly),
-                "dividends_paid": sum(q["cash_flow"].get("dividends_paid", 0) or 0 for q in quarterly),
+                "operating_cash_flow": sum(
+                    q["cash_flow"].get("operating_cash_flow", 0) or 0 for q in quarterly
+                ),
+                "free_cash_flow": sum(
+                    q["cash_flow"].get("free_cash_flow", 0) or 0 for q in quarterly
+                ),
+                "capital_expenditures": sum(
+                    q["cash_flow"].get("capital_expenditures", 0) or 0
+                    for q in quarterly
+                ),
+                "dividends_paid": sum(
+                    q["cash_flow"].get("dividends_paid", 0) or 0 for q in quarterly
+                ),
             },
             # Balance sheet uses most recent quarter (stock metric, not flow)
             "balance_sheet": quarterly[0]["balance_sheet"].copy(),
@@ -345,14 +374,17 @@ class FinancialDataService:
             "cash_flow": {
                 "operating_cash_flow": data.get("operating_cash_flow"),
                 "free_cash_flow": data.get("free_cash_flow"),
-                "capital_expenditures": data.get("capital_expenditures") or data.get("capex"),
+                "capital_expenditures": data.get("capital_expenditures")
+                or data.get("capex"),
                 "dividends_paid": data.get("dividends_paid") or data.get("dividends"),
             },
             "balance_sheet": {
                 "total_assets": data.get("total_assets"),
                 "total_liabilities": data.get("total_liabilities"),
-                "stockholders_equity": data.get("stockholders_equity") or data.get("equity"),
-                "cash_and_equivalents": data.get("cash_and_equivalents") or data.get("cash"),
+                "stockholders_equity": data.get("stockholders_equity")
+                or data.get("equity"),
+                "cash_and_equivalents": data.get("cash_and_equivalents")
+                or data.get("cash"),
                 "long_term_debt": data.get("long_term_debt"),
                 "short_term_debt": data.get("short_term_debt"),
                 "current_assets": data.get("current_assets"),

@@ -332,7 +332,9 @@ class InvestmentWorkflowProvider(BaseYAMLWorkflowProvider):
 
             stats = register_investment_tools(tool_registry)
             if stats.get("errors"):
-                logger.warning("Some investment tools failed to register: %s", stats["errors"])
+                logger.warning(
+                    "Some investment tools failed to register: %s", stats["errors"]
+                )
         except Exception as exc:
             logger.warning("Investment tool registration failed: %s", exc)
 

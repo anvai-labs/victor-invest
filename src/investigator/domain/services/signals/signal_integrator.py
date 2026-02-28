@@ -110,7 +110,9 @@ class SignalIntegrator:
 
         prog_entry_zone = self.engine.calculate_optimal_entry_zone(
             current_price=current_price,
-            fair_value=valuation.get("blended_fair_value", current_price) if valuation else current_price,
+            fair_value=valuation.get("blended_fair_value", current_price)
+            if valuation
+            else current_price,
             support_levels=support_resistance.get("support_levels", []),
             resistance_levels=support_resistance.get("resistance_levels", []),
             volatility=volatility,
@@ -271,7 +273,9 @@ class SignalIntegrator:
                 ]
             )
 
-            if (llm_buy_signals > 0 and prog_buy_signals > 0) or (llm_buy_signals == 0 and prog_buy_signals == 0):
+            if (llm_buy_signals > 0 and prog_buy_signals > 0) or (
+                llm_buy_signals == 0 and prog_buy_signals == 0
+            ):
                 agreements += 1
             total_checks += 1
 
@@ -292,7 +296,10 @@ class SignalIntegrator:
 
             if llm_lower and llm_upper and llm_lower < llm_upper:
                 # Check for overlap
-                if not (prog_zone.upper_bound < llm_lower or prog_zone.lower_bound > llm_upper):
+                if not (
+                    prog_zone.upper_bound < llm_lower
+                    or prog_zone.lower_bound > llm_upper
+                ):
                     agreements += 2  # Strong agreement
                 total_checks += 2
 
@@ -305,14 +312,18 @@ class SignalIntegrator:
             for i, prog_sig in enumerate(final_entry):
                 for llm_sig in llm_entry:
                     llm_price = llm_sig.get("price_level", 0)
-                    if llm_price > 0 and abs(prog_sig.price_level - llm_price) / llm_price < 0.03:
+                    if (
+                        llm_price > 0
+                        and abs(prog_sig.price_level - llm_price) / llm_price < 0.03
+                    ):
                         # Both agree on this signal - boost confidence
                         if prog_sig.confidence == SignalConfidence.MEDIUM:
                             final_entry[i] = EntrySignal(
                                 signal_type=prog_sig.signal_type,
                                 price_level=prog_sig.price_level,
                                 confidence=SignalConfidence.HIGH,  # Boosted
-                                rationale=prog_sig.rationale + " (confirmed by LLM analysis)",
+                                rationale=prog_sig.rationale
+                                + " (confirmed by LLM analysis)",
                                 risk_reward_ratio=prog_sig.risk_reward_ratio,
                                 stop_loss=prog_sig.stop_loss,
                                 stop_loss_pct=prog_sig.stop_loss_pct,
@@ -339,12 +350,26 @@ class SignalIntegrator:
         elif prog_zone and llm_zone and confidence_boost:
             # Average the zones when they agree
             final_zone = OptimalEntryZone(
-                lower_bound=(prog_zone.lower_bound + llm_zone.get("lower_bound", prog_zone.lower_bound)) / 2,
-                upper_bound=(prog_zone.upper_bound + llm_zone.get("upper_bound", prog_zone.upper_bound)) / 2,
-                ideal_entry=(prog_zone.ideal_entry + llm_zone.get("ideal_entry", prog_zone.ideal_entry)) / 2,
+                lower_bound=(
+                    prog_zone.lower_bound
+                    + llm_zone.get("lower_bound", prog_zone.lower_bound)
+                )
+                / 2,
+                upper_bound=(
+                    prog_zone.upper_bound
+                    + llm_zone.get("upper_bound", prog_zone.upper_bound)
+                )
+                / 2,
+                ideal_entry=(
+                    prog_zone.ideal_entry
+                    + llm_zone.get("ideal_entry", prog_zone.ideal_entry)
+                )
+                / 2,
                 timing=prog_zone.timing,
                 scaling_strategy=prog_zone.scaling_strategy,
-                confidence=SignalConfidence.HIGH if confidence_boost else prog_zone.confidence,
+                confidence=SignalConfidence.HIGH
+                if confidence_boost
+                else prog_zone.confidence,
                 rationale=prog_zone.rationale + " (confirmed by LLM)",
                 recommended_allocation_pct=prog_zone.recommended_allocation_pct,
                 max_position_size_pct=prog_zone.max_position_size_pct,
@@ -403,7 +428,10 @@ class SignalIntegrator:
             signal_type_str = llm_signal.get("signal_type", "MOMENTUM").upper()
             signal_type = SignalType.MOMENTUM
             for st in SignalType:
-                if st.value.upper() in signal_type_str or signal_type_str in st.value.upper():
+                if (
+                    st.value.upper() in signal_type_str
+                    or signal_type_str in st.value.upper()
+                ):
                     signal_type = st
                     break
 
@@ -480,8 +508,12 @@ class SignalIntegrator:
                 scaling_strategy=scaling,
                 confidence=confidence,
                 rationale=llm_zone.get("rationale", "LLM-generated entry zone"),
-                recommended_allocation_pct=float(llm_zone.get("recommended_allocation_pct", 5.0)),
-                max_position_size_pct=float(llm_zone.get("max_position_size_pct", 10.0)),
+                recommended_allocation_pct=float(
+                    llm_zone.get("recommended_allocation_pct", 5.0)
+                ),
+                max_position_size_pct=float(
+                    llm_zone.get("max_position_size_pct", 10.0)
+                ),
             )
         except (ValueError, TypeError) as e:
             logger.warning(f"Failed to convert LLM entry zone: {e}")
@@ -535,9 +567,13 @@ class SignalIntegrator:
             }
 
         return {
-            "entry_signals": [signal_to_dict(s) for s in signals.final_entry_signals[:5]],
+            "entry_signals": [
+                signal_to_dict(s) for s in signals.final_entry_signals[:5]
+            ],
             "exit_signals": [exit_to_dict(s) for s in signals.final_exit_signals[:5]],
-            "optimal_entry_zone": zone_to_dict(signals.final_entry_zone) if signals.final_entry_zone else None,
+            "optimal_entry_zone": zone_to_dict(signals.final_entry_zone)
+            if signals.final_entry_zone
+            else None,
             "signal_agreement_score": round(signals.signal_agreement_score, 2),
             "confidence_boost": signals.confidence_boost,
             "total_entry_signals": len(signals.final_entry_signals),

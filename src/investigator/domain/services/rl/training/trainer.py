@@ -126,7 +126,8 @@ class RLTrainer:
 
         if verbose:
             logger.info(
-                f"Starting training: {len(train_experiences)} train, " f"{len(val_experiences)} val, {epochs} epochs"
+                f"Starting training: {len(train_experiences)} train, "
+                f"{len(val_experiences)} val, {epochs} epochs"
             )
 
         best_val_reward = float("-inf")
@@ -253,7 +254,10 @@ class RLTrainer:
             if exp.reward.reward_90d is not None
             and exp.blended_fair_value is not None
             and exp.current_price is not None
-            and ((exp.blended_fair_value > exp.current_price) == (exp.reward.reward_90d > 0))
+            and (
+                (exp.blended_fair_value > exp.current_price)
+                == (exp.reward.reward_90d > 0)
+            )
         )
         valid_direction_samples = sum(
             1
@@ -262,7 +266,11 @@ class RLTrainer:
             and exp.blended_fair_value is not None
             and exp.current_price is not None
         )
-        direction_accuracy = direction_correct / valid_direction_samples if valid_direction_samples > 0 else 0
+        direction_accuracy = (
+            direction_correct / valid_direction_samples
+            if valid_direction_samples > 0
+            else 0
+        )
 
         # MAPE calculation (if we have per-model data)
         mape_values = []
@@ -327,16 +335,22 @@ class RLTrainer:
 
         # Calculate improvement
         reward_improvement = (
-            (rl_metrics.mean_reward - baseline_metrics.mean_reward) / abs(baseline_metrics.mean_reward) * 100
+            (rl_metrics.mean_reward - baseline_metrics.mean_reward)
+            / abs(baseline_metrics.mean_reward)
+            * 100
             if baseline_metrics.mean_reward != 0
             else 0
         )
 
         mape_improvement = (
-            (baseline_metrics.mape - rl_metrics.mape) / baseline_metrics.mape * 100 if baseline_metrics.mape > 0 else 0
+            (baseline_metrics.mape - rl_metrics.mape) / baseline_metrics.mape * 100
+            if baseline_metrics.mape > 0
+            else 0
         )
 
-        direction_improvement = (rl_metrics.direction_accuracy - baseline_metrics.direction_accuracy) * 100
+        direction_improvement = (
+            rl_metrics.direction_accuracy - baseline_metrics.direction_accuracy
+        ) * 100
 
         return {
             "rl_mean_reward": rl_metrics.mean_reward,
@@ -385,7 +399,11 @@ class RLTrainer:
         experiences: List[Experience],
     ) -> Dict[str, float]:
         """Internal evaluation for validation."""
-        rewards = [exp.reward.primary_reward for exp in experiences if exp.reward.primary_reward is not None]
+        rewards = [
+            exp.reward.primary_reward
+            for exp in experiences
+            if exp.reward.primary_reward is not None
+        ]
 
         return {
             "mean_reward": float(np.mean(rewards)) if rewards else 0,
@@ -420,8 +438,16 @@ class RLTrainer:
         start_time: datetime,
     ) -> TrainingMetrics:
         """Create TrainingMetrics from training run."""
-        train_rewards = [e.reward.primary_reward for e in train_experiences if e.reward.primary_reward is not None]
-        val_rewards = [e.reward.primary_reward for e in val_experiences if e.reward.primary_reward is not None]
+        train_rewards = [
+            e.reward.primary_reward
+            for e in train_experiences
+            if e.reward.primary_reward is not None
+        ]
+        val_rewards = [
+            e.reward.primary_reward
+            for e in val_experiences
+            if e.reward.primary_reward is not None
+        ]
 
         return TrainingMetrics(
             batch_id=self._training_batch_id,

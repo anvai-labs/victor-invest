@@ -61,7 +61,9 @@ except ImportError:
 # =============================================================================
 
 
-@handler_decorator("fetch_sec_data", vertical="investment", description="Fetch SEC filing data")
+@handler_decorator(
+    "fetch_sec_data", vertical="investment", description="Fetch SEC filing data"
+)
 @dataclass
 class FetchSECDataHandler(BaseHandler):
     """Fetch SEC filing data for analysis."""
@@ -98,7 +100,9 @@ class FetchSECDataHandler(BaseHandler):
         }, 0
 
 
-@handler_decorator("fetch_market_data", vertical="investment", description="Fetch market/price data")
+@handler_decorator(
+    "fetch_market_data", vertical="investment", description="Fetch market/price data"
+)
 @dataclass
 class FetchMarketDataHandler(BaseHandler):
     """Fetch market/price data for analysis."""
@@ -136,7 +140,9 @@ class FetchMarketDataHandler(BaseHandler):
         }, 0
 
 
-@handler_decorator("fetch_macro_data", vertical="investment", description="Fetch macroeconomic data")
+@handler_decorator(
+    "fetch_macro_data", vertical="investment", description="Fetch macroeconomic data"
+)
 @dataclass
 class FetchMacroDataHandler(BaseHandler):
     """Fetch macroeconomic data for context."""
@@ -158,7 +164,9 @@ class FetchMacroDataHandler(BaseHandler):
 
         symbol = context.get("symbol", "SPY")
         facade = get_data_source_facade()
-        analysis_data = facade.get_historical_data_sync(symbol=symbol, as_of_date=date.today())
+        analysis_data = facade.get_historical_data_sync(
+            symbol=symbol, as_of_date=date.today()
+        )
 
         macro_data = {
             "treasury": {},
@@ -364,7 +372,9 @@ class RunFundamentalAnalysisHandler(BaseHandler):
             sec_info = sec_data.get("data", sec_data)
             # Extract key SEC data for compact format/UI
             if isinstance(sec_info, dict):
-                sec_output_data["quarterly_metrics"] = sec_info.get("quarterly_metrics", [])
+                sec_output_data["quarterly_metrics"] = sec_info.get(
+                    "quarterly_metrics", []
+                )
                 sec_output_data["forward_guidance"] = sec_info.get("forward_guidance")
                 sec_output_data["recent_filings"] = sec_info.get("recent_filings", [])
                 sec_output_data["company_facts"] = sec_info.get("companyfacts_summary")
@@ -493,9 +503,15 @@ class RunTechnicalAnalysisHandler(BaseHandler):
                 summary["tactical_signal"] = "hold"
 
         # Overall bias
-        if summary["strategic_trend"] == "bullish" and summary["tactical_signal"] == "buy":
+        if (
+            summary["strategic_trend"] == "bullish"
+            and summary["tactical_signal"] == "buy"
+        ):
             summary["overall_bias"] = "strong_buy"
-        elif summary["strategic_trend"] == "bearish" and summary["tactical_signal"] == "sell":
+        elif (
+            summary["strategic_trend"] == "bearish"
+            and summary["tactical_signal"] == "sell"
+        ):
             summary["overall_bias"] = "strong_sell"
         elif summary["strategic_trend"] == "bullish":
             summary["overall_bias"] = "moderate_buy"
@@ -537,7 +553,9 @@ class RunMarketContextHandler(BaseHandler):
 
             # Get lookback_days from config with fallback
             lookback_days = 252  # Default 1 year
-            if hasattr(cfg, "market_context") and hasattr(cfg.market_context, "lookback_days"):
+            if hasattr(cfg, "market_context") and hasattr(
+                cfg.market_context, "lookback_days"
+            ):
                 lookback_days = cfg.market_context.lookback_days
 
             result = await regime_tool.execute(
@@ -566,7 +584,9 @@ class RunMarketContextHandler(BaseHandler):
 # =============================================================================
 
 
-@handler_decorator("run_synthesis", vertical="investment", description="Run multi-model synthesis")
+@handler_decorator(
+    "run_synthesis", vertical="investment", description="Run multi-model synthesis"
+)
 @dataclass
 class RunSynthesisHandler(BaseHandler):
     """Synthesize analysis from multiple sources.
@@ -577,7 +597,9 @@ class RunSynthesisHandler(BaseHandler):
 
     _config: Any = None
     _llm_client: Any = None
-    _victor_providers: dict[str, Any] = field(default_factory=dict)  # Cache Victor providers
+    _victor_providers: dict[str, Any] = field(
+        default_factory=dict
+    )  # Cache Victor providers
 
     async def execute(
         self,
@@ -630,10 +652,16 @@ class RunSynthesisHandler(BaseHandler):
                 "time_horizon": llm_result.get("time_horizon", "MEDIUM-TERM"),
                 "technical_strength": llm_result.get("technical_strength", "NEUTRAL"),
                 "valuation_summary": llm_result.get("valuation_summary", ""),
-                "peer_comparison_summary": llm_result.get("peer_comparison_summary", ""),
+                "peer_comparison_summary": llm_result.get(
+                    "peer_comparison_summary", ""
+                ),
                 "reasoning": llm_result.get("reasoning", ""),
-                "fundamental_analysis_thinking": llm_result.get("fundamental_analysis_thinking", ""),
-                "technical_analysis_thinking": llm_result.get("technical_analysis_thinking", ""),
+                "fundamental_analysis_thinking": llm_result.get(
+                    "fundamental_analysis_thinking", ""
+                ),
+                "technical_analysis_thinking": llm_result.get(
+                    "technical_analysis_thinking", ""
+                ),
                 "key_technical_signals": llm_result.get("key_technical_signals", []),
                 "risk_factors_detailed": llm_result.get("risk_factors_detailed", []),
                 "score_breakdown": llm_result.get("score_breakdown", {}),
@@ -644,7 +672,9 @@ class RunSynthesisHandler(BaseHandler):
 
         # Add fair_value_estimate from fundamental data
         fund_data = fundamental.get("data", {}) if fundamental else {}
-        if fund_data.get("consensus_fair_value") and not output.get("fair_value_estimate"):
+        if fund_data.get("consensus_fair_value") and not output.get(
+            "fair_value_estimate"
+        ):
             output["fair_value_estimate"] = fund_data.get("consensus_fair_value")
             output["price_target"] = fund_data.get("consensus_fair_value")
             # Override recommendation if valuation suggests strong buy/sell
@@ -702,7 +732,9 @@ class RunSynthesisHandler(BaseHandler):
                 from investigator.config import get_config
 
                 config = get_config()
-                base_url = getattr(config.ollama, "base_url", None) or "http://localhost:11434"
+                base_url = (
+                    getattr(config.ollama, "base_url", None) or "http://localhost:11434"
+                )
             except Exception:
                 base_url = "http://localhost:11434"
 
@@ -949,11 +981,17 @@ Provide your response as a JSON object with this exact structure:
                     f"  - P/E Median: {metrics['pe_ratio_median']:.1f}x (range: {metrics.get('pe_ratio_min', 0):.1f}x - {metrics.get('pe_ratio_max', 0):.1f}x)"
                 )
             if "revenue_growth_median" in metrics:
-                parts.append(f"  - Revenue Growth Median: {metrics['revenue_growth_median'] * 100:.1f}%")
+                parts.append(
+                    f"  - Revenue Growth Median: {metrics['revenue_growth_median'] * 100:.1f}%"
+                )
             if "fcf_margin_median" in metrics:
-                parts.append(f"  - FCF Margin Median: {metrics['fcf_margin_median'] * 100:.1f}%")
+                parts.append(
+                    f"  - FCF Margin Median: {metrics['fcf_margin_median'] * 100:.1f}%"
+                )
             if "upside_pct_median" in metrics:
-                parts.append(f"  - Predicted Upside Median: {metrics['upside_pct_median']:+.1f}%")
+                parts.append(
+                    f"  - Predicted Upside Median: {metrics['upside_pct_median']:+.1f}%"
+                )
 
         return "\n".join(parts)
 
@@ -1092,7 +1130,9 @@ Provide your response as a JSON object with this exact structure:
                 else:
                     logger.debug(f"No management discussion available for {symbol}")
             except Exception as e:
-                logger.warning(f"Failed to fetch management discussion for {symbol}: {e}")
+                logger.warning(
+                    f"Failed to fetch management discussion for {symbol}: {e}"
+                )
 
             try:
                 from victor_invest.tools.web_search import WebSearchTool
@@ -1139,7 +1179,11 @@ Provide your response as a JSON object with this exact structure:
                         max_tokens=4096,
                     )
 
-                    response_text = response.content if hasattr(response, "content") else str(response)
+                    response_text = (
+                        response.content
+                        if hasattr(response, "content")
+                        else str(response)
+                    )
 
                     # Try to extract and validate JSON
                     result = self._extract_and_validate_json(response_text, symbol)
@@ -1149,9 +1193,13 @@ Provide your response as a JSON object with this exact structure:
                         )
                         return result
                     else:
-                        logger.warning(f"Attempt {attempt + 1}/{max_retries}: Failed to parse JSON from LLM response")
+                        logger.warning(
+                            f"Attempt {attempt + 1}/{max_retries}: Failed to parse JSON from LLM response"
+                        )
                         if attempt < max_retries - 1:
-                            logger.info("Retrying with stronger JSON formatting instructions...")
+                            logger.info(
+                                "Retrying with stronger JSON formatting instructions..."
+                            )
                             # Add JSON formatting instructions to prompt
                             prompt += (
                                 "\n\n**IMPORTANT**: Your previous response was not valid JSON. "
@@ -1162,21 +1210,29 @@ Provide your response as a JSON object with this exact structure:
                         continue
 
                 except Exception as e:
-                    logger.warning(f"LLM synthesis attempt {attempt + 1}/{max_retries} failed: {e}")
+                    logger.warning(
+                        f"LLM synthesis attempt {attempt + 1}/{max_retries} failed: {e}"
+                    )
                     if attempt < max_retries - 1:
                         continue
                     else:
-                        logger.error(f"LLM synthesis failed after {max_retries} attempts: {e}")
+                        logger.error(
+                            f"LLM synthesis failed after {max_retries} attempts: {e}"
+                        )
                         return None
 
-            logger.warning(f"LLM synthesis failed after {max_retries} attempts, falling back to rule-based")
+            logger.warning(
+                f"LLM synthesis failed after {max_retries} attempts, falling back to rule-based"
+            )
             return None
 
         except Exception as e:
             logger.warning(f"Victor provider LLM synthesis failed: {e}")
             return None
 
-    def _extract_and_validate_json(self, response_text: str, symbol: str) -> dict | None:
+    def _extract_and_validate_json(
+        self, response_text: str, symbol: str
+    ) -> dict | None:
         """Extract and validate JSON from LLM response.
 
         Args:
@@ -1224,9 +1280,13 @@ Provide your response as a JSON object with this exact structure:
                             result: dict = json.loads(json_str)
                             # Validate required fields
                             required_fields = ["recommendation", "confidence"]
-                            missing_fields = [f for f in required_fields if f not in result]
+                            missing_fields = [
+                                f for f in required_fields if f not in result
+                            ]
                             if missing_fields:
-                                logger.warning(f"JSON missing required fields: {missing_fields}")
+                                logger.warning(
+                                    f"JSON missing required fields: {missing_fields}"
+                                )
                                 return None
                             return result
                         except json.JSONDecodeError as e:
@@ -1236,7 +1296,9 @@ Provide your response as a JSON object with this exact structure:
         logger.debug("Could not find complete JSON object in LLM response")
         return None
 
-    def _rule_based_synthesis(self, fundamental: dict, technical: dict, market_context: dict) -> dict:
+    def _rule_based_synthesis(
+        self, fundamental: dict, technical: dict, market_context: dict
+    ) -> dict:
         """Fallback rule-based synthesis when LLM is unavailable.
 
         Returns synthesis dict.
@@ -1389,7 +1451,9 @@ Provide your response as a JSON object with this exact structure:
             breakdown["balance_sheet"] = 60  # Default moderate
 
             # Business quality from model confidence
-            confidences = [m.get("confidence", 50) for m in models.values() if isinstance(m, dict)]
+            confidences = [
+                m.get("confidence", 50) for m in models.values() if isinstance(m, dict)
+            ]
             if confidences:
                 breakdown["business_quality"] = sum(confidences) / len(confidences)
             else:
@@ -1418,13 +1482,21 @@ Provide your response as a JSON object with this exact structure:
         # Opening assessment
         if consensus_upside:
             if consensus_upside > 20:
-                parts.append("The stock appears significantly undervalued based on our multi-model analysis.")
+                parts.append(
+                    "The stock appears significantly undervalued based on our multi-model analysis."
+                )
             elif consensus_upside > 0:
-                parts.append("The stock shows moderate upside potential based on fundamental analysis.")
+                parts.append(
+                    "The stock shows moderate upside potential based on fundamental analysis."
+                )
             elif consensus_upside > -20:
-                parts.append("The stock appears fairly valued to slightly overvalued at current levels.")
+                parts.append(
+                    "The stock appears fairly valued to slightly overvalued at current levels."
+                )
             else:
-                parts.append("The stock appears significantly overvalued relative to intrinsic value estimates.")
+                parts.append(
+                    "The stock appears significantly overvalued relative to intrinsic value estimates."
+                )
 
         # DCF analysis
         dcf = models.get("dcf", {})
@@ -1489,14 +1561,22 @@ Provide your response as a JSON object with this exact structure:
             current_price = trend.get("current_price", 0)
 
             if signal.lower() == "bullish":
-                parts.append("Technical indicators are showing bullish momentum across multiple timeframes.")
+                parts.append(
+                    "Technical indicators are showing bullish momentum across multiple timeframes."
+                )
             elif signal.lower() == "bearish":
-                parts.append("Technical indicators suggest bearish pressure with potential for further downside.")
+                parts.append(
+                    "Technical indicators suggest bearish pressure with potential for further downside."
+                )
             else:
-                parts.append("Technical indicators are mixed, suggesting a consolidation phase.")
+                parts.append(
+                    "Technical indicators are mixed, suggesting a consolidation phase."
+                )
 
             if current_price:
-                parts.append(f" The stock is currently trading at ${current_price:.2f}.")
+                parts.append(
+                    f" The stock is currently trading at ${current_price:.2f}."
+                )
 
         # Support/Resistance
         if sr:
@@ -1516,7 +1596,9 @@ Provide your response as a JSON object with this exact structure:
                 w52_high = w52.get("high")
                 w52_low = w52.get("low")
                 if w52_high and w52_low:
-                    parts.append(f" The 52-week trading range is ${w52_low:.2f} to ${w52_high:.2f}.")
+                    parts.append(
+                        f" The 52-week trading range is ${w52_low:.2f} to ${w52_high:.2f}."
+                    )
 
         # Momentum indicators
         if momentum:
@@ -1525,13 +1607,17 @@ Provide your response as a JSON object with this exact structure:
 
             if rsi:
                 if rsi > 70:
-                    parts.append(f"\n\nMomentum: RSI at {rsi:.1f} indicates overbought conditions.")
+                    parts.append(
+                        f"\n\nMomentum: RSI at {rsi:.1f} indicates overbought conditions."
+                    )
                 elif rsi < 30:
                     parts.append(
                         f"\n\nMomentum: RSI at {rsi:.1f} indicates oversold conditions, potentially signaling a bounce."
                     )
                 else:
-                    parts.append(f"\n\nMomentum: RSI at {rsi:.1f} is in neutral territory.")
+                    parts.append(
+                        f"\n\nMomentum: RSI at {rsi:.1f} is in neutral territory."
+                    )
 
             if macd:
                 macd_signal = "positive" if macd > 0 else "negative"
@@ -1561,7 +1647,9 @@ Provide your response as a JSON object with this exact structure:
             if signal_pcts:
                 bullish_pct = signal_pcts.get("bullish", 0)
                 bearish_pct = signal_pcts.get("bearish", 0)
-                signals.append(f"Indicator breakdown: {bullish_pct:.0f}% bullish, {bearish_pct:.0f}% bearish")
+                signals.append(
+                    f"Indicator breakdown: {bullish_pct:.0f}% bullish, {bearish_pct:.0f}% bearish"
+                )
 
         # Support/Resistance signals
         if sr:
@@ -1571,11 +1659,15 @@ Provide your response as a JSON object with this exact structure:
 
             if current and support_1:
                 pct_above_support = ((current - support_1) / support_1) * 100
-                signals.append(f"Trading {pct_above_support:.1f}% above key support at ${support_1:.2f}")
+                signals.append(
+                    f"Trading {pct_above_support:.1f}% above key support at ${support_1:.2f}"
+                )
 
             if current and resistance_1:
                 pct_below_resistance = ((resistance_1 - current) / current) * 100
-                signals.append(f"Resistance {pct_below_resistance:.1f}% higher at ${resistance_1:.2f}")
+                signals.append(
+                    f"Resistance {pct_below_resistance:.1f}% higher at ${resistance_1:.2f}"
+                )
 
         # Momentum signals
         if momentum:
@@ -1590,7 +1682,9 @@ Provide your response as a JSON object with this exact structure:
 
         return signals[:5]  # Limit to 5 signals
 
-    def _generate_risk_factors(self, fund_data: dict, tech_data: dict, market_context: dict) -> list:
+    def _generate_risk_factors(
+        self, fund_data: dict, tech_data: dict, market_context: dict
+    ) -> list:
         """Generate risk factors from available data.
 
         Returns list of risk strings.
@@ -1620,7 +1714,9 @@ Provide your response as a JSON object with this exact structure:
         # Technical risks
         trend = tech_data.get("trend", {}) if tech_data else {}
         if trend.get("overall_signal", "").lower() == "bearish":
-            risks.append("Bearish technical momentum may pressure near-term performance")
+            risks.append(
+                "Bearish technical momentum may pressure near-term performance"
+            )
 
         momentum = tech_data.get("momentum", {}) if tech_data else {}
         rsi = momentum.get("rsi_14")
@@ -1628,7 +1724,11 @@ Provide your response as a JSON object with this exact structure:
             risks.append("Overbought RSI suggests potential near-term pullback")
 
         # Market regime risk
-        regime = market_context.get("market_regime", "unknown") if market_context else "unknown"
+        regime = (
+            market_context.get("market_regime", "unknown")
+            if market_context
+            else "unknown"
+        )
         if regime.lower() in ["bearish", "risk_off", "bear"]:
             risks.append("Unfavorable market environment may limit upside")
 
@@ -1655,7 +1755,9 @@ Provide your response as a JSON object with this exact structure:
         # Technical catalysts
         trend = tech_data.get("trend", {}) if tech_data else {}
         if trend.get("overall_signal", "").lower() == "bullish":
-            catalysts.append("Bullish technical momentum supports near-term appreciation")
+            catalysts.append(
+                "Bullish technical momentum supports near-term appreciation"
+            )
 
         momentum = tech_data.get("momentum", {}) if tech_data else {}
         rsi = momentum.get("rsi_14")
@@ -1694,13 +1796,17 @@ Provide your response as a JSON object with this exact structure:
 
         # Opening
         if recommendation == "BUY":
-            parts.append(f"We rate this stock a {recommendation} with {confidence} confidence.")
+            parts.append(
+                f"We rate this stock a {recommendation} with {confidence} confidence."
+            )
         elif recommendation == "SELL":
             parts.append(
                 f"We rate this stock a {recommendation} with {confidence} confidence due to valuation concerns."
             )
         else:
-            parts.append(f"We rate this stock a {recommendation} as it appears fairly valued at current levels.")
+            parts.append(
+                f"We rate this stock a {recommendation} as it appears fairly valued at current levels."
+            )
 
         # Valuation context
         if consensus_fv and current_price:
@@ -1714,7 +1820,11 @@ Provide your response as a JSON object with this exact structure:
         parts.append(f" Technical indicators are {tech_signal}.")
 
         # Market context
-        regime = market_context.get("market_regime", "unknown") if market_context else "unknown"
+        regime = (
+            market_context.get("market_regime", "unknown")
+            if market_context
+            else "unknown"
+        )
         if regime != "unknown":
             parts.append(f" The current market environment is {regime}.")
 
@@ -1755,7 +1865,9 @@ Provide your response as a JSON object with this exact structure:
             if isinstance(m, dict) and m.get("fair_value_per_share")
         ]
         if len(fair_values) >= 2:
-            parts.append(f" Fair value estimates range from ${min(fair_values):.2f} to ${max(fair_values):.2f}.")
+            parts.append(
+                f" Fair value estimates range from ${min(fair_values):.2f} to ${max(fair_values):.2f}."
+            )
 
         return "".join(parts)
 
@@ -1917,14 +2029,20 @@ class GenerateReportHandler(BaseHandler):
                 "metrics": peer_data.get("peer_metrics", {}),
                 "summary": synthesis.get("peer_comparison_summary", ""),
             },
-            "fundamental_analysis_thinking": synthesis.get("fundamental_analysis_thinking", ""),
-            "technical_analysis_thinking": synthesis.get("technical_analysis_thinking", ""),
+            "fundamental_analysis_thinking": synthesis.get(
+                "fundamental_analysis_thinking", ""
+            ),
+            "technical_analysis_thinking": synthesis.get(
+                "technical_analysis_thinking", ""
+            ),
             "key_technical_signals": synthesis.get("key_technical_signals", []),
             "risk_factors_detailed": synthesis.get("risk_factors_detailed", []),
             "score_breakdown": synthesis.get("score_breakdown", {}),
             "reasoning": synthesis.get("reasoning", ""),
             "financial_metrics": self._build_financial_metrics(fund_data, context),
-            "historical_financials": self._build_historical_financials(fund_data, context),
+            "historical_financials": self._build_historical_financials(
+                fund_data, context
+            ),
         }
 
         # Get output directory
@@ -2025,17 +2143,23 @@ class GenerateReportHandler(BaseHandler):
             filing_data = sec_data.get("data", sec_data)
 
             # Revenue history
-            revenue_history = filing_data.get("revenue_history") or filing_data.get("historical_revenue")
+            revenue_history = filing_data.get("revenue_history") or filing_data.get(
+                "historical_revenue"
+            )
             if revenue_history and isinstance(revenue_history, list):
                 historical["revenue"] = revenue_history
 
             # FCF history
-            fcf_history = filing_data.get("fcf_history") or filing_data.get("historical_fcf")
+            fcf_history = filing_data.get("fcf_history") or filing_data.get(
+                "historical_fcf"
+            )
             if fcf_history and isinstance(fcf_history, list):
                 historical["free_cash_flow"] = fcf_history
 
             # ROE history
-            roe_history = filing_data.get("roe_history") or filing_data.get("historical_roe")
+            roe_history = filing_data.get("roe_history") or filing_data.get(
+                "historical_roe"
+            )
             if roe_history and isinstance(roe_history, list):
                 historical["roe"] = roe_history
 
@@ -2075,7 +2199,9 @@ class GenerateReportHandler(BaseHandler):
 # =============================================================================
 
 
-@handler_decorator("identify_peers", vertical="investment", description="Identify peer companies")
+@handler_decorator(
+    "identify_peers", vertical="investment", description="Identify peer companies"
+)
 @dataclass
 class IdentifyPeersHandler(BaseHandler):
     """Identify peer companies for comparison with valuation metrics.
@@ -2165,11 +2291,15 @@ class IdentifyPeersHandler(BaseHandler):
                                 "valuation": {
                                     "pe_fair_value": float(row[5]) if row[5] else None,
                                     "ps_fair_value": float(row[6]) if row[6] else None,
-                                    "blended_fair_value": float(row[7]) if row[7] else None,
+                                    "blended_fair_value": float(row[7])
+                                    if row[7]
+                                    else None,
                                     "current_price": float(row[8]) if row[8] else None,
                                     "upside_pct": float(row[9]) if row[9] else None,
                                     "pe_ratio": pe_ratio,
-                                    "revenue_growth": float(row[11]) if row[11] else None,
+                                    "revenue_growth": float(row[11])
+                                    if row[11]
+                                    else None,
                                     "fcf_margin": float(row[12]) if row[12] else None,
                                 },
                                 "analysis_date": str(row[13]) if row[13] else None,
@@ -2227,14 +2357,26 @@ class IdentifyPeersHandler(BaseHandler):
                                     "sector": row[4],
                                     "match_type": "sector",
                                     "valuation": {
-                                        "pe_fair_value": float(row[5]) if row[5] else None,
-                                        "ps_fair_value": float(row[6]) if row[6] else None,
-                                        "blended_fair_value": float(row[7]) if row[7] else None,
-                                        "current_price": float(row[8]) if row[8] else None,
+                                        "pe_fair_value": float(row[5])
+                                        if row[5]
+                                        else None,
+                                        "ps_fair_value": float(row[6])
+                                        if row[6]
+                                        else None,
+                                        "blended_fair_value": float(row[7])
+                                        if row[7]
+                                        else None,
+                                        "current_price": float(row[8])
+                                        if row[8]
+                                        else None,
                                         "upside_pct": float(row[9]) if row[9] else None,
                                         "pe_ratio": pe_ratio,
-                                        "revenue_growth": float(row[11]) if row[11] else None,
-                                        "fcf_margin": float(row[12]) if row[12] else None,
+                                        "revenue_growth": float(row[11])
+                                        if row[11]
+                                        else None,
+                                        "fcf_margin": float(row[12])
+                                        if row[12]
+                                        else None,
                                     },
                                     "analysis_date": str(row[13]) if row[13] else None,
                                 }
@@ -2275,7 +2417,9 @@ class IdentifyPeersHandler(BaseHandler):
 
         result = {
             "count": len(peers),
-            "industry_matches": sum(1 for p in peers if p.get("match_type") == "industry"),
+            "industry_matches": sum(
+                1 for p in peers if p.get("match_type") == "industry"
+            ),
             "sector_matches": sum(1 for p in peers if p.get("match_type") == "sector"),
         }
 
@@ -2288,7 +2432,9 @@ class IdentifyPeersHandler(BaseHandler):
         return result
 
 
-@handler_decorator("analyze_peers", vertical="investment", description="Analyze peer companies")
+@handler_decorator(
+    "analyze_peers", vertical="investment", description="Analyze peer companies"
+)
 @dataclass
 class AnalyzePeersHandler(BaseHandler):
     """Analyze peer companies."""
@@ -2323,7 +2469,9 @@ class AnalyzePeersHandler(BaseHandler):
                 result = await run_yaml_analysis(str(symbol), AnalysisMode.QUICK)
                 return {
                     "symbol": symbol,
-                    "composite_score": result.synthesis.get("composite_score", 50) if result.synthesis else 50,
+                    "composite_score": result.synthesis.get("composite_score", 50)
+                    if result.synthesis
+                    else 50,
                     "status": "success",
                 }
             except Exception as e:
@@ -2409,7 +2557,9 @@ class ProcessBacktestBatchHandler(BaseHandler):
         return result.to_dict(), 0
 
 
-@handler_decorator("save_rl_predictions", vertical="investment", description="Save RL predictions")
+@handler_decorator(
+    "save_rl_predictions", vertical="investment", description="Save RL predictions"
+)
 @dataclass
 class SaveRLPredictionsHandler(BaseHandler):
     """Save RL predictions to database."""
@@ -2487,7 +2637,11 @@ def _format_fundamental(fundamental: dict) -> str:
         eps_diluted = sec_data.get("eps_diluted")
 
         if revenue:
-            parts.append(f"- Revenue: ${revenue:,.0f}M" if revenue < 1000 else f"- Revenue: ${revenue / 1000:.2f}B")
+            parts.append(
+                f"- Revenue: ${revenue:,.0f}M"
+                if revenue < 1000
+                else f"- Revenue: ${revenue / 1000:.2f}B"
+            )
             if revenue_growth:
                 parts.append(f"  - YoY Growth: {revenue_growth:.1f}%")
         if gross_margin:
@@ -2586,15 +2740,21 @@ def _format_fundamental(fundamental: dict) -> str:
                 if fv:
                     conf_str = f" (Confidence: {confidence:.0f}%)" if confidence else ""
                     upside_str = f" [{upside:+.1f}%]" if upside else ""
-                    parts.append(f"  - {model_name.upper()}: ${fv:.2f}{upside_str}{conf_str}")
+                    parts.append(
+                        f"  - {model_name.upper()}: ${fv:.2f}{upside_str}{conf_str}"
+                    )
 
                     # Add model-specific details
                     if model_name == "dcf":
                         # Get WACC and terminal growth from assumptions (already percentages: 13.0 for 13%)
                         wacc = model_data.get("assumptions", {}).get("wacc")
-                        tgr = model_data.get("assumptions", {}).get("terminal_growth_rate")
+                        tgr = model_data.get("assumptions", {}).get(
+                            "terminal_growth_rate"
+                        )
                         if wacc:
-                            parts.append(f"    WACC: {wacc:.1f}%, Terminal Growth: {(tgr if tgr else 2.0):.1f}%")
+                            parts.append(
+                                f"    WACC: {wacc:.1f}%, Terminal Growth: {(tgr if tgr else 2.0):.1f}%"
+                            )
                     elif model_name == "pe":
                         pe_ratio = model_data.get("pe_ratio")
                         sector_pe = model_data.get("sector_pe")
@@ -2625,7 +2785,9 @@ def _format_fundamental(fundamental: dict) -> str:
     # Models applied
     models_applied = data.get("models_applied", [])
     if models_applied:
-        parts.append(f"\n- Models Applied: {', '.join([m.upper() for m in models_applied])}")
+        parts.append(
+            f"\n- Models Applied: {', '.join([m.upper() for m in models_applied])}"
+        )
 
     return "\n".join(parts) if parts else "Fundamental data not available."
 
@@ -2656,7 +2818,9 @@ def _format_quarterly_trends_and_filings(fundamental: dict) -> str:
 
     if quarterly_metrics and len(quarterly_metrics) > 0:
         # Sort by period_end date descending (most recent first)
-        sorted_quarters = sorted(quarterly_metrics, key=lambda x: x.get("period_end", ""), reverse=True)
+        sorted_quarters = sorted(
+            quarterly_metrics, key=lambda x: x.get("period_end", ""), reverse=True
+        )
 
         # Take last 8 quarters
         recent_quarters = sorted_quarters[:8]
@@ -2720,7 +2884,9 @@ def _format_quarterly_trends_and_filings(fundamental: dict) -> str:
 
         parts.append("")
         parts.append("**Key Observations for Analysis:**")
-        parts.append("- Review revenue growth trajectory (accelerating vs decelerating)")
+        parts.append(
+            "- Review revenue growth trajectory (accelerating vs decelerating)"
+        )
         parts.append("- Analyze FCF generation quality and consistency")
         parts.append("- Evaluate margin expansion or contraction")
         parts.append("- Compare EPS growth vs revenue growth (operational leverage)")
@@ -2820,7 +2986,9 @@ def _format_technical(technical: dict) -> str:
 
             if weekly_sma_200 and current_price:
                 diff_pct = ((current_price - weekly_sma_200) / weekly_sma_200) * 100
-                parts.append(f"- 200-Week SMA: ${weekly_sma_200:.2f} ({diff_pct:+.1f}%)")
+                parts.append(
+                    f"- 200-Week SMA: ${weekly_sma_200:.2f} ({diff_pct:+.1f}%)"
+                )
 
             # Weekly trend (Golden/Death cross)
             if weekly_sma_50 and weekly_sma_200:
@@ -2866,12 +3034,16 @@ def _format_technical(technical: dict) -> str:
             macd_signal = daily_momentum.get("macd_signal")
 
             if rsi is not None:
-                rsi_signal = "OVERBOUGHT" if rsi > 70 else "OVERSOLD" if rsi < 30 else "NEUTRAL"
+                rsi_signal = (
+                    "OVERBOUGHT" if rsi > 70 else "OVERSOLD" if rsi < 30 else "NEUTRAL"
+                )
                 parts.append(f"- RSI(14): {rsi:.1f} ({rsi_signal})")
 
             if macd is not None and macd_signal is not None:
                 macd_trend = "BULLISH" if macd > macd_signal else "BEARISH"
-                parts.append(f"- MACD: {macd_trend} (MACD {'>' if macd > macd_signal else '<'} Signal)")
+                parts.append(
+                    f"- MACD: {macd_trend} (MACD {'>' if macd > macd_signal else '<'} Signal)"
+                )
 
     return "\n".join(parts) if parts else "Technical data not available."
 

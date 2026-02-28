@@ -150,7 +150,10 @@ class TestBoundsChecker:
             },
         )
         assert result.is_valid
-        assert len([i for i in result.issues if i.severity == ValidationSeverity.ERROR]) == 0
+        assert (
+            len([i for i in result.issues if i.severity == ValidationSeverity.ERROR])
+            == 0
+        )
 
     def test_validate_inputs_invalid_growth_rate(self, checker):
         """Test detecting invalid growth rate."""
@@ -263,7 +266,10 @@ class TestBoundsChecker:
             },
         )
         assert not result.is_valid
-        assert any(i.field == "growth_rate" and "not a valid number" in i.message for i in result.issues)
+        assert any(
+            i.field == "growth_rate" and "not a valid number" in i.message
+            for i in result.issues
+        )
 
     def test_validate_inputs_none_values(self, checker):
         """Test handling None values."""
@@ -292,7 +298,9 @@ class TestBoundsChecker:
 
     def test_validate_output_valid(self, checker):
         """Test validating valid output."""
-        result = checker.validate_output(fair_value=150.0, current_price=100.0, model_type="dcf")
+        result = checker.validate_output(
+            fair_value=150.0, current_price=100.0, model_type="dcf"
+        )
         # 1.5x is within bounds
         assert result.is_valid
 
@@ -410,7 +418,9 @@ class TestBoundsChecker:
         checker = BoundsChecker(fair_value_ratio_bounds=custom_bounds)
 
         # 3x would be valid by default but triggers warning with custom
-        result = checker.validate_output(fair_value=300.0, current_price=100.0, model_type="dcf")
+        result = checker.validate_output(
+            fair_value=300.0, current_price=100.0, model_type="dcf"
+        )
         assert result.has_warnings or result.has_errors
 
 

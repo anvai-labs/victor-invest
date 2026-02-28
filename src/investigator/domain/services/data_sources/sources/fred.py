@@ -210,7 +210,9 @@ class FredMacroSource(MacroDataSource):
         # Real rates
         inflation = data.get("inflation", {})
         if "DGS10" in rates and "T10YIE" in inflation:
-            derived["real_rate_10y"] = rates["DGS10"]["value"] - inflation["T10YIE"]["value"]
+            derived["real_rate_10y"] = (
+                rates["DGS10"]["value"] - inflation["T10YIE"]["value"]
+            )
 
         return derived
 
@@ -258,7 +260,9 @@ class FredMacroSource(MacroDataSource):
 
             data = {
                 "series_id": series_id,
-                "values": [{"date": r[1].isoformat(), "value": float(r[0])} for r in rows],
+                "values": [
+                    {"date": r[1].isoformat(), "value": float(r[0])} for r in rows
+                ],
                 "count": len(rows),
             }
 

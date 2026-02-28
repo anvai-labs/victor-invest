@@ -267,7 +267,9 @@ class REITPropertyTypeResult:
 
     property_type: REITPropertyType
     confidence: str  # "high", "medium", "low"
-    detection_method: str  # "symbol_lookup", "name_pattern", "industry_classification", "default"
+    detection_method: (
+        str  # "symbol_lookup", "name_pattern", "industry_classification", "default"
+    )
     details: Dict
 
 
@@ -300,7 +302,9 @@ def detect_reit_property_type(
     # Priority 1: Check known symbol mappings
     if symbol_upper in KNOWN_REIT_MAPPINGS:
         property_type = KNOWN_REIT_MAPPINGS[symbol_upper]
-        logger.info(f"{symbol} - REIT property type detected via symbol mapping: {property_type.value}")
+        logger.info(
+            f"{symbol} - REIT property type detected via symbol mapping: {property_type.value}"
+        )
         return REITPropertyTypeResult(
             property_type=property_type,
             confidence="high",
@@ -372,7 +376,9 @@ def detect_reit_property_type(
                 )
 
     # Priority 4: Default to UNKNOWN
-    logger.warning(f"{symbol} - Could not detect REIT property type, defaulting to UNKNOWN")
+    logger.warning(
+        f"{symbol} - Could not detect REIT property type, defaulting to UNKNOWN"
+    )
     return REITPropertyTypeResult(
         property_type=REITPropertyType.UNKNOWN,
         confidence="low",
@@ -395,7 +401,9 @@ def get_ffo_multiple_range(property_type: REITPropertyType) -> Tuple[float, floa
     Returns:
         Tuple of (low_multiple, high_multiple)
     """
-    return REIT_FFO_MULTIPLES.get(property_type, REIT_FFO_MULTIPLES[REITPropertyType.UNKNOWN])
+    return REIT_FFO_MULTIPLES.get(
+        property_type, REIT_FFO_MULTIPLES[REITPropertyType.UNKNOWN]
+    )
 
 
 def get_base_ffo_multiple(property_type: REITPropertyType) -> float:
@@ -538,7 +546,9 @@ def value_reit(
     warnings = []
 
     # Step 1: Detect property type
-    property_result = detect_reit_property_type(symbol=symbol, company_name=company_name, industry=industry)
+    property_result = detect_reit_property_type(
+        symbol=symbol, company_name=company_name, industry=industry
+    )
 
     # Step 2: Calculate FFO
     net_income = financials.get("net_income", 0)
@@ -569,7 +579,9 @@ def value_reit(
         current_yield = get_current_treasury_yield()
 
         if current_yield is not None:
-            adjusted_multiple = adjust_ffo_multiple_for_rates(base_multiple, current_yield)
+            adjusted_multiple = adjust_ffo_multiple_for_rates(
+                base_multiple, current_yield
+            )
             rate_adjustment = adjusted_multiple - base_multiple
         else:
             adjusted_multiple = base_multiple

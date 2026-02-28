@@ -113,7 +113,9 @@ def round_for_prompt(value: Any, decimals: int = 2) -> Optional[float]:
     return safe_round(value, decimals)
 
 
-def format_currency(value: Any, include_cents: bool = True, compact: bool = False, fallback: str = "N/A") -> str:
+def format_currency(
+    value: Any, include_cents: bool = True, compact: bool = False, fallback: str = "N/A"
+) -> str:
     """
     Format value as currency with safe handling.
 
@@ -161,7 +163,9 @@ def format_currency(value: Any, include_cents: bool = True, compact: bool = Fals
         return f"{sign}${abs_val:,.0f}"
 
 
-def format_percentage(value: Any, decimals: int = 1, fallback: str = "N/A", multiply_by_100: bool = False) -> str:
+def format_percentage(
+    value: Any, decimals: int = 1, fallback: str = "N/A", multiply_by_100: bool = False
+) -> str:
     """
     Format value as percentage with safe handling.
 
@@ -325,7 +329,9 @@ def _fmt_pct(value: Any) -> str:
 
 def _fmt_float(value: Any, decimals: int = 2) -> str:
     """Backward compatible float formatter."""
-    return format_number(value, decimals=decimals, fallback="N/A", thousands_separator=False)
+    return format_number(
+        value, decimals=decimals, fallback="N/A", thousands_separator=False
+    )
 
 
 def _fmt_int_comma(value: Any) -> str:

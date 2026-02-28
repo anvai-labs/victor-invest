@@ -106,7 +106,9 @@ class SectorMultiplesTool:
 
         except Exception as e:
             logger.exception(f"Error in SectorMultiplesTool.execute: {e}")
-            return ToolResult.create_failure(f"Error executing sector multiples: {str(e)}")
+            return ToolResult.create_failure(
+                f"Error executing sector multiples: {str(e)}"
+            )
 
     async def _refresh(
         self,
@@ -158,7 +160,9 @@ class SectorMultiplesTool:
         )
 
         if not calculated:
-            return ToolResult.create_failure("No sector multiples calculated (insufficient data)")
+            return ToolResult.create_failure(
+                "No sector multiples calculated (insufficient data)"
+            )
 
         # Format results
         result_data = {
@@ -189,7 +193,9 @@ class SectorMultiplesTool:
         elif dry_run:
             logger.info("Dry run mode - config.yaml not updated")
 
-        logger.info(f"Refresh complete: {len(calculated)} sector/industry multiples calculated")
+        logger.info(
+            f"Refresh complete: {len(calculated)} sector/industry multiples calculated"
+        )
 
         return ToolResult.create_success(result_data)
 
@@ -223,7 +229,9 @@ class SectorMultiplesTool:
 
         if industries:
             industry_list = [i.strip() for i in industries.split(",")]
-            logger.info(f"Historical calculation for industries: {', '.join(industry_list)}")
+            logger.info(
+                f"Historical calculation for industries: {', '.join(industry_list)}"
+            )
 
         # Configure outlier filtering
         percentile_exclude = (0.05, 0.95) if exclude_outliers else (0.0, 1.0)
@@ -244,7 +252,9 @@ class SectorMultiplesTool:
         )
 
         if not calculated:
-            return ToolResult.create_failure(f"No historical multiples calculated for FY{fiscal_year}")
+            return ToolResult.create_failure(
+                f"No historical multiples calculated for FY{fiscal_year}"
+            )
 
         # Format results
         result_data = {
@@ -268,12 +278,16 @@ class SectorMultiplesTool:
         if store:
             logger.info("Storing in database...")
             # Store sectors
-            sector_data = {k: v for k, v in calculated.items() if not self._is_industry(k)}
+            sector_data = {
+                k: v for k, v in calculated.items() if not self._is_industry(k)
+            }
             if sector_data:
                 history_service.store_history(sector_data, group_type="sector")
 
             # Store industries
-            industry_data = {k: v for k, v in calculated.items() if self._is_industry(k)}
+            industry_data = {
+                k: v for k, v in calculated.items() if self._is_industry(k)
+            }
             if industry_data:
                 history_service.store_history(industry_data, group_type="industry")
 
@@ -295,7 +309,9 @@ class SectorMultiplesTool:
             else:
                 logger.warning(f"Failed to export to {export}")
 
-        logger.info(f"Historical calculation complete: {len(calculated)} sector/industry multiples")
+        logger.info(
+            f"Historical calculation complete: {len(calculated)} sector/industry multiples"
+        )
 
         return ToolResult.create_success(result_data)
 
@@ -320,7 +336,9 @@ class SectorMultiplesTool:
         year_list = self._parse_years(years)
 
         # Parse sector/industry lists
-        sector_list = [s.strip() for s in sectors.split(",")] if sectors else ["Technology"]
+        sector_list = (
+            [s.strip() for s in sectors.split(",")] if sectors else ["Technology"]
+        )
         industry_list = [i.strip() for i in industries.split(",")] if industries else []
 
         db_manager = get_db_manager()
@@ -335,16 +353,24 @@ class SectorMultiplesTool:
 
             group_filters = []
             if sector_list:
-                sector_placeholders = ",".join([f":sector_{i}" for i in range(len(sector_list))])
+                sector_placeholders = ",".join(
+                    [f":sector_{i}" for i in range(len(sector_list))]
+                )
                 for i, s in enumerate(sector_list):
                     params[f"sector_{i}"] = s
-                group_filters.append(f"(group_type = 'sector' AND group_name IN ({sector_placeholders}))")
+                group_filters.append(
+                    f"(group_type = 'sector' AND group_name IN ({sector_placeholders}))"
+                )
 
             if industry_list:
-                industry_placeholders = ",".join([f":industry_{i}" for i in range(len(industry_list))])
+                industry_placeholders = ",".join(
+                    [f":industry_{i}" for i in range(len(industry_list))]
+                )
                 for i, ind in enumerate(industry_list):
                     params[f"industry_{i}"] = ind
-                group_filters.append(f"(group_type = 'industry' AND group_name IN ({industry_placeholders}))")
+                group_filters.append(
+                    f"(group_type = 'industry' AND group_name IN ({industry_placeholders}))"
+                )
 
             where_clause = " OR ".join(group_filters) if group_filters else "1=1"
 
@@ -406,7 +432,9 @@ class SectorMultiplesTool:
 
                         if start_val and end_val:
                             change_pct = ((end_val - start_val) / start_val) * 100
-                            prefix = "sector:" if group_type == "sector" else "industry:"
+                            prefix = (
+                                "sector:" if group_type == "sector" else "industry:"
+                            )
                             key = f"{prefix} {group_name}"
                             if key not in result_data["trends"]:
                                 result_data["trends"][key] = {}
@@ -415,11 +443,17 @@ class SectorMultiplesTool:
                                 "end": end_val,
                                 "change_pct": change_pct,
                                 "status": (
-                                    "SWELLING" if change_pct > 5 else "SHRINKING" if change_pct < -5 else "STABLE"
+                                    "SWELLING"
+                                    if change_pct > 5
+                                    else "SHRINKING"
+                                    if change_pct < -5
+                                    else "STABLE"
                                 ),
                             }
 
-        logger.info(f"Timeline generated: {len(data)} sector/industry groups over {len(year_list)} years")
+        logger.info(
+            f"Timeline generated: {len(data)} sector/industry groups over {len(year_list)} years"
+        )
 
         return ToolResult.create_success(result_data)
 
@@ -553,11 +587,15 @@ class SectorMultiplesTool:
 
         if sectors:
             sector_list = [s.strip() for s in sectors.split(",")]
-            logger.info(f"Calculating trend-adjusted multiples for sectors: {', '.join(sector_list)}")
+            logger.info(
+                f"Calculating trend-adjusted multiples for sectors: {', '.join(sector_list)}"
+            )
 
         if industries:
             industry_list = [i.strip() for i in industries.split(",")]
-            logger.info(f"Calculating trend-adjusted multiples for industries: {', '.join(industry_list)}")
+            logger.info(
+                f"Calculating trend-adjusted multiples for industries: {', '.join(industry_list)}"
+            )
 
         # Configure outlier filtering
         percentile_exclude = (0.05, 0.95) if exclude_outliers else (0.0, 1.0)
@@ -576,7 +614,9 @@ class SectorMultiplesTool:
         )
 
         if not current_multiples:
-            return ToolResult.create_failure("No sector multiples calculated (insufficient data)")
+            return ToolResult.create_failure(
+                "No sector multiples calculated (insufficient data)"
+            )
 
         logger.info(f"Current multiples calculated for {len(current_multiples)} groups")
 
@@ -600,7 +640,9 @@ class SectorMultiplesTool:
         )
 
         if not adjusted_multiples:
-            return ToolResult.create_failure("Failed to calculate trend-adjusted multiples")
+            return ToolResult.create_failure(
+                "Failed to calculate trend-adjusted multiples"
+            )
 
         # Step 3: Update config if requested
         config_updated = False
@@ -634,11 +676,15 @@ class SectorMultiplesTool:
             # Add both raw and adjusted values
             for metric in ["pe", "ps", "pb", "ev_ebitda"]:
                 if f"{metric}_raw" in multiples:
-                    result_data["multiples"][name][f"{metric}_raw"] = multiples.get(f"{metric}_raw")
+                    result_data["multiples"][name][f"{metric}_raw"] = multiples.get(
+                        f"{metric}_raw"
+                    )
                 if metric in multiples:
                     result_data["multiples"][name][metric] = multiples.get(metric)
 
-        logger.info(f"Trend-adjusted calculation complete: {len(adjusted_multiples)} sector/industry multiples")
+        logger.info(
+            f"Trend-adjusted calculation complete: {len(adjusted_multiples)} sector/industry multiples"
+        )
 
         return ToolResult.create_success(result_data)
 

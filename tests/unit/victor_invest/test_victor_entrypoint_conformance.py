@@ -50,6 +50,9 @@ def test_makefile_run_dev_uses_victor_api():
 def test_legacy_cli_declares_deprecated_forwarding_mode():
     legacy_cli = Path("cli_orchestrator.py").read_text(encoding="utf-8")
 
-    assert "DEPRECATED: This CLI is maintained for backwards compatibility only." in legacy_cli
+    assert (
+        "DEPRECATED: This CLI is maintained for backwards compatibility only."
+        in legacy_cli
+    )
     assert "python -m victor_invest.cli analyze AAPL --mode standard" in legacy_cli
     assert '[sys.executable, "-m", "victor_invest.cli"] + args' in legacy_cli

@@ -132,7 +132,9 @@ class TestApplicationSettings:
         """Test invalid environment value raises ValidationError."""
         with pytest.raises(ValidationError) as exc_info:
             ApplicationSettings(environment="staging")
-        assert "environment must be 'development' or 'production'" in str(exc_info.value)
+        assert "environment must be 'development' or 'production'" in str(
+            exc_info.value
+        )
 
     def test_valid_production_environment(self):
         """Test production environment is valid."""

@@ -75,7 +75,9 @@ def test_handler_migration():
         # Test 4: Return type
         return_annotation = sig.return_annotation
         if "Tuple" not in str(return_annotation):
-            errors.append(f"{handler_name}.execute() wrong return type: {return_annotation}")
+            errors.append(
+                f"{handler_name}.execute() wrong return type: {return_annotation}"
+            )
 
         # Test 5: Is dataclass
         if not is_dataclass(handler_cls):

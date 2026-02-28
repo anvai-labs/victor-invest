@@ -141,7 +141,9 @@ CONSERVATIVE_DEFAULTS = {
 }
 
 
-def get_growth_assumptions(sector: Optional[str] = None, industry: Optional[str] = None) -> Dict[str, any]:
+def get_growth_assumptions(
+    sector: Optional[str] = None, industry: Optional[str] = None
+) -> Dict[str, any]:
     """
     Get growth assumptions for a pre-profitable company.
 
@@ -322,10 +324,18 @@ def format_assumptions_log(
     else:
         lines.append("[PRE_PROFITABLE] Using conservative defaults")
 
-    lines.append(f"  Revenue Growth: {assumptions['default_revenue_growth'] * 100:.1f}%")
+    lines.append(
+        f"  Revenue Growth: {assumptions['default_revenue_growth'] * 100:.1f}%"
+    )
     lines.append(f"  Min Quarters: {assumptions['min_quarters_for_historical']}")
-    lines.append(f"  Margin Expansion: {'Yes' if assumptions['margin_expansion_assumption'] else 'No'}")
-    lines.append(f"  Terminal Premium: +{assumptions['terminal_growth_premium'] * 100:.1f}%")
-    lines.append(f"  Revenue Quality Weight: {assumptions['revenue_quality_weight'] * 100:.0f}%")
+    lines.append(
+        f"  Margin Expansion: {'Yes' if assumptions['margin_expansion_assumption'] else 'No'}"
+    )
+    lines.append(
+        f"  Terminal Premium: +{assumptions['terminal_growth_premium'] * 100:.1f}%"
+    )
+    lines.append(
+        f"  Revenue Quality Weight: {assumptions['revenue_quality_weight'] * 100:.0f}%"
+    )
 
     return "\n".join(lines)

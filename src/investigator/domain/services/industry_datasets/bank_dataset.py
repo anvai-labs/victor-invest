@@ -181,7 +181,9 @@ class BankDataset(BaseIndustryDataset):
             ),
         ]
 
-    def extract_metrics(self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs) -> IndustryMetrics:
+    def extract_metrics(
+        self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs
+    ) -> IndustryMetrics:
         """Extract bank-specific metrics from XBRL data and financials."""
         metrics = IndustryMetrics(
             industry="bank",
@@ -192,7 +194,9 @@ class BankDataset(BaseIndustryDataset):
         warnings = []
 
         # Extract Net Interest Margin
-        nim = self._extract_from_xbrl(xbrl_data, "net_interest_margin", ["NetInterestMargin", "InterestMarginNet"])
+        nim = self._extract_from_xbrl(
+            xbrl_data, "net_interest_margin", ["NetInterestMargin", "InterestMarginNet"]
+        )
         if nim:
             metrics.metrics["net_interest_margin"] = nim
         else:
@@ -252,7 +256,9 @@ class BankDataset(BaseIndustryDataset):
                 warnings.append("ROE not available")
 
         # Extract Loan to Deposit ratio
-        ltd = self._extract_from_xbrl(xbrl_data, "loan_to_deposit", ["LoanToDepositRatio", "LoansToDeposits"])
+        ltd = self._extract_from_xbrl(
+            xbrl_data, "loan_to_deposit", ["LoanToDepositRatio", "LoansToDeposits"]
+        )
         if ltd:
             metrics.metrics["loan_to_deposit"] = ltd
 

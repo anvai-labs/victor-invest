@@ -84,12 +84,16 @@ class MarketRegimeCache:
 
         if market_regime:
             # Cache the result
-            self.cache_manager.set(CacheType.MARKET_REGIME, cache_key, market_regime, ttl=self.cache_ttl)
+            self.cache_manager.set(
+                CacheType.MARKET_REGIME, cache_key, market_regime, ttl=self.cache_ttl
+            )
             logger.info(f"💾 Cached market regime for {cache_key['date']}")
 
         return market_regime
 
-    def get_sector_performance(self, sector: Optional[str] = None, force_refresh: bool = False) -> Optional[Dict]:
+    def get_sector_performance(
+        self, sector: Optional[str] = None, force_refresh: bool = False
+    ) -> Optional[Dict]:
         """
         Get cached sector performance or compute if needed
 
@@ -106,7 +110,9 @@ class MarketRegimeCache:
 
         # Check cache first
         if not force_refresh:
-            cached_data = self.cache_manager.get(CacheType.SECTOR_PERFORMANCE, cache_key)
+            cached_data = self.cache_manager.get(
+                CacheType.SECTOR_PERFORMANCE, cache_key
+            )
 
             if cached_data:
                 logger.info(f"✅ Sector performance cache HIT for {cache_key['date']}")
@@ -151,7 +157,9 @@ class MarketRegimeCache:
         market_breadth = self._compute_market_breadth()
 
         if market_breadth:
-            self.cache_manager.set(CacheType.MARKET_BREADTH, cache_key, market_breadth, ttl=self.cache_ttl)
+            self.cache_manager.set(
+                CacheType.MARKET_BREADTH, cache_key, market_breadth, ttl=self.cache_ttl
+            )
             logger.info(f"💾 Cached market breadth for {cache_key['date']}")
 
         return market_breadth
@@ -231,7 +239,9 @@ class MarketRegimeCache:
                 for etf_type, symbol in market_etfs.items():
                     try:
                         # Get ETF data
-                        data = self.market_data_fetcher.get_stock_data(symbol, days + 10)
+                        data = self.market_data_fetcher.get_stock_data(
+                            symbol, days + 10
+                        )
 
                         if len(data) >= days:
                             # Calculate metrics
@@ -252,8 +262,12 @@ class MarketRegimeCache:
                 regime_data["timeframes"][tf_name] = tf_data
 
             # Determine overall market regime
-            regime_data["regime"] = self._classify_market_regime(regime_data["timeframes"])
-            regime_data["risk_signals"] = self._calculate_risk_signals(regime_data["timeframes"])
+            regime_data["regime"] = self._classify_market_regime(
+                regime_data["timeframes"]
+            )
+            regime_data["risk_signals"] = self._calculate_risk_signals(
+                regime_data["timeframes"]
+            )
 
             return regime_data
 
@@ -306,16 +320,22 @@ class MarketRegimeCache:
                             "etf": etf,
                             "1w_return": self._calculate_returns(data, 5),
                             "1m_return": self._calculate_returns(data, 20),
-                            "3m_return": self._calculate_returns(data, 60) if len(data) >= 60 else None,
+                            "3m_return": self._calculate_returns(data, 60)
+                            if len(data) >= 60
+                            else None,
                             "volatility": self._calculate_volatility(data, 20),
-                            "relative_strength": self._calculate_relative_strength(data, "SPY"),
+                            "relative_strength": self._calculate_relative_strength(
+                                data, "SPY"
+                            ),
                             "momentum": self._calculate_momentum(data),
                         }
                 except Exception as e:
                     logger.warning(f"Failed to analyze sector {sector_name}: {e}")
 
             # Rank sectors by performance
-            performance_data["rankings"] = self._rank_sectors(performance_data["sectors"])
+            performance_data["rankings"] = self._rank_sectors(
+                performance_data["sectors"]
+            )
 
             return performance_data
 
@@ -360,7 +380,9 @@ class MarketRegimeCache:
                     "XLC",
                 ]:
                     try:
-                        sector_data = self.market_data_fetcher.get_stock_data(sector_etf, 30)
+                        sector_data = self.market_data_fetcher.get_stock_data(
+                            sector_etf, 30
+                        )
                         if len(sector_data) >= 20:
                             sector_return = self._calculate_returns(sector_data, 20)
                             if sector_return > spy_return:
@@ -372,7 +394,9 @@ class MarketRegimeCache:
 
                 breadth_data["sectors_outperforming"] = outperforming
                 breadth_data["sectors_underperforming"] = underperforming
-                breadth_data["breadth_ratio"] = outperforming / max(outperforming + underperforming, 1)
+                breadth_data["breadth_ratio"] = outperforming / max(
+                    outperforming + underperforming, 1
+                )
 
                 # Classify breadth
                 if breadth_data["breadth_ratio"] > 0.6:
@@ -420,7 +444,9 @@ class MarketRegimeCache:
                             "symbol": symbol,
                             "1w_return": self._calculate_returns(data, 5),
                             "1m_return": self._calculate_returns(data, 20),
-                            "3m_return": self._calculate_returns(data, 60) if len(data) >= 60 else None,
+                            "3m_return": self._calculate_returns(data, 60)
+                            if len(data) >= 60
+                            else None,
                             "volatility": self._calculate_volatility(data, 20),
                             "current_price": float(data["Close"].iloc[-1]),
                         }
@@ -428,9 +454,14 @@ class MarketRegimeCache:
                     logger.warning(f"Failed to analyze {name}: {e}")
 
             # Calculate inflation signals
-            if "gold" in commodity_data["commodities"] and "broad_commodities" in commodity_data["commodities"]:
+            if (
+                "gold" in commodity_data["commodities"]
+                and "broad_commodities" in commodity_data["commodities"]
+            ):
                 gold_return = commodity_data["commodities"]["gold"]["1m_return"]
-                commodity_return = commodity_data["commodities"]["broad_commodities"]["1m_return"]
+                commodity_return = commodity_data["commodities"]["broad_commodities"][
+                    "1m_return"
+                ]
 
                 # Inflation signal based on commodity performance
                 if commodity_return > 0.03 and gold_return > 0.02:
@@ -483,18 +514,32 @@ class MarketRegimeCache:
         current_price = close_prices.iloc[-1]
 
         # Simple momentum indicators
-        sma_20 = close_prices.rolling(window=20).mean().iloc[-1] if len(data) >= 20 else current_price
-        sma_50 = close_prices.rolling(window=50).mean().iloc[-1] if len(data) >= 50 else current_price
+        sma_20 = (
+            close_prices.rolling(window=20).mean().iloc[-1]
+            if len(data) >= 20
+            else current_price
+        )
+        sma_50 = (
+            close_prices.rolling(window=50).mean().iloc[-1]
+            if len(data) >= 50
+            else current_price
+        )
 
         return {
-            "price_vs_sma20": float((current_price - sma_20) / sma_20) if sma_20 > 0 else 0,
-            "price_vs_sma50": float((current_price - sma_50) / sma_50) if sma_50 > 0 else 0,
+            "price_vs_sma20": float((current_price - sma_20) / sma_20)
+            if sma_20 > 0
+            else 0,
+            "price_vs_sma50": float((current_price - sma_50) / sma_50)
+            if sma_50 > 0
+            else 0,
         }
 
     def _calculate_relative_strength(self, data, benchmark_symbol):
         """Calculate relative strength vs benchmark"""
         try:
-            benchmark_data = self.market_data_fetcher.get_stock_data(benchmark_symbol, len(data))
+            benchmark_data = self.market_data_fetcher.get_stock_data(
+                benchmark_symbol, len(data)
+            )
             if len(benchmark_data) >= 20 and len(data) >= 20:
                 asset_return = self._calculate_returns(data, 20)
                 benchmark_return = self._calculate_returns(benchmark_data, 20)
@@ -520,7 +565,10 @@ class MarketRegimeCache:
 
         # Check small cap vs large cap
         if "small_cap" in medium_term and "broad_market" in medium_term:
-            if medium_term["small_cap"]["return"] > medium_term["broad_market"]["return"]:
+            if (
+                medium_term["small_cap"]["return"]
+                > medium_term["broad_market"]["return"]
+            ):
                 risk_signals += 1
             total_signals += 1
 
@@ -563,7 +611,9 @@ class MarketRegimeCache:
 
         # Equity vs Bond signal
         if "broad_market" in medium_term and "bonds" in medium_term:
-            spread = medium_term["broad_market"]["return"] - medium_term["bonds"]["return"]
+            spread = (
+                medium_term["broad_market"]["return"] - medium_term["bonds"]["return"]
+            )
             if spread > 0.02:
                 signals["equity_bond"] = "risk_on"
             elif spread < -0.02:
@@ -571,7 +621,10 @@ class MarketRegimeCache:
 
         # Size factor signal
         if "small_cap" in medium_term and "broad_market" in medium_term:
-            spread = medium_term["small_cap"]["return"] - medium_term["broad_market"]["return"]
+            spread = (
+                medium_term["small_cap"]["return"]
+                - medium_term["broad_market"]["return"]
+            )
             if spread > 0.01:
                 signals["size_factor"] = "risk_on"
             elif spread < -0.01:
@@ -674,6 +727,8 @@ class MarketRegimeCache:
             if self.cache_manager.get(cache_type, cache_key):
                 stats["cached_components"].append(component_name)
 
-        stats["cache_coverage"] = len(stats["cached_components"]) / len(components) * 100
+        stats["cache_coverage"] = (
+            len(stats["cached_components"]) / len(components) * 100
+        )
 
         return stats

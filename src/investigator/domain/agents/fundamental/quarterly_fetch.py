@@ -87,7 +87,9 @@ def query_recent_processed_periods(
 
     quarters_data: List[Dict[str, Any]] = []
     for row in rows:
-        cf_qtrs = int(row.cash_flow_statement_qtrs) if row.cash_flow_statement_qtrs else 1
+        cf_qtrs = (
+            int(row.cash_flow_statement_qtrs) if row.cash_flow_statement_qtrs else 1
+        )
         inc_qtrs = int(row.income_statement_qtrs) if row.income_statement_qtrs else 1
 
         quarters_data.append(
@@ -121,8 +123,12 @@ def query_recent_processed_periods(
                 "capital_expenditures": to_float(row.capital_expenditures),
                 "free_cash_flow": to_float(row.free_cash_flow),
                 "dividends_paid": to_float(row.dividends_paid),
-                "depreciation_amortization": to_float(getattr(row, "depreciation_amortization", None)),
-                "property_plant_equipment_net": to_float(row.property_plant_equipment_net),
+                "depreciation_amortization": to_float(
+                    getattr(row, "depreciation_amortization", None)
+                ),
+                "property_plant_equipment_net": to_float(
+                    row.property_plant_equipment_net
+                ),
                 "shares_outstanding": to_float(row.shares_outstanding),
                 "cash_flow_statement_qtrs": cf_qtrs,
                 "income_statement_qtrs": inc_qtrs,
@@ -132,7 +138,9 @@ def query_recent_processed_periods(
         )
 
     fy_count = sum(1 for q in quarters_data if q.get("fiscal_period") == "FY")
-    q_count = sum(1 for q in quarters_data if q.get("fiscal_period", "").startswith("Q"))
+    q_count = sum(
+        1 for q in quarters_data if q.get("fiscal_period", "").startswith("Q")
+    )
     logger.info(
         "✅ Retrieved %s periods from processed table for %s "
         "(%s Q periods, %s FY periods - FY needed for Q4 computation)",
@@ -382,14 +390,20 @@ def fetch_processed_quarter_payload(
     row = dict(result._mapping)
     income_qtrs_val = row.get("income_statement_qtrs")
     cashflow_qtrs_val = row.get("cash_flow_statement_qtrs")
-    is_ytd_income = fiscal_period_service.is_ytd(income_qtrs_val) if income_qtrs_val else False
-    is_ytd_cashflow = fiscal_period_service.is_ytd(cashflow_qtrs_val) if cashflow_qtrs_val else False
+    is_ytd_income = (
+        fiscal_period_service.is_ytd(income_qtrs_val) if income_qtrs_val else False
+    )
+    is_ytd_cashflow = (
+        fiscal_period_service.is_ytd(cashflow_qtrs_val) if cashflow_qtrs_val else False
+    )
 
     ocf_val = to_float(row.get("operating_cash_flow"))
     capex_val = to_float(row.get("capital_expenditures"))
     raw_fcf = row.get("free_cash_flow")
     free_cash_flow_val = to_float(raw_fcf)
-    if (raw_fcf is None or abs(free_cash_flow_val) < 1e-6) and (ocf_val is not None and capex_val is not None):
+    if (raw_fcf is None or abs(free_cash_flow_val) < 1e-6) and (
+        ocf_val is not None and capex_val is not None
+    ):
         derived_fcf = float(ocf_val) - abs(float(capex_val))
         free_cash_flow_val = derived_fcf
         if abs(derived_fcf) > 1e-6:
@@ -413,13 +427,19 @@ def fetch_processed_quarter_payload(
             "gross_profit": to_float(row.get("gross_profit")),
             "operating_income": to_float(row.get("operating_income")),
             "cost_of_revenue": to_float(row.get("cost_of_revenue")),
-            "research_and_development_expense": to_float(row.get("research_and_development_expense")),
-            "selling_general_administrative_expense": to_float(row.get("selling_general_administrative_expense")),
+            "research_and_development_expense": to_float(
+                row.get("research_and_development_expense")
+            ),
+            "selling_general_administrative_expense": to_float(
+                row.get("selling_general_administrative_expense")
+            ),
             "operating_expenses": to_float(row.get("operating_expenses")),
             "interest_expense": to_float(row.get("interest_expense")),
             "income_tax_expense": to_float(row.get("income_tax_expense")),
             "earnings_per_share": to_float(row.get("earnings_per_share")),
-            "earnings_per_share_diluted": to_float(row.get("earnings_per_share_diluted")),
+            "earnings_per_share_diluted": to_float(
+                row.get("earnings_per_share_diluted")
+            ),
             "preferred_stock_dividends": to_float(row.get("preferred_stock_dividends")),
             "common_stock_dividends": to_float(row.get("common_stock_dividends")),
             "weighted_average_diluted_shares_outstanding": to_float(
@@ -458,12 +478,16 @@ def fetch_processed_quarter_payload(
             "inventory": to_float(row.get("inventory")),
             "property_plant_equipment": to_float(row.get("property_plant_equipment")),
             "accumulated_depreciation": to_float(row.get("accumulated_depreciation")),
-            "property_plant_equipment_net": to_float(row.get("property_plant_equipment_net")),
+            "property_plant_equipment_net": to_float(
+                row.get("property_plant_equipment_net")
+            ),
             "goodwill": to_float(row.get("goodwill")),
             "intangible_assets": to_float(row.get("intangible_assets")),
             "deferred_revenue": to_float(row.get("deferred_revenue")),
             "treasury_stock": to_float(row.get("treasury_stock")),
-            "other_comprehensive_income": to_float(row.get("other_comprehensive_income")),
+            "other_comprehensive_income": to_float(
+                row.get("other_comprehensive_income")
+            ),
             "book_value": to_float(row.get("book_value")),
             "book_value_per_share": to_float(row.get("book_value_per_share")),
             "working_capital": to_float(row.get("working_capital")),
@@ -544,7 +568,9 @@ def resolve_quarter_data(
     cache_type: Any,
     build_cache_key: Callable[..., Any],
     quarterly_data_cls: Any,
-    fetch_from_processed_table: Callable[[str, int, str, str], Optional[Dict[str, Any]]],
+    fetch_from_processed_table: Callable[
+        [str, int, str, str], Optional[Dict[str, Any]]
+    ],
     get_sector_for_symbol: Callable[[str], str],
     get_fiscal_period_strategy: Callable[[], Any],
     bulk_strategy: Any,
@@ -661,7 +687,9 @@ def resolve_quarter_data(
         is_ytd_income=is_ytd_income,
     )
     qdata.adsh = quarter["adsh"]
-    qdata.period_end_date = str(quarter["period_end"]) if quarter["period_end"] else None
+    qdata.period_end_date = (
+        str(quarter["period_end"]) if quarter["period_end"] else None
+    )
     qdata.form = quarter["form"]
 
     logger.debug(

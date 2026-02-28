@@ -43,8 +43,12 @@ logger = logging.getLogger(__name__)
 
 # Dallas Fed data URLs
 TMOS_URL = "https://www.dallasfed.org/-/media/Documents/research/surveys/tmos/tmos.xlsx"
-TSSOS_URL = "https://www.dallasfed.org/-/media/Documents/research/surveys/tssos/tssos.xlsx"
-TRIMMED_PCE_URL = "https://www.dallasfed.org/-/media/Documents/research/pce/pce_data.xlsx"
+TSSOS_URL = (
+    "https://www.dallasfed.org/-/media/Documents/research/surveys/tssos/tssos.xlsx"
+)
+TRIMMED_PCE_URL = (
+    "https://www.dallasfed.org/-/media/Documents/research/pce/pce_data.xlsx"
+)
 
 
 class RegionalOutlook(Enum):

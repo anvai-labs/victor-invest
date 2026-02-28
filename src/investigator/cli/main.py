@@ -45,7 +45,10 @@ class _VictorExternalVerticalNoiseFilter(logging.Filter):
 
     def filter(self, record: logging.LogRecord) -> bool:
         message = record.getMessage()
-        if "External vertical '" in message and "conflicts with existing vertical" in message:
+        if (
+            "External vertical '" in message
+            and "conflicts with existing vertical" in message
+        ):
             return False
         if (
             "Failed to load external vertical 'security_analysis'" in message
@@ -61,7 +64,10 @@ def _configure_victor_external_vertical_warning_filter() -> None:
         return
 
     logger = logging.getLogger("victor.core.verticals.base")
-    if any(isinstance(existing, _VictorExternalVerticalNoiseFilter) for existing in logger.filters):
+    if any(
+        isinstance(existing, _VictorExternalVerticalNoiseFilter)
+        for existing in logger.filters
+    ):
         return
 
     logger.addFilter(_VictorExternalVerticalNoiseFilter())

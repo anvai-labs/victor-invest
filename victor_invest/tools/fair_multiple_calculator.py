@@ -90,11 +90,15 @@ class FairMultipleCalculatorTool:
             elif action == "report":
                 return await self._report(**kwargs)
             else:
-                return ToolResult.create_failure(f"Unknown action: {action}. Valid actions: calculate, report")
+                return ToolResult.create_failure(
+                    f"Unknown action: {action}. Valid actions: calculate, report"
+                )
 
         except Exception as e:
             logger.exception(f"Error in FairMultipleCalculatorTool.execute: {e}")
-            return ToolResult.create_failure(f"Error calculating fair multiples: {str(e)}")
+            return ToolResult.create_failure(
+                f"Error calculating fair multiples: {str(e)}"
+            )
 
     async def _calculate(
         self,
@@ -132,7 +136,9 @@ class FairMultipleCalculatorTool:
 
         # Calculate for single metric or all
         if metric == "all":
-            results = calculator.calculate_all_fair_multiples(symbol=symbol, sector=sector, industry=industry)
+            results = calculator.calculate_all_fair_multiples(
+                symbol=symbol, sector=sector, industry=industry
+            )
 
             # Format results
             result_data = {
@@ -147,7 +153,9 @@ class FairMultipleCalculatorTool:
 
             for metric_name, fair_result in results.items():
                 if fair_result is None:
-                    result_data["multiples"][metric_name] = {"status": "insufficient_data"}
+                    result_data["multiples"][metric_name] = {
+                        "status": "insufficient_data"
+                    }
                     continue
 
                 result_data["multiples"][metric_name] = {
@@ -163,11 +171,14 @@ class FairMultipleCalculatorTool:
                 }
 
         else:
-            fair_result = calculator.calculate_fair_multiple(symbol=symbol, sector=sector, metric=metric)
+            fair_result = calculator.calculate_fair_multiple(
+                symbol=symbol, sector=sector, metric=metric
+            )
 
             if fair_result is None:
                 return ToolResult.create_failure(
-                    f"Could not calculate fair {metric.upper()} multiple for {symbol} " f"(insufficient data)"
+                    f"Could not calculate fair {metric.upper()} multiple for {symbol} "
+                    f"(insufficient data)"
                 )
 
             result_data = {

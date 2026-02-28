@@ -162,7 +162,9 @@ class TestHandlerBase:
         from investigator.domain.handlers import HandlerBase
 
         handler = HandlerBase()
-        node = MockComputeNode(id="test", input_mapping={"symbol": "$ctx.target_symbol"})
+        node = MockComputeNode(
+            id="test", input_mapping={"symbol": "$ctx.target_symbol"}
+        )
         context = MockWorkflowContext({"target_symbol": "GOOGL"})
 
         result = handler._get_input(node, context, "symbol")
@@ -250,7 +252,9 @@ class TestPriceDataFetchHandler:
     """Test PriceDataFetchHandler."""
 
     @pytest.mark.asyncio
-    async def test_fetch_price_success(self, mock_price_service, mock_shares_service, mock_metadata_service):
+    async def test_fetch_price_success(
+        self, mock_price_service, mock_shares_service, mock_metadata_service
+    ):
         """Test successful price fetch."""
         from investigator.domain.handlers import PriceDataFetchHandler
 

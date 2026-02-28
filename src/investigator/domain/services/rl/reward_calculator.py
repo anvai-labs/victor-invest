@@ -157,7 +157,9 @@ class RewardCalculator:
         else:
             if predicted_direction == -1:  # Short wrong - AMPLIFY
                 # Stock went up when we expected down - squeeze risk
-                squeeze_multiplier = 1.0 + max(0, raw_return) * self.short_squeeze_sensitivity
+                squeeze_multiplier = (
+                    1.0 + max(0, raw_return) * self.short_squeeze_sensitivity
+                )
                 direction_factor = self.short_wrong_base_multiplier * squeeze_multiplier
             else:  # Long wrong - DAMPEN
                 # Stock went down when we expected up - losses are recoverable over time
@@ -193,7 +195,9 @@ class RewardCalculator:
 
         Convenience method for cases where only the final reward is needed.
         """
-        return self.calculate(predicted_fv, price_at_prediction, actual_price, days, beta).reward
+        return self.calculate(
+            predicted_fv, price_at_prediction, actual_price, days, beta
+        ).reward
 
     def calculate_per_model_rewards(
         self,
@@ -230,7 +234,9 @@ class RewardCalculator:
                 per_model[model_name] = {
                     "reward": round(result.reward, 4),
                     "direction_correct": result.direction_correct,
-                    "position_return": round(result.position_return * 100, 2),  # As percentage
+                    "position_return": round(
+                        result.position_return * 100, 2
+                    ),  # As percentage
                     "annualized_return": round(result.annualized_return * 100, 2),
                 }
 
@@ -261,4 +267,6 @@ def calculate_reward(
 
     Use this instead of implementing reward calculation locally.
     """
-    return get_reward_calculator().calculate_simple(predicted_fv, price_at_prediction, actual_price, days, beta)
+    return get_reward_calculator().calculate_simple(
+        predicted_fv, price_at_prediction, actual_price, days, beta
+    )

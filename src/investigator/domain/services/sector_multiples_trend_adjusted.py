@@ -93,7 +93,9 @@ class SectorMultiplesTrendAdjusted:
             "medium": 1.0,
             "high": 1.5,
         }
-        self.adjustment_multiplier = sensitivity_multipliers.get(adjustment_sensitivity, 1.0)
+        self.adjustment_multiplier = sensitivity_multipliers.get(
+            adjustment_sensitivity, 1.0
+        )
 
     def calculate_trend_adjusted_multiples(
         self,
@@ -143,11 +145,14 @@ class SectorMultiplesTrendAdjusted:
             logger.info(f"Adjusting multiples for: {group_name}")
 
             # Get historical trend data
-            trend_data = self._get_historical_trend(group_name=group_name, lookback_years=self.lookback_years)
+            trend_data = self._get_historical_trend(
+                group_name=group_name, lookback_years=self.lookback_years
+            )
 
             if not trend_data or len(trend_data) < 2:
                 logger.warning(
-                    f"{group_name}: Insufficient historical data for trend adjustment, " f"using current multiples"
+                    f"{group_name}: Insufficient historical data for trend adjustment, "
+                    f"using current multiples"
                 )
                 results[group_name] = self._create_unadjusted_result(current_data)
                 continue
@@ -191,9 +196,15 @@ class SectorMultiplesTrendAdjusted:
             # Add metric-specific trend analysis
             for metric in ["pe", "ps", "pb"]:
                 if metric in trend_metrics:
-                    adjusted_multiples["trend_analysis"][f"{metric}_trend"] = trend_metrics[metric]["trend"]
-                    adjusted_multiples["trend_analysis"][f"{metric}_change_pct"] = trend_metrics[metric]["change_pct"]
-                    adjusted_multiples["trend_analysis"][f"{metric}_volatility"] = trend_metrics[metric]["volatility"]
+                    adjusted_multiples["trend_analysis"][f"{metric}_trend"] = (
+                        trend_metrics[metric]["trend"]
+                    )
+                    adjusted_multiples["trend_analysis"][f"{metric}_change_pct"] = (
+                        trend_metrics[metric]["change_pct"]
+                    )
+                    adjusted_multiples["trend_analysis"][f"{metric}_volatility"] = (
+                        trend_metrics[metric]["volatility"]
+                    )
 
             results[group_name] = adjusted_multiples
 
@@ -219,7 +230,9 @@ class SectorMultiplesTrendAdjusted:
 
         return False
 
-    def _get_historical_trend(self, group_name: str, lookback_years: int) -> List[Dict[str, Any]]:
+    def _get_historical_trend(
+        self, group_name: str, lookback_years: int
+    ) -> List[Dict[str, Any]]:
         """Fetch historical trend data for a group.
 
         Args:
@@ -267,7 +280,9 @@ class SectorMultiplesTrendAdjusted:
 
             return trend_data
 
-    def _calculate_trend_metrics(self, trend_data: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    def _calculate_trend_metrics(
+        self, trend_data: List[Dict[str, Any]]
+    ) -> Dict[str, Dict[str, Any]]:
         """Calculate trend metrics from historical data.
 
         Args:
@@ -290,7 +305,11 @@ class SectorMultiplesTrendAdjusted:
 
         for metric in ["pe", "ps", "pb"]:
             # Extract valid values
-            values = [(d["fiscal_year"], d[metric]) for d in trend_data if d.get(metric) is not None]
+            values = [
+                (d["fiscal_year"], d[metric])
+                for d in trend_data
+                if d.get(metric) is not None
+            ]
 
             if len(values) < 2:
                 continue
@@ -340,7 +359,11 @@ class SectorMultiplesTrendAdjusted:
                 if early_values:
                     recent_mean = statistics.mean(recent_values)
                     early_mean = statistics.mean(early_values)
-                    momentum = ((recent_mean - early_mean) / early_mean) if early_mean != 0 else 0
+                    momentum = (
+                        ((recent_mean - early_mean) / early_mean)
+                        if early_mean != 0
+                        else 0
+                    )
 
             metrics[metric] = {
                 "trend": trend,
@@ -421,7 +444,9 @@ class SectorMultiplesTrendAdjusted:
             # Sector is expanding - reduce multiple to account for overvaluation risk
             factor = self.SWELLING_ADJUSTMENT
             # Scale by severity of swelling
-            severity_multiplier = min(abs(metric_trend["change_pct"]) / 100, 2.0)  # Cap at 2x
+            severity_multiplier = min(
+                abs(metric_trend["change_pct"]) / 100, 2.0
+            )  # Cap at 2x
             adjusted_factor = 1.0 - (1.0 - factor) * severity_multiplier
             adjustment_factor *= adjusted_factor
             adjustments_applied.append(f"swelling_adjustment:{adjusted_factor:.3f}")
@@ -430,7 +455,9 @@ class SectorMultiplesTrendAdjusted:
             # Sector is contracting - increase multiple for value opportunity
             factor = self.SHRINKING_ADJUSTMENT
             # Scale by severity of shrinking
-            severity_multiplier = min(abs(metric_trend["change_pct"]) / 100, 2.0)  # Cap at 2x
+            severity_multiplier = min(
+                abs(metric_trend["change_pct"]) / 100, 2.0
+            )  # Cap at 2x
             adjusted_factor = 1.0 + (factor - 1.0) * severity_multiplier
             adjustment_factor *= adjusted_factor
             adjustments_applied.append(f"shrinking_adjustment:{adjusted_factor:.3f}")
@@ -438,15 +465,21 @@ class SectorMultiplesTrendAdjusted:
         # 2. Apply volatility discount
         if metric_trend["volatility"] == "high":
             adjustment_factor *= self.HIGH_VOLATILITY_DISCOUNT
-            adjustments_applied.append(f"volatility_discount:{self.HIGH_VOLATILITY_DISCOUNT:.3f}")
+            adjustments_applied.append(
+                f"volatility_discount:{self.HIGH_VOLATILITY_DISCOUNT:.3f}"
+            )
 
         # 3. Apply market regime adjustment
         if regime == "bull":
             adjustment_factor *= self.BULL_MARKET_PREMIUM
-            adjustments_applied.append(f"bull_market_premium:{self.BULL_MARKET_PREMIUM:.3f}")
+            adjustments_applied.append(
+                f"bull_market_premium:{self.BULL_MARKET_PREMIUM:.3f}"
+            )
         elif regime == "bear":
             adjustment_factor *= self.BEAR_MARKET_DISCOUNT
-            adjustments_applied.append(f"bear_market_discount:{self.BEAR_MARKET_DISCOUNT:.3f}")
+            adjustments_applied.append(
+                f"bear_market_discount:{self.BEAR_MARKET_DISCOUNT:.3f}"
+            )
 
         # 4. Apply sensitivity multiplier
         if adjustment_factor != 1.0:
@@ -466,13 +499,15 @@ class SectorMultiplesTrendAdjusted:
 
         if final_factor < min_adjustment:
             logger.warning(
-                f"{metric}: Adjustment factor {final_factor:.3f} below minimum, " f"capping at {min_adjustment:.3f}"
+                f"{metric}: Adjustment factor {final_factor:.3f} below minimum, "
+                f"capping at {min_adjustment:.3f}"
             )
             final_factor = min_adjustment
             adjusted_value = current_value * final_factor
         elif final_factor > max_adjustment:
             logger.warning(
-                f"{metric}: Adjustment factor {final_factor:.3f} above maximum, " f"capping at {max_adjustment:.3f}"
+                f"{metric}: Adjustment factor {final_factor:.3f} above maximum, "
+                f"capping at {max_adjustment:.3f}"
             )
             final_factor = max_adjustment
             adjusted_value = current_value * final_factor
@@ -490,7 +525,9 @@ class SectorMultiplesTrendAdjusted:
         """Create result object for groups without sufficient historical data."""
         result = {
             "sample_size": current_data.get("sample_size"),
-            "last_updated": current_data.get("last_updated", datetime.now(timezone.utc).isoformat()),
+            "last_updated": current_data.get(
+                "last_updated", datetime.now(timezone.utc).isoformat()
+            ),
             "trend_analysis": {
                 "status": "insufficient_historical_data",
                 "message": "Current multiples used (no trend adjustment applied)",

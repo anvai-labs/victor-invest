@@ -112,7 +112,9 @@ def resolve_model_from_env(provider: str, model: Optional[str]) -> Optional[str]
         if provider == "ollama":
             model_config = config.ollama.models.get("synthesis")
             if model_config:
-                logger.debug(f"Using model from config.yaml ollama.models.synthesis: {model_config}")
+                logger.debug(
+                    f"Using model from config.yaml ollama.models.synthesis: {model_config}"
+                )
                 return model_config
         elif provider == "anthropic":
             # Check for victor_llm config section (new)
@@ -120,14 +122,18 @@ def resolve_model_from_env(provider: str, model: Optional[str]) -> Optional[str]
                 anthropic_config = config.victor_llm.get("anthropic", {})
                 model_config = anthropic_config.get("model")
                 if model_config:
-                    logger.debug(f"Using model from config.yaml victor_llm.anthropic.model: {model_config}")
+                    logger.debug(
+                        f"Using model from config.yaml victor_llm.anthropic.model: {model_config}"
+                    )
                     return model_config
         elif provider == "openai":
             if hasattr(config, "victor_llm"):
                 openai_config = config.victor_llm.get("openai", {})
                 model_config = openai_config.get("model")
                 if model_config:
-                    logger.debug(f"Using model from config.yaml victor_llm.openai.model: {model_config}")
+                    logger.debug(
+                        f"Using model from config.yaml victor_llm.openai.model: {model_config}"
+                    )
                     return model_config
     except Exception as e:
         logger.debug(f"Could not load model from config.yaml: {e}")
@@ -217,7 +223,9 @@ async def create_investment_orchestrator(
     resolved_provider = resolve_provider_from_env(fallback=provider or "ollama")
     resolved_model = resolve_model_from_env(resolved_provider, model)
 
-    logger.info(f"Creating Victor Agent: provider={resolved_provider}, model={resolved_model or '(default)'}")
+    logger.info(
+        f"Creating Victor Agent: provider={resolved_provider}, model={resolved_model or '(default)'}"
+    )
 
     agent = await Agent.create(
         provider=resolved_provider,

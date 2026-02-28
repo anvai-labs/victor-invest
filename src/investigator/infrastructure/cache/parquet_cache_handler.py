@@ -24,7 +24,9 @@ logger = logging.getLogger(__name__)
 class ParquetCacheStorageHandler(CacheStorageHandler):
     """Cache handler for storing data in Parquet format with gzip compression"""
 
-    def __init__(self, cache_type: CacheType, base_path: Path, priority: int = 10, config=None):
+    def __init__(
+        self, cache_type: CacheType, base_path: Path, priority: int = 10, config=None
+    ):
         """
         Initialize Parquet cache handler
 
@@ -134,7 +136,9 @@ class ParquetCacheStorageHandler(CacheStorageHandler):
 
                 # Read parquet data
                 if self._storage_format == "parquet":
-                    df = pd.read_parquet(file_path, engine=self._parquet_engine or "auto")
+                    df = pd.read_parquet(
+                        file_path, engine=self._parquet_engine or "auto"
+                    )
                 else:
                     df = pd.read_pickle(file_path)
 
@@ -182,13 +186,17 @@ class ParquetCacheStorageHandler(CacheStorageHandler):
                 elif isinstance(value["data"], dict):
                     df = pd.DataFrame([value["data"]])
                 else:
-                    logger.debug(f"Skipping parquet cache for non-tabular data: {type(value.get('data'))}")
+                    logger.debug(
+                        f"Skipping parquet cache for non-tabular data: {type(value.get('data'))}"
+                    )
                     return False
             elif isinstance(value, pd.DataFrame):
                 df = value
             else:
                 # Skip parquet cache for non-DataFrame data
-                logger.debug("Skipping parquet cache - no suitable DataFrame data found")
+                logger.debug(
+                    "Skipping parquet cache - no suitable DataFrame data found"
+                )
                 return False
 
             # Ensure datetime columns are properly formatted
@@ -205,7 +213,9 @@ class ParquetCacheStorageHandler(CacheStorageHandler):
 
             # Remove 'engine' from write_kwargs to avoid duplicate parameter error
             # We'll pass it directly to to_parquet instead
-            write_kwargs_clean = {k: v for k, v in write_kwargs.items() if k != "engine"}
+            write_kwargs_clean = {
+                k: v for k, v in write_kwargs.items() if k != "engine"
+            }
 
             # Check if the engine is available
             try:
@@ -230,7 +240,9 @@ class ParquetCacheStorageHandler(CacheStorageHandler):
                 "compression": (
                     self.parquet_config.compression
                     if self.parquet_config.engine == "fastparquet"
-                    else self.parquet_config.pyarrow_compression if self._parquet_engine else "gzip"
+                    else self.parquet_config.pyarrow_compression
+                    if self._parquet_engine
+                    else "gzip"
                 ),
                 "storage_format": self._storage_format,
                 "records": len(df),
@@ -264,7 +276,9 @@ class ParquetCacheStorageHandler(CacheStorageHandler):
             if exists:
                 # Get file size for logging
                 file_size = file_path.stat().st_size
-                logger.debug(f"📁 Parquet cache EXISTS: {file_path} ({file_size:,} bytes)")
+                logger.debug(
+                    f"📁 Parquet cache EXISTS: {file_path} ({file_size:,} bytes)"
+                )
             else:
                 logger.debug(
                     f"📂 Parquet cache NOT EXISTS: {file_path} (file: {file_path.exists()}, meta: {metadata_path.exists()})"
@@ -327,7 +341,9 @@ class ParquetCacheStorageHandler(CacheStorageHandler):
                     file_count = sum(1 for _ in symbol_dir.rglob("*") if _.is_file())
                     shutil.rmtree(symbol_dir)
                     deleted_count = file_count
-                    logger.info(f"Deleted symbol directory with {file_count} files: {symbol_dir}")
+                    logger.info(
+                        f"Deleted symbol directory with {file_count} files: {symbol_dir}"
+                    )
                 except Exception as e:
                     logger.error(f"Error deleting symbol directory {symbol_dir}: {e}")
             else:
@@ -361,11 +377,15 @@ class ParquetCacheStorageHandler(CacheStorageHandler):
 
                         file_path.unlink()
                         deleted_count += 1
-                        logger.debug(f"Deleted parquet file matching pattern '{pattern}': {file_path}")
+                        logger.debug(
+                            f"Deleted parquet file matching pattern '{pattern}': {file_path}"
+                        )
                     except Exception as e:
                         logger.error(f"Error deleting parquet file {file_path}: {e}")
 
-            logger.info(f"Deleted {deleted_count} parquet files matching pattern '{pattern}'")
+            logger.info(
+                f"Deleted {deleted_count} parquet files matching pattern '{pattern}'"
+            )
             return deleted_count
 
         except Exception as e:

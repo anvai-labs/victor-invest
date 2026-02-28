@@ -150,7 +150,10 @@ class TestSectorMultiplesTrendAdjusted:
 
         # Should match Technology
         assert service._should_process_group("Technology", sectors, None) is True
-        assert service._should_process_group("Technology - Software", sectors, None) is True
+        assert (
+            service._should_process_group("Technology - Software", sectors, None)
+            is True
+        )
 
         # Should not match other sectors
         assert service._should_process_group("Healthcare", sectors, None) is False
@@ -165,7 +168,11 @@ class TestSectorMultiplesTrendAdjusted:
 
         # Should match Software (case-insensitive, partial match)
         assert service._should_process_group("Software", None, industries) is True
-        assert service._should_process_group("Computer Software", None, industries) is True
+        assert (
+            service._should_process_group("Computer Software", None, industries) is True
+        )
 
         # Should not match other industries
-        assert service._should_process_group("Semiconductors", None, industries) is False
+        assert (
+            service._should_process_group("Semiconductors", None, industries) is False
+        )

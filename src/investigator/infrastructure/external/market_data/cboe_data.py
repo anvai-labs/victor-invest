@@ -45,7 +45,9 @@ import aiohttp
 logger = logging.getLogger(__name__)
 
 # CBOE data URLs
-VIX_CURRENT_URL = "https://cdn.cboe.com/api/global/delayed_quotes/charts/historical/_VIX.json"
+VIX_CURRENT_URL = (
+    "https://cdn.cboe.com/api/global/delayed_quotes/charts/historical/_VIX.json"
+)
 VIX_FUTURES_URL = "https://www.cboe.com/us/futures/market_statistics/settlement/csv"
 SKEW_URL = "https://cdn.cboe.com/api/global/delayed_quotes/charts/historical/_SKEW.json"
 
@@ -301,7 +303,9 @@ class CBOEClient:
             session = await self._get_session()
             headers = {"Accept": "application/json"}
 
-            async with session.get(VIX_CURRENT_URL, headers=headers, timeout=30) as response:
+            async with session.get(
+                VIX_CURRENT_URL, headers=headers, timeout=30
+            ) as response:
                 if response.status == 200:
                     data = await response.json()
                     return self._parse_vix_json(data)

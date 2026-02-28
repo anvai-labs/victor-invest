@@ -124,7 +124,8 @@ class PiotroskiFScoreCalculator:
         """Initialize the F-Score calculator."""
         self._name = "Piotroski F-Score Calculator"
         self._description = (
-            "Financial strength assessment using 9 binary criteria. " "8-9 = Strong, 5-7 = Moderate, 0-4 = Weak."
+            "Financial strength assessment using 9 binary criteria. "
+            "8-9 = Strong, 5-7 = Moderate, 0-4 = Weak."
         )
 
     @property
@@ -215,7 +216,9 @@ class PiotroskiFScoreCalculator:
             components = {}
 
             # PROFITABILITY (4 points)
-            prof_score, prof_criteria, prof_components = self._calculate_profitability(data)
+            prof_score, prof_criteria, prof_components = self._calculate_profitability(
+                data
+            )
             result.profitability_score = prof_score
             criteria.update(prof_criteria)
             components.update(prof_components)
@@ -242,7 +245,9 @@ class PiotroskiFScoreCalculator:
             result.strength = self._classify_strength(total_score)
 
             # Set interpretation
-            result.interpretation = self._get_interpretation(result.strength, total_score, criteria)
+            result.interpretation = self._get_interpretation(
+                result.strength, total_score, criteria
+            )
 
             logger.info(
                 f"{data.symbol}: Piotroski F-Score = {total_score}/9 "
@@ -256,7 +261,9 @@ class PiotroskiFScoreCalculator:
 
         return result
 
-    def _calculate_profitability(self, data: FinancialData) -> tuple[int, Dict[str, bool], Dict[str, Any]]:
+    def _calculate_profitability(
+        self, data: FinancialData
+    ) -> tuple[int, Dict[str, bool], Dict[str, Any]]:
         """Calculate profitability criteria (4 points).
 
         1. Positive ROA (net income > 0)
@@ -291,7 +298,9 @@ class PiotroskiFScoreCalculator:
         roa_improving = False
         if data.prior_period and data.prior_period.net_income is not None:
             if data.prior_period.total_assets and data.prior_period.total_assets > 0:
-                prior_roa = data.prior_period.net_income / data.prior_period.total_assets
+                prior_roa = (
+                    data.prior_period.net_income / data.prior_period.total_assets
+                )
                 components["prior_roa"] = prior_roa
                 if "current_roa" in components:
                     roa_improving = components["current_roa"] > prior_roa
@@ -311,7 +320,9 @@ class PiotroskiFScoreCalculator:
 
         return score, criteria, components
 
-    def _calculate_leverage(self, data: FinancialData) -> tuple[int, Dict[str, bool], Dict[str, Any]]:
+    def _calculate_leverage(
+        self, data: FinancialData
+    ) -> tuple[int, Dict[str, bool], Dict[str, Any]]:
         """Calculate leverage and liquidity criteria (3 points).
 
         5. Leverage decreasing (LTD/Assets lower)
@@ -324,17 +335,29 @@ class PiotroskiFScoreCalculator:
 
         # 5. Leverage decreasing
         leverage_decreasing = False
-        if data.long_term_debt is not None and data.total_assets and data.total_assets > 0:
+        if (
+            data.long_term_debt is not None
+            and data.total_assets
+            and data.total_assets > 0
+        ):
             current_leverage = data.long_term_debt / data.total_assets
             components["current_leverage"] = current_leverage
 
             if data.prior_period:
-                if data.prior_period.long_term_debt is not None and data.prior_period.total_assets:
+                if (
+                    data.prior_period.long_term_debt is not None
+                    and data.prior_period.total_assets
+                ):
                     if data.prior_period.total_assets > 0:
-                        prior_leverage = data.prior_period.long_term_debt / data.prior_period.total_assets
+                        prior_leverage = (
+                            data.prior_period.long_term_debt
+                            / data.prior_period.total_assets
+                        )
                         components["prior_leverage"] = prior_leverage
                         leverage_decreasing = current_leverage < prior_leverage
-                        components["leverage_change"] = current_leverage - prior_leverage
+                        components["leverage_change"] = (
+                            current_leverage - prior_leverage
+                        )
                         if leverage_decreasing:
                             score += 1
         criteria["F5_leverage_decreasing"] = leverage_decreasing
@@ -347,12 +370,20 @@ class PiotroskiFScoreCalculator:
                 components["current_ratio"] = current_ratio
 
                 if data.prior_period:
-                    if data.prior_period.current_assets is not None and data.prior_period.current_liabilities:
+                    if (
+                        data.prior_period.current_assets is not None
+                        and data.prior_period.current_liabilities
+                    ):
                         if data.prior_period.current_liabilities > 0:
-                            prior_ratio = data.prior_period.current_assets / data.prior_period.current_liabilities
+                            prior_ratio = (
+                                data.prior_period.current_assets
+                                / data.prior_period.current_liabilities
+                            )
                             components["prior_current_ratio"] = prior_ratio
                             current_ratio_improving = current_ratio > prior_ratio
-                            components["current_ratio_change"] = current_ratio - prior_ratio
+                            components["current_ratio_change"] = (
+                                current_ratio - prior_ratio
+                            )
                             if current_ratio_improving:
                                 score += 1
         criteria["F6_current_ratio_improving"] = current_ratio_improving
@@ -361,17 +392,23 @@ class PiotroskiFScoreCalculator:
         no_dilution = False
         if data.shares_outstanding is not None and data.prior_period:
             if data.prior_period.shares_outstanding is not None:
-                no_dilution = data.shares_outstanding <= data.prior_period.shares_outstanding
+                no_dilution = (
+                    data.shares_outstanding <= data.prior_period.shares_outstanding
+                )
                 components["current_shares"] = data.shares_outstanding
                 components["prior_shares"] = data.prior_period.shares_outstanding
-                components["share_change"] = data.shares_outstanding - data.prior_period.shares_outstanding
+                components["share_change"] = (
+                    data.shares_outstanding - data.prior_period.shares_outstanding
+                )
                 if no_dilution:
                     score += 1
         criteria["F7_no_dilution"] = no_dilution
 
         return score, criteria, components
 
-    def _calculate_efficiency(self, data: FinancialData) -> tuple[int, Dict[str, bool], Dict[str, Any]]:
+    def _calculate_efficiency(
+        self, data: FinancialData
+    ) -> tuple[int, Dict[str, bool], Dict[str, Any]]:
         """Calculate operating efficiency criteria (2 points).
 
         8. Gross margin improving
@@ -388,12 +425,19 @@ class PiotroskiFScoreCalculator:
             components["current_gross_margin"] = current_margin
 
             if data.prior_period:
-                if data.prior_period.gross_profit is not None and data.prior_period.revenue:
+                if (
+                    data.prior_period.gross_profit is not None
+                    and data.prior_period.revenue
+                ):
                     if data.prior_period.revenue > 0:
-                        prior_margin = data.prior_period.gross_profit / data.prior_period.revenue
+                        prior_margin = (
+                            data.prior_period.gross_profit / data.prior_period.revenue
+                        )
                         components["prior_gross_margin"] = prior_margin
                         margin_improving = current_margin > prior_margin
-                        components["gross_margin_change"] = current_margin - prior_margin
+                        components["gross_margin_change"] = (
+                            current_margin - prior_margin
+                        )
                         if margin_improving:
                             score += 1
         criteria["F8_gross_margin_improving"] = margin_improving
@@ -405,12 +449,19 @@ class PiotroskiFScoreCalculator:
             components["current_asset_turnover"] = current_turnover
 
             if data.prior_period:
-                if data.prior_period.revenue is not None and data.prior_period.total_assets:
+                if (
+                    data.prior_period.revenue is not None
+                    and data.prior_period.total_assets
+                ):
                     if data.prior_period.total_assets > 0:
-                        prior_turnover = data.prior_period.revenue / data.prior_period.total_assets
+                        prior_turnover = (
+                            data.prior_period.revenue / data.prior_period.total_assets
+                        )
                         components["prior_asset_turnover"] = prior_turnover
                         turnover_improving = current_turnover > prior_turnover
-                        components["asset_turnover_change"] = current_turnover - prior_turnover
+                        components["asset_turnover_change"] = (
+                            current_turnover - prior_turnover
+                        )
                         if turnover_improving:
                             score += 1
         criteria["F9_asset_turnover_improving"] = turnover_improving
@@ -426,15 +477,25 @@ class PiotroskiFScoreCalculator:
         else:
             return FinancialStrength.MODERATE
 
-    def _get_interpretation(self, strength: FinancialStrength, score: int, criteria: Dict[str, bool]) -> str:
+    def _get_interpretation(
+        self, strength: FinancialStrength, score: int, criteria: Dict[str, bool]
+    ) -> str:
         """Generate human-readable interpretation."""
         passed = sum(1 for v in criteria.values() if v)
         len(criteria) - passed
 
         # Count by category
-        prof_passed = sum(1 for k, v in criteria.items() if k.startswith("F") and int(k[1]) <= 4 and v)
-        lev_passed = sum(1 for k, v in criteria.items() if k.startswith("F") and 5 <= int(k[1]) <= 7 and v)
-        eff_passed = sum(1 for k, v in criteria.items() if k.startswith("F") and int(k[1]) >= 8 and v)
+        prof_passed = sum(
+            1 for k, v in criteria.items() if k.startswith("F") and int(k[1]) <= 4 and v
+        )
+        lev_passed = sum(
+            1
+            for k, v in criteria.items()
+            if k.startswith("F") and 5 <= int(k[1]) <= 7 and v
+        )
+        eff_passed = sum(
+            1 for k, v in criteria.items() if k.startswith("F") and int(k[1]) >= 8 and v
+        )
 
         base_msg = f"F-Score {score}/9: "
 

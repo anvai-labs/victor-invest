@@ -41,7 +41,9 @@ def status(ctx, verbose):
     checks = []
 
     # Check Python
-    py_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    py_version = (
+        f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    )
     checks.append(("Python", True, py_version))
 
     # Check Ollama
@@ -166,7 +168,9 @@ def setup(ctx, skip_deps, skip_db):
     # 2. Install dependencies
     if not skip_deps:
         click.echo("\n2. Installing dependencies...")
-        result = subprocess.run(["pip", "install", "-r", "requirements.txt"], capture_output=True)
+        result = subprocess.run(
+            ["pip", "install", "-r", "requirements.txt"], capture_output=True
+        )
         if result.returncode == 0:
             click.echo("   Dependencies installed")
             steps.append(("Dependencies", True))
@@ -280,7 +284,9 @@ def info(ctx):
 
     # Resources
     click.echo("\nResources:")
-    click.echo(f"  CPU Cores:    {psutil.cpu_count(logical=False)} physical, {psutil.cpu_count()} logical")
+    click.echo(
+        f"  CPU Cores:    {psutil.cpu_count(logical=False)} physical, {psutil.cpu_count()} logical"
+    )
     click.echo(f"  CPU Usage:    {psutil.cpu_percent()}%")
 
     memory = psutil.virtual_memory()
@@ -289,7 +295,9 @@ def info(ctx):
     )
 
     disk = psutil.disk_usage(".")
-    click.echo(f"  Disk:         {disk.used / (1024**3):.1f}GB / {disk.total / (1024**3):.1f}GB ({disk.percent}%)")
+    click.echo(
+        f"  Disk:         {disk.used / (1024**3):.1f}GB / {disk.total / (1024**3):.1f}GB ({disk.percent}%)"
+    )
 
     # Package versions
     click.echo("\nKey Packages:")
@@ -390,7 +398,9 @@ def logs(ctx, lines, follow, level):
         return
 
     # Find latest log file
-    log_files = sorted(log_dir.glob("*.log"), key=lambda p: p.stat().st_mtime, reverse=True)
+    log_files = sorted(
+        log_dir.glob("*.log"), key=lambda p: p.stat().st_mtime, reverse=True
+    )
 
     if not log_files:
         click.echo("No log files found")
@@ -473,4 +483,6 @@ def metrics(ctx, days):
             fails = metrics.get("failures", 0)
             success_rate = ((execs - fails) / execs * 100) if execs > 0 else 0
             click.echo(f"  {agent}:")
-            click.echo(f"    Executions: {execs}, Avg: {avg_dur:.1f}s, Success: {success_rate:.0f}%")
+            click.echo(
+                f"    Executions: {execs}, Avg: {avg_dur:.1f}s, Success: {success_rate:.0f}%"
+            )

@@ -108,7 +108,9 @@ class DatabaseManager:
                 pool_pre_ping=True,
             )
 
-            self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
+            self.SessionLocal = sessionmaker(
+                autocommit=False, autoflush=False, bind=self.engine
+            )
 
             # Logging moved to get_db_manager() singleton factory to avoid duplicate logs
         except Exception as e:
@@ -149,7 +151,9 @@ class DatabaseManager:
 
             with self.engine.begin() as conn:
                 # Split by semicolon and execute each statement
-                statements = [stmt.strip() for stmt in sql_content.split(";") if stmt.strip()]
+                statements = [
+                    stmt.strip() for stmt in sql_content.split(";") if stmt.strip()
+                ]
                 for statement in statements:
                     if statement:
                         conn.execute(text(statement))
@@ -184,7 +188,9 @@ class TechnicalIndicatorsDAO:
                 indicators = TechnicalIndicators(**indicators_data)
                 session.add(indicators)
                 session.commit()
-                logger.info(f"Saved technical indicators for {indicators_data.get('symbol')}")
+                logger.info(
+                    f"Saved technical indicators for {indicators_data.get('symbol')}"
+                )
                 return True
         except Exception as e:
             logger.error(f"Failed to save technical indicators: {e}")
@@ -322,7 +328,9 @@ class LLMResponseStoreDAO:
             logger.error(f"Failed to get LLM response: {e}")
             return None
 
-    def get_llm_responses_by_symbol(self, symbol: str, llm_type: str = None) -> List[Dict]:
+    def get_llm_responses_by_symbol(
+        self, symbol: str, llm_type: str = None
+    ) -> List[Dict]:
         """Get all LLM responses for a symbol"""
         try:
             with self.db.get_session() as session:
@@ -393,7 +401,9 @@ class LLMResponseStoreDAO:
             logger.error(f"Failed to delete LLM responses: {e}")
             return 0
 
-    def delete_llm_responses_by_pattern(self, symbol_pattern: str = None, form_type_pattern: str = None) -> int:
+    def delete_llm_responses_by_pattern(
+        self, symbol_pattern: str = None, form_type_pattern: str = None
+    ) -> int:
         """Delete LLM responses matching patterns"""
         try:
             with self.db.get_session() as session:
@@ -424,7 +434,9 @@ class TickerCIKMappingDAO:
     def __init__(self, db_manager: DatabaseManager):
         self.db = db_manager
 
-    def save_mapping(self, ticker: str, cik: str, company_name: str, exchange: str = None) -> bool:
+    def save_mapping(
+        self, ticker: str, cik: str, company_name: str, exchange: str = None
+    ) -> bool:
         """Save ticker-CIK mapping"""
         try:
             with self.db.get_session() as session:
@@ -469,7 +481,9 @@ class TickerCIKMappingDAO:
         try:
             with self.db.get_session() as session:
                 results = session.execute(
-                    text("SELECT ticker, cik, company_name, exchange FROM ticker_cik_mapping")
+                    text(
+                        "SELECT ticker, cik, company_name, exchange FROM ticker_cik_mapping"
+                    )
                 ).fetchall()
 
                 return [
@@ -563,7 +577,9 @@ class SECResponseStoreDAO:
 
                 if result:
                     return {
-                        "response_data": safe_json_loads(result[0]) if result[0] else {},
+                        "response_data": safe_json_loads(result[0])
+                        if result[0]
+                        else {},
                         "metadata": safe_json_loads(result[1]) if result[1] else {},
                         "updated_at": result[2],
                     }
@@ -572,7 +588,9 @@ class SECResponseStoreDAO:
             logger.error(f"Failed to get SEC response: {e}")
             return None
 
-    def get_latest_response(self, symbol: str, form_type: str, category: Optional[str] = None) -> Optional[Dict]:
+    def get_latest_response(
+        self, symbol: str, form_type: str, category: Optional[str] = None
+    ) -> Optional[Dict]:
         """Retrieve the most recently updated SEC response for a symbol"""
         try:
             with self.db.get_session() as session:
@@ -600,7 +618,9 @@ class SECResponseStoreDAO:
 
                 if result:
                     return {
-                        "response_data": safe_json_loads(result[0]) if result[0] else {},
+                        "response_data": safe_json_loads(result[0])
+                        if result[0]
+                        else {},
                         "metadata": safe_json_loads(result[1]) if result[1] else {},
                         "fiscal_year": result[2],
                         "fiscal_period": result[3],
@@ -634,7 +654,9 @@ class AllSubmissionStoreDAO:
     def __init__(self, db_manager: DatabaseManager):
         self.db = db_manager
 
-    def save_submission(self, symbol: str, cik: str, company_name: str, submissions_data: Dict, **kwargs) -> bool:
+    def save_submission(
+        self, symbol: str, cik: str, company_name: str, submissions_data: Dict, **kwargs
+    ) -> bool:
         """Save or update submission data - uses symbol as primary key"""
         try:
             with self.db.get_session() as session:
@@ -663,24 +685,32 @@ class AllSubmissionStoreDAO:
             logger.error(f"Failed to save submission data: {e}")
             return False
 
-    def get_submission(self, symbol: str, cik: str = None, max_age_days: int = 7) -> Optional[Dict]:
+    def get_submission(
+        self, symbol: str, cik: str = None, max_age_days: int = 7
+    ) -> Optional[Dict]:
         """Get submission data by symbol (primary key) - CIK is optional for compatibility"""
         try:
             with self.db.get_session() as session:
                 result = session.execute(
-                    text("""
+                    text(
+                        """
                         SELECT submissions_data, company_name, fetched_at, updated_at, cik
                         FROM sec_submissions
                         WHERE symbol = :symbol
                         AND updated_at > NOW() - INTERVAL ':max_age days'
                         LIMIT 1
-                    """.replace(":max_age", str(max_age_days))),
+                    """.replace(":max_age", str(max_age_days))
+                    ),
                     {"symbol": symbol},
                 ).fetchone()
 
                 if result:
                     # Return raw data - let Python code process it
-                    submissions_data = json.loads(result[0]) if isinstance(result[0], str) else result[0]
+                    submissions_data = (
+                        json.loads(result[0])
+                        if isinstance(result[0], str)
+                        else result[0]
+                    )
                     return {
                         "submissions_data": submissions_data,
                         "company_name": result[1],
@@ -697,10 +727,14 @@ class AllSubmissionStoreDAO:
         """Delete submissions older than specified days"""
         try:
             with self.db.get_session() as session:
-                result = session.execute(text("""
+                result = session.execute(
+                    text(
+                        """
                         DELETE FROM sec_submissions
                         WHERE updated_at < NOW() - INTERVAL ':days days'
-                    """.replace(":days", str(days_to_keep))))
+                    """.replace(":days", str(days_to_keep))
+                    )
+                )
                 session.commit()
                 deleted_count = result.rowcount
                 logger.info(f"Deleted {deleted_count} old submission records")
@@ -772,7 +806,9 @@ class QuarterlyMetricsDAO:
                     },
                 )
                 session.commit()
-                logger.info(f"Saved quarterly metrics for {symbol} {fiscal_year}-{fiscal_period}")
+                logger.info(
+                    f"Saved quarterly metrics for {symbol} {fiscal_year}-{fiscal_period}"
+                )
                 return True
         except Exception as e:
             logger.error(f"Failed to save quarterly metrics: {e}")
@@ -791,7 +827,8 @@ class QuarterlyMetricsDAO:
                 if fiscal_year and fiscal_period:
                     # Get specific quarter
                     result = session.execute(
-                        text("""
+                        text(
+                            """
                             SELECT symbol, fiscal_year, fiscal_period, cik, form_type,
                                    metrics_data, company_name, calculated_at, updated_at
                             FROM quarterly_metrics
@@ -800,7 +837,8 @@ class QuarterlyMetricsDAO:
                             AND fiscal_period = :fiscal_period
                             AND updated_at > NOW() - INTERVAL ':max_age days'
                             LIMIT 1
-                        """.replace(":max_age", str(max_age_days))),
+                        """.replace(":max_age", str(max_age_days))
+                        ),
                         {
                             "symbol": symbol,
                             "fiscal_year": fiscal_year,
@@ -823,7 +861,8 @@ class QuarterlyMetricsDAO:
                 else:
                     # Get latest metrics for symbol
                     result = session.execute(
-                        text("""
+                        text(
+                            """
                             SELECT symbol, fiscal_year, fiscal_period, cik, form_type,
                                    metrics_data, company_name, calculated_at, updated_at
                             FROM quarterly_metrics
@@ -839,7 +878,8 @@ class QuarterlyMetricsDAO:
                                          ELSE 0
                                      END DESC
                             LIMIT 1
-                        """.replace(":max_age", str(max_age_days))),
+                        """.replace(":max_age", str(max_age_days))
+                        ),
                         {"symbol": symbol},
                     ).fetchone()
 
@@ -979,21 +1019,33 @@ class AllCompanyFactsStoreDAO:
                     """),
                     {"symbol": symbol},
                 ).fetchone()
-                logger.info(f"🔍 DB GET_COMPANY_FACTS: Query executed for {symbol}, result: {result is not None}")
+                logger.info(
+                    f"🔍 DB GET_COMPANY_FACTS: Query executed for {symbol}, result: {result is not None}"
+                )
 
                 if result:
-                    logger.info(f"🔍 DB GET_COMPANY_FACTS: Processing result for {symbol}")
+                    logger.info(
+                        f"🔍 DB GET_COMPANY_FACTS: Processing result for {symbol}"
+                    )
                     companyfacts, metadata, cik, company_name, updated_at = result
-                    logger.info(f"🔍 DB GET_COMPANY_FACTS: Data extracted, companyfacts type: {type(companyfacts)}")
+                    logger.info(
+                        f"🔍 DB GET_COMPANY_FACTS: Data extracted, companyfacts type: {type(companyfacts)}"
+                    )
 
                     # Process companyfacts
                     if isinstance(companyfacts, dict):
-                        logger.info(f"🔍 DB GET_COMPANY_FACTS: companyfacts is dict for {symbol}")
+                        logger.info(
+                            f"🔍 DB GET_COMPANY_FACTS: companyfacts is dict for {symbol}"
+                        )
                         processed_facts = companyfacts
                     else:
-                        logger.info(f"🔍 DB GET_COMPANY_FACTS: parsing companyfacts string for {symbol}")
+                        logger.info(
+                            f"🔍 DB GET_COMPANY_FACTS: parsing companyfacts string for {symbol}"
+                        )
                         processed_facts = safe_json_loads(companyfacts)
-                        logger.info(f"🔍 DB GET_COMPANY_FACTS: companyfacts parsed for {symbol}")
+                        logger.info(
+                            f"🔍 DB GET_COMPANY_FACTS: companyfacts parsed for {symbol}"
+                        )
 
                     # Process metadata
                     if metadata:
@@ -1004,7 +1056,9 @@ class AllCompanyFactsStoreDAO:
                     else:
                         processed_metadata = {}
 
-                    logger.info(f"🔍 DB GET_COMPANY_FACTS: Building return dict for {symbol}")
+                    logger.info(
+                        f"🔍 DB GET_COMPANY_FACTS: Building return dict for {symbol}"
+                    )
                     return {
                         "companyfacts": processed_facts,
                         "metadata": processed_metadata,
@@ -1023,7 +1077,9 @@ class AllCompanyFactsStoreDAO:
         """Get all symbols that have company facts stored"""
         try:
             with self.db_manager.get_session() as session:
-                results = session.execute(text("SELECT symbol FROM sec_companyfacts ORDER BY symbol")).fetchall()
+                results = session.execute(
+                    text("SELECT symbol FROM sec_companyfacts ORDER BY symbol")
+                ).fetchall()
 
                 return [row[0] for row in results]
 
@@ -1062,7 +1118,9 @@ class AllCompanyFactsStoreDAO:
                 )
                 session.commit()
                 deleted_count = result.rowcount
-                logger.info(f"Deleted {deleted_count} company facts entries for {symbol}")
+                logger.info(
+                    f"Deleted {deleted_count} company facts entries for {symbol}"
+                )
                 return deleted_count
         except Exception as e:
             logger.error(f"Failed to delete company facts for {symbol}: {e}")
@@ -1112,7 +1170,9 @@ def is_etf(symbol: str) -> bool:
             )
             return is_etf_flag
         else:
-            logger.warning(f"Symbol {symbol} not found in symbol table, treating as stock")
+            logger.warning(
+                f"Symbol {symbol} not found in symbol table, treating as stock"
+            )
             return False
 
     except Exception as e:

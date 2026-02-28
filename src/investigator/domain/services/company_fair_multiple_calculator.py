@@ -158,7 +158,9 @@ class CompanyFairMultipleCalculator:
             sector_trend_adjusted = self._get_sector_trend_adjusted(sector, metric)
 
         if not sector_trend_adjusted:
-            logger.warning(f"{symbol}: Could not get trend-adjusted sector multiple for {sector}")
+            logger.warning(
+                f"{symbol}: Could not get trend-adjusted sector multiple for {sector}"
+            )
             return None
 
         # Step 2: Get company's historical premium (Layer 2)
@@ -170,7 +172,10 @@ class CompanyFairMultipleCalculator:
         )
 
         if not premium_data:
-            logger.warning(f"{symbol}: Insufficient historical premium data " f"(need {self.min_data_points} points)")
+            logger.warning(
+                f"{symbol}: Insufficient historical premium data "
+                f"(need {self.min_data_points} points)"
+            )
             return None
 
         # Extract premium data
@@ -189,7 +194,9 @@ class CompanyFairMultipleCalculator:
         mean_reversion_signal = premium_data.get("mean_reversion_signal", "none")
 
         # Step 5: Apply mean reversion adjustment
-        mean_reversion_factor = self.MEAN_REVERSION_ADJUSTMENTS.get(mean_reversion_signal, 1.00)
+        mean_reversion_factor = self.MEAN_REVERSION_ADJUSTMENTS.get(
+            mean_reversion_signal, 1.00
+        )
 
         # Conservative mode: reduce mean reversion adjustments
         if self.conservative and mean_reversion_signal != "none":
@@ -219,7 +226,10 @@ class CompanyFairMultipleCalculator:
         # Need current company multiple for this
         current_company_multiple = self._get_current_company_multiple(symbol, metric)
         if current_company_multiple:
-            upside_downside_pct = ((final_fair_multiple - current_company_multiple) / current_company_multiple) * 100
+            upside_downside_pct = (
+                (final_fair_multiple - current_company_multiple)
+                / current_company_multiple
+            ) * 100
         else:
             upside_downside_pct = 0.0
 
@@ -318,7 +328,9 @@ class CompanyFairMultipleCalculator:
         # For now, return empty dict
         return {}
 
-    def _get_current_company_multiple(self, symbol: str, metric: str) -> Optional[float]:
+    def _get_current_company_multiple(
+        self, symbol: str, metric: str
+    ) -> Optional[float]:
         """Get company's current multiple for a metric.
 
         Args:
@@ -342,13 +354,15 @@ class CompanyFairMultipleCalculator:
                 return None
 
             # Get latest data
-            query = text("""
+            query = text(
+                """
                 SELECT market_cap, {denominator}
                 FROM sec_companyfacts_processed
                 WHERE UPPER(symbol) = UPPER(:symbol)
                 ORDER BY fiscal_year DESC, fiscal_period DESC
                 LIMIT 1
-            """.format(denominator=metric_column_map[metric]))
+            """.format(denominator=metric_column_map[metric])
+            )
 
             result = conn.execute(query, {"symbol": symbol})
             row = result.fetchone()
@@ -400,7 +414,9 @@ class CompanyFairMultipleCalculator:
             factors.append(f"Very stable premium (std dev: {premium_std_dev:.1f}%)")
         elif premium_std_dev <= self.MAX_PREMIUM_STD_DEV_MEDIUM_CONFIDENCE:
             confidence_score += 2
-            factors.append(f"Moderately stable premium (std dev: {premium_std_dev:.1f}%)")
+            factors.append(
+                f"Moderately stable premium (std dev: {premium_std_dev:.1f}%)"
+            )
         else:
             confidence_score += 1
             factors.append(f"Volatile premium (std dev: {premium_std_dev:.1f}%)")
@@ -462,7 +478,9 @@ class CompanyFairMultipleCalculator:
         logger.info(f"Generating fair value report for {symbol}...")
 
         # Calculate fair multiples for all metrics
-        fair_multiples = self.calculate_all_fair_multiples(symbol=symbol, sector=sector, industry=industry)
+        fair_multiples = self.calculate_all_fair_multiples(
+            symbol=symbol, sector=sector, industry=industry
+        )
 
         # Build report
         report = {

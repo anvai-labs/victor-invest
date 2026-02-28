@@ -133,7 +133,9 @@ class DataValidationService:
         if sec_shares and symbol_shares:
             ratio = sec_shares / symbol_shares if symbol_shares > 0 else 0
 
-            if ratio > 1.8:  # SEC has more shares - possible recent split not in symbol table
+            if (
+                ratio > 1.8
+            ):  # SEC has more shares - possible recent split not in symbol table
                 warnings.append(
                     DataQualityWarning(
                         code="SHARES_MISMATCH_FORWARD_SPLIT",
@@ -310,17 +312,29 @@ class DataValidationService:
             all_warnings.extend(fin_warnings)
 
         # Calculate quality score
-        error_count = sum(1 for w in all_warnings if w.severity == WarningSeverity.ERROR)
-        warning_count = sum(1 for w in all_warnings if w.severity == WarningSeverity.WARNING)
+        error_count = sum(
+            1 for w in all_warnings if w.severity == WarningSeverity.ERROR
+        )
+        warning_count = sum(
+            1 for w in all_warnings if w.severity == WarningSeverity.WARNING
+        )
         info_count = sum(1 for w in all_warnings if w.severity == WarningSeverity.INFO)
 
         # Score: 100 - (30 * errors) - (10 * warnings) - (2 * info)
-        score = max(0, 100 - (30 * error_count) - (10 * warning_count) - (2 * info_count))
+        score = max(
+            0, 100 - (30 * error_count) - (10 * warning_count) - (2 * info_count)
+        )
 
         return {
             "symbol": symbol,
             "quality_score": score,
-            "assessment": "excellent" if score >= 90 else "good" if score >= 70 else "fair" if score >= 50 else "poor",
+            "assessment": "excellent"
+            if score >= 90
+            else "good"
+            if score >= 70
+            else "fair"
+            if score >= 50
+            else "poor",
             "error_count": error_count,
             "warning_count": warning_count,
             "info_count": info_count,

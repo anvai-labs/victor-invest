@@ -140,7 +140,10 @@ class MutuallyExclusiveOption(click.Option):
 def print_table(headers: list, rows: list, widths: Optional[list] = None):
     """Print a formatted table to stdout"""
     if not widths:
-        widths = [max(len(str(h)), max(len(str(r[i])) for r in rows) if rows else 0) + 2 for i, h in enumerate(headers)]
+        widths = [
+            max(len(str(h)), max(len(str(r[i])) for r in rows) if rows else 0) + 2
+            for i, h in enumerate(headers)
+        ]
 
     # Header
     header_line = "".join(str(h).ljust(w) for h, w in zip(headers, widths))

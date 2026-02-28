@@ -30,7 +30,9 @@ class TestZSPipeline:
     @pytest.fixture
     def sec_agent(self):
         """Create SEC agent instance"""
-        return SECAnalysisAgent(agent_id="sec", ollama_client=None, event_bus=None, cache_manager=None)
+        return SECAnalysisAgent(
+            agent_id="sec", ollama_client=None, event_bus=None, cache_manager=None
+        )
 
     @pytest.fixture
     def fundamental_agent(self):
@@ -55,7 +57,9 @@ class TestZSPipeline:
 
         result = await sec_agent.execute_with_timeout(task)
 
-        assert result.status == TaskStatus.COMPLETED, f"SEC agent failed: {result.error}"
+        assert result.status == TaskStatus.COMPLETED, (
+            f"SEC agent failed: {result.error}"
+        )
         assert result.result_data["status"] == "success"
         assert result.result_data["symbol"] == "ZS"
 
@@ -66,7 +70,9 @@ class TestZSPipeline:
 
     @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_fundamental_analysis_produces_complete_result(self, fundamental_agent):
+    async def test_fundamental_analysis_produces_complete_result(
+        self, fundamental_agent
+    ):
         """Fundamental agent produces a full analysis with valuation, ratios, and recommendation."""
         task = AgentTask(
             task_id="test_zs_fundamental",
@@ -77,7 +83,9 @@ class TestZSPipeline:
 
         result = await fundamental_agent.execute_with_timeout(task)
 
-        assert result.status == TaskStatus.COMPLETED, f"Fundamental agent failed: {result.error}"
+        assert result.status == TaskStatus.COMPLETED, (
+            f"Fundamental agent failed: {result.error}"
+        )
         rd = result.result_data
         assert rd["status"] == "success"
         assert rd["symbol"] == "ZS"
@@ -147,7 +155,9 @@ class TestZSPipeline:
         mms = result.result_data["multi_model_summary"]
 
         # At least one model must be applicable
-        assert mms["applicable_models"] >= 1, "At least one valuation model should be applicable"
+        assert mms["applicable_models"] >= 1, (
+            "At least one valuation model should be applicable"
+        )
 
         # Blended fair value must be positive
         assert mms["blended_fair_value"] > 0, "Blended fair value should be positive"
@@ -191,7 +201,9 @@ class TestZSPipeline:
         assert ratios["free_cash_flow"] > 0, "ZS should have positive FCF"
 
         # Gross margin should be high (SaaS company, typically 70%+)
-        assert ratios["gross_margin"] > 0.6, f"ZS gross margin {ratios['gross_margin']:.1%} seems too low for SaaS"
+        assert ratios["gross_margin"] > 0.6, (
+            f"ZS gross margin {ratios['gross_margin']:.1%} seems too low for SaaS"
+        )
 
         # Market cap should be present and positive
         assert ratios["market_cap"] > 0
@@ -260,7 +272,9 @@ class TestMultiCompanyPipeline:
             )
 
             result = await agent.execute_with_timeout(task)
-            assert result.status == TaskStatus.COMPLETED, f"{symbol} failed: {result.error}"
+            assert result.status == TaskStatus.COMPLETED, (
+                f"{symbol} failed: {result.error}"
+            )
 
             rd = result.result_data
             results[symbol] = {
@@ -274,5 +288,9 @@ class TestMultiCompanyPipeline:
         # All companies should have positive fair values
         for symbol, data in results.items():
             assert data["fair_value"] > 0, f"{symbol} should have positive fair value"
-            assert data["applicable_models"] >= 1, f"{symbol} should have at least 1 applicable model"
-            assert data["fiscal_period"] is not None, f"{symbol} should have a fiscal period"
+            assert data["applicable_models"] >= 1, (
+                f"{symbol} should have at least 1 applicable model"
+            )
+            assert data["fiscal_period"] is not None, (
+                f"{symbol} should have a fiscal period"
+            )

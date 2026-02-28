@@ -112,8 +112,12 @@ class TestGetPeers:
         industry = "Consumer Electronics"
 
         # Mock company info query
-        company_info_result = [("AAPL", "Technology", industry, 2500000000000, "Apple Inc.")]
-        mock_session = mock_stock_db_manager.get_session.return_value.__enter__.return_value
+        company_info_result = [
+            ("AAPL", "Technology", industry, 2500000000000, "Apple Inc.")
+        ]
+        mock_session = (
+            mock_stock_db_manager.get_session.return_value.__enter__.return_value
+        )
         mock_session.execute.return_value.fetchone.return_value = company_info_result[0]
 
         # Mock peers query
@@ -138,21 +142,29 @@ class TestGetPeers:
         symbol = "UNKNOWN"
 
         # Mock no company info
-        mock_session = mock_stock_db_manager.get_session.return_value.__enter__.return_value
+        mock_session = (
+            mock_stock_db_manager.get_session.return_value.__enter__.return_value
+        )
         mock_session.execute.return_value.fetchone.return_value = None
 
         result = valuation_service.get_peers(symbol=symbol)
 
         assert result == []
 
-    def test_get_peers_insufficient_peers(self, valuation_service, mock_stock_db_manager):
+    def test_get_peers_insufficient_peers(
+        self, valuation_service, mock_stock_db_manager
+    ):
         """Test peer retrieval with insufficient peers."""
         symbol = "AAPL"
         industry = "Consumer Electronics"
 
         # Mock company info
-        company_info_result = [("AAPL", "Technology", industry, 2500000000000, "Apple Inc.")]
-        mock_session = mock_stock_db_manager.get_session.return_value.__enter__.return_value
+        company_info_result = [
+            ("AAPL", "Technology", industry, 2500000000000, "Apple Inc.")
+        ]
+        mock_session = (
+            mock_stock_db_manager.get_session.return_value.__enter__.return_value
+        )
 
         # First call returns company info, second returns only 1 peer
         call_count = [0]
@@ -168,7 +180,9 @@ class TestGetPeers:
 
         mock_session.execute.side_effect = mock_execute_side_effect
 
-        result = valuation_service.get_peers(symbol=symbol, industry=industry, min_peers=3)
+        result = valuation_service.get_peers(
+            symbol=symbol, industry=industry, min_peers=3
+        )
 
         # Returns what we have even if below minimum
         assert len(result) == 1
@@ -177,7 +191,9 @@ class TestGetPeers:
 class TestCompareToPeers:
     """Test peer comparison analysis."""
 
-    def test_compare_to_peers_expensive(self, valuation_service, mock_stock_db_manager, mock_sec_db_manager):
+    def test_compare_to_peers_expensive(
+        self, valuation_service, mock_stock_db_manager, mock_sec_db_manager
+    ):
         """Test comparison showing company is expensive vs peers."""
         symbol = "AAPL"
         metric = "pe"
@@ -185,11 +201,15 @@ class TestCompareToPeers:
 
         # Mock company info
         company_info = [("AAPL", "Technology", industry, 2500000000000, "Apple Inc.")]
-        mock_stock_session = mock_stock_db_manager.get_session.return_value.__enter__.return_value
+        mock_stock_session = (
+            mock_stock_db_manager.get_session.return_value.__enter__.return_value
+        )
         mock_stock_session.execute.return_value.fetchone.return_value = company_info[0]
 
         # Mock peers
-        with patch.object(valuation_service, "get_peers", return_value=["MSFT", "GOOGL", "META"]):
+        with patch.object(
+            valuation_service, "get_peers", return_value=["MSFT", "GOOGL", "META"]
+        ):
             # Mock _get_company_multiple to return different values for different symbols
             # Company has high P/E (35.0), peers have lower P/E (25.0, 28.0, 30.0)
             peer_multiples = {
@@ -219,7 +239,9 @@ class TestCompareToPeers:
         assert result.status == "expensive"
         assert result.peer_count == 3
 
-    def test_compare_to_peers_cheap(self, valuation_service, mock_stock_db_manager, mock_sec_db_manager):
+    def test_compare_to_peers_cheap(
+        self, valuation_service, mock_stock_db_manager, mock_sec_db_manager
+    ):
         """Test comparison showing company is cheap vs peers."""
         symbol = "AAPL"
         metric = "pe"
@@ -227,11 +249,15 @@ class TestCompareToPeers:
 
         # Mock company info
         company_info = [("AAPL", "Technology", industry, 2500000000000, "Apple Inc.")]
-        mock_stock_session = mock_stock_db_manager.get_session.return_value.__enter__.return_value
+        mock_stock_session = (
+            mock_stock_db_manager.get_session.return_value.__enter__.return_value
+        )
         mock_stock_session.execute.return_value.fetchone.return_value = company_info[0]
 
         # Mock peers
-        with patch.object(valuation_service, "get_peers", return_value=["MSFT", "GOOGL", "META"]):
+        with patch.object(
+            valuation_service, "get_peers", return_value=["MSFT", "GOOGL", "META"]
+        ):
             # Company has low P/E (15.0), peers have higher P/E (25.0, 28.0, 30.0)
             peer_multiples = {
                 "AAPL": 15.0,
@@ -256,7 +282,9 @@ class TestCompareToPeers:
         assert result.percentile_rank == 0.0  # Lowest value
         assert result.status == "cheap"
 
-    def test_compare_to_peers_fair(self, valuation_service, mock_stock_db_manager, mock_sec_db_manager):
+    def test_compare_to_peers_fair(
+        self, valuation_service, mock_stock_db_manager, mock_sec_db_manager
+    ):
         """Test comparison showing company is fairly valued vs peers."""
         symbol = "AAPL"
         metric = "pe"
@@ -264,11 +292,15 @@ class TestCompareToPeers:
 
         # Mock company info
         company_info = [("AAPL", "Technology", industry, 2500000000000, "Apple Inc.")]
-        mock_stock_session = mock_stock_db_manager.get_session.return_value.__enter__.return_value
+        mock_stock_session = (
+            mock_stock_db_manager.get_session.return_value.__enter__.return_value
+        )
         mock_stock_session.execute.return_value.fetchone.return_value = company_info[0]
 
         # Mock peers
-        with patch.object(valuation_service, "get_peers", return_value=["MSFT", "GOOGL", "META"]):
+        with patch.object(
+            valuation_service, "get_peers", return_value=["MSFT", "GOOGL", "META"]
+        ):
             # Company has mid-range P/E (25.0), peers range (20.0, 28.0, 30.0)
             peer_multiples = {
                 "AAPL": 25.0,
@@ -294,7 +326,9 @@ class TestCompareToPeers:
         assert 25 <= result.percentile_rank <= 50  # Should be in fair range
         assert result.status == "fair"
 
-    def test_compare_to_peers_no_company_multiple(self, valuation_service, mock_stock_db_manager, mock_sec_db_manager):
+    def test_compare_to_peers_no_company_multiple(
+        self, valuation_service, mock_stock_db_manager, mock_sec_db_manager
+    ):
         """Test comparison when company multiple is unavailable."""
         symbol = "AAPL"
         metric = "pe"
@@ -302,11 +336,15 @@ class TestCompareToPeers:
 
         # Mock company info
         company_info = [("AAPL", "Technology", industry, 2500000000000, "Apple Inc.")]
-        mock_stock_session = mock_stock_db_manager.get_session.return_value.__enter__.return_value
+        mock_stock_session = (
+            mock_stock_db_manager.get_session.return_value.__enter__.return_value
+        )
         mock_stock_session.execute.return_value.fetchone.return_value = company_info[0]
 
         # Mock company multiple unavailable
-        mock_conn = mock_sec_db_manager.engine.connect.return_value.__enter__.return_value
+        mock_conn = (
+            mock_sec_db_manager.engine.connect.return_value.__enter__.return_value
+        )
         mock_conn.execute.return_value.fetchone.return_value = None
 
         result = valuation_service.compare_to_peers(
@@ -327,18 +365,24 @@ class TestCompareToPeers:
 
         # Mock company info
         company_info = [("AAPL", "Technology", industry, 2500000000000, "Apple Inc.")]
-        mock_stock_session = mock_stock_db_manager.get_session.return_value.__enter__.return_value
+        mock_stock_session = (
+            mock_stock_db_manager.get_session.return_value.__enter__.return_value
+        )
         mock_stock_session.execute.return_value.fetchone.return_value = company_info[0]
 
         # Mock company multiple
-        mock_conn = mock_sec_db_manager.engine.connect.return_value.__enter__.return_value
+        mock_conn = (
+            mock_sec_db_manager.engine.connect.return_value.__enter__.return_value
+        )
         mock_conn.execute.return_value.fetchone.return_value = (
             3500000000000,
             100000000000,
         )
 
         # Mock peers but only 1 has data
-        with patch.object(valuation_service, "get_peers", return_value=["MSFT", "GOOGL", "META"]):
+        with patch.object(
+            valuation_service, "get_peers", return_value=["MSFT", "GOOGL", "META"]
+        ):
             # Only MSFT has valid data, others return None
             peer_multiples = [25.0, None, None]
 
@@ -426,14 +470,18 @@ class TestPremiumToPeers:
 class TestCompareAllMetrics:
     """Test comparing across all metrics."""
 
-    def test_compare_all_metrics_success(self, valuation_service, mock_stock_db_manager, mock_sec_db_manager):
+    def test_compare_all_metrics_success(
+        self, valuation_service, mock_stock_db_manager, mock_sec_db_manager
+    ):
         """Test successful comparison across all metrics."""
         symbol = "AAPL"
         industry = "Consumer Electronics"
 
         # Mock company info
         company_info = [("AAPL", "Technology", industry, 2500000000000, "Apple Inc.")]
-        mock_stock_session = mock_stock_db_manager.get_session.return_value.__enter__.return_value
+        mock_stock_session = (
+            mock_stock_db_manager.get_session.return_value.__enter__.return_value
+        )
         mock_stock_session.execute.return_value.fetchone.return_value = company_info[0]
 
         # Mock compare_to_peers for each metric
@@ -507,21 +555,27 @@ class TestCompareAllMetrics:
                 ),
             ]
 
-            results = valuation_service.compare_all_metrics(symbol=symbol, industry=industry)
+            results = valuation_service.compare_all_metrics(
+                symbol=symbol, industry=industry
+            )
 
         assert "pe" in results
         assert "ps" in results
         assert "pb" in results
         assert all(r is not None for r in results.values())
 
-    def test_compare_all_metrics_with_failures(self, valuation_service, mock_stock_db_manager, mock_sec_db_manager):
+    def test_compare_all_metrics_with_failures(
+        self, valuation_service, mock_stock_db_manager, mock_sec_db_manager
+    ):
         """Test comparison across metrics with some failures."""
         symbol = "AAPL"
         industry = "Consumer Electronics"
 
         # Mock company info
         company_info = [("AAPL", "Technology", industry, 2500000000000, "Apple Inc.")]
-        mock_stock_session = mock_stock_db_manager.get_session.return_value.__enter__.return_value
+        mock_stock_session = (
+            mock_stock_db_manager.get_session.return_value.__enter__.return_value
+        )
         mock_stock_session.execute.return_value.fetchone.return_value = company_info[0]
 
         # Mock compare_to_peers with one failure
@@ -553,7 +607,9 @@ class TestCompareAllMetrics:
                 None,  # pb fails
             ]
 
-            results = valuation_service.compare_all_metrics(symbol=symbol, industry=industry)
+            results = valuation_service.compare_all_metrics(
+                symbol=symbol, industry=industry
+            )
 
         assert results["pe"] is not None
         assert results["ps"] is None
@@ -563,46 +619,66 @@ class TestCompareAllMetrics:
 class TestGetIndustryMultiples:
     """Test getting all multiples for an industry."""
 
-    def test_get_industry_multiples_success(self, valuation_service, mock_stock_db_manager, mock_sec_db_manager):
+    def test_get_industry_multiples_success(
+        self, valuation_service, mock_stock_db_manager, mock_sec_db_manager
+    ):
         """Test successful retrieval of industry multiples."""
         industry = "Consumer Electronics"
         metric = "pe"
 
         # Mock symbols in industry
         symbols_result = [("AAPL",), ("MSFT",), ("GOOGL",)]
-        mock_stock_session = mock_stock_db_manager.get_session.return_value.__enter__.return_value
-        mock_stock_session.execute.return_value.__iter__ = lambda self: iter(symbols_result)
+        mock_stock_session = (
+            mock_stock_db_manager.get_session.return_value.__enter__.return_value
+        )
+        mock_stock_session.execute.return_value.__iter__ = lambda self: iter(
+            symbols_result
+        )
 
         # Mock company multiples
         def mock_get_multiple(symbol, metric_name):
             multiples = {"AAPL": 35.0, "MSFT": 30.0, "GOOGL": 28.0}
             return multiples.get(symbol)
 
-        with patch.object(valuation_service, "_get_company_multiple", side_effect=mock_get_multiple):
-            result = valuation_service.get_industry_multiples(industry=industry, metric=metric)
+        with patch.object(
+            valuation_service, "_get_company_multiple", side_effect=mock_get_multiple
+        ):
+            result = valuation_service.get_industry_multiples(
+                industry=industry, metric=metric
+            )
 
         assert "AAPL" in result
         assert "MSFT" in result
         assert "GOOGL" in result
         assert result["AAPL"] == 35.0
 
-    def test_get_industry_multiples_partial_data(self, valuation_service, mock_stock_db_manager, mock_sec_db_manager):
+    def test_get_industry_multiples_partial_data(
+        self, valuation_service, mock_stock_db_manager, mock_sec_db_manager
+    ):
         """Test industry multiples with some companies missing data."""
         industry = "Consumer Electronics"
         metric = "pe"
 
         # Mock symbols in industry
         symbols_result = [("AAPL",), ("MSFT",), ("GOOGL",)]
-        mock_stock_session = mock_stock_db_manager.get_session.return_value.__enter__.return_value
-        mock_stock_session.execute.return_value.__iter__ = lambda self: iter(symbols_result)
+        mock_stock_session = (
+            mock_stock_db_manager.get_session.return_value.__enter__.return_value
+        )
+        mock_stock_session.execute.return_value.__iter__ = lambda self: iter(
+            symbols_result
+        )
 
         # Mock company multiples (GOOGL returns None)
         def mock_get_multiple(symbol, metric_name):
             multiples = {"AAPL": 35.0, "MSFT": 30.0, "GOOGL": None}
             return multiples.get(symbol)
 
-        with patch.object(valuation_service, "_get_company_multiple", side_effect=mock_get_multiple):
-            result = valuation_service.get_industry_multiples(industry=industry, metric=metric)
+        with patch.object(
+            valuation_service, "_get_company_multiple", side_effect=mock_get_multiple
+        ):
+            result = valuation_service.get_industry_multiples(
+                industry=industry, metric=metric
+            )
 
         assert "AAPL" in result
         assert "MSFT" in result
@@ -617,7 +693,9 @@ class TestGetCompanyMultiple:
         symbol = "AAPL"
 
         # Mock market cap and net income
-        mock_conn = mock_sec_db_manager.engine.connect.return_value.__enter__.return_value
+        mock_conn = (
+            mock_sec_db_manager.engine.connect.return_value.__enter__.return_value
+        )
         mock_conn.execute.return_value.fetchone.return_value = (
             3000000000000,
             100000000000,
@@ -632,7 +710,9 @@ class TestGetCompanyMultiple:
         symbol = "AAPL"
 
         # Mock market cap and revenue
-        mock_conn = mock_sec_db_manager.engine.connect.return_value.__enter__.return_value
+        mock_conn = (
+            mock_sec_db_manager.engine.connect.return_value.__enter__.return_value
+        )
         mock_conn.execute.return_value.fetchone.return_value = (
             3000000000000,
             400000000000,
@@ -647,7 +727,9 @@ class TestGetCompanyMultiple:
         symbol = "AAPL"
 
         # Mock market cap and equity
-        mock_conn = mock_sec_db_manager.engine.connect.return_value.__enter__.return_value
+        mock_conn = (
+            mock_sec_db_manager.engine.connect.return_value.__enter__.return_value
+        )
         mock_conn.execute.return_value.fetchone.return_value = (
             3000000000000,
             100000000000,
@@ -657,12 +739,16 @@ class TestGetCompanyMultiple:
 
         assert result == 30.0  # market_cap / equity
 
-    def test_get_company_multiple_zero_denominator(self, valuation_service, mock_sec_db_manager):
+    def test_get_company_multiple_zero_denominator(
+        self, valuation_service, mock_sec_db_manager
+    ):
         """Test getting multiple with zero denominator."""
         symbol = "AAPL"
 
         # Mock market cap and zero net income
-        mock_conn = mock_sec_db_manager.engine.connect.return_value.__enter__.return_value
+        mock_conn = (
+            mock_sec_db_manager.engine.connect.return_value.__enter__.return_value
+        )
         mock_conn.execute.return_value.fetchone.return_value = (3000000000000, 0)
 
         result = valuation_service._get_company_multiple(symbol, "pe")
@@ -674,7 +760,9 @@ class TestGetCompanyMultiple:
         symbol = "UNKNOWN"
 
         # Mock no data
-        mock_conn = mock_sec_db_manager.engine.connect.return_value.__enter__.return_value
+        mock_conn = (
+            mock_sec_db_manager.engine.connect.return_value.__enter__.return_value
+        )
         mock_conn.execute.return_value.fetchone.return_value = None
 
         result = valuation_service._get_company_multiple(symbol, "pe")
@@ -693,7 +781,9 @@ class TestGetCompanyMultiple:
 class TestGeneratePeerSummary:
     """Test comprehensive peer comparison summary."""
 
-    def test_generate_peer_summary_success(self, valuation_service, mock_stock_db_manager):
+    def test_generate_peer_summary_success(
+        self, valuation_service, mock_stock_db_manager
+    ):
         """Test successful peer summary generation."""
         symbol = "AAPL"
         industry = "Consumer Electronics"
@@ -707,7 +797,9 @@ class TestGeneratePeerSummary:
             "name": "Apple Inc.",
         }
 
-        with patch.object(valuation_service, "_get_company_info", return_value=company_info):
+        with patch.object(
+            valuation_service, "_get_company_info", return_value=company_info
+        ):
             # Mock compare_all_metrics
             mock_comparisons = {
                 "pe": PeerComparisonResult(
@@ -756,8 +848,12 @@ class TestGeneratePeerSummary:
                 ),
             }
 
-            with patch.object(valuation_service, "compare_all_metrics", return_value=mock_comparisons):
-                summary = valuation_service.generate_peer_summary(symbol=symbol, industry=industry)
+            with patch.object(
+                valuation_service, "compare_all_metrics", return_value=mock_comparisons
+            ):
+                summary = valuation_service.generate_peer_summary(
+                    symbol=symbol, industry=industry
+                )
 
         assert summary["symbol"] == "AAPL"
         assert summary["sector"] == "Technology"
@@ -779,7 +875,9 @@ class TestGeneratePeerSummary:
         assert "error" in summary
         assert "AAPL" in summary["error"]
 
-    def test_generate_peer_summary_cheap_overall(self, valuation_service, mock_stock_db_manager):
+    def test_generate_peer_summary_cheap_overall(
+        self, valuation_service, mock_stock_db_manager
+    ):
         """Test peer summary with cheap overall assessment."""
         symbol = "AAPL"
         industry = "Consumer Electronics"
@@ -793,7 +891,9 @@ class TestGeneratePeerSummary:
             "name": "Apple Inc.",
         }
 
-        with patch.object(valuation_service, "_get_company_info", return_value=company_info):
+        with patch.object(
+            valuation_service, "_get_company_info", return_value=company_info
+        ):
             # Mock compare_all_metrics with low percentiles
             mock_comparisons = {
                 "pe": PeerComparisonResult(
@@ -820,7 +920,11 @@ class TestGeneratePeerSummary:
                 ),
             }
 
-            with patch.object(valuation_service, "compare_all_metrics", return_value=mock_comparisons):
-                summary = valuation_service.generate_peer_summary(symbol=symbol, industry=industry)
+            with patch.object(
+                valuation_service, "compare_all_metrics", return_value=mock_comparisons
+            ):
+                summary = valuation_service.generate_peer_summary(
+                    symbol=symbol, industry=industry
+                )
 
         assert summary["overall_assessment"]["status"] == "cheap"

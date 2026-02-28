@@ -145,9 +145,13 @@ class MetricsCollector:
         )
 
         # Gauges
-        self.active_agents_gauge = get_or_create_metric(Gauge, "investigator_active_agents", "Number of active agents")
+        self.active_agents_gauge = get_or_create_metric(
+            Gauge, "investigator_active_agents", "Number of active agents"
+        )
 
-        self.queue_size_gauge = get_or_create_metric(Gauge, "investigator_queue_size", "Analysis queue size")
+        self.queue_size_gauge = get_or_create_metric(
+            Gauge, "investigator_queue_size", "Analysis queue size"
+        )
 
         self.cache_hit_rate_gauge = get_or_create_metric(
             Gauge, "investigator_cache_hit_rate", "Cache hit rate percentage"
@@ -218,7 +222,9 @@ class MetricsCollector:
             )
         )
 
-    def record_agent_execution(self, agent_type: str, duration: float, status: str = "success"):
+    def record_agent_execution(
+        self, agent_type: str, duration: float, status: str = "success"
+    ):
         """Record agent execution"""
         # Update Prometheus metrics
         self.agent_execution_counter.labels(agent_type=agent_type, status=status).inc()
@@ -239,7 +245,9 @@ class MetricsCollector:
 
         # Keep only recent durations
         if len(self.agent_metrics["durations"][agent_type]) > 100:
-            self.agent_metrics["durations"][agent_type] = self.agent_metrics["durations"][agent_type][-100:]
+            self.agent_metrics["durations"][agent_type] = self.agent_metrics[
+                "durations"
+            ][agent_type][-100:]
 
     def record_agent_failure(self, agent_type: str):
         """Record agent failure"""
@@ -337,7 +345,9 @@ class MetricsCollector:
 
                 # Trim history
                 if len(self.performance_history) > self.max_history_size:
-                    self.performance_history = self.performance_history[-self.max_history_size :]
+                    self.performance_history = self.performance_history[
+                        -self.max_history_size :
+                    ]
 
                 await asyncio.sleep(60)  # Collect every minute
 
@@ -367,10 +377,14 @@ class MetricsCollector:
             "system_metrics": self.system_metrics,
             "agent_metrics": self._serialize_agent_metrics(),
             "recent_metrics": [asdict(m) for m in self.metrics_buffer[-100:]],
-            "performance_snapshot": asdict(self.performance_history[-1]) if self.performance_history else None,
+            "performance_snapshot": asdict(self.performance_history[-1])
+            if self.performance_history
+            else None,
         }
 
-        filename = Path("metrics") / f"metrics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        filename = (
+            Path("metrics") / f"metrics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        )
 
         try:
             filename.parent.mkdir(parents=True, exist_ok=True)
@@ -448,21 +462,34 @@ class MetricsCollector:
             "uptime_seconds": uptime,
             "total_analyses": self.system_metrics["total_analyses"],
             "success_rate": (
-                (self.system_metrics["successful_analyses"] / self.system_metrics["total_analyses"] * 100)
+                (
+                    self.system_metrics["successful_analyses"]
+                    / self.system_metrics["total_analyses"]
+                    * 100
+                )
                 if self.system_metrics["total_analyses"] > 0
                 else 0
             ),
             "cache_hit_rate": (
                 (
                     self.system_metrics["cache_hits"]
-                    / (self.system_metrics["cache_hits"] + self.system_metrics["cache_misses"])
+                    / (
+                        self.system_metrics["cache_hits"]
+                        + self.system_metrics["cache_misses"]
+                    )
                     * 100
                 )
-                if (self.system_metrics["cache_hits"] + self.system_metrics["cache_misses"]) > 0
+                if (
+                    self.system_metrics["cache_hits"]
+                    + self.system_metrics["cache_misses"]
+                )
+                > 0
                 else 0
             ),
             "agent_stats": self._serialize_agent_metrics(),
-            "current_performance": asdict(self.performance_history[-1]) if self.performance_history else None,
+            "current_performance": asdict(self.performance_history[-1])
+            if self.performance_history
+            else None,
         }
 
     def get_agent_performance(self, agent_type: str) -> Dict:
@@ -477,7 +504,9 @@ class MetricsCollector:
         return {
             "total_executions": executions,
             "total_failures": failures,
-            "success_rate": ((executions - failures) / executions * 100) if executions > 0 else 0,
+            "success_rate": ((executions - failures) / executions * 100)
+            if executions > 0
+            else 0,
             "average_duration": sum(durations) / len(durations) if durations else 0,
             "min_duration": min(durations) if durations else 0,
             "max_duration": max(durations) if durations else 0,
@@ -617,7 +646,9 @@ class AlertManager:
                 "critical",
             )
         elif error_rate > self.thresholds["error_rate_warning"]:
-            await self._raise_alert("error_rate_warning", f"Error rate high: {error_rate:.1f}%", "warning")
+            await self._raise_alert(
+                "error_rate_warning", f"Error rate high: {error_rate:.1f}%", "warning"
+            )
         else:
             await self._clear_alert("error_rate_critical")
             await self._clear_alert("error_rate_warning")

@@ -121,7 +121,9 @@ TOOL_CLASSES = [
 ]
 
 # Tool registry mapping names to classes
-TOOL_REGISTRY = {tool_cls.name: tool_cls for tool_cls in TOOL_CLASSES if hasattr(tool_cls, "name")}
+TOOL_REGISTRY = {
+    tool_cls.name: tool_cls for tool_cls in TOOL_CLASSES if hasattr(tool_cls, "name")
+}
 
 
 def get_tool(name: str, config=None) -> BaseTool:
@@ -216,7 +218,9 @@ def register_investment_tools(
         try:
             tool_instance = tool_cls(config=config)
             if not isinstance(tool_instance, VictorBaseTool):
-                raise TypeError(f"Expected Victor BaseTool instance, got {type(tool_instance).__name__}")
+                raise TypeError(
+                    f"Expected Victor BaseTool instance, got {type(tool_instance).__name__}"
+                )
             try:
                 tool_registry.register(tool_instance, enabled=enabled)
             except TypeError:

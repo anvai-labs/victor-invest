@@ -73,7 +73,10 @@ class SplitAdjustedEPS:
     def __str__(self) -> str:
         """Human-readable representation"""
         splits_str = (
-            ", ".join(f"{s.split_date.strftime('%Y-%m-%d')} ({s.split_ratio}x)" for s in self.splits_applied)
+            ", ".join(
+                f"{s.split_date.strftime('%Y-%m-%d')} ({s.split_ratio}x)"
+                for s in self.splits_applied
+            )
             if self.splits_applied
             else "None"
         )
@@ -141,7 +144,9 @@ class StockSplitAdjuster:
             logger.error(f"Error fetching splits for {symbol}: {e}")
             return []
 
-    def get_splits_between_years(self, symbol: str, from_year: int, to_year: int) -> List[StockSplit]:
+    def get_splits_between_years(
+        self, symbol: str, from_year: int, to_year: int
+    ) -> List[StockSplit]:
         """
         Get all splits that occurred between two fiscal years.
 
@@ -351,10 +356,14 @@ class StockSplitAdjuster:
             Growth rate as percentage (e.g., 15.5 for 15.5% growth), or None if data unavailable
         """
         if use_split_adjusted:
-            adjusted_data = self.get_historical_eps_adjusted(symbol, start_year, end_year, fiscal_period)
+            adjusted_data = self.get_historical_eps_adjusted(
+                symbol, start_year, end_year, fiscal_period
+            )
 
             if start_year not in adjusted_data or end_year not in adjusted_data:
-                logger.warning(f"Missing EPS data for {symbol} between {start_year} and {end_year}")
+                logger.warning(
+                    f"Missing EPS data for {symbol} between {start_year} and {end_year}"
+                )
                 return None
 
             start_eps = adjusted_data[start_year].split_adjusted_eps
@@ -462,7 +471,9 @@ class StockSplitAdjuster:
             logger.error(f"Error adding stock split: {e}")
             return False
 
-    def get_actual_price_for_date(self, symbol: str, split_adjusted_price: float, price_date: date) -> float:
+    def get_actual_price_for_date(
+        self, symbol: str, split_adjusted_price: float, price_date: date
+    ) -> float:
         """
         Convert split-adjusted price to actual price as of a specific date.
 
@@ -552,13 +563,17 @@ class StockSplitAdjuster:
         lines = [f"{symbol} Stock Split History:", "-" * 60]
 
         for split in splits:
-            lines.append(f"  {split.split_date.strftime('%Y-%m-%d')}: {split.split_ratio}x split")
+            lines.append(
+                f"  {split.split_date.strftime('%Y-%m-%d')}: {split.split_ratio}x split"
+            )
             if split.description:
                 lines.append(f"    ({split.description})")
 
         lines.append("-" * 60)
         lines.append("Impact on EPS Comparisons:")
-        lines.append("  - EPS values before splits are NOT directly comparable to after")
+        lines.append(
+            "  - EPS values before splits are NOT directly comparable to after"
+        )
         lines.append("  - Use split_adjusted_eps for accurate growth calculations")
         lines.append("  - Example: Pre-split $50 EPS + 20:1 split → Adjusted $2.50 EPS")
 
@@ -613,11 +628,15 @@ if __name__ == "__main__":
     print()
 
     # Calculate growth rate
-    growth = adjuster.calculate_eps_growth_rate(symbol, 2016, 2024, use_split_adjusted=True)
+    growth = adjuster.calculate_eps_growth_rate(
+        symbol, 2016, 2024, use_split_adjusted=True
+    )
     if growth is not None:
         print(f"Split-Adjusted EPS Growth (2016-2024): {growth:.1f}%")
 
-    growth_raw = adjuster.calculate_eps_growth_rate(symbol, 2016, 2024, use_split_adjusted=False)
+    growth_raw = adjuster.calculate_eps_growth_rate(
+        symbol, 2016, 2024, use_split_adjusted=False
+    )
     if growth_raw is not None:
         print(f"Raw EPS Growth (2016-2024): {growth_raw:.1f}%")
         print("  ⚠️  Raw growth is misleading due to splits!")

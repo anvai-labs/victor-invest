@@ -209,5 +209,7 @@ def test_calculate_revenue_growth_yoy_ignores_fy_rows():
             "financial_data": {"revenues": 100.0},
         },
     ]
-    yoy = calculate_revenue_growth_yoy(quarterly_data=quarterly_data, logger=MagicMock())
+    yoy = calculate_revenue_growth_yoy(
+        quarterly_data=quarterly_data, logger=MagicMock()
+    )
     assert yoy == 0.4

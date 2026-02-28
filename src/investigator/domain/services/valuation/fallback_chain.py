@@ -163,7 +163,9 @@ class FallbackChain:
                 penalties=self.penalties[: len(fallbacks)],
             )
 
-    def get_fallback(self, model: str, failed_models: Optional[List[str]] = None) -> Optional[Tuple[str, float]]:
+    def get_fallback(
+        self, model: str, failed_models: Optional[List[str]] = None
+    ) -> Optional[Tuple[str, float]]:
         """
         Get the next fallback model for a failed model.
 
@@ -184,8 +186,12 @@ class FallbackChain:
         # Find first non-failed fallback
         for level, fallback in enumerate(config.fallbacks):
             if fallback not in failed_models:
-                penalty = config.penalties[level] if level < len(config.penalties) else 0.50
-                logger.info(f"Fallback: {model} → {fallback} (level {level + 1}, {penalty:.0%})")
+                penalty = (
+                    config.penalties[level] if level < len(config.penalties) else 0.50
+                )
+                logger.info(
+                    f"Fallback: {model} → {fallback} (level {level + 1}, {penalty:.0%})"
+                )
                 return (fallback, penalty)
 
         logger.warning(f"All fallbacks exhausted for {model}")
@@ -283,7 +289,9 @@ class FallbackChain:
                             reason=FallbackReason.CALCULATION_ERROR,
                             confidence_penalty=penalty,
                             fallback_level=fallback_level,
-                            notes=[f"Used fallback after {', '.join(failed_models)} failed"],
+                            notes=[
+                                f"Used fallback after {', '.join(failed_models)} failed"
+                            ],
                         ),
                     )
 
@@ -361,7 +369,9 @@ class FallbackChain:
                     # Check if fallback has data
                     if fallback_model in requirements:
                         fb_required = requirements[fallback_model]
-                        fb_available = all(available_data.get(f, False) for f in fb_required)
+                        fb_available = all(
+                            available_data.get(f, False) for f in fb_required
+                        )
                         if fb_available:
                             applicable.append((fallback_model, penalty))
 

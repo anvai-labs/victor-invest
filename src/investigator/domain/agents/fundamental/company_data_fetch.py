@@ -8,7 +8,9 @@ from typing import Any, Callable, Dict, Optional
 from investigator.infrastructure.cache.cache_types import CacheType
 
 
-def resolve_cik_for_symbol(*, symbol: str, ticker_mapper: Any, logger: Any) -> Optional[str]:
+def resolve_cik_for_symbol(
+    *, symbol: str, ticker_mapper: Any, logger: Any
+) -> Optional[str]:
     """Resolve symbol->CIK with safe error handling."""
     try:
         cik = ticker_mapper.resolve_cik(symbol)
@@ -20,7 +22,9 @@ def resolve_cik_for_symbol(*, symbol: str, ticker_mapper: Any, logger: Any) -> O
         return None
 
 
-def build_company_cache_key(*, symbol: str, fiscal_period: str, cik: Optional[str]) -> Dict[str, Any]:
+def build_company_cache_key(
+    *, symbol: str, fiscal_period: str, cik: Optional[str]
+) -> Dict[str, Any]:
     """Build quarter-specific company cache key to avoid fiscal-period overwrites."""
     cache_key: Dict[str, Any] = {"symbol": symbol, "fiscal_period": fiscal_period}
     if cik:
@@ -71,9 +75,13 @@ def build_financial_statements_from_processed(
         "capital_expenditures": financial_metrics.get("capital_expenditures", 0),
         "free_cash_flow": financial_metrics.get("free_cash_flow", 0),
         "dividends_paid": financial_metrics.get("dividends_paid", 0),
-        "preferred_stock_dividends": financial_metrics.get("preferred_stock_dividends", 0),
+        "preferred_stock_dividends": financial_metrics.get(
+            "preferred_stock_dividends", 0
+        ),
         "cash_and_equivalents": financial_metrics.get("cash_and_equivalents", 0),
-        "cash": financial_metrics.get("cash", financial_metrics.get("cash_and_equivalents", 0)),
+        "cash": financial_metrics.get(
+            "cash", financial_metrics.get("cash_and_equivalents", 0)
+        ),
         "shares_outstanding": (
             financial_metrics.get("shares_outstanding")
             or financial_metrics.get("weighted_average_diluted_shares_outstanding", 0)
@@ -111,7 +119,9 @@ def build_company_data_payload(
     }
 
 
-def validate_financial_statements(*, financial_statements: Dict[str, Any], symbol: str, cik: Optional[str]) -> None:
+def validate_financial_statements(
+    *, financial_statements: Dict[str, Any], symbol: str, cik: Optional[str]
+) -> None:
     """Raise clear ValueError when no usable financial statements are available."""
     if financial_statements:
         return

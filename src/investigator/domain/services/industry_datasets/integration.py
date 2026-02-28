@@ -274,7 +274,9 @@ def apply_adjustments_to_fair_value(
 
         # Apply the adjustment
         adjusted_value *= adj.factor
-        applied_reasons.append(f"{adj.adjustment_type}: {adj.factor:.2f}x - {adj.reason}")
+        applied_reasons.append(
+            f"{adj.adjustment_type}: {adj.factor:.2f}x - {adj.reason}"
+        )
 
     return adjusted_value, applied_reasons
 

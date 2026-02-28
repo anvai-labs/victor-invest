@@ -20,8 +20,12 @@ class TestSectorIndustryMapper:
     def test_to_standard_technology_variants(self):
         """Test standardization of Technology sector variants."""
         assert SectorIndustryMapper.to_standard("Technology") == "Technology"
-        assert SectorIndustryMapper.to_standard("Information Technology") == "Technology"
-        assert SectorIndustryMapper.to_standard("information technology") == "Technology"
+        assert (
+            SectorIndustryMapper.to_standard("Information Technology") == "Technology"
+        )
+        assert (
+            SectorIndustryMapper.to_standard("information technology") == "Technology"
+        )
         assert SectorIndustryMapper.to_standard("IT") == "IT"  # Not a mapped variant
 
     def test_to_standard_financials_variants(self):
@@ -39,15 +43,31 @@ class TestSectorIndustryMapper:
 
     def test_to_standard_consumer_variants(self):
         """Test standardization of Consumer sector variants."""
-        assert SectorIndustryMapper.to_standard("Consumer Discretionary") == "Consumer Discretionary"
-        assert SectorIndustryMapper.to_standard("Consumer Cyclical") == "Consumer Discretionary"
-        assert SectorIndustryMapper.to_standard("Consumer Staples") == "Consumer Staples"
-        assert SectorIndustryMapper.to_standard("Consumer Defensive") == "Consumer Staples"
+        assert (
+            SectorIndustryMapper.to_standard("Consumer Discretionary")
+            == "Consumer Discretionary"
+        )
+        assert (
+            SectorIndustryMapper.to_standard("Consumer Cyclical")
+            == "Consumer Discretionary"
+        )
+        assert (
+            SectorIndustryMapper.to_standard("Consumer Staples") == "Consumer Staples"
+        )
+        assert (
+            SectorIndustryMapper.to_standard("Consumer Defensive") == "Consumer Staples"
+        )
 
     def test_to_standard_communication_services(self):
         """Test standardization of Communication Services variants."""
-        assert SectorIndustryMapper.to_standard("Communication Services") == "Communication Services"
-        assert SectorIndustryMapper.to_standard("Telecommunications") == "Communication Services"
+        assert (
+            SectorIndustryMapper.to_standard("Communication Services")
+            == "Communication Services"
+        )
+        assert (
+            SectorIndustryMapper.to_standard("Telecommunications")
+            == "Communication Services"
+        )
 
     def test_to_standard_materials_variants(self):
         """Test standardization of Materials sector variants."""
@@ -85,28 +105,60 @@ class TestSectorIndustryMapper:
 
     def test_get_sector_for_industry_technology(self):
         """Test getting parent sector for technology industries."""
-        assert SectorIndustryMapper.get_sector_for_industry("Semiconductors") == "Technology"
+        assert (
+            SectorIndustryMapper.get_sector_for_industry("Semiconductors")
+            == "Technology"
+        )
         assert SectorIndustryMapper.get_sector_for_industry("Software") == "Technology"
-        assert SectorIndustryMapper.get_sector_for_industry("Information Technology Services") == "Technology"
+        assert (
+            SectorIndustryMapper.get_sector_for_industry(
+                "Information Technology Services"
+            )
+            == "Technology"
+        )
 
     def test_get_sector_for_industry_financials(self):
         """Test getting parent sector for financial industries."""
         assert SectorIndustryMapper.get_sector_for_industry("Banks") == "Financials"
-        assert SectorIndustryMapper.get_sector_for_industry("Banks - Regional") == "Financials"
-        assert SectorIndustryMapper.get_sector_for_industry("Asset Management") == "Financials"
+        assert (
+            SectorIndustryMapper.get_sector_for_industry("Banks - Regional")
+            == "Financials"
+        )
+        assert (
+            SectorIndustryMapper.get_sector_for_industry("Asset Management")
+            == "Financials"
+        )
         assert SectorIndustryMapper.get_sector_for_industry("Insurance") == "Financials"
 
     def test_get_sector_for_industry_healthcare(self):
         """Test getting parent sector for healthcare industries."""
-        assert SectorIndustryMapper.get_sector_for_industry("Biotechnology") == "Healthcare"
-        assert SectorIndustryMapper.get_sector_for_industry("Medical Devices") == "Healthcare"
-        assert SectorIndustryMapper.get_sector_for_industry("Pharmaceuticals") == "Healthcare"
+        assert (
+            SectorIndustryMapper.get_sector_for_industry("Biotechnology")
+            == "Healthcare"
+        )
+        assert (
+            SectorIndustryMapper.get_sector_for_industry("Medical Devices")
+            == "Healthcare"
+        )
+        assert (
+            SectorIndustryMapper.get_sector_for_industry("Pharmaceuticals")
+            == "Healthcare"
+        )
 
     def test_get_sector_for_industry_consumer(self):
         """Test getting parent sector for consumer industries."""
-        assert SectorIndustryMapper.get_sector_for_industry("Internet Retail") == "Consumer Discretionary"
-        assert SectorIndustryMapper.get_sector_for_industry("Restaurants") == "Consumer Discretionary"
-        assert SectorIndustryMapper.get_sector_for_industry("Packaged Foods") == "Consumer Staples"
+        assert (
+            SectorIndustryMapper.get_sector_for_industry("Internet Retail")
+            == "Consumer Discretionary"
+        )
+        assert (
+            SectorIndustryMapper.get_sector_for_industry("Restaurants")
+            == "Consumer Discretionary"
+        )
+        assert (
+            SectorIndustryMapper.get_sector_for_industry("Packaged Foods")
+            == "Consumer Staples"
+        )
 
     def test_get_sector_for_industry_empty_and_none(self):
         """Test handling of empty and None inputs for industry."""
@@ -115,7 +167,10 @@ class TestSectorIndustryMapper:
 
     def test_get_sector_for_industry_unknown(self):
         """Test handling of unknown industry names."""
-        assert SectorIndustryMapper.get_sector_for_industry("Unknown Industry") == "Unknown"
+        assert (
+            SectorIndustryMapper.get_sector_for_industry("Unknown Industry")
+            == "Unknown"
+        )
 
     def test_is_valid_sector(self):
         """Test validation of sector names."""
@@ -147,7 +202,9 @@ class TestSectorIndustryMapper:
 
     def test_normalize_metadata_sector_only(self):
         """Test normalizing metadata with sector only."""
-        result = SectorIndustryMapper.normalize_metadata(sector="Information Technology")
+        result = SectorIndustryMapper.normalize_metadata(
+            sector="Information Technology"
+        )
         assert result["sector"] == "Technology"
         assert result["industry"] is None
 
@@ -159,7 +216,9 @@ class TestSectorIndustryMapper:
 
     def test_normalize_metadata_both(self):
         """Test normalizing metadata with both sector and industry."""
-        result = SectorIndustryMapper.normalize_metadata(sector="Information Technology", industry="Software")
+        result = SectorIndustryMapper.normalize_metadata(
+            sector="Information Technology", industry="Software"
+        )
         assert result["sector"] == "Technology"
         assert result["industry"] == "Software"
 
@@ -176,7 +235,9 @@ class TestSectorIndustryMapper:
 
     def test_expand_sectors_for_query_multiple(self):
         """Test expanding multiple sectors for query."""
-        result = SectorIndustryMapper.expand_sectors_for_query(["Financials", "Technology"])
+        result = SectorIndustryMapper.expand_sectors_for_query(
+            ["Financials", "Technology"]
+        )
         assert "Financials" in result
         assert "Finance" in result
         assert "Financial Services" in result
@@ -187,7 +248,9 @@ class TestSectorIndustryMapper:
 
     def test_expand_sectors_for_query_variants(self):
         """Test expanding sectors that use variant names."""
-        result = SectorIndustryMapper.expand_sectors_for_query(["Financial Services", "Information Technology"])
+        result = SectorIndustryMapper.expand_sectors_for_query(
+            ["Financial Services", "Information Technology"]
+        )
         # Should still normalize and expand
         assert "Financials" in result
         assert "Finance" in result
@@ -202,7 +265,10 @@ class TestSectorIndustryMapper:
 
     def test_case_insensitive_industry_lookup(self):
         """Test case-insensitive industry lookup."""
-        assert SectorIndustryMapper.get_sector_for_industry("semiconductors") == "Technology"
+        assert (
+            SectorIndustryMapper.get_sector_for_industry("semiconductors")
+            == "Technology"
+        )
         assert SectorIndustryMapper.get_sector_for_industry("BANKS") == "Financials"
 
 
@@ -237,7 +303,9 @@ class TestEdgeCases:
     def test_mixed_case_normalization(self):
         """Test normalization with mixed case."""
         # The mapper normalizes "Information Technology" to "Technology"
-        assert SectorIndustryMapper.to_standard("iNfOrMaTiOn TeChNoLoGy") == "Technology"
+        assert (
+            SectorIndustryMapper.to_standard("iNfOrMaTiOn TeChNoLoGy") == "Technology"
+        )
 
     def test_whitespace_handling(self):
         """Test handling of whitespace in names."""
@@ -280,6 +348,12 @@ class TestEdgeCases:
 
     def test_industry_to_sector_aerospace_defense(self):
         """Test Aerospace & Defense industry mapping."""
-        assert SectorIndustryMapper.get_sector_for_industry("Aerospace & Defense") == "Industrials"
+        assert (
+            SectorIndustryMapper.get_sector_for_industry("Aerospace & Defense")
+            == "Industrials"
+        )
         assert SectorIndustryMapper.get_sector_for_industry("Defense") == "Industrials"
-        assert SectorIndustryMapper.get_sector_for_industry("Defense Contractors") == "Industrials"
+        assert (
+            SectorIndustryMapper.get_sector_for_industry("Defense Contractors")
+            == "Industrials"
+        )

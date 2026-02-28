@@ -217,7 +217,9 @@ Returns calculated indicators as structured data suitable for analysis.
                 metadata={"symbol": symbol, "action": action},
             )
 
-    async def _fetch_market_data(self, symbol: str, days: int, granularity: str = "daily") -> Optional[pd.DataFrame]:
+    async def _fetch_market_data(
+        self, symbol: str, days: int, granularity: str = "daily"
+    ) -> Optional[pd.DataFrame]:
         """Fetch market data for technical analysis.
 
         Args:
@@ -247,14 +249,18 @@ Returns calculated indicators as structured data suitable for analysis.
             else:  # daily (default)
                 df = cast(
                     Optional[pd.DataFrame],
-                    await loop.run_in_executor(None, self._market_data_fetcher.get_stock_data, symbol, days),
+                    await loop.run_in_executor(
+                        None, self._market_data_fetcher.get_stock_data, symbol, days
+                    ),
                 )
             return df
         except Exception as e:
             logger.error(f"Error fetching market data for {symbol}: {e}")
             return None
 
-    async def _calculate_indicators(self, df: pd.DataFrame, symbol: str) -> pd.DataFrame:
+    async def _calculate_indicators(
+        self, df: pd.DataFrame, symbol: str
+    ) -> pd.DataFrame:
         """Calculate all technical indicators.
 
         Args:
@@ -270,7 +276,9 @@ Returns calculated indicators as structured data suitable for analysis.
             loop = asyncio.get_event_loop()
             enhanced_df = cast(
                 pd.DataFrame,
-                await loop.run_in_executor(None, self._calculator.calculate_all_indicators, df, symbol),
+                await loop.run_in_executor(
+                    None, self._calculator.calculate_all_indicators, df, symbol
+                ),
             )
             return enhanced_df
         except Exception as e:
@@ -352,7 +360,9 @@ Returns calculated indicators as structured data suitable for analysis.
             logger.error(f"Error formatting all indicators: {e}")
             return ToolResult.create_failure(f"Failed to format indicators: {str(e)}")
 
-    def _format_momentum(self, symbol: str, df: pd.DataFrame, period: int) -> ToolResult:
+    def _format_momentum(
+        self, symbol: str, df: pd.DataFrame, period: int
+    ) -> ToolResult:
         """Format momentum indicators."""
         try:
             latest = df.iloc[-1].to_dict() if not df.empty else {}
@@ -419,8 +429,13 @@ Returns calculated indicators as structured data suitable for analysis.
 
             current_price = latest.get("Close")
 
-            sma_data = {f"sma_{p}": latest.get(f"SMA_{p}") for p in [5, 10, 20, 50, 100, 200]}
-            ema_data = {f"ema_{p}": latest.get(f"EMA_{p}") for p in [5, 10, 12, 20, 26, 50, 100, 200]}
+            sma_data = {
+                f"sma_{p}": latest.get(f"SMA_{p}") for p in [5, 10, 20, 50, 100, 200]
+            }
+            ema_data = {
+                f"ema_{p}": latest.get(f"EMA_{p}")
+                for p in [5, 10, 12, 20, 26, 50, 100, 200]
+            }
 
             # Calculate price vs MA signals
             signals = {}
@@ -443,7 +458,9 @@ Returns calculated indicators as structured data suitable for analysis.
             )
 
         except Exception as e:
-            return ToolResult.create_failure(f"Failed to format moving averages: {str(e)}")
+            return ToolResult.create_failure(
+                f"Failed to format moving averages: {str(e)}"
+            )
 
     def _format_volume_indicators(self, symbol: str, df: pd.DataFrame) -> ToolResult:
         """Format volume indicators."""
@@ -681,7 +698,9 @@ Returns calculated indicators as structured data suitable for analysis.
 
         return signals
 
-    def _interpret_ma_signals(self, latest: Dict, current_price: Optional[float]) -> Dict[str, str]:
+    def _interpret_ma_signals(
+        self, latest: Dict, current_price: Optional[float]
+    ) -> Dict[str, str]:
         """Interpret moving average signals."""
         signals: dict[str, str] = {}
 
@@ -708,7 +727,12 @@ Returns calculated indicators as structured data suitable for analysis.
             sma50_curr = df["SMA_50"].iloc[-1]
             sma200_curr = df["SMA_200"].iloc[-1]
 
-            if pd.isna(sma50_prev) or pd.isna(sma200_prev) or pd.isna(sma50_curr) or pd.isna(sma200_curr):
+            if (
+                pd.isna(sma50_prev)
+                or pd.isna(sma200_prev)
+                or pd.isna(sma50_curr)
+                or pd.isna(sma200_curr)
+            ):
                 return None
 
             # Golden cross: SMA50 was below SMA200, now above
@@ -727,7 +751,12 @@ Returns calculated indicators as structured data suitable for analysis.
             sma50_curr = df["SMA_50"].iloc[-1]
             sma200_curr = df["SMA_200"].iloc[-1]
 
-            if pd.isna(sma50_prev) or pd.isna(sma200_prev) or pd.isna(sma50_curr) or pd.isna(sma200_curr):
+            if (
+                pd.isna(sma50_prev)
+                or pd.isna(sma200_prev)
+                or pd.isna(sma50_curr)
+                or pd.isna(sma200_curr)
+            ):
                 return None
 
             # Death cross: SMA50 was above SMA200, now below

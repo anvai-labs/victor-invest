@@ -134,18 +134,30 @@ class CompositeCreditRiskResult(CreditScoreResult):
         result = super().to_dict()
         result.update(
             {
-                "distress_tier": self.distress_tier.name if self.distress_tier else None,
-                "distress_tier_value": self.distress_tier.value if self.distress_tier else None,
+                "distress_tier": self.distress_tier.name
+                if self.distress_tier
+                else None,
+                "distress_tier_value": self.distress_tier.value
+                if self.distress_tier
+                else None,
                 "distress_probability": self.distress_probability,
                 "valuation_discount": self.valuation_discount,
                 "valuation_discount_pct": f"{self.valuation_discount * 100:.0f}%",
-                "signal": self.distress_tier.signal if self.distress_tier else "unknown",
+                "signal": self.distress_tier.signal
+                if self.distress_tier
+                else "unknown",
                 "risk_factors": self.risk_factors,
                 "positive_factors": self.positive_factors,
                 "individual_scores": {
-                    "altman_zscore": self.altman_result.to_dict() if self.altman_result else None,
-                    "beneish_mscore": self.beneish_result.to_dict() if self.beneish_result else None,
-                    "piotroski_fscore": self.piotroski_result.to_dict() if self.piotroski_result else None,
+                    "altman_zscore": self.altman_result.to_dict()
+                    if self.altman_result
+                    else None,
+                    "beneish_mscore": self.beneish_result.to_dict()
+                    if self.beneish_result
+                    else None,
+                    "piotroski_fscore": self.piotroski_result.to_dict()
+                    if self.piotroski_result
+                    else None,
                 },
             }
         )
@@ -236,7 +248,9 @@ class CompositeDistressCalculator:
             result.warnings.extend(piotroski_result.warnings)
 
             # Identify risk and positive factors
-            risk_factors, positive_factors = self._analyze_factors(altman_result, beneish_result, piotroski_result)
+            risk_factors, positive_factors = self._analyze_factors(
+                altman_result, beneish_result, piotroski_result
+            )
             result.risk_factors = risk_factors
             result.positive_factors = positive_factors
 
@@ -258,9 +272,13 @@ class CompositeDistressCalculator:
                 "altman_zscore": altman_result.score,
                 "altman_zone": altman_result.zone.value if altman_result.zone else None,
                 "beneish_mscore": beneish_result.score,
-                "beneish_risk": beneish_result.risk_level.value if beneish_result.risk_level else None,
+                "beneish_risk": beneish_result.risk_level.value
+                if beneish_result.risk_level
+                else None,
                 "piotroski_fscore": piotroski_result.score,
-                "piotroski_strength": piotroski_result.strength.value if piotroski_result.strength else None,
+                "piotroski_strength": piotroski_result.strength.value
+                if piotroski_result.strength
+                else None,
             }
 
             # Generate interpretation

@@ -185,8 +185,12 @@ class DamodaranDCFModel(BaseValuationModel):
             )
 
         # Get cost of capital
-        industry = self.company_profile.industry or self.company_profile.sector or "default"
-        coc_result = self.coc.calculate_wacc(industry=industry, debt_to_equity=debt_to_equity, tax_rate=tax_rate)
+        industry = (
+            self.company_profile.industry or self.company_profile.sector or "default"
+        )
+        coc_result = self.coc.calculate_wacc(
+            industry=industry, debt_to_equity=debt_to_equity, tax_rate=tax_rate
+        )
 
         # Get terminal growth rate
         if terminal_growth is None:
@@ -195,7 +199,9 @@ class DamodaranDCFModel(BaseValuationModel):
 
         # Normalize growth rate
         if revenue_growth is not None:
-            growth_rate = revenue_growth if abs(revenue_growth) < 5 else revenue_growth / 100
+            growth_rate = (
+                revenue_growth if abs(revenue_growth) < 5 else revenue_growth / 100
+            )
         else:
             # Default to moderate growth
             growth_rate = 0.10
@@ -289,7 +295,9 @@ class DamodaranDCFModel(BaseValuationModel):
         metadata = {
             "enterprise_value": enterprise_value,
             "terminal_value": terminal_value,
-            "terminal_value_pct_of_ev": terminal_value / enterprise_value * 100 if enterprise_value > 0 else 0,
+            "terminal_value_pct_of_ev": terminal_value / enterprise_value * 100
+            if enterprise_value > 0
+            else 0,
             "projection_summary": self._summarize_projections(projections),
         }
 
@@ -587,7 +595,9 @@ class DamodaranDCFModel(BaseValuationModel):
             iterations=n,
         )
 
-    def _summarize_projections(self, projections: List[DCFProjection]) -> Dict[str, Any]:
+    def _summarize_projections(
+        self, projections: List[DCFProjection]
+    ) -> Dict[str, Any]:
         """Summarize projections for metadata."""
         if not projections:
             return {}

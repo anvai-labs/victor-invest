@@ -86,8 +86,7 @@ class RLMetrics:
                 ).fetchall()
 
                 return {
-                    row[0]
-                    or "Unknown": {
+                    row[0] or "Unknown": {
                         "num_predictions": int(row[1]),
                         "avg_reward": float(row[2]) if row[2] else 0,
                         "std_reward": float(row[3]) if row[3] else 0,
@@ -138,8 +137,7 @@ class RLMetrics:
                 ).fetchall()
 
                 return {
-                    row[0]
-                    or "Unknown": {
+                    row[0] or "Unknown": {
                         "num_predictions": int(row[1]),
                         "avg_reward": float(row[2]) if row[2] else 0,
                         "std_reward": float(row[3]) if row[3] else 0,
@@ -243,14 +241,21 @@ class RLMetrics:
                     comparison[f"{group}_count"] = int(row[1])
                     comparison[f"{group}_avg_reward"] = float(row[2]) if row[2] else 0
                     comparison[f"{group}_avg_error"] = float(row[3]) if row[3] else 0
-                    comparison[f"{group}_direction_accuracy"] = float(row[4]) if row[4] else 0
+                    comparison[f"{group}_direction_accuracy"] = (
+                        float(row[4]) if row[4] else 0
+                    )
 
                 # Calculate improvement
-                if "rl_avg_reward" in comparison and "baseline_avg_reward" in comparison:
+                if (
+                    "rl_avg_reward" in comparison
+                    and "baseline_avg_reward" in comparison
+                ):
                     baseline = comparison["baseline_avg_reward"]
                     rl = comparison["rl_avg_reward"]
                     if baseline != 0:
-                        comparison["reward_improvement_pct"] = (rl - baseline) / abs(baseline) * 100
+                        comparison["reward_improvement_pct"] = (
+                            (rl - baseline) / abs(baseline) * 100
+                        )
 
                 return comparison
 

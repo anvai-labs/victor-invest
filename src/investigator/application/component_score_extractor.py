@@ -49,10 +49,14 @@ class ComponentScoreExtractor:
             fundamental_score_calculator: Optional callable to calculate fundamental score.
                                          If not provided, returns 0.0 for fallback cases.
         """
-        self._calculate_fundamental_score = fundamental_score_calculator or (lambda _: 0.0)
+        self._calculate_fundamental_score = fundamental_score_calculator or (
+            lambda _: 0.0
+        )
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-    def extract_income_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
+    def extract_income_score(
+        self, llm_responses: Dict, ai_recommendation: Dict
+    ) -> float:
         """
         Extract income statement score from responses.
 
@@ -74,7 +78,11 @@ class ComponentScoreExtractor:
 
         # Check comprehensive analysis for income statement analysis
         comp_analysis = llm_responses.get("fundamental", {}).get("comprehensive", {})
-        content = comp_analysis.get("content", comp_analysis) if isinstance(comp_analysis, dict) else {}
+        content = (
+            comp_analysis.get("content", comp_analysis)
+            if isinstance(comp_analysis, dict)
+            else {}
+        )
 
         if isinstance(content, dict):
             # Look for income statement analysis section
@@ -89,7 +97,8 @@ class ComponentScoreExtractor:
                 ]
                 # Convert margins to score (assuming good margins are >15%)
                 avg_margin = (
-                    sum(m for m in margins if m > 0) / len([m for m in margins if m > 0])
+                    sum(m for m in margins if m > 0)
+                    / len([m for m in margins if m > 0])
                     if any(m > 0 for m in margins)
                     else 0
                 )
@@ -100,7 +109,9 @@ class ComponentScoreExtractor:
         base_fundamental = self._calculate_fundamental_score(llm_responses)
         return base_fundamental * 0.9 if base_fundamental > 0 else 0.0
 
-    def extract_cashflow_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
+    def extract_cashflow_score(
+        self, llm_responses: Dict, ai_recommendation: Dict
+    ) -> float:
         """
         Extract cash flow score from responses.
 
@@ -134,7 +145,9 @@ class ComponentScoreExtractor:
             elif not isinstance(content, str):
                 content = str(content)
             content = content.lower()
-            cashflow_mentions = sum(1 for keyword in cashflow_keywords if keyword in content)
+            cashflow_mentions = sum(
+                1 for keyword in cashflow_keywords if keyword in content
+            )
             if cashflow_mentions > 3:
                 cashflow_score_adjustments.append(0.5)
             elif cashflow_mentions > 0:
@@ -143,11 +156,19 @@ class ComponentScoreExtractor:
                 cashflow_score_adjustments.append(-0.5)
 
         adjustment = (
-            sum(cashflow_score_adjustments) / len(cashflow_score_adjustments) if cashflow_score_adjustments else 0
+            sum(cashflow_score_adjustments) / len(cashflow_score_adjustments)
+            if cashflow_score_adjustments
+            else 0
         )
-        return max(0.0, min(10.0, base_fundamental + adjustment)) if base_fundamental > 0 else 0.0
+        return (
+            max(0.0, min(10.0, base_fundamental + adjustment))
+            if base_fundamental > 0
+            else 0.0
+        )
 
-    def extract_balance_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
+    def extract_balance_score(
+        self, llm_responses: Dict, ai_recommendation: Dict
+    ) -> float:
         """
         Extract balance sheet score from responses.
 
@@ -182,7 +203,9 @@ class ComponentScoreExtractor:
             elif not isinstance(content, str):
                 content = str(content)
             content = content.lower()
-            balance_mentions = sum(1 for keyword in balance_keywords if keyword in content)
+            balance_mentions = sum(
+                1 for keyword in balance_keywords if keyword in content
+            )
             if balance_mentions > 3:
                 balance_score_adjustments.append(0.5)
             elif balance_mentions > 0:
@@ -190,10 +213,20 @@ class ComponentScoreExtractor:
             else:
                 balance_score_adjustments.append(-0.5)
 
-        adjustment = sum(balance_score_adjustments) / len(balance_score_adjustments) if balance_score_adjustments else 0
-        return max(0.0, min(10.0, base_fundamental + adjustment)) if base_fundamental > 0 else 0.0
+        adjustment = (
+            sum(balance_score_adjustments) / len(balance_score_adjustments)
+            if balance_score_adjustments
+            else 0
+        )
+        return (
+            max(0.0, min(10.0, base_fundamental + adjustment))
+            if base_fundamental > 0
+            else 0.0
+        )
 
-    def extract_growth_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
+    def extract_growth_score(
+        self, llm_responses: Dict, ai_recommendation: Dict
+    ) -> float:
         """
         Extract growth prospects score from responses.
 
@@ -211,8 +244,13 @@ class ComponentScoreExtractor:
         """
         # First check if growth score is in the comprehensive fundamental analysis
         if "comprehensive" in llm_responses.get("fundamental", {}):
-            comp_content = llm_responses["fundamental"]["comprehensive"].get("content", {})
-            if isinstance(comp_content, dict) and "growth_prospects_score" in comp_content:
+            comp_content = llm_responses["fundamental"]["comprehensive"].get(
+                "content", {}
+            )
+            if (
+                isinstance(comp_content, dict)
+                and "growth_prospects_score" in comp_content
+            ):
                 return float(comp_content["growth_prospects_score"])
 
         # Check AI recommendation for growth assessment
@@ -243,7 +281,9 @@ class ComponentScoreExtractor:
             elif not isinstance(content, str):
                 content = str(content)
             content = content.lower()
-            growth_mentions = sum(1 for keyword in growth_keywords if keyword in content)
+            growth_mentions = sum(
+                1 for keyword in growth_keywords if keyword in content
+            )
             if growth_mentions > 5:
                 growth_score_adjustments.append(1.0)
             elif growth_mentions > 2:
@@ -251,10 +291,20 @@ class ComponentScoreExtractor:
             else:
                 growth_score_adjustments.append(0.0)
 
-        adjustment = sum(growth_score_adjustments) / len(growth_score_adjustments) if growth_score_adjustments else 0
-        return max(0.0, min(10.0, base_fundamental + adjustment)) if base_fundamental > 0 else 0.0
+        adjustment = (
+            sum(growth_score_adjustments) / len(growth_score_adjustments)
+            if growth_score_adjustments
+            else 0
+        )
+        return (
+            max(0.0, min(10.0, base_fundamental + adjustment))
+            if base_fundamental > 0
+            else 0.0
+        )
 
-    def extract_value_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
+    def extract_value_score(
+        self, llm_responses: Dict, ai_recommendation: Dict
+    ) -> float:
         """
         Extract value investment score from responses.
 
@@ -299,7 +349,9 @@ class ComponentScoreExtractor:
             content = content.lower()
 
             value_mentions = sum(1 for keyword in value_keywords if keyword in content)
-            negative_mentions = sum(1 for keyword in negative_value_keywords if keyword in content)
+            negative_mentions = sum(
+                1 for keyword in negative_value_keywords if keyword in content
+            )
 
             net_value_signal = value_mentions - negative_mentions
             if net_value_signal > 3:
@@ -311,10 +363,20 @@ class ComponentScoreExtractor:
             else:
                 value_score_adjustments.append(0.0)
 
-        adjustment = sum(value_score_adjustments) / len(value_score_adjustments) if value_score_adjustments else 0
-        return max(0.0, min(10.0, base_fundamental + adjustment)) if base_fundamental > 0 else 0.0
+        adjustment = (
+            sum(value_score_adjustments) / len(value_score_adjustments)
+            if value_score_adjustments
+            else 0
+        )
+        return (
+            max(0.0, min(10.0, base_fundamental + adjustment))
+            if base_fundamental > 0
+            else 0.0
+        )
 
-    def extract_business_quality_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
+    def extract_business_quality_score(
+        self, llm_responses: Dict, ai_recommendation: Dict
+    ) -> float:
         """
         Extract business quality score from SEC comprehensive analysis.
 
@@ -334,7 +396,9 @@ class ComponentScoreExtractor:
             Business quality score (0.0-10.0), or 0.0 if not available
         """
         # First, try to get the business_quality_score directly from SEC comprehensive analysis
-        comprehensive_analysis = llm_responses.get("fundamental", {}).get("comprehensive", {})
+        comprehensive_analysis = llm_responses.get("fundamental", {}).get(
+            "comprehensive", {}
+        )
         if isinstance(comprehensive_analysis, dict):
             # Direct score from comprehensive analysis
             if "business_quality_score" in comprehensive_analysis:
@@ -505,7 +569,9 @@ class ComponentScoreExtractor:
 
         # Calculate standard deviation
         mean_quality = sum(quality_indicators) / len(quality_indicators)
-        variance = sum((x - mean_quality) ** 2 for x in quality_indicators) / len(quality_indicators)
+        variance = sum((x - mean_quality) ** 2 for x in quality_indicators) / len(
+            quality_indicators
+        )
         std_dev = variance**0.5
 
         # Lower standard deviation = more consistent = higher bonus

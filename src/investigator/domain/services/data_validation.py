@@ -72,9 +72,14 @@ class ValidationResult:
 
     def has_errors(self) -> bool:
         """Check if any errors were found."""
-        return any(i.severity in [ValidationSeverity.ERROR, ValidationSeverity.CRITICAL] for i in self.issues)
+        return any(
+            i.severity in [ValidationSeverity.ERROR, ValidationSeverity.CRITICAL]
+            for i in self.issues
+        )
 
-    def get_issues_by_severity(self, severity: ValidationSeverity) -> List[ValidationIssue]:
+    def get_issues_by_severity(
+        self, severity: ValidationSeverity
+    ) -> List[ValidationIssue]:
         """Get all issues of a specific severity."""
         return [i for i in self.issues if i.severity == severity]
 
@@ -253,7 +258,9 @@ class DataValidator:
         # Calculate completeness
         total_fields = len(data)
         valid_count = len(valid_fields)
-        completeness_score = (valid_count / total_fields * 100) if total_fields > 0 else 0
+        completeness_score = (
+            (valid_count / total_fields * 100) if total_fields > 0 else 0
+        )
 
         # Check required fields if specified
         if required_fields:
@@ -320,10 +327,15 @@ class DataValidator:
                     )
 
         # Calculate quality score
-        quality_score = self._calculate_quality_score(completeness_score, len(outlier_flags), len(issues))
+        quality_score = self._calculate_quality_score(
+            completeness_score, len(outlier_flags), len(issues)
+        )
 
         # Determine overall validity
-        is_valid = not any(i.severity in [ValidationSeverity.ERROR, ValidationSeverity.CRITICAL] for i in issues)
+        is_valid = not any(
+            i.severity in [ValidationSeverity.ERROR, ValidationSeverity.CRITICAL]
+            for i in issues
+        )
 
         return ValidationResult(
             is_valid=is_valid,
@@ -335,7 +347,9 @@ class DataValidator:
             valid_fields=valid_fields,
         )
 
-    def validate_for_model(self, data: Dict[str, Any], model_type: str) -> Tuple[bool, float, List[str]]:
+    def validate_for_model(
+        self, data: Dict[str, Any], model_type: str
+    ) -> Tuple[bool, float, List[str]]:
         """
         Validate data for a specific valuation model.
 
@@ -365,12 +379,20 @@ class DataValidator:
                 missing_required.append(field_name)
 
         # Check optional fields for confidence adjustment
-        present_optional = sum(1 for field_name in optional_fields if self._has_valid_value(data.get(field_name)))
+        present_optional = sum(
+            1
+            for field_name in optional_fields
+            if self._has_valid_value(data.get(field_name))
+        )
 
         # Calculate metrics
         required_present = len(required_fields) - len(missing_required)
-        required_ratio = required_present / len(required_fields) if required_fields else 1
-        optional_ratio = present_optional / len(optional_fields) if optional_fields else 1
+        required_ratio = (
+            required_present / len(required_fields) if required_fields else 1
+        )
+        optional_ratio = (
+            present_optional / len(optional_fields) if optional_fields else 1
+        )
 
         # Model is applicable if at least 50% of required fields present
         is_applicable = required_ratio >= 0.5
@@ -386,7 +408,9 @@ class DataValidator:
         """Check if value is valid (not None, NaN, or Inf)."""
         return self.is_valid_number(value)
 
-    def _calculate_quality_score(self, completeness: float, outlier_count: int, issue_count: int) -> float:
+    def _calculate_quality_score(
+        self, completeness: float, outlier_count: int, issue_count: int
+    ) -> float:
         """Calculate aggregate quality score from components."""
         base_score = completeness
 
@@ -414,7 +438,10 @@ class DataValidator:
         issues = []
 
         # Check margin consistency
-        if all(self._has_valid_value(data.get(f)) for f in ["revenue", "net_income", "net_margin"]):
+        if all(
+            self._has_valid_value(data.get(f))
+            for f in ["revenue", "net_income", "net_margin"]
+        ):
             revenue = float(data["revenue"])
             net_income = float(data["net_income"])
             net_margin = float(data["net_margin"])
@@ -449,13 +476,18 @@ class DataValidator:
                     ValidationIssue(
                         field="free_cash_flow",
                         severity=ValidationSeverity.INFO,
-                        message=(f"FCF ({fcf:,.0f}) differs from OCF-CapEx ({calculated_fcf:,.0f})"),
+                        message=(
+                            f"FCF ({fcf:,.0f}) differs from OCF-CapEx ({calculated_fcf:,.0f})"
+                        ),
                         suggestion="May include other adjustments",
                     )
                 )
 
         # Check EPS consistency
-        if all(self._has_valid_value(data.get(f)) for f in ["net_income", "shares_outstanding", "eps"]):
+        if all(
+            self._has_valid_value(data.get(f))
+            for f in ["net_income", "shares_outstanding", "eps"]
+        ):
             net_income = float(data["net_income"])
             shares = float(data["shares_outstanding"])
             eps = float(data["eps"])
@@ -467,7 +499,10 @@ class DataValidator:
                         ValidationIssue(
                             field="eps",
                             severity=ValidationSeverity.WARNING,
-                            message=(f"EPS ({eps:.2f}) inconsistent with " f"calculated ({calculated_eps:.2f})"),
+                            message=(
+                                f"EPS ({eps:.2f}) inconsistent with "
+                                f"calculated ({calculated_eps:.2f})"
+                            ),
                             suggestion="Check if using diluted shares",
                         )
                     )

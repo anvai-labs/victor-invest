@@ -132,7 +132,9 @@ class ValuationOutcomesDAO:
         effective_entry_date = entry_date or analysis_date
 
         # Convert NumPy types to native Python types
-        logger.debug(f"Before conversion: blended_fair_value type={type(blended_fair_value)}")
+        logger.debug(
+            f"Before conversion: blended_fair_value type={type(blended_fair_value)}"
+        )
         blended_fair_value = _convert_numpy_types(blended_fair_value)
         current_price = _convert_numpy_types(current_price)
         predicted_upside_pct = _convert_numpy_types(predicted_upside_pct)
@@ -297,25 +299,73 @@ class ValuationOutcomesDAO:
                 model_fair_values_clean[k] = _convert_numpy_types(v)
 
         # Convert outcome/reward data (all horizons)
-        actual_price_30d = _convert_numpy_types(actual_price_30d) if actual_price_30d is not None else None
-        actual_price_90d = _convert_numpy_types(actual_price_90d) if actual_price_90d is not None else None
-        actual_price_180d = _convert_numpy_types(actual_price_180d) if actual_price_180d is not None else None
-        actual_price_365d = _convert_numpy_types(actual_price_365d) if actual_price_365d is not None else None
-        actual_price_548d = _convert_numpy_types(actual_price_548d) if actual_price_548d is not None else None
-        actual_price_730d = _convert_numpy_types(actual_price_730d) if actual_price_730d is not None else None
-        actual_price_1095d = _convert_numpy_types(actual_price_1095d) if actual_price_1095d is not None else None
+        actual_price_30d = (
+            _convert_numpy_types(actual_price_30d)
+            if actual_price_30d is not None
+            else None
+        )
+        actual_price_90d = (
+            _convert_numpy_types(actual_price_90d)
+            if actual_price_90d is not None
+            else None
+        )
+        actual_price_180d = (
+            _convert_numpy_types(actual_price_180d)
+            if actual_price_180d is not None
+            else None
+        )
+        actual_price_365d = (
+            _convert_numpy_types(actual_price_365d)
+            if actual_price_365d is not None
+            else None
+        )
+        actual_price_548d = (
+            _convert_numpy_types(actual_price_548d)
+            if actual_price_548d is not None
+            else None
+        )
+        actual_price_730d = (
+            _convert_numpy_types(actual_price_730d)
+            if actual_price_730d is not None
+            else None
+        )
+        actual_price_1095d = (
+            _convert_numpy_types(actual_price_1095d)
+            if actual_price_1095d is not None
+            else None
+        )
 
-        reward_30d = _convert_numpy_types(reward_30d) if reward_30d is not None else None
-        reward_90d = _convert_numpy_types(reward_90d) if reward_90d is not None else None
-        reward_180d = _convert_numpy_types(reward_180d) if reward_180d is not None else None
-        reward_365d = _convert_numpy_types(reward_365d) if reward_365d is not None else None
-        reward_548d = _convert_numpy_types(reward_548d) if reward_548d is not None else None
-        reward_730d = _convert_numpy_types(reward_730d) if reward_730d is not None else None
-        reward_1095d = _convert_numpy_types(reward_1095d) if reward_1095d is not None else None
+        reward_30d = (
+            _convert_numpy_types(reward_30d) if reward_30d is not None else None
+        )
+        reward_90d = (
+            _convert_numpy_types(reward_90d) if reward_90d is not None else None
+        )
+        reward_180d = (
+            _convert_numpy_types(reward_180d) if reward_180d is not None else None
+        )
+        reward_365d = (
+            _convert_numpy_types(reward_365d) if reward_365d is not None else None
+        )
+        reward_548d = (
+            _convert_numpy_types(reward_548d) if reward_548d is not None else None
+        )
+        reward_730d = (
+            _convert_numpy_types(reward_730d) if reward_730d is not None else None
+        )
+        reward_1095d = (
+            _convert_numpy_types(reward_1095d) if reward_1095d is not None else None
+        )
 
-        per_model_rewards_clean = _convert_numpy_types(per_model_rewards) if per_model_rewards is not None else None
+        per_model_rewards_clean = (
+            _convert_numpy_types(per_model_rewards)
+            if per_model_rewards is not None
+            else None
+        )
         multi_period_rewards_clean = (
-            _convert_numpy_types(multi_period_rewards) if multi_period_rewards is not None else None
+            _convert_numpy_types(multi_period_rewards)
+            if multi_period_rewards is not None
+            else None
         )
 
         try:
@@ -428,10 +478,14 @@ class ValuationOutcomesDAO:
                         "reward_730d": reward_730d,
                         "reward_1095d": reward_1095d,
                         "multi_period_rewards": (
-                            safe_json_dumps(multi_period_rewards_clean) if multi_period_rewards_clean else None
+                            safe_json_dumps(multi_period_rewards_clean)
+                            if multi_period_rewards_clean
+                            else None
                         ),
                         "per_model_rewards": (
-                            safe_json_dumps(per_model_rewards_clean) if per_model_rewards_clean else None
+                            safe_json_dumps(per_model_rewards_clean)
+                            if per_model_rewards_clean
+                            else None
                         ),
                         "ab_test_group": ab_test_group,
                         "policy_version": policy_version,
@@ -483,7 +537,9 @@ class ValuationOutcomesDAO:
                     params["actual_price_90d"] = _convert_numpy_types(actual_price_90d)
                 if actual_price_365d is not None:
                     updates.append("actual_price_365d = :actual_price_365d")
-                    params["actual_price_365d"] = _convert_numpy_types(actual_price_365d)
+                    params["actual_price_365d"] = _convert_numpy_types(
+                        actual_price_365d
+                    )
 
                 if not updates:
                     return True  # Nothing to update
@@ -530,7 +586,9 @@ class ValuationOutcomesDAO:
                     updates.append("per_model_rewards = :per_model_rewards")
                     # Convert NumPy types in nested dict before JSON serialization
                     per_model_rewards_clean = _convert_numpy_types(per_model_rewards)
-                    params["per_model_rewards"] = safe_json_dumps(per_model_rewards_clean)
+                    params["per_model_rewards"] = safe_json_dumps(
+                        per_model_rewards_clean
+                    )
 
                 if not updates:
                     return True
@@ -893,11 +951,15 @@ class OutcomeTracker:
         # Calculate predicted upside
         predicted_upside_pct = 0.0
         if current_price and current_price > 0:
-            predicted_upside_pct = ((blended_fair_value - current_price) / current_price) * 100
+            predicted_upside_pct = (
+                (blended_fair_value - current_price) / current_price
+            ) * 100
 
         # Convert context to dict if needed
         context_dict = (
-            context_features.to_dict() if isinstance(context_features, ValuationContext) else context_features
+            context_features.to_dict()
+            if isinstance(context_features, ValuationContext)
+            else context_features
         )
 
         # Get AB test group string
@@ -997,11 +1059,15 @@ class OutcomeTracker:
         # Calculate predicted upside
         predicted_upside_pct = 0.0
         if current_price and current_price > 0:
-            predicted_upside_pct = ((blended_fair_value - current_price) / current_price) * 100
+            predicted_upside_pct = (
+                (blended_fair_value - current_price) / current_price
+            ) * 100
 
         # Convert context to dict if needed
         context_dict = (
-            context_features.to_dict() if isinstance(context_features, ValuationContext) else context_features
+            context_features.to_dict()
+            if isinstance(context_features, ValuationContext)
+            else context_features
         )
 
         # Get AB test group string
@@ -1065,7 +1131,9 @@ class OutcomeTracker:
             Tuple of (updated_count, error_count).
         """
         if not self.price_service:
-            logger.warning("No price history service configured, skipping outcome update")
+            logger.warning(
+                "No price history service configured, skipping outcome update"
+            )
             return 0, 0
 
         updated_count = 0
@@ -1076,7 +1144,9 @@ class OutcomeTracker:
         for record in pending_30d:
             try:
                 target_date = record["analysis_date"] + timedelta(days=30)
-                price = await self.price_service.get_price_on_date(record["symbol"], target_date)
+                price = await self.price_service.get_price_on_date(
+                    record["symbol"], target_date
+                )
                 if price:
                     self.dao.update_outcome_prices(record["id"], actual_price_30d=price)
                     updated_count += 1
@@ -1089,7 +1159,9 @@ class OutcomeTracker:
         for record in pending_90d:
             try:
                 target_date = record["analysis_date"] + timedelta(days=90)
-                price = await self.price_service.get_price_on_date(record["symbol"], target_date)
+                price = await self.price_service.get_price_on_date(
+                    record["symbol"], target_date
+                )
                 if price:
                     self.dao.update_outcome_prices(record["id"], actual_price_90d=price)
 
@@ -1111,7 +1183,9 @@ class OutcomeTracker:
                 logger.error(f"Error updating 90d outcome for {record['symbol']}: {e}")
                 error_count += 1
 
-        logger.info(f"Outcome update complete: {updated_count} updated, {error_count} errors")
+        logger.info(
+            f"Outcome update complete: {updated_count} updated, {error_count} errors"
+        )
         return updated_count, error_count
 
     def _calculate_rewards(
@@ -1175,7 +1249,11 @@ class OutcomeTracker:
             reward_30d = result_30d.reward
 
         # Calculate error for reporting
-        error_90d = abs(blended_fair_value - actual_price_90d) / actual_price_90d if actual_price_90d > 0 else 0
+        error_90d = (
+            abs(blended_fair_value - actual_price_90d) / actual_price_90d
+            if actual_price_90d > 0
+            else 0
+        )
 
         return {
             "reward_90d": round(result_90d.reward, 4),
@@ -1207,7 +1285,9 @@ class OutcomeTracker:
         Returns:
             List of Experience objects ready for training.
         """
-        records = self.dao.get_training_ready_experiences(limit=limit, exclude_used=exclude_used, horizon=horizon)
+        records = self.dao.get_training_ready_experiences(
+            limit=limit, exclude_used=exclude_used, horizon=horizon
+        )
 
         experiences = []
         for record in records:
@@ -1223,7 +1303,9 @@ class OutcomeTracker:
                     reward_548d=record.get("reward_548d"),
                     reward_730d=record.get("reward_730d"),
                     reward_1095d=record.get("reward_1095d"),
-                    direction_correct_90d=record.get("per_model_rewards", {}).get("direction_correct"),
+                    direction_correct_90d=record.get("per_model_rewards", {}).get(
+                        "direction_correct"
+                    ),
                 )
 
                 experience = Experience(

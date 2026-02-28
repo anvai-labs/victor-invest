@@ -8,7 +8,9 @@ from investigator.domain.services.data_normalizer import round_for_prompt
 from investigator.domain.services.safe_formatters import format_number
 
 
-def _to_row(name: str, result: Dict[str, Any], applicable_default: bool) -> Dict[str, Any]:
+def _to_row(
+    name: str, result: Dict[str, Any], applicable_default: bool
+) -> Dict[str, Any]:
     return {
         "name": name,
         "fair_value": result.get("fair_value_per_share", 0),
@@ -71,37 +73,61 @@ def build_models_detail_lines(
             extra_bits: List[str] = []
             if model.get("model") == "dcf":
                 if "wacc" in assumptions:
-                    extra_bits.append(f"WACC {format_percentage(assumptions.get('wacc'))}")
+                    extra_bits.append(
+                        f"WACC {format_percentage(assumptions.get('wacc'))}"
+                    )
                 if metadata.get("rule_of_40"):
                     r40 = metadata["rule_of_40"]
                     score = round_for_prompt(r40.get("score", 0), 1)
                     if score is not None:
-                        extra_bits.append(f"Rule of 40 {score:.1f} ({r40.get('classification', '').upper()})")
+                        extra_bits.append(
+                            f"Rule of 40 {score:.1f} ({r40.get('classification', '').upper()})"
+                        )
             if model.get("model") == "ggm":
                 if "growth_rate" in assumptions:
-                    extra_bits.append(f"Growth {format_percentage(assumptions.get('growth_rate'))}")
+                    extra_bits.append(
+                        f"Growth {format_percentage(assumptions.get('growth_rate'))}"
+                    )
                 if "discount_rate" in assumptions:
-                    extra_bits.append(f"Cost of equity {format_percentage(assumptions.get('discount_rate'))}")
+                    extra_bits.append(
+                        f"Cost of equity {format_percentage(assumptions.get('discount_rate'))}"
+                    )
             if model.get("model") == "pe":
                 if assumptions.get("target_pe"):
-                    extra_bits.append(f"Target P/E {_fmt_float(assumptions.get('target_pe'), 2)}")
+                    extra_bits.append(
+                        f"Target P/E {_fmt_float(assumptions.get('target_pe'), 2)}"
+                    )
                 if assumptions.get("sector_median_pe"):
-                    extra_bits.append(f"Sector Median {_fmt_float(assumptions.get('sector_median_pe'), 2)}")
+                    extra_bits.append(
+                        f"Sector Median {_fmt_float(assumptions.get('sector_median_pe'), 2)}"
+                    )
             if model.get("model") == "ev_ebitda":
                 if assumptions.get("target_ev_ebitda"):
-                    extra_bits.append(f"Target EV/EBITDA {_fmt_float(assumptions.get('target_ev_ebitda'), 2)}")
+                    extra_bits.append(
+                        f"Target EV/EBITDA {_fmt_float(assumptions.get('target_ev_ebitda'), 2)}"
+                    )
                 if assumptions.get("sector_median_ev_ebitda"):
-                    extra_bits.append(f"Sector Median {_fmt_float(assumptions.get('sector_median_ev_ebitda'), 2)}")
+                    extra_bits.append(
+                        f"Sector Median {_fmt_float(assumptions.get('sector_median_ev_ebitda'), 2)}"
+                    )
             if model.get("model") == "ps":
                 if assumptions.get("target_ps"):
-                    extra_bits.append(f"Target P/S {_fmt_float(assumptions.get('target_ps'), 2)}")
+                    extra_bits.append(
+                        f"Target P/S {_fmt_float(assumptions.get('target_ps'), 2)}"
+                    )
                 if assumptions.get("sector_median_ps"):
-                    extra_bits.append(f"Sector Median {_fmt_float(assumptions.get('sector_median_ps'), 2)}")
+                    extra_bits.append(
+                        f"Sector Median {_fmt_float(assumptions.get('sector_median_ps'), 2)}"
+                    )
             if model.get("model") == "pb":
                 if assumptions.get("target_pb"):
-                    extra_bits.append(f"Target P/B {_fmt_float(assumptions.get('target_pb'), 2)}")
+                    extra_bits.append(
+                        f"Target P/B {_fmt_float(assumptions.get('target_pb'), 2)}"
+                    )
                 if assumptions.get("sector_median_pb"):
-                    extra_bits.append(f"Sector Median {_fmt_float(assumptions.get('sector_median_pb'), 2)}")
+                    extra_bits.append(
+                        f"Sector Median {_fmt_float(assumptions.get('sector_median_pb'), 2)}"
+                    )
             if extra_bits:
                 line += " | " + ", ".join(extra_bits)
         else:
@@ -143,7 +169,9 @@ def build_valuation_synthesis_prompt(
     notes_section = "\n".join(f"- {note}" for note in notes) if notes else "- None"
     models_detail_section = "\n".join(models_detail_lines)
     data_flags = ", ".join(data_quality_flags) or "None"
-    consistency_issues = ", ".join(data_quality.get("consistency_issues", [])) or "None detected"
+    consistency_issues = (
+        ", ".join(data_quality.get("consistency_issues", [])) or "None detected"
+    )
 
     return f"""
         Synthesize a fair value estimate using the multi-model valuation summary below. Anchor your assessment on the

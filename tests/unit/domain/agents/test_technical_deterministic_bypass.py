@@ -12,7 +12,9 @@ async def test_generate_signals_bypasses_llm_when_deterministic_enabled():
     agent.use_deterministic = True
     agent.deterministic_signal_generation = True
     agent.logger = MagicMock()
-    agent._build_fallback_signals = MagicMock(return_value={"entry_signal": "hold", "fallback_used": True})
+    agent._build_fallback_signals = MagicMock(
+        return_value={"entry_signal": "hold", "fallback_used": True}
+    )
     agent._generate_signals = TechnicalAnalysisAgent._generate_signals.__get__(agent)
 
     price_data = pd.DataFrame({"close": [100.0, 101.0, 102.0, 103.0, 104.0]})
@@ -37,7 +39,9 @@ async def test_synthesize_technical_report_bypasses_llm_when_deterministic_enabl
     agent._build_fallback_technical_report = MagicMock(
         return_value={"executive_summary": "fallback", "fallback_used": True}
     )
-    agent._synthesize_technical_report = TechnicalAnalysisAgent._synthesize_technical_report.__get__(agent)
+    agent._synthesize_technical_report = (
+        TechnicalAnalysisAgent._synthesize_technical_report.__get__(agent)
+    )
 
     result = await agent._synthesize_technical_report({"symbol": "STX"})
 
@@ -51,7 +55,9 @@ async def test_detect_patterns_bypasses_llm_when_deterministic_enabled():
     agent.use_deterministic = True
     agent.deterministic_pattern_recognition = True
     agent.logger = MagicMock()
-    agent._build_fallback_patterns = MagicMock(return_value=[{"pattern_name": "fallback_pattern", "confidence": 70}])
+    agent._build_fallback_patterns = MagicMock(
+        return_value=[{"pattern_name": "fallback_pattern", "confidence": 70}]
+    )
     agent._detect_patterns = TechnicalAnalysisAgent._detect_patterns.__get__(agent)
 
     price_data = pd.DataFrame(
@@ -83,7 +89,9 @@ async def test_detect_patterns_uses_fallback_when_llm_returns_empty_payload():
     agent._debug_log_response = MagicMock()
     agent._cache_llm_response = AsyncMock()
     agent._parse_llm_response = MagicMock(return_value={})
-    agent._build_fallback_patterns = MagicMock(return_value=[{"pattern_name": "fallback_pattern", "confidence": 70}])
+    agent._build_fallback_patterns = MagicMock(
+        return_value=[{"pattern_name": "fallback_pattern", "confidence": 70}]
+    )
     agent._detect_patterns = TechnicalAnalysisAgent._detect_patterns.__get__(agent)
 
     price_data = pd.DataFrame(

@@ -50,7 +50,9 @@ class SectorMultiplesHistory:
 
     # Key SEC tags for valuation metrics
     TAGS = {
-        "total_revenue": ["us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax"],
+        "total_revenue": [
+            "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax"
+        ],
         "net_income": ["us-gaap:NetIncomeLoss", "us-gaap:ProfitLoss"],
         "ebitda": [],  # Calculated from operating income + D&A
         "operating_income": ["us-gaap:OperatingIncomeLoss"],
@@ -127,7 +129,9 @@ class SectorMultiplesHistory:
             sec_db_manager.engine = create_engine(sec_db_url)
             from sqlalchemy.orm import sessionmaker
 
-            sec_db_manager.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sec_db_manager.engine)
+            sec_db_manager.SessionLocal = sessionmaker(
+                autocommit=False, autoflush=False, bind=sec_db_manager.engine
+            )
         else:
             sec_db_manager = sec_db_manager
 
@@ -194,14 +198,20 @@ class SectorMultiplesHistory:
         # Calculate sector-level multiples
         for sector, symbols in sector_groups.items():
             logger.info(f"Calculating for sector: {sector} ({len(symbols)} symbols)")
-            multiples = self._calculate_historical_multiples_for_symbols(symbols, f"sector:{sector}", fiscal_year)
+            multiples = self._calculate_historical_multiples_for_symbols(
+                symbols, f"sector:{sector}", fiscal_year
+            )
             if multiples:
                 results[sector] = multiples
 
         # Calculate industry-level multiples
         for industry, symbols in industry_groups.items():
-            logger.info(f"Calculating for industry: {industry} ({len(symbols)} symbols)")
-            multiples = self._calculate_historical_multiples_for_symbols(symbols, f"industry:{industry}", fiscal_year)
+            logger.info(
+                f"Calculating for industry: {industry} ({len(symbols)} symbols)"
+            )
+            multiples = self._calculate_historical_multiples_for_symbols(
+                symbols, f"industry:{industry}", fiscal_year
+            )
             if multiples:
                 results[industry] = multiples
 
@@ -307,7 +317,9 @@ class SectorMultiplesHistory:
         )
 
         if pe_median is None and ps_median is None:
-            logger.warning(f"{group_name} FY{fiscal_year}: No valid multiples calculated")
+            logger.warning(
+                f"{group_name} FY{fiscal_year}: No valid multiples calculated"
+            )
             return None
 
         # Calculate snapshot date (FY end + 1 month)
@@ -324,7 +336,9 @@ class SectorMultiplesHistory:
             "percentile_high": self.percentile_exclude[1],
         }
 
-    def _get_fy_metrics(self, symbols: List[str], fiscal_year: int) -> Dict[str, Dict[str, float]]:
+    def _get_fy_metrics(
+        self, symbols: List[str], fiscal_year: int
+    ) -> Dict[str, Dict[str, float]]:
         """Get FY metrics from sec_companyfacts_processed table.
 
         This table has cleaned, validated FY data with market data.
@@ -382,7 +396,9 @@ class SectorMultiplesHistory:
                 operating_income = float(row[3]) if row[3] else None
                 equity = float(row[4]) if row[4] else None
                 shares = float(row[5]) if row[5] else None
-                shares_wa_diluted = float(row[6]) if row[6] else None  # Weighted average diluted
+                shares_wa_diluted = (
+                    float(row[6]) if row[6] else None
+                )  # Weighted average diluted
                 market_cap = float(row[7]) if row[7] else None
                 period_end = row[8]
                 filed_date = row[9]
@@ -434,7 +450,11 @@ class SectorMultiplesHistory:
             for symbol, metrics in fy_metrics.items():
                 # Skip if we already have both market_cap AND price
                 # (Note: market_cap alone isn't enough - we need price for P/E and P/B)
-                if metrics.get("market_cap") and metrics.get("market_cap", 0) > 0 and metrics.get("price"):
+                if (
+                    metrics.get("market_cap")
+                    and metrics.get("market_cap", 0) > 0
+                    and metrics.get("price")
+                ):
                     continue
 
                 # Fallback 1: Try to get price from tickerdata around period_end + buffer
@@ -452,7 +472,9 @@ class SectorMultiplesHistory:
                         if isinstance(period_end, str):
                             period_end = datetime.fromisoformat(period_end)
                         elif isinstance(period_end, date):
-                            period_end = datetime.combine(period_end, datetime.min.time())
+                            period_end = datetime.combine(
+                                period_end, datetime.min.time()
+                            )
                         # If already datetime, use as-is
 
                         # Use period_end + 90 days (next quarter) as price anchor
@@ -466,27 +488,40 @@ class SectorMultiplesHistory:
                         if isinstance(filed_date, str):
                             filed_date = datetime.fromisoformat(filed_date)
                         elif isinstance(filed_date, date):
-                            filed_date = datetime.combine(filed_date, datetime.min.time())
+                            filed_date = datetime.combine(
+                                filed_date, datetime.min.time()
+                            )
                         price_anchor_date = filed_date + timedelta(days=30)
-                    price_data = self._get_historical_price(sec_session, symbol, price_anchor_date)
+                    price_data = self._get_historical_price(
+                        sec_session, symbol, price_anchor_date
+                    )
 
                     # Check for splits between period_end and price_anchor_date
                     # This helps identify potentially unreliable data points
                     period_end_for_check = metrics.get("period_end_date")
                     if period_end_for_check:
                         if isinstance(period_end_for_check, str):
-                            period_end_for_check = datetime.fromisoformat(period_end_for_check)
+                            period_end_for_check = datetime.fromisoformat(
+                                period_end_for_check
+                            )
                         elif isinstance(period_end_for_check, date):
-                            period_end_for_check = datetime.combine(period_end_for_check, datetime.min.time())
+                            period_end_for_check = datetime.combine(
+                                period_end_for_check, datetime.min.time()
+                            )
 
-                        splits = self._detect_splits_between_dates(symbol, period_end_for_check, price_anchor_date)
+                        splits = self._detect_splits_between_dates(
+                            symbol, period_end_for_check, price_anchor_date
+                        )
                         if splits:
                             logger.info(
                                 f"{symbol} FY{fiscal_year}: {len(splits)} split(s) detected "
                                 f"between period_end and price_anchor_date"
                             )
                             for split in splits:
-                                logger.info(f"  Split on {split['split_date']}: " f"{split['split_ratio']}-for-1 ratio")
+                                logger.info(
+                                    f"  Split on {split['split_date']}: "
+                                    f"{split['split_ratio']}-for-1 ratio"
+                                )
                             # Store split info for context (don't skip, just log)
                             metrics["splits_in_window"] = len(splits)
 
@@ -496,7 +531,10 @@ class SectorMultiplesHistory:
                         shares = metrics.get("shares_outstanding")
                         period_end = metrics.get("period_end_date")
                         if (
-                            (not metrics.get("market_cap") or metrics.get("market_cap", 0) == 0)
+                            (
+                                not metrics.get("market_cap")
+                                or metrics.get("market_cap", 0) == 0
+                            )
                             and shares
                             and shares > 0
                         ):
@@ -554,7 +592,9 @@ class SectorMultiplesHistory:
 
             return validated_metrics
 
-    def _get_historical_price(self, session: Session, symbol: str, target_date: datetime) -> Optional[float]:
+    def _get_historical_price(
+        self, session: Session, symbol: str, target_date: datetime
+    ) -> Optional[float]:
         """Get historical price around target date from tickerdata table.
 
         Uses price closest to target date (within ±7 days).
@@ -599,7 +639,9 @@ class SectorMultiplesHistory:
 
         return None
 
-    def _detect_splits_between_dates(self, symbol: str, start_date, end_date) -> List[Dict[str, any]]:
+    def _detect_splits_between_dates(
+        self, symbol: str, start_date, end_date
+    ) -> List[Dict[str, any]]:
         """Detect if any stock splits occurred between two dates.
 
         This is used to identify periods where split adjustment may be unreliable.
@@ -634,13 +676,18 @@ class SectorMultiplesHistory:
                         "end_date": end_date,
                     },
                 )
-                splits = [{"split_date": str(row[0]), "split_ratio": float(row[1])} for row in result]
+                splits = [
+                    {"split_date": str(row[0]), "split_ratio": float(row[1])}
+                    for row in result
+                ]
                 return splits
         except Exception as e:
             logger.debug(f"Error detecting splits for {symbol}: {e}")
             return []
 
-    def _validate_market_cap_consistency(self, symbol: str, metrics: Dict[str, any]) -> bool:
+    def _validate_market_cap_consistency(
+        self, symbol: str, metrics: Dict[str, any]
+    ) -> bool:
         """Validate that market_cap is consistent with price × shares.
 
         This catches split adjustment issues where:
@@ -705,14 +752,18 @@ class SectorMultiplesHistory:
             params: Dict[str, Any] = {}
 
             if sectors:
-                override_symbols = [s.upper() for s, sec in config_overrides.items() if sec in sectors]
+                override_symbols = [
+                    s.upper() for s, sec in config_overrides.items() if sec in sectors
+                ]
                 if override_symbols:
                     filters.append("ticker = ANY(:override_symbols)")
                     params["override_symbols"] = override_symbols
 
                 # Expand sector names to include database variants
                 sector_list = self._normalize_sector_names(sectors)
-                filters.append("COALESCE(NULLIF(\"Sector\", ''), '') = ANY(:sectors) OR \"Sector\" = ANY(:sectors)")
+                filters.append(
+                    "COALESCE(NULLIF(\"Sector\", ''), '') = ANY(:sectors) OR \"Sector\" = ANY(:sectors)"
+                )
                 params["sectors"] = sector_list
 
             if industries:
@@ -821,9 +872,13 @@ class SectorMultiplesHistory:
                         existing.ps_multiple = multiples.get("ps")
                         existing.pb_multiple = multiples.get("pb")
                         existing.sample_size = multiples["sample_size"]
-                        existing.snapshot_date = datetime.fromisoformat(multiples["snapshot_date"])
+                        existing.snapshot_date = datetime.fromisoformat(
+                            multiples["snapshot_date"]
+                        )
                         existing.percentile_low = multiples.get("percentile_low", 0.05)
-                        existing.percentile_high = multiples.get("percentile_high", 0.95)
+                        existing.percentile_high = multiples.get(
+                            "percentile_high", 0.95
+                        )
                         existing.updated_at = datetime.utcnow()
                     else:
                         # Create new record
@@ -831,7 +886,9 @@ class SectorMultiplesHistory:
                             group_name=name,
                             group_type=group_type,
                             fiscal_year=multiples["fiscal_year"],
-                            snapshot_date=datetime.fromisoformat(multiples["snapshot_date"]),
+                            snapshot_date=datetime.fromisoformat(
+                                multiples["snapshot_date"]
+                            ),
                             pe_multiple=multiples.get("pe"),
                             ps_multiple=multiples.get("ps"),
                             pb_multiple=multiples.get("pb"),
@@ -872,7 +929,9 @@ class SectorMultiplesHistory:
         )
 
         with self.sec_db_manager.get_session() as session:
-            query = session.query(SectorMultiplesHistory).filter_by(group_name=group_name, group_type=group_type)
+            query = session.query(SectorMultiplesHistory).filter_by(
+                group_name=group_name, group_type=group_type
+            )
 
             if start_year:
                 query = query.filter(SectorMultiplesHistory.fiscal_year >= start_year)
@@ -921,7 +980,9 @@ class SectorMultiplesHistory:
                 query = session.query(SectorMultiplesHistory)
 
                 if start_year:
-                    query = query.filter(SectorMultiplesHistory.fiscal_year >= start_year)
+                    query = query.filter(
+                        SectorMultiplesHistory.fiscal_year >= start_year
+                    )
                 if end_year:
                     query = query.filter(SectorMultiplesHistory.fiscal_year <= end_year)
 

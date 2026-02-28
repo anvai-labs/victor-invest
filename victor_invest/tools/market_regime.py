@@ -181,7 +181,9 @@ Investment Signals by Regime:
 
         except Exception as e:
             logger.error(f"MarketRegimeTool execute error: {e}")
-            return ToolResult.create_failure(f"Market regime query failed: {str(e)}", metadata={"action": action})
+            return ToolResult.create_failure(
+                f"Market regime query failed: {str(e)}", metadata={"action": action}
+            )
 
     async def _get_summary(self) -> ToolResult:
         """Get comprehensive market regime summary."""
@@ -302,7 +304,9 @@ Investment Signals by Regime:
                 "date": str(cc_analysis.date),
                 "vix_level": cc_analysis.vix_level,
                 "volatility_regime": cc_analysis.volatility_regime.value,
-                "interpretation": self._get_volatility_interpretation(cc_analysis.volatility_regime),
+                "interpretation": self._get_volatility_interpretation(
+                    cc_analysis.volatility_regime
+                ),
             },
             metadata={
                 "source": "vix_analysis",

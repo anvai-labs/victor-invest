@@ -59,19 +59,35 @@ class MultiModelValuationOrchestrator:
         config_dict = agreement_config or {}
         self.agreement_scorer = ModelAgreementScorer(
             config=AgreementConfig(
-                divergence_threshold=config_dict.get("divergence_threshold", divergence_threshold),
-                high_agreement_threshold=config_dict.get("high_agreement_threshold", 0.15),
-                zscore_threshold=config_dict.get("outlier_detection", {}).get("zscore_threshold", 2.0),
-                outlier_weight_penalty=config_dict.get("outlier_detection", {}).get("outlier_weight_penalty", 0.50),
-                divergence_penalty=config_dict.get("confidence_adjustments", {}).get("divergence_penalty", -0.15),
-                high_agreement_bonus=config_dict.get("confidence_adjustments", {}).get("high_agreement_bonus", 0.10),
+                divergence_threshold=config_dict.get(
+                    "divergence_threshold", divergence_threshold
+                ),
+                high_agreement_threshold=config_dict.get(
+                    "high_agreement_threshold", 0.15
+                ),
+                zscore_threshold=config_dict.get("outlier_detection", {}).get(
+                    "zscore_threshold", 2.0
+                ),
+                outlier_weight_penalty=config_dict.get("outlier_detection", {}).get(
+                    "outlier_weight_penalty", 0.50
+                ),
+                divergence_penalty=config_dict.get("confidence_adjustments", {}).get(
+                    "divergence_penalty", -0.15
+                ),
+                high_agreement_bonus=config_dict.get("confidence_adjustments", {}).get(
+                    "high_agreement_bonus", 0.10
+                ),
             )
         )
-        self.apply_outlier_penalties = config_dict.get("outlier_detection", {}).get("enabled", True)
+        self.apply_outlier_penalties = config_dict.get("outlier_detection", {}).get(
+            "enabled", True
+        )
 
         # Initialize BoundsChecker for output validation (M7)
         self.bounds_checker = get_bounds_checker()
-        self.validate_outputs = bounds_config.get("validate_outputs", True) if bounds_config else True
+        self.validate_outputs = (
+            bounds_config.get("validate_outputs", True) if bounds_config else True
+        )
 
     def combine(
         self,
@@ -107,7 +123,8 @@ class MultiModelValuationOrchestrator:
         applicable = [
             model
             for model in models
-            if model.get("applicable") and isinstance(model.get("fair_value_per_share"), (int, float))
+            if model.get("applicable")
+            and isinstance(model.get("fair_value_per_share"), (int, float))
         ]
 
         for model in models:
@@ -138,10 +155,16 @@ class MultiModelValuationOrchestrator:
 
         missing_weight_targets: List[str] = []
         if fallback_weights:
-            desired_models = {name: weight for name, weight in fallback_weights.items() if (weight or 0) > 0}
+            desired_models = {
+                name: weight
+                for name, weight in fallback_weights.items()
+                if (weight or 0) > 0
+            }
             for model_name, weight in desired_models.items():
                 if not any(app.get("model") == model_name for app in applicable):
-                    missing_weight_targets.append(f"{model_name.upper()} ({weight:.0f}%)")
+                    missing_weight_targets.append(
+                        f"{model_name.upper()} ({weight:.0f}%)"
+                    )
 
         # CRITICAL FIX: Prioritize dynamic weights (tier-based) over confidence-based weighting
         # Dynamic weights from DynamicModelWeightingService are more appropriate for company stage/sector
@@ -157,18 +180,24 @@ class MultiModelValuationOrchestrator:
                 fallback_applied = True
                 weights_dict = matched
                 applied_weights = matched
-                logger.info("✅ Using tier-based dynamic weights from DynamicModelWeightingService")
+                logger.info(
+                    "✅ Using tier-based dynamic weights from DynamicModelWeightingService"
+                )
         elif total_confidence > 0:
             # Confidence-based weighting (fallback when no dynamic weights provided)
             for model, confidence in zip(applicable, confidences):
                 model_name = model.get("model")
                 weights_dict[model_name] = (confidence / total_confidence) * 100
-            logger.info("⚠️  Using confidence-based weights (no tier-based weights provided)")
+            logger.info(
+                "⚠️  Using confidence-based weights (no tier-based weights provided)"
+            )
         else:
             # Equal weighting fallback (when no dynamic weights and zero confidence)
             for model in applicable:
                 weights_dict[model.get("model")] = 1.0 / len(applicable) * 100
-            logger.info("⚠️  Using equal weights (no tier-based weights, zero confidence)")
+            logger.info(
+                "⚠️  Using equal weights (no tier-based weights, zero confidence)"
+            )
 
         # Normalize using shared service (standardize to 5% increments, sum=100%)
         try:
@@ -176,7 +205,9 @@ class MultiModelValuationOrchestrator:
             # Apply normalized weights to models
             for model in applicable:
                 model_name = model.get("model")
-                model["weight"] = normalized_weights.get(model_name, 0.0) / 100.0  # Convert back to 0-1 range
+                model["weight"] = (
+                    normalized_weights.get(model_name, 0.0) / 100.0
+                )  # Convert back to 0-1 range
         except ValueError as e:
             # Fallback if normalization fails (shouldn't happen but handle gracefully)
             logging.warning(f"Weight normalization failed: {e}, using equal weights")
@@ -186,12 +217,18 @@ class MultiModelValuationOrchestrator:
 
         # Apply industry-specific model exclusions
         # P/S is not meaningful for insurance and banking industries
-        symbol = company_profile.symbol if hasattr(company_profile, "symbol") else "UNKNOWN"
+        symbol = (
+            company_profile.symbol if hasattr(company_profile, "symbol") else "UNKNOWN"
+        )
         sector = company_profile.sector if hasattr(company_profile, "sector") else "N/A"
-        industry = company_profile.industry if hasattr(company_profile, "industry") else None
+        industry = (
+            company_profile.industry if hasattr(company_profile, "industry") else None
+        )
 
         # Check if this is an insurance or banking company
-        is_insurance = (industry and "insur" in industry.lower()) or sector.lower() == "insurance"
+        is_insurance = (
+            industry and "insur" in industry.lower()
+        ) or sector.lower() == "insurance"
         is_bank = (industry and "bank" in industry.lower()) or sector.lower() == "banks"
 
         # Zero out P/S model weight for insurance/banks
@@ -215,19 +252,27 @@ class MultiModelValuationOrchestrator:
                 logger.info(f"   [{symbol}] Re-normalized weights after P/S exclusion")
 
         blended_fair_value = sum(
-            (model.get("fair_value_per_share") or 0.0) * model.get("weight", 0.0) for model in applicable
+            (model.get("fair_value_per_share") or 0.0) * model.get("weight", 0.0)
+            for model in applicable
         )
         overall_confidence = sum(
-            (model.get("confidence_score") or 0.0) * model.get("weight", 0.0) for model in applicable
+            (model.get("confidence_score") or 0.0) * model.get("weight", 0.0)
+            for model in applicable
         )
 
         # Enhanced blended valuation logging for visibility
-        symbol = company_profile.symbol if hasattr(company_profile, "symbol") else "UNKNOWN"
+        symbol = (
+            company_profile.symbol if hasattr(company_profile, "symbol") else "UNKNOWN"
+        )
         sector = company_profile.sector if hasattr(company_profile, "sector") else "N/A"
-        industry = company_profile.industry if hasattr(company_profile, "industry") else None
+        industry = (
+            company_profile.industry if hasattr(company_profile, "industry") else None
+        )
 
         logger.info(f"💰 {symbol} - Blended Valuation Breakdown:")
-        logger.info(f"   Tier: {tier_classification or 'N/A'} | Sector: {sector} | Industry: {industry or 'N/A'}")
+        logger.info(
+            f"   Tier: {tier_classification or 'N/A'} | Sector: {sector} | Industry: {industry or 'N/A'}"
+        )
         logger.info("")
         logger.info("   Model Contributions:")
 
@@ -246,7 +291,9 @@ class MultiModelValuationOrchestrator:
             else:
                 status = "N/A"
 
-            logger.info(f"   - {model_name:<12} {status:>10} × {weight_pct:>5.1f}% = ${contribution:>8.2f}")
+            logger.info(
+                f"   - {model_name:<12} {status:>10} × {weight_pct:>5.1f}% = ${contribution:>8.2f}"
+            )
 
         logger.info("")
         logger.info(f"   Blended Fair Value: ${blended_fair_value:.2f}")
@@ -261,7 +308,8 @@ class MultiModelValuationOrchestrator:
             if model.get("fair_value_per_share") is not None
         }
         model_weights_for_agreement = {
-            model.get("model"): model.get("weight", 0.0) * 100 for model in applicable  # Convert to percentage
+            model.get("model"): model.get("weight", 0.0) * 100
+            for model in applicable  # Convert to percentage
         }
 
         agreement_result = self.agreement_scorer.analyze(
@@ -284,7 +332,8 @@ class MultiModelValuationOrchestrator:
 
             # Recalculate blended fair value with adjusted weights
             blended_fair_value = sum(
-                (model.get("fair_value_per_share") or 0.0) * model.get("weight", 0.0) for model in applicable
+                (model.get("fair_value_per_share") or 0.0) * model.get("weight", 0.0)
+                for model in applicable
             )
 
             logger.info(
@@ -304,7 +353,10 @@ class MultiModelValuationOrchestrator:
 
         notes: List[str] = []
         if missing_weight_targets:
-            notes.append("Tier targets ignored for missing fair values → " + ", ".join(missing_weight_targets))
+            notes.append(
+                "Tier targets ignored for missing fair values → "
+                + ", ".join(missing_weight_targets)
+            )
         if divergence_flag:
             notes.append(
                 f"Model fair values diverge beyond threshold "
@@ -321,10 +373,14 @@ class MultiModelValuationOrchestrator:
                 f"due to {agreement_level.value} model agreement"
             )
         if overall_confidence < 0.5:
-            notes.append("Overall confidence below 0.5; consider gathering additional data before acting.")
+            notes.append(
+                "Overall confidence below 0.5; consider gathering additional data before acting."
+            )
         if fallback_applied:
             applied_keys = [key for key, value in applied_weights.items() if value > 0]
-            notes.append("Applied configured tier weights to models: " + ", ".join(applied_keys))
+            notes.append(
+                "Applied configured tier weights to models: " + ", ".join(applied_keys)
+            )
 
         # Add agreement scorer notes
         notes.extend(agreement_result.notes)
@@ -360,14 +416,18 @@ class MultiModelValuationOrchestrator:
             "models": models,
             "blended_fair_value": blended_fair_value,
             "overall_confidence": round(overall_confidence, 4),
-            "model_agreement_score": round(model_agreement_score, 4) if model_agreement_score is not None else None,
+            "model_agreement_score": round(model_agreement_score, 4)
+            if model_agreement_score is not None
+            else None,
             "dispersion_ratio": dispersion_ratio,
             "divergence_flag": divergence_flag,
             "agreement_level": agreement_level.value,
             "outlier_models": agreement_result.outlier_models,
             "applicable_models": len(applicable),
             "notes": notes,
-            "primary_archetype": company_profile.primary_archetype.name if company_profile.primary_archetype else None,
+            "primary_archetype": company_profile.primary_archetype.name
+            if company_profile.primary_archetype
+            else None,
             "fallback_applied": fallback_applied,
             "tier_classification": tier_classification,
             "model_z_scores": agreement_result.model_z_scores,
@@ -394,6 +454,8 @@ class MultiModelValuationOrchestrator:
         mean_value = sum(values) / len(values)
         if math.isclose(mean_value, 0.0, abs_tol=1e-9):
             return float("inf")
-        variance = sum((value - mean_value) ** 2 for value in values) / (len(values) - 1)
+        variance = sum((value - mean_value) ** 2 for value in values) / (
+            len(values) - 1
+        )
         stdev = math.sqrt(max(variance, 0.0))
         return stdev / abs(mean_value)

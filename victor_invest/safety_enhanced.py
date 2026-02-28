@@ -77,7 +77,9 @@ except ImportError:
 
         @staticmethod
         def register_rule(rule: SafetyRule) -> None:
-            logger.debug(f"SafetyCoordinator not available, skipping rule: {rule.rule_id}")
+            logger.debug(
+                f"SafetyCoordinator not available, skipping rule: {rule.rule_id}"
+            )
 
 
 from victor.core.verticals.protocols import SafetyExtensionProtocol, SafetyPattern
@@ -298,7 +300,8 @@ class EnhancedInvestSafetyExtension(SafetyExtensionProtocol):
                 self._coordinator.register_rule(rule)
 
         logger.info(
-            f"EnhancedInvestSafetyExtension initialized with " f"{len(self._coordinator.list_rules())} safety rules"
+            f"EnhancedInvestSafetyExtension initialized with "
+            f"{len(self._coordinator.list_rules())} safety rules"
         )
 
     def check_operation(

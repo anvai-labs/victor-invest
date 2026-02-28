@@ -194,7 +194,9 @@ class BaseTool(VictorBaseTool):
         return self.get_schema()
 
     @abstractmethod
-    async def execute(self, _exec_ctx: Optional[Dict[str, Any]] = None, **kwargs) -> ToolResult:
+    async def execute(
+        self, _exec_ctx: Optional[Dict[str, Any]] = None, **kwargs
+    ) -> ToolResult:
         """Execute the tool with provided parameters.
 
         Args:

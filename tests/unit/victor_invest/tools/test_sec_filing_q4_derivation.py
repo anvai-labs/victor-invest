@@ -13,9 +13,6 @@ Test Coverage:
 - Derived flag is set correctly
 """
 
-from datetime import datetime
-from unittest.mock import Mock, patch
-
 import pytest
 
 
@@ -446,7 +443,9 @@ class TestQ4Derivation:
         result = self.tool._derive_missing_q4_quarters(quarters_data, self.symbol)
 
         # Get first 4 quarters (TTM)
-        ttm_quarters = [q for q in result if q["fiscal_period"] in ["Q1", "Q2", "Q3", "Q4"]][:4]
+        ttm_quarters = [
+            q for q in result if q["fiscal_period"] in ["Q1", "Q2", "Q3", "Q4"]
+        ][:4]
 
         # Calculate TTM net income
         ttm_ni = sum(q["net_income"] for q in ttm_quarters)

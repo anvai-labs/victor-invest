@@ -168,7 +168,10 @@ class TerminalGrowthCalculator:
         """
         # Priority 1: Quality Mature Companies
         # High FCF margin shows efficiency, positive revenue growth shows stability
-        if fcf_margin_pct > self.THRESHOLD_FCF_MARGIN and revenue_growth_pct > self.THRESHOLD_MIN_REVENUE_GROWTH:
+        if (
+            fcf_margin_pct > self.THRESHOLD_FCF_MARGIN
+            and revenue_growth_pct > self.THRESHOLD_MIN_REVENUE_GROWTH
+        ):
             tier = self.TIER_QUALITY_MATURE
             adjustment = self.ADJUSTMENT_QUALITY_MATURE
             reason = (
@@ -188,7 +191,10 @@ class TerminalGrowthCalculator:
         else:
             tier = self.TIER_STANDARD
             adjustment = self.ADJUSTMENT_STANDARD
-            reason = f"Standard (Rule of 40: {rule_of_40_score:.1f}%, " f"FCF margin {fcf_margin_pct:.1f}%)"
+            reason = (
+                f"Standard (Rule of 40: {rule_of_40_score:.1f}%, "
+                f"FCF margin {fcf_margin_pct:.1f}%)"
+            )
 
         return tier, adjustment, reason
 

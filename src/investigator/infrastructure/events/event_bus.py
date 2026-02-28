@@ -91,7 +91,9 @@ class EventBus:
 
         self.logger.info("Event bus stopped")
 
-    def subscribe(self, event_type: str, handler: Callable, filter_func: Optional[Callable] = None):
+    def subscribe(
+        self, event_type: str, handler: Callable, filter_func: Optional[Callable] = None
+    ):
         """
         Subscribe to an event type
 
@@ -127,7 +129,9 @@ class EventBus:
 
         # Remove from pattern subscriptions
         self.pattern_subscribers = [
-            (pattern, h) for pattern, h in self.pattern_subscribers if not (pattern == event_type and h == handler)
+            (pattern, h)
+            for pattern, h in self.pattern_subscribers
+            if not (pattern == event_type and h == handler)
         ]
 
         # Remove filter if exists
@@ -190,7 +194,9 @@ class EventBus:
         while self.running:
             try:
                 # Get event with timeout to allow checking running status
-                priority, event = await asyncio.wait_for(self.event_queue.get(), timeout=1.0)
+                priority, event = await asyncio.wait_for(
+                    self.event_queue.get(), timeout=1.0
+                )
 
                 # Process event
                 await self._deliver_event(event)
@@ -340,7 +346,9 @@ class EventBus:
             return event.correlation_id == correlation_id
 
         # Subscribe to response
-        response_task = asyncio.create_task(self.wait_for(response_type, timeout, response_filter))
+        response_task = asyncio.create_task(
+            self.wait_for(response_type, timeout, response_filter)
+        )
 
         # Send request
         await self.publish(request_type, data, source, correlation_id=correlation_id)
@@ -444,7 +452,9 @@ class EventChannel:
         self.event_bus.unsubscribe(f"channel:{self.name}", handler)
         self.subscribers.discard(handler)
 
-    async def request(self, data: Dict[str, Any], timeout: float = 30.0) -> Optional[Event]:
+    async def request(
+        self, data: Dict[str, Any], timeout: float = 30.0
+    ) -> Optional[Event]:
         """Send request and wait for response on this channel"""
         return await self.event_bus.request_response(
             f"channel:{self.name}:request",
