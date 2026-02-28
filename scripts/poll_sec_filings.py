@@ -49,7 +49,6 @@ class SECFilingPoller:
         db_url: str,
         stock_db_url: Optional[str] = None,
         stale_days: int = 90,
-        check_table: str = "sec_companyfacts_raw",
     ):
         """
         Initialize the SEC filing poller.
@@ -58,14 +57,10 @@ class SECFilingPoller:
             db_url: SEC database connection URL
             stock_db_url: Stock database connection URL (for symbol metadata)
             stale_days: Days after which data is considered stale (default: 90)
-            check_table: Table to check for latest fetch date
-                        Options: sec_companyfacts_raw (fetched_at), sec_companyfacts_processed (filed_date)
-                        Default: sec_companyfacts_raw (checks when we last fetched from SEC)
         """
         self.db_url = db_url
         self.stock_db_url = stock_db_url
         self.stale_days = stale_days
-        self.check_table = check_table
         self.engine: Optional[Engine] = None
         self.stock_engine: Optional[Engine] = None
 
@@ -91,54 +86,34 @@ class SECFilingPoller:
 
     def get_latest_filing_date(self, symbol: Optional[str] = None) -> Optional[datetime]:
         """
-        Get the latest filing date from the configured table.
+            Get the latest filing date from sec_companyfacts_processed.
 
-        For sec_companyfacts_processed, checks filed_date (SEC filing date).
-        For sec_companyfacts_raw, checks fetched_at (when we last fetched from SEC).
+            This checks the actual SEC filing date (filed_date), not when we fetched it.
 
         Args:
-            symbol: Filter by specific symbol (None = all symbols)
+                symbol: Filter by specific symbol (None = all symbols)
 
-        Returns:
-            Latest filing date as datetime, or None if no data found
+            Returns:
+                Latest filing date as datetime, or None if no data found
         """
         if not self.engine:
             self.connect()
 
         try:
             with self.engine.connect() as conn:
-                if self.check_table == "sec_companyfacts_processed":
-                    # Check processed table - use filed_date (SEC filing date)
-                    if symbol:
-                        query = text("""
-                            SELECT MAX(filed_date) as latest_date
-                            FROM sec_companyfacts_processed
-                            WHERE symbol = :symbol
-                        """)
-                        result = conn.execute(query, {"symbol": symbol})
-                    else:
-                        query = text("""
-                            SELECT MAX(filed_date) as latest_date
-                            FROM sec_companyfacts_processed
-                        """)
-                        result = conn.execute(query)
-                elif self.check_table == "sec_companyfacts_raw":
-                    # Check raw table for fetched_at (when we last fetched from SEC)
-                    if symbol:
-                        query = text("""
-                            SELECT MAX(fetched_at) as latest_date
-                            FROM sec_companyfacts_raw
-                            WHERE symbol = :symbol
-                        """)
-                        result = conn.execute(query, {"symbol": symbol})
-                    else:
-                        query = text("""
-                            SELECT MAX(fetched_at) as latest_date
-                            FROM sec_companyfacts_raw
-                        """)
-                        result = conn.execute(query)
+                if symbol:
+                    query = text("""
+                        SELECT MAX(filed_date) as latest_date
+                        FROM sec_companyfacts_processed
+                        WHERE symbol = :symbol
+                    """)
+                    result = conn.execute(query, {"symbol": symbol})
                 else:
-                    raise ValueError(f"Unknown table: {self.check_table}")
+                    query = text("""
+                        SELECT MAX(filed_date) as latest_date
+                        FROM sec_companyfacts_processed
+                    """)
+                    result = conn.execute(query)
 
                 row = result.fetchone()
                 if row and row[0]:
@@ -149,30 +124,98 @@ class SECFilingPoller:
             logger.error(f"Error fetching latest filing date: {e}")
             return None
 
+    def get_last_fetch_date(self, symbol: str) -> Optional[datetime]:
+        """
+        Get when we last fetched data from SEC for this symbol.
+
+        This prevents excessive SEC API calls - don't refetch if we just checked.
+
+        Args:
+            symbol: Stock symbol to check
+
+        Returns:
+            Last fetch datetime, or None if never fetched
+        """
+        if not self.engine:
+            self.connect()
+
+        try:
+            with self.engine.connect() as conn:
+                query = text("""
+                    SELECT MAX(fetched_at) as latest_fetch
+                    FROM sec_companyfacts_raw
+                    WHERE symbol = :symbol
+                """)
+                result = conn.execute(query, {"symbol": symbol})
+                row = result.fetchone()
+                if row and row[0]:
+                    return row[0]
+                return None
+
+        except Exception as e:
+            logger.error(f"Error fetching last fetch date: {e}")
+            return None
+
     def check_stale_status(self, symbol: Optional[str] = None) -> Tuple[bool, Optional[datetime], Optional[datetime]]:
         """
-        Check if filing data is stale.
+        Check if filing data is stale using TWO checks:
+
+        1. filed_date check: Is the latest filing older than stale_days (default 90)?
+           - If company filed 90+ days ago, data is stale and needs refresh
+
+        2. fetched_at check: Did we recently try to refresh with no new data?
+           - Skip if we just checked today (SEC API rate limiting)
+           - Skip if we checked in last 7 days and filing is < 120 days old
 
         Args:
             symbol: Filter by specific symbol
 
         Returns:
-            (is_stale, latest_date, stale_date)
+            (is_stale, latest_filed_date, stale_date)
         """
-        latest_date = self.get_latest_filing_date(symbol)
+        latest_filed_date = self.get_latest_filing_date(symbol)
 
-        if not latest_date:
+        if not latest_filed_date:
             logger.warning(f"No filing data found for {symbol or 'all symbols'}")
             return True, None, None  # No data = stale
 
-        # Calculate stale threshold
-        stale_date = latest_date + timedelta(days=self.stale_days)
+        # Check 1: Is the filing date old enough to be stale?
+        stale_date = latest_filed_date + timedelta(days=self.stale_days)
         today = datetime.now().date()
-        latest_date_only = latest_date.date() if hasattr(latest_date, "date") else latest_date
+        latest_date_only = latest_filed_date.date() if hasattr(latest_filed_date, "date") else latest_filed_date
 
-        is_stale = today >= stale_date
+        is_filing_stale = today >= stale_date
 
-        if is_stale:
+        # Check 2: Did we recently fetch? (prevent excessive SEC API calls)
+        skip_refresh = False
+        if symbol and is_filing_stale:
+            last_fetch = self.get_last_fetch_date(symbol)
+            if last_fetch:
+                fetch_date = last_fetch.date() if hasattr(last_fetch, "date") else last_fetch
+                days_since_fetch = (today - fetch_date).days
+                days_since_filing = (today - latest_date_only).days
+
+                # Don't refetch if we just checked today
+                if days_since_fetch == 0:
+                    logger.info(
+                        f"{symbol}: Filing is {days_since_filing} days old, "
+                        f"but we just checked today ({days_since_fetch} days ago). Skipping to avoid excessive SEC API calls."
+                    )
+                    skip_refresh = True
+                # Don't refetch if we checked recently (7 days) and filing isn't super old (120+ days)
+                elif days_since_fetch <= 7 and days_since_filing < 120:
+                    logger.info(
+                        f"{symbol}: Filing is {days_since_filing} days old, "
+                        f"but we recently checked ({days_since_fetch} days ago). Skipping to avoid excessive SEC API calls."
+                    )
+                    skip_refresh = True
+
+        is_stale = is_filing_stale and not skip_refresh
+
+        if skip_refresh:
+            # Not refreshing, but technically still "stale" by date definition
+            pass
+        elif is_filing_stale:
             days_stale = (today - stale_date).days
             logger.warning(
                 f"{symbol or 'All symbols'}: Data is STALE by {days_stale} days | "
@@ -185,7 +228,7 @@ class SECFilingPoller:
                 f"Latest: {latest_date_only} | Stale in {days_until_stale} days"
             )
 
-        return is_stale, latest_date, stale_date
+        return is_stale, latest_filed_date, stale_date
 
     def trigger_refresh(
         self,
@@ -418,7 +461,7 @@ class SECFilingPoller:
             analysis_mode: Analysis mode (quick, standard, comprehensive)
         """
         logger.info(f"Starting SEC filing polling loop (interval: {interval_seconds}s)")
-        logger.info(f"Checking table: {self.check_table} | Stale threshold: {self.stale_days} days")
+        logger.info(f"Stale threshold: {self.stale_days} days (based on SEC filing date)")
         if include_submissions:
             logger.info("Submissions will be fetched along with CompanyFacts")
         if analyze:
@@ -500,9 +543,6 @@ Examples:
   # Continuous polling with custom interval
   python %(prog)s --interval 7200 --continuous
 
-  # Use processed table filing date instead of fetch date
-  python %(prog)s --table sec_companyfacts_processed
-
   # Custom stale threshold (default: 90 days)
   python %(prog)s --stale-days 60
         """,
@@ -515,12 +555,6 @@ Examples:
         action="append",
         dest="symbols",
         default=None,
-    )
-    parser.add_argument(
-        "--table",
-        choices=["sec_companyfacts_processed", "sec_companyfacts_raw"],
-        default="sec_companyfacts_raw",
-        help="Table to check for latest filing (default: sec_companyfacts_raw - checks fetched_at). Use sec_companyfacts_processed to check SEC filing date.",
     )
     parser.add_argument(
         "--stale-days",
@@ -611,7 +645,6 @@ Examples:
         db_url=db_url,
         stock_db_url=stock_db_url,
         stale_days=args.stale_days,
-        check_table=args.table,
     )
 
     if args.continuous:
