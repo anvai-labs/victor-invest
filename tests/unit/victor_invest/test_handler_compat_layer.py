@@ -74,6 +74,10 @@ def test_fallback_handler_decorator_registers_with_registry_and_executor(monkeyp
     import victor.framework.handler_registry as handler_registry_module
     import victor.workflows.executor as executor_module
 
+    # Skip if running against Victor 0.5.0 which doesn't have register_vertical_handlers
+    if not hasattr(handler_registry_module, "register_vertical_handlers"):
+        pytest.skip("Victor 0.5.0 detected; skipping new API test")
+
     calls = {
         "registry": [],
         "executor": [],

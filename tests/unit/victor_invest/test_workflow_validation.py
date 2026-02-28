@@ -1,3 +1,5 @@
+import pytest
+
 from victor.framework.handler_registry import get_handler_registry
 from victor.workflows.definition import ComputeNode
 from victor.workflows.executor import get_compute_handler
@@ -26,11 +28,19 @@ def test_workflows_validate_and_handlers_resolve():
 
         for node in workflow.nodes.values():
             if isinstance(node, ComputeNode) and node.handler:
-                # Victor API uses get_handler(vertical_name, handler_name)
-                # Try both investment vertical and global handlers
-                handler = registry.get_handler("investment", node.handler) or registry.get_handler(
-                    "global", node.handler
-                )
+                # Handle both old and new Victor APIs
+                # New API: get_handler(vertical_name, handler_name)
+                # Old API: get(handler_name)
+                handler = None
+                if hasattr(registry, "get_handler"):
+                    # New Victor API
+                    handler = registry.get_handler("investment", node.handler) or registry.get_handler(
+                        "global", node.handler
+                    )
+                elif hasattr(registry, "get"):
+                    # Old Victor API (0.5.0)
+                    handler = registry.get(node.handler)
+
                 if handler is None:
                     missing_handlers.setdefault(name, []).append(node.handler)
                 if get_compute_handler(node.handler) is None:
