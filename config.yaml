@@ -329,6 +329,10 @@ valuation:
       Utilities: 1.8
       Communication Services: 3
       Default: 2.5
+      # Symbols to exclude from P/B calculation (e.g., payment networks where P/B is not meaningful)
+      excluded_symbols:
+        - V      # Visa - payment network (asset-light)
+        - MA     # Mastercard - payment network (asset-light)
       industry_overrides:
         Asset Management: 10.0
         Banks - Regional: 1.3

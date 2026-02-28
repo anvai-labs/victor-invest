@@ -285,12 +285,25 @@ class SectorMultiplesHistory:
 
             # P/B = Price / Book Value per Share
             # Book Value per Share = Shareholders Equity / Shares
+            # Exclude payment networks where P/B is not meaningful (asset-light model)
             equity = metrics.get("stockholders_equity")
             if equity and shares and shares > 0:
                 bvps = equity / shares
                 if bvps > 0:
                     pb = price / bvps
-                    if pb > 0:  # Only check for positive values - let data define median
+
+                    # Known payment networks - P/B is not meaningful for these
+                    payment_networks = {'V', 'MA'}
+                    is_payment_network = symbol.upper() in payment_networks
+
+                    if is_payment_network:
+                        # Skip P/B for payment networks - not meaningful
+                        logger.debug(
+                            f"{symbol}: Excluding from P/B calculation - payment network "
+                            f"(price=${price:.2f}, bvps=${bvps:.2f}, P/B={pb:.1f}x)"
+                        )
+                        skipped_pb_asset_light += 1
+                    elif pb > 0:  # Only check for positive values
                         pb_multiples.append(pb)
 
         # Apply robust median calculation (handles outliers automatically)

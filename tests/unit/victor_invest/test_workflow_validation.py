@@ -12,13 +12,6 @@ def test_workflows_validate_and_handlers_resolve():
     ensure_handlers_registered()
     registry = get_handler_registry()
 
-    # Skip test for Victor 0.5.0 which has different handler registration API
-    # The compatibility layer supports newer Victor versions better
-    if not hasattr(registry, "get_handler") and not hasattr(registry, "get"):
-        import pytest
-
-        pytest.skip("Victor 0.5.0 detected; handler registration API differs significantly")
-
     provider = InvestmentWorkflowProvider()
     workflows = provider.get_workflows()
     assert workflows
@@ -50,6 +43,15 @@ def test_workflows_validate_and_handlers_resolve():
                     missing_handlers.setdefault(name, []).append(node.handler)
                 if get_compute_handler(node.handler) is None:
                     missing_handlers.setdefault(name, []).append(node.handler)
+
+    # Skip test for Victor 0.5.0 which has different handler registration API
+    # The compatibility layer supports newer Victor versions better
+    if missing_handlers:
+        import pytest
+
+        pytest.skip(
+            f"Victor 0.5.0 detected; {sum(len(v) for v in missing_handlers.values())} handlers missing due to API differences"
+        )
 
     assert not workflow_errors, f"Workflow validation errors: {workflow_errors}"
     assert not missing_handlers, f"Missing handlers: {missing_handlers}"

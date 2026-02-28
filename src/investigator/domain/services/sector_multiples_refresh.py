@@ -254,10 +254,22 @@ class SectorMultiplesRefresh:
                     ev_ebitda_multiples.append(ev_ebitda)
 
             # P/B = Market Cap / Shareholders Equity
+            # Exclude payment networks where P/B is not meaningful (asset-light model)
             equity = metrics.get("stockholders_equity")
             if equity and equity > 0:
                 pb = mc / equity
-                if pb > 0:  # Only check for positive values - let data define the median
+
+                # Known payment networks - P/B is not meaningful for these
+                payment_networks = {'V', 'MA'}
+                is_payment_network = symbol.upper() in payment_networks
+
+                if is_payment_network:
+                    # Skip P/B for payment networks - not meaningful
+                    logger.debug(
+                        f"{symbol}: Excluding from P/B calculation - payment network "
+                        f"(market_cap=${mc/1e9:.1f}B, equity=${equity/1e9:.1f}B, P/B={pb:.1f}x)"
+                    )
+                elif pb > 0:  # Only check for positive values
                     pb_multiples.append(pb)
 
         # Apply percentile filtering to remove outliers
@@ -445,6 +457,30 @@ class SectorMultiplesRefresh:
 
         logger.debug(f"Loaded {len(overrides)} sector overrides from config")
         return overrides
+
+    def _load_pb_excluded_symbols(self) -> set:
+        """Load symbols to exclude from P/B calculation from config.yaml."""
+        config_path = Path(__file__).parent.parent.parent.parent.parent / "config.yaml"
+
+        if not config_path.exists():
+            logger.warning(f"Config file not found: {config_path}")
+            return set()
+
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+
+        # Get excluded_symbols from sector_multiples.pb
+        sector_multiples = config.get("sector_multiples", {})
+        pb_config = sector_multiples.get("pb", {})
+        excluded = pb_config.get("excluded_symbols", [])
+
+        # Normalize to uppercase set
+        excluded_set = {s.upper() for s in excluded} if excluded else set()
+
+        if excluded_set:
+            logger.debug(f"Loaded {len(excluded_set)} P/B excluded symbols from config: {excluded_set}")
+
+        return excluded_set
 
     def update_config_yaml(self, calculated_multiples: Dict[str, Dict[str, Any]]) -> bool:
         """Update config.yaml with calculated sector multiples.
