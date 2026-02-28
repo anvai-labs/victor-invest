@@ -909,7 +909,11 @@ class Config:
             Path(directory).mkdir(parents=True, exist_ok=True)
 
     def _override_with_env(self, config_data: Dict) -> Dict:
-        """Override configuration with environment variables"""
+        """Override configuration with environment variables
+
+        Supports both SEC_DB_* and DB_* prefixes for database configuration.
+        SEC_DB_* takes precedence over DB_* for database settings.
+        """
         env_mappings = {
             "DB_HOST": ("database", "host"),
             "DB_PORT": ("database", "port"),
@@ -923,7 +927,17 @@ class Config:
             "EMAIL_SMTP_PORT": ("email", "smtp_port"),
         }
 
-        for env_var, (section, key) in env_mappings.items():
+        # Process SEC_DB_* first (higher priority for SEC database)
+        sec_db_mappings = {
+            "SEC_DB_HOST": ("database", "host"),
+            "SEC_DB_PORT": ("database", "port"),
+            "SEC_DB_NAME": ("database", "database"),
+            "SEC_DB_USER": ("database", "username"),
+            "SEC_DB_PASSWORD": ("database", "password"),
+        }
+
+        # First, process SEC_DB_* variables
+        for env_var, (section, key) in sec_db_mappings.items():
             if env_var in os.environ:
                 if section not in config_data:
                     config_data[section] = {}
@@ -936,6 +950,32 @@ class Config:
                     value = value.lower() in ("true", "1", "yes")
 
                 config_data[section][key] = value
+
+        # Then, process legacy DB_* variables (only if not already set)
+        for env_var, (section, key) in env_mappings.items():
+            if env_var in os.environ:
+                if section not in config_data:
+                    config_data[section] = {}
+
+                # Skip if already set by SEC_DB_* variables
+                if key in config_data.get(section, {}):
+                    continue
+
+                value = os.environ[env_var]
+                # Convert to appropriate type
+                if key == "port":
+                    value = int(value)
+                elif key in ["enabled", "use_tls"]:
+                    value = value.lower() in ("true", "1", "yes")
+
+                config_data[section][key] = value
+
+        # Fallback: if username not set, use database name as username
+        if "database" in config_data:
+            db_config = config_data["database"]
+            if "username" not in db_config or not db_config["username"]:
+                if "database" in db_config and db_config["database"]:
+                    db_config["username"] = db_config["database"]
 
         return config_data
 
