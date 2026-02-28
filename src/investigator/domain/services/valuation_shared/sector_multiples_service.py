@@ -153,6 +153,12 @@ class SectorMultiplesService:
         """
         Get P/E multiple for a sector.
 
+        Priority order:
+        1. Config industry_overrides (highest - most reliable current data)
+        2. Historical table industry-level (good for historical context)
+        3. Historical table sector-level (fallback)
+        4. Config sector default (lowest priority)
+
         Args:
             sector: Sector name
             industry: Optional industry for more specific multiple
@@ -160,18 +166,33 @@ class SectorMultiplesService:
         Returns:
             P/E multiple
         """
-        # Check industry override first
+        normalized = self.normalize_sector(sector)
+
+        # Priority 1: Check config industry_overrides first (most reliable)
         if industry:
-            # Try exact match
+            # Try exact match from hardcoded INDUSTRY_PE_OVERRIDES
             if industry in self.INDUSTRY_PE_OVERRIDES:
+                logger.info(f"Using hardcoded PE override for {industry}: {self.INDUSTRY_PE_OVERRIDES[industry]}")
                 return self.INDUSTRY_PE_OVERRIDES[industry]
-            # Try from config
+
+            # Try from config pe_multiples.industry_overrides
             industry_override = self._config.get(f"pe_multiples.industry_overrides.{industry}")
             if industry_override is not None:
+                logger.info(f"Using config PE industry override for {industry}: {industry_override}")
                 return float(industry_override)
 
-        # Fall back to sector
-        normalized = self.normalize_sector(sector)
+        # Priority 2: Try historical industry-level data
+        if industry:
+            historical_pe = self._get_historical_multiple("pe", sector, industry)
+            if historical_pe is not None:
+                return historical_pe
+
+        # Priority 3: Try historical sector-level data
+        historical_pe = self._get_historical_multiple("pe", sector, None)
+        if historical_pe is not None:
+            return historical_pe
+
+        # Priority 4: Fall back to config sector default
         return self._config.get_sector_pe_multiple(normalized)
 
     def get_ps(self, sector: str, industry: Optional[str] = None) -> float:
@@ -192,14 +213,42 @@ class SectorMultiplesService:
         """
         Get P/B multiple for a sector.
 
+        Priority order:
+        1. Config industry_overrides (highest - most reliable current data)
+        2. Config direct industry key (added by sector-multiples refresh)
+        3. Historical table industry-level (good for historical context)
+        4. Historical table sector-level (fallback)
+        5. Config sector default (lowest priority)
+
         Args:
             sector: Sector name
-            industry: Optional industry (reserved for future industry overrides)
+            industry: Optional industry for more specific P/B multiple
 
         Returns:
             P/B multiple
         """
         normalized = self.normalize_sector(sector)
+
+        # Priority 1: Check config industry_overrides first (most reliable)
+        if industry:
+            # Try from config valuation.sector_multiples.pb.industry_overrides
+            industry_override = self._config.get(f"valuation.sector_multiples.pb.industry_overrides.{industry}")
+            if industry_override is not None:
+                logger.info(f"Using config PB override for {industry}: {industry_override}")
+                return float(industry_override)
+
+        # Priority 2: Try historical industry-level data
+        if industry:
+            historical_pb = self._get_historical_multiple("pb", sector, industry)
+            if historical_pb is not None:
+                return historical_pb
+
+        # Priority 3: Try historical sector-level data
+        historical_pb = self._get_historical_multiple("pb", sector, None)
+        if historical_pb is not None:
+            return historical_pb
+
+        # Priority 4: Fall back to config sector default
         return self._config.get_sector_pb_multiple(normalized)
 
     def get_ev_ebitda(self, sector: str, industry: Optional[str] = None) -> float:
@@ -265,6 +314,138 @@ class SectorMultiplesService:
     # ============================================================================
     # Historical Median Methods (from sector_multiples_history table)
     # ============================================================================
+
+    # Minimum sample size thresholds for historical data reliability
+    MIN_SAMPLES_INDUSTRY = 5  # Industry-level need at least 5 companies
+    MIN_SAMPLES_SECTOR = 10  # Sector-level need at least 10 companies
+
+    def _is_sample_size_sufficient(self, sample_size: int, is_industry: bool) -> bool:
+        """Check if sample size is sufficient for reliable historical data.
+
+        Args:
+            sample_size: Number of companies in the sample
+            is_industry: True for industry-level, False for sector-level
+
+        Returns:
+            True if sample size is sufficient
+        """
+        min_required = self.MIN_SAMPLES_INDUSTRY if is_industry else self.MIN_SAMPLES_SECTOR
+        if sample_size < min_required:
+            logger.warning(
+                f"Sample size insufficient ({sample_size} < {min_required}) for "
+                f"{'industry' if is_industry else 'sector'}-level historical data"
+            )
+            return False
+        return True
+
+    def _get_historical_multiple(
+        self,
+        metric: str,
+        sector: Optional[str],
+        industry: Optional[str] = None,
+        fiscal_year: Optional[int] = None,
+        lookback_years: int = 3,
+    ) -> Optional[float]:
+        """Get historical multiple for sector/industry from database.
+
+        Priority:
+        1. Industry-level historical multiple (if industry provided)
+        2. Sector-level historical multiple
+
+        Sample size requirements:
+        - Industry-level: requires at least 5 companies
+        - Sector-level: requires at least 10 companies
+
+        Args:
+            metric: 'pe', 'ps', 'pb', 'ev_ebitda'
+            sector: Sector name (will be normalized)
+            industry: Industry name (for more specific lookup)
+            fiscal_year: Specific fiscal year (None = most recent)
+            lookback_years: Years to look back if fiscal_year is None
+
+        Returns:
+            Multiple value or None if not found or sample size insufficient
+        """
+        from sqlalchemy import create_engine, text
+        from investigator.config import get_config
+
+        config = get_config()
+        engine = create_engine(config.database.url)
+
+        # Normalize sector name
+        standard_sector = self.normalize_sector(sector) if sector else None
+
+        # Build query using new hierarchical columns
+        # Note: Must use f-string for column name substitution (not a parameter)
+        metric_column = f"{metric}_multiple"
+
+        if industry:
+            # Query industry-level record with sample size
+            if fiscal_year:
+                query_str = f"""
+                    SELECT {metric_column}, sample_size FROM sector_multiples_history
+                    WHERE sector_name = :sector
+                      AND industry_name = :industry
+                      AND fiscal_year = :fiscal_year
+                """
+                params = {"sector": standard_sector, "industry": industry, "fiscal_year": fiscal_year}
+            else:
+                # Get most recent year
+                query_str = f"""
+                    SELECT {metric_column}, sample_size FROM sector_multiples_history
+                    WHERE sector_name = :sector
+                      AND industry_name = :industry
+                    ORDER BY fiscal_year DESC LIMIT 1
+                """
+                params = {"sector": standard_sector, "industry": industry}
+
+        else:
+            # Query sector-level record with sample size
+            if fiscal_year:
+                query_str = f"""
+                    SELECT {metric_column}, sample_size FROM sector_multiples_history
+                    WHERE sector_name = :sector
+                      AND industry_name IS NULL
+                      AND fiscal_year = :fiscal_year
+                """
+                params = {"sector": standard_sector, "fiscal_year": fiscal_year}
+            else:
+                # Get most recent year
+                query_str = f"""
+                    SELECT {metric_column}, sample_size FROM sector_multiples_history
+                    WHERE sector_name = :sector
+                      AND industry_name IS NULL
+                    ORDER BY fiscal_year DESC LIMIT 1
+                """
+                params = {"sector": standard_sector}
+
+        try:
+            with engine.connect() as conn:
+                result = conn.execute(text(query_str), params).fetchone()
+
+            if result and result[0] is not None:
+                value = float(result[0])
+                sample_size = int(result[1]) if len(result) > 1 and result[1] is not None else 0
+
+                # Check sample size sufficiency
+                is_industry = industry is not None
+                if not self._is_sample_size_sufficient(sample_size, is_industry):
+                    logger.warning(
+                        f"Historical {metric} for {standard_sector}/{industry or 'sector'}: {value:.2f} "
+                        f"(sample_size={sample_size}) - REJECTED due to insufficient sample"
+                    )
+                    return None
+
+                logger.info(
+                    f"Historical {metric} for {standard_sector}/{industry or 'sector'}: {value:.2f} "
+                    f"(sample_size={sample_size})"
+                )
+                return value
+
+        except Exception as e:
+            logger.warning(f"Failed to query historical {metric} for {standard_sector}/{industry or 'sector'}: {e}")
+
+        return None
 
     def get_historical_median_multiple(
         self,

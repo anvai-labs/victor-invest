@@ -411,6 +411,8 @@ def _is_industry(name: str) -> bool:
         "Apparel",
         "Luxury",
         "REIT",  # Industry-level REITs, not Real Estate sector
+        "Credit",  # Credit Services, Credit Cards, etc.
+        "Asset",  # Asset Management
     ]
     name_lower = name.lower()
     return any(keyword.lower() in name_lower for keyword in industry_keywords)

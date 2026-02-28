@@ -409,14 +409,15 @@ def ensure_handlers_registered() -> None:
             from victor.workflows.executor import register_compute_handler
 
             registry = get_handler_registry()
-            entries: list = getattr(registry, "list_entries", lambda: [])()
+            # list_handlers returns Dict[str, List[str]] mapping vertical names to handler names
+            handlers_map = registry.list_handlers()
             pushed = 0
-            for entry in entries:
-                name = getattr(entry, "name", None)
-                handler = getattr(entry, "handler", None)
-                if name and handler is not None:
-                    register_compute_handler(name, handler)
-                    pushed += 1
+            for vertical_name, handler_names in handlers_map.items():
+                for handler_name in handler_names:
+                    handler = registry.get_handler(vertical_name, handler_name)
+                    if handler:
+                        register_compute_handler(handler_name, handler)
+                        pushed += 1
             synced = pushed > 0
             sync_method_used = "manual_executor_bridge"
         except Exception:

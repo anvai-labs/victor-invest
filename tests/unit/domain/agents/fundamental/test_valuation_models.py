@@ -50,7 +50,7 @@ def test_calculate_relative_valuation_models_returns_all_models(pe_cls, ev_cls, 
         market_data={"current_price": 100.0, "market_cap": 100_000, "cash": 10_000},
         config=SimpleNamespace(valuation={}),
         sector_specific_result=None,
-        lookup_sector_multiple=lambda _sector, multiple: {
+        lookup_sector_multiple=lambda _sector, multiple, _industry: {
             "pe": 20,
             "ev_ebitda": 12,
             "ps": 4,
@@ -101,7 +101,7 @@ def test_calculate_relative_valuation_models_applies_insurance_pb_override(pe_cl
         market_data={"current_price": 100.0, "market_cap": 100_000, "cash": 10_000},
         config=SimpleNamespace(valuation={}),
         sector_specific_result=sector_specific,
-        lookup_sector_multiple=lambda _sector, multiple: {
+        lookup_sector_multiple=lambda _sector, multiple, _industry: {
             "pe": 20,
             "ev_ebitda": 12,
             "ps": 4,
@@ -144,7 +144,7 @@ def test_calculate_relative_valuation_models_prefers_ttm_ratio_inputs(pe_cls, ev
         market_data={"current_price": 100.0, "market_cap": 100_000, "cash": 10_000},
         config=SimpleNamespace(valuation={}),
         sector_specific_result=None,
-        lookup_sector_multiple=lambda _sector, multiple: {
+        lookup_sector_multiple=lambda _sector, multiple, _industry: {
             "pe": 20,
             "ev_ebitda": 12,
             "ps": 4,
@@ -188,7 +188,7 @@ def test_calculate_relative_valuation_models_uses_revenue_growth_for_pe_adjustme
         market_data={"current_price": 100.0, "market_cap": 100_000, "cash": 10_000},
         config=SimpleNamespace(valuation={}),
         sector_specific_result=None,
-        lookup_sector_multiple=lambda _sector, multiple: {
+        lookup_sector_multiple=lambda _sector, multiple, _industry: {
             "pe": 20,
             "ev_ebitda": 12,
             "ps": 4,
@@ -232,7 +232,7 @@ def test_calculate_relative_valuation_models_forward_1y_scales_denominators(pe_c
         market_data={"current_price": 100.0, "market_cap": 100_000, "cash": 10_000},
         config=SimpleNamespace(valuation={}),
         sector_specific_result=None,
-        lookup_sector_multiple=lambda _sector, multiple: {
+        lookup_sector_multiple=lambda _sector, multiple, _industry: {
             "pe": 20,
             "ev_ebitda": 12,
             "ps": 4,
@@ -283,7 +283,7 @@ def test_calculate_relative_valuation_models_forward_2q_uses_partial_growth_scal
         market_data={"current_price": 100.0, "market_cap": 100_000, "cash": 10_000},
         config=SimpleNamespace(valuation={}),
         sector_specific_result=None,
-        lookup_sector_multiple=lambda _sector, multiple: {
+        lookup_sector_multiple=lambda _sector, multiple, _industry: {
             "pe": 20,
             "ev_ebitda": 12,
             "ps": 4,

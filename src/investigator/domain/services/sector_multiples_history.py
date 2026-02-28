@@ -177,7 +177,8 @@ class SectorMultiplesHistory:
 
         # Group by sector first (standardizing names)
         sector_groups: Dict[str, List[str]] = {}
-        industry_groups: Dict[str, List[str]] = {}
+        # Track industries with their parent sector: {(industry, sector): [symbols]}
+        industry_groups: Dict[Tuple[str, str], List[str]] = {}
 
         for symbol, sector, industry in symbol_classification:
             # Standardize sector name
@@ -187,9 +188,11 @@ class SectorMultiplesHistory:
             sector_groups[standard_sector].append(symbol)
 
             if industry:
-                if industry not in industry_groups:
-                    industry_groups[industry] = []
-                industry_groups[industry].append(symbol)
+                # Track industry with its parent sector
+                industry_key = (industry, standard_sector)
+                if industry_key not in industry_groups:
+                    industry_groups[industry_key] = []
+                industry_groups[industry_key].append(symbol)
 
         # Calculate sector-level multiples
         for sector, symbols in sector_groups.items():
@@ -198,11 +201,13 @@ class SectorMultiplesHistory:
             if multiples:
                 results[sector] = multiples
 
-        # Calculate industry-level multiples
-        for industry, symbols in industry_groups.items():
-            logger.info(f"Calculating for industry: {industry} ({len(symbols)} symbols)")
+        # Calculate industry-level multiples (with sector tracking)
+        for (industry, sector), symbols in industry_groups.items():
+            logger.info(f"Calculating for industry: {industry} in sector: {sector} ({len(symbols)} symbols)")
             multiples = self._calculate_historical_multiples_for_symbols(symbols, f"industry:{industry}", fiscal_year)
             if multiples:
+                # Add sector information to multiples dict for hierarchical storage
+                multiples["sector"] = sector
                 results[industry] = multiples
 
         return results
@@ -242,6 +247,7 @@ class SectorMultiplesHistory:
         skipped_no_price = 0
         skipped_no_revenue = 0
         skipped_no_eps = 0
+        skipped_pb_asset_light = 0
 
         for symbol, metrics in fy_metrics.items():
             # Skip if no market cap or price
@@ -279,12 +285,26 @@ class SectorMultiplesHistory:
 
             # P/B = Price / Book Value per Share
             # Book Value per Share = Shareholders Equity / Shares
+            # Skip asset-light companies where P/B is not meaningful
             equity = metrics.get("stockholders_equity")
             if equity and shares and shares > 0:
                 bvps = equity / shares
                 if bvps > 0:
                     pb = price / bvps
-                    if pb > 0 and pb < 50:  # Sanity check
+
+                    # Detect asset-light companies (payment networks, platforms)
+                    # For these, book value is minimal, making P/B artificially high
+                    # Threshold: if bvps < 10% of price, it's asset-light (P/B would be > 10x)
+                    is_asset_light = bvps < (price * 0.10) if price > 0 else False
+
+                    if is_asset_light:
+                        # Skip P/B for asset-light companies - not meaningful
+                        logger.debug(
+                            f"{symbol}: Excluding from P/B calculation - asset-light model "
+                            f"(price=${price:.2f}, bvps=${bvps:.2f}, implied P/B={pb:.1f}x)"
+                        )
+                        skipped_pb_asset_light += 1
+                    elif pb > 0 and pb < 50:  # Sanity check
                         pb_multiples.append(pb)
 
         # Apply percentile filtering
@@ -303,7 +323,8 @@ class SectorMultiplesHistory:
             f"Total: {total_symbols}, P/E: {valid_pe}/{total_symbols}, "
             f"P/S: {valid_ps}/{total_symbols}, P/B: {valid_pb}/{total_symbols}, "
             f"Skipped: no_mc={skipped_no_mc}, no_price={skipped_no_price}, "
-            f"no_rev={skipped_no_revenue}, no_eps={skipped_no_eps}"
+            f"no_rev={skipped_no_revenue}, no_eps={skipped_no_eps}, "
+            f"pb_asset_light={skipped_pb_asset_light}"
         )
 
         if pe_median is None and ps_median is None:
@@ -792,6 +813,7 @@ class SectorMultiplesHistory:
 
         Args:
             calculated_multiples: Dict from calculate_historical_multiples()
+                             For industry-level, should include 'sector' key in each multiples dict
             group_type: 'sector' or 'industry'
 
         Returns:
@@ -804,12 +826,20 @@ class SectorMultiplesHistory:
 
             with self.sec_db_manager.get_session() as session:
                 for name, multiples in calculated_multiples.items():
-                    # Check if record exists
+                    # Determine hierarchical values
+                    if group_type == "sector":
+                        sector_name = name
+                        industry_name = None
+                    else:  # industry
+                        sector_name = multiples.get("sector")  # Should be set by calculate_historical_multiples
+                        industry_name = name
+
+                    # Check if record exists (use new unique constraint)
                     existing = (
                         session.query(SectorMultiplesHistory)
                         .filter_by(
-                            group_name=name,
-                            group_type=group_type,
+                            sector_name=sector_name,
+                            industry_name=industry_name,
                             fiscal_year=multiples["fiscal_year"],
                         )
                         .first()
@@ -820,14 +850,18 @@ class SectorMultiplesHistory:
                         existing.pe_multiple = multiples.get("pe")
                         existing.ps_multiple = multiples.get("ps")
                         existing.pb_multiple = multiples.get("pb")
+                        existing.ev_ebitda_multiple = multiples.get("ev_ebitda")
                         existing.sample_size = multiples["sample_size"]
                         existing.snapshot_date = datetime.fromisoformat(multiples["snapshot_date"])
                         existing.percentile_low = multiples.get("percentile_low", 0.05)
                         existing.percentile_high = multiples.get("percentile_high", 0.95)
                         existing.updated_at = datetime.utcnow()
                     else:
-                        # Create new record
+                        # Create new record with hierarchical columns
                         record = SectorMultiplesHistory(
+                            sector_name=sector_name,
+                            industry_name=industry_name,
+                            # Legacy columns (for backward compatibility)
                             group_name=name,
                             group_type=group_type,
                             fiscal_year=multiples["fiscal_year"],
@@ -835,6 +869,7 @@ class SectorMultiplesHistory:
                             pe_multiple=multiples.get("pe"),
                             ps_multiple=multiples.get("ps"),
                             pb_multiple=multiples.get("pb"),
+                            ev_ebitda_multiple=multiples.get("ev_ebitda"),
                             sample_size=multiples["sample_size"],
                             percentile_low=multiples.get("percentile_low", 0.05),
                             percentile_high=multiples.get("percentile_high", 0.95),
@@ -842,7 +877,7 @@ class SectorMultiplesHistory:
                         session.add(record)
 
                 session.commit()
-                logger.info(f"Stored {len(calculated_multiples)} historical records")
+                logger.info(f"Stored {len(calculated_multiples)} historical records (group_type={group_type})")
                 return True
 
         except Exception as e:

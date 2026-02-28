@@ -938,8 +938,8 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
     def _get_sector_multiples(self, sector: str, industry: str | None = None) -> Dict[str, float]:
         """Get sector median multiples with industry override.
 
-        Uses normalized sector/industry names and tries historical median lookups first.
-        Falls back to config static values if historical data not available.
+        Uses normalized sector/industry names and prioritizes config overrides.
+        Falls back to historical database lookups and static values.
 
         Args:
             sector: The company's sector (will be normalized, e.g., "Information Technology" -> "Technology")
@@ -947,54 +947,24 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
         Returns:
             Dict with pe, ps, pb, ev_ebitda multiples. If industry is provided and
-            has historical data or override defined in config, that value will be used.
+            has config override defined, that value will be used.
         """
         # Normalize sector and industry names
         normalized = SectorIndustryMapper.normalize_metadata(sector, industry)
         standard_sector = normalized["sector"] or "Unknown"
         standard_industry = normalized["industry"]
 
-        # Try historical median lookups first using SectorMultiplesService
+        # Use the updated get_pe(), get_pb(), get_ps() methods that prioritize config overrides
         if self._sector_multiples_service:
             try:
-                # Try industry-specific historical lookup first
-                if standard_industry:
-                    industry_pe = self._sector_multiples_service._get_industry_historical_multiple(
-                        industry=standard_industry,
-                        metric="pe",
-                        lookback_years=3,
-                    )
-                    if industry_pe is not None:
-                        # Got industry-specific historical data, use it for all multiples
-                        return {
-                            "pe": industry_pe,
-                            "ps": self._sector_multiples_service.get_ps(standard_sector, standard_industry),
-                            "pb": self._sector_multiples_service.get_pb(standard_sector, standard_industry),
-                            "ev_ebitda": self._sector_multiples_service.get_ev_ebitda(
-                                standard_sector, standard_industry
-                            ),
-                        }
-
-                # Try sector-level historical lookup
-                historical_pe = self._sector_multiples_service.get_historical_median_multiple(
-                    sector=standard_sector,
-                    metric="pe",
-                    lookback_years=3,
-                )
-                if historical_pe is not None:
-                    # Got historical sector data, use it
-                    return {
-                        "pe": historical_pe,
-                        "ps": self._sector_multiples_service.get_ps(standard_sector, standard_industry),
-                        "pb": self._sector_multiples_service.get_pb(standard_sector, standard_industry),
-                        "ev_ebitda": self._sector_multiples_service.get_ev_ebitda(standard_sector, standard_industry),
-                    }
+                return {
+                    "pe": self._sector_multiples_service.get_pe(standard_sector, standard_industry),
+                    "ps": self._sector_multiples_service.get_ps(standard_sector, standard_industry),
+                    "pb": self._sector_multiples_service.get_pb(standard_sector, standard_industry),
+                    "ev_ebitda": self._sector_multiples_service.get_ev_ebitda(standard_sector, standard_industry),
+                }
             except Exception as e:
-                logger.debug(f"Historical median lookup failed for {standard_sector}: {e}")
-
-            # Fall back to config static values
-            result: dict[str, float] = self._sector_multiples_service.get_multiples(standard_sector, standard_industry)
-            return result
+                logger.debug(f"Config-aware multiple lookup failed for {standard_sector}: {e}")
 
         # Fallback to shared SectorMultiples module if available
         try:
@@ -1151,12 +1121,18 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     raise ValueError("Could not build company profile")
 
                 # Build minimal financials dict for weight calculation
+                # CRITICAL: Must include all fields required by ModelApplicabilityRules.is_applicable()
                 financials = {
                     "net_income": None,
                     "revenue": None,
                     "shareholders_equity": None,
+                    "book_value": None,  # Required for P/B model applicability
                     "market_cap": None,
-                    "ebitda": None,  # Required for EV/EBITDA model applicability check
+                    "ebitda": None,  # Required for EV/EBITDA model applicability
+                    "dividends_paid": None,  # Required for GGM model applicability
+                    "fcf_quarters_count": 0,  # Required for DCF model applicability
+                    "sector": None,  # Required for insurance/managed care DCF filter
+                    "industry": None,  # Required for insurance/managed care DCF filter
                 }
 
                 # Try to extract TTM financials from quarterly_metrics
@@ -1188,17 +1164,21 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     financials["net_income"] = extract_ttm_metric(["net_income", "net_income_loss"])  # type: ignore[assignment]
                     financials["revenue"] = extract_ttm_metric(["total_revenue", "revenue"])  # type: ignore[assignment]
 
-                    # Use latest quarter's shareholders_equity
+                    # Use latest quarter's shareholders_equity for both fields
                     latest_q = ttm[0]
+                    equity_value = None
                     if "balance_sheet" in latest_q:
-                        financials["shareholders_equity"] = latest_q.get("balance_sheet", {}).get(
-                            "stockholders_equity"
-                        ) or latest_q.get("shareholders_equity", 0)
+                        equity_value = latest_q.get("balance_sheet", {}).get("stockholders_equity") or latest_q.get(
+                            "shareholders_equity", 0
+                        )
                     else:
-                        financials["shareholders_equity"] = latest_q.get(
+                        equity_value = latest_q.get(
                             "stockholders_equity",
                             latest_q.get("shareholders_equity", 0),
                         )
+
+                    financials["shareholders_equity"] = equity_value
+                    financials["book_value"] = equity_value  # Required for P/B model applicability
 
                     # Calculate TTM EBITDA from operating_income and depreciation_amortization
                     ebitda_total = 0.0
@@ -1213,6 +1193,31 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                             depr_amort = q.get("depreciation_amortization", 0) or 0
                             ebitda_total += operating_income + depr_amort
                     financials["ebitda"] = ebitda_total
+
+                    # Calculate TTM dividends for GGM applicability
+                    dividends_total = 0.0
+                    fcf_count = 0
+                    for q in ttm:
+                        # Try cash flow nested format
+                        if "cash_flow" in q:
+                            divs = q.get("cash_flow", {}).get("dividends_paid", 0) or 0
+                        else:
+                            divs = q.get("dividends_paid", 0) or 0
+
+                        if divs is not None and divs != 0:
+                            dividends_total += abs(divs)
+
+                        # Count FCF data availability for DCF
+                        if "cash_flow" in q:
+                            fcf = q.get("cash_flow", {}).get("free_cash_flow", None)
+                        else:
+                            fcf = q.get("free_cash_flow", None)
+
+                        if fcf is not None:
+                            fcf_count += 1
+
+                    financials["dividends_paid"] = dividends_total
+                    financials["fcf_quarters_count"] = fcf_count
 
                 # Calculate market_cap if we have price and shares
                 if current_price and quarterly_metrics:

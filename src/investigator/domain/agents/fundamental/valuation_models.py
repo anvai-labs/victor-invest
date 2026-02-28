@@ -282,7 +282,7 @@ def calculate_relative_valuation_models(
     market_data: Dict[str, Any],
     config: Any,
     sector_specific_result: Optional[Dict[str, Any]],
-    lookup_sector_multiple: Callable[[Optional[str], str], Optional[float]],
+    lookup_sector_multiple: Callable[[Optional[str], str, Optional[str]], Optional[float]],
     calculate_enterprise_value: Callable[[Dict[str, Any], Dict[str, Any]], Optional[float]],
     logger: Any,
     valuation_basis: str = "ttm",
@@ -404,7 +404,7 @@ def calculate_relative_valuation_models(
     sector_median_pe = (
         company_data.get("sector_metrics", {}).get("median_pe")
         or company_data.get("sector_data", {}).get("median_pe")
-        or lookup_sector_multiple(company_profile.sector, "pe")
+        or lookup_sector_multiple(company_profile.sector, "pe", company_profile.industry)
     )
     growth_adjusted_pe = None
     peg_ratio = ratios.get("peg_ratio") or ratios.get("peg")
@@ -520,7 +520,7 @@ def calculate_relative_valuation_models(
         company_data.get("sector_metrics", {}).get("median_ev_ebitda")
         or company_data.get("sector_data", {}).get("median_ev_ebitda")
         or _lookup_industry_ev_ebitda(company_profile.industry, config)
-        or lookup_sector_multiple(company_profile.sector, "ev_ebitda")
+        or lookup_sector_multiple(company_profile.sector, "ev_ebitda", company_profile.industry)
     )
 
     leverage_adjusted_multiple = None
@@ -564,7 +564,7 @@ def calculate_relative_valuation_models(
     sector_ps = (
         company_data.get("sector_metrics", {}).get("median_ps")
         or company_data.get("sector_data", {}).get("median_ps")
-        or lookup_sector_multiple(company_profile.sector, "ps")
+        or lookup_sector_multiple(company_profile.sector, "ps", company_profile.industry)
     )
 
     # Apply growth adjustment to P/S for consistency with victor_invest
@@ -601,7 +601,7 @@ def calculate_relative_valuation_models(
     sector_pb = (
         company_data.get("sector_metrics", {}).get("median_pb")
         or company_data.get("sector_data", {}).get("median_pb")
-        or lookup_sector_multiple(company_profile.sector, "pb")
+        or lookup_sector_multiple(company_profile.sector, "pb", company_profile.industry)
     )
     pb_model = PBMultipleModel(
         company_profile=company_profile,

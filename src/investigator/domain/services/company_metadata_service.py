@@ -296,6 +296,10 @@ class CompanyMetadataService:
                     industry,
                 )
 
+        # Clean up whitespace (especially trailing newlines from database)
+        if industry:
+            industry = industry.strip()
+
         # Cache result
         if use_cache:
             self._cache[symbol] = (sector, industry)

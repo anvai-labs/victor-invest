@@ -149,39 +149,27 @@ ollama:
     synthesis: true
     market_context: false
     valuation: false
-
-# Victor framework-compatible LLM configuration
-# Environment variables take precedence:
-# VICTOR_PROVIDER, VICTOR_MODEL, VICTOR_API_KEY
 victor_llm:
-  # Default provider (used if VICTOR_PROVIDER env var not set)
   provider: ollama
-
-  # Default model (used if VICTOR_MODEL env var not set)
   model: gpt-oss:20b
-
-  # Provider-specific configurations
   anthropic:
     model: claude-sonnet-4-20250514
     api_key_env: ANTHROPIC_AUTH_TOKEN
     base_url_env: ANTHROPIC_BASE_URL
     max_tokens: 8192
     temperature: 0.3
-
   openai:
     model: gpt-4o
     api_key_env: OPENAI_API_KEY
     base_url: https://api.openai.com/v1
     max_tokens: 4096
     temperature: 0.3
-
   ollama:
     model: gpt-oss:20b
     base_url: http://192.168.1.20:11434
     timeout: 1800
     max_tokens: 4096
     temperature: 0.3
-
 cache_control:
   read_from_cache: true
   write_to_cache: true
@@ -274,9 +262,6 @@ valuation:
   sector_multiples_delta_threshold: 0.15
   liquidity_floor_usd: 5000000
   ggm_payout_threshold_pct: 40.0
-  # Property & Casualty insurance - P/B is primary valuation metric
-  # These insurers have volatile earnings due to claim frequency/severity
-  # Book value (reserves + surplus) is more stable, making P/B the standard metric
   property_casualty_insurance_symbols:
   - ALL
   - PGR
@@ -344,6 +329,10 @@ valuation:
       Utilities: 1.8
       Communication Services: 3
       Default: 2.5
+      industry_overrides:
+        Asset Management: 10.0
+        Banks - Regional: 1.3
+        Insurance: 1.2
     ev_ebitda:
       Technology: 22
       Healthcare: 15
@@ -634,8 +623,6 @@ valuation:
       dcf: 10
       ps: 0
       ggm: 0
-    # P&C Insurance tier - P/B is primary valuation metric for Property & Casualty
-    # Insurance book value (reserves + surplus) is more stable than volatile earnings
     insurance_property_casualty:
       pb: 40
       pe: 30
@@ -644,9 +631,6 @@ valuation:
       ps: 0
       ggm: 0
     insurance_high_quality:
-      # Updated 2026-02: Managed healthcare companies should use PE as primary metric
-      # DCF has limited applicability for insurance due to premium liability matching
-      # EV/EBITDA provides capital structure neutrality
       pe: 60
       ev_ebitda: 30
       pb: 10
@@ -654,7 +638,6 @@ valuation:
       ps: 0
       ggm: 0
     insurance_average:
-      # Updated 2026-02: Similar to high_quality but with lower PE weight
       pe: 55
       pb: 25
       ev_ebitda: 20
@@ -662,7 +645,6 @@ valuation:
       ps: 0
       ggm: 0
     insurance_challenged:
-      # Updated 2026-02: Challenged insurers rely more on book value
       pb: 50
       pe: 30
       ev_ebitda: 20
@@ -833,12 +815,14 @@ valuation:
       - net_income
       min_payout_ratio: 0.0
       max_payout_ratio: 1.0
-      description: Gordon Growth Model requires positive earnings (dividends and payout ratio relaxed for RL training)
+      description: Gordon Growth Model requires positive earnings (dividends and payout
+        ratio relaxed for RL training)
     dcf:
       required_fields:
       - free_cash_flow
       min_quarters_data: 2
-      description: DCF requires at least 2 quarters of FCF data (relaxed from 4 for RL training)
+      description: DCF requires at least 2 quarters of FCF data (relaxed from 4 for
+        RL training)
     pe:
       required_fields:
       - net_income
@@ -1054,45 +1038,6 @@ valuation:
         ps: 0.9
         pb: 1.1
         ev_ebitda: 1.0
-
-# ============================================================================
-# Sector/Industry Name Standardization
-# ============================================================================
-# This section documents the canonical mapping between standard sector/industry
-# names and their database variants. This mapping is now centralized in
-# src/investigator/domain/services/sector_name_mapper.py (SectorIndustryMapper).
-#
-# Standard Sector Names and Database Variants:
-#   Communication Services: [Communication Services, Telecommunications]
-#   Technology: [Technology, Information Technology]
-#   Financials: [Financials, Finance, Financial Services]
-#   Healthcare: [Healthcare, Health Care]
-#   Consumer Discretionary: [Consumer Discretionary, Consumer Cyclical]
-#   Consumer Staples: [Consumer Staples, Consumer Defensive]
-#   Industrials: [Industrials, Industrial]
-#   Energy: [Energy]
-#   Real Estate: [Real Estate, REITs]
-#   Utilities: [Utilities]
-#   Materials: [Materials, Basic Materials]
-#
-# Industry to Sector Mapping (for granular lookups):
-#   Semiconductors, Software, Information Technology Services -> Technology
-#   Banks, Asset Management, Insurance -> Financials
-#   Biotechnology, Medical Devices, Pharmaceuticals -> Healthcare
-#   Internet Retail, Restaurants, Auto Manufacturing -> Consumer Discretionary
-#   Packaged Foods, Beverages -> Consumer Staples
-#   Aerospace & Defense -> Industrials
-#   REITs -> Real Estate
-#   Oil & Gas -> Energy
-#   Electric Utilities -> Utilities
-#   Chemicals, Metals & Mining -> Materials
-#
-# All code should use SectorIndustryMapper for normalization:
-#   from investigator.domain.services.sector_name_mapper import SectorIndustryMapper
-#   standard_sector = SectorIndustryMapper.to_standard(database_sector_name)
-#   variants = SectorIndustryMapper.to_database_variants("Technology")
-# ============================================================================
-
 pe_multiples:
   sector_defaults:
     Technology: 14.52
@@ -1226,6 +1171,7 @@ pe_multiples:
     Security Systems Services: 10.38
     Construction/Ag Equipment/Trucks: 6.89
     Professional Services: 3.67
+    Financials: 20.79
   default: 20.0
 dcf_valuation:
   sector_override:
@@ -1257,6 +1203,9 @@ dcf_valuation:
   industry_override:
     ERIE: Insurance Brokers & Services
     TSLA: Auto Manufacturers
+    AXP: Credit Services
+    DFS: Credit Services
+    MA: Credit Services
   sector_based_parameters:
     Technology:
       terminal_growth_rate: 0.03

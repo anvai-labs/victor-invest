@@ -84,28 +84,28 @@ except Exception:
         description: Optional[str],
     ) -> None:
         try:
-            from victor.framework.handler_registry import register_handler
-
-            register_handler(
-                name=name,
-                handler=instance,
-                vertical=vertical,
-                description=description,
-                replace=True,
+            # Victor API: register_global_handler(name, handler, category='global')
+            # or register_vertical_handlers(vertical_name, handlers, category='general', description='')
+            from victor.framework.handler_registry import (
+                register_global_handler,
+                register_vertical_handlers,
             )
-        except TypeError:
-            try:
-                # Older/newer variants may not support `replace`.
-                from victor.framework.handler_registry import register_handler
 
-                register_handler(
+            if vertical:
+                # Register as vertical handler
+                register_vertical_handlers(
+                    vertical_name=vertical,
+                    handlers={name: instance},
+                    category="general",
+                    description=description or "",
+                )
+            else:
+                # Register as global handler
+                register_global_handler(
                     name=name,
                     handler=instance,
-                    vertical=vertical,
-                    description=description,
+                    category="global",
                 )
-            except Exception as exc:
-                logger.debug("Handler registry registration skipped for %s: %s", name, exc)
         except Exception as exc:
             logger.debug("Handler registry registration skipped for %s: %s", name, exc)
 

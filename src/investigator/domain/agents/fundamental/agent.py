@@ -2095,32 +2095,58 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             period=company_data.get("fiscal_period"),  # Period-based caching
         )
 
-    def _lookup_sector_multiple(self, sector: Optional[str], multiple: str) -> Optional[float]:
+    def _lookup_sector_multiple(
+        self, sector: Optional[str], multiple: str, industry: Optional[str] = None
+    ) -> Optional[float]:
         """Fetch sector-level reference multiples from configuration if available.
 
         Priority (aligned with victor-invest for consistency):
-        1. SectorMultiplesService with historical database lookup (3-year median)
+        1. SectorMultiplesService with config override priority (industry-aware)
         2. Sector multiples loader (if available) - most specific, already loaded
         3. Shared SectorMultiples module (from valuation.common) - consolidated logic
         4. Config.yaml sector_multiples - fallback
+
+        Args:
+            sector: Sector name
+            multiple: Metric type (pe, pb, ps, ev_ebitda)
+            industry: Optional industry name for industry-specific multiples
         """
         if not sector:
             self.logger.debug("[SECTOR_LOOKUP_DEBUG] sector is None, returning None")
             return None
 
-        self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] Looking up {sector}/{multiple}")
+        self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] Looking up {sector}/{industry or 'sector'}/{multiple}")
         self.logger.debug(
             f"[SECTOR_LOOKUP_DEBUG] _sector_multiples_loader exists: {self._sector_multiples_loader is not None}"
         )
+        self.logger.info(f"[SECTOR_LOOKUP] Looking up {multiple} for sector={sector}, industry={industry}")
 
-        # Priority 1: Use SectorMultiplesService with historical database lookup (same as victor-invest)
+        # Priority 1: Use SectorMultiplesService with config override priority (same as victor-invest)
         try:
             from investigator.domain.services.valuation_shared.sector_multiples_service import (
                 SectorMultiplesService,
             )
 
             sector_service = SectorMultiplesService()
-            # Try historical median first (3-year lookback)
+            # Try config-aware methods first (get_pe, get_pb, get_ps) which prioritize config overrides
+            config_method = getattr(sector_service, f"get_{multiple}", None)
+            if config_method:
+                # Call with industry parameter if available
+                import inspect
+
+                sig = inspect.signature(config_method)
+                if "industry" in sig.parameters:
+                    config_value = config_method(sector, industry)
+                else:
+                    config_value = config_method(sector)
+
+                if config_value is not None:
+                    self.logger.info(
+                        f"[SECTOR_LOOKUP] Using config-aware value from SectorMultiplesService.{multiple}({sector}, {industry}): {config_value}"
+                    )
+                    return config_value
+
+            # Fall back to historical median (3-year lookback)
             historical_value = sector_service.get_historical_median_multiple(
                 sector=sector,
                 metric=multiple,
@@ -2131,14 +2157,6 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                     f"[SECTOR_LOOKUP_DEBUG] Returning historical median from SectorMultiplesService: {historical_value}"
                 )
                 return historical_value
-
-            # Fall back to static value if no historical data
-            static_value = getattr(sector_service, f"get_{multiple}", lambda x: None)(sector)
-            if static_value is not None:
-                self.logger.debug(
-                    f"[SECTOR_LOOKUP_DEBUG] Returning static value from SectorMultiplesService: {static_value}"
-                )
-                return static_value
         except Exception as exc:
             self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] SectorMultiplesService failed: {exc}, trying fallback")
 

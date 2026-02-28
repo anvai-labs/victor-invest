@@ -26,7 +26,11 @@ def test_workflows_validate_and_handlers_resolve():
 
         for node in workflow.nodes.values():
             if isinstance(node, ComputeNode) and node.handler:
-                handler = registry.get(node.handler)
+                # Victor API uses get_handler(vertical_name, handler_name)
+                # Try both investment vertical and global handlers
+                handler = registry.get_handler("investment", node.handler) or registry.get_handler(
+                    "global", node.handler
+                )
                 if handler is None:
                     missing_handlers.setdefault(name, []).append(node.handler)
                 if get_compute_handler(node.handler) is None:

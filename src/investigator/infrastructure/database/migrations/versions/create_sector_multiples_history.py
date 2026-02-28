@@ -51,11 +51,13 @@ class SectorMultiplesHistory(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
-    # Group identifier (sector or industry name)
-    group_name = Column(String(255), nullable=False, index=True)
+    # Hierarchical columns (NEW - enables sector > industry tracking)
+    sector_name = Column(String(255), nullable=True, index=True)  # Parent sector
+    industry_name = Column(String(255), nullable=True, index=True)  # Industry (NULL for sector-level)
 
-    # Group type: 'sector' or 'industry'
-    group_type = Column(String(20), nullable=False, index=True)
+    # Legacy columns (kept for backward compatibility)
+    group_name = Column(String(255), nullable=True, index=True)
+    group_type = Column(String(20), nullable=True, index=True)
 
     # Fiscal year for this snapshot (e.g., 2023, 2024)
     fiscal_year = Column(Integer, nullable=False, index=True)
@@ -86,6 +88,7 @@ class SectorMultiplesHistory(Base):
 
     # Constraints and indexes
     __table_args__ = (
+        UniqueConstraint("sector_name", "industry_name", "fiscal_year", name="uix_sector_industry_fy"),
         UniqueConstraint("group_name", "group_type", "fiscal_year", name="uix_sector_history_fy"),
         Index("ix_sector_history_snapshot_date", "snapshot_date"),
         Index("ix_sector_history_group_type_year", "group_type", "fiscal_year"),
