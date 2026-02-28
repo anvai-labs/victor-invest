@@ -78,10 +78,14 @@ export function SectorTrends() {
     const avgPb = last3years.reduce((sum, d) => sum + (d.pb || 0), 0) / last3years.filter((d) => d.pb).length;
 
     const peChange = avgPe > 0 ? ((latest.pe - avgPe) / avgPe) * 100 : 0;
-    const psChange = avgPs > 0 ? ((latest.ps - avgPs) / avgPs) * 100 : 0;
-    const pbChange = avgPb > 0 ? ((latest.pb - avgPb) / avgPb) * 100 : 0;
+    const psChange = avgPs > 0 && latest.ps ? ((latest.ps - avgPs) / avgPs) * 100 : 0;
+    const pbChange = avgPb > 0 && latest.pb ? ((latest.pb - avgPb) / avgPb) * 100 : 0;
 
-    const peValues = sortedData.filter((d) => d.pe).map((d) => d.pe);
+    const peValues: number[] = sortedData
+      .filter((d): d is typeof d & { pe: number } => d.pe !== undefined)
+      .map((d) => d.pe);
+    if (peValues.length === 0) return null;
+
     const peMean = peValues.reduce((sum, v) => sum + v, 0) / peValues.length;
     const volatility = Math.sqrt(peValues.reduce((sum, v) => sum + Math.pow(v - peMean, 2), 0) / peValues.length);
     const volatilityPct = peMean > 0 ? (volatility / peMean) * 100 : 0;

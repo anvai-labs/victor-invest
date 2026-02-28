@@ -140,7 +140,9 @@ export function SectorTimeline({ selectedSectors }: SectorTimelineProps) {
       Object.entries(timelineData.data).forEach(([sector, info]) => {
         const color = SECTOR_COLORS[sector] || "#8E8E93";
         const years = info.data.map((d) => d.fiscal_year);
-        const values = info.data.map((d) => d[metric as keyof SectorData]);
+        const rawValues = info.data.map((d) => d[metric as keyof SectorData]);
+        // Filter out undefined and ensure all values are numbers
+        const values: number[] = rawValues.filter((v): v is number => v !== undefined);
 
         traces.push({
           x: years,
@@ -167,7 +169,7 @@ export function SectorTimeline({ selectedSectors }: SectorTimelineProps) {
                 y: [metricValue],
                 mode: "markers",
                 name: sector,
-                marker: { size, color, opacity: 0.5 },
+                marker: { size, color, opacity: 0.5 } as { size: number; color: string; opacity: number },
                 text: [stock.symbol],
                 hovertemplate: `<b>${stock.symbol}</b><br>${sector}<br>Year: 2024<br>${METRIC_LABELS[metric]}: %{y:.2f}x<br>MCap: $${(stock.market_cap / 1e9).toFixed(0)}B<extra></extra>`,
                 showlegend: false,
