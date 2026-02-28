@@ -135,6 +135,9 @@ class SectorMultiplesHistory:
         self.min_samples = min_samples
         self.percentile_exclude = percentile_exclude
 
+        # Load P/B excluded symbols from config
+        self.pb_excluded_symbols = self._load_pb_excluded_symbols()
+
     def calculate_historical_multiples(
         self,
         *,
@@ -285,21 +288,20 @@ class SectorMultiplesHistory:
 
             # P/B = Price / Book Value per Share
             # Book Value per Share = Shareholders Equity / Shares
-            # Exclude payment networks where P/B is not meaningful (asset-light model)
+            # Exclude configured symbols where P/B is not meaningful (e.g., asset-light payment networks)
             equity = metrics.get("stockholders_equity")
             if equity and shares and shares > 0:
                 bvps = equity / shares
                 if bvps > 0:
                     pb = price / bvps
 
-                    # Known payment networks - P/B is not meaningful for these
-                    payment_networks = {'V', 'MA'}
-                    is_payment_network = symbol.upper() in payment_networks
+                    # Check if symbol is in config-based exclusion list
+                    is_excluded = symbol.upper() in self.pb_excluded_symbols
 
-                    if is_payment_network:
-                        # Skip P/B for payment networks - not meaningful
+                    if is_excluded:
+                        # Skip P/B for excluded symbols - not meaningful per config
                         logger.debug(
-                            f"{symbol}: Excluding from P/B calculation - payment network "
+                            f"{symbol}: Excluding from P/B calculation (config pb.excluded_symbols) "
                             f"(price=${price:.2f}, bvps=${bvps:.2f}, P/B={pb:.1f}x)"
                         )
                         skipped_pb_asset_light += 1
@@ -816,6 +818,32 @@ class SectorMultiplesHistory:
 
         logger.debug(f"Loaded {len(overrides)} sector overrides from config")
         return overrides
+
+    def _load_pb_excluded_symbols(self) -> set:
+        """Load symbols to exclude from P/B calculation from config.yaml."""
+        from pathlib import Path
+
+        config_path = Path(__file__).parent.parent.parent.parent.parent / "config.yaml"
+
+        if not config_path.exists():
+            logger.warning(f"Config file not found: {config_path}")
+            return set()
+
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+
+        # Get excluded_symbols from sector_multiples.pb
+        sector_multiples = config.get("sector_multiples", {})
+        pb_config = sector_multiples.get("pb", {})
+        excluded = pb_config.get("excluded_symbols", [])
+
+        # Normalize to uppercase set
+        excluded_set = {s.upper() for s in excluded} if excluded else set()
+
+        if excluded_set:
+            logger.debug(f"Loaded {len(excluded_set)} P/B excluded symbols from config: {excluded_set}")
+
+        return excluded_set
 
     def store_history(
         self,

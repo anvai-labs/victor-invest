@@ -85,6 +85,9 @@ class SectorMultiplesRefresh:
         self.min_samples = min_samples
         self.percentile_exclude = percentile_exclude
 
+        # Load P/B excluded symbols from config
+        self.pb_excluded_symbols = self._load_pb_excluded_symbols()
+
     def calculate_sector_multiples(
         self,
         *,
@@ -254,20 +257,19 @@ class SectorMultiplesRefresh:
                     ev_ebitda_multiples.append(ev_ebitda)
 
             # P/B = Market Cap / Shareholders Equity
-            # Exclude payment networks where P/B is not meaningful (asset-light model)
+            # Exclude configured symbols where P/B is not meaningful (e.g., asset-light payment networks)
             equity = metrics.get("stockholders_equity")
             if equity and equity > 0:
                 pb = mc / equity
 
-                # Known payment networks - P/B is not meaningful for these
-                payment_networks = {'V', 'MA'}
-                is_payment_network = symbol.upper() in payment_networks
+                # Check if symbol is in config-based exclusion list
+                is_excluded = symbol.upper() in self.pb_excluded_symbols
 
-                if is_payment_network:
-                    # Skip P/B for payment networks - not meaningful
+                if is_excluded:
+                    # Skip P/B for excluded symbols - not meaningful per config
                     logger.debug(
-                        f"{symbol}: Excluding from P/B calculation - payment network "
-                        f"(market_cap=${mc/1e9:.1f}B, equity=${equity/1e9:.1f}B, P/B={pb:.1f}x)"
+                        f"{symbol}: Excluding from P/B calculation (config pb.excluded_symbols) "
+                        f"(market_cap=${mc / 1e9:.1f}B, equity=${equity / 1e9:.1f}B, P/B={pb:.1f}x)"
                     )
                 elif pb > 0:  # Only check for positive values
                     pb_multiples.append(pb)
