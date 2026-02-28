@@ -13,7 +13,7 @@ Updated: 2025-12-29 (added auto manufacturing valuation tier P1-A)
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from investigator.domain.models.market_context import MarketContext
 from investigator.domain.services.company_metadata_service import CompanyMetadataService
@@ -1046,13 +1046,16 @@ class DynamicModelWeightingService:
         Returns:
             Dict mapping model names to weights
         """
-        weights = self.tier_base_weights.get(sub_tier)
+        weights = cast(Optional[Dict[str, float]], self.tier_base_weights.get(sub_tier))
 
         if not weights:
             logger.warning(f"No base weights found for sub_tier '{sub_tier}', using balanced_default")
-            weights = self.tier_base_weights.get(
-                "balanced_default",
-                {"dcf": 30, "pe": 25, "ev_ebitda": 20, "ps": 15, "pb": 10, "ggm": 0},
+            weights = cast(
+                Dict[str, float],
+                self.tier_base_weights.get(
+                    "balanced_default",
+                    {"dcf": 30, "pe": 25, "ev_ebitda": 20, "ps": 15, "pb": 10, "ggm": 0},
+                ),
             )
 
         return weights.copy()
@@ -1095,7 +1098,7 @@ class DynamicModelWeightingService:
                 logger.warning(
                     f"Industry {industry} direct weights sum to {total}%, not 100%. Will be normalized later."
                 )
-            return direct_weights.copy()
+            return cast(Dict[str, float], direct_weights).copy()
 
         # PRIORITY 3: Percentage adjustments (legacy approach)
         adjustments = industry_config.get("weight_adjustments", {})
@@ -1156,7 +1159,7 @@ class DynamicModelWeightingService:
                 logger.warning(
                     f"Symbol {symbol_upper} direct weights sum to {total}%, not 100%. Will be normalized later."
                 )
-            return direct_weights.copy()
+            return cast(Dict[str, float], direct_weights).copy()
 
         # PRIORITY 2: Tier override
         tier_override = symbol_config.get("tier_override")
@@ -1551,7 +1554,7 @@ class DynamicModelWeightingService:
         if company_size == "small_cap":
             # Reduce multiple-based models (PE, PS, PB, EV/EBITDA) by 20%
             multiple_models = ["pe", "ps", "pb", "ev_ebitda"]
-            total_reduction = 0
+            total_reduction = 0.0
             for model in multiple_models:
                 if adjusted_weights.get(model, 0) > 0:
                     old_weight = adjusted_weights[model]
@@ -2010,7 +2013,7 @@ class DynamicModelWeightingService:
                 ev_pct = mapper.extract_value_with_fallbacks(xbrl_data, "ev_sales_mix_pct")
                 if ev_pct is not None and 0 <= ev_pct <= 1:
                     logger.info(f"{symbol} - EV mix from XBRL: {ev_pct:.1%}")
-                    return ev_pct
+                    return float(ev_pct)
             except Exception as e:
                 logger.debug(f"{symbol} - XBRL EV mix extraction failed: {e}")
 

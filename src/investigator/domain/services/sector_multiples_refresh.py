@@ -424,7 +424,7 @@ class SectorMultiplesRefresh:
                         "market_cap": safe_float(row[5], None),
                         "total_debt": safe_float(row[6], None),
                         "cash_and_equivalents": safe_float(row[7], None),
-                        "ebitda": ebitda if ebitda != 0 else None,
+                        "ebitda": safe_float(ebitda if ebitda != 0 else None, None),
                     }
 
             return ttm_metrics
