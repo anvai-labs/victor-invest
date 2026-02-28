@@ -23,10 +23,10 @@ SELECT
 
     -- Company Information
     s.description,
-    s.Sector AS sector,
-    s.Industry AS industry,
+    s."Sector" AS sector,
+    s."Industry" AS industry,
     s.exchange,
-    s.Country,
+    s."Country",
 
     -- Pricing (Latest from tickerdata)
     td.close AS current_price,
@@ -135,13 +135,18 @@ INNER JOIN LATERAL (
     SELECT DISTINCT ON (ticker) ticker, date, close
     FROM tickerdata
     WHERE tickerdata.ticker = s.ticker
-    ORDER BY tickerdata.date DESC
-    LIMIT 1
-) td ON true
+    ORDER BY tickerdata.ticker, tickerdata.date DESC
+) td ON td.ticker = s.ticker
 
 WHERE s.islisted = true
   AND s.isstock = true
-  AND (s.isetf IS NULL OR s.isetf = false);
+  AND (s.isetf IS NULL OR s.isetf = false)
+  -- Filter out extreme outliers (data quality issues)
+  AND (s.fair_value_blended IS NULL OR s.fair_value_blended BETWEEN 0.1 AND 10000)  -- Exclude extreme FVs
+  AND (s.pe_ratio IS NULL OR s.pe_ratio BETWEEN -500 AND 500)  -- Exclude extreme P/E
+  AND (s.pb_ratio IS NULL OR s.pb_ratio BETWEEN 0 AND 100)  -- Exclude extreme P/B
+  AND (s.ps_ratio IS NULL OR s.ps_ratio BETWEEN 0 AND 5000)  -- Exclude extreme P/S
+;
 
 COMMENT ON VIEW investment_opportunities IS '
 Investment opportunities view combining latest prices with fair value analysis.
@@ -152,19 +157,8 @@ Key fields:
 - rule_of_40_score: Growth + margin score for SaaS companies
 ';
 
--- Create index for common queries
-CREATE INDEX IF NOT EXISTS idx_investment_opportunities_upside
-    ON investment_opportunities (upside_pct DESC)
-    WHERE fair_value_blended IS NOT NULL;
-
-CREATE INDEX IF NOT EXISTS idx_investment_opportunities_sector
-    ON investment_opportunities (sector, upside_pct DESC)
-    WHERE fair_value_blended IS NOT NULL;
-
-CREATE INDEX IF NOT EXISTS idx_investment_opportunities_mktcap
-    ON investment_opportunities (mktcap DESC, upside_pct DESC)
-    WHERE fair_value_blended IS NOT NULL;
-
-CREATE INDEX IF NOT EXISTS idx_investment_opportunities_agreement
-    ON investment_opportunities (model_agreement_score DESC, upside_pct DESC)
-    WHERE fair_value_blended IS NOT NULL AND model_agreement_score IS NOT NULL;
+-- Note: Indexes cannot be created on views directly.
+-- Consider adding these indexes to the underlying symbol table for better performance:
+-- CREATE INDEX IF NOT EXISTS idx_symbol_fair_value_opportunities
+--     ON symbol (fair_value_blended, mktcap, model_agreement_score)
+--     WHERE fair_value_blended IS NOT NULL;
