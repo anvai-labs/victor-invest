@@ -84,8 +84,7 @@ except Exception:
         description: Optional[str],
     ) -> None:
         try:
-            # Victor API: register_global_handler(name, handler, category='global')
-            # or register_vertical_handlers(vertical_name, handlers, category='general', description='')
+            # Try new Victor API first (register_vertical_handlers, register_global_handler)
             from victor.framework.handler_registry import (
                 register_global_handler,
                 register_vertical_handlers,
@@ -106,8 +105,29 @@ except Exception:
                     handler=instance,
                     category="global",
                 )
-        except Exception as exc:
-            logger.debug("Handler registry registration skipped for %s: %s", name, exc)
+        except Exception:
+            # Fallback to old Victor 0.5.0 API (get_handler_registry())
+            try:
+                from victor.framework.handler_registry import get_handler_registry
+
+                registry = get_handler_registry()
+                if vertical:
+                    # Old API: register_vertical(vertical_name, handlers_dict)
+                    registry.register_vertical(
+                        vertical_name=vertical,
+                        handlers={name: instance},
+                        category="general",
+                        description=description or "",
+                    )
+                else:
+                    # Old API: register_global(name, handler)
+                    registry.register_global(
+                        name=name,
+                        handler=instance,
+                        category="global",
+                    )
+            except Exception as exc:
+                logger.debug("Handler registry registration skipped for %s: %s", name, exc)
 
     def _register_with_executor(name: str, instance: Any) -> None:
         try:
