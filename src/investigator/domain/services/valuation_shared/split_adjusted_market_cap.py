@@ -222,9 +222,7 @@ def calculate_market_cap_from_sec_data(
 
             row = result.fetchone()
             if not row:
-                logger.warning(
-                    f"Could not find period_end_date for {symbol} FY{sec_fiscal_year}"
-                )
+                logger.warning(f"Could not find period_end_date for {symbol} FY{sec_fiscal_year}")
                 return None
 
             period_end_date = row[0]
@@ -299,9 +297,7 @@ def get_market_cap_with_split_adjustment(
     Returns:
         Dict with market_cap, notes about split adjustment
     """
-    mcap = calculate_market_cap_from_sec_data(
-        symbol, current_price, sec_shares, fiscal_year, engine
-    )
+    mcap = calculate_market_cap_from_sec_data(symbol, current_price, sec_shares, fiscal_year, engine)
 
     return {
         "symbol": symbol,

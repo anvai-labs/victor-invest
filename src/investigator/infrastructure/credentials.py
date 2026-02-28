@@ -59,9 +59,7 @@ def _get_from_victor_framework(alias: str) -> Optional[DatabaseCredentials]:
         victor_creds = cred_mgr.get_database(alias)
 
         if victor_creds:
-            logger.debug(
-                f"Got {alias} database credentials from Victor CredentialManager"
-            )
+            logger.debug(f"Got {alias} database credentials from Victor CredentialManager")
             return DatabaseCredentials(
                 alias=victor_creds.alias,
                 host=victor_creds.host,
@@ -72,13 +70,9 @@ def _get_from_victor_framework(alias: str) -> Optional[DatabaseCredentials]:
                 driver=victor_creds.driver,
             )
     except ImportError:
-        logger.debug(
-            "Victor framework not available, falling back to environment variables"
-        )
+        logger.debug("Victor framework not available, falling back to environment variables")
     except Exception as e:
-        logger.debug(
-            f"Victor CredentialManager error: {e}, falling back to environment variables"
-        )
+        logger.debug(f"Victor CredentialManager error: {e}, falling back to environment variables")
 
     return None
 

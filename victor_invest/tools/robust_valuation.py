@@ -134,9 +134,7 @@ class RobustValuationTool:
         )
 
         if not result:
-            return ToolResult.create_failure(
-                f"Could not calculate robust valuation for {symbol}"
-            )
+            return ToolResult.create_failure(f"Could not calculate robust valuation for {symbol}")
 
         # Format result
         result_data = {
@@ -169,8 +167,7 @@ class RobustValuationTool:
         }
 
         logger.info(
-            f"Robust valuation complete for {symbol}: {result.recommendation} "
-            f"({result.confidence} confidence)"
+            f"Robust valuation complete for {symbol}: {result.recommendation} " f"({result.confidence} confidence)"
         )
 
         return ToolResult.create_success(result_data)
@@ -220,9 +217,7 @@ class RobustValuationTool:
 
             for metric_name, comparison in comparisons.items():
                 if comparison is None:
-                    result_data["comparisons"][metric_name] = {
-                        "status": "insufficient_data"
-                    }
+                    result_data["comparisons"][metric_name] = {"status": "insufficient_data"}
                     continue
 
                 result_data["comparisons"][metric_name] = {
@@ -245,9 +240,7 @@ class RobustValuationTool:
             )
 
             if not comparison:
-                return ToolResult.create_failure(
-                    f"Could not compare {symbol} to peers for {metric.upper()}"
-                )
+                return ToolResult.create_failure(f"Could not compare {symbol} to peers for {metric.upper()}")
 
             result_data = {
                 "action": "peer_compare",

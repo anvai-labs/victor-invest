@@ -70,9 +70,7 @@ def subtract_metric(
     return None
 
 
-def derive_q4_from_fy(
-    quarters_data: List[Dict[str, Any]], symbol: str
-) -> List[Dict[str, Any]]:
+def derive_q4_from_fy(quarters_data: List[Dict[str, Any]], symbol: str) -> List[Dict[str, Any]]:
     """
     Derive Q4 quarterly data from FY filings when Q4 is missing.
 
@@ -138,9 +136,7 @@ def derive_q4_from_fy(
                 "form": fy_entry.get("form", "10-K"),
                 "_derived": True,  # Flag as derived
                 # Derive financial metrics
-                "shares_outstanding": fy_entry.get(
-                    "weighted_average_diluted_shares_outstanding"
-                )
+                "shares_outstanding": fy_entry.get("weighted_average_diluted_shares_outstanding")
                 or fy_entry.get("shares_outstanding"),
                 "actual_shares_outstanding": fy_entry.get("shares_outstanding"),
                 "weighted_average_diluted_shares_outstanding": fy_entry.get(
@@ -285,9 +281,7 @@ def derive_q4_from_fy(
             )
 
             # Add Q1, Q2, Q3 as-is, replace FY with derived Q4
-            fy_quarterly_periods = [
-                q for q in fy_quarters if q.get("fiscal_period") in ["Q1", "Q2", "Q3"]
-            ]
+            fy_quarterly_periods = [q for q in fy_quarters if q.get("fiscal_period") in ["Q1", "Q2", "Q3"]]
             fy_quarterly_periods.append(derived_q4)
 
             # Sort by period_end_date (descending = most recent first)
@@ -312,17 +306,14 @@ def derive_q4_from_fy(
             ni_str = f"${ni_float / 1e6:.0f}M" if ni_float is not None else "N/A"
             rev_str = f"${rev_float / 1e9:.2f}B" if rev_float is not None else "N/A"
             logger.info(
-                f"[Q4 Derivation] {symbol} FY{fy}: Derived Q4 from FY filing "
-                f"(NI: {ni_str}, Revenue: {rev_str})"
+                f"[Q4 Derivation] {symbol} FY{fy}: Derived Q4 from FY filing " f"(NI: {ni_str}, Revenue: {rev_str})"
             )
         else:
             # No derivation needed, add all quarters as-is
             derived_quarters.extend(fy_quarters)
 
     if q4_derived_count > 0:
-        logger.info(
-            f"[Q4 Derivation] {symbol}: Derived {q4_derived_count} Q4 quarters from FY filings"
-        )
+        logger.info(f"[Q4 Derivation] {symbol}: Derived {q4_derived_count} Q4 quarters from FY filings")
 
     return derived_quarters
 
@@ -393,9 +384,7 @@ def extract_year_from_frame(frame: str) -> Optional[int]:
     return None
 
 
-def use_frame_based_quarters(
-    quarters_data: List[Dict[str, Any]], symbol: str
-) -> List[Dict[str, Any]]:
+def use_frame_based_quarters(quarters_data: List[Dict[str, Any]], symbol: str) -> List[Dict[str, Any]]:
     """
     Reorganize quarterly data using frame field for accurate quarter identification.
 
@@ -486,9 +475,7 @@ def use_frame_based_quarters(
                 pass
             elif not existing_frame and not frame:
                 # Both have no frame, keep the one with more data (more non-None fields)
-                existing_data_count = sum(
-                    1 for v in existing_entry.values() if v is not None
-                )
+                existing_data_count = sum(1 for v in existing_entry.values() if v is not None)
                 new_data_count = sum(1 for v in entry.values() if v is not None)
                 if new_data_count > existing_data_count:
                     quarter_map[key] = entry
@@ -500,9 +487,7 @@ def use_frame_based_quarters(
     result.sort(
         key=lambda x: (
             x.get("fiscal_year", 0),
-            {"Q1": 1, "Q2": 2, "Q3": 3, "Q4": 4, "FY": 5}.get(
-                x.get("fiscal_period", ""), 0
-            ),
+            {"Q1": 1, "Q2": 2, "Q3": 3, "Q4": 4, "FY": 5}.get(x.get("fiscal_period", ""), 0),
         ),
         reverse=True,
     )
@@ -568,9 +553,7 @@ def filter_quarters_only(quarters_data: List[Dict[str, Any]]) -> List[Dict[str, 
     # Debug: Log what was filtered
     excluded = [q for q in quarters_data if q not in filtered]
     if excluded:
-        symbol = (
-            quarters_data[0].get("symbol", "UNKNOWN") if quarters_data else "UNKNOWN"
-        )
+        symbol = quarters_data[0].get("symbol", "UNKNOWN") if quarters_data else "UNKNOWN"
         logger.info(
             f"[FILTER_QUARTERS] {symbol}: Filtered {len(quarters_data)} → {len(filtered)} quarters. "
             f"Excluded: {[(q.get('fiscal_period'), q.get('form'), q.get('frame', ''), q.get('_derived')) for q in excluded]}"

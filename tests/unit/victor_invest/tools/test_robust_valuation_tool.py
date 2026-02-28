@@ -70,9 +70,7 @@ class TestAnalyzeAction:
         mock_result.signals = ["Overall confidence: HIGH"]
         mock_result.calculated_at = datetime.now(timezone.utc).isoformat()
 
-        with patch(
-            "investigator.domain.services.robust_valuation_service.RobustValuationService"
-        ) as mock_service_cls:
+        with patch("investigator.domain.services.robust_valuation_service.RobustValuationService") as mock_service_cls:
             mock_service = MagicMock()
             mock_service.calculate_robust_valuation.return_value = mock_result
             mock_service_cls.return_value = mock_service
@@ -101,9 +99,7 @@ class TestAnalyzeAction:
         """Test analyze action when valuation fails."""
         tool = RobustValuationTool()
 
-        with patch(
-            "investigator.domain.services.robust_valuation_service.RobustValuationService"
-        ) as mock_service_cls:
+        with patch("investigator.domain.services.robust_valuation_service.RobustValuationService") as mock_service_cls:
             mock_service = MagicMock()
             mock_service.calculate_robust_valuation.return_value = None
             mock_service_cls.return_value = mock_service
@@ -122,9 +118,7 @@ class TestAnalyzeAction:
         """Test analyze action with exception."""
         tool = RobustValuationTool()
 
-        with patch(
-            "investigator.domain.services.robust_valuation_service.RobustValuationService"
-        ) as mock_service_cls:
+        with patch("investigator.domain.services.robust_valuation_service.RobustValuationService") as mock_service_cls:
             mock_service_cls.side_effect = Exception("Database error")
 
             result = await tool.execute(
@@ -160,9 +154,7 @@ class TestPeerCompareAction:
         mock_comparison.peer_count = 2
         mock_comparison.peers = ["MSFT", "GOOGL"]
 
-        with patch(
-            "investigator.domain.services.cross_sectional_valuation.CrossSectionalValuation"
-        ) as mock_csv_cls:
+        with patch("investigator.domain.services.cross_sectional_valuation.CrossSectionalValuation") as mock_csv_cls:
             mock_csv = MagicMock()
             mock_csv.compare_to_peers.return_value = mock_comparison
             mock_csv_cls.return_value = mock_csv
@@ -221,9 +213,7 @@ class TestPeerCompareAction:
         mock_pb_result.premium_to_peers_pct = 16.7
         mock_pb_result.peer_count = 2
 
-        with patch(
-            "investigator.domain.services.cross_sectional_valuation.CrossSectionalValuation"
-        ) as mock_csv_cls:
+        with patch("investigator.domain.services.cross_sectional_valuation.CrossSectionalValuation") as mock_csv_cls:
             mock_csv = MagicMock()
             mock_csv.compare_all_metrics.return_value = {
                 "pe": mock_pe_result,
@@ -251,9 +241,7 @@ class TestPeerCompareAction:
         """Test peer_compare with insufficient data."""
         tool = RobustValuationTool()
 
-        with patch(
-            "investigator.domain.services.cross_sectional_valuation.CrossSectionalValuation"
-        ) as mock_csv_cls:
+        with patch("investigator.domain.services.cross_sectional_valuation.CrossSectionalValuation") as mock_csv_cls:
             mock_csv = MagicMock()
             mock_csv.compare_to_peers.return_value = None
             mock_csv_cls.return_value = mock_csv
@@ -283,9 +271,7 @@ class TestPeerCompareAction:
         mock_pe_result.premium_to_peers_pct = 16.7
         mock_pe_result.peer_count = 2
 
-        with patch(
-            "investigator.domain.services.cross_sectional_valuation.CrossSectionalValuation"
-        ) as mock_csv_cls:
+        with patch("investigator.domain.services.cross_sectional_valuation.CrossSectionalValuation") as mock_csv_cls:
             mock_csv = MagicMock()
             mock_csv.compare_all_metrics.return_value = {
                 "pe": mock_pe_result,
@@ -351,9 +337,7 @@ class TestReportAction:
             ],
         }
 
-        with patch(
-            "investigator.domain.services.robust_valuation_service.RobustValuationService"
-        ) as mock_service_cls:
+        with patch("investigator.domain.services.robust_valuation_service.RobustValuationService") as mock_service_cls:
             mock_service = MagicMock()
             mock_service.generate_comprehensive_report.return_value = mock_report
             mock_service_cls.return_value = mock_service
@@ -391,9 +375,7 @@ class TestReportAction:
             "calculated_at": datetime.now(timezone.utc).isoformat(),
         }
 
-        with patch(
-            "investigator.domain.services.robust_valuation_service.RobustValuationService"
-        ) as mock_service_cls:
+        with patch("investigator.domain.services.robust_valuation_service.RobustValuationService") as mock_service_cls:
             mock_service = MagicMock()
             mock_service.generate_comprehensive_report.return_value = mock_report
             mock_service_cls.return_value = mock_service
@@ -449,9 +431,7 @@ class TestDefaultParameters:
         mock_result.signals = ["Overall confidence: MEDIUM"]
         mock_result.calculated_at = datetime.now(timezone.utc).isoformat()
 
-        with patch(
-            "investigator.domain.services.robust_valuation_service.RobustValuationService"
-        ) as mock_service_cls:
+        with patch("investigator.domain.services.robust_valuation_service.RobustValuationService") as mock_service_cls:
             mock_service = MagicMock()
             mock_service.calculate_robust_valuation.return_value = mock_result
             mock_service_cls.return_value = mock_service
@@ -486,9 +466,7 @@ class TestDefaultParameters:
         mock_comparison.peer_count = 5
         mock_comparison.peers = ["MSFT", "GOOGL", "META", "AMZN", "TSLA"]
 
-        with patch(
-            "investigator.domain.services.cross_sectional_valuation.CrossSectionalValuation"
-        ) as mock_csv_cls:
+        with patch("investigator.domain.services.cross_sectional_valuation.CrossSectionalValuation") as mock_csv_cls:
             mock_csv = MagicMock()
             mock_csv.compare_to_peers.return_value = mock_comparison
             mock_csv_cls.return_value = mock_csv
@@ -530,9 +508,7 @@ class TestErrorHandling:
         mock_result.signals = []
         mock_result.calculated_at = datetime.now(timezone.utc).isoformat()
 
-        with patch(
-            "investigator.domain.services.robust_valuation_service.RobustValuationService"
-        ) as mock_service_cls:
+        with patch("investigator.domain.services.robust_valuation_service.RobustValuationService") as mock_service_cls:
             mock_service = MagicMock()
             mock_service.calculate_robust_valuation.return_value = mock_result
             mock_service_cls.return_value = mock_service
@@ -566,9 +542,7 @@ class TestErrorHandling:
         mock_result.signals = []
         mock_result.calculated_at = datetime.now(timezone.utc).isoformat()
 
-        with patch(
-            "investigator.domain.services.robust_valuation_service.RobustValuationService"
-        ) as mock_service_cls:
+        with patch("investigator.domain.services.robust_valuation_service.RobustValuationService") as mock_service_cls:
             mock_service = MagicMock()
             mock_service.calculate_robust_valuation.return_value = mock_result
             mock_service_cls.return_value = mock_service
@@ -605,7 +579,5 @@ class TestToolIntegration:
 
         tools = get_all_tools()
 
-        robust_valuation_tools = [
-            t for t in tools if isinstance(t, RobustValuationTool)
-        ]
+        robust_valuation_tools = [t for t in tools if isinstance(t, RobustValuationTool)]
         assert len(robust_valuation_tools) == 1

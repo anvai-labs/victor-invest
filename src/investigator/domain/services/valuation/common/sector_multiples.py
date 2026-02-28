@@ -87,9 +87,7 @@ class SectorMultiples:
                 cls._config = {
                     "sector_multiples": {
                         "technology": (
-                            config_obj.sector_pe_multiples
-                            if hasattr(config_obj, "sector_pe_multiples")
-                            else {}
+                            config_obj.sector_pe_multiples if hasattr(config_obj, "sector_pe_multiples") else {}
                         ),
                         "default": {
                             "pe": 15.0,
@@ -240,9 +238,7 @@ class SectorMultiples:
         return None
 
     @classmethod
-    def get_multiple_with_override(
-        cls, sector: str, industry: Optional[str], metric: str
-    ) -> float:
+    def get_multiple_with_override(cls, sector: str, industry: Optional[str], metric: str) -> float:
         """Get valuation multiple with industry override check.
 
         This is the primary method to use - it checks for industry overrides
@@ -272,9 +268,7 @@ class SectorMultiples:
         if industry:
             override = cls.get_industry_override(industry, metric)
             if override is not None:
-                logger.debug(
-                    f"Using industry override for {industry}: {metric}={override}"
-                )
+                logger.debug(f"Using industry override for {industry}: {metric}={override}")
                 return override
 
         # Then check sector multiple
@@ -290,6 +284,4 @@ class SectorMultiples:
             if default_value is not None:
                 return default_value
 
-        raise ValueError(
-            f"No {metric} multiple found for sector={sector}, industry={industry}"
-        )
+        raise ValueError(f"No {metric} multiple found for sector={sector}, industry={industry}")

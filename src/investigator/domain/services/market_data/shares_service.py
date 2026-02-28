@@ -140,9 +140,7 @@ class SharesService:
                     ORDER BY filed_date DESC
                     LIMIT 1
                 """)
-                result = conn.execute(
-                    query, {"symbol": symbol, "as_of_date": as_of_date}
-                ).fetchone()
+                result = conn.execute(query, {"symbol": symbol, "as_of_date": as_of_date}).fetchone()
             else:
                 query = text("""
                     SELECT COALESCE(
@@ -275,11 +273,7 @@ class SharesService:
             )
 
         # Sort by months_back descending (oldest first, e.g., 36, 33, 30, ...)
-        df = (
-            pd.DataFrame(records)
-            .sort_values("months_back", ascending=False)
-            .reset_index(drop=True)
-        )
+        df = pd.DataFrame(records).sort_values("months_back", ascending=False).reset_index(drop=True)
 
         # Detect splits by comparing each period to the next (more recent) period
         df["split_factor"] = 1.0
@@ -297,9 +291,7 @@ class SharesService:
             if current_shares > 0 and prev_shares > 0:
                 ratio = current_shares / prev_shares  # How much did shares increase?
 
-                if (
-                    ratio > FORWARD_SPLIT_THRESHOLD
-                ):  # Forward split detected (10:1, 4:1, etc.)
+                if ratio > FORWARD_SPLIT_THRESHOLD:  # Forward split detected (10:1, 4:1, etc.)
                     split_mult = round(ratio)
                     cumulative_factor *= split_mult
                     logger.info(

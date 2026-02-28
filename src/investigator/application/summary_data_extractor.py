@@ -141,9 +141,7 @@ class BaseFieldExtractor(ABC):
                 if self._validate_value(transformed):
                     return ExtractionResult(
                         value=transformed,
-                        confidence=ExtractionConfidence.HIGH
-                        if i == 0
-                        else ExtractionConfidence.MEDIUM,
+                        confidence=ExtractionConfidence.HIGH if i == 0 else ExtractionConfidence.MEDIUM,
                         source_path=path_str,
                         fallback_used=(i > 0),
                     )
@@ -278,9 +276,7 @@ class InvestmentGradeExtractor(BaseFieldExtractor):
             current_price = CurrentPriceExtractor().extract(data)
 
             if price_target.has_value and current_price.has_value:
-                upside = (
-                    (price_target.value - current_price.value) / current_price.value
-                ) * 100
+                upside = ((price_target.value - current_price.value) / current_price.value) * 100
                 source_path = "calculated_from_prices"
 
         if upside is None:
@@ -422,11 +418,7 @@ class KeyStrengthsExtractor(BaseFieldExtractor):
                     result.append(item.strip())
                 elif isinstance(item, dict):
                     # Extract text from dict items
-                    text = (
-                        item.get("description")
-                        or item.get("text")
-                        or item.get("assumption")
-                    )
+                    text = item.get("description") or item.get("text") or item.get("assumption")
                     if text and isinstance(text, str):
                         result.append(text.strip())
                 if len(result) >= 3:
@@ -546,9 +538,7 @@ class KeyRisksExtractor(BaseFieldExtractor):
                 if isinstance(item, str) and item.strip():
                     result.append(item.strip())
                 elif isinstance(item, dict):
-                    text = (
-                        item.get("risk") or item.get("description") or item.get("text")
-                    )
+                    text = item.get("risk") or item.get("description") or item.get("text")
                     if text and isinstance(text, str):
                         result.append(text.strip())
                 if len(result) >= 3:
@@ -890,9 +880,7 @@ class SummaryDataExtractor:
         if price_target.has_value and current_price.has_value:
             if current_price.value > 0:
                 expected_return = round(
-                    (price_target.value - current_price.value)
-                    / current_price.value
-                    * 100,
+                    (price_target.value - current_price.value) / current_price.value * 100,
                     2,
                 )
 
@@ -906,16 +894,10 @@ class SummaryDataExtractor:
                 "time_horizon": time_horizon.value if time_horizon.has_value else "N/A",
             },
             "valuation": {
-                "current_price": current_price.value
-                if current_price.has_value
-                else None,
-                "price_target_12m": price_target.value
-                if price_target.has_value
-                else None,
+                "current_price": current_price.value if current_price.has_value else None,
+                "price_target_12m": price_target.value if price_target.has_value else None,
                 "expected_return_pct": expected_return,
-                "investment_grade": investment_grade.value
-                if investment_grade.has_value
-                else "N/A",
+                "investment_grade": investment_grade.value if investment_grade.has_value else "N/A",
             },
             "thesis": {
                 "investment_thesis": thesis.value if thesis.has_value else "N/A",

@@ -173,9 +173,7 @@ Returns cache data, operation status, or statistics.
             return getattr(self._cache_type_enum, cache_type_str.upper())
         except AttributeError:
             valid_types = list(self.CACHE_TYPE_MAP.keys())
-            raise ValueError(
-                f"Invalid cache type: {cache_type_str}. Valid types: {valid_types}"
-            )
+            raise ValueError(f"Invalid cache type: {cache_type_str}. Valid types: {valid_types}")
 
     async def execute(
         self,
@@ -230,9 +228,7 @@ Returns cache data, operation status, or statistics.
             elif action == "get_stats":
                 return await self._get_stats()
             elif action == "get_recent_ops":
-                cache_type_obj = (
-                    self._get_cache_type(cache_type) if cache_type else None
-                )
+                cache_type_obj = self._get_cache_type(cache_type) if cache_type else None
                 return await self._get_recent_ops(cache_type_obj)
             elif action == "validate":
                 return await self._validate_entry(cache_type, key)  # type: ignore[arg-type]
@@ -251,9 +247,7 @@ Returns cache data, operation status, or statistics.
 
         except Exception as e:
             logger.error(f"CacheTool execute error: {e}")
-            return ToolResult.create_failure(
-                f"Cache operation failed: {str(e)}", metadata={"action": action}
-            )
+            return ToolResult.create_failure(f"Cache operation failed: {str(e)}", metadata={"action": action})
 
     async def _cache_get(self, cache_type: str, key: Union[Dict, Tuple]) -> ToolResult:
         """Get data from cache.
@@ -306,9 +300,7 @@ Returns cache data, operation status, or statistics.
             logger.error(f"Cache get error: {e}")
             return ToolResult.create_failure(f"Cache get failed: {str(e)}")
 
-    async def _cache_set(
-        self, cache_type: str, key: Union[Dict, Tuple], value: Optional[Dict[str, Any]]
-    ) -> ToolResult:
+    async def _cache_set(self, cache_type: str, key: Union[Dict, Tuple], value: Optional[Dict[str, Any]]) -> ToolResult:
         """Set data in cache.
 
         Args:
@@ -360,9 +352,7 @@ Returns cache data, operation status, or statistics.
             logger.error(f"Cache set error: {e}")
             return ToolResult.create_failure(f"Cache set failed: {str(e)}")
 
-    async def _cache_exists(
-        self, cache_type: str, key: Union[Dict, Tuple]
-    ) -> ToolResult:
+    async def _cache_exists(self, cache_type: str, key: Union[Dict, Tuple]) -> ToolResult:
         """Check if cache entry exists.
 
         Args:
@@ -384,9 +374,7 @@ Returns cache data, operation status, or statistics.
                 return ToolResult.create_failure("Cache manager not initialized")
 
             loop = asyncio.get_event_loop()
-            exists = await loop.run_in_executor(
-                None, self._cache_manager.exists, cache_type_obj, key
-            )
+            exists = await loop.run_in_executor(None, self._cache_manager.exists, cache_type_obj, key)
 
             return ToolResult.create_success(
                 output={
@@ -402,9 +390,7 @@ Returns cache data, operation status, or statistics.
             logger.error(f"Cache exists error: {e}")
             return ToolResult.create_failure(f"Cache exists check failed: {str(e)}")
 
-    async def _cache_delete(
-        self, cache_type: str, key: Union[Dict, Tuple]
-    ) -> ToolResult:
+    async def _cache_delete(self, cache_type: str, key: Union[Dict, Tuple]) -> ToolResult:
         """Delete cache entry.
 
         Args:
@@ -426,9 +412,7 @@ Returns cache data, operation status, or statistics.
                 return ToolResult.create_failure("Cache manager not initialized")
 
             loop = asyncio.get_event_loop()
-            deleted = await loop.run_in_executor(
-                None, self._cache_manager.delete, cache_type_obj, key
-            )
+            deleted = await loop.run_in_executor(None, self._cache_manager.delete, cache_type_obj, key)
 
             return ToolResult.create_success(
                 output={
@@ -463,9 +447,7 @@ Returns cache data, operation status, or statistics.
                 return ToolResult.create_failure("Cache manager not initialized")
 
             loop = asyncio.get_event_loop()
-            results = await loop.run_in_executor(
-                None, self._cache_manager.delete_by_symbol, symbol
-            )
+            results = await loop.run_in_executor(None, self._cache_manager.delete_by_symbol, symbol)
 
             total_deleted = sum(results.values())
 
@@ -500,9 +482,7 @@ Returns cache data, operation status, or statistics.
                 return ToolResult.create_failure("Cache manager not initialized")
 
             loop = asyncio.get_event_loop()
-            success = await loop.run_in_executor(
-                None, self._cache_manager.clear_cache_type, cache_type_obj
-            )
+            success = await loop.run_in_executor(None, self._cache_manager.clear_cache_type, cache_type_obj)
 
             return ToolResult.create_success(
                 output={
@@ -530,13 +510,9 @@ Returns cache data, operation status, or statistics.
             loop = asyncio.get_event_loop()
 
             # Get both stats methods
-            performance_stats = await loop.run_in_executor(
-                None, self._cache_manager.get_performance_stats
-            )
+            performance_stats = await loop.run_in_executor(None, self._cache_manager.get_performance_stats)
 
-            general_stats = await loop.run_in_executor(
-                None, self._cache_manager.get_stats
-            )
+            general_stats = await loop.run_in_executor(None, self._cache_manager.get_stats)
 
             return ToolResult.create_success(
                 output={
@@ -563,9 +539,7 @@ Returns cache data, operation status, or statistics.
                 return ToolResult.create_failure("Cache manager not initialized")
 
             loop = asyncio.get_event_loop()
-            recent_ops = await loop.run_in_executor(
-                None, self._cache_manager.get_recent_operations, cache_type, 20
-            )
+            recent_ops = await loop.run_in_executor(None, self._cache_manager.get_recent_operations, cache_type, 20)
 
             return ToolResult.create_success(output={"recent_operations": recent_ops})
 
@@ -573,9 +547,7 @@ Returns cache data, operation status, or statistics.
             logger.error(f"Get recent ops error: {e}")
             return ToolResult.create_failure(f"Get recent ops failed: {str(e)}")
 
-    async def _validate_entry(
-        self, cache_type: str, key: Union[Dict, Tuple]
-    ) -> ToolResult:
+    async def _validate_entry(self, cache_type: str, key: Union[Dict, Tuple]) -> ToolResult:
         """Validate a cache entry for integrity.
 
         Args:
@@ -634,9 +606,7 @@ Returns cache data, operation status, or statistics.
             logger.error(f"Validate entry error: {e}")
             return ToolResult.create_failure(f"Validate entry failed: {str(e)}")
 
-    async def _invalidate_sec(
-        self, symbol: str, filing_date: str, dry_run: bool = True
-    ) -> ToolResult:
+    async def _invalidate_sec(self, symbol: str, filing_date: str, dry_run: bool = True) -> ToolResult:
         """Invalidate SEC-related cache entries after new filing.
 
         Args:
@@ -667,9 +637,7 @@ Returns cache data, operation status, or statistics.
                 dry_run,
             )
 
-            return ToolResult.create_success(
-                output=result, metadata={"dry_run": dry_run}
-            )
+            return ToolResult.create_success(output=result, metadata={"dry_run": dry_run})
 
         except Exception as e:
             logger.error(f"Invalidate SEC cache error: {e}")
@@ -696,9 +664,7 @@ Returns cache data, operation status, or statistics.
 
         except Exception as e:
             logger.error(f"Cache ping error: {e}")
-            return ToolResult.create_success(
-                output={"healthy": False, "status": "error", "error": str(e)}
-            )
+            return ToolResult.create_success(output={"healthy": False, "status": "error", "error": str(e)})
 
     def get_schema(self) -> Dict[str, Any]:
         """Get JSON schema for Cache Tool parameters."""

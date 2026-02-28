@@ -137,9 +137,7 @@ class DataNormalizer:
     ]
 
     @classmethod
-    def normalize_field_names(
-        cls, data: Dict[str, Any], to_camel_case: bool = True
-    ) -> Dict[str, Any]:
+    def normalize_field_names(cls, data: Dict[str, Any], to_camel_case: bool = True) -> Dict[str, Any]:
         """
         Normalize field names between snake_case and camelCase.
 
@@ -240,9 +238,7 @@ class DataNormalizer:
             return None
 
     @classmethod
-    def round_financial_data(
-        cls, data: Dict[str, Any], config: Optional[Dict[str, int]] = None
-    ) -> Dict[str, Any]:
+    def round_financial_data(cls, data: Dict[str, Any], config: Optional[Dict[str, int]] = None) -> Dict[str, Any]:
         """
         Apply judicious rounding to all numerical values in financial data.
 
@@ -271,18 +267,11 @@ class DataNormalizer:
                 key_lower = key.lower()
                 # Growth/rate-style metrics must retain fractional precision even when they
                 # include tokens like "revenue" (e.g., revenue_growth_guidance=0.04).
-                if any(
-                    pattern in key_lower
-                    for pattern in ["growth", "cagr", "rate", "pct", "percent"]
-                ):
+                if any(pattern in key_lower for pattern in ["growth", "cagr", "rate", "pct", "percent"]):
                     decimal_places = 4
-                elif any(
-                    pattern in key_lower for pattern in ["price", "eps", "book_value"]
-                ):
+                elif any(pattern in key_lower for pattern in ["price", "eps", "book_value"]):
                     decimal_places = 2
-                elif any(
-                    pattern in key_lower for pattern in ["margin", "yield", "turnover"]
-                ):
+                elif any(pattern in key_lower for pattern in ["margin", "yield", "turnover"]):
                     decimal_places = 4
                 elif any(pattern in key_lower for pattern in ["ratio", "roe", "roa"]):
                     decimal_places = 2
@@ -307,9 +296,7 @@ class DataNormalizer:
         return rounded
 
     @classmethod
-    def assess_completeness(
-        cls, data: Dict[str, Any], include_debt_metrics: bool = True
-    ) -> Dict[str, Any]:
+    def assess_completeness(cls, data: Dict[str, Any], include_debt_metrics: bool = True) -> Dict[str, Any]:
         """
         Assess data completeness with enhanced debt metrics tracking.
 
@@ -352,19 +339,13 @@ class DataNormalizer:
         present_core = 0
 
         for metric in cls.CORE_METRICS:
-            value = (
-                get_value_flexible(data, metric)
-                if metric.islower() or "_" in metric
-                else data.get(metric)
-            )
+            value = get_value_flexible(data, metric) if metric.islower() or "_" in metric else data.get(metric)
             if value is not None and value != 0:
                 present_core += 1
             else:
                 missing_core.append(metric)
 
-        core_completeness = (
-            (present_core / len(cls.CORE_METRICS)) * 100 if cls.CORE_METRICS else 100
-        )
+        core_completeness = (present_core / len(cls.CORE_METRICS)) * 100 if cls.CORE_METRICS else 100
 
         # Check debt metrics if requested
         debt_completeness = 100  # Default
@@ -379,11 +360,7 @@ class DataNormalizer:
                 else:
                     missing_debt.append(metric)
 
-            debt_completeness = (
-                (present_debt / len(cls.DEBT_METRICS)) * 100
-                if cls.DEBT_METRICS
-                else 100
-            )
+            debt_completeness = (present_debt / len(cls.DEBT_METRICS)) * 100 if cls.DEBT_METRICS else 100
 
         # Calculate overall score (weighted: 70% core, 30% debt)
         overall_score = (core_completeness * 0.7) + (debt_completeness * 0.3)
@@ -446,9 +423,7 @@ class DataNormalizer:
                 )
 
     @classmethod
-    def normalize_and_round(
-        cls, data: Dict[str, Any], to_camel_case: bool = True
-    ) -> Dict[str, Any]:
+    def normalize_and_round(cls, data: Dict[str, Any], to_camel_case: bool = True) -> Dict[str, Any]:
         """
         Convenience method: normalize field names AND apply judicious rounding.
 

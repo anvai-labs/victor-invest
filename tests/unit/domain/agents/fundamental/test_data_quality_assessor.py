@@ -67,10 +67,7 @@ class TestAssessDataQuality:
 
         result_with_market = assessor.assess_data_quality(company_data_with_market, {})
 
-        assert (
-            result_with_market["data_quality_score"]
-            > result_no_market["data_quality_score"]
-        )
+        assert result_with_market["data_quality_score"] > result_no_market["data_quality_score"]
         assert result_with_market["market_metrics_populated"] == "2/2"
 
     def test_ratios_increase_quality(self, assessor):
@@ -82,10 +79,7 @@ class TestAssessDataQuality:
         ratios = {"pe_ratio": 15.0, "roe": 0.12, "current_ratio": 2.0}
         result_with_ratios = assessor.assess_data_quality(company_data, ratios)
 
-        assert (
-            result_with_ratios["data_quality_score"]
-            > result_no_ratios["data_quality_score"]
-        )
+        assert result_with_ratios["data_quality_score"] > result_no_ratios["data_quality_score"]
 
     def test_consistency_issues_detected(self, assessor):
         """Should detect and report consistency issues."""

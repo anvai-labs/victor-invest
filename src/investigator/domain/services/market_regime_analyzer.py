@@ -72,9 +72,7 @@ class ComprehensiveRegime:
             "risk_off_signal": self.risk_off_signal,
             "vix_level": self.vix_level,
             "credit_spread": self.credit_spread,
-            "snapshot_date": self.snapshot_date.isoformat()
-            if self.snapshot_date
-            else None,
+            "snapshot_date": self.snapshot_date.isoformat() if self.snapshot_date else None,
             "recommendations": self.recommendations,
         }
 
@@ -134,15 +132,9 @@ class MarketRegimeAnalyzer:
                 yc_analysis = asyncio.run(self.yield_curve_analyzer.analyze())
                 if yc_analysis:
                     yield_curve_shape = (
-                        yc_analysis.shape.value
-                        if hasattr(yc_analysis.shape, "value")
-                        else str(yc_analysis.shape)
+                        yc_analysis.shape.value if hasattr(yc_analysis.shape, "value") else str(yc_analysis.shape)
                     )
-                    yield_curve_inverted = (
-                        yc_analysis.is_inverted
-                        if hasattr(yc_analysis, "is_inverted")
-                        else False
-                    )
+                    yield_curve_inverted = yc_analysis.is_inverted if hasattr(yc_analysis, "is_inverted") else False
             except Exception as e:
                 self.logger.warning(f"Yield curve analysis failed: {e}")
 
@@ -150,11 +142,7 @@ class MarketRegimeAnalyzer:
             try:
                 recession = asyncio.run(self.recession_indicator.assess())
                 if recession:
-                    recession_probability = (
-                        recession.probability
-                        if hasattr(recession, "probability")
-                        else 0.0
-                    )
+                    recession_probability = recession.probability if hasattr(recession, "probability") else 0.0
             except Exception as e:
                 self.logger.warning(f"Recession assessment failed: {e}")
 
@@ -162,16 +150,8 @@ class MarketRegimeAnalyzer:
             try:
                 cc_analysis = asyncio.run(self.credit_cycle_analyzer.analyze())
                 if cc_analysis:
-                    credit_cycle_phase = (
-                        cc_analysis.phase
-                        if hasattr(cc_analysis, "phase")
-                        else "unknown"
-                    )
-                    credit_spread = (
-                        cc_analysis.high_yield_spread
-                        if hasattr(cc_analysis, "high_yield_spread")
-                        else None
-                    )
+                    credit_cycle_phase = cc_analysis.phase if hasattr(cc_analysis, "phase") else "unknown"
+                    credit_spread = cc_analysis.high_yield_spread if hasattr(cc_analysis, "high_yield_spread") else None
             except Exception as e:
                 self.logger.warning(f"Credit cycle analysis failed: {e}")
 
@@ -284,9 +264,7 @@ class MarketRegimeAnalyzer:
 
         if regime == "contraction":
             recommendations.append("Reduce equity exposure")
-            recommendations.append(
-                "Favor defensive sectors (utilities, consumer staples)"
-            )
+            recommendations.append("Favor defensive sectors (utilities, consumer staples)")
             recommendations.append("Consider increasing cash allocation")
 
         elif regime == "late_cycle":

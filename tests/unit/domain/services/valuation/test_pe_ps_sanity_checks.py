@@ -224,7 +224,4 @@ class TestPSModelSanityChecks:
             assert result.fair_value == 1_500_000.0
         else:
             # If liquidity check fails, that's expected behavior
-            assert (
-                "liquidity" in result.reason.lower()
-                or result.reason == "insufficient_data_or_liquidity"
-            )
+            assert "liquidity" in result.reason.lower() or result.reason == "insufficient_data_or_liquidity"

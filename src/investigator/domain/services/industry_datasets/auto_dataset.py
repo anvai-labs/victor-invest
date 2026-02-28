@@ -205,9 +205,7 @@ class AutoDataset(BaseIndustryDataset):
             ),
         ]
 
-    def extract_metrics(
-        self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs
-    ) -> IndustryMetrics:
+    def extract_metrics(self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs) -> IndustryMetrics:
         """Extract auto-specific metrics from XBRL data and financials."""
         metrics = IndustryMetrics(
             industry="auto_manufacturing",
@@ -291,9 +289,7 @@ class AutoDataset(BaseIndustryDataset):
 
         return metrics
 
-    def _extract_warranty_ratio(
-        self, xbrl_data: Optional[Dict], financials: Dict
-    ) -> Optional[float]:
+    def _extract_warranty_ratio(self, xbrl_data: Optional[Dict], financials: Dict) -> Optional[float]:
         """Extract or calculate warranty reserve ratio."""
         warranty = self._extract_from_xbrl(
             xbrl_data,

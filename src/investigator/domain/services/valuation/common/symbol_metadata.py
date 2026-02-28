@@ -202,9 +202,7 @@ class SymbolMetadata:
         return sector
 
     @classmethod
-    def get_industry(
-        cls, symbol: str, *, fallback_industry: Optional[str] = None
-    ) -> Optional[str]:
+    def get_industry(cls, symbol: str, *, fallback_industry: Optional[str] = None) -> Optional[str]:
         """Get industry for a symbol.
 
         Args:
@@ -214,7 +212,5 @@ class SymbolMetadata:
         Returns:
             Industry name or None if not found
         """
-        _, industry = cls.get_sector_industry(
-            symbol, fallback_industry=fallback_industry
-        )
+        _, industry = cls.get_sector_industry(symbol, fallback_industry=fallback_industry)
         return industry

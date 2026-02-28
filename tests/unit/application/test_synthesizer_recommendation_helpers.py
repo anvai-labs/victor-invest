@@ -33,13 +33,7 @@ def test_stop_loss_and_position_catalyst_extractors():
     stop = calculate_stop_loss(100.0, {"recommendation": "BUY"}, 3.0)
     assert stop == 95.0
 
-    size = extract_position_size(
-        {
-            "investment_recommendation": {
-                "position_sizing": {"recommended_weight": 0.051}
-            }
-        }
-    )
+    size = extract_position_size({"investment_recommendation": {"position_sizing": {"recommended_weight": 0.051}}})
     assert size == "LARGE"
 
     catalysts = extract_catalysts(

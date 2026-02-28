@@ -78,9 +78,7 @@ class TestFallbackChainConfig:
 
     def test_creation(self):
         """Test creating a chain config."""
-        config = FallbackChainConfig(
-            model="dcf", fallbacks=["pe", "ps"], penalties=[0.90, 0.80]
-        )
+        config = FallbackChainConfig(model="dcf", fallbacks=["pe", "ps"], penalties=[0.90, 0.80])
         assert config.model == "dcf"
         assert len(config.fallbacks) == 2
 
@@ -96,9 +94,7 @@ class TestFallbackChainConfig:
 
     def test_get_fallback_second_level(self):
         """Test getting second fallback."""
-        config = FallbackChainConfig(
-            model="dcf", fallbacks=["pe", "ps"], penalties=[0.90, 0.80]
-        )
+        config = FallbackChainConfig(model="dcf", fallbacks=["pe", "ps"], penalties=[0.90, 0.80])
         result = config.get_fallback(1)
         assert result == ("ps", 0.80)
 
@@ -219,9 +215,7 @@ class TestFallbackChainExecution:
         def executor(**kwargs):
             return {"fair_value": 100.0}
 
-        result, fallback_result = chain.execute_with_fallbacks(
-            model_type="dcf", executor_func=executor
-        )
+        result, fallback_result = chain.execute_with_fallbacks(model_type="dcf", executor_func=executor)
         assert result is not None
         assert result["fair_value"] == 100.0
         assert fallback_result.fallback_model is None
@@ -238,9 +232,7 @@ class TestFallbackChainExecution:
                 raise ValueError("DCF failed - no FCF data")
             return {"fair_value": 80.0, "model": model_type}
 
-        result, fallback_result = chain.execute_with_fallbacks(
-            model_type="dcf", executor_func=executor
-        )
+        result, fallback_result = chain.execute_with_fallbacks(model_type="dcf", executor_func=executor)
         assert result is not None
         assert result["model"] == "pe"  # First fallback
         assert fallback_result.fallback_model == "pe"
@@ -257,9 +249,7 @@ class TestFallbackChainExecution:
                 raise ValueError(f"{model_type} failed")
             return {"fair_value": 60.0, "model": model_type}
 
-        result, fallback_result = chain.execute_with_fallbacks(
-            model_type="dcf", executor_func=executor
-        )
+        result, fallback_result = chain.execute_with_fallbacks(model_type="dcf", executor_func=executor)
         assert result is not None
         assert result["model"] == "ps"  # Second fallback
         assert len(attempts) == 3  # dcf, pe, ps
@@ -335,9 +325,7 @@ class TestFallbackChainApplicability:
             "eps": True,
             "pe_ratio": True,
         }
-        applicable = chain.get_applicable_models(
-            available_data, preferred_order=["dcf", "pe"]
-        )
+        applicable = chain.get_applicable_models(available_data, preferred_order=["dcf", "pe"])
         # Should include PE as a fallback option
         model_names = [m[0] for m in applicable]
         assert "pe" in model_names
@@ -350,9 +338,7 @@ class TestFallbackChainApplicability:
             "eps": True,
             "pe_ratio": True,
         }
-        applicable = chain.get_applicable_models(
-            available_data, preferred_order=["ps", "pe"]
-        )  # PS first
+        applicable = chain.get_applicable_models(available_data, preferred_order=["ps", "pe"])  # PS first
         if len(applicable) >= 2:
             assert applicable[0][0] == "ps"  # PS should be first
 

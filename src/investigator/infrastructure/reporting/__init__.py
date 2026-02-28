@@ -22,9 +22,7 @@ def __getattr__(name: str) -> Any:
             ReportConfig,
         )
 
-        return {"PDFReportGenerator": PDFReportGenerator, "ReportConfig": ReportConfig}[
-            name
-        ]
+        return {"PDFReportGenerator": PDFReportGenerator, "ReportConfig": ReportConfig}[name]
     if name == "ReportPayloadBuilder":
         from investigator.infrastructure.reporting.report_payload_builder import (
             ReportPayloadBuilder,

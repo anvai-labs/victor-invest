@@ -142,13 +142,9 @@ class FundamentalInsightExtractor:
         if fair_value > 0 and current_price > 0:
             upside = (fair_value - current_price) / current_price
             if upside > 0.15:
-                positive.append(
-                    f"Attractive valuation with {upside:.0%} upside to fair value"
-                )
+                positive.append(f"Attractive valuation with {upside:.0%} upside to fair value")
             elif upside < -0.15:
-                negative.append(
-                    f"Valuation stretched with {abs(upside):.0%} downside to fair value"
-                )
+                negative.append(f"Valuation stretched with {abs(upside):.0%} downside to fair value")
 
         # Extract ratio insights
         ratios = data.get("ratios", data.get("analysis", {}).get("ratios", {}))
@@ -218,9 +214,7 @@ class FundamentalInsightExtractor:
             confidence=confidence,
         )
 
-    def _determine_critical_metric(
-        self, valuation: Dict[str, Any], ratios: Dict[str, Any]
-    ) -> str:
+    def _determine_critical_metric(self, valuation: Dict[str, Any], ratios: Dict[str, Any]) -> str:
         """Determine the most critical metric from fundamental analysis."""
         # Priority: valuation upside > ROE > revenue growth > margins
 
@@ -241,9 +235,7 @@ class FundamentalInsightExtractor:
 
         return "Financial metrics require further analysis"
 
-    def _determine_unique_insight(
-        self, data: Dict[str, Any], positive: List[str], negative: List[str]
-    ) -> str:
+    def _determine_unique_insight(self, data: Dict[str, Any], positive: List[str], negative: List[str]) -> str:
         """Determine a unique insight not commonly found elsewhere."""
         # Check for multi-model valuation insights
         multi_model = data.get("multi_model_summary", {})
@@ -320,39 +312,22 @@ class TechnicalInsightExtractor:
             rsi = signals.get("rsi", signals.get("momentum", {}).get("rsi"))
             if rsi is not None:
                 if rsi < 30:
-                    positive.append(
-                        f"Oversold RSI ({rsi:.0f}) suggests potential bounce"
-                    )
+                    positive.append(f"Oversold RSI ({rsi:.0f}) suggests potential bounce")
                 elif rsi > 70:
-                    negative.append(
-                        f"Overbought RSI ({rsi:.0f}) suggests potential pullback"
-                    )
+                    negative.append(f"Overbought RSI ({rsi:.0f}) suggests potential pullback")
 
             # Moving averages
-            ma_signal = signals.get(
-                "ma_signal", signals.get("moving_averages", {}).get("signal")
-            )
+            ma_signal = signals.get("ma_signal", signals.get("moving_averages", {}).get("signal"))
             if ma_signal:
-                if (
-                    "golden" in str(ma_signal).lower()
-                    or "above" in str(ma_signal).lower()
-                ):
+                if "golden" in str(ma_signal).lower() or "above" in str(ma_signal).lower():
                     positive.append("Price above key moving averages")
-                elif (
-                    "death" in str(ma_signal).lower()
-                    or "below" in str(ma_signal).lower()
-                ):
+                elif "death" in str(ma_signal).lower() or "below" in str(ma_signal).lower():
                     negative.append("Price below key moving averages")
 
             # Volume
-            volume_signal = signals.get(
-                "volume_signal", signals.get("volume", {}).get("signal")
-            )
+            volume_signal = signals.get("volume_signal", signals.get("volume", {}).get("signal"))
             if volume_signal:
-                if (
-                    "increasing" in str(volume_signal).lower()
-                    or "high" in str(volume_signal).lower()
-                ):
+                if "increasing" in str(volume_signal).lower() or "high" in str(volume_signal).lower():
                     positive.append("Strong volume supports price action")
                 elif "declining" in str(volume_signal).lower():
                     negative.append("Weak volume raises sustainability concerns")
@@ -369,9 +344,7 @@ class TechnicalInsightExtractor:
                 if support_distance < 0.05:
                     positive.append("Price near strong support level")
 
-            if isinstance(resistance, (int, float)) and isinstance(
-                current, (int, float)
-            ):
+            if isinstance(resistance, (int, float)) and isinstance(current, (int, float)):
                 resistance_distance = (resistance - current) / current
                 if resistance_distance < 0.05:
                     negative.append("Price approaching resistance level")
@@ -409,9 +382,7 @@ class TechnicalInsightExtractor:
 
         return "Technical signals mixed - await confirmation"
 
-    def _determine_unique_insight(
-        self, data: Dict[str, Any], positive: List[str], negative: List[str]
-    ) -> str:
+    def _determine_unique_insight(self, data: Dict[str, Any], positive: List[str], negative: List[str]) -> str:
         """Determine unique technical insight."""
         signals = data.get("signals", {})
 
@@ -472,25 +443,15 @@ class SECInsightExtractor:
         analysis = data.get("analysis", data)
 
         # Revenue trends
-        revenue_trend = analysis.get(
-            "revenue_trend", analysis.get("trends", {}).get("revenue")
-        )
+        revenue_trend = analysis.get("revenue_trend", analysis.get("trends", {}).get("revenue"))
         if revenue_trend:
-            if (
-                "growing" in str(revenue_trend).lower()
-                or "positive" in str(revenue_trend).lower()
-            ):
+            if "growing" in str(revenue_trend).lower() or "positive" in str(revenue_trend).lower():
                 positive.append("SEC filings show consistent revenue growth")
-            elif (
-                "declining" in str(revenue_trend).lower()
-                or "negative" in str(revenue_trend).lower()
-            ):
+            elif "declining" in str(revenue_trend).lower() or "negative" in str(revenue_trend).lower():
                 negative.append("SEC filings show revenue decline trend")
 
         # Profitability
-        profit_trend = analysis.get(
-            "profit_trend", analysis.get("trends", {}).get("profit")
-        )
+        profit_trend = analysis.get("profit_trend", analysis.get("trends", {}).get("profit"))
         if profit_trend:
             if "improving" in str(profit_trend).lower():
                 positive.append("Profitability trend improving per SEC filings")
@@ -553,9 +514,7 @@ class SECInsightExtractor:
 
         return "SEC filing analysis in progress"
 
-    def _determine_unique_insight(
-        self, data: Dict[str, Any], analysis: Dict[str, Any]
-    ) -> str:
+    def _determine_unique_insight(self, data: Dict[str, Any], analysis: Dict[str, Any]) -> str:
         """Determine unique SEC insight."""
         # Check for accounting quality flags
         accounting_flags = analysis.get("accounting_quality", {}).get("flags", [])
@@ -668,14 +627,10 @@ class DeterministicInsightExtractor:
         sec_extractor: Optional[SourceExtractor] = None,
         quantitative_extractor: Optional[QuantitativeInsightExtractor] = None,
     ):
-        self.fundamental_extractor = (
-            fundamental_extractor or FundamentalInsightExtractor()
-        )
+        self.fundamental_extractor = fundamental_extractor or FundamentalInsightExtractor()
         self.technical_extractor = technical_extractor or TechnicalInsightExtractor()
         self.sec_extractor = sec_extractor or SECInsightExtractor()
-        self.quantitative_extractor = (
-            quantitative_extractor or QuantitativeInsightExtractor()
-        )
+        self.quantitative_extractor = quantitative_extractor or QuantitativeInsightExtractor()
 
     def extract(
         self,

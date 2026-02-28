@@ -75,9 +75,7 @@ def test_analyze_endpoint_normalizes_mode_case_and_whitespace(monkeypatch):
     monkeypatch.setattr(api_module, "run_workflow_analysis", fake_run_workflow_analysis)
     client = TestClient(api_module.app)
 
-    response = client.post(
-        "/analyze/aapl", json={"symbol": "AAPL", "mode": " STANDARD "}
-    )
+    response = client.post("/analyze/aapl", json={"symbol": "AAPL", "mode": " STANDARD "})
 
     assert response.status_code == 200
     payload = response.json()

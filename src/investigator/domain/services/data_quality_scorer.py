@@ -54,11 +54,7 @@ class MetricQuality:
     @property
     def overall_score(self) -> float:
         """Weighted average of quality components."""
-        return (
-            0.50 * self.completeness
-            + 0.30 * self.recency_score
-            + 0.20 * self.consistency_score
-        )
+        return 0.50 * self.completeness + 0.30 * self.recency_score + 0.20 * self.consistency_score
 
 
 @dataclass
@@ -75,11 +71,7 @@ class AggregateQuality:
 
     def get_applicable_models(self, min_confidence: float = 0.5) -> List[str]:
         """Get list of models with sufficient data quality."""
-        return [
-            model
-            for model, conf in self.model_applicability.items()
-            if conf >= min_confidence
-        ]
+        return [model for model, conf in self.model_applicability.items() if conf >= min_confidence]
 
     def summary(self) -> str:
         """Get a summary of the quality assessment."""
@@ -239,9 +231,7 @@ class DataQualityScorer:
         """
         self.validator = validator or get_data_validator()
 
-    def score_metrics(
-        self, data: Dict[str, Any], metadata: Optional[Dict[str, Any]] = None
-    ) -> AggregateQuality:
+    def score_metrics(self, data: Dict[str, Any], metadata: Optional[Dict[str, Any]] = None) -> AggregateQuality:
         """
         Calculate aggregate data quality scores.
 
@@ -277,15 +267,11 @@ class DataQualityScorer:
         model_applicability = self._calculate_model_applicability(data, category_scores)
 
         # Calculate valuation confidence
-        valuation_confidence = self._calculate_valuation_confidence(
-            overall_score, model_applicability, level
-        )
+        valuation_confidence = self._calculate_valuation_confidence(overall_score, model_applicability, level)
 
         # Generate issues and recommendations
         issues = self._collect_issues(category_scores)
-        recommendations = self._generate_recommendations(
-            level, category_scores, model_applicability
-        )
+        recommendations = self._generate_recommendations(level, category_scores, model_applicability)
 
         return AggregateQuality(
             overall_score=round(overall_score, 1),
@@ -297,17 +283,13 @@ class DataQualityScorer:
             recommendations=recommendations,
         )
 
-    def _score_categories(
-        self, data: Dict[str, Any], metadata: Dict[str, Any]
-    ) -> Dict[str, MetricQuality]:
+    def _score_categories(self, data: Dict[str, Any], metadata: Dict[str, Any]) -> Dict[str, MetricQuality]:
         """Score each metric category for completeness and quality."""
         category_scores = {}
 
         for category, fields in self.METRIC_CATEGORIES.items():
             # Count valid fields
-            valid_count = sum(
-                1 for f in fields if self.validator._has_valid_value(data.get(f))
-            )
+            valid_count = sum(1 for f in fields if self.validator._has_valid_value(data.get(f)))
             total = len(fields)
             completeness = (valid_count / total * 100) if total > 0 else 0
 
@@ -319,9 +301,7 @@ class DataQualityScorer:
 
             # Collect issues for this category
             issues = []
-            missing = [
-                f for f in fields if not self.validator._has_valid_value(data.get(f))
-            ]
+            missing = [f for f in fields if not self.validator._has_valid_value(data.get(f))]
             if missing and len(missing) <= 3:
                 issues.append(f"Missing: {', '.join(missing)}")
             elif len(missing) > 3:
@@ -357,27 +337,21 @@ class DataQualityScorer:
         else:
             return 40.0  # Over a year old
 
-    def _calculate_consistency_score(
-        self, data: Dict[str, Any], category: str
-    ) -> float:
+    def _calculate_consistency_score(self, data: Dict[str, Any], category: str) -> float:
         """Calculate consistency score for a category."""
         # Use DataValidator's consistency checks
         consistency_issues = self.validator.validate_consistency(data)
 
         # Map issues to categories and deduct points
         category_issues = [
-            i
-            for i in consistency_issues
-            if any(f in self.METRIC_CATEGORIES.get(category, []) for f in [i.field])
+            i for i in consistency_issues if any(f in self.METRIC_CATEGORIES.get(category, []) for f in [i.field])
         ]
 
         # Start at 100, deduct for each issue
         score = 100.0 - (len(category_issues) * 15)
         return max(0.0, score)
 
-    def _calculate_overall_score(
-        self, category_scores: Dict[str, MetricQuality]
-    ) -> float:
+    def _calculate_overall_score(self, category_scores: Dict[str, MetricQuality]) -> float:
         """Calculate weighted overall quality score."""
         if not category_scores:
             return 0.0
@@ -405,9 +379,7 @@ class DataQualityScorer:
 
     def _determine_level(self, score: float) -> DataQualityLevel:
         """Determine quality level from score."""
-        for level, threshold in sorted(
-            self.QUALITY_THRESHOLDS.items(), key=lambda x: -x[1]
-        ):  # Sort descending
+        for level, threshold in sorted(self.QUALITY_THRESHOLDS.items(), key=lambda x: -x[1]):  # Sort descending
             if score >= threshold:
                 return level
         return DataQualityLevel.INSUFFICIENT
@@ -431,9 +403,7 @@ class DataQualityScorer:
             category_score = weighted_score / total_weight if total_weight > 0 else 0
 
             # Also check DataValidator's model-specific validation
-            is_applicable, confidence_adj, _ = self.validator.validate_for_model(
-                data, model
-            )
+            is_applicable, confidence_adj, _ = self.validator.validate_for_model(data, model)
 
             if not is_applicable:
                 # Not applicable at all
@@ -456,9 +426,7 @@ class DataQualityScorer:
         base_confidence = overall_score / 100
 
         # Adjust based on how many models are applicable
-        applicable_models = sum(
-            1 for conf in model_applicability.values() if conf >= 0.5
-        )
+        applicable_models = sum(1 for conf in model_applicability.values() if conf >= 0.5)
         total_models = len(model_applicability)
         model_coverage = applicable_models / total_models if total_models > 0 else 0
 
@@ -496,34 +464,25 @@ class DataQualityScorer:
         # Level-based recommendations
         if level == DataQualityLevel.INSUFFICIENT:
             recommendations.append(
-                "Data quality insufficient for reliable valuation. "
-                "Consider fetching additional data sources."
+                "Data quality insufficient for reliable valuation. " "Consider fetching additional data sources."
             )
         elif level == DataQualityLevel.POOR:
-            recommendations.append(
-                "Data quality is poor. Results should be used with caution."
-            )
+            recommendations.append("Data quality is poor. Results should be used with caution.")
 
         # Category-specific recommendations
-        weak_categories = [
-            (cat, q) for cat, q in category_scores.items() if q.completeness < 50
-        ]
+        weak_categories = [(cat, q) for cat, q in category_scores.items() if q.completeness < 50]
         if weak_categories:
             cats = ", ".join(c for c, _ in weak_categories[:3])
             recommendations.append(
-                f"Low data completeness in: {cats}. "
-                f"Consider supplementing with alternative data sources."
+                f"Low data completeness in: {cats}. " f"Consider supplementing with alternative data sources."
             )
 
         # Model-specific recommendations
-        low_applicability = [
-            model for model, conf in model_applicability.items() if 0 < conf < 0.5
-        ]
+        low_applicability = [model for model, conf in model_applicability.items() if 0 < conf < 0.5]
         if low_applicability:
             models = ", ".join(low_applicability[:3])
             recommendations.append(
-                f"Models with limited applicability: {models}. "
-                f"Consider excluding or weighting down these models."
+                f"Models with limited applicability: {models}. " f"Consider excluding or weighting down these models."
             )
 
         return recommendations

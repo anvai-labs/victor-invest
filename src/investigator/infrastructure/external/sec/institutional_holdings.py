@@ -222,9 +222,7 @@ class CUSIPMapper:
         try:
             from sqlalchemy import create_engine, text
 
-            engine = create_engine(
-                "postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database"
-            )
+            engine = create_engine("postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database")
 
             query = text("""
                 SELECT ticker FROM cusip_mapping
@@ -247,9 +245,7 @@ class CUSIPMapper:
         try:
             from sqlalchemy import create_engine, text
 
-            engine = create_engine(
-                "postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database"
-            )
+            engine = create_engine("postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database")
 
             query = text("""
                 SELECT cusip FROM cusip_mapping
@@ -305,9 +301,7 @@ class InstitutionalHoldingsFetcher:
         if self._session and not self._session.closed:
             await self._session.close()
 
-    async def get_holdings_by_symbol(
-        self, symbol: str, quarter: Optional[str] = None
-    ) -> InstitutionalOwnership:
+    async def get_holdings_by_symbol(self, symbol: str, quarter: Optional[str] = None) -> InstitutionalOwnership:
         """Get institutional holdings for a symbol.
 
         Args:
@@ -340,9 +334,7 @@ class InstitutionalHoldingsFetcher:
         try:
             from sqlalchemy import create_engine, text
 
-            engine = create_engine(
-                "postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database"
-            )
+            engine = create_engine("postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database")
 
             # Build query based on available identifiers
             if cusip:
@@ -415,9 +407,7 @@ class InstitutionalHoldingsFetcher:
             logger.debug(f"Database holdings lookup failed: {e}")
             return None
 
-    async def get_top_holders(
-        self, symbol: str, limit: int = 20
-    ) -> List[Dict[str, Any]]:
+    async def get_top_holders(self, symbol: str, limit: int = 20) -> List[Dict[str, Any]]:
         """Get top institutional holders for a symbol.
 
         Args:
@@ -430,9 +420,7 @@ class InstitutionalHoldingsFetcher:
         ownership = await self.get_holdings_by_symbol(symbol)
         return ownership.top_holders[:limit]
 
-    async def get_ownership_changes(
-        self, symbol: str, quarters: int = 4
-    ) -> List[Dict[str, Any]]:
+    async def get_ownership_changes(self, symbol: str, quarters: int = 4) -> List[Dict[str, Any]]:
         """Get ownership changes over multiple quarters.
 
         Args:
@@ -445,9 +433,7 @@ class InstitutionalHoldingsFetcher:
         try:
             from sqlalchemy import create_engine, text
 
-            engine = create_engine(
-                "postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database"
-            )
+            engine = create_engine("postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database")
 
             # Get CUSIP
             cusip = await self._cusip_mapper.get_cusip(symbol)
@@ -468,9 +454,7 @@ class InstitutionalHoldingsFetcher:
             """)
 
             with engine.connect() as conn:
-                results = conn.execute(
-                    query, {"cusip": cusip, "quarters": quarters}
-                ).fetchall()
+                results = conn.execute(query, {"cusip": cusip, "quarters": quarters}).fetchall()
 
                 changes = []
                 prev_shares = None
@@ -484,9 +468,7 @@ class InstitutionalHoldingsFetcher:
                     }
 
                     if prev_shares is not None and prev_shares > 0:
-                        change["qoq_change_pct"] = round(
-                            ((r[1] - prev_shares) / prev_shares) * 100, 2
-                        )
+                        change["qoq_change_pct"] = round(((r[1] - prev_shares) / prev_shares) * 100, 2)
                         change["qoq_change_shares"] = r[1] - prev_shares
 
                     changes.append(change)
@@ -498,9 +480,7 @@ class InstitutionalHoldingsFetcher:
             logger.error(f"Error getting ownership changes: {e}")
             return []
 
-    async def get_institution_holdings(
-        self, institution_cik: str, quarter: Optional[str] = None
-    ) -> List[Holding]:
+    async def get_institution_holdings(self, institution_cik: str, quarter: Optional[str] = None) -> List[Holding]:
         """Get all holdings for an institution.
 
         Args:
@@ -513,9 +493,7 @@ class InstitutionalHoldingsFetcher:
         try:
             from sqlalchemy import create_engine, text
 
-            engine = create_engine(
-                "postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database"
-            )
+            engine = create_engine("postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database")
 
             query = text("""
                 SELECT
@@ -560,9 +538,7 @@ class InstitutionalHoldingsFetcher:
             logger.error(f"Error getting institution holdings: {e}")
             return []
 
-    async def search_institutions(
-        self, query: str, limit: int = 20
-    ) -> List[InstitutionalHolder]:
+    async def search_institutions(self, query: str, limit: int = 20) -> List[InstitutionalHolder]:
         """Search for institutions by name.
 
         Args:
@@ -575,9 +551,7 @@ class InstitutionalHoldingsFetcher:
         try:
             from sqlalchemy import create_engine, text
 
-            engine = create_engine(
-                "postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database"
-            )
+            engine = create_engine("postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}:5432/sec_database")
 
             sql = text("""
                 SELECT DISTINCT
@@ -592,9 +566,7 @@ class InstitutionalHoldingsFetcher:
             """)
 
             with engine.connect() as conn:
-                results = conn.execute(
-                    sql, {"query": f"%{query.lower()}%", "limit": limit}
-                ).fetchall()
+                results = conn.execute(sql, {"query": f"%{query.lower()}%", "limit": limit}).fetchall()
 
                 return [
                     InstitutionalHolder(

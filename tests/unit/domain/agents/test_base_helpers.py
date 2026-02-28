@@ -38,24 +38,13 @@ class DummyAgent(InvestmentAgent):
 
 
 def test_cache_type_mapping() -> None:
-    assert (
-        get_cache_type_for_analysis(AnalysisType.SEC_FUNDAMENTAL)
-        == CacheType.SEC_RESPONSE
-    )
-    assert (
-        get_cache_type_for_analysis(AnalysisType.TECHNICAL_ANALYSIS)
-        == CacheType.TECHNICAL_DATA
-    )
-    assert (
-        get_cache_type_for_analysis(AnalysisType.INVESTMENT_SYNTHESIS)
-        == CacheType.LLM_RESPONSE
-    )
+    assert get_cache_type_for_analysis(AnalysisType.SEC_FUNDAMENTAL) == CacheType.SEC_RESPONSE
+    assert get_cache_type_for_analysis(AnalysisType.TECHNICAL_ANALYSIS) == CacheType.TECHNICAL_DATA
+    assert get_cache_type_for_analysis(AnalysisType.INVESTMENT_SYNTHESIS) == CacheType.LLM_RESPONSE
 
 
 def test_agent_can_handle_task_with_valid_context():
-    agent = DummyAgent(
-        "dummy", ollama_client=Mock(), event_bus=Mock(), cache_manager=Mock()
-    )
+    agent = DummyAgent("dummy", ollama_client=Mock(), event_bus=Mock(), cache_manager=Mock())
     task = AgentTask(
         task_id="task-1",
         symbol="AAPL",
@@ -70,9 +59,7 @@ def test_agent_can_handle_task_with_valid_context():
 
 
 def test_agent_rejects_task_when_context_incomplete():
-    agent = DummyAgent(
-        "dummy", ollama_client=Mock(), event_bus=Mock(), cache_manager=Mock()
-    )
+    agent = DummyAgent("dummy", ollama_client=Mock(), event_bus=Mock(), cache_manager=Mock())
     task = AgentTask(
         task_id="task-2",
         symbol="AAPL",
@@ -86,9 +73,7 @@ def test_agent_rejects_task_when_context_incomplete():
 
 
 def test_wrap_llm_response_preserves_raw_dict_payload():
-    agent = DummyAgent(
-        "dummy", ollama_client=Mock(), event_bus=Mock(), cache_manager=Mock()
-    )
+    agent = DummyAgent("dummy", ollama_client=Mock(), event_bus=Mock(), cache_manager=Mock())
 
     wrapped = agent._wrap_llm_response(
         response={"executive_summary": "fallback", "investment_recommendation": "hold"},
@@ -103,9 +88,7 @@ def test_wrap_llm_response_preserves_raw_dict_payload():
 
 
 def test_wrap_llm_response_uses_wrapper_response_field_when_present():
-    agent = DummyAgent(
-        "dummy", ollama_client=Mock(), event_bus=Mock(), cache_manager=Mock()
-    )
+    agent = DummyAgent("dummy", ollama_client=Mock(), event_bus=Mock(), cache_manager=Mock())
 
     wrapped = agent._wrap_llm_response(
         response={"response": {"signal": "buy"}, "_raw_thinking": "chain-of-thought"},

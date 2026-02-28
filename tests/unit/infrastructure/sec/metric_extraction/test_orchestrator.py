@@ -220,8 +220,7 @@ class TestMetricExtractionOrchestrator:
         warning_failures = [
             rec
             for rec in caplog.records
-            if rec.levelname == "WARNING"
-            and "Failed to extract total_revenue" in rec.getMessage()
+            if rec.levelname == "WARNING" and "Failed to extract total_revenue" in rec.getMessage()
         ]
         assert len(warning_failures) == 1
 
@@ -240,22 +239,15 @@ class TestMetricExtractionOrchestrator:
         warning_failures = [
             rec
             for rec in caplog.records
-            if rec.levelname == "WARNING"
-            and "Failed to extract total_revenue" in rec.getMessage()
+            if rec.levelname == "WARNING" and "Failed to extract total_revenue" in rec.getMessage()
         ]
-        assert (
-            len(warning_failures)
-            == MetricExtractionOrchestrator.MAX_WARNING_FAILURES_PER_KEY
-        )
+        assert len(warning_failures) == MetricExtractionOrchestrator.MAX_WARNING_FAILURES_PER_KEY
         assert any(
-            "Further 'total_revenue' extraction failures in this run will be downgraded to DEBUG"
-            in rec.getMessage()
+            "Further 'total_revenue' extraction failures in this run will be downgraded to DEBUG" in rec.getMessage()
             for rec in caplog.records
         )
 
-    def test_extract_failure_historical_optional_metric_downgraded_to_debug(
-        self, caplog
-    ):
+    def test_extract_failure_historical_optional_metric_downgraded_to_debug(self, caplog):
         """Old-period optional-metric misses should avoid WARNING noise."""
         self.mock_mapper.mappings["short_term_debt"] = {
             "tags": ["ShortTermDebt"],
@@ -274,13 +266,11 @@ class TestMetricExtractionOrchestrator:
         warning_failures = [
             rec
             for rec in caplog.records
-            if rec.levelname == "WARNING"
-            and "Failed to extract short_term_debt" in rec.getMessage()
+            if rec.levelname == "WARNING" and "Failed to extract short_term_debt" in rec.getMessage()
         ]
         assert len(warning_failures) == 0
         assert any(
-            "historical optional metric warning downgraded to DEBUG" in rec.getMessage()
-            for rec in caplog.records
+            "historical optional metric warning downgraded to DEBUG" in rec.getMessage() for rec in caplog.records
         )
 
     def test_extract_failure_recent_optional_metric_still_warns(self, caplog):
@@ -302,8 +292,7 @@ class TestMetricExtractionOrchestrator:
         warning_failures = [
             rec
             for rec in caplog.records
-            if rec.levelname == "WARNING"
-            and "Failed to extract short_term_debt" in rec.getMessage()
+            if rec.levelname == "WARNING" and "Failed to extract short_term_debt" in rec.getMessage()
         ]
         assert len(warning_failures) == 1
 
@@ -423,9 +412,7 @@ class TestMetricExtractionOrchestrator:
         assert result.success is True
         assert result.value == 48_000_000_000
         # Used fallback tag
-        assert (
-            result.source_tag == "RevenueFromContractWithCustomerExcludingAssessedTax"
-        )
+        assert result.source_tag == "RevenueFromContractWithCustomerExcludingAssessedTax"
 
     def test_confidence_levels(self):
         """Test confidence level assignment based on strategy and tag position."""
@@ -582,9 +569,7 @@ class TestDerivedValueCalculation:
             "capital_expenditures": 3_000_000_000,
         }
 
-        result = orchestrator._evaluate_formula(
-            "operating_cash_flow - capital_expenditures", components
-        )
+        result = orchestrator._evaluate_formula("operating_cash_flow - capital_expenditures", components)
 
         assert result == 5_000_000_000
 

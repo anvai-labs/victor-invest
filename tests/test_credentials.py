@@ -392,9 +392,7 @@ class TestCredentialSanitizer:
         )
 
         # API key pattern
-        findings = scan_for_credentials(
-            'api_key = "sk-test123456789012345678901234567890"'
-        )
+        findings = scan_for_credentials('api_key = "sk-test123456789012345678901234567890"')
         assert len(findings) > 0
 
         # Clean text

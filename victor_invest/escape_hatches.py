@@ -389,9 +389,7 @@ def format_investment_thesis(ctx: Dict[str, Any]) -> Dict[str, Any]:
     catalysts = ctx.get("catalysts", [])
     risks = ctx.get("risks", [])
 
-    thesis_text = (
-        f"Based on comprehensive analysis (score: {composite_score:.1f}/100), "
-    )
+    thesis_text = f"Based on comprehensive analysis (score: {composite_score:.1f}/100), "
     thesis_text += f"the recommendation is {recommendation.upper()}. "
 
     if catalysts:
@@ -432,9 +430,7 @@ def aggregate_peer_metrics(ctx: Dict[str, Any]) -> Dict[str, Any]:
     avg_peer_score = sum(peer_scores) / len(peer_scores)
     target_score = target.get("composite_score", 50) if isinstance(target, dict) else 50
 
-    relative_position = (
-        "above_average" if target_score > avg_peer_score else "below_average"
-    )
+    relative_position = "above_average" if target_score > avg_peer_score else "below_average"
 
     return {
         "peer_comparison": {
@@ -442,9 +438,7 @@ def aggregate_peer_metrics(ctx: Dict[str, Any]) -> Dict[str, Any]:
             "peer_average": avg_peer_score,
             "peer_count": len(peer_scores),
             "relative_position": relative_position,
-            "percentile": sum(1 for s in peer_scores if target_score > s)
-            / len(peer_scores)
-            * 100,
+            "percentile": sum(1 for s in peer_scores if target_score > s) / len(peer_scores) * 100,
         },
         "status": "success",
     }

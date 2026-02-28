@@ -109,9 +109,7 @@ class TestCalculatePriceTarget:
 
     def test_returns_structured_target_price(self, builder):
         """Should return target price from structured recommendation."""
-        ai_rec = {
-            "investment_recommendation": {"target_price": {"12_month_target": 150.0}}
-        }
+        ai_rec = {"investment_recommendation": {"target_price": {"12_month_target": 150.0}}}
         result = builder.calculate_price_target("AAPL", {}, ai_rec, 130.0)
 
         assert result == 150.0
@@ -170,33 +168,21 @@ class TestExtractPositionSize:
 
     def test_returns_large_for_high_weight(self, builder):
         """Should return LARGE for weight >= 5%."""
-        ai_rec = {
-            "investment_recommendation": {
-                "position_sizing": {"recommended_weight": 0.06}
-            }
-        }
+        ai_rec = {"investment_recommendation": {"position_sizing": {"recommended_weight": 0.06}}}
         result = builder.extract_position_size(ai_rec)
 
         assert result == "LARGE"
 
     def test_returns_moderate_for_medium_weight(self, builder):
         """Should return MODERATE for 3-5% weight."""
-        ai_rec = {
-            "investment_recommendation": {
-                "position_sizing": {"recommended_weight": 0.04}
-            }
-        }
+        ai_rec = {"investment_recommendation": {"position_sizing": {"recommended_weight": 0.04}}}
         result = builder.extract_position_size(ai_rec)
 
         assert result == "MODERATE"
 
     def test_returns_small_for_low_weight(self, builder):
         """Should return SMALL for weight < 3%."""
-        ai_rec = {
-            "investment_recommendation": {
-                "position_sizing": {"recommended_weight": 0.02}
-            }
-        }
+        ai_rec = {"investment_recommendation": {"position_sizing": {"recommended_weight": 0.02}}}
         result = builder.extract_position_size(ai_rec)
 
         assert result == "SMALL"

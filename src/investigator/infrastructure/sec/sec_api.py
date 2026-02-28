@@ -34,14 +34,10 @@ class SECApiClient:
     the new agentic orchestrator can reuse the proven filing retrieval logic.
     """
 
-    def __init__(
-        self, user_agent: Optional[str] = None, config: Optional[Any] = None
-    ) -> None:
+    def __init__(self, user_agent: Optional[str] = None, config: Optional[Any] = None) -> None:
         self.config = config or get_config()
         sec_config = getattr(self.config, "sec", None)
-        self.user_agent = user_agent or getattr(
-            sec_config, "user_agent", "InvestiGator/1.0"
-        )
+        self.user_agent = user_agent or getattr(sec_config, "user_agent", "InvestiGator/1.0")
 
         self.base_url = "https://data.sec.gov"
         self.edgar_url = "https://www.sec.gov/Archives/edgar/data"
@@ -63,9 +59,7 @@ class SECApiClient:
             from utils.api_client import SECAPIClient as LegacySECAPIClient
         except ImportError:
             LegacySECAPIClient = None
-            logger.warning(
-                "utils.api_client not available - SEC API client functionality limited"
-            )
+            logger.warning("utils.api_client not available - SEC API client functionality limited")
 
         try:
             from utils.submission_processor import get_submission_processor
@@ -136,9 +130,7 @@ class SECApiClient:
                 raise ValueError(f"Unable to resolve CIK for symbol {symbol}")
 
             submissions_data = await self._load_submissions(symbol, cik)
-            parsed_submissions = self.submission_processor.parse_submissions(
-                submissions_data
-            )
+            parsed_submissions = self.submission_processor.parse_submissions(submissions_data)
 
             filings = parsed_submissions.get("filings", {}).get("all", [])
             target_filings = self._filter_filings(filings, form_type)
@@ -159,9 +151,7 @@ class SECApiClient:
                 "filing_date": selected_filing.filing_date,
                 "period_end": period_end,
                 "form_url": self._build_form_url(cik, selected_filing),
-                "xbrl_url": self._build_xbrl_url(
-                    cik, submissions_data, selected_filing
-                ),
+                "xbrl_url": self._build_xbrl_url(cik, submissions_data, selected_filing),
                 "text": filing_text,
             }
 
@@ -183,12 +173,8 @@ class SECApiClient:
             return []
 
         submissions_data = await self._load_submissions(symbol, cik)
-        parsed_submissions = self.submission_processor.parse_submissions(
-            submissions_data
-        )
-        filings = self._filter_filings(
-            parsed_submissions.get("filings", {}).get("all", []), form_type
-        )
+        parsed_submissions = self.submission_processor.parse_submissions(submissions_data)
+        filings = self._filter_filings(parsed_submissions.get("filings", {}).get("all", []), form_type)
 
         results: List[Dict[str, Any]] = []
         for filing in filings[:limit]:
@@ -316,9 +302,7 @@ class SECApiClient:
 
     def _build_form_url(self, cik: str, filing: "Filing") -> str:
         accession = filing.accession_number.replace("-", "")
-        primary_doc = (
-            getattr(filing, "primary_document", "") or f"{filing.accession_number}.txt"
-        )
+        primary_doc = getattr(filing, "primary_document", "") or f"{filing.accession_number}.txt"
         return f"{self.edgar_url}/{cik}/{accession}/{primary_doc}"
 
     def _build_xbrl_url(

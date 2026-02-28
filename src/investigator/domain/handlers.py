@@ -280,9 +280,7 @@ class RLWeightDecisionHandler(HandlerBase):
         )
 
         # Legacy single policy path (fallback)
-        policy_path = self._get_input(
-            node, context, "policy_path", "data/rl_models/active_policy.pkl"
-        )
+        policy_path = self._get_input(node, context, "policy_path", "data/rl_models/active_policy.pkl")
 
         if not symbol:
             return NodeResult(
@@ -328,22 +326,14 @@ class RLWeightDecisionHandler(HandlerBase):
 
             # Check which policy was used
             dual_active = rl_service.is_dual_policy_active()
-            single_active = (
-                hasattr(rl_service, "policy")
-                and rl_service.policy
-                and rl_service.policy.is_ready()
-            )
+            single_active = hasattr(rl_service, "policy") and rl_service.policy and rl_service.policy.is_ready()
 
             # Extract additional metadata from audit trail
             position = None
             position_confidence = None
             holding_period = None
             industry_category = None
-            if (
-                weight_audit
-                and hasattr(weight_audit, "metadata")
-                and weight_audit.metadata
-            ):
+            if weight_audit and hasattr(weight_audit, "metadata") and weight_audit.metadata:
                 position = weight_audit.metadata.get("position")
                 position_confidence = weight_audit.metadata.get("position_confidence")
                 holding_period = weight_audit.metadata.get("holding_period")
@@ -353,13 +343,7 @@ class RLWeightDecisionHandler(HandlerBase):
                 "symbol": symbol,
                 "weights": weights,
                 "tier": tier,
-                "policy_used": (
-                    "dual_rl"
-                    if dual_active
-                    else "single_rl"
-                    if single_active
-                    else "fallback_rule_based"
-                ),
+                "policy_used": ("dual_rl" if dual_active else "single_rl" if single_active else "fallback_rule_based"),
                 "rl_active": dual_active or single_active,
                 "dual_policy_active": dual_active,
                 "position_signal": position,  # -1=short, 0=skip, 1=long
@@ -576,9 +560,7 @@ class SectorValuationHandler(HandlerBase):
                     value_insurance_company,
                 )
 
-                ins_result = value_insurance_company(
-                    symbol, financials, current_price, shares
-                )
+                ins_result = value_insurance_company(symbol, financials, current_price, shares)
                 if ins_result:
                     result["model_used"] = "insurance_combined_ratio"
                     result["fair_value"] = ins_result.get("fair_value")
@@ -588,9 +570,7 @@ class SectorValuationHandler(HandlerBase):
                     value_semiconductor,
                 )
 
-                semi_result = value_semiconductor(
-                    symbol, financials, current_price, shares
-                )
+                semi_result = value_semiconductor(symbol, financials, current_price, shares)
                 if semi_result and semi_result.fair_value:
                     result["model_used"] = "semiconductor_cycle"
                     result["fair_value"] = semi_result.fair_value
@@ -681,14 +661,10 @@ class PriceDataFetchHandler(HandlerBase):
             from datetime import timedelta
 
             start_date = target_date - timedelta(days=lookback_days)
-            price_history = price_service.get_price_history(
-                symbol, start_date, target_date
-            )
+            price_history = price_service.get_price_history(symbol, start_date, target_date)
 
             # Get volatility
-            volatility = price_service.get_volatility(
-                symbol, days=30, end_date=target_date
-            )
+            volatility = price_service.get_volatility(symbol, days=30, end_date=target_date)
 
             # Get metadata for beta
             metadata = metadata_service.get_metadata(symbol)
@@ -702,9 +678,7 @@ class PriceDataFetchHandler(HandlerBase):
                 "target_date": str(target_date),
                 "current_price": current_price,
                 "shares_outstanding": shares,
-                "market_cap": current_price * shares
-                if current_price and shares
-                else None,
+                "market_cap": current_price * shares if current_price and shares else None,
                 "beta": beta,
                 "volatility": volatility,
                 "price_history_days": len(price_history) if price_history else 0,
@@ -807,12 +781,8 @@ class TechnicalAnalysisHandler(HandlerBase):
                 "mfi_14": features.mfi_14 if features else None,
                 "volatility": features.volatility if features else None,
                 # Entry/exit signals
-                "entry_signal_strength": features.entry_signal_strength
-                if features
-                else 0,
-                "exit_signal_strength": features.exit_signal_strength
-                if features
-                else 0,
+                "entry_signal_strength": features.entry_signal_strength if features else 0,
+                "exit_signal_strength": features.exit_signal_strength if features else 0,
                 "signal_confluence": features.signal_confluence if features else 0,
                 "risk_reward_ratio": features.risk_reward_ratio if features else 1.0,
                 # Trend context
@@ -972,9 +942,7 @@ class OutcomeTrackingHandler(HandlerBase):
                 "symbol": symbol,
                 "record_id": record_id,
                 "tracked": record_id is not None,
-                "predicted_upside_pct": ((blended_fv / current_price) - 1) * 100
-                if current_price > 0
-                else 0,
+                "predicted_upside_pct": ((blended_fv / current_price) - 1) * 100 if current_price > 0 else 0,
             }
 
             output_key = node.output_key or node.id
@@ -1032,9 +1000,7 @@ class BlendedValuationHandler(HandlerBase):
             model_contributions = {}
 
             for model, result in valuation_results.items():
-                fair_value = (
-                    result.get("fair_value") if isinstance(result, dict) else None
-                )
+                fair_value = result.get("fair_value") if isinstance(result, dict) else None
                 weight = weights.get(model, 0.0)
 
                 if fair_value is not None and weight > 0:

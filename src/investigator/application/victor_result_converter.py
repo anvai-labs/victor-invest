@@ -133,11 +133,7 @@ def _extract_fundamental_data(
     if not isinstance(fundamental_analysis, dict):  # type: ignore
         return None
 
-    fundamental = (
-        fundamental_analysis.get("data", {})
-        if isinstance(fundamental_analysis.get("data"), dict)
-        else {}
-    )
+    fundamental = fundamental_analysis.get("data", {}) if isinstance(fundamental_analysis.get("data"), dict) else {}
     if not fundamental:
         return None
 
@@ -157,15 +153,9 @@ def _extract_fundamental_data(
         # Fallback to empty dict if not found
         sec_data = {}
 
-    quarterly_metrics = (
-        sec_data.get("quarterly_metrics", []) if isinstance(sec_data, dict) else []
-    )
-    forward_guidance = (
-        sec_data.get("forward_guidance") if isinstance(sec_data, dict) else None
-    )
-    recent_filings = (
-        sec_data.get("recent_filings", []) if isinstance(sec_data, dict) else []
-    )
+    quarterly_metrics = sec_data.get("quarterly_metrics", []) if isinstance(sec_data, dict) else []
+    forward_guidance = sec_data.get("forward_guidance") if isinstance(sec_data, dict) else None
+    recent_filings = sec_data.get("recent_filings", []) if isinstance(sec_data, dict) else []
 
     # Transform to expected format with valuation section
     result = {
@@ -224,9 +214,7 @@ def _extract_fundamental_data(
         },
         # Include SEC data for UI consumption
         "sec_data": {
-            "quarterly_metrics_count": len(quarterly_metrics)
-            if quarterly_metrics
-            else 0,
+            "quarterly_metrics_count": len(quarterly_metrics) if quarterly_metrics else 0,
             "forward_guidance": forward_guidance,
             "recent_filings_count": len(recent_filings) if recent_filings else 0,
         },
@@ -276,11 +264,7 @@ def _extract_technical_data(
         return result
 
     # Handle old structure with 'data' wrapper (for backward compatibility)
-    technical = (
-        technical_analysis.get("data", {})
-        if isinstance(technical_analysis.get("data"), dict)
-        else {}
-    )
+    technical = technical_analysis.get("data", {}) if isinstance(technical_analysis.get("data"), dict) else {}
     if not technical:
         return None
 

@@ -166,9 +166,7 @@ class SectorMultiplesService:
             if industry in self.INDUSTRY_PE_OVERRIDES:
                 return self.INDUSTRY_PE_OVERRIDES[industry]
             # Try from config
-            industry_override = self._config.get(
-                f"pe_multiples.industry_overrides.{industry}"
-            )
+            industry_override = self._config.get(f"pe_multiples.industry_overrides.{industry}")
             if industry_override is not None:
                 return float(industry_override)
 
@@ -218,9 +216,7 @@ class SectorMultiplesService:
         normalized = self.normalize_sector(sector)
         return self._config.get_sector_ev_ebitda_multiple(normalized)
 
-    def get_multiples(
-        self, sector: str, industry: Optional[str] = None
-    ) -> Dict[str, float]:
+    def get_multiples(self, sector: str, industry: Optional[str] = None) -> Dict[str, float]:
         """
         Get all multiples for a sector.
 
@@ -238,9 +234,7 @@ class SectorMultiplesService:
             "ev_ebitda": self.get_ev_ebitda(sector, industry),
         }
 
-    def get_multiple(
-        self, multiple_type: str, sector: str, industry: Optional[str] = None
-    ) -> float:
+    def get_multiple(self, multiple_type: str, sector: str, industry: Optional[str] = None) -> float:
         """
         Get a specific multiple type for a sector.
 
@@ -266,10 +260,7 @@ class SectorMultiplesService:
         elif type_lower in ("ev_ebitda", "evebitda", "ev/ebitda"):
             return self.get_ev_ebitda(sector, industry)
         else:
-            raise ValueError(
-                f"Unknown multiple type: {multiple_type}. "
-                f"Use one of: pe, ps, pb, ev_ebitda"
-            )
+            raise ValueError(f"Unknown multiple type: {multiple_type}. " f"Use one of: pe, ps, pb, ev_ebitda")
 
     # ============================================================================
     # Historical Median Methods (from sector_multiples_history table)
@@ -357,14 +348,10 @@ class SectorMultiplesService:
                     SectorMultiplesHistoryModel.fiscal_year >= start_year,
                 )
 
-            results = query.order_by(
-                SectorMultiplesHistoryModel.fiscal_year.desc()
-            ).all()
+            results = query.order_by(SectorMultiplesHistoryModel.fiscal_year.desc()).all()
 
             if not results:
-                logger.warning(
-                    f"No historical {metric} data found for sector: {standard_sector}"
-                )
+                logger.warning(f"No historical {metric} data found for sector: {standard_sector}")
                 return None
 
             # Extract values and calculate median
@@ -434,17 +421,13 @@ class SectorMultiplesService:
 
         # Try industry-specific first
         if industry:
-            industry_multiple = self._get_industry_historical_multiple(
-                industry, metric, fiscal_year, lookback_years
-            )
+            industry_multiple = self._get_industry_historical_multiple(industry, metric, fiscal_year, lookback_years)
             if industry_multiple is not None:
                 return industry_multiple
 
         # Fall back to sector-level
         if standard_sector:
-            sector_multiple = self.get_historical_median_multiple(
-                standard_sector, metric, fiscal_year, lookback_years
-            )
+            sector_multiple = self.get_historical_median_multiple(standard_sector, metric, fiscal_year, lookback_years)
             if sector_multiple is not None:
                 return sector_multiple
 
@@ -520,9 +503,7 @@ class SectorMultiplesService:
                     SectorMultiplesHistoryModel.fiscal_year >= start_year,
                 )
 
-            results = query.order_by(
-                SectorMultiplesHistoryModel.fiscal_year.desc()
-            ).all()
+            results = query.order_by(SectorMultiplesHistoryModel.fiscal_year.desc()).all()
 
             if not results:
                 return None
@@ -543,8 +524,7 @@ class SectorMultiplesService:
                 median = sorted_values[n // 2]
 
             logger.info(
-                f"Historical {metric} median for industry {industry}: {median:.2f} "
-                f"(from {len(values)} data points)"
+                f"Historical {metric} median for industry {industry}: {median:.2f} " f"(from {len(values)} data points)"
             )
 
             return median

@@ -54,9 +54,7 @@ class CacheCleanupService:
 
         self.running = True
         self._cleanup_task = asyncio.create_task(self._cleanup_loop())
-        logger.info(
-            f"Cache cleanup service started (interval: {self.cleanup_interval}s)"
-        )
+        logger.info(f"Cache cleanup service started (interval: {self.cleanup_interval}s)")
 
     async def stop(self):
         """Stop background cleanup task"""
@@ -120,9 +118,7 @@ class CacheCleanupService:
         for cache_type, (cache_dir, ttl) in cache_dirs.items():
             await self._cleanup_directory(cache_dir, ttl, cache_type)
 
-    async def _cleanup_directory(
-        self, cache_dir: str, ttl: timedelta, cache_type: CacheType
-    ):
+    async def _cleanup_directory(self, cache_dir: str, ttl: timedelta, cache_type: CacheType):
         """
         Cleanup expired files in a cache directory
 
@@ -169,8 +165,7 @@ class CacheCleanupService:
                     self.stats["total_bytes_freed"] += file_size
 
                     logger.debug(
-                        f"Removed expired cache file: {cache_file.name} "
-                        f"(mtime: {mtime.strftime('%Y-%m-%d %H:%M')})"
+                        f"Removed expired cache file: {cache_file.name} " f"(mtime: {mtime.strftime('%Y-%m-%d %H:%M')})"
                     )
 
             except Exception as e:

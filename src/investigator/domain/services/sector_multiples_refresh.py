@@ -135,23 +135,15 @@ class SectorMultiplesRefresh:
 
         # Calculate sector-level multiples
         for sector, symbols in sector_groups.items():
-            logger.info(
-                f"Calculating multiples for sector: {sector} ({len(symbols)} symbols)"
-            )
-            multiples = self._calculate_multiples_for_symbols(
-                symbols, f"sector:{sector}"
-            )
+            logger.info(f"Calculating multiples for sector: {sector} ({len(symbols)} symbols)")
+            multiples = self._calculate_multiples_for_symbols(symbols, f"sector:{sector}")
             if multiples:
                 results[sector] = multiples
 
         # Calculate industry-level multiples
         for industry, symbols in industry_groups.items():
-            logger.info(
-                f"Calculating multiples for industry: {industry} ({len(symbols)} symbols)"
-            )
-            multiples = self._calculate_multiples_for_symbols(
-                symbols, f"industry:{industry}"
-            )
+            logger.info(f"Calculating multiples for industry: {industry} ({len(symbols)} symbols)")
+            multiples = self._calculate_multiples_for_symbols(symbols, f"industry:{industry}")
             if multiples:
                 results[industry] = multiples
 
@@ -177,20 +169,14 @@ class SectorMultiplesRefresh:
             if sectors:
                 # Apply config overrides first
                 if config_overrides:
-                    override_symbols = [
-                        s.upper()
-                        for s, sec in config_overrides.items()
-                        if sec in sectors
-                    ]
+                    override_symbols = [s.upper() for s, sec in config_overrides.items() if sec in sectors]
                     if override_symbols:
                         filters.append("ticker = ANY(:override_symbols)")
                         params["override_symbols"] = override_symbols
 
                 # Also match by sector column (but config overrides take precedence)
                 sector_list = [s.title() for s in sectors]
-                filters.append(
-                    "COALESCE(NULLIF(\"Sector\", ''), '') = ANY(:sectors) OR \"Sector\" = ANY(:sectors)"
-                )
+                filters.append("COALESCE(NULLIF(\"Sector\", ''), '') = ANY(:sectors) OR \"Sector\" = ANY(:sectors)")
                 params["sectors"] = sector_list
 
             if industries:
@@ -211,9 +197,7 @@ class SectorMultiplesRefresh:
             result = session.execute(query, params)
             return [(row[0], row[1], row[2]) for row in result]
 
-    def _calculate_multiples_for_symbols(
-        self, symbols: List[str], group_name: str
-    ) -> Optional[Dict[str, Any]]:
+    def _calculate_multiples_for_symbols(self, symbols: List[str], group_name: str) -> Optional[Dict[str, Any]]:
         """Calculate valuation multiples for a group of symbols.
 
         Args:
@@ -228,8 +212,7 @@ class SectorMultiplesRefresh:
 
         if len(metrics_data) < self.min_samples:
             logger.warning(
-                f"{group_name}: Insufficient data ({len(metrics_data)} symbols, "
-                f"min required: {self.min_samples})"
+                f"{group_name}: Insufficient data ({len(metrics_data)} symbols, " f"min required: {self.min_samples})"
             )
             return None
 
@@ -280,9 +263,7 @@ class SectorMultiplesRefresh:
         # Apply percentile filtering to remove outliers
         pe_median = self._filtered_median(pe_multiples, f"{group_name}_PE")
         ps_median = self._filtered_median(ps_multiples, f"{group_name}_PS")
-        ev_ebitda_median = self._filtered_median(
-            ev_ebitda_multiples, f"{group_name}_EV_EBITDA"
-        )
+        ev_ebitda_median = self._filtered_median(ev_ebitda_multiples, f"{group_name}_EV_EBITDA")
         pb_median = self._filtered_median(pb_multiples, f"{group_name}_PB")
 
         if pe_median is None:
@@ -370,9 +351,7 @@ class SectorMultiplesRefresh:
                 for period in periods:
                     if "-" in period:
                         year, period_name = period.split("-")
-                        period_conditions.append(
-                            f"(fiscal_year = {year} AND fiscal_period = '{period_name}')"
-                        )
+                        period_conditions.append(f"(fiscal_year = {year} AND fiscal_period = '{period_name}')")
 
                 where_clause = " OR ".join(period_conditions)
 
@@ -461,9 +440,7 @@ class SectorMultiplesRefresh:
         logger.debug(f"Loaded {len(overrides)} sector overrides from config")
         return overrides
 
-    def update_config_yaml(
-        self, calculated_multiples: Dict[str, Dict[str, Any]]
-    ) -> bool:
+    def update_config_yaml(self, calculated_multiples: Dict[str, Dict[str, Any]]) -> bool:
         """Update config.yaml with calculated sector multiples.
 
         Args:
@@ -520,9 +497,7 @@ class SectorMultiplesRefresh:
                 if multiples.get("ev_ebitda"):
                     if "ev_ebitda_industry_overrides" not in config["sector_multiples"]:
                         config["sector_multiples"]["ev_ebitda_industry_overrides"] = {}
-                    config["sector_multiples"]["ev_ebitda_industry_overrides"][name] = (
-                        multiples["ev_ebitda"]
-                    )
+                    config["sector_multiples"]["ev_ebitda_industry_overrides"][name] = multiples["ev_ebitda"]
             else:
                 # Add to sector_defaults
                 if multiples.get("pe"):
@@ -530,9 +505,7 @@ class SectorMultiplesRefresh:
                 if multiples.get("ps"):
                     config["ps_multiples"]["sector_defaults"][name] = multiples["ps"]
                 if multiples.get("ev_ebitda"):
-                    config["sector_multiples"]["ev_ebitda"][name] = multiples[
-                        "ev_ebitda"
-                    ]
+                    config["sector_multiples"]["ev_ebitda"][name] = multiples["ev_ebitda"]
 
         # Write back to config
         with open(config_path, "w") as f:
@@ -541,9 +514,7 @@ class SectorMultiplesRefresh:
         logger.info(f"Updated config.yaml: {config_path}")
         return True
 
-    def _is_industry_name(
-        self, name: str, all_groups: Dict[str, Dict[str, Any]]
-    ) -> bool:
+    def _is_industry_name(self, name: str, all_groups: Dict[str, Dict[str, Any]]) -> bool:
         """Determine if a name is an industry or sector based on hierarchy."""
         # Industries typically have more specific names (contain spaces, special words)
         industry_keywords = [

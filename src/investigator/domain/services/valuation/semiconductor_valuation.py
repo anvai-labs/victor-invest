@@ -280,9 +280,7 @@ def extract_semiconductor_metrics_from_xbrl(
 
     us_gaap = xbrl_data.get("facts", {}).get("us-gaap", {})
     if not us_gaap:
-        logger.warning(
-            f"{symbol} - No us-gaap data available for semiconductor metric extraction"
-        )
+        logger.warning(f"{symbol} - No us-gaap data available for semiconductor metric extraction")
         return metrics
 
     extracted_values = {}
@@ -305,16 +303,10 @@ def extract_semiconductor_metrics_from_xbrl(
                 if data_sources:
                     # Get the latest annual value (10-K preferred, then 10-Q)
                     sorted_data = sorted(
-                        [
-                            d
-                            for d in data_sources
-                            if d.get("form") in ["10-K", "10-Q", "20-F"]
-                        ],
+                        [d for d in data_sources if d.get("form") in ["10-K", "10-Q", "20-F"]],
                         key=lambda x: (
                             x.get("fy", 0),
-                            {"FY": 5, "Q4": 4, "Q3": 3, "Q2": 2, "Q1": 1}.get(
-                                x.get("fp", ""), 0
-                            ),
+                            {"FY": 5, "Q4": 4, "Q3": 3, "Q2": 2, "Q1": 1}.get(x.get("fp", ""), 0),
                         ),
                         reverse=True,
                     )
@@ -323,35 +315,23 @@ def extract_semiconductor_metrics_from_xbrl(
                         value = sorted_data[0].get("val")
                         if value is not None:
                             extracted_values[canonical_name] = float(value)
-                            logger.debug(
-                                f"{symbol} - Extracted {canonical_name} from {alias}: {float(value)}"
-                            )
+                            logger.debug(f"{symbol} - Extracted {canonical_name} from {alias}: {float(value)}")
                             break  # Found value, move to next canonical name
 
     # Calculate inventory days if we have inventory and COGS
     inventory = extracted_values.get("inventory") or financials.get("inventory")
-    cost_of_revenue = extracted_values.get("cost_of_revenue") or financials.get(
-        "cost_of_revenue"
-    )
-    revenues = (
-        extracted_values.get("revenues")
-        or financials.get("total_revenue")
-        or financials.get("revenue")
-    )
+    cost_of_revenue = extracted_values.get("cost_of_revenue") or financials.get("cost_of_revenue")
+    revenues = extracted_values.get("revenues") or financials.get("total_revenue") or financials.get("revenue")
 
     if inventory and cost_of_revenue and cost_of_revenue > 0:
         # Inventory days = (Inventory / COGS) * 365
         metrics.inventory_days = (inventory / cost_of_revenue) * 365
-        logger.info(
-            f"{symbol} - Calculated inventory days: {metrics.inventory_days:.1f} days"
-        )
+        logger.info(f"{symbol} - Calculated inventory days: {metrics.inventory_days:.1f} days")
 
     # Calculate inventory-to-sales ratio
     if inventory and revenues and revenues > 0:
         metrics.inventory_to_sales = inventory / revenues
-        logger.info(
-            f"{symbol} - Inventory-to-sales ratio: {metrics.inventory_to_sales:.2%}"
-        )
+        logger.info(f"{symbol} - Inventory-to-sales ratio: {metrics.inventory_to_sales:.2%}")
 
     # Book-to-bill ratio (if directly available from XBRL)
     if "book_to_bill_ratio" in extracted_values:
@@ -457,28 +437,19 @@ def _detect_chip_type(symbol: str, xbrl_data: Dict) -> ChipType:
     # Priority 1: Check known semiconductor company mappings
     if symbol_upper in KNOWN_SEMICONDUCTOR_COMPANIES:
         chip_type = KNOWN_SEMICONDUCTOR_COMPANIES[symbol_upper]
-        logger.info(
-            f"{symbol} - Chip type detected via symbol mapping: {chip_type.value}"
-        )
+        logger.info(f"{symbol} - Chip type detected via symbol mapping: {chip_type.value}")
         return chip_type
 
     # Priority 2: Try to infer from company name or description in XBRL
     entity_info = xbrl_data.get("entityName", "").lower()
 
-    if any(
-        keyword in entity_info
-        for keyword in ["memory", "micron", "flash", "nand", "dram"]
-    ):
+    if any(keyword in entity_info for keyword in ["memory", "micron", "flash", "nand", "dram"]):
         return ChipType.MEMORY
     elif any(keyword in entity_info for keyword in ["analog", "power", "signal"]):
         return ChipType.ANALOG
-    elif any(
-        keyword in entity_info for keyword in ["equipment", "materials", "asml", "lam"]
-    ):
+    elif any(keyword in entity_info for keyword in ["equipment", "materials", "asml", "lam"]):
         return ChipType.EQUIPMENT
-    elif any(
-        keyword in entity_info for keyword in ["processor", "gpu", "nvidia", "amd"]
-    ):
+    elif any(keyword in entity_info for keyword in ["processor", "gpu", "nvidia", "amd"]):
         return ChipType.LOGIC
 
     return ChipType.UNKNOWN
@@ -538,9 +509,7 @@ def calculate_cycle_adjustment(
         CyclePosition.UNKNOWN: (1.00, "Cycle position unknown: no adjustment applied"),
     }
 
-    multiplier, reason = adjustments.get(
-        cycle_position, (1.00, "Unknown cycle position")
-    )
+    multiplier, reason = adjustments.get(cycle_position, (1.00, "Unknown cycle position"))
 
     logger.info(f"Cycle adjustment: {multiplier:.2f}x - {reason}")
 
@@ -962,9 +931,7 @@ def calculate_peg_adjusted_fair_value(
     growth_pct = growth_rate * 100
 
     # Get growth-adjusted parameters
-    params = GROWTH_ADJUSTED_PE_MULTIPLES.get(
-        growth_profile, GROWTH_ADJUSTED_PE_MULTIPLES[GrowthProfile.UNKNOWN]
-    )
+    params = GROWTH_ADJUSTED_PE_MULTIPLES.get(growth_profile, GROWTH_ADJUSTED_PE_MULTIPLES[GrowthProfile.UNKNOWN])
     peg_target = params.get("peg_target", 1.0)
     peg_premium = params.get("peg_premium", 0.0)
     max_pe = params.get("max_pe", 50.0)
@@ -1020,9 +987,7 @@ def calculate_forward_pe_fair_value(
         return 0.0, 0.0, "Forward P/E not applicable: no positive forward EPS"
 
     # Get parameters
-    params = GROWTH_ADJUSTED_PE_MULTIPLES.get(
-        growth_profile, GROWTH_ADJUSTED_PE_MULTIPLES[GrowthProfile.UNKNOWN]
-    )
+    params = GROWTH_ADJUSTED_PE_MULTIPLES.get(growth_profile, GROWTH_ADJUSTED_PE_MULTIPLES[GrowthProfile.UNKNOWN])
     base_pe = params.get("base_pe", 20.0)
     forward_discount = params.get("forward_pe_discount", 0.8)
 
@@ -1036,9 +1001,7 @@ def calculate_forward_pe_fair_value(
     # Calculate fair value
     fair_value = forward_eps * forward_pe_target
 
-    explanation = (
-        f"Forward P/E: ${forward_eps:.2f} FY EPS × {forward_pe_target:.1f}x target P/E"
-    )
+    explanation = f"Forward P/E: ${forward_eps:.2f} FY EPS × {forward_pe_target:.1f}x target P/E"
 
     logger.info(f"Forward P/E calculation: {explanation} -> ${fair_value:.2f}")
 
@@ -1088,9 +1051,7 @@ def calculate_growth_adjusted_valuation(
     details = {}
 
     # 1. Cycle-normalized P/E (conservative baseline)
-    GROWTH_ADJUSTED_PE_MULTIPLES.get(
-        GrowthProfile.LOW_GROWTH
-    )  # Use conservative baseline
+    GROWTH_ADJUSTED_PE_MULTIPLES.get(GrowthProfile.LOW_GROWTH)  # Use conservative baseline
     sector_pe = 18.0  # Semiconductor sector average
     cycle_normalized_fv = eps * sector_pe if eps > 0 else 0
     details["cycle_normalized"] = {
@@ -1179,11 +1140,7 @@ def calculate_growth_adjusted_valuation(
         blended_fv /= total_weight
     else:
         # Fallback to simple average
-        valid_fvs = [
-            fv
-            for fv in [cycle_normalized_fv, peg_fv, forward_fv, ev_ebitda_fv]
-            if fv and fv > 0
-        ]
+        valid_fvs = [fv for fv in [cycle_normalized_fv, peg_fv, forward_fv, ev_ebitda_fv] if fv and fv > 0]
         blended_fv = sum(valid_fvs) / len(valid_fvs) if valid_fvs else 0
 
     # Determine confidence
@@ -1221,9 +1178,7 @@ def calculate_growth_adjusted_valuation(
     )
 
 
-def _get_blended_weights(
-    growth_profile: GrowthProfile, has_forward_eps: bool
-) -> Dict[str, float]:
+def _get_blended_weights(growth_profile: GrowthProfile, has_forward_eps: bool) -> Dict[str, float]:
     """
     Get blending weights for different valuation methods based on growth profile.
 

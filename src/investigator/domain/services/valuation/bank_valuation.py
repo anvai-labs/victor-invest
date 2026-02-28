@@ -183,9 +183,7 @@ class BankValuationResult:
 # ====================
 
 
-def extract_bank_metrics_from_xbrl(
-    symbol: str, xbrl_data: Dict, database_url: Optional[str] = None
-) -> BankMetrics:
+def extract_bank_metrics_from_xbrl(symbol: str, xbrl_data: Dict, database_url: Optional[str] = None) -> BankMetrics:
     """
     Extract bank-specific metrics from XBRL data using bank tag aliases.
 
@@ -220,9 +218,7 @@ def extract_bank_metrics_from_xbrl(
 
     us_gaap = xbrl_data.get("facts", {}).get("us-gaap", {})
     if not us_gaap:
-        logger.warning(
-            f"{symbol} - No us-gaap data available for bank metric extraction"
-        )
+        logger.warning(f"{symbol} - No us-gaap data available for bank metric extraction")
         return metrics
 
     extracted_values = {}
@@ -242,16 +238,10 @@ def extract_bank_metrics_from_xbrl(
                 if ratio_data:
                     # Get the latest value (sorted by fiscal year/period)
                     sorted_data = sorted(
-                        [
-                            d
-                            for d in ratio_data
-                            if d.get("form") in ["10-Q", "10-K", "20-F"]
-                        ],
+                        [d for d in ratio_data if d.get("form") in ["10-Q", "10-K", "20-F"]],
                         key=lambda x: (
                             x.get("fy", 0),
-                            {"FY": 5, "Q4": 4, "Q3": 3, "Q2": 2, "Q1": 1}.get(
-                                x.get("fp", ""), 0
-                            ),
+                            {"FY": 5, "Q4": 4, "Q3": 3, "Q2": 2, "Q1": 1}.get(x.get("fp", ""), 0),
                         ),
                         reverse=True,
                     )
@@ -260,9 +250,7 @@ def extract_bank_metrics_from_xbrl(
                         value = sorted_data[0].get("val")
                         if value is not None:
                             extracted_values[attr_name] = float(value)
-                            logger.debug(
-                                f"{symbol} - Extracted {metric_name} from {alias}: {float(value):.4f}"
-                            )
+                            logger.debug(f"{symbol} - Extracted {metric_name} from {alias}: {float(value):.4f}")
                             break  # Found value, move to next metric
 
     # Set attributes on metrics object
@@ -284,9 +272,7 @@ def extract_bank_metrics_from_xbrl(
 # ====================
 
 
-def assess_bank_quality(
-    metrics: BankMetrics, bank_type: BankType = BankType.UNKNOWN
-) -> Tuple[str, str]:
+def assess_bank_quality(metrics: BankMetrics, bank_type: BankType = BankType.UNKNOWN) -> Tuple[str, str]:
     """
     Assess the overall quality of a bank based on key metrics.
 
@@ -353,9 +339,7 @@ def assess_bank_quality(
             issues.append(f"Low Tier 1 capital ({metrics.tier_1_capital_ratio:.1%})")
         else:
             scores.append(1)
-            issues.append(
-                f"Undercapitalized (Tier 1: {metrics.tier_1_capital_ratio:.1%})"
-            )
+            issues.append(f"Undercapitalized (Tier 1: {metrics.tier_1_capital_ratio:.1%})")
 
     # Assess ROE
     if metrics.roe is not None:
@@ -452,17 +436,13 @@ def _determine_target_pb_for_bank(
         # Excellent bank: High ROE with excellent efficiency
         target_pb = 1.50
         confidence = "high"
-        logger.info(
-            f"{symbol} - Excellent bank (ROE={roe:.1f}%, Efficiency={eff:.1%}) -> P/B={target_pb:.2f}x"
-        )
+        logger.info(f"{symbol} - Excellent bank (ROE={roe:.1f}%, Efficiency={eff:.1%}) -> P/B={target_pb:.2f}x")
 
     elif roe >= 12 and eff < 0.60:
         # Good bank: Solid ROE with good efficiency
         target_pb = 1.20
         confidence = "high"
-        logger.info(
-            f"{symbol} - Good bank (ROE={roe:.1f}%, Efficiency={eff:.1%}) -> P/B={target_pb:.2f}x"
-        )
+        logger.info(f"{symbol} - Good bank (ROE={roe:.1f}%, Efficiency={eff:.1%}) -> P/B={target_pb:.2f}x")
 
     elif roe >= 10:
         # Average bank: Acceptable ROE
@@ -475,9 +455,7 @@ def _determine_target_pb_for_bank(
         target_pb = 0.85
         confidence = "medium"
         warnings.append(f"Below-average ROE ({roe:.1f}%)")
-        logger.info(
-            f"{symbol} - Below-average bank (ROE={roe:.1f}%) -> P/B={target_pb:.2f}x"
-        )
+        logger.info(f"{symbol} - Below-average bank (ROE={roe:.1f}%) -> P/B={target_pb:.2f}x")
 
     else:
         # Weak bank: Low ROE
@@ -501,9 +479,7 @@ def _determine_target_pb_for_bank(
     elif npl < NPL_THRESHOLDS["excellent"]:
         # Excellent credit quality - premium
         pb_adjustment = 0.05
-        logger.debug(
-            f"{symbol} - Excellent credit quality (NPL={npl:.2%}) - P/B increased by 0.05x"
-        )
+        logger.debug(f"{symbol} - Excellent credit quality (NPL={npl:.2%}) - P/B increased by 0.05x")
 
     # Apply adjustment for efficiency (if significantly different from expectation)
     if eff > 0.65:
@@ -516,9 +492,7 @@ def _determine_target_pb_for_bank(
     # Apply total adjustment
     target_pb = max(0.50, target_pb + pb_adjustment)  # Floor at 0.5x book
 
-    logger.info(
-        f"{symbol} - Final target P/B: {target_pb:.2f}x (adjustment: {pb_adjustment:+.2f}x)"
-    )
+    logger.info(f"{symbol} - Final target P/B: {target_pb:.2f}x (adjustment: {pb_adjustment:+.2f}x)")
 
     return target_pb, confidence
 

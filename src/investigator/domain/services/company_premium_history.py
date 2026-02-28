@@ -169,9 +169,7 @@ class CompanyPremiumHistory:
             return None
 
         # Calculate statistics
-        premiums = [
-            p["premium_pct"] for p in premium_history if p["premium_pct"] is not None
-        ]
+        premiums = [p["premium_pct"] for p in premium_history if p["premium_pct"] is not None]
 
         if not premiums:
             logger.warning(f"{symbol}: No valid premium data found")
@@ -193,9 +191,7 @@ class CompanyPremiumHistory:
             z_score = 0.0
 
         # Percentile rank
-        percentile_rank = (
-            sum(1 for p in premiums if p <= current_premium) / len(premiums) * 100
-        )
+        percentile_rank = sum(1 for p in premiums if p <= current_premium) / len(premiums) * 100
 
         # Trend detection
         if len(premiums) >= 4:
@@ -215,9 +211,7 @@ class CompanyPremiumHistory:
             trend = "insufficient_data"
 
         # Mean reversion signal
-        mean_reversion_signal = self._detect_mean_reversion_signal(
-            z_score=z_score, trend=trend
-        )
+        mean_reversion_signal = self._detect_mean_reversion_signal(z_score=z_score, trend=trend)
 
         return {
             "symbol": symbol.upper(),
@@ -342,23 +336,15 @@ class CompanyPremiumHistory:
         industry = sector_info.get("industry")
 
         # Get company's multiples for the period
-        company_multiples = self._get_company_multiples(
-            symbol, fiscal_year, fiscal_period
-        )
+        company_multiples = self._get_company_multiples(symbol, fiscal_year, fiscal_period)
         if not company_multiples:
-            logger.warning(
-                f"{symbol}: Could not get multiples for {fiscal_year} {fiscal_period}"
-            )
+            logger.warning(f"{symbol}: Could not get multiples for {fiscal_year} {fiscal_period}")
             return None
 
         # Get sector's multiples for the period
-        sector_multiples = self._get_sector_multiples(
-            sector, fiscal_year, fiscal_period
-        )
+        sector_multiples = self._get_sector_multiples(sector, fiscal_year, fiscal_period)
         if not sector_multiples:
-            logger.warning(
-                f"{sector}: Could not get sector multiples for {fiscal_year} {fiscal_period}"
-            )
+            logger.warning(f"{sector}: Could not get sector multiples for {fiscal_year} {fiscal_period}")
             return None
 
         # Calculate premiums for all metrics
@@ -377,9 +363,7 @@ class CompanyPremiumHistory:
 
             if company_multiple and sector_multiple and sector_multiple > 0:
                 # Calculate premium percentage
-                premium_pct = (
-                    (company_multiple - sector_multiple) / sector_multiple
-                ) * 100
+                premium_pct = ((company_multiple - sector_multiple) / sector_multiple) * 100
 
                 result[f"{metric}_multiple"] = round(company_multiple, 2)
                 result[f"sector_{metric}_multiple"] = round(sector_multiple, 2)
@@ -387,9 +371,7 @@ class CompanyPremiumHistory:
 
         return result
 
-    def _get_sector_classification(
-        self, symbol: str
-    ) -> Optional[Dict[str, Optional[str]]]:
+    def _get_sector_classification(self, symbol: str) -> Optional[Dict[str, Optional[str]]]:
         """Get company's sector/industry classification.
 
         Args:
@@ -415,9 +397,7 @@ class CompanyPremiumHistory:
 
         return None
 
-    def _get_company_multiples(
-        self, symbol: str, fiscal_year: int, fiscal_period: str
-    ) -> Optional[Dict[str, Any]]:
+    def _get_company_multiples(self, symbol: str, fiscal_year: int, fiscal_period: str) -> Optional[Dict[str, Any]]:
         """Get company's valuation multiples for a period.
 
         Args:
@@ -497,9 +477,7 @@ class CompanyPremiumHistory:
 
             return multiples if len(multiples) > 1 else None
 
-    def _get_sector_multiples(
-        self, sector: str, fiscal_year: int, fiscal_period: str
-    ) -> Optional[Dict[str, float]]:
+    def _get_sector_multiples(self, sector: str, fiscal_year: int, fiscal_period: str) -> Optional[Dict[str, float]]:
         """Get sector's median multiples for a period.
 
         Args:
@@ -515,13 +493,9 @@ class CompanyPremiumHistory:
             return self._get_sector_multiples_from_history(sector, fiscal_year)
 
         # For quarterly data, calculate on-the-fly
-        return self._calculate_sector_multiples_period(
-            sector, fiscal_year, fiscal_period
-        )
+        return self._calculate_sector_multiples_period(sector, fiscal_year, fiscal_period)
 
-    def _get_sector_multiples_from_history(
-        self, sector: str, fiscal_year: int
-    ) -> Optional[Dict[str, float]]:
+    def _get_sector_multiples_from_history(self, sector: str, fiscal_year: int) -> Optional[Dict[str, float]]:
         """Get sector multiples from sector_multiples_history table.
 
         Args:
@@ -576,14 +550,11 @@ class CompanyPremiumHistory:
         # For now, return None to indicate not available
         # In production, this would aggregate all companies in the sector
         logger.warning(
-            f"On-the-fly sector multiple calculation not yet implemented: "
-            f"{sector} {fiscal_year} {fiscal_period}"
+            f"On-the-fly sector multiple calculation not yet implemented: " f"{sector} {fiscal_year} {fiscal_period}"
         )
         return None
 
-    def store_premium_record(
-        self, premium_data: Dict[str, Any], update_existing: bool = True
-    ) -> bool:
+    def store_premium_record(self, premium_data: Dict[str, Any], update_existing: bool = True) -> bool:
         """Store premium record in database.
 
         Args:

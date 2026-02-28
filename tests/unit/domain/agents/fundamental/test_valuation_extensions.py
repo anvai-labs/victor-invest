@@ -32,12 +32,8 @@ def _model_mock(result):
 @patch("investigator.domain.agents.fundamental.valuation_extensions.SaaSValuationModel")
 @patch("investigator.domain.agents.fundamental.valuation_extensions.RuleOf40Valuation")
 @patch("investigator.domain.agents.fundamental.valuation_extensions.DamodaranDCFModel")
-async def test_calculate_valuation_extensions_populates_models_when_applicable(
-    damodaran_cls, rule_cls, saas_cls
-):
-    damodaran_cls.return_value = _model_mock(
-        {"model": "damodaran_dcf", "applicable": True}
-    )
+async def test_calculate_valuation_extensions_populates_models_when_applicable(damodaran_cls, rule_cls, saas_cls):
+    damodaran_cls.return_value = _model_mock({"model": "damodaran_dcf", "applicable": True})
     rule_cls.return_value = _model_mock({"model": "rule_of_40", "applicable": True})
     saas_cls.return_value = _model_mock({"model": "saas", "applicable": True})
 
@@ -76,12 +72,8 @@ async def test_calculate_valuation_extensions_populates_models_when_applicable(
 @patch("investigator.domain.agents.fundamental.valuation_extensions.SaaSValuationModel")
 @patch("investigator.domain.agents.fundamental.valuation_extensions.RuleOf40Valuation")
 @patch("investigator.domain.agents.fundamental.valuation_extensions.DamodaranDCFModel")
-async def test_calculate_valuation_extensions_sets_non_applicable_paths(
-    damodaran_cls, _rule_cls, _saas_cls
-):
-    damodaran_cls.return_value = _model_mock(
-        {"model": "damodaran_dcf", "applicable": True}
-    )
+async def test_calculate_valuation_extensions_sets_non_applicable_paths(damodaran_cls, _rule_cls, _saas_cls):
+    damodaran_cls.return_value = _model_mock({"model": "damodaran_dcf", "applicable": True})
     valuation_results = {}
 
     payout_ratio = await calculate_valuation_extensions(
@@ -115,12 +107,8 @@ async def test_calculate_valuation_extensions_sets_non_applicable_paths(
 @patch("investigator.domain.agents.fundamental.valuation_extensions.SaaSValuationModel")
 @patch("investigator.domain.agents.fundamental.valuation_extensions.RuleOf40Valuation")
 @patch("investigator.domain.agents.fundamental.valuation_extensions.DamodaranDCFModel")
-async def test_calculate_valuation_extensions_inferrs_dividends_from_payout_ratio(
-    damodaran_cls, rule_cls, saas_cls
-):
-    damodaran_cls.return_value = _model_mock(
-        {"model": "damodaran_dcf", "applicable": True}
-    )
+async def test_calculate_valuation_extensions_inferrs_dividends_from_payout_ratio(damodaran_cls, rule_cls, saas_cls):
+    damodaran_cls.return_value = _model_mock({"model": "damodaran_dcf", "applicable": True})
     rule_cls.return_value = _model_mock({"model": "rule_of_40", "applicable": True})
     saas_cls.return_value = _model_mock({"model": "saas", "applicable": True})
 
@@ -156,12 +144,8 @@ async def test_calculate_valuation_extensions_inferrs_dividends_from_payout_rati
 @patch("investigator.domain.agents.fundamental.valuation_extensions.SaaSValuationModel")
 @patch("investigator.domain.agents.fundamental.valuation_extensions.RuleOf40Valuation")
 @patch("investigator.domain.agents.fundamental.valuation_extensions.DamodaranDCFModel")
-async def test_calculate_valuation_extensions_handles_dividend_scale_mismatch(
-    damodaran_cls, rule_cls, saas_cls
-):
-    damodaran_cls.return_value = _model_mock(
-        {"model": "damodaran_dcf", "applicable": True}
-    )
+async def test_calculate_valuation_extensions_handles_dividend_scale_mismatch(damodaran_cls, rule_cls, saas_cls):
+    damodaran_cls.return_value = _model_mock({"model": "damodaran_dcf", "applicable": True})
     rule_cls.return_value = _model_mock({"model": "rule_of_40", "applicable": True})
     saas_cls.return_value = _model_mock({"model": "saas", "applicable": True})
 
@@ -198,12 +182,8 @@ async def test_calculate_valuation_extensions_handles_dividend_scale_mismatch(
 @patch("investigator.domain.agents.fundamental.valuation_extensions.SaaSValuationModel")
 @patch("investigator.domain.agents.fundamental.valuation_extensions.RuleOf40Valuation")
 @patch("investigator.domain.agents.fundamental.valuation_extensions.DamodaranDCFModel")
-async def test_calculate_valuation_extensions_prefers_stronger_payout_signal(
-    damodaran_cls, rule_cls, saas_cls
-):
-    damodaran_cls.return_value = _model_mock(
-        {"model": "damodaran_dcf", "applicable": True}
-    )
+async def test_calculate_valuation_extensions_prefers_stronger_payout_signal(damodaran_cls, rule_cls, saas_cls):
+    damodaran_cls.return_value = _model_mock({"model": "damodaran_dcf", "applicable": True})
     rule_cls.return_value = _model_mock({"model": "rule_of_40", "applicable": True})
     saas_cls.return_value = _model_mock({"model": "saas", "applicable": True})
 
@@ -251,9 +231,7 @@ async def test_calculate_valuation_extensions_prefers_stronger_payout_signal(
 async def test_calculate_valuation_extensions_uses_company_profile_dividends_fallback(
     damodaran_cls, rule_cls, saas_cls
 ):
-    damodaran_cls.return_value = _model_mock(
-        {"model": "damodaran_dcf", "applicable": True}
-    )
+    damodaran_cls.return_value = _model_mock({"model": "damodaran_dcf", "applicable": True})
     rule_cls.return_value = _model_mock({"model": "rule_of_40", "applicable": True})
     saas_cls.return_value = _model_mock({"model": "saas", "applicable": True})
 

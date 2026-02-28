@@ -91,15 +91,11 @@ class TestOrchestrationWorkflow:
         assert high < low
 
     def test_get_agents_for_modes(self, orchestrator_instance):
-        assert orchestrator_instance._get_agents_for_mode(
-            "TEST", AnalysisMode.QUICK, []
-        ) == [
+        assert orchestrator_instance._get_agents_for_mode("TEST", AnalysisMode.QUICK, []) == [
             "technical",
             "market_context",
         ]
-        standard_agents = orchestrator_instance._get_agents_for_mode(
-            "TEST", AnalysisMode.STANDARD, []
-        )
+        standard_agents = orchestrator_instance._get_agents_for_mode("TEST", AnalysisMode.STANDARD, [])
         assert standard_agents == [
             "sec",
             "technical",
@@ -108,16 +104,12 @@ class TestOrchestrationWorkflow:
             "market_context",
             "synthesis",
         ]
-        custom_agents = orchestrator_instance._get_agents_for_mode(
-            "TEST", AnalysisMode.CUSTOM, ["sec"]
-        )
+        custom_agents = orchestrator_instance._get_agents_for_mode("TEST", AnalysisMode.CUSTOM, ["sec"])
         assert custom_agents == ["sec"]
 
     def test_analyze_enqueues_task_with_priority(self, orchestrator_instance):
         async def runner():
-            task_id = await orchestrator_instance.analyze(
-                "NVDA", AnalysisMode.QUICK, Priority.CRITICAL
-            )
+            task_id = await orchestrator_instance.analyze("NVDA", AnalysisMode.QUICK, Priority.CRITICAL)
             priority_value, task = await orchestrator_instance.task_queue.get()
 
             assert task_id.startswith("NVDA_")
@@ -139,9 +131,7 @@ class TestOrchestratorResilience:
             raise RuntimeError("db unavailable")
 
         # Patch the actual function used by orchestrator
-        monkeypatch.setattr(
-            orchestrator_module, "get_market_data_fetcher", raising_fetcher
-        )
+        monkeypatch.setattr(orchestrator_module, "get_market_data_fetcher", raising_fetcher)
         orch = AgentOrchestrator(cache_manager=Mock(), metrics_collector=Mock())
         assert orch.logger is not None
         assert orch.market_data_fetcher is None
@@ -172,9 +162,7 @@ class TestOrchestratorResilience:
             async def stop_cleanup_service(self):
                 return None
 
-        monkeypatch.setattr(
-            orchestrator_module, "create_resource_aware_pool", lambda cfg: DummyPool()
-        )
+        monkeypatch.setattr(orchestrator_module, "create_resource_aware_pool", lambda cfg: DummyPool())
         monkeypatch.setattr(AgentOrchestrator, "_initialize_agents", lambda self: {})
 
         orch = AgentOrchestrator(
@@ -205,9 +193,7 @@ class TestOrchestratorResilience:
             def record_orchestrator_stats(self, _stats):
                 raise ValueError("metrics sink unavailable")
 
-        orch = AgentOrchestrator(
-            cache_manager=Mock(), metrics_collector=MetricsCollector()
-        )
+        orch = AgentOrchestrator(cache_manager=Mock(), metrics_collector=MetricsCollector())
         orch.performance_stats["successful_analyses"] = 1
         orch.performance_stats["total_analyses"] = 1
         orch.running = True
@@ -223,8 +209,6 @@ class TestOrchestratorResilience:
         orch = AgentOrchestrator(cache_manager=Mock(), metrics_collector=Mock())
 
         with caplog.at_level("INFO"):
-            await orch._process_event(
-                {"type": "analysis_completed", "data": {"task_id": "STX_123"}}
-            )
+            await orch._process_event({"type": "analysis_completed", "data": {"task_id": "STX_123"}})
 
         assert "Analysis STX_123 completed" in caplog.text

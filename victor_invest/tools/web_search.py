@@ -132,25 +132,15 @@ Parameters:
                     )
 
             if action == "company_news":
-                return await self._search_company_news(
-                    symbol, company_name, max_results, days_back
-                )
+                return await self._search_company_news(symbol, company_name, max_results, days_back)
             elif action == "product_updates":
-                return await self._search_product_updates(
-                    symbol, company_name, max_results, days_back
-                )
+                return await self._search_product_updates(symbol, company_name, max_results, days_back)
             elif action == "management_commentary":
-                return await self._search_management_commentary(
-                    symbol, company_name, max_results, days_back
-                )
+                return await self._search_management_commentary(symbol, company_name, max_results, days_back)
             elif action == "analyst_coverage":
-                return await self._search_analyst_coverage(
-                    symbol, company_name, max_results, days_back
-                )
+                return await self._search_analyst_coverage(symbol, company_name, max_results, days_back)
             elif action == "comprehensive_search":
-                return await self._comprehensive_search(
-                    symbol, company_name, max_results, days_back
-                )
+                return await self._comprehensive_search(symbol, company_name, max_results, days_back)
             else:
                 return ToolResult.create_failure(
                     f"Unknown action: {action}. Valid actions: "
@@ -164,9 +154,7 @@ Parameters:
                 metadata={"symbol": symbol, "action": action},
             )
 
-    def _build_search_queries(
-        self, symbol: str, company_name: str, category: str, days_back: int
-    ) -> List[str]:
+    def _build_search_queries(self, symbol: str, company_name: str, category: str, days_back: int) -> List[str]:
         """Build search queries for different categories.
 
         Args:
@@ -178,9 +166,7 @@ Parameters:
         Returns:
             List of search query strings
         """
-        date_filter = (
-            f"after:{(datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')}"
-        )
+        date_filter = f"after:{(datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')}"
 
         company_term = company_name if company_name else symbol
 
@@ -258,9 +244,7 @@ Parameters:
 
         return snippet[:500]
 
-    async def _perform_web_search(
-        self, queries: List[str], max_results: int
-    ) -> List[Dict[str, Any]]:
+    async def _perform_web_search(self, queries: List[str], max_results: int) -> List[Dict[str, Any]]:
         """Perform web search using available tools.
 
         Args:
@@ -295,9 +279,7 @@ Parameters:
 
         return unique_results[:max_results]
 
-    async def _web_search_call(
-        self, query: str, max_results: int
-    ) -> List[Dict[str, Any]]:
+    async def _web_search_call(self, query: str, max_results: int) -> List[Dict[str, Any]]:
         """Make the actual web search API call.
 
         Args:
@@ -326,9 +308,7 @@ Parameters:
             # Return empty list on failure
             return []
 
-    def _format_search_results(
-        self, results: List[Dict[str, Any]], category: str
-    ) -> str:
+    def _format_search_results(self, results: List[Dict[str, Any]], category: str) -> str:
         """Format search results into readable text.
 
         Args:
@@ -339,9 +319,7 @@ Parameters:
             Formatted text
         """
         if not results:
-            return (
-                f"## {category.replace('_', ' ').title()}\nNo recent results found.\n"
-            )
+            return f"## {category.replace('_', ' ').title()}\nNo recent results found.\n"
 
         formatted = f"## {category.replace('_', ' ').title()}\n\n"
 
@@ -389,9 +367,7 @@ Parameters:
         self, symbol: str, company_name: str, max_results: int, days_back: int
     ) -> ToolResult:
         """Search for product updates and announcements."""
-        queries = self._build_search_queries(
-            symbol, company_name, "products", days_back
-        )
+        queries = self._build_search_queries(symbol, company_name, "products", days_back)
         results = await self._perform_web_search(queries, max_results)
 
         formatted_text = self._format_search_results(results, "product_updates")
@@ -415,9 +391,7 @@ Parameters:
         self, symbol: str, company_name: str, max_results: int, days_back: int
     ) -> ToolResult:
         """Search for management commentary and interviews."""
-        queries = self._build_search_queries(
-            symbol, company_name, "management", days_back
-        )
+        queries = self._build_search_queries(symbol, company_name, "management", days_back)
         results = await self._perform_web_search(queries, max_results)
 
         formatted_text = self._format_search_results(results, "management_commentary")
@@ -477,12 +451,8 @@ Parameters:
 
         for category_key, query_category in categories:
             try:
-                queries = self._build_search_queries(
-                    symbol, company_name, query_category, days_back
-                )
-                results = await self._perform_web_search(
-                    queries, max_results // len(categories)
-                )
+                queries = self._build_search_queries(symbol, company_name, query_category, days_back)
+                results = await self._perform_web_search(queries, max_results // len(categories))
 
                 if results:
                     all_results[category_key] = results
@@ -494,9 +464,7 @@ Parameters:
                 continue
 
         if not all_results:
-            return ToolResult.create_failure(
-                f"No web search results found for {symbol}"
-            )
+            return ToolResult.create_failure(f"No web search results found for {symbol}")
 
         combined_text = "\n".join(all_text_parts)
         total_results = sum(len(r) for r in all_results.values())
