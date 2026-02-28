@@ -238,8 +238,11 @@ class FiscalPeriodService:
 
         Algorithm:
             1. Find FY (10-K) filings in company facts
-            2. Extract period_end dates
-            3. Determine most common month-day suffix
+            2. Group by fiscal year (fy field)
+            3. For each FY, take the MOST RECENT period_end (actual FY end, not comparative)
+            4. Determine most common month-day suffix across recent FYs
+
+        This avoids counting comparative/prior-year data which can pollute the suffix count.
 
         Raises:
             ValueError: If no fiscal year data found
@@ -247,29 +250,51 @@ class FiscalPeriodService:
         if not company_facts or "facts" not in company_facts:
             raise ValueError("Invalid company facts data: missing 'facts' key")
 
-        # Collect all FY period end dates
-        fy_period_ends = []
+        # Collect FY period end dates, grouped by fiscal year
+        # For each FY, track the most recent period_end (actual FY end)
+        fy_period_ends_by_year = {}  # {fiscal_year: period_end}
 
-        # Iterate through all taxonomies and concepts
+        # Iterate through us-gaap taxonomy (only, not dei which has filing/share dates)
+        # dei taxonomy contains filing dates and other dates that are NOT fiscal year ends
         facts = company_facts.get("facts", {})
-        for taxonomy in ["us-gaap", "dei", "ifrs-full"]:
-            if taxonomy not in facts:
+        us_gaap = facts.get("us-gaap", {})
+
+        for concept, concept_data in us_gaap.items():
+            if "units" not in concept_data:
                 continue
 
-            for concept, concept_data in facts[taxonomy].items():
-                if "units" not in concept_data:
-                    continue
+            for unit_type, unit_data in concept_data["units"].items():
+                for entry in unit_data:
+                    # Look for fiscal year entries (form 10-K with fy field)
+                    form = entry.get("form", "")
+                    fy = entry.get("fy")
+                    period_end = entry.get("end")
 
-                for unit_type, unit_data in concept_data["units"].items():
-                    for entry in unit_data:
-                        # Look for fiscal year entries (form 10-K)
-                        if entry.get("form") == "10-K" and entry.get("fy"):
-                            period_end = entry.get("end")
-                            if period_end:
-                                fy_period_ends.append(period_end)
+                    if form == "10-K" and fy and period_end:
+                        # Normalize fy to string for consistent dictionary keys
+                        fy_key = str(fy) if not isinstance(fy, str) else fy
+
+                        # Keep the most recent period_end for each FY
+                        if fy_key not in fy_period_ends_by_year:
+                            fy_period_ends_by_year[fy_key] = period_end
+                        else:
+                            # Update if this period_end is more recent
+                            existing = fy_period_ends_by_year[fy_key]
+                            if period_end > existing:
+                                fy_period_ends_by_year[fy_key] = period_end
+
+        if not fy_period_ends_by_year:
+            raise ValueError("No fiscal year (10-K) data found in company facts")
+
+        # Sort fiscal years and keep only most recent 5 years
+        # This avoids old historical data that may have different patterns
+        sorted_years = sorted(
+            fy_period_ends_by_year.keys(), key=lambda x: int(x), reverse=True
+        )[:5]
+        fy_period_ends = [fy_period_ends_by_year[fy] for fy in sorted_years]
 
         if not fy_period_ends:
-            raise ValueError("No fiscal year (10-K) data found in company facts")
+            raise ValueError("No fiscal year end data could be extracted")
 
         # Extract month-day suffix from period end dates
         # Format: YYYY-MM-DD → extract -MM-DD
@@ -283,12 +308,45 @@ class FiscalPeriodService:
         if not suffixes:
             raise ValueError("Could not extract fiscal year end from period dates")
 
-        # Return most common suffix
-        fiscal_year_end = max(suffixes, key=suffixes.get)
+        # PRIORITY: Use the most recent FY's suffix as the primary answer
+        # The most recent FY is the most reliable indicator of current fiscal year-end
+        most_recent_fy = sorted_years[0]
+        most_recent_period_end = fy_period_ends_by_year[most_recent_fy]
+        most_recent_suffix = most_recent_period_end[-6:]
+
+        # Check if the most recent suffix is consistent with other years (within 3 days)
+        # This handles cases where weekends cause shifts (e.g., -12-28 vs -12-31)
+        # Parse the most recent suffix to get month and day
+        recent_month = int(most_recent_suffix.split("-")[1])
+        recent_day = int(most_recent_suffix.split("-")[2])
+
+        # Find suffixes that match the same month and are within 3 days
+        matching_suffixes = []
+        for suffix, count in suffixes.items():
+            suffix_month = int(suffix.split("-")[1])
+            suffix_day = int(suffix.split("-")[2])
+            if suffix_month == recent_month and abs(suffix_day - recent_day) <= 3:
+                matching_suffixes.append((suffix, count))
+
+        # If we have matching suffixes, use the one with highest count
+        # Otherwise, use the most recent FY's suffix
+        if matching_suffixes:
+            matching_suffixes.sort(key=lambda x: x[1], reverse=True)
+            fiscal_year_end = matching_suffixes[0][0]
+            consistency_note = (
+                f" (consistent with {len(matching_suffixes)} similar dates)"
+            )
+        else:
+            fiscal_year_end = most_recent_suffix
+            consistency_note = " (most recent FY only)"
 
         self.logger.info(
             f"Detected fiscal year end: {fiscal_year_end} "
-            f"(from {len(fy_period_ends)} FY filings)"
+            f"(from {len(fy_period_ends)} recent FY filings, "
+            f"fiscal years: {sorted_years}, "
+            f"most recent FY{most_recent_fy}: {most_recent_period_end}, "
+            f"suffix counts: {dict(sorted(suffixes.items(), key=lambda x: -x[1])[:5])}"
+            f"{consistency_note})"
         )
 
         return fiscal_year_end

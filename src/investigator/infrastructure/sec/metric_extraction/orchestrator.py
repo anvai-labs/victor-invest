@@ -421,16 +421,105 @@ class MetricExtractionOrchestrator:
         age_days = (datetime.utcnow() - period_end).days
         return age_days >= self.HISTORICAL_WARNING_CUTOFF_YEARS * 365
 
+    def _get_expected_month_for_quarter(
+        self, fiscal_period: Optional[str]
+    ) -> Optional[int]:
+        """
+        Get the expected month for a fiscal quarter based on period_end_date.
+
+        For calendar year companies (most common):
+        Q1 → March (month=3)
+        Q2 → June (month=6)
+        Q3 → September (month=9)
+        Q4 → December (month=12)
+
+        Note: For companies with non-calendar fiscal years (e.g., AAPL Sep, MSFT Jun),
+        this mapping may differ. However, for SEC data matching, we can use the
+        period_end_date month as a validation signal.
+
+        Args:
+            fiscal_period: Q1, Q2, Q3, Q4, or FY
+
+        Returns:
+            Expected month number (1-12) or None for FY
+        """
+        quarter_month_map = {
+            "Q1": 3,  # March
+            "Q2": 6,  # June
+            "Q3": 9,  # September
+            "Q4": 12,  # December
+        }
+        return quarter_month_map.get(fiscal_period)
+
+    def _validate_quarter_by_period_end(
+        self, entry: Dict, target_fiscal_period: str
+    ) -> bool:
+        """
+        Validate that an entry's period_end_date matches the expected quarter.
+
+        This is critical because the SEC API has multiple competing entries:
+        - Individual quarters (Q1, Q2, Q3, Q4 data)
+        - YTD (year-to-date cumulative data)
+        - Comparative (prior year data)
+
+        The frame field is often WRONG because it's set based on which entry
+        was selected. Instead, we use period_end_date month to validate.
+
+        Args:
+            entry: SEC entry with 'end' field (period_end_date)
+            target_fiscal_period: Target quarter (Q1, Q2, Q3, Q4)
+
+        Returns:
+            True if entry's period_end_date month matches expected quarter
+        """
+        expected_month = self._get_expected_month_for_quarter(target_fiscal_period)
+        if expected_month is None:
+            return True  # No validation for FY
+
+        end = entry.get("end")
+        if not end:
+            return False
+
+        try:
+            end_date = datetime.strptime(end, "%Y-%m-%d")
+            actual_month = end_date.month
+
+            # Allow ±1 month tolerance for fiscal year variations
+            # (e.g., companies with Sep, Jun, or other fiscal year ends)
+            # For calendar companies, this should be exact match
+            month_diff = abs(actual_month - expected_month)
+            if month_diff <= 1:
+                return True
+            # Handle year wraparound (Dec vs Jan)
+            if month_diff >= 11:
+                return True
+
+            return False
+        except ValueError:
+            return False
+
     def _select_best_entry(
         self, entries: List[Dict], target_fiscal_period: Optional[str]
     ) -> Optional[Dict]:
         """
-        Select best entry from matched entries.
+        Select best entry from matched entries with multi-layer preference.
 
-        Preference:
-        1. Individual quarter (< 120 days) over YTD
-        2. Most recent filed date
-        3. Entry with value (not None)
+        Selection Priority:
+        1. Period end date validation: For quarters, period_end month must match expected quarter
+        2. Duration matching: Individual quarter (<120 days) over YTD
+        3. Value anomaly detection: Warn if value >2x median of other entries
+        4. Most recent filed date
+
+        CRITICAL: The 'frame' field is often WRONG in SEC data because it's set
+        based on which entry was selected. We CANNOT rely on it for quarter
+        identification. Instead, we use period_end_date month to validate.
+
+        Args:
+            entries: List of matched SEC entries
+            target_fiscal_period: Target fiscal period (FY, Q1, Q2, Q3, Q4)
+
+        Returns:
+            Best entry or None
         """
         if not entries:
             return None
@@ -438,7 +527,10 @@ class MetricExtractionOrchestrator:
         if len(entries) == 1:
             return entries[0]
 
-        # Categorize by duration
+        # Log duplicate value detection
+        self._log_duplicate_values(entries, target_fiscal_period)
+
+        # Categorize by duration (don't filter by frame - it's often wrong)
         individual = []
         ytd = []
         annual = []
@@ -477,14 +569,61 @@ class MetricExtractionOrchestrator:
                 return annual[0][0]
             if ytd:
                 ytd.sort(key=lambda x: x[1], reverse=True)  # Prefer longer duration
-                return ytd[-1][0]  # Actually we want longest, so reverse sort
+                return ytd[-1][0]
         else:
-            # For quarters, prefer individual quarter entries
+            # ===================================================================
+            # QUARTER SELECTION WITH PERIOD_END_DATE VALIDATION
+            # ===================================================================
+            #
+            # Problem: SEC API returns multiple competing entries for same period:
+            #   - Individual quarters (Q1, Q2, Q3, Q4) - ~90 days, actual quarter data
+            #   - YTD (year-to-date) - ~180-270 days, cumulative data through period
+            #   - Comparative - prior year data included for comparison
+            #
+            # Example: For Q1 2024, API might return:
+            #   - Entry 1: Q1 2024 data (Mar 31 end, 90 days) ✓ CORRECT
+            #   - Entry 2: Q4 2023 data (Dec 31 end, 90 days) ✗ COMPARATIVE
+            #   - Entry 3: YTD data through Mar 31 (Jan 1-Mar 31, 90 days) ✗ YTD
+            #
+            # Solution: Validate period_end_date month matches expected quarter:
+            #   - Q1 should end in March (month=3)
+            #   - Q2 should end in June (month=6)
+            #   - Q3 should end in September (month=9)
+            #   - Q4 should end in December (month=12)
+            #   - Allow ±1 month tolerance for non-calendar fiscal years
+            #
+            # This ensures we select the actual quarter data, not comparative/YTD.
+            # ===================================================================
             if individual:
+                # Step 1: Filter to entries where period_end_date matches expected quarter
+                # Example: For Q2, only keep entries ending in June (month=6 ±1)
+                validated_quarters = [
+                    (entry, days)
+                    for entry, days in individual
+                    if self._validate_quarter_by_period_end(entry, target_fiscal_period)
+                ]
+
+                if validated_quarters:
+                    # Step 2: Use validated entries (period_end_date matches expected quarter)
+                    # Sort by filed date to get most recent filing
+                    validated_quarters.sort(
+                        key=lambda x: x[0].get("filed", ""), reverse=True
+                    )
+                    best = validated_quarters[0][0]
+                    self._check_value_anomaly(
+                        best, validated_quarters, target_fiscal_period
+                    )
+                    return best
+
+                # Step 3: Fallback to any individual entry (better than YTD)
+                # This handles edge cases where validation fails but entry is still usable
                 individual.sort(key=lambda x: x[0].get("filed", ""), reverse=True)
-                return individual[0][0]
+                best = individual[0][0]
+                self._check_value_anomaly(best, individual, target_fiscal_period)
+                return best
+
             if ytd:
-                # For YTD, we'd need to normalize - just return the entry
+                # For YTD, prefer the most recent filed
                 ytd.sort(key=lambda x: x[0].get("filed", ""), reverse=True)
                 return ytd[0][0]
 
@@ -494,6 +633,78 @@ class MetricExtractionOrchestrator:
             return unknown[0]
 
         return entries[0] if entries else None
+
+    def _log_duplicate_values(
+        self, entries: List[Dict], target_fiscal_period: Optional[str]
+    ) -> None:
+        """
+        Log warning when multiple competing values exist for the same period.
+
+        This helps identify cases where:
+        - Discontinued operations inflate net income
+        - Multiple XBRL tags report different values
+        - YTD vs individual quarter ambiguity
+        """
+        if len(entries) < 2:
+            return
+
+        # Get all values
+        values = [(e.get("val", 0), e) for e in entries if e.get("val") is not None]
+
+        if len(values) < 2:
+            return
+
+        # Sort by value
+        values.sort(key=lambda x: x[0])
+        min_val = values[0][0]
+        max_val = values[-1][0]
+
+        # Check for significant variance (>50% difference)
+        if min_val > 0 and max_val / min_val > 1.5:
+            value_strs = [f"${v:,.0f}" for v, _ in values]
+            frames = [(e.get("frame", "N/A"), e.get("fp", "N/A")) for _, e in values]
+
+            logger.warning(
+                f"Multiple competing values found for period_end="
+                f"{entries[0].get('end', 'N/A')} (fp={target_fiscal_period}): "
+                f"{value_strs} with frames/fp={frames} - "
+                f"Values vary by {max_val / min_val:.1f}x (may include discontinued operations)"
+            )
+
+    def _check_value_anomaly(
+        self,
+        best_entry: Dict,
+        entries_with_days: List[tuple],
+        target_fiscal_period: Optional[str],
+    ) -> None:
+        """
+        Check if selected value is anomalous (>2x median) compared to other entries.
+
+        This helps detect cases where one-time items (spin-offs, gains) inflate net income.
+        """
+        if len(entries_with_days) < 2:
+            return
+
+        values = [
+            e[0].get("val", 0) for e in entries_with_days if e[0].get("val") is not None
+        ]
+
+        if len(values) < 2:
+            return
+
+        import statistics
+
+        median_val = statistics.median(values)
+        selected_val = best_entry.get("val", 0)
+
+        # Flag values >2x median as potential anomalies
+        if selected_val > median_val * 2:
+            logger.warning(
+                f"Potential anomaly detected: Selected value ${selected_val:,.0f} is "
+                f">{selected_val / median_val:.1f}x median ${median_val:,.0f} "
+                f"(may include discontinued operations/one-time items like spin-offs) - "
+                f"frame={best_entry.get('frame', 'N/A')}, fp={target_fiscal_period}"
+            )
 
     def _is_low_signal_missing_metric(self, canonical_key: str) -> bool:
         """Return True when missing metric is usually non-actionable noise."""

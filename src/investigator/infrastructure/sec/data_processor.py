@@ -73,7 +73,9 @@ def calculate_frame_from_period_end(period_end_date: str) -> str:
         cal_quarter = (dt.month - 1) // 3 + 1
         return f"CY{cal_year}Q{cal_quarter}"
     except (ValueError, TypeError) as e:
-        logger.warning(f"Failed to calculate frame from period_end_date '{period_end_date}': {e}")
+        logger.warning(
+            f"Failed to calculate frame from period_end_date '{period_end_date}': {e}"
+        )
         return ""
 
 
@@ -1643,8 +1645,10 @@ class SECDataProcessor:
 
                 actual_fiscal_year = period_end_date.year
 
-                # Derive fiscal period using fp field (authoritative after filtering comparative data)
-                # After filtering out entries where abs(fy - period_end_year) >= 1, the fp field is trustworthy
+                # Derive fiscal period using fp field (validated by _select_best_entry)
+                # The fp field from SEC API indicates the company's fiscal period (Q1, Q2, Q3, Q4, FY)
+                # After _select_best_entry() validates period_end_date matches expected quarter,
+                # the fp field is trustworthy for non-comparative data.
                 duration = entry.get("duration_days", 999)
                 raw_fp = entry.get("fp", "")
 
@@ -1653,11 +1657,12 @@ class SECDataProcessor:
                 if raw_fp == "FY" or duration >= 330:
                     actual_fp = "FY"
                 elif raw_fp in ["Q1", "Q2", "Q3", "Q4"]:
-                    # Use the fp field from the entry (authoritative for non-comparative data)
-                    # This handles edge cases like Oct 1-3 (Q3 ending on weekend) correctly
+                    # Use the fp field from the entry (validated by _select_best_entry)
+                    # _select_best_entry() ensures period_end_date matches expected quarter
+                    # This handles non-calendar fiscal years correctly (e.g., NVDA Jan FYE, AAPL Sep FYE)
                     actual_fp = raw_fp
                 else:
-                    # Fallback: derive quarter from end month
+                    # Fallback: derive quarter from end month (calendar year companies only)
                     # Only used if fp field is missing or invalid
                     month = period_end_date.month
                     if month <= 3:
@@ -1705,7 +1710,9 @@ class SECDataProcessor:
                 calculated_frame = calculate_frame_from_period_end(period_end_str)
                 # Use calculated frame, but prefer SEC frame if it's valid and matches
                 # This ensures correct CY{YYYY}Q{Q} format for all entries
-                final_frame = calculated_frame if calculated_frame else entry.get("frame", "")
+                final_frame = (
+                    calculated_frame if calculated_frame else entry.get("frame", "")
+                )
 
                 filings[adsh] = {
                     "symbol": symbol.upper(),
