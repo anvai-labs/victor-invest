@@ -66,9 +66,19 @@ class EVEBITDAModel(BaseValuationModel):
         self.revenue_growth = revenue_growth
 
     def calculate(self, **_: Any) -> ValuationModelResult | ModelNotApplicable:
+        # Debug: Log sector classification
+        sector = (self.company_profile.sector or "").strip().lower()
+        logger.info(
+            f"[EV_EBITDA] Sector check: sector='{self.company_profile.sector}', "
+            f"is_financial={self._is_financial_sector()}"
+        )
+
         if self._is_financial_sector():
             diagnostics = self._build_baseline_diagnostics()
             diagnostics.flags.append("UNSUPPORTED_FINANCIAL_SECTOR")
+            logger.info(
+                f"[EV_EBITDA] Blocked: sector='{self.company_profile.sector}' contains financial sector token"
+            )
             return ModelNotApplicable(
                 model_name=self.model_name,
                 reason="unsupported_financial_sector",
@@ -78,6 +88,9 @@ class EVEBITDAModel(BaseValuationModel):
         if not self._is_applicable():
             diagnostics = self._build_baseline_diagnostics()
             diagnostics.flags.append(DataQualityFlag.NEGATIVE_DENOMINATOR.name)
+            logger.info(
+                f"[EV_EBITDA] Not applicable: ttm_ebitda={self.ttm_ebitda} (must be > 0)"
+            )
             return ModelNotApplicable(
                 model_name=self.model_name,
                 reason="negative_or_missing_ebitda",
@@ -88,6 +101,7 @@ class EVEBITDAModel(BaseValuationModel):
         if target_multiple is None:
             diagnostics = self._build_baseline_diagnostics()
             diagnostics.flags.append("MISSING_REFERENCE_MULTIPLE")
+            logger.info(f"[EV_EBITDA] Not applicable: target_multiple is None")
             return ModelNotApplicable(
                 model_name=self.model_name,
                 reason="missing_reference_multiple",
@@ -100,6 +114,9 @@ class EVEBITDAModel(BaseValuationModel):
         if equity_value is None:
             diagnostics = self._build_baseline_diagnostics()
             diagnostics.flags.append("MISSING_NET_DEBT")
+            logger.info(
+                f"[EV_EBITDA] Not applicable: equity_value is None (net_debt calculation failed)"
+            )
             return ModelNotApplicable(
                 model_name=self.model_name,
                 reason="missing_net_debt",
@@ -110,6 +127,9 @@ class EVEBITDAModel(BaseValuationModel):
         if shares_outstanding is None or shares_outstanding <= 0:
             diagnostics = self._build_baseline_diagnostics()
             diagnostics.flags.append("MISSING_SHARES")
+            logger.info(
+                f"[EV_EBITDA] Not applicable: shares_outstanding={shares_outstanding}"
+            )
             return ModelNotApplicable(
                 model_name=self.model_name,
                 reason="missing_shares_outstanding",
@@ -117,6 +137,12 @@ class EVEBITDAModel(BaseValuationModel):
             )
 
         fair_value = equity_value / shares_outstanding
+        logger.info(
+            f"[EV_EBITDA] SUCCESS: fair_value=${fair_value:.2f} "
+            f"(ebitda=${self.ttm_ebitda:,.0f}, multiple={target_multiple:.1f}x, "
+            f"equity=${equity_value:,.0f}, shares={shares_outstanding:,.0f})"
+        )
+
         diagnostics = self._build_diagnostics(target_multiple=target_multiple)
         confidence = self.estimate_confidence({"target_multiple": target_multiple})
 
