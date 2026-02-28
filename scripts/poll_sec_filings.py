@@ -256,35 +256,80 @@ class SECFilingPoller:
 
         return results
 
-    def poll_all_symbols(self) -> List[str]:
+    def poll_all_symbols(
+        self, filter_sec_filing: bool = True, override_symbols: Optional[List[str]] = None
+    ) -> List[str]:
         """
         Get all symbols that have data in the checked table.
 
+        Args:
+            filter_sec_filing: If True, filter by is_sec_filing=true or is_sec_files=true
+            override_symbols: If provided, return these symbols directly (bypasses all filters)
+
         Returns:
-            List of symbols
+            List of symbols ordered by stock_id
         """
+        if override_symbols:
+            logger.info(f"Using override symbols: {len(override_symbols)} symbols")
+            return override_symbols
+
         if not self.engine:
             self.connect()
 
         try:
             with self.engine.connect() as conn:
                 if self.check_table == "sec_companyfacts_processed":
+                    # Join with stock.symbol to get is_sec_filing filter and stock_id ordering
                     query = text("""
-                        SELECT DISTINCT symbol
-                        FROM sec_companyfacts_processed
-                        ORDER BY symbol
+                        SELECT DISTINCT scp.symbol
+                        FROM sec_companyfacts_processed scp
+                        JOIN stock.symbol s ON scp.symbol = s.symbol
+                        WHERE 1=1
+                        :filter_clause
+                        ORDER BY s.stock_id
                     """)
+                    # Build filter clause
+                    if filter_sec_filing:
+                        filter_clause = """
+                        AND (s.is_sec_filing = true OR s.is_sec_files = true)
+                        """
+                    else:
+                        filter_clause = ""
+
+                    # Replace the placeholder
+                    query_str = str(query).replace(":filter_clause", filter_clause)
+                    query = text(query_str)
+
                 elif self.check_table == "sec_companyfacts_raw":
+                    # Join with stock.symbol to get is_sec_filing filter and stock_id ordering
                     query = text("""
-                        SELECT DISTINCT ticker
-                        FROM sec_companyfacts_raw
-                        ORDER BY ticker
+                        SELECT DISTINCT scr.ticker as symbol
+                        FROM sec_companyfacts_raw scr
+                        JOIN stock.symbol s ON scr.ticker = s.symbol
+                        WHERE 1=1
+                        :filter_clause
+                        ORDER BY s.stock_id
                     """)
+                    # Build filter clause
+                    if filter_sec_filing:
+                        filter_clause = """
+                        AND (s.is_sec_filing = true OR s.is_sec_files = true)
+                        """
+                    else:
+                        filter_clause = ""
+
+                    # Replace the placeholder
+                    query_str = str(query).replace(":filter_clause", filter_clause)
+                    query = text(query_str)
                 else:
                     raise ValueError(f"Unknown table: {self.check_table}")
 
                 result = conn.execute(query)
-                return [row[0] for row in result.fetchall()]
+                symbols = [row[0] for row in result.fetchall()]
+                logger.info(
+                    f"Found {len(symbols)} symbols in {self.check_table} (filter_sec_filing={filter_sec_filing})"
+                )
+                return symbols
 
         except Exception as e:
             logger.error(f"Error fetching symbols: {e}")
@@ -295,6 +340,7 @@ class SECFilingPoller:
         symbols: Optional[List[str]] = None,
         interval_seconds: int = 3600,
         refresh_on_stale: bool = True,
+        filter_sec_filing: bool = True,
     ):
         """
         Run continuous polling loop.
@@ -303,12 +349,13 @@ class SECFilingPoller:
             symbols: List of symbols to poll (None = all symbols in table)
             interval_seconds: Seconds between polls (default: 3600 = 1 hour)
             refresh_on_stale: Whether to trigger refresh when stale data detected
+            filter_sec_filing: Filter by is_sec_filing=true when symbols=None
         """
         logger.info(f"Starting SEC filing polling loop (interval: {interval_seconds}s)")
         logger.info(f"Checking table: {self.check_table} | Stale threshold: {self.stale_days} days")
 
         if symbols is None:
-            symbols = self.poll_all_symbols()
+            symbols = self.poll_all_symbols(filter_sec_filing=filter_sec_filing)
             logger.info(f"Found {len(symbols)} symbols to monitor")
 
         while True:
@@ -413,6 +460,11 @@ Examples:
         action="store_true",
         help="Verbose output",
     )
+    parser.add_argument(
+        "--no-filter",
+        action="store_true",
+        help="Don't filter by is_sec_filing=true when using --all-symbols",
+    )
 
     args = parser.parse_args()
 
@@ -432,12 +484,12 @@ Examples:
 
     db_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 
-    # Determine which symbols to check
-    symbols = args.symbols
-    if args.all_symbols:
-        symbols = None  # Will fetch from database
+    # Determine which symbols to check and filter settings
+    filter_sec_filing = not args.no_filter
+    symbols = args.symbols  # Directly specified symbols (overrides all filters)
+    use_all_symbols = args.all_symbols
 
-    if not symbols and not args.all_symbols:
+    if not symbols and not use_all_symbols:
         parser.error("Must specify --symbol or --all-symbols")
 
     # Create poller and run
@@ -449,14 +501,16 @@ Examples:
 
     if args.continuous:
         poller.run_polling_loop(
-            symbols=symbols,
+            symbols=symbols,  # None means fetch from DB with filters
             interval_seconds=args.interval,
             refresh_on_stale=not args.no_refresh,
+            filter_sec_filing=filter_sec_filing,
         )
     else:
         # Single poll check
         if symbols is None:
-            symbols = poller.poll_all_symbols()
+            # Fetch all symbols from DB with filters
+            symbols = poller.poll_all_symbols(filter_sec_filing=filter_sec_filing)
 
         results = poller.poll_once(symbols)
 
