@@ -25,7 +25,6 @@ import sys
 from datetime import datetime, timedelta
 from typing import List, Optional, Tuple
 
-import psycopg2
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
@@ -238,44 +237,74 @@ class SECFilingPoller:
             logger.error(f"Error triggering SEC data refresh: {e}")
             return False
 
-    def poll_once(self, symbols: List[str]) -> dict:
+    def poll_and_refresh(
+        self,
+        symbols: List[str],
+        refresh_on_stale: bool = True,
+        include_submissions: bool = False,
+        on_progress=None,
+    ) -> dict:
         """
-        Perform a single poll check for stale data.
+        Poll symbols one-by-one and trigger refresh immediately when stale.
+
+        This provides natural spacing between SEC API calls and better observability.
 
         Args:
-            symbols: List of symbols to check
+            symbols: List of symbols to check and potentially refresh
+            refresh_on_stale: Whether to trigger refresh when stale data detected
+            include_submissions: Also fetch submissions along with CompanyFacts
+            on_progress: Optional callback function(symbol, status) for progress updates
 
         Returns:
             Dict with polling results
         """
         results = {
             "timestamp": datetime.now().isoformat(),
-            "stale_symbols": [],
-            "fresh_symbols": [],
-            "no_data_symbols": [],
+            "checked": 0,
+            "fresh": 0,
+            "stale": 0,
+            "no_data": 0,
+            "refreshed": [],
+            "failed": [],
         }
 
         for symbol in symbols:
+            results["checked"] += 1
+
+            # Check staleness
             is_stale, latest_date, stale_date = self.check_stale_status(symbol)
 
             if latest_date is None:
-                results["no_data_symbols"].append(symbol)
+                results["no_data"] += 1
+                status = "NO_DATA"
             elif is_stale:
-                results["stale_symbols"].append(
-                    {
-                        "symbol": symbol,
-                        "latest_date": str(latest_date),
-                        "stale_date": str(stale_date),
-                    }
-                )
+                results["stale"] += 1
+                status = "STALE"
+
+                # Trigger refresh immediately
+                if refresh_on_stale:
+                    try:
+                        success = self.trigger_refresh(
+                            [symbol],
+                            include_submissions=include_submissions,
+                        )
+                        if success:
+                            results["refreshed"].append(symbol)
+                            status = "REFRESHED"
+                        else:
+                            results["failed"].append(symbol)
+                            status = "REFRESH_FAILED"
+                    except Exception as e:
+                        logger.error(f"Error refreshing {symbol}: {e}")
+                        results["failed"].append(symbol)
+                        status = "REFRESH_ERROR"
             else:
-                results["fresh_symbols"].append(
-                    {
-                        "symbol": symbol,
-                        "latest_date": str(latest_date),
-                        "stale_date": str(stale_date),
-                    }
-                )
+                results["fresh"] += 1
+                status = "FRESH"
+
+            # Progress callback
+            if on_progress:
+                on_progress(symbol, status)
 
         return results
 
@@ -364,22 +393,31 @@ class SECFilingPoller:
 
         while True:
             try:
-                # Check all symbols
-                stale_symbols = []
-                for symbol in symbols:
-                    is_stale, _, _ = self.check_stale_status(symbol)
-                    if is_stale:
-                        stale_symbols.append(symbol)
+                # Progress callback for logging
+                def log_progress(symbol: str, status: str):
+                    logger.info(f"[{symbol}] {status}")
 
-                # Trigger refresh if any stale data found
-                if stale_symbols and refresh_on_stale:
-                    logger.info(f"Found {len(stale_symbols)} stale symbols, triggering refresh...")
-                    self.trigger_refresh(stale_symbols, include_submissions=include_submissions)
-
-                # Log summary and wait
-                logger.info(
-                    f"Poll complete. Next check in {interval_seconds} seconds ({interval_seconds // 60} minutes)"
+                # Process all symbols sequentially with immediate refresh
+                results = self.poll_and_refresh(
+                    symbols=symbols,
+                    refresh_on_stale=refresh_on_stale,
+                    include_submissions=include_submissions,
+                    on_progress=log_progress,
                 )
+
+                # Log summary
+                logger.info(
+                    f"Poll cycle complete: "
+                    f"Checked={results['checked']}, "
+                    f"Fresh={results['fresh']}, "
+                    f"Stale={results['stale']}, "
+                    f"No Data={results['no_data']}, "
+                    f"Refreshed={len(results['refreshed'])}, "
+                    f"Failed={len(results['failed'])}"
+                )
+
+                # Wait for next poll cycle
+                logger.info(f"Next check in {interval_seconds} seconds ({interval_seconds // 60} minutes)")
 
                 import time
 
@@ -528,34 +566,57 @@ Examples:
             include_submissions=include_submissions,
         )
     else:
-        # Single poll check
+        # Single run - process symbols sequentially with immediate refresh
         if symbols is None:
             # Fetch all symbols from DB with filters
             symbols = poller.poll_all_symbols(filter_sec_filing=filter_sec_filing)
 
-        results = poller.poll_once(symbols)
+        print(f"\nProcessing {len(symbols)} symbols sequentially...")
+        print("=" * 60)
 
-        print("\n" + "=" * 60)
+        # Progress callback for terminal output
+        def log_progress(symbol: str, status: str):
+            status_emoji = {
+                "FRESH": "✅",
+                "STALE": "🔄",
+                "REFRESHED": "🆕",
+                "REFRESH_FAILED": "❌",
+                "NO_DATA": "⚠️",
+                "REFRESH_ERROR": "💥",
+            }.get(status, "❓")
+            print(f"  {status_emoji} {symbol}: {status}")
+
+        results = poller.poll_and_refresh(
+            symbols=symbols,
+            refresh_on_stale=not args.no_refresh,
+            include_submissions=include_submissions,
+            on_progress=log_progress,
+        )
+
+        # Print summary
+        print()
+        print("=" * 60)
         print("SEC Filing Poll Results")
         print("=" * 60)
-        print(f"Total symbols checked: {len(symbols)}")
-        print(f"Fresh symbols: {len(results['fresh_symbols'])}")
-        print(f"Stale symbols: {len(results['stale_symbols'])}")
-        print(f"No data symbols: {len(results['no_data_symbols'])}")
+        print(f"Total symbols checked: {results['checked']}")
+        print(f"Fresh: {results['fresh']} | Stale: {results['stale']} | No Data: {results['no_data']}")
+        print(f"Refreshed: {len(results['refreshed'])} | Failed: {len(results['failed'])}")
 
-        if results["stale_symbols"]:
-            print("\nStale symbols:")
-            for item in results["stale_symbols"]:
-                print(f"  - {item['symbol']}: Latest {item['latest_date']}, Stale date {item['stale_date']}")
+        if results["refreshed"]:
+            print("\nRefreshed symbols:")
+            for symbol in results["refreshed"][:10]:  # Show first 10
+                print(f"  ✅ {symbol}")
+            if len(results["refreshed"]) > 10:
+                print(f"  ... and {len(results['refreshed']) - 10} more")
 
-            if not args.no_refresh:
-                stale_symbols = [s["symbol"] for s in results["stale_symbols"]]
-                print(
-                    f"\nTriggering refresh for {len(stale_symbols)} stale symbols{' (with submissions)' if include_submissions else ''}..."
-                )
-                poller.trigger_refresh(stale_symbols, include_submissions=include_submissions)
+        if results["failed"]:
+            print("\nFailed symbols:")
+            for symbol in results["failed"][:10]:  # Show first 10
+                print(f"  ❌ {symbol}")
+            if len(results["failed"]) > 10:
+                print(f"  ... and {len(results['failed']) - 10} more")
 
-        sys.exit(0 if not results["stale_symbols"] else 1)
+        sys.exit(0 if not results["failed"] else 1)
 
 
 if __name__ == "__main__":
