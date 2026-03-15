@@ -18,7 +18,7 @@ Defines the agent responsible for interpreting
 price action and market structure.
 """
 
-from victor.agent.specs.models import (
+from victor.framework.extensions import (
     AgentCapabilities,
     AgentConstraints,
     AgentSpec,

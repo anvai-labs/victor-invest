@@ -18,7 +18,7 @@ Defines the agent responsible for extracting and analyzing
 financial data from SEC regulatory filings.
 """
 
-from victor.agent.specs.models import (
+from victor.framework.extensions import (
     AgentCapabilities,
     AgentConstraints,
     AgentSpec,
