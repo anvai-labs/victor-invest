@@ -33,7 +33,7 @@ from typing import Any, Dict, List, Optional
 
 # SafetyCoordinator was removed in Victor 0.5.6, make import optional
 try:
-    from victor.agent.coordinators.safety_coordinator import (
+    from victor.framework.extensions import (
         SafetyAction,
         SafetyCategory,
         SafetyCoordinator,
@@ -49,20 +49,20 @@ except ImportError:
     from dataclasses import dataclass
     from enum import Enum
 
-    class SafetyAction(str, Enum):
+    class SafetyAction(str, Enum):  # type: ignore[no-redef]
         BLOCK = "block"
         REQUIRE_CONFIRMATION = "require_confirmation"
         ALLOW = "allow"
         WARN = "warn"
 
-    class SafetyCategory(str, Enum):
+    class SafetyCategory(str, Enum):  # type: ignore[no-redef]
         SHELL = "shell"
         FILE_WRITE = "file_write"
         NETWORK = "network"
         DATA_ACCESS = "data_access"
 
     @dataclass
-    class SafetyRule:
+    class SafetyRule:  # type: ignore[no-redef]
         rule_id: str
         category: SafetyCategory
         pattern: str
@@ -72,7 +72,7 @@ except ImportError:
         tool_names: List[str]
         confirmation_prompt: Optional[str] = None
 
-    class SafetyCoordinator:
+    class SafetyCoordinator:  # type: ignore[no-redef]
         """Stub implementation when SafetyCoordinator is not available."""
 
         @staticmethod
@@ -335,7 +335,7 @@ class EnhancedInvestSafetyExtension(SafetyExtensionProtocol):
         Returns:
             True if operation is safe, False otherwise
         """
-        return self._coordinator.is_operation_safe(tool_name, args, context)
+        return self._coordinator.is_operation_safe(tool_name, args, context)  # type: ignore[no-any-return]
 
     def get_bash_patterns(self) -> List[SafetyPattern]:
         """Get investment-specific bash command patterns.
@@ -390,7 +390,7 @@ class EnhancedInvestSafetyExtension(SafetyExtensionProtocol):
         Returns:
             True if rule was removed, False if not found
         """
-        return self._coordinator.unregister_rule(rule_id)
+        return self._coordinator.unregister_rule(rule_id)  # type: ignore[no-any-return]
 
     def get_safety_stats(self) -> Dict[str, Any]:
         """Get safety statistics.
@@ -398,7 +398,7 @@ class EnhancedInvestSafetyExtension(SafetyExtensionProtocol):
         Returns:
             Dictionary with safety statistics
         """
-        return self._coordinator.get_stats_dict()
+        return self._coordinator.get_stats_dict()  # type: ignore[no-any-return]
 
 
 __all__ = [

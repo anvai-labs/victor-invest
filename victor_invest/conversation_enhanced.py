@@ -36,7 +36,7 @@ from typing import Any, Dict, List, Optional
 
 # ConversationCoordinator was removed/renamed in Victor 0.5.6, make import optional
 try:
-    from victor.agent.coordinators.conversation_coordinator import (
+    from victor.framework.extensions import (
         ConversationCoordinator,
         ConversationStats,
         TurnType,
@@ -48,7 +48,7 @@ except ImportError:
     # Provide stub types for compatibility
     CONVERSATION_COORDINATOR_AVAILABLE = False
 
-    class TurnType(str, Enum):
+    class TurnType(str, Enum):  # type: ignore[no-redef]
         USER = "user"
         ASSISTANT = "assistant"
         SYSTEM = "system"
@@ -56,13 +56,13 @@ except ImportError:
         TOOL_RESULT = "tool_result"
 
     @dataclass
-    class ConversationStats:
+    class ConversationStats:  # type: ignore[no-redef]
         total_turns: int = 0
         user_turns: int = 0
         assistant_turns: int = 0
         tool_calls: int = 0
 
-    class ConversationCoordinator:
+    class ConversationCoordinator:  # type: ignore[no-redef]
         """Stub implementation when ConversationCoordinator is not available."""
 
         def __init__(self, *args, **kwargs):
@@ -287,7 +287,7 @@ class EnhancedInvestConversationManager:
         Returns:
             Turn ID for the added message
         """
-        return self._conversation_coordinator.add_message(role, content, turn_type, metadata, tool_calls)
+        return self._conversation_coordinator.add_message(role, content, turn_type, metadata, tool_calls)  # type: ignore[no-any-return]
 
     def get_history(
         self,
@@ -305,7 +305,7 @@ class EnhancedInvestConversationManager:
         Returns:
             List of message dictionaries
         """
-        return self._conversation_coordinator.get_history(max_turns, include_system, include_tool)
+        return self._conversation_coordinator.get_history(max_turns, include_system, include_tool)  # type: ignore[no-any-return]
 
     def clear_history(self, keep_summaries: bool = True) -> None:
         """Clear conversation history.
@@ -392,7 +392,7 @@ class EnhancedInvestConversationManager:
         Returns:
             True if summarization is recommended
         """
-        return self._conversation_coordinator.needs_summarization()
+        return self._conversation_coordinator.needs_summarization()  # type: ignore[no-any-return]
 
     def add_summary(self, summary: str) -> None:
         """Add a conversation summary.
