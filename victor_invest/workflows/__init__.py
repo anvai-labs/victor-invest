@@ -75,7 +75,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 from victor.framework.workflows import BaseYAMLWorkflowProvider
 
 if TYPE_CHECKING:
-    from victor.workflows.executor import WorkflowResult
+    from victor.framework.extensions import WorkflowResult
 
 from victor_invest.workflows.graphs import (
     build_comprehensive_graph,
@@ -237,7 +237,7 @@ class InvestmentWorkflowProvider(BaseYAMLWorkflowProvider):
                 synthesis = result.context.get("synthesis")
                 print(f"Recommendation: {synthesis.get('recommendation')}")
         """
-        from victor.workflows.executor import WorkflowExecutor
+        from victor.framework.extensions import WorkflowExecutor
 
         from victor_invest.framework_bootstrap import create_investment_orchestrator
 
@@ -307,7 +307,7 @@ class InvestmentWorkflowProvider(BaseYAMLWorkflowProvider):
                 print(f"Recommendation: {synthesis.get('recommendation')}")
         """
         from victor.tools.registry import ToolRegistry
-        from victor.workflows.executor import WorkflowExecutor
+        from victor.framework.extensions import WorkflowExecutor
 
         # Ensure handlers are registered
         ensure_handlers_registered()
@@ -406,7 +406,7 @@ def ensure_handlers_registered() -> None:
         # executor registry directly when helper APIs are unavailable.
         try:
             from victor.framework.handler_registry import get_handler_registry
-            from victor.workflows.executor import register_compute_handler
+            from victor.framework.extensions import register_compute_handler
 
             registry = get_handler_registry()
             # list_handlers returns Dict[str, List[str]] mapping vertical names to handler names

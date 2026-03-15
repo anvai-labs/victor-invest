@@ -82,8 +82,8 @@ from victor.framework.workflows.base_handler import BaseHandler  # noqa: E402
 
 if TYPE_CHECKING:
     from victor.tools.registry import ToolRegistry
-    from victor.workflows.definition import ComputeNode
-    from victor.workflows.executor import WorkflowContext
+    from victor.framework.extensions import ComputeNode
+    from victor.framework.extensions import WorkflowContext
 
 
 @handler_decorator(

@@ -13,8 +13,7 @@ from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar
 
 if TYPE_CHECKING:
     from victor.tools.registry import ToolRegistry
-    from victor.workflows.definition import ComputeNode
-    from victor.workflows.executor import WorkflowContext
+    from victor.framework.extensions import ComputeNode, WorkflowContext
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +38,7 @@ except Exception:
             raise NotImplementedError("BaseHandler.execute() must be implemented")
 
         async def __call__(self, node, context, tool_registry):
-            from victor.workflows.executor import ExecutorNodeStatus, NodeResult
+            from victor.framework.extensions import ExecutorNodeStatus, NodeResult
 
             start_time = time.time()
             try:
@@ -131,7 +130,7 @@ except Exception:
 
     def _register_with_executor(name: str, instance: Any) -> None:
         try:
-            from victor.workflows.executor import register_compute_handler
+            from victor.framework.extensions import register_compute_handler
 
             register_compute_handler(name, instance)
         except Exception as exc:
