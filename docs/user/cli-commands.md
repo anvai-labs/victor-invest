@@ -17,7 +17,7 @@ victor-invest analyze AAPL
 ### Web UI
 ```bash
 uvicorn victor_invest.api.app:app --reload --port 8000
-open http://localhost:8000/dashboard
+open http://localhost:8000/ui
 ```
 
 ---
@@ -122,11 +122,10 @@ python scripts/sweep_ui_cache.py --limit 100 --parallel 4
 
 | Page | URL |
 |------|-----|
-| Dashboard | `/dashboard` |
-| Analysis | `/dashboard?symbol=AAPL` |
-| Rankings | `/rankings` |
-| Compare | `/compare?symbols=AAPL,MSFT,GOOGL` |
-| History | `/history` |
+| Dashboard | `/ui` |
+| Sector views | `/ui/sectors` |
+
+Analysis, rankings, and history are currently rendered inside the `/ui` SPA rather than as separate top-level routes.
 
 ---
 

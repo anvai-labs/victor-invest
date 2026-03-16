@@ -38,7 +38,7 @@ victor-invest --help
 
 ```bash
 # API health
-curl http://localhost:8000/api/health
+curl http://localhost:8000/health
 
 # Database
 pg_ctl status
@@ -59,6 +59,19 @@ tail -f /var/log/postgresql/postgresql.log
 
 # Ollama logs
 journalctl -u ollama -f
+```
+
+### API Exposure
+
+```bash
+# Canonical UI route
+open http://localhost:8000/ui
+
+# Restrict cross-origin access explicitly when serving beyond localhost
+export VICTOR_ALLOWED_ORIGINS="https://research.example.com"
+
+# Require bearer auth for analysis/refresh/cache mutation endpoints
+export VICTOR_API_BEARER_TOKEN="replace-with-long-random-token"
 ```
 
 ---

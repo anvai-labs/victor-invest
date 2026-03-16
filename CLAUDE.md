@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Legacy `src/investigator/` path exists for compatibility; avoid adding new logic there.
 - Keep workflows **deterministic-first**: tools/handlers execute data collection and analysis without LLM calls. LLM synthesis is optional and only used in the final synthesis step.
 - Use shared bootstrap: `create_investment_orchestrator()` from `victor_invest/framework_bootstrap.py`.
-- **Never add `Co-Authored-By` or any AI attribution trailers to commit messages.** The commit-msg hook will reject them.
+- **Never add `Co-Authored-By` or any AI attribution to commit messages.** The commit-msg hook rejects Co-Authored-By trailers AND any mention of Claude/Anthropic/AI attribution.
 
 ## Commands
 
@@ -34,8 +34,17 @@ make lint         # flake8
 make type-check   # mypy
 make ci           # format-check + lint + type-check + test-cov
 
+# Fix pre-commit hook failures (hook uses ruff, not black/flake8)
+ruff format <files>       # fix format errors
+ruff check --fix <files>  # fix lint errors
+
 # Dev server
 make run-dev      # uvicorn on port 8000
+
+# Frontend (React/Vite in frontend/)
+make frontend-install     # npm install
+make frontend-dev         # dev server (proxies API to :8000)
+make frontend-build       # production build
 ```
 
 ## Architecture
@@ -76,7 +85,7 @@ Entry point: `run_analysis()` in `victor_invest/workflows/graphs.py` tries YAML 
   - `infrastructure/sec/` — SEC EDGAR API, CompanyFacts extraction, XBRL parsing
   - `infrastructure/llm/` — Ollama multi-server pool with load balancing
   - `config/config.py` — Config loader (`get_config()` reads `config.yaml` + env vars)
-- **`config.yaml`** — Single config source (~2300 lines): database, Ollama, valuation thresholds, RL params
+- **`config.yaml`** — Single config source (~2050 lines): database, Ollama, valuation thresholds, RL params
 
 ### Adding or Changing Workflow Logic
 
@@ -119,7 +128,8 @@ Tools never raise exceptions to callers — they return `ToolResult.create_failu
 ## Implementation Conventions
 
 - Python 3.11+, 120-char line length
-- Black + isort formatting, flake8 linting, mypy type checks
+- **Pre-commit hook** uses ruff format + ruff check + mypy (authoritative for commits)
+- **Makefile** uses black + isort + flake8 (legacy targets, may diverge from hook)
 - Type hints on public APIs, async-first where appropriate
 - Cache keys must include `fiscal_period` for correct cache behavior
 - Prefer small, composable handlers/tools over monolithic logic
@@ -190,8 +200,8 @@ with engine.connect() as conn:
 git commit --no-verify          # bypass when necessary
 ```
 
-- **pre-commit**: ruff format, ruff lint, mypy on staged Python files in `src/` and `victor_invest/`
-- **commit-msg**: rejects any `Co-Authored-By` trailer (AI attribution is forbidden)
+- **pre-commit**: ruff format, ruff check, mypy on staged Python files in `src/` and `victor_invest/`
+- **commit-msg**: rejects `Co-Authored-By` trailers AND any Claude/Anthropic/AI attribution references
 
 ## CLI Entry Points
 

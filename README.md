@@ -1,118 +1,68 @@
-# Victor Invest Documentation
+# Victor Invest
 
-**Last Updated:** February 2025
+Victor Invest is an AI-assisted investment research platform that combines SEC fundamentals, multi-model valuation, technical analysis, market context, and a React dashboard/API surface.
 
----
+The repo is in a Victor-first transition state:
+- `victor_invest/` is the primary workflow, API, and UI integration layer.
+- `src/investigator/` still contains most domain logic, data access, and legacy compatibility paths.
 
 ## Quick Start
 
-1. **[Getting Started](guides/GETTING_STARTED.md)** - Installation and first steps
-2. **[Sector Analysis](assets/insights/SECTOR_ANALYSIS_2015_2024.md)** - 10-year sector valuation analysis
-3. **[Interactive Timeline](assets/visualizations/sector_timeline_2024.html)** - Market multiples visualization
-
----
-
-## Documentation Structure
-
-```
-docs/
-├── guides/           # Getting started, how-to guides
-├── reference/        # Architecture, API, operations
-├── insights/         # Analysis, findings, playbooks
-├── assets/           # Sector analysis & visualizations
-└── archive/          # Historical/obsolete documentation
+```bash
+pip install -e ".[dev]"
+uvicorn victor_invest.api.app:app --reload --port 8000
+victor-invest analyze AAPL --mode standard
 ```
 
----
+Open the UI at `http://localhost:8000/ui`.
 
-## Guides
+## Core Features
 
-| Document | Purpose |
-|----------|---------|
-| [Getting Started](guides/GETTING_STARTED.md) | Installation, setup, first run |
-| [Fiscal Year Handling](guides/FISCAL_YEAR_HANDLING.md) | FY periods, timing nuances |
-| [Scripts Consolidation](guides/SCRIPTS_CONSOLIDATION_ANALYSIS.md) | Script organization and usage |
+- Victor-based workflows for `quick`, `standard`, `comprehensive`, `peer_comparison`, and `rl_backtest`
+- SEC filing ingestion and normalized company facts
+- Multi-model valuation across DCF, GGM, P/E, P/S, P/B, EV/EBITDA, and sector-specialized models
+- Technical indicators, entry/exit signals, and market regime context
+- FastAPI service plus React dashboard backed by UI cache artifacts
+- Batch analysis, rankings, and RL prediction history
 
----
-
-## Reference
-
-| Document | Purpose |
-|----------|---------|
-| [Architecture](reference/ARCHITECTURE.md) | System design and components |
-| [Victor Framework Migration](reference/MIGRATION_VICTOR_FRAMEWORK.md) | Victor framework overview |
-| [Operations Runbook](reference/OPERATIONS_RUNBOOK.md) | Deployment and operations |
-| [Agents](reference/AGENTS.md) | Agent system documentation |
-| [Sector Multiples](reference/SECTOR_MULTIPLES.md) | Sector multiples tool reference |
-| [UI Dashboard](reference/UI_DASHBOARD.md) | Dashboard documentation |
-
----
-
-## Insights
-
-| Document | Purpose |
-|----------|---------|
-| [Sector Analysis (2015-2024)](assets/insights/SECTOR_ANALYSIS_2015_2024.md) | Complete 10-year analysis |
-| [Market Regimes](assets/insights/MARKET_REGIMES.md) | Three market regimes (2015-2024) |
-| [Data Quality](assets/insights/DATA_QUALITY.md) | Data verification and metrics |
-
-### Analysis & Playbooks
-- [Valuation Playbook](insights/VALUATION_PLAYBOOK.md) - Valuation frameworks and strategies
-- [Valuation Assumptions](insights/VALUATION_ASSUMPTIONS.md) - Key assumptions and constraints
-- [STX Analysis Issues](insights/STX_ANALYSIS_ISSUES.md) - STX index analysis
-- [Data Pipeline Status](insights/sec_data_pipeline_status.md) - SEC data pipeline
-- [Victor Alignment Review](insights/VICTOR_ALIGNMENT_REVIEW_20260211.md) | Framework alignment
-
----
-
-## Interactive Visualizations
-
-- **[Sector Timeline 2024](assets/visualizations/sector_timeline_2024.html)** - Interactive scatter plots with market cap bubbles
-
-**Features:**
-- Sector median lines (P/E, P/S, P/B)
-- Individual stock bubbles (500 companies)
-- Hover tooltips with company details
-- Color-coded by sector
-
----
-
-## Quick Reference
-
-### CLI Commands
+## Canonical Entry Points
 
 ```bash
-# Quick analysis
-victor-invest analyze AAPL --mode quick
+# CLI
+victor-invest analyze AAPL --mode standard
 
-# Batch analysis
-victor-invest batch AAPL MSFT GOOGL --parallel 4
+# API
+uvicorn victor_invest.api.app:app --reload --port 8000
 
-# Sector multiples
-investor sector-multiples historical --fiscal-year 2024
-
-# Cache management
-investigator cache warm --symbols AAPL,MSFT --force-refresh
+# Frontend
+open http://localhost:8000/ui
 ```
 
-### Key Directories
+Legacy compatibility aliases still exist, but `victor-invest`, `/ui`, `/health`, `/analyze/{symbol}`, and `/batch` are the canonical paths.
 
-| Directory | Purpose |
-|-----------|---------|
-| `victor_invest/` | Victor framework (workflows, tools) |
-| `src/investigator/` | Legacy engine (domain services, agents) |
-| `scripts/` | Utility scripts |
-| `tests/` | Test suite |
-| `config.yaml` | Main configuration file |
+## Repository Layout
 
----
+- `victor_invest/`: Victor workflows, tools, API, frontend integration
+- `src/investigator/`: legacy engine, domain services, infrastructure, CLI groups
+- `frontend/`: React dashboard
+- `tests/`: unit and integration coverage
+- `docs/`: user, developer, operations, and technical documentation
 
-## Related Resources
+## Documentation
 
-- **Project README:** [../README.md](../README.md)
-- **Architecture:** [reference/ARCHITECTURE.md](reference/ARCHITECTURE.md)
-- **Sector Analysis:** [assets/insights/](assets/insights/)
+- [Docs Index](docs/README.md)
+- [Getting Started](docs/user/getting-started.md)
+- [API Reference](docs/api/api-reference.md)
+- [Architecture](docs/developer/architecture.md)
+- [Platform Review and Roadmap](docs/developer/platform-review-roadmap.md)
 
----
+## Development
 
-*For CLI help: `victor-invest --help` or `investor --help`*
+```bash
+make format
+make lint
+make type-check
+make test
+```
+
+The package metadata points at this `README.md`, so keep this file aligned with the actual active surfaces in `victor_invest/` and `docs/`.

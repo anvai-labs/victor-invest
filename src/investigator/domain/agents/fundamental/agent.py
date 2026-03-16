@@ -90,7 +90,11 @@ from .data_quality_assessor import get_data_quality_assessor
 from .deterministic_analyzer import DeterministicAnalyzer
 from .deterministic_payloads import (
     build_deterministic_cache_record,
+    build_deterministic_forecast_payload,
+    build_deterministic_fundamental_report_payload,
     build_deterministic_response,
+    calculate_quality_score,
+    coerce_float,
 )
 from .financial_ratios import (
     add_market_context_ratios,
@@ -118,6 +122,12 @@ from .quarterly_fetch import (
     query_recent_processed_periods,
     resolve_quarter_data,
 )
+from .report_prompts import (
+    build_forecast_prompt,
+    build_fundamental_report_data_section,
+    build_fundamental_report_prompt,
+    build_fundamental_report_system_prompt,
+)
 from .summaries import extract_latest_financials as _extract_latest_financials_helper
 from .summaries import get_historical_trend as _get_historical_trend_helper
 from .summaries import summarize_company_data as _summarize_company_data_helper
@@ -130,6 +140,12 @@ from .valuation_orchestrator import (
     log_multi_model_summary,
     run_multi_model_blending,
     run_sector_and_dcf,
+)
+from .valuation_selection import (
+    calculate_enterprise_value,
+    load_model_selection_rules,
+    lookup_sector_multiple,
+    select_models_for_company,
 )
 from .valuation_synthesis import (
     build_models_detail_lines,
@@ -2111,138 +2127,18 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             multiple: Metric type (pe, pb, ps, ev_ebitda)
             industry: Optional industry name for industry-specific multiples
         """
-        if not sector:
-            self.logger.debug("[SECTOR_LOOKUP_DEBUG] sector is None, returning None")
-            return None
-
-        self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] Looking up {sector}/{industry or 'sector'}/{multiple}")
-        self.logger.debug(
-            f"[SECTOR_LOOKUP_DEBUG] _sector_multiples_loader exists: {self._sector_multiples_loader is not None}"
+        return lookup_sector_multiple(
+            sector,
+            multiple,
+            industry=industry,
+            loader=self._sector_multiples_loader,
+            config=self.config,
+            logger=self.logger,
         )
-        self.logger.info(f"[SECTOR_LOOKUP] Looking up {multiple} for sector={sector}, industry={industry}")
-
-        # Priority 1: Use SectorMultiplesService with config override priority (same as victor-invest)
-        try:
-            from investigator.domain.services.valuation_shared.sector_multiples_service import (
-                SectorMultiplesService,
-            )
-
-            sector_service = SectorMultiplesService()
-            # Try config-aware methods first (get_pe, get_pb, get_ps) which prioritize config overrides
-            config_method = getattr(sector_service, f"get_{multiple}", None)
-            if config_method:
-                # Call with industry parameter if available
-                import inspect
-
-                sig = inspect.signature(config_method)
-                if "industry" in sig.parameters:
-                    config_value = config_method(sector, industry)
-                else:
-                    config_value = config_method(sector)
-
-                if config_value is not None:
-                    self.logger.info(
-                        f"[SECTOR_LOOKUP] Using config-aware value from SectorMultiplesService.{multiple}({sector}, {industry}): {config_value}"
-                    )
-                    return config_value
-
-            # Fall back to historical median (3-year lookback)
-            historical_value = sector_service.get_historical_median_multiple(
-                sector=sector,
-                metric=multiple,
-                lookback_years=3,
-            )
-            if historical_value is not None:
-                self.logger.debug(
-                    f"[SECTOR_LOOKUP_DEBUG] Returning historical median from SectorMultiplesService: {historical_value}"
-                )
-                return historical_value
-        except Exception as exc:
-            self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] SectorMultiplesService failed: {exc}, trying fallback")
-
-        # Priority 2: Use sector multiples loader if available (most specific)
-        if self._sector_multiples_loader:
-            try:
-                record = self._sector_multiples_loader.get(sector)
-                self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] Loader record for {sector}: {record}")
-                if record:
-                    value = getattr(record, multiple, None)
-                    self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] Record.{multiple} = {value}")
-                    if value is not None:
-                        self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] Returning value from loader: {value}")
-                        return float(value)
-            except Exception as exc:
-                self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] Loader failed: {exc}, trying fallback")
-
-        # Priority 3: Use shared SectorMultiples module (consolidated logic)
-        try:
-            from investigator.domain.services.valuation.common import SectorMultiples
-
-            value = SectorMultiples.get_sector_multiple(sector, multiple)
-            if value is not None:
-                self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] Returning value from shared SectorMultiples: {value}")
-                return value
-        except Exception as e:
-            self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] Shared SectorMultiples not available: {e}")
-
-        # Priority 4: Fall back to config.yaml
-        try:
-            valuation_settings = getattr(self.config, "valuation", None)
-            self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] valuation_settings exists: {valuation_settings is not None}")
-            if isinstance(valuation_settings, dict):
-                multiples = valuation_settings.get("sector_multiples", {}) or {}
-            elif valuation_settings is not None:
-                multiples = getattr(valuation_settings, "sector_multiples", {}) or {}
-            else:
-                self.logger.debug("[SECTOR_LOOKUP_DEBUG] No valuation_settings, returning None")
-                return None
-
-            self.logger.debug(
-                f"[SECTOR_LOOKUP_DEBUG] Config multiples keys: {list(multiples.keys()) if multiples else 'empty'}"
-            )
-            sector_key = sector.lower()
-            for key, values in multiples.items():
-                if key.lower() == sector_key:
-                    value = values.get(multiple)
-                    self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] Found {key} matching {sector_key}, {multiple}={value}")
-                    if value is not None:
-                        self.logger.debug(f"[SECTOR_LOOKUP_DEBUG] Returning value from config: {value}")
-                        return float(value)
-        except Exception as exc:  # pragma: no cover - defensive guard
-            self.logger.warning(f"Sector multiple lookup failed for {sector}/{multiple}: {exc}")
-            self.logger.debug(f"Failed to load sector multiple for {sector}/{multiple}: {exc}")
-
-        self.logger.debug("[SECTOR_LOOKUP_DEBUG] No value found, returning None")
-        return None
 
     @staticmethod
     def _calculate_enterprise_value(market_data: Dict, financials: Dict) -> Optional[float]:
-        ev_candidates = [
-            market_data.get("enterprise_value"),
-            market_data.get("enterpriseValue"),
-            market_data.get("enterprise_value_real_time"),
-        ]
-        for ev in ev_candidates:
-            if ev is not None:
-                try:
-                    return float(ev)
-                except (TypeError, ValueError):
-                    continue
-
-        market_cap = market_data.get("market_cap") or market_data.get("marketCap")
-        if market_cap is None:
-            return None
-
-        total_debt = financials.get("total_debt") or financials.get("long_term_debt") or market_data.get("total_debt")
-        cash = financials.get("cash") or financials.get("cash_and_equivalents") or market_data.get("cash")
-
-        try:
-            market_cap_val = float(market_cap)
-            debt_val = float(total_debt) if total_debt is not None else 0.0
-            cash_val = float(cash) if cash is not None else 0.0
-            return market_cap_val + debt_val - cash_val
-        except (TypeError, ValueError):
-            return None
+        return calculate_enterprise_value(market_data, financials)
 
     def _resolve_fallback_weights(
         self,
@@ -2263,68 +2159,10 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         )
 
     def _load_model_selection_rules(self) -> Dict[str, Any]:
-        rules_path = Path("config/model_selection.yaml")
-        if not rules_path.exists():
-            return {}
-        try:
-            with rules_path.open("r", encoding="utf-8") as handle:
-                return yaml.safe_load(handle) or {}
-        except Exception as exc:
-            self.logger.warning(f"Failed to load model selection rules: {exc}")
-            return {}
+        return load_model_selection_rules(Path("config/model_selection.yaml"), logger=self.logger)
 
     def _select_models_for_company(self, profile: CompanyProfile) -> Optional[List[str]]:
-        if not self._model_selection_rules:
-            return None
-
-        rules = self._model_selection_rules if isinstance(self._model_selection_rules, dict) else {}
-        defaults = rules.get("defaults", {}) if isinstance(rules.get("defaults"), dict) else {}
-
-        include = set(defaults.get("include", []))
-        exclude = set(defaults.get("exclude", []))
-        blocking_flags: Dict[str, List[str]] = {}
-
-        def _merge_blocking(rule_blocking: Optional[Dict[str, Any]]) -> None:
-            if not isinstance(rule_blocking, dict):
-                return
-            for flag, models in rule_blocking.items():
-                if not isinstance(models, (list, tuple)):
-                    continue
-                existing = blocking_flags.setdefault(flag.upper(), [])
-                existing.extend(str(model) for model in models)
-
-        _merge_blocking(defaults.get("blocking_flags"))
-
-        archetype_rules = rules.get("archetypes", {}) if isinstance(rules.get("archetypes"), dict) else {}
-        primary = profile.primary_archetype.name.lower() if profile.primary_archetype else None
-        if primary and archetype_rules.get(primary):
-            rule = archetype_rules[primary] or {}
-            include.update(rule.get("include", []))
-            exclude.update(rule.get("exclude", []))
-            _merge_blocking(rule.get("blocking_flags"))
-
-            secondary_rules = rule.get("secondary") if isinstance(rule.get("secondary"), dict) else {}
-            secondary = profile.secondary_archetype.name.lower() if profile.secondary_archetype else None
-            if secondary and secondary in secondary_rules:
-                sec_rule = secondary_rules[secondary] or {}
-                include.update(sec_rule.get("include", []))
-                exclude.update(sec_rule.get("exclude", []))
-                _merge_blocking(sec_rule.get("blocking_flags"))
-
-        allowed = [model for model in include if model not in exclude]
-        if blocking_flags and profile.data_quality_flags:
-            active_flags = {flag.name.upper() for flag in profile.data_quality_flags}
-            for flag in active_flags:
-                blocked = blocking_flags.get(flag)
-                if not blocked:
-                    continue
-                allowed = [model for model in allowed if model not in blocked]
-
-        min_models = defaults.get("min_models")
-        if isinstance(min_models, int) and min_models > 0 and len(allowed) < min_models:
-            return None
-
-        return allowed if allowed else None
+        return select_models_for_company(profile, self._model_selection_rules)
 
     async def _generate_forecast(self, company_data: Dict, growth_analysis: Dict, symbol: str) -> Dict:
         """Generate earnings and revenue forecast"""
@@ -2351,77 +2189,13 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                 period=company_data.get("fiscal_period"),
             )
 
-        prompt = f"""
-        Generate financial forecasts based on historical data and growth analysis:
-
-        DATA QUALITY ASSESSMENT:
-        - Overall Quality: {data_quality.get("quality_grade", "Unknown")} ({_safe_fmt_pct(data_quality.get("data_quality_score", 0))})
-        - {data_quality.get("assessment", "Data quality information not available")}
-        - Core Metrics: {data_quality.get("core_metrics_populated", "N/A")} populated
-        - Consistency Issues: {", ".join(data_quality.get("consistency_issues", [])) or "None detected"}
-        {trend_context}
-
-        Historical Financials:
-        {json.dumps(self._get_historical_trend(financials), indent=2)}
-
-        Growth Analysis:
-        {json.dumps(growth_analysis, indent=2)}
-
-        Provide forecasts for next 3 years:
-        1. Revenue forecast (with growth rates)
-        2. Earnings forecast
-        3. Free cash flow forecast
-        4. Margin projections
-        5. Key assumptions
-        6. Scenario analysis (base/bull/bear)
-        7. Confidence intervals
-
-        Be realistic and consider industry trends.
-
-        IMPORTANT: Consider the data quality assessment when determining confidence levels.
-        If data quality is below 75%, flag this in your analysis and adjust confidence accordingly.
-        Lower confidence should result in wider confidence intervals.
-
-        Before generating the JSON, think step-by-step about the analysis. Put your thinking process inside <think> and </think> tags.
-
-        Return a JSON object that strictly follows the schema below (values are illustrative):
-        {{
-          "revenue_forecast": [
-            {{ "year": 2026, "revenue": 110, "growth_rate": 0.10 }},
-            {{ "year": 2027, "revenue": 121, "growth_rate": 0.10 }},
-            {{ "year": 2028, "revenue": 133, "growth_rate": 0.10 }}
-          ],
-          "earnings_forecast": [
-            {{ "year": 2026, "eps": 5.50 }},
-            {{ "year": 2027, "eps": 6.05 }},
-            {{ "year": 2028, "eps": 6.65 }}
-          ],
-          "free_cash_flow_forecast": [
-            {{ "year": 2026, "fcf": 15 }},
-            {{ "year": 2027, "fcf": 18 }},
-            {{ "year": 2028, "fcf": 21 }}
-          ],
-          "margin_projections": {{
-            "gross_margin": 0.45,
-            "operating_margin": 0.25,
-            "net_margin": 0.15
-          }},
-          "key_assumptions": [
-            "Market growth of 5% per year",
-            "Stable competitive landscape",
-            "No major economic downturns"
-          ],
-          "scenario_analysis": {{
-            "base_case": {{ "revenue_growth": 0.10, "eps": 6.65 }},
-            "bull_case": {{ "revenue_growth": 0.15, "eps": 7.50 }},
-            "bear_case": {{ "revenue_growth": 0.05, "eps": 5.80 }}
-          }},
-          "confidence_intervals": {{
-            "revenue_2028": [125, 140],
-            "eps_2028": [6.50, 7.00]
-          }}
-        }}
-        """
+        prompt = build_forecast_prompt(
+            data_quality=data_quality,
+            trend_context=trend_context,
+            historical_financials=self._get_historical_trend(financials),
+            growth_analysis=growth_analysis,
+            safe_fmt_pct=_safe_fmt_pct,
+        )
 
         # Save prompt to cache for auditing
 
@@ -2464,198 +2238,23 @@ class FundamentalAnalysisAgent(InvestmentAgent):
 
     @staticmethod
     def _coerce_float(value: Any, default: float = 0.0) -> float:
-        try:
-            return float(value)
-        except (TypeError, ValueError):
-            return default
+        return coerce_float(value, default)
 
     def _build_deterministic_forecast_payload(
         self, financials: Dict[str, Any], growth_analysis: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Build deterministic 3-year forecast payload when LLM is bypassed/unavailable."""
-        current_year = datetime.now().year
-        revenue = max(self._coerce_float(financials.get("revenue"), 0.0), 0.0)
-        net_income = max(self._coerce_float(financials.get("net_income"), 0.0), 0.0)
-        free_cash_flow = max(
-            self._coerce_float(
-                financials.get("free_cash_flow", financials.get("operating_cash_flow", 0.0)),
-                0.0,
-            ),
-            0.0,
-        )
-        shares = self._coerce_float(financials.get("shares_outstanding"), 0.0)
-        eps = net_income / shares if shares > 0 else self._coerce_float(financials.get("eps"), 0.0)
-
-        raw_growth = growth_analysis.get("revenue_growth_rate", growth_analysis.get("revenue_growth", 0.05))
-        growth = self._coerce_float(raw_growth, 0.05)
-        if abs(growth) > 1:
-            growth = growth / 100.0
-        growth = min(max(growth, -0.20), 0.30)
-
-        rev_forecast: List[Dict[str, Any]] = []
-        eps_forecast: List[Dict[str, Any]] = []
-        fcf_forecast: List[Dict[str, Any]] = []
-
-        revenue_run = revenue
-        eps_run = eps
-        fcf_run = free_cash_flow
-
-        for year_offset in range(1, 4):
-            fade = max(0.5, 1.0 - (year_offset - 1) * 0.15)
-            annual_growth = growth * fade
-
-            revenue_run *= 1 + annual_growth
-            eps_run *= 1 + annual_growth
-            fcf_run *= 1 + annual_growth
-
-            forecast_year = current_year + year_offset
-            rev_forecast.append(
-                {
-                    "year": forecast_year,
-                    "revenue": round(revenue_run, 2),
-                    "growth_rate": round(annual_growth, 4),
-                }
-            )
-            eps_forecast.append({"year": forecast_year, "eps": round(eps_run, 4)})
-            fcf_forecast.append({"year": forecast_year, "fcf": round(fcf_run, 2)})
-
-        bull_growth = min(growth + 0.03, 0.40)
-        bear_growth = max(growth - 0.03, -0.25)
-        revenue_2028 = rev_forecast[-1]["revenue"] if rev_forecast else revenue
-        eps_2028 = eps_forecast[-1]["eps"] if eps_forecast else eps
-
-        return {
-            "revenue_forecast": rev_forecast,
-            "earnings_forecast": eps_forecast,
-            "free_cash_flow_forecast": fcf_forecast,
-            "margin_projections": {
-                "gross_margin": round(self._coerce_float(financials.get("gross_margin"), 0.35), 4),
-                "operating_margin": round(self._coerce_float(financials.get("operating_margin"), 0.15), 4),
-                "net_margin": round(self._coerce_float(financials.get("net_margin"), 0.10), 4),
-            },
-            "key_assumptions": [
-                "Deterministic forecast mode enabled",
-                "Growth rate derived from existing growth analysis inputs",
-                "Linear fade applied to avoid over-extrapolation",
-            ],
-            "scenario_analysis": {
-                "base_case": {
-                    "revenue_growth": round(growth, 4),
-                    "eps": round(eps_2028, 4),
-                },
-                "bull_case": {
-                    "revenue_growth": round(bull_growth, 4),
-                    "eps": round(eps_2028 * (1 + max(bull_growth - growth, 0)), 4),
-                },
-                "bear_case": {
-                    "revenue_growth": round(bear_growth, 4),
-                    "eps": round(eps_2028 * (1 - max(growth - bear_growth, 0)), 4),
-                },
-            },
-            "confidence_intervals": {
-                "revenue_2028": [
-                    round(revenue_2028 * 0.9, 2),
-                    round(revenue_2028 * 1.1, 2),
-                ],
-                "eps_2028": [round(eps_2028 * 0.9, 4), round(eps_2028 * 1.1, 4)],
-            },
-            "fallback_used": True,
-        }
+        return build_deterministic_forecast_payload(financials, growth_analysis)
 
     def _build_deterministic_fundamental_report_payload(self, analysis_data: Dict[str, Any]) -> Dict[str, Any]:
         """Build deterministic fundamental report payload."""
-        valuation_data = analysis_data.get("valuation", {})
-        if isinstance(valuation_data, dict) and isinstance(valuation_data.get("response"), dict):
-            valuation_data = valuation_data.get("response", {})
-        elif not isinstance(valuation_data, dict):
-            valuation_data = {}
-
-        ratios = analysis_data.get("ratios", {}) or {}
-        company_profile = analysis_data.get("company_data", {}) or {}
-        current_price = self._coerce_float(ratios.get("current_price"), 0.0)
-        fair_value = self._coerce_float(
-            valuation_data.get("fair_value_estimate")
-            or valuation_data.get("fair_value")
-            or company_profile.get("current_price")
-            or current_price,
-            0.0,
-        )
-        upside_pct = ((fair_value - current_price) / current_price) * 100 if current_price > 0 else 0.0
-
-        if upside_pct >= 15:
-            recommendation = "buy"
-        elif upside_pct <= -15:
-            recommendation = "sell"
-        else:
-            recommendation = "hold"
-
-        return {
-            "executive_summary": (
-                "Deterministic fallback used because LLM fundamental synthesis returned empty output."
-            ),
-            "investment_thesis": (
-                "Focus on valuation discipline and execution quality while monitoring cyclical risk."
-            ),
-            "financial_analysis_summary": (
-                "Core valuation and ratio inputs are available; narrative synthesis used fallback mode."
-            ),
-            "valuation_assessment": valuation_data.get("valuation_stance", "uncertain"),
-            "growth_prospects": "Moderate growth with scenario uncertainty.",
-            "risk_analysis": valuation_data.get(
-                "valuation_risks",
-                "Model divergence and macro sensitivity remain key risks.",
-            ),
-            "competitive_position": "Refer to deterministic competitive analysis output.",
-            "investment_grade": valuation_data.get("investment_grade", "B"),
-            "price_target": round(fair_value, 2),
-            "investment_recommendation": recommendation,
-            "recommendation": recommendation,
-            "key_catalysts": [
-                "Execution versus guidance",
-                "Margin stability",
-                "Cash flow resilience",
-            ],
-            "key_risks": [
-                "Valuation compression risk",
-                "Demand cyclicality",
-                "Macro regime shift",
-            ],
-            "fallback_used": True,
-        }
+        return build_deterministic_fundamental_report_payload(analysis_data)
 
     async def _calculate_quality_score(
         self, health: Dict, growth: Dict, profitability: Dict, competitive: Dict
     ) -> float:
         """Calculate overall company quality score"""
-        scores = []
-        weights = []
-
-        # Financial health score (30% weight)
-        if "overall_health_score" in health:
-            scores.append(health["overall_health_score"])
-            weights.append(0.30)
-
-        # Growth score (25% weight)
-        if "growth_score" in growth:
-            scores.append(growth["growth_score"])
-            weights.append(0.25)
-
-        # Profitability score (25% weight)
-        if "profitability_score" in profitability:
-            scores.append(profitability["profitability_score"])
-            weights.append(0.25)
-
-        # Competitive position score (20% weight)
-        if "strategic_positioning_score" in competitive:
-            scores.append(competitive["strategic_positioning_score"])
-            weights.append(0.20)
-
-        # Calculate weighted average
-        if scores and weights:
-            quality_score = sum(s * w for s, w in zip(scores, weights)) / sum(weights)
-            return float(quality_score)
-
-        return 50.0  # Default middle score
+        return calculate_quality_score(health, growth, profitability, competitive)
 
     async def _synthesize_fundamental_report(self, analysis_data: Dict) -> Dict:
         """Synthesize comprehensive fundamental analysis report"""
@@ -2686,125 +2285,31 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             self.config.ollama, "toon_agents", {}
         ).get("fundamental_analysis", False)
 
-        # Format data section (TOON or JSON)
-        if use_toon:
-            # Extract quarterly data for TOON formatting (63% token savings)
-            quarterly_data = analysis_data.get("quarterly_data", [])
-
-            if quarterly_data and isinstance(quarterly_data, list) and len(quarterly_data) > 0:
-                try:
-                    # Convert QuarterlyData objects to dicts if needed
-                    quarterly_dicts = []
-                    for q in quarterly_data:
-                        if hasattr(q, "__dict__"):
-                            quarterly_dicts.append(vars(q))
-                        elif isinstance(q, dict):
-                            quarterly_dicts.append(q)
-
-                    if quarterly_dicts:
-                        # Convert to TOON format
-                        toon_quarterly = to_toon_quarterly(quarterly_dicts)
-
-                        # Remove quarterly_data from analysis_data to avoid duplication
-                        remaining_data = {k: v for k, v in analysis_data.items() if k != "quarterly_data"}
-
-                        # Build data section with TOON quarterly + JSON for other data
-                        data_section = (
-                            f"{toon_quarterly}\n\nAdditional Analysis:\n{json.dumps(remaining_data, indent=2)[:8000]}"
-                        )
-                    else:
-                        # No valid quarterly data, fall back to JSON
-                        data_section = json.dumps(analysis_data, indent=2)[:10000]
-                except Exception as e:
-                    self.logger.warning(f"Failed to convert quarterly data to TOON for {symbol}: {e}")
-                    data_section = json.dumps(analysis_data, indent=2)[:10000]
-            else:
-                # No quarterly data, use JSON
-                data_section = json.dumps(analysis_data, indent=2)[:10000]
-        else:
-            # TOON disabled, use JSON (current behavior)
-            data_section = json.dumps(analysis_data, indent=2)[:10000]
-
-        prompt = f"""
-        Synthesize a comprehensive fundamental analysis report:
-
-        DATA QUALITY ASSESSMENT:
-        - Overall Quality: {data_quality.get("quality_grade", "Unknown")} ({_safe_fmt_pct(data_quality.get("data_quality_score", 0))})
-        - {data_quality.get("assessment", "Data quality information not available")}
-        - Core Metrics: {data_quality.get("core_metrics_populated", "N/A")} populated
-        - Market Data: {data_quality.get("market_metrics_populated", "N/A")} populated
-        - Ratio Metrics: {data_quality.get("ratio_metrics_populated", "N/A")} populated
-        - Consistency Issues: {", ".join(data_quality.get("consistency_issues", [])) or "None detected"}
-
-        DATA ENRICHMENT IMPACT (FEATURE #3):
-        - Raw Extraction Quality: {_safe_fmt_pct(data_quality.get("extraction_quality", 0))}
-        - Enhanced Quality (after enrichment): {_safe_fmt_pct(data_quality.get("data_quality_score", 0))}
-        - Quality Improvement: +{_safe_fmt_float(data_quality.get("quality_improvement", 0), 1)} points
-        - Enhancement Summary: {data_quality.get("enhancement_summary", "N/A")}
-
-        ANALYSIS CONFIDENCE LEVEL:
-        - Confidence: {confidence.get("confidence_level", "UNKNOWN")} ({confidence.get("confidence_score", 0)}/100)
-        - Rationale: {confidence.get("rationale", "No confidence assessment available")}
-        - Based on Data Quality: {confidence.get("quality_grade", "Unknown")} quality data
-
-        {data_section}
-
-        Create a structured investment report with:
-        1. Executive Summary
-        2. Investment Thesis
-        3. Financial Analysis Summary
-        4. Valuation Assessment
-        5. Growth Prospects
-        6. Risk Analysis
-        7. Competitive Position
-        8. Investment Grade (AAA to D)
-        9. Price Target (12-month)
-        10. Investment Recommendation (strong buy/buy/hold/sell/strong sell)
-        11. Key Catalysts
-        12. Key Risks
-
-        Provide clear, actionable insights for investors.
-
-        IMPORTANT: The data quality assessment above should influence your confidence levels.
-        - If data quality is Excellent/Good (≥75%): High confidence in analysis
-        - If data quality is Fair (60-75%): Moderate confidence, note data limitations
-        - If data quality is Poor/Very Poor (<60%): Low confidence, significant data concerns
-
-        Adjust your investment recommendation strength and price target confidence based on data quality.
-
-        Before generating the JSON, think step-by-step about the analysis. Put your thinking process inside <think> and </think> tags.
-
-        Return a JSON object that strictly follows the schema below (values are illustrative):
-        {{
-          "executive_summary": "The company is a market leader with strong growth prospects and a wide economic moat. The stock is currently undervalued and offers an attractive risk/reward profile.",
-          "investment_thesis": "The company is well-positioned to benefit from the secular growth in its industry. Its strong brand, network effects, and high switching costs provide a sustainable competitive advantage.",
-          "financial_analysis_summary": "The company has a strong financial profile, with a history of consistent revenue growth, expanding margins, and strong cash flow generation.",
-          "valuation_assessment": "The stock is currently trading at a discount to its intrinsic value, with a potential upside of 20% to our fair value estimate of $150.",
-          "growth_prospects": "The company has multiple growth drivers, including new product launches, expansion into new markets, and strategic acquisitions.",
-          "risk_analysis": "The main risks to our thesis are increased competition, regulatory changes, and a slowdown in the overall economy.",
-          "competitive_position": "The company has a strong competitive position, with a dominant market share and a wide economic moat.",
-          "investment_grade": "A",
-          "price_target": 150.00,
-          "investment_recommendation": "buy",
-          "key_catalysts": [
-            "Successful launch of new products",
-            "Expansion into new geographic markets"
-          ],
-          "key_risks": [
-            "Increased competition",
-            "Regulatory changes"
-          ]
-        }}
-
-        """
+        quarterly_data = analysis_data.get("quarterly_data", [])
+        data_section = build_fundamental_report_data_section(
+            analysis_data=analysis_data,
+            symbol=symbol,
+            use_toon=use_toon,
+            to_toon_quarterly=to_toon_quarterly,
+            logger=self.logger,
+        )
+        prompt = build_fundamental_report_prompt(
+            data_quality=data_quality,
+            confidence=confidence,
+            data_section=data_section,
+            safe_fmt_pct=_safe_fmt_pct,
+            safe_fmt_float=_safe_fmt_float,
+        )
 
         prompt_name = "_synthesize_fundamental_report_prompt"
         self._debug_log_prompt(prompt_name, prompt)
 
         # Build system prompt with optional TOON explanation
-        system_prompt = "You are a senior equity analyst providing investment recommendations."
-        if use_toon and quarterly_data:
-            system_prompt += "\n\n" + TOONFormatter.get_format_explanation()
+        system_prompt = build_fundamental_report_system_prompt(
+            use_toon=use_toon,
+            has_quarterly_data=bool(quarterly_data),
+            toon_format_explanation=TOONFormatter.get_format_explanation(),
+        )
 
         response = await self.ollama.generate(
             model=self.models["quality"],

@@ -281,7 +281,7 @@ class RobustValuationService:
                     symbol=symbol,
                     sector=sector,
                     metric=metric,
-                    sector_trend_adjusted=self._get_layer1_data(sector).get(metric),
+                    sector_trend_adjusted=(self._get_layer1_data(sector) or {}).get(metric),
                 )
                 if result:
                     fair_multiples[metric] = result
@@ -392,17 +392,44 @@ class RobustValuationService:
                 "data_sources": [],
             }
 
-        # Calculate weighted average fair value
-        total_weight = sum(method_weights.values())
-        weighted_fair_value = (
-            sum(
-                value * method_weights.get(f"{method.replace('_based', '')}_weight", 0)
-                for method, value in valuation_methods.items()
+        # Check for model divergence
+        divergence_analysis = self.detect_model_divergence(layer2_data)
+
+        # Calculate weighted average fair value (or use best model if divergent)
+        if divergence_analysis["is_divergent"]:
+            # Use highest confidence model instead of blended
+            recommended_model = divergence_analysis["recommended_model"]
+            if recommended_model and recommended_model in layer2_data:
+                weighted_fair_value = layer2_data[recommended_model].final_fair_multiple
+                # Need to multiply by appropriate per-share metric
+                if recommended_model == "pe" and eps:
+                    weighted_fair_value *= eps
+                elif recommended_model == "ps" and revenue_per_share:
+                    weighted_fair_value *= revenue_per_share
+                elif recommended_model == "pb" and book_value_per_share:
+                    weighted_fair_value *= book_value_per_share
+                else:
+                    # Fallback to min of methods if can't calculate
+                    weighted_fair_value = min(valuation_methods.values())
+
+                logger.info(
+                    f"{symbol}: Models divergent, using {recommended_model.upper()}: ${weighted_fair_value:.2f}"
+                )
+            else:
+                # Fallback to min of methods
+                weighted_fair_value = min(valuation_methods.values())
+        else:
+            # Use weighted average as normal
+            total_weight = sum(method_weights.values())
+            weighted_fair_value = (
+                sum(
+                    value * method_weights.get(f"{method.replace('_based', '')}_weight", 0)
+                    for method, value in valuation_methods.items()
+                )
+                / total_weight
+                if total_weight > 0
+                else 0.0
             )
-            / total_weight
-            if total_weight > 0
-            else 0.0
-        )
 
         # Calculate range (min to max of methods)
         fair_values = list(valuation_methods.values())
@@ -421,8 +448,8 @@ class RobustValuationService:
         # Determine recommendation
         recommendation = self._determine_recommendation(upside_downside_pct, overall_confidence)
 
-        # Collect signals
-        signals = self._collect_signals(layer2_data, layer3_data, overall_confidence)
+        # Collect signals (include divergence analysis)
+        signals = self._collect_signals(layer2_data, layer3_data, overall_confidence, divergence_analysis)
 
         return {
             "fair_value_estimate": round(weighted_fair_value, 2),
@@ -503,6 +530,7 @@ class RobustValuationService:
         layer2_data: Dict[str, FairMultipleResult],
         layer3_data: Dict[str, PeerComparisonResult],
         confidence: str,
+        divergence_analysis: Optional[Dict[str, Any]] = None,
     ) -> List[str]:
         """Collect all signals from analysis.
 
@@ -528,10 +556,255 @@ class RobustValuationService:
             if status in ["cheap", "expensive"]:
                 signals.append(f"{metric.upper()} vs peers: {status.upper()}")
 
+        # Divergence warning
+        if divergence_analysis and divergence_analysis.get("is_divergent"):
+            divergent_models = divergence_analysis.get("divergent_models", [])
+            recommended = divergence_analysis.get("recommended_model", "").upper()
+            signals.append(f"MODEL DIVERGENCE: {', '.join(divergent_models)}")
+            signals.append(f"Using {recommended} model (highest confidence)")
+
         # Confidence signal
         signals.append(f"Overall confidence: {confidence}")
 
         return signals
+
+    def detect_stock_split(
+        self,
+        symbol: str,
+        current_price: float,
+        fair_value: float,
+        model_agreement_score: float = 0.0,
+    ) -> Dict[str, Any]:
+        """Detect if a stock split has occurred but fair values weren't adjusted.
+
+        Red flags:
+        - Fair value > 3x current price
+        - High model agreement (>0.7)
+        - Large cap company
+
+        Args:
+            symbol: Stock symbol
+            current_price: Current trading price
+            fair_value: Calculated fair value
+            model_agreement_score: Model agreement score (0-1)
+
+        Returns:
+            Dict with detection results
+        """
+        result = {
+            "symbol": symbol.upper(),
+            "is_split_detected": False,
+            "implied_split_ratio": None,
+            "likely_split": None,
+            "confidence": "LOW",
+        }
+
+        if current_price <= 0 or fair_value <= 0:
+            return result
+
+        ratio = fair_value / current_price
+
+        # High model agreement + high ratio = likely stock split
+        if ratio > 3 and model_agreement_score >= 0.7:
+            # Check if it's a known common split ratio
+            common_splits = {
+                2: "2:1",
+                3: "3:1",
+                4: "4:1",
+                5: "5:1",
+                7: "7:1",
+                10: "10:1",
+            }
+
+            for split_ratio, split_name in common_splits.items():
+                if abs(ratio - split_ratio) / split_ratio < 0.25:  # Within 25%
+                    result["is_split_detected"] = True
+                    result["implied_split_ratio"] = round(ratio, 2)
+                    result["likely_split"] = split_name
+                    result["confidence"] = "HIGH"
+
+                    logger.warning(
+                        f"{symbol}: Possible {split_name} stock split detected! "
+                        f"Price=${current_price:.2f}, FV=${fair_value:.2f}, ratio={ratio:.2f}x"
+                    )
+                    return result
+
+            # High ratio but not common split
+            if ratio >= 3:
+                result["is_split_detected"] = True
+                result["implied_split_ratio"] = round(ratio, 2)
+                result["likely_split"] = f"{round(ratio)}:1 (unusual)"
+                result["confidence"] = "MEDIUM"
+
+                logger.warning(
+                    f"{symbol}: Unusual stock split ratio detected! "
+                    f"Price=${current_price:.2f}, FV=${fair_value:.2f}, ratio={ratio:.2f}x"
+                )
+
+        return result
+
+    def validate_revenue_data(
+        self,
+        symbol: str,
+        revenue_per_share: float,
+        mkt_cap: float,
+        industry: Optional[str] = None,
+        sector: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Validate revenue data before using in models.
+
+        Sanity checks:
+        - REITs: mkt_cap / revenue shouldn't be > 500x
+        - Mining: revenue should align with production
+        - SaaS: revenue should be positive and growing
+
+        Args:
+            symbol: Stock symbol
+            revenue_per_share: TTM revenue per share
+            mkt_cap: Market capitalization
+            industry: Industry name
+            sector: Sector name
+
+        Returns:
+            Dict with validation results
+        """
+        warnings: List[str] = []
+        recommendations: List[str] = []
+        result: Dict[str, Any] = {
+            "symbol": symbol.upper(),
+            "is_valid": True,
+            "ps_ratio": None,
+            "warnings": warnings,
+            "recommendations": recommendations,
+        }
+
+        if revenue_per_share <= 0:
+            result["is_valid"] = False
+            warnings.append("Revenue per share is zero or negative")
+            return result
+
+        # Calculate P/S ratio
+        ps_ratio = mkt_cap / revenue_per_share if revenue_per_share > 0 else float("inf")
+        result["ps_ratio"] = round(ps_ratio, 2)
+
+        # Industry-specific validation
+        industry_lower = (industry or "").lower()
+        sector_lower = (sector or "").lower()
+
+        # REITs validation
+        if "real estate" in industry_lower or "reit" in industry_lower:
+            if ps_ratio > 500:
+                result["is_valid"] = False
+                warnings.append(
+                    f"Suspicious P/S ratio {ps_ratio:.1f} for REIT. Revenue data may be dividends instead of revenue."
+                )
+                recommendations.append("Use AFFO (Adjusted Funds From Operations) instead of revenue for REITs")
+
+        # Mining/Materials validation
+        elif "mining" in industry_lower or "materials" in sector_lower:
+            if ps_ratio > 100:
+                result["is_valid"] = False
+                warnings.append(
+                    f"Suspicious P/S ratio {ps_ratio:.1f} for miner. Revenue data may be incomplete or timing mismatch."
+                )
+
+        # Financials validation
+        elif "financial" in sector_lower or "bank" in industry_lower:
+            if ps_ratio > 50:
+                warnings.append(f"High P/S ratio {ps_ratio:.1f} for financial. Consider using P/B or P/E instead.")
+
+        # General sanity check for all industries
+        if ps_ratio > 1000:
+            result["is_valid"] = False
+            warnings.append(
+                f"Extremely high P/S ratio {ps_ratio:.1f}. Revenue data is likely incorrect or scaled wrong."
+            )
+
+        if warnings:
+            logger.warning(f"{symbol}: Revenue validation issues - {'; '.join(warnings)}")
+
+        return result
+
+    def detect_model_divergence(
+        self,
+        layer2_data: Dict[str, FairMultipleResult],
+    ) -> Dict[str, Any]:
+        """Detect when valuation models diverge significantly.
+
+        When models disagree, blended average is unreliable.
+
+        Args:
+            layer2_data: Dict of fair multiple results by metric
+
+        Returns:
+            Dict with divergence analysis
+        """
+        divergent_models: List[str] = []
+        result: Dict[str, Any] = {
+            "is_divergent": False,
+            "dispersion_score": None,
+            "divergent_models": divergent_models,
+            "recommended_model": None,
+            "recommendation": "Use blended average",
+        }
+
+        if not layer2_data or len(layer2_data) < 2:
+            return result
+
+        # Calculate z-scores for each model's fair multiple
+        fair_multiples = [m.final_fair_multiple for m in layer2_data.values() if m.final_fair_multiple]
+
+        if len(fair_multiples) < 2:
+            return result
+
+        # Calculate dispersion (max - min)
+        import statistics
+
+        dispersion = max(fair_multiples) - min(fair_multiples)
+        result["dispersion_score"] = round(dispersion, 2)
+
+        mean_multiple = statistics.mean(fair_multiples)
+        if len(fair_multiples) > 2:
+            try:
+                std_dev = statistics.stdev(fair_multiples)
+                cv = std_dev / mean_multiple if mean_multiple > 0 else float("inf")
+            except statistics.StatisticsError:
+                cv = 0.0
+        else:
+            cv = 0.0
+
+        # Check if dispersion is too high (>2x mean or >50% CV)
+        if dispersion > mean_multiple * 2 or cv > 0.5:
+            result["is_divergent"] = True
+            result["recommendation"] = "Use highest confidence model instead of blended"
+
+            # Find model with highest confidence
+            best_metric = None
+            best_confidence_score = 0
+
+            confidence_ranks = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
+
+            for metric, fair_multiple_result in layer2_data.items():
+                conf_score = confidence_ranks.get(fair_multiple_result.confidence, 0)
+                if conf_score > best_confidence_score:
+                    best_confidence_score = conf_score
+                    best_metric = metric
+
+            result["recommended_model"] = best_metric
+
+            # Find divergent models (>1.5x from mean)
+            for metric, fair_multiple_result in layer2_data.items():
+                multiple = fair_multiple_result.final_fair_multiple
+                if multiple and mean_multiple > 0:
+                    ratio = multiple / mean_multiple
+                    if ratio > 1.5 or ratio < 0.67:
+                        divergent_models.append(f"{metric.upper()} ({ratio:.1f}x)")
+
+            logger.warning(
+                f"Model divergence detected! Dispersion: {dispersion:.2f}, CV: {cv:.2f}, Divergent: {divergent_models}"
+            )
+
+        return result
 
     def generate_comprehensive_report(
         self,
@@ -578,7 +851,9 @@ class RobustValuationService:
             }
 
         # Build report
-        report = {
+        layer2_formatted: Dict[str, Any] = {}
+        layer3_formatted: Dict[str, Any] = {}
+        report: Dict[str, Any] = {
             "symbol": valuation.symbol,
             "sector": valuation.sector,
             "industry": valuation.industry,
@@ -592,8 +867,8 @@ class RobustValuationService:
                 "upside_downside_pct": valuation.upside_downside_pct,
             },
             "layer1_sector_multiples": valuation.layer1_sector_multiples,
-            "layer2_fair_multiples": {},
-            "layer3_peer_comparison": {},
+            "layer2_fair_multiples": layer2_formatted,
+            "layer3_peer_comparison": layer3_formatted,
             "valuation_methods": valuation.valuation_methods,
             "method_weights": valuation.method_weights,
             "signals": valuation.signals,
@@ -602,7 +877,7 @@ class RobustValuationService:
 
         # Format Layer 2 data
         for metric, result in valuation.layer2_fair_multiples.items():
-            report["layer2_fair_multiples"][metric] = {
+            layer2_formatted[metric] = {
                 "final_fair_multiple": result.final_fair_multiple,
                 "sector_baseline": result.sector_baseline,
                 "company_historical_premium": result.company_historical_premium,
@@ -613,7 +888,7 @@ class RobustValuationService:
 
         # Format Layer 3 data
         for metric, result in valuation.layer3_peer_comparison.items():
-            report["layer3_peer_comparison"][metric] = {
+            layer3_formatted[metric] = {
                 "company_multiple": result.company_multiple,
                 "peer_median": result.peer_median,
                 "percentile_rank": result.percentile_rank,

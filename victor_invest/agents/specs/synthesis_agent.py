@@ -18,7 +18,7 @@ Defines the agent responsible for combining multiple analysis
 streams into actionable investment recommendations.
 """
 
-from victor.agent.specs.models import (
+from victor.framework.extensions import (
     AgentCapabilities,
     AgentConstraints,
     AgentSpec,

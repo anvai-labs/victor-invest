@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, Dict, List
 
 
@@ -140,3 +141,111 @@ def extract_catalysts(ai_recommendation: Dict[str, Any]) -> List[str]:
                     catalysts.append(cat)
 
     return catalysts or ai_recommendation.get("catalysts", [])
+
+
+def create_fallback_recommendation(
+    raw_response: Any,
+    symbol: str,
+    overall_score: float,
+    logger: Any,
+) -> Dict[str, Any]:
+    """Create a conservative fallback recommendation when response parsing fails."""
+    try:
+        response_text = str(raw_response) if raw_response else ""
+
+        recommendation = "HOLD"
+        rec_patterns = [
+            r'recommendation["\']?\s*:\s*["\']?(STRONG_BUY|STRONG_SELL|BUY|SELL|HOLD)["\']?',
+            r"FINAL\s+RECOMMENDATION[:\s]*\*?\*?\s*\[?([A-Z\s]+)\]?",
+            r'"recommendation":\s*"([^"]+)"',
+        ]
+        for pattern in rec_patterns:
+            match = re.search(pattern, response_text, re.IGNORECASE)
+            if match:
+                rec_text = match.group(1).strip().upper()
+                if any(valid in rec_text for valid in ["BUY", "SELL", "HOLD"]):
+                    recommendation = rec_text
+                    break
+
+        confidence = "LOW"
+        conf_patterns = [
+            r'confidence["\']?\s*:\s*["\']?(HIGH|MEDIUM|LOW)["\']?',
+            r'"confidence_level":\s*"([^"]+)"',
+        ]
+        for pattern in conf_patterns:
+            match = re.search(pattern, response_text, re.IGNORECASE)
+            if match:
+                confidence = match.group(1).strip().upper()
+                break
+
+        thesis = f"Analysis completed for {symbol} with computed overall score of {overall_score:.1f}/10."
+        thesis_patterns = [
+            r'investment_thesis["\']?\s*:\s*["\']([^"\']+)["\']',
+            r'thesis["\']?\s*:\s*["\']([^"\']+)["\']',
+            r"INVESTMENT\s+THESIS[:\s]*([^{}\[\]]+?)(?=\*\*|##|\n\n|$)",
+        ]
+        for pattern in thesis_patterns:
+            match = re.search(pattern, response_text, re.IGNORECASE | re.DOTALL)
+            if match:
+                extracted_thesis = match.group(1).strip()
+                if len(extracted_thesis) > 20:
+                    thesis = extracted_thesis[:500]
+                    break
+
+        fallback_recommendation = {
+            "overall_score": overall_score,
+            "fundamental_score": overall_score,
+            "technical_score": overall_score,
+            "investment_recommendation": {
+                "recommendation": recommendation,
+                "confidence_level": confidence,
+            },
+            "executive_summary": {"investment_thesis": thesis},
+            "key_catalysts": [
+                f"Technical and fundamental analysis for {symbol}",
+                "Market position assessment",
+                "Financial performance review",
+            ],
+            "key_risks": [
+                "JSON parsing failure indicates potential data quality issues",
+                "LLM response formatting problems",
+                "Analysis may be incomplete due to parsing errors",
+            ],
+            "position_size": "SMALL",
+            "time_horizon": "MEDIUM-TERM",
+            "entry_strategy": "Conservative approach recommended due to analysis parsing issues",
+            "exit_strategy": "Monitor for improved data quality and re-analyze",
+            "details": (
+                "Fallback recommendation created due to JSON parsing failure. "
+                f"Raw response length: {len(response_text)} characters."
+            ),
+            "_fallback_created": True,
+            "_parsing_error": True,
+        }
+
+        logger.info(f"Created fallback recommendation for {symbol}: {recommendation} (confidence: {confidence})")
+        return fallback_recommendation
+    except Exception as exc:
+        logger.error(f"Error creating fallback recommendation: {exc}")
+        return {
+            "overall_score": 5.0,
+            "fundamental_score": 5.0,
+            "technical_score": 5.0,
+            "investment_recommendation": {
+                "recommendation": "HOLD",
+                "confidence_level": "LOW",
+            },
+            "executive_summary": {
+                "investment_thesis": f"Unable to complete analysis for {symbol} due to processing errors."
+            },
+            "key_catalysts": ["Analysis pending"],
+            "key_risks": ["Analysis incomplete", "Data processing errors"],
+            "position_size": "AVOID",
+            "time_horizon": "UNKNOWN",
+            "entry_strategy": "Wait for successful analysis",
+            "exit_strategy": "Not applicable",
+            "details": "Emergency fallback due to complete parsing failure",
+            "_fallback_created": True,
+            "_parsing_error": True,
+            "_emergency_fallback": True,
+        }

@@ -18,7 +18,7 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import click
 from rich.console import Console
@@ -55,7 +55,7 @@ def _get_ollama_base_url() -> str:
         config = get_config()
         base_url = getattr(config.ollama, "base_url", None)
         if base_url:
-            return base_url
+            return str(base_url)
     except Exception:
         pass
     return os.getenv("OLLAMA_URL") or os.getenv("OLLAMA_BASE_URL") or "http://localhost:11434"
@@ -105,7 +105,7 @@ def _display_provider_info(provider: Optional[str], model: Optional[str]) -> tup
 
 
 async def _create_workflow_executor(provider: Optional[str], model: Optional[str], timeout: float):
-    from victor.workflows.executor import WorkflowExecutor
+    from victor.framework.extensions import WorkflowExecutor
 
     from victor_invest.workflows import ensure_handlers_registered
 
@@ -996,7 +996,7 @@ async def _run_analysis(
                     "llm_provider": provider,  # Pass provider for LLM synthesis
                     "llm_model": model,  # Pass model for LLM synthesis
                 },
-                provider=provider,
+                provider=provider or "openai",
                 model=model,
                 timeout=timeout,
             )
@@ -1080,7 +1080,7 @@ async def _run_analysis(
             traceback.print_exc()
 
 
-def _convert_state_to_agent_format(state: AnalysisWorkflowState) -> dict:  # type: ignore
+def _convert_state_to_agent_format(state: AnalysisWorkflowState) -> dict[str, Any]:
     """Convert AnalysisWorkflowState to agent orchestrator format for compact output.
 
     This function uses the shared converter module to ensure consistency
@@ -1094,7 +1094,7 @@ def _convert_state_to_agent_format(state: AnalysisWorkflowState) -> dict:  # typ
     """
     from investigator.application import convert_victor_state_to_agent_format
 
-    return convert_victor_state_to_agent_format(state)
+    return convert_victor_state_to_agent_format(state)  # type: ignore[no-any-return]
 
 
 def _display_results(result, symbol: str, detail: str = "standard"):

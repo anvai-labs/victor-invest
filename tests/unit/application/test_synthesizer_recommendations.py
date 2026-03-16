@@ -10,6 +10,7 @@ Methods tested:
 - _calculate_price_target
 - _extract_position_size
 - _extract_catalysts
+- _create_fallback_recommendation
 
 Author: InvestiGator Team
 Date: 2025-01-05
@@ -32,6 +33,7 @@ def mock_synthesizer():
     mock._calculate_price_target = InvestmentSynthesizer._calculate_price_target.__get__(mock)
     mock._extract_position_size = InvestmentSynthesizer._extract_position_size.__get__(mock)
     mock._extract_catalysts = InvestmentSynthesizer._extract_catalysts.__get__(mock)
+    mock._create_fallback_recommendation = InvestmentSynthesizer._create_fallback_recommendation.__get__(mock)
 
     # Mock logger
     mock.main_logger = MagicMock()
@@ -271,3 +273,21 @@ class TestExtractCatalysts:
         result = mock_synthesizer._extract_catalysts({})
 
         assert result == []
+
+
+class TestCreateFallbackRecommendation:
+    """Tests for _create_fallback_recommendation method."""
+
+    def test_extracts_recommendation_and_confidence_from_partial_response(self, mock_synthesizer):
+        """Should preserve partial recommendation data when JSON parsing fails."""
+        raw_response = """
+        {"recommendation": "SELL", "confidence_level": "MEDIUM"}
+        INVESTMENT THESIS: Demand is weakening and valuation remains too high to absorb misses.
+        """
+
+        result = mock_synthesizer._create_fallback_recommendation(raw_response, "TSLA", 3.2)
+
+        assert result["investment_recommendation"]["recommendation"] == "SELL"
+        assert result["investment_recommendation"]["confidence_level"] == "MEDIUM"
+        assert "Demand is weakening" in result["executive_summary"]["investment_thesis"]
+        assert result["_fallback_created"] is True

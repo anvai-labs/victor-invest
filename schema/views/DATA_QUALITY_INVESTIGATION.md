@@ -91,9 +91,143 @@ Divergence Flag: true
 
 ---
 
-## Pipeline Fixes Needed
+## Pipeline Fixes Implemented
 
-### Priority 1: Stock Split Detection & Handling
+### Priority 1: Stock Split Detection & Handling ✅
+
+**Status**: IMPLEMENTED in `src/investigator/domain/services/robust_valuation_service.py`
+
+**Method**: `RobustValuationService.detect_stock_split()`
+
+**Implementation**:
+```python
+def detect_stock_split(
+    self,
+    symbol: str,
+    current_price: float,
+    fair_value: float,
+    model_agreement_score: float = 0.0,
+) -> Dict[str, Any]:
+    """Detect if a stock split has occurred but fair values weren't adjusted."""
+```
+
+**Detection Logic**:
+- Fair value > 3x current price
+- High model agreement (≥0.7)
+- Matches common split ratios (2:1, 3:1, 4:1, 5:1, 7:1, 10:1)
+- Returns detected flag, implied split ratio, and confidence level
+
+**Integration**: Available in `robust_valuation_service.py` for use in valuation pipeline
+
+---
+
+### Priority 2: Revenue Data Validation ✅
+
+**Status**: IMPLEMENTED in `src/investigator/domain/services/robust_valuation_service.py`
+
+**Method**: `RobustValuationService.validate_revenue_data()`
+
+**Implementation**:
+```python
+def validate_revenue_data(
+    self,
+    symbol: str,
+    revenue_per_share: float,
+    mkt_cap: float,
+    industry: Optional[str] = None,
+    sector: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Validate revenue data before using in models."""
+```
+
+**Validation Rules**:
+- **REITs**: Reject if P/S > 500 (revenue likely dividends, not actual revenue)
+- **Mining/Materials**: Reject if P/S > 100 (timing/recognition issues)
+- **Financials**: Warn if P/S > 50 (recommend P/B or P/E instead)
+- **All industries**: Reject if P/S > 1000 (data likely incorrect)
+
+**Return Value**: Dict with `is_valid` flag, `ps_ratio`, `warnings`, and `recommendations`
+
+---
+
+### Priority 3: Divergent Model Handling ✅
+
+**Status**: IMPLEMENTED in `src/investigator/domain/services/robust_valuation_service.py`
+
+**Method**: `RobustValuationService.detect_model_divergence()`
+
+**Implementation**:
+```python
+def detect_model_divergence(
+    self,
+    layer2_data: Dict[str, FairMultipleResult],
+) -> Dict[str, Any]:
+    """Detect when valuation models diverge significantly."""
+```
+
+**Divergence Detection**:
+- Dispersion > 2x mean
+- Coefficient of variation > 0.5
+- Returns divergent flag, dispersion score, and recommended model
+
+**Synthesis Update**: `_synthesize_layers()` now:
+1. Checks for divergence before using blended average
+2. Uses highest confidence model when divergent
+3. Adds divergence warnings to signals
+4. Logs which model was selected
+
+---
+
+### Priority 4: Stale Data Detection & Refresh ✅
+
+**Status**: IMPLEMENTED as `scripts/refresh_stale_analysis.py`
+
+**Features**:
+- Detects stale analysis (>60 days old by default)
+- Detects extreme valuations (200%+ upside or < -90%)
+- Detects model divergence flags
+- Detects potential stock splits
+- Runs victor-invest analyze to refresh problematic symbols
+
+**Usage**:
+```bash
+# Detect all issues
+python scripts/refresh_stale_analysis.py --category all --stale-days 60 --dry-run
+
+# Refresh specific category
+python scripts/refresh_stale_analysis.py --category splits --mode comprehensive --parallel 4
+
+# Refresh specific symbols
+python scripts/refresh_stale_analysis.py --symbols NFLX CPT --mode standard
+```
+
+**Categories**:
+- `all`: All categories combined
+- `stale`: Analysis older than --stale-days
+- `extreme`: Extreme valuations (200%+ upside/down)
+- `divergence`: Model divergence flags
+- `splits`: Potential stock splits
+
+---
+
+## Additional Pipeline Fixes Needed
+
+### Priority 5: Industry-Specific Valuation Models
+
+**Status**: NOT YET IMPLEMENTED
+
+**Required Changes**:
+- **REITs**: Use AFFO instead of FCF, P/AFFO instead of P/E
+- **Banks**: Use P/B and P/E, don't use P/S (revenue is interest income)
+- **Insurance**: Use P/B and combined ratio
+- **Mining**: Use EV/Resource or NAV per share
+- **SaaS**: Rule of 40 scoring, P/GM (price to gross margin)
+
+**Implementation Location**: Add to `src/investigator/domain/services/valuation/` sector-specific models
+
+---
+
+### Priority 6: Data Quality Filters in Views
 
 ```python
 # src/investigator/domain/services/robust_valuation_service.py
@@ -231,9 +365,9 @@ def check_data_freshness(symbol: str) -> dict:
 
 ---
 
-### Priority 5: Data Quality Filters in Views
+### Priority 6: Data Quality Filters in Views ✅
 
-**Already Implemented** ✅ in `01_investment_opportunities_view.sql`:
+**Status**: ALREADY IMPLEMENTED in `01_investment_opportunities_view.sql`
 
 ```sql
 -- Filter out extreme outliers
@@ -249,12 +383,41 @@ WHERE (s.fair_value_blended IS NULL
 
 ---
 
-## Immediate Actions Required
+## Implementation Summary
 
-### 1. Run SEC Data Refresh for Problem Symbols
+| Priority | Fix | Status | File |
+|----------|-----|--------|------|
+| 1 | Stock Split Detection | ✅ DONE | `robust_valuation_service.py:564` |
+| 2 | Revenue Data Validation | ✅ DONE | `robust_valuation_service.py:633` |
+| 3 | Model Divergence Handling | ✅ DONE | `robust_valuation_service.py:713` |
+| 4 | Stale Data Refresh Script | ✅ DONE | `scripts/refresh_stale_analysis.py` |
+| 5 | Industry-Specific Models | TODO | `domain/services/valuation/` |
+| 6 | View Data Quality Filters | ✅ DONE | `01_investment_opportunities_view.sql` |
+
+---
+
+## Recommended Actions
+
+### 1. Run Stale Analysis Refresh Script
 
 ```bash
-# Refresh SEC data and re-run valuation for symbols with extreme upside
+# Detect all issues (dry run)
+python scripts/refresh_stale_analysis.py --category all --stale-days 60 --dry-run
+
+# Refresh symbols with extreme valuations
+python scripts/refresh_stale_analysis.py --category extreme --mode comprehensive --parallel 4
+
+# Refresh potential stock splits
+python scripts/refresh_stale_analysis.py --category splits --mode standard
+
+# Refresh specific problematic symbols
+python scripts/refresh_stale_analysis.py --symbols CPT GLPI NTNX GOLD NFLX --mode comprehensive
+```
+
+### 2. Run SEC Polling with Analysis
+
+```bash
+# Refresh SEC data and run analysis for specific symbols
 python scripts/poll_sec_filings.py --symbol CPT --symbol GLPI --symbol NTNX \
     --symbol GOLD --symbol NFLX --analyze --mode comprehensive
 ```
@@ -274,15 +437,16 @@ Create a watchlist for symbols that need investigation:
 
 ### 3. Update Valuation Models
 
-**Add special handling for REITs**:
+**Add special handling for REITs** (TODO):
 - Use FCF instead of revenue for P/S
 - Use AFFO (Adjusted Funds From Operations) instead of FCF
 - P/AFFO instead of P/E
 
-**Add stock split detection**:
-- Check for split announcements in SEC filings
-- Auto-detect based on price/volume patterns
-- Flag when price drops >50% with no fundamental change
+**Stock split detection** (✅ DONE):
+- Implemented in `robust_valuation_service.py:detect_stock_split()`
+- Detects common split ratios (2:1, 3:1, 4:1, 5:1, 7:1, 10:1)
+- Returns implied split ratio and confidence level
+- Available for use in valuation pipeline
 
 ---
 

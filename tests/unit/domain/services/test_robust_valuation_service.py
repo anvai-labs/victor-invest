@@ -560,7 +560,7 @@ class TestSynthesis:
         assert "pb_based" in synthesis["valuation_methods"]
         assert len(synthesis["valuation_methods"]) == 3
         assert synthesis["fair_value_estimate"] > 0
-        assert synthesis["fair_value_range"][0] < synthesis["fair_value_estimate"] < synthesis["fair_value_range"][1]
+        assert synthesis["fair_value_range"][0] <= synthesis["fair_value_estimate"] <= synthesis["fair_value_range"][1]
 
     def test_synthesize_layers_insufficient_data(self, valuation_service):
         """Test synthesis with insufficient data."""

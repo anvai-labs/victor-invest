@@ -128,3 +128,28 @@ def test_build_deterministic_fundamental_report_payload_derives_recommendation()
     assert buy_payload["investment_recommendation"] == "buy"
     assert sell_payload["investment_recommendation"] == "sell"
     assert buy_payload["fallback_used"] is True
+
+
+@pytest.mark.asyncio
+async def test_calculate_quality_score_delegates_to_helper():
+    agent = MagicMock(spec=FundamentalAnalysisAgent)
+    agent._calculate_quality_score = FundamentalAnalysisAgent._calculate_quality_score.__get__(agent)
+
+    with patch(
+        "investigator.domain.agents.fundamental.agent.calculate_quality_score",
+        return_value=77.5,
+    ) as helper:
+        result = await agent._calculate_quality_score(
+            {"overall_health_score": 80},
+            {"growth_score": 70},
+            {"profitability_score": 90},
+            {"strategic_positioning_score": 60},
+        )
+
+    assert result == 77.5
+    helper.assert_called_once_with(
+        {"overall_health_score": 80},
+        {"growth_score": 70},
+        {"profitability_score": 90},
+        {"strategic_positioning_score": 60},
+    )

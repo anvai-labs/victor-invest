@@ -11,7 +11,7 @@ import inspect
 from dataclasses import is_dataclass
 
 from victor.framework.workflows.base_handler import BaseHandler
-from victor.workflows.executor import WorkflowContext
+from victor.framework.extensions import WorkflowContext
 
 
 class MockNode:
@@ -139,9 +139,7 @@ async def test_comprehensive():
         except Exception as e:
             error_type = type(e).__name__
             if "ModuleNotFoundError" in str(e) or "Database" in str(e):
-                print(
-                    f"⚠ {handler_name}: Infrastructure error (expected) - {error_type}"
-                )
+                print(f"⚠ {handler_name}: Infrastructure error (expected) - {error_type}")
             else:
                 print(f"✗ {handler_name}: {error_type}: {str(e)[:80]}")
 

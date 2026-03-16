@@ -255,20 +255,29 @@ Format:
 ### Core Endpoints
 
 ```
-GET  /api/health                     # Health check
-POST /api/analyze/{symbol}          # Run analysis
-POST /api/batch                     # Batch analysis
-GET  /api/analysis/{symbol}/latest  # Get result
+GET  /health                        # Health check
+POST /analyze/{symbol}              # Run analysis
+POST /batch                         # Batch analysis
+GET  /batch/{job_id}                # Batch status
+
+# Compatibility aliases
+GET  /api/health
+POST /api/analyze/{symbol}
+POST /api/batch
 ```
 
 ### Web UI Endpoints
 
 ```
-GET  /ui/api/analysis/{symbol}/latest   # Load from UI cache
-POST /ui/api/analysis/{symbol}/refresh # Refresh analysis
-GET  /ui/api/rankings                  # Rankings
-GET  /ui/api/history                   # Recent analyses
-POST /ui/api/compare                   # Compare symbols
+GET  /ui/api/health                     # UI-oriented health payload
+GET  /ui/api/analysis/{symbol}/latest   # Load latest cached analysis
+GET  /ui/api/analysis/{symbol}/history  # Symbol history rows
+POST /ui/api/analysis/{symbol}/refresh  # Refresh analysis
+GET  /ui/api/chart/{symbol}             # Chart data
+GET  /ui/api/predictions/{symbol}       # RL prediction history
+GET  /ui/api/rankings                   # Rankings
+GET  /ui/api/history                    # Recent analyses
+GET  /ui/api/search                     # Symbol lookup
 ```
 
 ---
