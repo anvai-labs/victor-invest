@@ -141,15 +141,15 @@ from .valuation_orchestrator import (
     run_multi_model_blending,
     run_sector_and_dcf,
 )
-from .valuation_synthesis import (
-    build_models_detail_lines,
-    build_valuation_synthesis_prompt,
-)
 from .valuation_selection import (
     calculate_enterprise_value,
     load_model_selection_rules,
     lookup_sector_multiple,
     select_models_for_company,
+)
+from .valuation_synthesis import (
+    build_models_detail_lines,
+    build_valuation_synthesis_prompt,
 )
 from .valuation_weighting import resolve_fallback_weights
 

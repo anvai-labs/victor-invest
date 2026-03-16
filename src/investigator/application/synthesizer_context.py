@@ -6,7 +6,6 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-
 UNKNOWN_SECTOR_CONTEXT = "Unknown Sector - Requires Research"
 DEFAULT_MARKET_ENVIRONMENT_CONTEXT = (
     "Mixed signals with elevated volatility, Fed policy uncertainty, and sector rotation dynamics"

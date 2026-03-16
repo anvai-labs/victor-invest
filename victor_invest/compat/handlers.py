@@ -12,8 +12,8 @@ import time
 from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar
 
 if TYPE_CHECKING:
-    from victor.tools.registry import ToolRegistry
     from victor.framework.extensions import ComputeNode, WorkflowContext
+    from victor.tools.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
 

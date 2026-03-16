@@ -1,6 +1,5 @@
 import asyncio
 
-from victor.tools.registry import ToolRegistry
 from victor.framework.extensions import (
     ExecutorNodeStatus,
     NodeResult,
@@ -8,6 +7,7 @@ from victor.framework.extensions import (
     get_compute_handler,
     register_compute_handler,
 )
+from victor.tools.registry import ToolRegistry
 
 from victor_invest.workflows import (
     InvestmentWorkflowProvider,

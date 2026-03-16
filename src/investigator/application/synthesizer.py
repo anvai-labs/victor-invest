@@ -20,20 +20,6 @@ import numpy as np
 import psycopg2
 from sqlalchemy import text
 
-# Import from Clean Architecture
-from investigator.application.synthesizer_insights import (
-    analyze_field_completeness,
-    check_fallback_flags,
-    detect_markdown_content,
-    extract_bullet_points,
-    extract_decision_process,
-    extract_numerical_insights,
-    extract_priority_insights,
-    extract_reasoning_themes,
-    identify_custom_fields,
-    recommend_report_sections,
-    suggest_visualizations,
-)
 from investigator.application.synthesizer_component_scores import (
     analyze_quarterly_business_quality,
     extract_balance_score,
@@ -49,6 +35,21 @@ from investigator.application.synthesizer_context import (
     extract_quarterly_trends,
     get_market_environment_context,
     get_sector_context,
+)
+
+# Import from Clean Architecture
+from investigator.application.synthesizer_insights import (
+    analyze_field_completeness,
+    check_fallback_flags,
+    detect_markdown_content,
+    extract_bullet_points,
+    extract_decision_process,
+    extract_numerical_insights,
+    extract_priority_insights,
+    extract_reasoning_themes,
+    identify_custom_fields,
+    recommend_report_sections,
+    suggest_visualizations,
 )
 from investigator.application.synthesizer_recommendation import (
     calculate_consistency_bonus,

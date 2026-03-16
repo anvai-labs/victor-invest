@@ -7,7 +7,6 @@ from typing import Any, Callable, Dict
 
 from investigator.application.synthesizer_recommendation import calculate_consistency_bonus
 
-
 FundamentalScoreCalculator = Callable[[Dict[str, Any]], float]
 QuarterlyBusinessQualityAnalyzer = Callable[[str, str], float]
 

@@ -39,8 +39,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 from victor_invest.compat.handlers import BaseHandler, handler_decorator
 
 if TYPE_CHECKING:
-    from victor.tools.registry import ToolRegistry
     from victor.framework.extensions import ComputeNode, WorkflowContext
+    from victor.tools.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
 
