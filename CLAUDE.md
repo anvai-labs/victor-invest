@@ -85,7 +85,7 @@ Entry point: `run_analysis()` in `victor_invest/workflows/graphs.py` tries YAML 
   - `infrastructure/sec/` — SEC EDGAR API, CompanyFacts extraction, XBRL parsing
   - `infrastructure/llm/` — Ollama multi-server pool with load balancing
   - `config/config.py` — Config loader (`get_config()` reads `config.yaml` + env vars)
-- **`config.yaml`** — Single config source (~2300 lines): database, Ollama, valuation thresholds, RL params
+- **`config.yaml`** — Single config source (~2050 lines): database, Ollama, valuation thresholds, RL params
 
 ### Adding or Changing Workflow Logic
 
