@@ -79,7 +79,7 @@ victor-invest analyze AAPL --mode standard --detail compact
 uvicorn victor_invest.api.app:app --reload
 
 # Open browser
-open http://localhost:8000/dashboard
+open http://localhost:8000/ui
 ```
 
 ---

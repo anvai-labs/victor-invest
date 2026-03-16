@@ -35,7 +35,7 @@ victor-invest analyze AAPL --mode standard
 
 # Web UI
 uvicorn victor_invest.api.app:app --reload
-# Open: http://localhost:8000/dashboard
+# Open: http://localhost:8000/ui
 ```
 
 ---
@@ -51,6 +51,7 @@ uvicorn victor_invest.api.app:app --reload
 - [Architecture](developer/architecture.md) - System design
 - [Development](developer/development.md) - Dev workflow
 - [System Diagram](developer/system-diagram.md) - Visual diagrams
+- [Platform Review and Roadmap](developer/platform-review-roadmap.md) - Tiered assessment and execution plan
 
 ### Technical Documentation
 - [Valuation Methods](technical/valuation-methods.md) - Model assumptions
@@ -89,4 +90,4 @@ uvicorn victor_invest.api.app:app --reload
 
 ---
 
-**Last Updated**: 2026-02-22
+**Last Updated**: 2026-03-15

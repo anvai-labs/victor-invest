@@ -1,20 +1,25 @@
 from pathlib import Path
 
-# All potential documentation files - test will only check files that exist
 ACTIVE_DOCS = [
     Path("README.md"),
     Path("README.adoc"),
-    Path("docs/README.adoc"),
-    Path("docs/DEVELOPER_GUIDE.adoc"),
-    Path("docs/OPERATIONS_RUNBOOK.md"),
-    Path("docs/ARCHITECTURE.md"),
+    Path("docs/README.md"),
+    Path("docs/api/api-reference.md"),
+    Path("docs/developer/architecture.md"),
+    Path("docs/developer/development.md"),
+    Path("docs/operations/runbook.md"),
+    Path("docs/user/getting-started.md"),
+    Path("docs/user/cli-commands.md"),
+    Path("docs/user/ui-dashboard.md"),
 ]
 
 
-def test_active_docs_do_not_use_legacy_cli_commands():
+def test_active_docs_do_not_use_legacy_cli_commands_or_stale_dashboard_paths():
     legacy_patterns = [
         "python3 cli_orchestrator.py",
         "python cli_orchestrator.py",
+        "http://localhost:8000/dashboard",
+        "| Dashboard | `/dashboard` |",
     ]
 
     violations = {}

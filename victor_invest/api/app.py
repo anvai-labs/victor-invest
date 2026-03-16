@@ -38,6 +38,7 @@ Endpoints migrated:
 
 import asyncio
 import csv
+import hmac
 import io
 import json
 import logging
@@ -50,11 +51,12 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlparse
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Query
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
 from victor_invest import __version__ as VICTOR_INVEST_VERSION
@@ -80,9 +82,18 @@ ALLOWED_API_ANALYSIS_MODES = (
 )
 BATCH_ANALYSIS_MAX_PARALLEL = 4
 UI_CACHE_DIR = Path("artifacts/ui_cache")
+BATCH_JOBS_DIR = Path("artifacts/batch_jobs")
 UI_LOG_SCAN_DIRS = (Path("artifacts/logs"), Path("."))
 UI_MAX_LOG_FILE_BYTES = 5 * 1024 * 1024
 UI_MAX_LOG_SCAN_FILES = 120
+DEFAULT_CORS_ORIGINS = (
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+)
 
 
 def _react_dist_dir() -> Path:
@@ -91,6 +102,88 @@ def _react_dist_dir() -> Path:
     if env_override:
         return Path(env_override).resolve()
     return Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+
+
+def _get_allowed_origins() -> List[str]:
+    """Resolve CORS origins from environment with safe local defaults."""
+    configured = os.environ.get("VICTOR_ALLOWED_ORIGINS", "")
+    if configured.strip():
+        origins = [origin.strip() for origin in configured.split(",") if origin.strip()]
+        if origins:
+            return origins
+
+    if os.environ.get("VICTOR_CORS_ALLOW_ALL", "").strip().lower() in {"1", "true", "yes"}:
+        return ["*"]
+
+    return list(DEFAULT_CORS_ORIGINS)
+
+
+def _allow_credentials_for_origins(origins: List[str]) -> bool:
+    """Credentials cannot be used with a wildcard CORS origin."""
+    return not (len(origins) == 1 and origins[0] == "*")
+
+
+def _get_api_bearer_token() -> str:
+    """Return the configured API bearer token or an empty string."""
+    return os.environ.get("VICTOR_API_BEARER_TOKEN", "").strip()
+
+
+def _api_auth_enabled() -> bool:
+    """Whether API bearer auth is enabled for protected endpoints."""
+    return bool(_get_api_bearer_token())
+
+
+def _is_local_origin(origin: str) -> bool:
+    """Return True for localhost-style origins used in local development."""
+    if origin == "*":
+        return False
+    try:
+        host = (urlparse(origin).hostname or "").strip().lower()
+    except Exception:
+        return False
+    return host in {"localhost", "127.0.0.1"}
+
+
+def _warn_for_risky_api_exposure(origins: List[str]) -> None:
+    """Emit startup warnings when the API is broadly exposed without auth."""
+    if not origins:
+        return
+
+    if origins == ["*"]:
+        logger.warning("API CORS is configured to allow all origins. Set VICTOR_ALLOWED_ORIGINS for safer deployment.")
+
+    if _api_auth_enabled():
+        return
+
+    non_local_origins = [origin for origin in origins if not _is_local_origin(origin)]
+    if non_local_origins or origins == ["*"]:
+        logger.warning(
+            "API bearer auth is disabled while non-local CORS origins are enabled. "
+            "Set VICTOR_API_BEARER_TOKEN before exposing this API beyond localhost."
+        )
+
+
+async def _require_api_bearer_token(request: Request) -> None:
+    """Protect sensitive endpoints when VICTOR_API_BEARER_TOKEN is configured."""
+    expected_token = _get_api_bearer_token()
+    if not expected_token:
+        return
+
+    auth_header = request.headers.get("Authorization", "").strip()
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(
+            status_code=401,
+            detail="Missing bearer token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    provided_token = auth_header[7:].strip()
+    if not provided_token or not hmac.compare_digest(provided_token, expected_token):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid bearer token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
 # ========================================================================================
@@ -103,9 +196,10 @@ async def lifespan(app: FastAPI):
     """Manage application lifecycle - startup and shutdown."""
     # Startup
     logger.info("Starting Victor Investment API...")
+    _warn_for_risky_api_exposure(_allowed_origins)
 
     # Initialize components
-    app.state.analysis_jobs = {}
+    app.state.analysis_jobs = _load_persisted_batch_jobs()
     app.state.cache_manager = None
 
     # Try to initialize cache manager
@@ -165,10 +259,11 @@ app = FastAPI(
 )
 
 # CORS middleware
+_allowed_origins = _get_allowed_origins()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=_allowed_origins,
+    allow_credentials=_allow_credentials_for_origins(_allowed_origins),
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -224,6 +319,9 @@ class HealthResponse(BaseModel):
 
     status: str
     version: str
+    database: Optional[str] = None
+    cache: Optional[str] = None
+    llm: Optional[str] = None
     victor_installed: bool
     providers: List[str]
     services: Dict[str, str]
@@ -318,11 +416,64 @@ def _normalize_symbols(symbols: List[str]) -> List[str]:
 
 
 def _get_analysis_jobs_store() -> Dict[str, Any]:
-    """Get or lazily initialize the in-memory batch job store."""
+    """Get or lazily initialize the batch job store backed by local JSON files."""
     if not hasattr(app.state, "analysis_jobs") or app.state.analysis_jobs is None:
-        app.state.analysis_jobs = {}
+        app.state.analysis_jobs = _load_persisted_batch_jobs()
     result: Dict[str, Any] = app.state.analysis_jobs
     return result
+
+
+def _ensure_batch_jobs_dir() -> Path:
+    """Create the persisted batch-job directory if needed."""
+    BATCH_JOBS_DIR.mkdir(parents=True, exist_ok=True)
+    return BATCH_JOBS_DIR
+
+
+def _batch_job_path(job_id: str) -> Path:
+    """Resolve the JSON persistence path for a batch job."""
+    safe_job_id = re.sub(r"[^A-Za-z0-9_.-]+", "_", job_id)
+    return _ensure_batch_jobs_dir() / f"{safe_job_id}.json"
+
+
+def _normalize_persisted_batch_job(job_id: str, job: Dict[str, Any]) -> Dict[str, Any]:
+    """Mark unfinished persisted jobs as interrupted after process restart."""
+    normalized = dict(job)
+    normalized.setdefault("job_id", job_id)
+    if normalized.get("status") in {"pending", "running"}:
+        normalized["status"] = "interrupted"
+        normalized["error"] = "Process restarted before batch job completed"
+        normalized.setdefault("completed_at", datetime.utcnow().isoformat())
+    return normalized
+
+
+def _load_persisted_batch_jobs() -> Dict[str, Any]:
+    """Load persisted batch-job state from disk."""
+    if not BATCH_JOBS_DIR.exists():
+        return {}
+
+    jobs: Dict[str, Any] = {}
+    for path in sorted(BATCH_JOBS_DIR.glob("*.json")):
+        if not path.is_file():
+            continue
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            logger.warning("Failed to load persisted batch job file: %s", path)
+            continue
+
+        if not isinstance(payload, dict):
+            continue
+        job_id = str(payload.get("job_id") or path.stem)
+        jobs[job_id] = _normalize_persisted_batch_job(job_id, payload)
+    return jobs
+
+
+def _persist_batch_job(job_id: str, job: Dict[str, Any]) -> None:
+    """Persist a batch job snapshot to disk."""
+    payload = dict(job)
+    payload["job_id"] = job_id
+    path = _batch_job_path(job_id)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
 
 
 def _get_batch_parallelism() -> int:
@@ -896,6 +1047,26 @@ def _safe_float(value: Any) -> Optional[float]:
         return converted
     except Exception:
         return None
+
+
+def _build_history_entry(
+    symbol: str,
+    payload: Dict[str, Any],
+    *,
+    timestamp: Optional[str],
+    source: Optional[str],
+) -> Dict[str, Any]:
+    """Convert an analysis payload into the lightweight history row used by the UI."""
+    view = _extract_ui_view_from_payload(payload)
+    summary = view.get("summary", {}) if isinstance(view, dict) else {}
+    return {
+        "symbol": symbol.upper(),
+        "timestamp": timestamp,
+        "action": summary.get("action"),
+        "composite_score": _safe_float(summary.get("confidence_score") or summary.get("overall_confidence")) or 0.0,
+        "price": _safe_float(summary.get("current_price")) or 0.0,
+        "source": source,
+    }
 
 
 def _parse_cached_at_epoch(value: Any, fallback_epoch: float) -> float:
@@ -1912,6 +2083,16 @@ async def ui_dashboard():
     return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
 
 
+@app.get("/dashboard", response_class=RedirectResponse)
+async def legacy_dashboard_redirect(request: Request):
+    """Redirect the legacy dashboard path to the canonical /ui route."""
+    query_string = request.url.query
+    target = "/ui"
+    if query_string:
+        target = f"{target}?{query_string}"
+    return RedirectResponse(url=target, status_code=307)
+
+
 @app.get("/ui/api/search")
 async def ui_search_symbols(
     query: str = Query(..., min_length=1),
@@ -2019,6 +2200,7 @@ async def ui_search_symbols(
         }
 
 
+@app.get("/api/analysis/{symbol}/latest")
 @app.get("/ui/api/analysis/{symbol}/latest")
 async def ui_latest_analysis(symbol: str, include_raw: bool = Query(False)):
     """Get latest cached analysis for a symbol (DB, UI cache, or parsed logs)."""
@@ -2048,6 +2230,52 @@ async def ui_latest_analysis(symbol: str, include_raw: bool = Query(False)):
     return response
 
 
+@app.get("/api/analysis/{symbol}/history")
+@app.get("/ui/api/analysis/{symbol}/history")
+async def ui_analysis_history(symbol: str, limit: int = Query(20, ge=1, le=200)):
+    """Return cache/log-derived history entries for a single symbol."""
+    normalized_symbol = symbol.strip().upper()
+    if not normalized_symbol:
+        raise HTTPException(status_code=400, detail="No symbol provided")
+
+    entries: List[Dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+
+    cached = _load_ui_cache(normalized_symbol)
+    if cached and _is_analysis_payload(cached.get("payload")):
+        timestamp = str(cached.get("cached_at") or "")
+        key = (timestamp, str(cached.get("source") or "cache"))
+        seen.add(key)
+        entries.append(
+            _build_history_entry(
+                normalized_symbol,
+                cached["payload"],
+                timestamp=timestamp or None,
+                source=str(cached.get("source") or "cache"),
+            )
+        )
+
+    for path in _candidate_log_files(normalized_symbol):
+        payload = _extract_payload_from_log_file(path, normalized_symbol)
+        if not payload:
+            continue
+        timestamp = datetime.utcfromtimestamp(path.stat().st_mtime).isoformat()
+        source = f"log:{path.name}"
+        key = (timestamp, source)
+        if key in seen:
+            continue
+        seen.add(key)
+        entries.append(_build_history_entry(normalized_symbol, payload, timestamp=timestamp, source=source))
+        if len(entries) >= limit:
+            break
+
+    entries.sort(
+        key=lambda item: _parse_cached_at_epoch(item.get("timestamp"), 0.0),
+        reverse=True,
+    )
+    return entries[:limit]
+
+
 @app.get("/ui/api/chart/{symbol}")
 async def ui_chart_data(symbol: str, days: int = Query(252, ge=63, le=2000)):
     """Get OHLCV + technical indicator series for dashboard charting."""
@@ -2068,7 +2296,7 @@ async def ui_chart_data(symbol: str, days: int = Query(252, ge=63, le=2000)):
     }
 
 
-@app.post("/ui/api/analysis/{symbol}/refresh")
+@app.post("/ui/api/analysis/{symbol}/refresh", dependencies=[Depends(_require_api_bearer_token)])
 async def ui_refresh_analysis(symbol: str, request: UIRefreshRequest):
     """
     Trigger fresh analysis for a symbol and return normalized UI payload.
@@ -2391,6 +2619,8 @@ async def root():
     }
 
 
+@app.get("/ui/api/health", response_model=HealthResponse)
+@app.get("/api/health", response_model=HealthResponse)
 @app.get("/health", response_model=HealthResponse)
 async def health():
     """Comprehensive health check endpoint."""
@@ -2442,6 +2672,9 @@ async def health():
     return HealthResponse(
         status=overall_status,
         version=VICTOR_INVEST_VERSION,
+        database=services.get("database"),
+        cache=services.get("cache"),
+        llm=services.get("ollama"),
         victor_installed=victor_installed,
         providers=providers,
         services=services,
@@ -2449,7 +2682,8 @@ async def health():
     )
 
 
-@app.post("/analyze/{symbol}", response_model=AnalysisResponse)
+@app.post("/api/analyze/{symbol}", response_model=AnalysisResponse, dependencies=[Depends(_require_api_bearer_token)])
+@app.post("/analyze/{symbol}", response_model=AnalysisResponse, dependencies=[Depends(_require_api_bearer_token)])
 async def analyze_symbol(symbol: str, request: AnalysisRequest | None = None):
     """Run investment analysis on a stock symbol.
 
@@ -2506,7 +2740,8 @@ async def analyze_symbol(symbol: str, request: AnalysisRequest | None = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/batch", response_model=BatchAnalysisResponse)
+@app.post("/api/batch", response_model=BatchAnalysisResponse, dependencies=[Depends(_require_api_bearer_token)])
+@app.post("/batch", response_model=BatchAnalysisResponse, dependencies=[Depends(_require_api_bearer_token)])
 async def batch_analyze(
     request: BatchAnalysisRequest,
     background_tasks: BackgroundTasks,
@@ -2538,6 +2773,7 @@ async def batch_analyze(
         "results": {},
         "submitted_at": datetime.utcnow().isoformat(),
     }
+    _persist_batch_job(job_id, analysis_jobs[job_id])
 
     # Add background task
     background_tasks.add_task(_run_batch_analysis, job_id, normalized_symbols, mode_str)
@@ -2549,6 +2785,7 @@ async def batch_analyze(
     )
 
 
+@app.get("/api/batch/{job_id}")
 @app.get("/batch/{job_id}")
 async def get_batch_status(job_id: str):
     """Get status of a batch analysis job."""
@@ -2618,7 +2855,7 @@ async def cache_stats():
         return {"status": "error", "error": str(e)}
 
 
-@app.post("/cache/warm")
+@app.post("/cache/warm", dependencies=[Depends(_require_api_bearer_token)])
 async def warm_cache(request: CacheWarmRequest, background_tasks: BackgroundTasks):
     """Warm cache for specified symbols."""
     try:
@@ -2637,7 +2874,7 @@ async def warm_cache(request: CacheWarmRequest, background_tasks: BackgroundTask
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.delete("/cache/symbol/{symbol}")
+@app.delete("/cache/symbol/{symbol}", dependencies=[Depends(_require_api_bearer_token)])
 async def clear_symbol_cache(symbol: str):
     """Clear cache for a specific symbol."""
     try:
@@ -2680,6 +2917,7 @@ async def _run_batch_analysis(job_id: str, symbols: List[str], mode: str):
         return
 
     job["status"] = "running"
+    _persist_batch_job(job_id, job)
 
     try:
         try:
@@ -2688,6 +2926,7 @@ async def _run_batch_analysis(job_id: str, symbols: List[str], mode: str):
             job["status"] = "failed"
             job["error"] = str(exc.detail)
             job["completed_at"] = datetime.utcnow().isoformat()
+            _persist_batch_job(job_id, job)
             return
 
         semaphore = asyncio.Semaphore(_get_batch_parallelism())
@@ -2710,6 +2949,7 @@ async def _run_batch_analysis(job_id: str, symbols: List[str], mode: str):
         results = await asyncio.gather(*[_analyze_symbol(symbol) for symbol in symbols])
         for symbol, result_payload in results:
             job["results"][symbol] = result_payload
+            _persist_batch_job(job_id, job)
 
         error_count = sum(1 for symbol_result in job["results"].values() if symbol_result["status"] == "error")
         success_count = len(job["results"]) - error_count
@@ -2718,11 +2958,13 @@ async def _run_batch_analysis(job_id: str, symbols: List[str], mode: str):
         job["error_count"] = error_count
         job["status"] = "completed" if error_count == 0 else "completed_with_errors"
         job["completed_at"] = datetime.utcnow().isoformat()
+        _persist_batch_job(job_id, job)
 
     except Exception as e:
         job["status"] = "failed"
         job["error"] = str(e)
         job["completed_at"] = datetime.utcnow().isoformat()
+        _persist_batch_job(job_id, job)
 
 
 async def _warm_cache_for_symbols(symbols: List[str]):

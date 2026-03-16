@@ -11,7 +11,6 @@ recommendations. Report generation and charting are delegated to separate module
 import json
 import logging
 import os
-import re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -35,13 +34,55 @@ from investigator.application.synthesizer_insights import (
     recommend_report_sections,
     suggest_visualizations,
 )
+from investigator.application.synthesizer_component_scores import (
+    analyze_quarterly_business_quality,
+    extract_balance_score,
+    extract_business_quality_score,
+    extract_cashflow_score,
+    extract_growth_score,
+    extract_income_score,
+    extract_value_score,
+)
+from investigator.application.synthesizer_context import (
+    create_financial_trends_analysis,
+    extract_financial_metrics_from_quarter,
+    extract_quarterly_trends,
+    get_market_environment_context,
+    get_sector_context,
+)
 from investigator.application.synthesizer_recommendation import (
     calculate_consistency_bonus,
     calculate_price_target,
     calculate_stop_loss,
+    create_fallback_recommendation,
     determine_final_recommendation,
     extract_catalysts,
     extract_position_size,
+)
+from investigator.application.synthesizer_scoring import (
+    assess_data_quality,
+    calculate_fundamental_score,
+    calculate_technical_score,
+    calculate_weighted_score,
+    parse_synthesis_response,
+)
+from investigator.application.synthesizer_structured import (
+    calculate_data_quality_detailed,
+    calculate_quarterly_trends,
+    create_recommendation_from_llm_data,
+    extract_sec_comprehensive_data,
+)
+from investigator.application.synthesizer_technicals import (
+    assess_trend_strength,
+    assess_volume_price_relationship,
+    assess_volume_trend,
+    calculate_bb_position,
+    calculate_ma_position,
+    check_ma_cross,
+    extract_legacy_technical_indicators,
+    extract_momentum_signals,
+    extract_technical_indicators,
+    extract_technical_signals_from_text,
 )
 from investigator.application.synthesizer_text_insights import (
     extract_comprehensive_insights,
@@ -3436,416 +3477,31 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         Returns:
             Dictionary with trend analysis
         """
-        if len(quarterly_data) < 2:
-            return {}
-
-        try:
-            trends = {
-                "revenue_trend": [],
-                "net_income_trend": [],
-                "operating_cash_flow_trend": [],
-                "margin_trends": [],
-                "qoq_growth": {},
-                "yoy_growth": {},
-            }
-
-            # Calculate Q-o-Q growth for most recent quarter
-            if len(quarterly_data) >= 2:
-                latest = quarterly_data[-1]
-                previous = quarterly_data[-2]
-
-                for metric in ["revenue", "net_income", "operating_cash_flow"]:
-                    latest_val = latest.get(metric, 0)
-                    prev_val = previous.get(metric, 0)
-
-                    if latest_val and prev_val and prev_val != 0:
-                        growth = ((latest_val - prev_val) / abs(prev_val)) * 100
-                        trends["qoq_growth"][metric] = round(growth, 2)
-
-            # Calculate Y-o-Y growth (compare same quarter from previous year)
-            if len(quarterly_data) >= 5:  # Need at least 5 quarters to compare Q-4 with Q-8
-                for i in range(len(quarterly_data) - 4):
-                    current = quarterly_data[i + 4]
-                    year_ago = quarterly_data[i]
-
-                    for metric in ["revenue", "net_income", "operating_cash_flow"]:
-                        current_val = current.get(metric, 0)
-                        year_ago_val = year_ago.get(metric, 0)
-
-                        if current_val and year_ago_val and year_ago_val != 0:
-                            growth = ((current_val - year_ago_val) / abs(year_ago_val)) * 100
-                            if metric not in trends["yoy_growth"]:
-                                trends["yoy_growth"][metric] = []
-                            trends["yoy_growth"][metric].append(
-                                {
-                                    "period": current["period_label"],
-                                    "growth": round(growth, 2),
-                                }
-                            )
-
-            # Extract time series data for charts
-            for quarter in quarterly_data:
-                period = quarter["period_label"]
-
-                if quarter.get("revenue"):
-                    trends["revenue_trend"].append(
-                        {
-                            "period": period,
-                            "value": quarter["revenue"] / 1_000_000,
-                        }  # Convert to millions
-                    )
-
-                if quarter.get("net_income"):
-                    trends["net_income_trend"].append({"period": period, "value": quarter["net_income"] / 1_000_000})
-
-                if quarter.get("operating_cash_flow"):
-                    trends["operating_cash_flow_trend"].append(
-                        {
-                            "period": period,
-                            "value": quarter["operating_cash_flow"] / 1_000_000,
-                        }
-                    )
-
-                # Calculate margins
-                if quarter.get("revenue") and quarter.get("revenue") > 0:
-                    net_margin = (quarter.get("net_income", 0) / quarter["revenue"]) * 100
-                    op_margin = (quarter.get("operating_income", 0) / quarter["revenue"]) * 100
-
-                    trends["margin_trends"].append(
-                        {
-                            "period": period,
-                            "net_margin": round(net_margin, 2),
-                            "operating_margin": round(op_margin, 2),
-                        }
-                    )
-
-            return trends
-
-        except Exception as e:
-            self.main_logger.error(f"Error calculating quarterly trends: {e}")
-            return {}
+        return calculate_quarterly_trends(quarterly_data, logger=self.main_logger)
 
     def _calculate_fundamental_score(self, llm_responses: Dict) -> float:
         """Calculate fundamental score from LLM responses"""
-        fundamental_responses = llm_responses.get("fundamental", {})
-        if not fundamental_responses:
-            return 0.0  # Clear fallback - no data available
-
-        # First try to get from comprehensive analysis
-        if "comprehensive" in fundamental_responses:
-            comp_resp = fundamental_responses["comprehensive"]
-            content = comp_resp.get("content", comp_resp)
-
-            # Handle structured response
-            if isinstance(content, dict):
-                # Try financial_health_score first, then overall_score
-                if "financial_health_score" in content:
-                    return float(content["financial_health_score"])
-                elif "overall_score" in content:
-                    return float(content["overall_score"])
-
-            # Handle string response
-            elif isinstance(content, str):
-                import re
-
-                # Try to extract from JSON string
-                try:
-                    import json
-
-                    parsed = json.loads(content)
-                    if "financial_health_score" in parsed:
-                        return float(parsed["financial_health_score"])
-                    elif "overall_score" in parsed:
-                        return float(parsed["overall_score"])
-                except Exception:
-                    # Fall back to regex
-                    score_match = re.search(
-                        r"(?:Financial Health|Overall|Score)[:\s]*(\d+(?:\.\d+)?)/10",
-                        content,
-                    )
-                    if score_match:
-                        return float(score_match.group(1))
-
-        # If no comprehensive, try averaging quarterly scores
-        scores = []
-        for key, response in fundamental_responses.items():
-            if key == "comprehensive":
-                continue
-            content = response.get("content", "")
-            if isinstance(content, dict) and "financial_health_score" in content:
-                scores.append(float(content["financial_health_score"]))
-            elif isinstance(content, str):
-                import re
-
-                score_match = re.search(
-                    r"(?:Financial Health|Overall|Score)[:\s]*(\d+(?:\.\d+)?)/10",
-                    content,
-                )
-                if score_match:
-                    scores.append(float(score_match.group(1)))
-
-        return sum(scores) / len(scores) if scores else 0.0  # Clear fallback - no scores found
+        return calculate_fundamental_score(llm_responses)
 
     def _calculate_technical_score(self, llm_responses: Dict) -> float:
         """Calculate technical score from structured JSON LLM response"""
-        technical_response = llm_responses.get("technical")
-        if not technical_response:
-            return 0.0  # Clear fallback - no technical data
-
-        content = technical_response.get("content", "")
-
-        # First try to parse as structured JSON (new format)
-        if isinstance(content, dict):
-            # Check for new structured format
-            if "technical_score" in content:
-                score_data = content["technical_score"]
-                if isinstance(score_data, dict):
-                    return float(score_data.get("score", 0.0))
-                return float(score_data)
-        elif isinstance(content, str):
-            # Handle file format with headers - extract JSON part
-            json_content = content
-            if "=== AI RESPONSE ===" in content:
-                json_start = content.find("=== AI RESPONSE ===") + len("=== AI RESPONSE ===")
-                json_content = content[json_start:].strip()
-
-            try:
-                # Try to parse JSON from string
-                parsed = json.loads(json_content)
-                if "technical_score" in parsed:
-                    score_data = parsed["technical_score"]
-                    if isinstance(score_data, dict):
-                        return float(score_data.get("score", 0.0))
-                    return float(score_data)
-            except json.JSONDecodeError:
-                pass
-
-            # Fall back to regex for legacy format
-            import re
-
-            score_match = re.search(
-                r"(?:TECHNICAL[_\s]SCORE|technical_score)[:\s]*(\d+(?:\.\d+)?)",
-                json_content,
-                re.IGNORECASE,
-            )
-            if score_match:
-                return float(score_match.group(1))
-
-        return 0.0  # Clear fallback - no score found in response
+        return calculate_technical_score(llm_responses)
 
     def _extract_technical_indicators(self, llm_responses: Dict) -> Dict:
         """Extract technical indicators from structured technical analysis JSON response"""
-        technical_response = llm_responses.get("technical")
-        if not technical_response:
-            return {}
-
-        content = technical_response.get("content", "")
-        # Debug: log content type and structure
-        self.main_logger.debug(f"Technical response content type: {type(content)}")
-        if isinstance(content, str) and len(content) > 0:
-            self.main_logger.debug(f"Technical content preview: {content[:100]}...")
-        indicators = {}
-
-        # First try to parse as structured JSON
-        if isinstance(content, dict):
-            # New structured format with comprehensive technical data
-            indicators = {
-                "technical_score": content.get("technical_score", {}).get("score", 0.0),
-                "trend_direction": content.get("trend_analysis", {}).get("primary_trend", "NEUTRAL"),
-                "trend_strength": content.get("trend_analysis", {}).get("trend_strength", "WEAK"),
-                "support_levels": [
-                    content.get("support_resistance", {}).get("immediate_support", 0.0),
-                    content.get("support_resistance", {}).get("major_support", 0.0),
-                ],
-                "resistance_levels": [
-                    content.get("support_resistance", {}).get("immediate_resistance", 0.0),
-                    content.get("support_resistance", {}).get("major_resistance", 0.0),
-                ],
-                "fibonacci_levels": content.get("support_resistance", {}).get("fibonacci_levels", {}),
-                "momentum_signals": self._extract_momentum_signals(content),
-                "risk_factors": content.get("risk_factors", []),
-                "key_insights": content.get("key_insights", []),
-                "catalysts": content.get("catalysts", []),
-                "time_horizon": content.get("recommendation", {}).get("time_horizon", "MEDIUM"),
-                "recommendation": content.get("recommendation", {}).get("technical_rating", "HOLD"),
-                "confidence": content.get("recommendation", {}).get("confidence", "MEDIUM"),
-                "position_sizing": content.get("recommendation", {}).get("position_sizing", "MODERATE"),
-                "entry_strategy": content.get("entry_exit_strategy", {}),
-                "volume_analysis": content.get("volume_analysis", {}),
-                "volatility_analysis": content.get("volatility_analysis", {}),
-                "sector_relative_strength": content.get("sector_relative_strength", {}),
-            }
-        elif isinstance(content, str):
-            try:
-                # Handle file format with headers - extract JSON part
-                json_content = content
-                if "=== AI RESPONSE ===" in content:
-                    json_start = content.find("=== AI RESPONSE ===") + len("=== AI RESPONSE ===")
-                    json_content = content[json_start:].strip()
-
-                # Handle responses with <think> prefix - find the JSON part
-                json_start = json_content.find("{")
-                if json_start >= 0:
-                    # Extract JSON part and parse it
-                    json_part = json_content[json_start:]
-                    # Find the end by counting braces to handle nested JSON
-                    brace_count = 0
-                    json_end = 0
-                    for i, char in enumerate(json_part):
-                        if char == "{":
-                            brace_count += 1
-                        elif char == "}":
-                            brace_count -= 1
-                            if brace_count == 0:
-                                json_end = i + 1
-                                break
-
-                    if json_end > 0:
-                        json_to_parse = json_part[:json_end]
-                        parsed = json.loads(json_to_parse)
-                    else:
-                        # Fallback: try to parse the entire json_part
-                        parsed = json.loads(json_part)
-                else:
-                    # No JSON found, try to parse the whole content
-                    parsed = json.loads(json_content)
-                indicators = {
-                    "technical_score": parsed.get("technical_score", 0.0),
-                    "trend_direction": parsed.get("trend_direction", "NEUTRAL"),
-                    "trend_strength": parsed.get("trend_strength", "WEAK"),
-                    "support_levels": parsed.get("support_levels", []),
-                    "resistance_levels": parsed.get("resistance_levels", []),
-                    "fibonacci_levels": parsed.get("support_resistance", {}).get("fibonacci_levels", {}),
-                    "momentum_signals": parsed.get("momentum_signals", []),
-                    "risk_factors": parsed.get("risk_factors", []),
-                    "key_insights": parsed.get("key_insights", []),
-                    "catalysts": parsed.get("catalysts", []),
-                    "time_horizon": parsed.get("time_horizon", "MEDIUM"),
-                    "recommendation": parsed.get("recommendation", "HOLD"),
-                    "confidence": parsed.get("confidence", "MEDIUM"),
-                    "position_sizing": "MODERATE",  # Use default since not in our format
-                    "entry_strategy": {},  # Use default since not in our format
-                    "volume_analysis": {},  # Use default since not in our format
-                    "volatility_analysis": {},  # Use default since not in our format
-                    "sector_relative_strength": {},  # Use default since not in our format
-                }
-            except json.JSONDecodeError:
-                # Fall back to legacy format extraction
-                indicators = self._extract_legacy_technical_indicators(content)
-
-        # Filter out zero values from support/resistance
-        indicators["support_levels"] = [s for s in indicators.get("support_levels", []) if s > 0]
-        indicators["resistance_levels"] = [r for r in indicators.get("resistance_levels", []) if r > 0]
-
-        return indicators
+        return extract_technical_indicators(llm_responses, logger=self.main_logger)
 
     def _extract_momentum_signals(self, content: Dict) -> List[str]:
         """Extract momentum signals from technical analysis response"""
-        signals = []
-
-        momentum = content.get("momentum_analysis", {})
-        if momentum:
-            # RSI signals
-            rsi = momentum.get("rsi_14", 0)
-            rsi_assessment = momentum.get("rsi_assessment", "")
-            if rsi and rsi_assessment:
-                signals.append(f"RSI ({rsi:.1f}) indicates {rsi_assessment.lower()} conditions")
-
-            # MACD signals
-            macd = momentum.get("macd", {})
-            if macd.get("signal"):
-                signals.append(f"MACD shows {macd['signal'].lower()} momentum")
-
-            # Stochastic signals
-            stoch = momentum.get("stochastic", {})
-            if stoch.get("signal"):
-                signals.append(f"Stochastic indicates {stoch['signal'].lower()} conditions")
-
-        # Volume signals
-        volume = content.get("volume_analysis", {})
-        if volume.get("volume_trend"):
-            signals.append(f"Volume trend is {volume['volume_trend'].lower()}")
-
-        return signals
+        return extract_momentum_signals(content)
 
     def _extract_legacy_technical_indicators(self, content: str) -> Dict:
         """Extract technical indicators from legacy format response"""
-
-        indicators = {}
-
-        support_match = re.search(r"support_levels[:\s]*\[([^\]]+)\]", content, re.IGNORECASE)
-        resistance_match = re.search(r"resistance_levels[:\s]*\[([^\]]+)\]", content, re.IGNORECASE)
-        trend_match = re.search(r'trend_direction[:\s]*["\']?([A-Z]+)["\']?', content, re.IGNORECASE)
-
-        if support_match:
-            try:
-                indicators["support_levels"] = [float(x.strip()) for x in support_match.group(1).split(",")]
-            except Exception:
-                indicators["support_levels"] = []
-
-        if resistance_match:
-            try:
-                indicators["resistance_levels"] = [float(x.strip()) for x in resistance_match.group(1).split(",")]
-            except Exception:
-                indicators["resistance_levels"] = []
-
-        if trend_match:
-            indicators["trend_direction"] = trend_match.group(1).upper()
-
-        return indicators
+        return extract_legacy_technical_indicators(content)
 
     def _extract_sec_comprehensive_data(self, llm_responses: Dict) -> Dict:
         """Extract all valuable data from SEC comprehensive analysis"""
-        fundamental_responses = llm_responses.get("fundamental", {})
-        if "comprehensive" not in fundamental_responses:
-            return {}
-
-        comp_resp = fundamental_responses["comprehensive"]
-        content = comp_resp.get("content", comp_resp)
-
-        # Handle structured response
-        if isinstance(content, dict):
-            return {
-                "financial_health_score": content.get("financial_health_score", 0.0),
-                "business_quality_score": content.get("business_quality_score", 0.0),
-                "growth_prospects_score": content.get("growth_prospects_score", 0.0),
-                "data_quality_score": (
-                    content.get("data_quality_score", {}).get("score", 0.0)
-                    if isinstance(content.get("data_quality_score"), dict)
-                    else content.get("data_quality_score", 0.0)
-                ),
-                "overall_score": content.get("overall_score", 0.0),
-                "investment_thesis": content.get("investment_thesis", ""),
-                "key_insights": content.get("key_insights", []),
-                "key_risks": content.get("key_risks", []),
-                "trend_analysis": content.get("trend_analysis", {}),
-                "confidence_level": content.get("confidence_level", "MEDIUM"),
-            }
-
-        # Handle string response (legacy format)
-        elif isinstance(content, str):
-            try:
-                parsed = json.loads(content)
-                return {
-                    "financial_health_score": parsed.get("financial_health_score", 0.0),
-                    "business_quality_score": parsed.get("business_quality_score", 0.0),
-                    "growth_prospects_score": parsed.get("growth_prospects_score", 0.0),
-                    "data_quality_score": (
-                        parsed.get("data_quality_score", {}).get("score", 0.0)
-                        if isinstance(parsed.get("data_quality_score"), dict)
-                        else parsed.get("data_quality_score", 0.0)
-                    ),
-                    "overall_score": parsed.get("overall_score", 0.0),
-                    "investment_thesis": parsed.get("investment_thesis", ""),
-                    "key_insights": parsed.get("key_insights", []),
-                    "key_risks": parsed.get("key_risks", []),
-                    "trend_analysis": parsed.get("trend_analysis", {}),
-                    "confidence_level": parsed.get("confidence_level", "MEDIUM"),
-                }
-            except Exception:
-                return {}
-
-        return {}
+        return extract_sec_comprehensive_data(llm_responses)
 
     def _create_recommendation_from_llm_data(
         self,
@@ -3856,157 +3512,24 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         overall_score: float,
     ) -> Dict:
         """Create investment recommendation by combining SEC comprehensive and technical analysis data"""
-
-        # Extract key scores and data (use fundamental_score instead of financial_health_score)
-        business_quality = sec_data.get("business_quality_score", 0.0)
-        fundamental_score = sec_data.get("financial_health_score", 0.0)  # This becomes our fundamental score
-        growth_score = sec_data.get("growth_prospects_score", 0.0)  # Use growth_score not growth_prospects
-        data_quality = sec_data.get("data_quality_score", 0.0)
-        sec_data.get("confidence_level", "MEDIUM")
-
-        # Technical data
-        tech_trend = tech_indicators.get("trend_direction", "NEUTRAL")
-        tech_recommendation = tech_indicators.get("recommendation", "HOLD")
-        support_levels = tech_indicators.get("support_levels", [])
-        resistance_levels = tech_indicators.get("resistance_levels", [])
-        tech_risks = tech_indicators.get("risk_factors", [])
-
-        # Combine recommendations - prioritize fundamental for long-term view
-        if fundamental_score >= 8.0 and business_quality >= 8.0:
-            if tech_trend in ["BULLISH", "NEUTRAL"]:
-                final_recommendation = "BUY"
-                confidence = "HIGH" if tech_trend == "BULLISH" else "MEDIUM"
-            else:  # BEARISH
-                final_recommendation = "HOLD"  # Strong fundamentals but poor technicals
-                confidence = "MEDIUM"
-        elif fundamental_score >= 6.0 and business_quality >= 6.0:
-            if tech_trend == "BULLISH":
-                final_recommendation = "BUY"
-                confidence = "MEDIUM"
-            elif tech_trend == "BEARISH":
-                final_recommendation = "HOLD"
-                confidence = "LOW"
-            else:
-                final_recommendation = "HOLD"
-                confidence = "MEDIUM"
-        else:  # Weak fundamentals
-            if tech_trend == "BEARISH":
-                final_recommendation = "SELL"
-                confidence = "MEDIUM"
-            else:
-                final_recommendation = "HOLD"
-                confidence = "LOW"
-
-        # Adjust confidence based on data quality
-        if data_quality < 5.0:
-            confidence = "LOW"
-        elif data_quality >= 8.0 and confidence == "MEDIUM":
-            confidence = "HIGH"
-
-        # Create combined investment thesis
-        sec_thesis = sec_data.get("investment_thesis", "")
-        if sec_thesis and tech_indicators:
-            investment_thesis = f"{sec_thesis} Technical analysis shows {tech_trend.lower()} trend with {tech_recommendation.lower()} recommendation."
-        elif sec_thesis:
-            investment_thesis = sec_thesis
-        else:
-            investment_thesis = f"Based on fundamental score of {fundamental_score:.1f} and business quality of {business_quality:.1f}, with {tech_trend.lower()} technical trend."
-
-        # Combine key insights and risks
-        sec_insights = sec_data.get("key_insights", [])
-        sec_risks = sec_data.get("key_risks", [])
-
-        # Add technical insights
-        tech_insights = []
-        if support_levels:
-            tech_insights.append(f"Key support levels at ${', $'.join([f'{s:.2f}' for s in support_levels[:3]])}")
-        if resistance_levels:
-            tech_insights.append(f"Key resistance levels at ${', $'.join([f'{r:.2f}' for r in resistance_levels[:3]])}")
-
-        all_insights = sec_insights + tech_insights
-        all_risks = sec_risks + tech_risks
-
-        # Calculate position sizing based on combined analysis
-        if final_recommendation == "BUY":
-            if confidence == "HIGH" and business_quality >= 9.0:
-                position_size = "LARGE"
-            elif confidence in ["HIGH", "MEDIUM"]:
-                position_size = "MODERATE"
-            else:
-                position_size = "SMALL"
-        elif final_recommendation == "SELL":
-            position_size = "AVOID"
-        else:  # HOLD
-            position_size = "SMALL"
-
-        # Time horizon based on fundamental strength
-        if business_quality >= 8.0 and fundamental_score >= 8.0:
-            time_horizon = "LONG-TERM"
-        elif business_quality >= 6.0:
-            time_horizon = "MEDIUM-TERM"
-        else:
-            time_horizon = "SHORT-TERM"
-
-        # Calculate price targets using support/resistance
-        price_target = None
-        stop_loss = None
-        if resistance_levels and final_recommendation == "BUY":
-            price_target = max(resistance_levels)
-        if support_levels and final_recommendation in ["BUY", "HOLD"]:
-            stop_loss = min(support_levels) * 0.95  # 5% below support
-
-        return {
-            "overall_score": overall_score,
-            "fundamental_score": fundamental_score,
-            "technical_score": tech_indicators.get("technical_score", 0.0),
-            "business_quality_score": business_quality,
-            "growth_score": growth_score,
-            "data_quality_score": data_quality,
-            "investment_recommendation": {
-                "recommendation": final_recommendation,
-                "confidence": confidence,
-            },
-            "investment_thesis": investment_thesis,
-            "position_size": position_size,
-            "time_horizon": time_horizon,
-            "price_target": price_target,
-            "stop_loss": stop_loss,
-            "key_catalysts": all_insights[:5],  # Top 5 insights as catalysts
-            "downside_risks": all_risks[:5],  # Top 5 risks
-            "support_levels": support_levels,
-            "resistance_levels": resistance_levels,
-            "trend_direction": tech_trend,
-            "momentum_signals": tech_indicators.get("momentum_signals", []),
-            "confidence_level": confidence,
-            "source": "direct_llm_extraction",
-        }
+        recommendation = create_recommendation_from_llm_data(
+            symbol,
+            sec_data,
+            tech_indicators,
+            current_price,
+            overall_score,
+        )
+        recommendation.pop("symbol", None)
+        return recommendation
 
     def _calculate_weighted_score(self, fundamental_score: float, technical_score: float) -> float:
         """Calculate weighted overall score"""
-        if fundamental_score is None or technical_score is None:
-            return 5.0
-
-        fund_weight = self.config.analysis.fundamental_weight
-        tech_weight = self.config.analysis.technical_weight
-
-        # Adjust weights for extreme scores
-        if fundamental_score >= 8.5 or fundamental_score <= 2.5:
-            fund_weight *= 1.2
-
-        if technical_score >= 8.5 or technical_score <= 2.5:
-            tech_weight *= 1.1
-
-        total_weight = fund_weight + tech_weight
-
-        if total_weight == 0:
-            return 0.0  # Clear fallback - no weights
-
-        norm_fund_weight = fund_weight / total_weight
-        norm_tech_weight = tech_weight / total_weight
-
-        overall_score = fundamental_score * norm_fund_weight + technical_score * norm_tech_weight
-
-        return round(overall_score, 1)
+        return calculate_weighted_score(
+            fundamental_score,
+            technical_score,
+            fundamental_weight=self.config.analysis.fundamental_weight,
+            technical_weight=self.config.analysis.technical_weight,
+        )
 
     def _calculate_data_quality_detailed(
         self,
@@ -4027,70 +3550,23 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         Returns:
             Dictionary with overall score, grade, and component scores
         """
-        scores = []
-        details = {}
 
-        # Component 1: LLM Response Completeness
-        expected_llm_types = ["fundamental", "technical", "quarterly_summary"]
-        available_llm = sum(1 for t in expected_llm_types if t in llm_responses)
-        llm_completeness = (available_llm / len(expected_llm_types)) * 100
-        scores.append(llm_completeness)
-        details["llm_completeness"] = llm_completeness
-
-        # Component 2: Quarterly Data Availability
-        if quarterly_metrics:
-            quarters_available = len(quarterly_metrics)
-            quarterly_completeness = min((quarters_available / 8) * 100, 100)
-        else:
-            quarterly_completeness = 0
-        scores.append(quarterly_completeness)
-        details["quarterly_completeness"] = quarterly_completeness
-
-        # Component 3: Market Data Freshness
-        if latest_data:
-            # Assume fresh if we have it
-            market_freshness = 100
-        else:
-            market_freshness = 0
-        scores.append(market_freshness)
-        details["market_freshness"] = market_freshness
-
-        # Component 4: Peer Data Availability
-        try:
+        def _get_peer_count(target_symbol: str) -> Optional[int]:
             query = text("""
                 SELECT COUNT(*) FROM peer_metrics
                 WHERE industry = (SELECT industry FROM peer_metrics WHERE symbol = :symbol LIMIT 1)
             """)
             with self.db_manager.get_session() as session:
-                peer_count = session.execute(query, {"symbol": symbol}).scalar()
-            peer_availability = min((peer_count / 10) * 100, 100) if peer_count else 0
-        except Exception as e:
-            self.main_logger.warning(f"Could not get peer data availability: {e}")
-            peer_availability = 0
-        scores.append(peer_availability)
-        details["peer_availability"] = peer_availability
+                return session.execute(query, {"symbol": target_symbol}).scalar()
 
-        # Overall score
-        overall_score = sum(scores) / len(scores)
-
-        # Letter grade
-        if overall_score >= 90:
-            grade = "A"
-        elif overall_score >= 80:
-            grade = "B"
-        elif overall_score >= 70:
-            grade = "C"
-        elif overall_score >= 60:
-            grade = "D"
-        else:
-            grade = "F"
-
-        return {
-            "overall_score": round(overall_score, 1),
-            "grade": grade,
-            "components": details,
-            "timestamp": datetime.now(timezone.utc),
-        }
+        return calculate_data_quality_detailed(
+            symbol,
+            llm_responses,
+            quarterly_metrics,
+            latest_data,
+            get_peer_count=_get_peer_count,
+            logger=self.main_logger,
+        )
 
     def _assess_data_quality(self, llm_responses: Dict, latest_data: Dict) -> float:
         """Assess overall data quality and completeness, prioritizing SEC comprehensive analysis
@@ -4098,351 +3574,51 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         Returns:
             float: Data quality score on 1-10 scale
         """
-        # First, try to get data quality score from SEC comprehensive analysis
-        comprehensive_analysis = llm_responses.get("fundamental", {}).get("comprehensive", {})
-        if isinstance(comprehensive_analysis, dict):
-            # Direct score from comprehensive analysis
-            if "data_quality_score" in comprehensive_analysis:
-                score_data = comprehensive_analysis["data_quality_score"]
-                if isinstance(score_data, dict):
-                    return float(score_data.get("score", 0.0))  # Already in 1-10 scale
-                return float(score_data)  # Already in 1-10 scale
-
-            # Extract from response content if it's nested
-            content = comprehensive_analysis.get("content", {})
-            if isinstance(content, dict) and "data_quality_score" in content:
-                score_data = content["data_quality_score"]
-                if isinstance(score_data, dict):
-                    return float(score_data.get("score", 0.0))  # Already in 1-10 scale
-                return float(score_data)  # Already in 1-10 scale
-
-        # Fallback to traditional data quality assessment (convert to 1-10 scale)
-        quality_score = 0.0
-
-        # Check fundamental data availability (max 4 points)
-        if llm_responses.get("fundamental"):
-            quality_score += 4.0
-            if len(llm_responses["fundamental"]) >= 3:  # Multiple quarters
-                quality_score += 1.0
-
-        # Check technical data availability (max 3 points)
-        if llm_responses.get("technical"):
-            quality_score += 3.0
-
-        # Check data freshness (max 2 points)
-        if latest_data.get("technical", {}).get("current_price"):
-            quality_score += 1.0
-
-        if latest_data.get("fundamental"):
-            quality_score += 1.0
-
-        return min(quality_score, 10.0)  # Cap at 10.0
+        return assess_data_quality(llm_responses, latest_data)
 
     def _parse_synthesis_response(self, response: str) -> Dict:
         """Parse the synthesis LLM response"""
-
-        result = {
-            "recommendation": "HOLD",
-            "confidence": "MEDIUM",
-            "investment_thesis": "",
-            "key_catalysts": [],
-            "key_risks": [],
-            "price_targets": {},
-            "position_size": "MODERATE",
-            "time_horizon": "MEDIUM-TERM",
-            "entry_strategy": "",
-            "exit_strategy": "",
-        }
-
-        try:
-            # Extract final recommendation
-            rec_match = re.search(
-                r"FINAL RECOMMENDATION[:\s]*\*?\*?\s*\[?([A-Z\s]+)\]?",
-                response,
-                re.IGNORECASE,
-            )
-            if rec_match:
-                rec_text = rec_match.group(1).strip().upper()
-                if "STRONG BUY" in rec_text:
-                    result["recommendation"] = "STRONG BUY"
-                elif "STRONG SELL" in rec_text:
-                    result["recommendation"] = "STRONG SELL"
-                elif "BUY" in rec_text:
-                    result["recommendation"] = "BUY"
-                elif "SELL" in rec_text:
-                    result["recommendation"] = "SELL"
-                else:
-                    result["recommendation"] = "HOLD"
-
-            # Extract confidence level
-            conf_match = re.search(
-                r"CONFIDENCE LEVEL[:\s]*\*?\*?\s*\[?([A-Z]+)\]?",
-                response,
-                re.IGNORECASE,
-            )
-            if conf_match:
-                result["confidence"] = conf_match.group(1).strip().upper()
-
-            # Extract investment thesis
-            thesis_match = re.search(
-                r"INVESTMENT THESIS[:\s]*\*?\*?(.*?)(?=\*\*[A-Z]|\n\n)",
-                response,
-                re.IGNORECASE | re.DOTALL,
-            )
-            if thesis_match:
-                result["investment_thesis"] = thesis_match.group(1).strip()
-
-            # Extract catalysts
-            catalysts_match = re.search(
-                r"KEY CATALYSTS[:\s]*\*?\*?(.*?)(?=\*\*[A-Z]|\n\n)",
-                response,
-                re.IGNORECASE | re.DOTALL,
-            )
-            if catalysts_match:
-                catalysts_text = catalysts_match.group(1)
-                result["key_catalysts"] = [cat.strip() for cat in re.findall(r"[•\-]\s*(.+)", catalysts_text)]
-
-            # Extract risks
-            risks_match = re.search(
-                r"RISK ASSESSMENT[:\s]*\*?\*?(.*?)(?=\*\*[A-Z]|\n\n)",
-                response,
-                re.IGNORECASE | re.DOTALL,
-            )
-            if risks_match:
-                risks_text = risks_match.group(1)
-                result["key_risks"] = [risk.strip() for risk in re.findall(r"[•\-]\s*(.+)", risks_text)]
-
-            # Extract price targets
-            target_match = re.search(r"12-month.*?Target[:\s]*\$?([\d.]+)", response, re.IGNORECASE)
-            if target_match:
-                result["price_targets"]["12_month"] = float(target_match.group(1))
-
-            # Extract position size
-            pos_match = re.search(
-                r"POSITION SIZING[:\s]*\*?\*?\s*\[?([A-Z\s\/%]+)\]?",
-                response,
-                re.IGNORECASE,
-            )
-            if pos_match:
-                pos_text = pos_match.group(1).strip().upper()
-                if "LARGE" in pos_text or "CONCENTRATED" in pos_text:
-                    result["position_size"] = "LARGE"
-                elif "SMALL" in pos_text or "STARTER" in pos_text:
-                    result["position_size"] = "SMALL"
-                else:
-                    result["position_size"] = "MODERATE"
-
-            # Extract time horizon
-            horizon_match = re.search(
-                r"TIME HORIZON[:\s]*\*?\*?\s*\[?([A-Z\s\-]+)\]?",
-                response,
-                re.IGNORECASE,
-            )
-            if horizon_match:
-                result["time_horizon"] = horizon_match.group(1).strip().upper()
-
-        except Exception as e:
-            self.main_logger.warning(f"Error parsing synthesis response: {e}")
-
-        return result
+        return parse_synthesis_response(response, logger=self.main_logger)
 
     def _extract_income_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
         """Extract income statement score from responses"""
-        # First check AI recommendation
-        if "income_statement_score" in ai_recommendation:
-            return float(ai_recommendation["income_statement_score"])
-
-        # Check comprehensive analysis for income statement analysis
-        comp_analysis = llm_responses.get("fundamental", {}).get("comprehensive", {})
-        content = comp_analysis.get("content", comp_analysis) if isinstance(comp_analysis, dict) else {}
-
-        if isinstance(content, dict):
-            # Look for income statement analysis section
-            income_analysis = content.get("income_statement_analysis", {})
-            if income_analysis:
-                # Try to extract a score from profitability metrics
-                profitability = income_analysis.get("profitability_analysis", {})
-                margins = [
-                    profitability.get("gross_margin", 0),
-                    profitability.get("operating_margin", 0),
-                    profitability.get("net_margin", 0),
-                ]
-                # Convert margins to score (assuming good margins are >15%)
-                avg_margin = (
-                    sum(m for m in margins if m > 0) / len([m for m in margins if m > 0])
-                    if any(m > 0 for m in margins)
-                    else 0
-                )
-                if avg_margin > 0:
-                    return min(10.0, max(1.0, avg_margin * 100 / 3))  # Scale to 1-10
-
-        # Fallback to fundamental score with adjustment
-        base_fundamental = self._calculate_fundamental_score(llm_responses)
-        return base_fundamental * 0.9 if base_fundamental > 0 else 0.0
+        return extract_income_score(
+            llm_responses,
+            ai_recommendation,
+            calculate_fundamental_score=self._calculate_fundamental_score,
+        )
 
     def _extract_cashflow_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
         """Extract cash flow score from responses"""
-        base_fundamental = self._calculate_fundamental_score(llm_responses)
-
-        # Look for cash flow keywords
-        cashflow_keywords = [
-            "cash flow",
-            "cash",
-            "liquidity",
-            "fcf",
-            "working capital",
-            "operating cash",
-        ]
-        cashflow_score_adjustments = []
-
-        for resp in llm_responses.get("fundamental", {}).values():
-            content = resp.get("content", "")
-            if isinstance(content, dict):
-                content = json.dumps(content)
-            elif not isinstance(content, str):
-                content = str(content)
-            content = content.lower()
-            cashflow_mentions = sum(1 for keyword in cashflow_keywords if keyword in content)
-            if cashflow_mentions > 3:
-                cashflow_score_adjustments.append(0.5)
-            elif cashflow_mentions > 0:
-                cashflow_score_adjustments.append(0.0)
-            else:
-                cashflow_score_adjustments.append(-0.5)
-
-        adjustment = (
-            sum(cashflow_score_adjustments) / len(cashflow_score_adjustments) if cashflow_score_adjustments else 0
+        return extract_cashflow_score(
+            llm_responses,
+            ai_recommendation,
+            calculate_fundamental_score=self._calculate_fundamental_score,
         )
-        return max(0.0, min(10.0, base_fundamental + adjustment)) if base_fundamental > 0 else 0.0
 
     def _extract_balance_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
         """Extract balance sheet score from responses"""
-        base_fundamental = self._calculate_fundamental_score(llm_responses)
-
-        # Look for balance sheet keywords
-        balance_keywords = [
-            "asset",
-            "liability",
-            "equity",
-            "debt",
-            "balance sheet",
-            "leverage",
-            "solvency",
-        ]
-        balance_score_adjustments = []
-
-        for resp in llm_responses.get("fundamental", {}).values():
-            content = resp.get("content", "")
-            if isinstance(content, dict):
-                content = json.dumps(content)
-            elif not isinstance(content, str):
-                content = str(content)
-            content = content.lower()
-            balance_mentions = sum(1 for keyword in balance_keywords if keyword in content)
-            if balance_mentions > 3:
-                balance_score_adjustments.append(0.5)
-            elif balance_mentions > 0:
-                balance_score_adjustments.append(0.0)
-            else:
-                balance_score_adjustments.append(-0.5)
-
-        adjustment = sum(balance_score_adjustments) / len(balance_score_adjustments) if balance_score_adjustments else 0
-        return max(0.0, min(10.0, base_fundamental + adjustment)) if base_fundamental > 0 else 0.0
+        return extract_balance_score(
+            llm_responses,
+            ai_recommendation,
+            calculate_fundamental_score=self._calculate_fundamental_score,
+        )
 
     def _extract_growth_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
         """Extract growth prospects score from responses"""
-        # First check if growth score is in the comprehensive fundamental analysis
-        if "comprehensive" in llm_responses.get("fundamental", {}):
-            comp_content = llm_responses["fundamental"]["comprehensive"].get("content", {})
-            if isinstance(comp_content, dict) and "growth_prospects_score" in comp_content:
-                return float(comp_content["growth_prospects_score"])
-
-        # Check AI recommendation for growth assessment
-        if "fundamental_assessment" in ai_recommendation:
-            fund_assess = ai_recommendation["fundamental_assessment"]
-            if "growth_prospects" in fund_assess:
-                # Extract numeric score if available
-                growth_data = fund_assess["growth_prospects"]
-                if isinstance(growth_data, dict) and "score" in growth_data:
-                    return float(growth_data["score"])
-
-        # Fallback: analyze growth keywords
-        base_fundamental = self._calculate_fundamental_score(llm_responses)
-        growth_keywords = [
-            "growth",
-            "expansion",
-            "increase",
-            "momentum",
-            "acceleration",
-            "scaling",
-        ]
-        growth_score_adjustments = []
-
-        for resp in llm_responses.get("fundamental", {}).values():
-            content = resp.get("content", "")
-            if isinstance(content, dict):
-                content = json.dumps(content)
-            elif not isinstance(content, str):
-                content = str(content)
-            content = content.lower()
-            growth_mentions = sum(1 for keyword in growth_keywords if keyword in content)
-            if growth_mentions > 5:
-                growth_score_adjustments.append(1.0)
-            elif growth_mentions > 2:
-                growth_score_adjustments.append(0.5)
-            else:
-                growth_score_adjustments.append(0.0)
-
-        adjustment = sum(growth_score_adjustments) / len(growth_score_adjustments) if growth_score_adjustments else 0
-        return max(0.0, min(10.0, base_fundamental + adjustment)) if base_fundamental > 0 else 0.0
+        return extract_growth_score(
+            llm_responses,
+            ai_recommendation,
+            calculate_fundamental_score=self._calculate_fundamental_score,
+        )
 
     def _extract_value_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
         """Extract value investment score from responses"""
-        # Check for valuation metrics in AI recommendation
-        if "fundamental_assessment" in ai_recommendation:
-            fund_assess = ai_recommendation["fundamental_assessment"]
-            if "valuation" in fund_assess:
-                val_data = fund_assess["valuation"]
-                if isinstance(val_data, dict) and "score" in val_data:
-                    return float(val_data["score"])
-
-        # Look for value indicators
-        base_fundamental = self._calculate_fundamental_score(llm_responses)
-        value_keywords = [
-            "undervalued",
-            "discount",
-            "cheap",
-            "value",
-            "pe ratio",
-            "price to book",
-            "dividend yield",
-        ]
-        negative_value_keywords = ["overvalued", "expensive", "premium", "overpriced"]
-        value_score_adjustments = []
-
-        for resp in llm_responses.get("fundamental", {}).values():
-            content = resp.get("content", "")
-            if isinstance(content, dict):
-                content = json.dumps(content)
-            elif not isinstance(content, str):
-                content = str(content)
-            content = content.lower()
-
-            value_mentions = sum(1 for keyword in value_keywords if keyword in content)
-            negative_mentions = sum(1 for keyword in negative_value_keywords if keyword in content)
-
-            net_value_signal = value_mentions - negative_mentions
-            if net_value_signal > 3:
-                value_score_adjustments.append(1.0)
-            elif net_value_signal > 0:
-                value_score_adjustments.append(0.5)
-            elif net_value_signal < -3:
-                value_score_adjustments.append(-1.0)
-            else:
-                value_score_adjustments.append(0.0)
-
-        adjustment = sum(value_score_adjustments) / len(value_score_adjustments) if value_score_adjustments else 0
-        return max(0.0, min(10.0, base_fundamental + adjustment)) if base_fundamental > 0 else 0.0
+        return extract_value_score(
+            llm_responses,
+            ai_recommendation,
+            calculate_fundamental_score=self._calculate_fundamental_score,
+        )
 
     def _extract_business_quality_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
         """
@@ -4456,146 +3632,15 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         - Competitive positioning indicators
         - Management effectiveness signals
         """
-        # First, try to get the business_quality_score directly from SEC comprehensive analysis
-        comprehensive_analysis = llm_responses.get("fundamental", {}).get("comprehensive", {})
-        if isinstance(comprehensive_analysis, dict):
-            # Direct score from comprehensive analysis
-            if "business_quality_score" in comprehensive_analysis:
-                score_data = comprehensive_analysis["business_quality_score"]
-                if isinstance(score_data, dict):
-                    return float(score_data.get("score", 5.0))
-                return float(score_data)
-
-            # Extract from response content if it's nested
-            content = comprehensive_analysis.get("content", {})
-            if isinstance(content, dict) and "business_quality_score" in content:
-                score_data = content["business_quality_score"]
-                if isinstance(score_data, dict):
-                    return float(score_data.get("score", 5.0))
-                return float(score_data)
-
-        # If comprehensive analysis is available as string/JSON, parse it
-        if isinstance(comprehensive_analysis, str):
-            try:
-                import json
-
-                parsed = json.loads(comprehensive_analysis)
-                if "business_quality_score" in parsed:
-                    return float(parsed["business_quality_score"])
-            except Exception:
-                pass
-
-        # Fallback: Calculate from quarterly analyses patterns
-        quarterly_analyses = llm_responses.get("fundamental", {})
-        quality_indicators = []
-
-        for period_key, analysis in quarterly_analyses.items():
-            if period_key == "comprehensive":  # Skip the comprehensive entry
-                continue
-
-            content = analysis.get("content", "")
-            if isinstance(content, dict):
-                content = json.dumps(content)
-            elif not isinstance(content, str):
-                content = str(content)
-
-            # Analyze quarterly data for business quality indicators
-            quality_score = self._analyze_quarterly_business_quality(content, period_key)
-            if quality_score > 0:
-                quality_indicators.append(quality_score)
-
-        # Calculate average business quality from quarterly analyses
-        if quality_indicators:
-            avg_quality = sum(quality_indicators) / len(quality_indicators)
-
-            # Apply weighting based on data consistency and trends
-            consistency_bonus = self._calculate_consistency_bonus(quality_indicators)
-            final_score = min(10.0, max(1.0, avg_quality + consistency_bonus))
-
-            return final_score
-
-        # Ultimate fallback: Return 0 to indicate no business quality score available
-        return 0.0
+        return extract_business_quality_score(
+            llm_responses,
+            ai_recommendation,
+            analyze_quarterly_business_quality=self._analyze_quarterly_business_quality,
+        )
 
     def _analyze_quarterly_business_quality(self, content: str, period: str) -> float:
         """Analyze individual quarterly content for business quality indicators"""
-        content_lower = content.lower()
-        quality_score = 5.0  # Base score
-
-        # Revenue quality indicators
-        revenue_quality_keywords = [
-            "recurring revenue",
-            "subscription",
-            "diversified revenue",
-            "stable revenue",
-            "revenue growth",
-            "market share",
-            "competitive advantage",
-            "moat",
-        ]
-
-        # Operational excellence indicators
-        operational_keywords = [
-            "margin expansion",
-            "efficiency",
-            "productivity",
-            "automation",
-            "cost control",
-            "operating leverage",
-            "scalability",
-        ]
-
-        # Innovation and competitive position
-        innovation_keywords = [
-            "innovation",
-            "r&d",
-            "research and development",
-            "patent",
-            "technology",
-            "differentiation",
-            "competitive position",
-            "market leadership",
-        ]
-
-        # Management effectiveness
-        management_keywords = [
-            "capital allocation",
-            "strategic initiative",
-            "execution",
-            "guidance",
-            "shareholder value",
-            "dividend",
-            "buyback",
-            "investment",
-        ]
-
-        # Calculate weighted scores for each category
-        categories = [
-            (revenue_quality_keywords, 1.5),  # Revenue quality most important
-            (operational_keywords, 1.2),  # Operational efficiency
-            (innovation_keywords, 1.0),  # Innovation capacity
-            (management_keywords, 0.8),  # Management effectiveness
-        ]
-
-        total_weight = 0
-        weighted_score = 0
-
-        for keywords, weight in categories:
-            category_score = 0
-            for keyword in keywords:
-                if keyword in content_lower:
-                    category_score += 1
-
-            # Normalize category score to 0-10 scale
-            normalized_score = min(10.0, (category_score / len(keywords)) * 10)
-            weighted_score += normalized_score * weight
-            total_weight += weight
-
-        # Calculate final weighted average
-        if total_weight > 0:
-            quality_score = weighted_score / total_weight
-
-        return max(1.0, min(10.0, quality_score))
+        return analyze_quarterly_business_quality(content, period)
 
     def _calculate_consistency_bonus(self, quality_indicators: List[float]) -> float:
         """Calculate bonus for consistent business quality across quarters"""
@@ -5070,275 +4115,55 @@ Respond with detailed JSON investment analysis."""
 
     def _extract_quarterly_trends(self, quarterly_analyses: List[Dict]) -> str:
         """Extract and summarize trends across quarters for quarterly synthesis"""
-        if not quarterly_analyses:
-            return "No quarterly data available for trend analysis"
-
-        trends = []
-        trends.append(f"Quarterly Analysis Summary ({len(quarterly_analyses)} quarters):")
-
-        # Add trends based on available quarterly data
-        for i, qa in enumerate(quarterly_analyses[:8]):  # Use last 8 quarters max
-            period = qa.get("period", f"Q{i + 1}")
-            form_type = qa.get("form_type", "Unknown")
-            trends.append(f"- {period} ({form_type}): Key financial metrics and performance indicators")
-
-        if len(quarterly_analyses) > 8:
-            trends.append(f"... and {len(quarterly_analyses) - 8} additional quarters")
-
-        return "\n".join(trends)
+        return extract_quarterly_trends(quarterly_analyses)
 
     def _extract_financial_metrics_from_quarter(self, quarter_data: Dict, period: str) -> Optional[Dict]:
         """Extract key financial metrics from a quarterly analysis"""
         try:
-            metrics = {"period": period}
-
-            # Try to extract common financial metrics from the quarter data
-            if isinstance(quarter_data, dict):
-                # Look for revenue metrics
-                for key in ["revenue", "total_revenue", "revenues", "sales"]:
-                    if key in quarter_data:
-                        metrics["revenue"] = quarter_data[key]
-                        break
-
-                # Look for profit metrics
-                for key in ["net_income", "net_profit", "earnings", "profit"]:
-                    if key in quarter_data:
-                        metrics["net_income"] = quarter_data[key]
-                        break
-
-                # Look for margin metrics
-                for key in ["gross_margin", "operating_margin", "profit_margin"]:
-                    if key in quarter_data:
-                        metrics[key] = quarter_data[key]
-
-                # Look for other key metrics
-                for key in [
-                    "eps",
-                    "operating_cash_flow",
-                    "free_cash_flow",
-                    "total_assets",
-                    "total_debt",
-                ]:
-                    if key in quarter_data:
-                        metrics[key] = quarter_data[key]
-
-            return metrics if len(metrics) > 1 else None
-
+            return extract_financial_metrics_from_quarter(quarter_data, period)
         except Exception as e:
             self.main_logger.warning(f"Error extracting metrics from quarter {period}: {e}")
             return None
 
     def _create_financial_trends_analysis(self, metrics_by_quarter: List[Dict]) -> str:
         """Create financial trends analysis from quarterly metrics"""
-        try:
-            if not metrics_by_quarter:
-                return "[NO QUARTERLY METRICS AVAILABLE FOR TREND ANALYSIS]"
-
-            trends = []
-            trends.append(f"📊 FINANCIAL TRENDS ANALYSIS ({len(metrics_by_quarter)} quarters):")
-
-            # Sort by period for chronological analysis
-            sorted_metrics = sorted(metrics_by_quarter, key=lambda x: x.get("period", ""))
-
-            # Revenue trend
-            revenues = [m.get("revenue", 0) for m in sorted_metrics if m.get("revenue")]
-            if len(revenues) >= 2:
-                revenue_growth = ((revenues[-1] - revenues[0]) / revenues[0] * 100) if revenues[0] > 0 else 0
-                trends.append(f"📈 Revenue Trend: {revenue_growth:+.1f}% over {len(revenues)} quarters")
-
-            # Margin trends
-            margins = [m.get("profit_margin", 0) for m in sorted_metrics if m.get("profit_margin")]
-            if len(margins) >= 2:
-                margin_change = margins[-1] - margins[0]
-                trends.append(f"💰 Margin Trend: {margin_change:+.1f}pp change in profit margin")
-
-            # Add quarterly breakdown
-            trends.append("\n📋 Quarterly Progression:")
-            for i, metrics in enumerate(sorted_metrics[-4:]):  # Last 4 quarters
-                period = metrics.get("period", f"Q{i + 1}")
-                revenue = metrics.get("revenue", 0)
-                margin = metrics.get("profit_margin", 0)
-                trends.append(f"  {period}: Revenue ${revenue:,.0f}M, Margin {margin:.1f}%")
-
-            return "\n".join(trends)
-
-        except Exception as e:
-            self.main_logger.warning(f"Error creating trends analysis: {e}")
-            return "[ERROR CREATING TRENDS ANALYSIS]"
+        return create_financial_trends_analysis(metrics_by_quarter, logger=self.main_logger)
 
     def _extract_technical_signals_from_text(self, technical_text: str) -> Dict:
         """Extract technical signals from text analysis"""
-        try:
-            import re
-
-            signals = {}
-
-            # Extract RSI
-            rsi_match = re.search(r"RSI[^:]*:\s*([\d.]+)", technical_text, re.IGNORECASE)
-            if rsi_match:
-                signals["rsi"] = float(rsi_match.group(1))
-
-            # Extract MACD
-            macd_match = re.search(r"MACD[^:]*:\s*([-\d.]+)", technical_text, re.IGNORECASE)
-            if macd_match:
-                signals["macd"] = float(macd_match.group(1))
-
-            # Extract trend
-            trend_match = re.search(r"trend[^:]*:\s*([A-Za-z]+)", technical_text, re.IGNORECASE)
-            if trend_match:
-                signals["trend"] = trend_match.group(1).upper()
-
-            # Extract support/resistance
-            support_match = re.search(r"support[^:]*:\s*\$?([\d.]+)", technical_text, re.IGNORECASE)
-            if support_match:
-                signals["support"] = float(support_match.group(1))
-
-            resistance_match = re.search(r"resistance[^:]*:\s*\$?([\d.]+)", technical_text, re.IGNORECASE)
-            if resistance_match:
-                signals["resistance"] = float(resistance_match.group(1))
-
-            return signals
-
-        except Exception as e:
-            self.main_logger.warning(f"Error extracting technical signals: {e}")
-            return {}
+        return extract_technical_signals_from_text(technical_text, logger=self.main_logger)
 
     def _get_sector_context(self, symbol: str) -> str:
         """Get sector and industry context for the symbol"""
-        try:
-            # Load sector mapping from external file
-            sector_mapping_file = Path(self.config.data_dir) / "sector_mapping.json"
-
-            if sector_mapping_file.exists():
-                with open(sector_mapping_file, "r") as f:
-                    sector_data = json.load(f)
-
-                mappings = sector_data.get("sector_mappings", {})
-                default = sector_data.get("default_mapping", {})
-
-                if symbol in mappings:
-                    mapping = mappings[symbol]
-                    return f"{mapping['sector']} - {mapping['industry']}"
-                else:
-                    return f"{default['sector']} - {default['industry']}"
-            else:
-                self.main_logger.warning(f"Sector mapping file not found: {sector_mapping_file}")
-                return "Unknown Sector - Requires Research"
-
-        except Exception as e:
-            self.main_logger.error(f"Error loading sector mapping: {e}")
-            return "Unknown Sector - Requires Research"
+        return get_sector_context(symbol, self.config.data_dir, logger=self.main_logger)
 
     def _get_market_environment_context(self) -> str:
         """Get current market environment context"""
-        # This could be enhanced to fetch real market data
-        return "Mixed signals with elevated volatility, Fed policy uncertainty, and sector rotation dynamics"
+        return get_market_environment_context()
 
     def _calculate_ma_position(self, current_price: float, ma_price: float) -> str:
         """Calculate moving average position relative to current price"""
-        if not current_price or not ma_price:
-            return "N/A"
-
-        if current_price > ma_price * 1.02:
-            return "Strong Above"
-        elif current_price > ma_price:
-            return "Above"
-        elif current_price < ma_price * 0.98:
-            return "Strong Below"
-        else:
-            return "Below"
+        return calculate_ma_position(current_price, ma_price)
 
     def _check_ma_cross(self, sma_50: float, sma_200: float) -> str:
         """Check for golden/death cross pattern"""
-        if not sma_50 or not sma_200:
-            return "N/A"
-
-        if sma_50 > sma_200 * 1.01:
-            return "Golden Cross"
-        elif sma_50 < sma_200 * 0.99:
-            return "Death Cross"
-        else:
-            return "Neutral"
+        return check_ma_cross(sma_50, sma_200)
 
     def _assess_trend_strength(self, tech_data: Dict) -> str:
         """Assess overall trend strength from technical data"""
-        try:
-            rsi = tech_data.get("rsi", 50)
-            price_change_1m = tech_data.get("price_change_1m", 0)
-
-            if rsi > 60 and price_change_1m > 5:
-                return "Strong Bullish"
-            elif rsi > 50 and price_change_1m > 0:
-                return "Bullish"
-            elif rsi < 40 and price_change_1m < -5:
-                return "Strong Bearish"
-            elif rsi < 50 and price_change_1m < 0:
-                return "Bearish"
-            else:
-                return "Neutral"
-        except Exception:
-            return "N/A"
+        return assess_trend_strength(tech_data)
 
     def _calculate_bb_position(self, tech_data: Dict) -> str:
         """Calculate Bollinger Band position"""
-        try:
-            current_price = tech_data.get("current_price", 0)
-            bb_upper = tech_data.get("bollinger_upper", 0)
-            bb_lower = tech_data.get("bollinger_lower", 0)
-
-            if not all([current_price, bb_upper, bb_lower]):
-                return "N/A"
-
-            bb_range = bb_upper - bb_lower
-            position = (current_price - bb_lower) / bb_range
-
-            if position > 0.8:
-                return "Upper Band"
-            elif position > 0.6:
-                return "Above Middle"
-            elif position > 0.4:
-                return "Middle Range"
-            elif position > 0.2:
-                return "Below Middle"
-            else:
-                return "Lower Band"
-        except Exception:
-            return "N/A"
+        return calculate_bb_position(tech_data)
 
     def _assess_volume_trend(self, tech_data: Dict) -> str:
         """Assess volume trend"""
-        try:
-            volume_ratio = tech_data.get("volume_ratio", 1)
-
-            if volume_ratio > 2.0:
-                return "Very High"
-            elif volume_ratio > 1.5:
-                return "High"
-            elif volume_ratio > 0.8:
-                return "Normal"
-            elif volume_ratio > 0.5:
-                return "Low"
-            else:
-                return "Very Low"
-        except Exception:
-            return "N/A"
+        return assess_volume_trend(tech_data)
 
     def _assess_volume_price_relationship(self, tech_data: Dict) -> str:
         """Assess volume-price relationship"""
-        try:
-            price_change_1d = tech_data.get("price_change_1d", 0)
-            volume_ratio = tech_data.get("volume_ratio", 1)
-
-            if price_change_1d > 0 and volume_ratio > 1.2:
-                return "Bullish Confirmation"
-            elif price_change_1d < 0 and volume_ratio > 1.2:
-                return "Bearish Confirmation"
-            elif abs(price_change_1d) > 2 and volume_ratio < 0.8:
-                return "Divergence Warning"
-            else:
-                return "Neutral"
-        except Exception:
-            return "N/A"
+        return assess_volume_price_relationship(tech_data)
 
     def _create_fallback_recommendation(self, raw_response: Any, symbol: str, overall_score: float) -> Dict[str, Any]:
         """
@@ -5352,118 +4177,7 @@ Respond with detailed JSON investment analysis."""
         Returns:
             Dict containing fallback recommendation structure
         """
-        try:
-            # Convert response to string for text parsing
-            response_text = str(raw_response) if raw_response else ""
-
-            # Try to extract any partial information using regex
-            import re
-
-            # Extract recommendation if present
-            recommendation = "HOLD"  # Safe default
-            rec_patterns = [
-                r'recommendation["\']?\s*:\s*["\']?(STRONG_BUY|STRONG_SELL|BUY|SELL|HOLD)["\']?',
-                r"FINAL\s+RECOMMENDATION[:\s]*\*?\*?\s*\[?([A-Z\s]+)\]?",
-                r'"recommendation":\s*"([^"]+)"',
-            ]
-
-            for pattern in rec_patterns:
-                match = re.search(pattern, response_text, re.IGNORECASE)
-                if match:
-                    rec_text = match.group(1).strip().upper()
-                    if any(valid in rec_text for valid in ["BUY", "SELL", "HOLD"]):
-                        recommendation = rec_text
-                        break
-
-            # Extract confidence if present
-            confidence = "LOW"  # Conservative default for failed parsing
-            conf_patterns = [
-                r'confidence["\']?\s*:\s*["\']?(HIGH|MEDIUM|LOW)["\']?',
-                r'"confidence_level":\s*"([^"]+)"',
-            ]
-
-            for pattern in conf_patterns:
-                match = re.search(pattern, response_text, re.IGNORECASE)
-                if match:
-                    confidence = match.group(1).strip().upper()
-                    break
-
-            # Extract investment thesis if present
-            thesis = f"Analysis completed for {symbol} with computed overall score of {overall_score:.1f}/10."
-            thesis_patterns = [
-                r'investment_thesis["\']?\s*:\s*["\']([^"\']+)["\']',
-                r'thesis["\']?\s*:\s*["\']([^"\']+)["\']',
-                r"INVESTMENT\s+THESIS[:\s]*([^{}\[\]]+?)(?=\*\*|##|\n\n|$)",
-            ]
-
-            for pattern in thesis_patterns:
-                match = re.search(pattern, response_text, re.IGNORECASE | re.DOTALL)
-                if match:
-                    extracted_thesis = match.group(1).strip()
-                    if len(extracted_thesis) > 20:  # Only use if substantial
-                        thesis = extracted_thesis[:500]  # Limit length
-                        break
-
-            # Create fallback structure that matches expected format
-            fallback_recommendation = {
-                "overall_score": overall_score,
-                "fundamental_score": overall_score,  # Use computed score as fallback
-                "technical_score": overall_score,  # Use computed score as fallback
-                "investment_recommendation": {
-                    "recommendation": recommendation,
-                    "confidence_level": confidence,
-                },
-                "executive_summary": {"investment_thesis": thesis},
-                "key_catalysts": [
-                    f"Technical and fundamental analysis for {symbol}",
-                    "Market position assessment",
-                    "Financial performance review",
-                ],
-                "key_risks": [
-                    "JSON parsing failure indicates potential data quality issues",
-                    "LLM response formatting problems",
-                    "Analysis may be incomplete due to parsing errors",
-                ],
-                "position_size": "SMALL",  # Conservative due to parsing failure
-                "time_horizon": "MEDIUM-TERM",
-                "entry_strategy": "Conservative approach recommended due to analysis parsing issues",
-                "exit_strategy": "Monitor for improved data quality and re-analyze",
-                "details": f"Fallback recommendation created due to JSON parsing failure. Raw response length: {len(response_text)} characters.",
-                "_fallback_created": True,  # Flag to indicate this is a fallback
-                "_parsing_error": True,  # Flag to indicate parsing issues
-            }
-
-            self.main_logger.info(
-                f"Created fallback recommendation for {symbol}: {recommendation} (confidence: {confidence})"
-            )
-
-            return fallback_recommendation
-
-        except Exception as e:
-            self.main_logger.error(f"Error creating fallback recommendation: {e}")
-            # Last resort fallback
-            return {
-                "overall_score": 5.0,  # Neutral score
-                "fundamental_score": 5.0,
-                "technical_score": 5.0,
-                "investment_recommendation": {
-                    "recommendation": "HOLD",
-                    "confidence_level": "LOW",
-                },
-                "executive_summary": {
-                    "investment_thesis": f"Unable to complete analysis for {symbol} due to processing errors."
-                },
-                "key_catalysts": ["Analysis pending"],
-                "key_risks": ["Analysis incomplete", "Data processing errors"],
-                "position_size": "AVOID",
-                "time_horizon": "UNKNOWN",
-                "entry_strategy": "Wait for successful analysis",
-                "exit_strategy": "Not applicable",
-                "details": "Emergency fallback due to complete parsing failure",
-                "_fallback_created": True,
-                "_parsing_error": True,
-                "_emergency_fallback": True,
-            }
+        return create_fallback_recommendation(raw_response, symbol, overall_score, self.main_logger)
 
     def _create_extensible_insights_structure(
         self,

@@ -10,6 +10,11 @@
 http://localhost:8000
 ```
 
+Canonical backend routes live at `/health`, `/analyze/{symbol}`, `/batch`, and `/batch/{job_id}`.
+Compatibility aliases under `/api/*` are also supported.
+
+For non-local deployment, set `VICTOR_API_BEARER_TOKEN` and send `Authorization: Bearer <token>` to mutating or compute-heavy endpoints such as analysis, batch, cache warm, cache clear, and UI refresh.
+
 ---
 
 ## 📊 Analysis Endpoints
@@ -17,7 +22,7 @@ http://localhost:8000
 ### Run Analysis
 
 ```
-POST /api/analyze/{symbol}
+POST /analyze/{symbol}
 ```
 
 **Request**:
@@ -32,13 +37,11 @@ POST /api/analyze/{symbol}
 **Response**:
 ```json
 {
-  "status": "success",
-  "result": {
-    "symbol": "AAPL",
-    "mode": "standard",
-    "recommendation": "BUY",
-    "price_target": 470.40
-  }
+  "symbol": "AAPL",
+  "mode": "standard",
+  "status": "completed",
+  "recommendation": {"action": "BUY"},
+  "timestamp": "2026-03-15T12:00:00"
 }
 ```
 
@@ -47,7 +50,7 @@ POST /api/analyze/{symbol}
 ### Batch Analysis
 
 ```
-POST /api/batch
+POST /batch
 ```
 
 **Request**:
@@ -62,16 +65,16 @@ POST /api/batch
 **Response**:
 ```json
 {
-  "job_id": "uuid",
-  "status": "running",
-  "total": 3
+  "submitted": 3,
+  "job_id": "batch_20260315_120000",
+  "status": "pending"
 }
 ```
 
 ### Get Status
 
 ```
-GET /api/batch/{job_id}
+GET /batch/{job_id}
 ```
 
 ---
@@ -107,6 +110,12 @@ GET /ui/api/analysis/{symbol}/latest
 POST /ui/api/analysis/{symbol}/refresh
 ```
 
+### Symbol History
+
+```
+GET /ui/api/analysis/{symbol}/history
+```
+
 ---
 
 ### Rankings
@@ -135,6 +144,12 @@ GET /ui/api/rankings
 
 ```
 GET /ui/api/history?limit=20
+```
+
+### UI Health
+
+```
+GET /ui/api/health
 ```
 
 ---
@@ -181,15 +196,17 @@ DELETE /cache/symbol/{symbol}
 ### Health Check
 
 ```
-GET /api/health
+GET /health
 ```
 
 **Response**:
 ```json
 {
   "status": "healthy",
-  "database": "connected",
-  "ollama": "connected"
+  "version": "0.5.0",
+  "database": "healthy",
+  "cache": "healthy",
+  "llm": "healthy"
 }
 ```
 
@@ -216,15 +233,19 @@ GET /models
 
 ```bash
 # Health check
-curl http://localhost:8000/api/health
+curl http://localhost:8000/health
 
 # Run analysis
-curl -X POST http://localhost:8000/api/analyze/AAPL \
+curl -X POST http://localhost:8000/analyze/AAPL \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $VICTOR_API_BEARER_TOKEN" \
   -d '{"mode": "quick"}'
 
 # Get cached analysis
 curl http://localhost:8000/ui/api/analysis/AAPL/latest
+
+# Symbol history
+curl http://localhost:8000/ui/api/analysis/AAPL/history
 
 # Rankings
 curl http://localhost:8000/ui/api/rankings?limit=10
@@ -235,5 +256,5 @@ curl http://localhost:8000/ui/api/rankings?limit=10
 ## 🔗 Related
 
 - [Architecture](../developer/architecture.md#api) - API design
-- [Cache System](../technical/cache-system.md) - Cache implementation
+- [Cache Sweep](../operations/web-ui-cache-sweep.md) - Cache implementation notes
 - [Web Dashboard](../user/ui-dashboard.md) - UI usage

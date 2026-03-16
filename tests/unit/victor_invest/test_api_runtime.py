@@ -16,6 +16,128 @@ def test_api_runner_alias_targets_yaml_workflow_path():
     assert api_module.run_workflow_analysis is workflows_pkg.run_yaml_analysis
 
 
+def test_api_contract_alias_routes_present():
+    route_paths = {route.path for route in api_module.app.routes}
+    assert "/dashboard" in route_paths
+    assert "/ui/api/health" in route_paths
+    assert "/api/health" in route_paths
+    assert "/api/analyze/{symbol}" in route_paths
+    assert "/api/batch" in route_paths
+    assert "/api/batch/{job_id}" in route_paths
+    assert "/api/analysis/{symbol}/latest" in route_paths
+    assert "/ui/api/analysis/{symbol}/history" in route_paths
+
+
+def test_get_allowed_origins_defaults_to_local_dev(monkeypatch):
+    monkeypatch.delenv("VICTOR_ALLOWED_ORIGINS", raising=False)
+    monkeypatch.delenv("VICTOR_CORS_ALLOW_ALL", raising=False)
+
+    origins = api_module._get_allowed_origins()
+
+    assert origins == list(api_module.DEFAULT_CORS_ORIGINS)
+    assert api_module._allow_credentials_for_origins(origins) is True
+
+
+def test_get_allowed_origins_honors_explicit_env(monkeypatch):
+    monkeypatch.setenv("VICTOR_ALLOWED_ORIGINS", "https://example.com, https://app.example.com ")
+    monkeypatch.delenv("VICTOR_CORS_ALLOW_ALL", raising=False)
+
+    assert api_module._get_allowed_origins() == ["https://example.com", "https://app.example.com"]
+
+
+def test_allow_credentials_disabled_for_wildcard_origins(monkeypatch):
+    monkeypatch.delenv("VICTOR_ALLOWED_ORIGINS", raising=False)
+    monkeypatch.setenv("VICTOR_CORS_ALLOW_ALL", "true")
+
+    origins = api_module._get_allowed_origins()
+
+    assert origins == ["*"]
+    assert api_module._allow_credentials_for_origins(origins) is False
+
+
+def test_api_auth_enabled_reflects_env(monkeypatch):
+    monkeypatch.delenv("VICTOR_API_BEARER_TOKEN", raising=False)
+    assert api_module._api_auth_enabled() is False
+
+    monkeypatch.setenv("VICTOR_API_BEARER_TOKEN", "secret-token")
+    assert api_module._api_auth_enabled() is True
+
+
+def test_warn_for_risky_api_exposure_logs_when_non_local_without_auth(monkeypatch, caplog):
+    monkeypatch.delenv("VICTOR_API_BEARER_TOKEN", raising=False)
+
+    with caplog.at_level("WARNING"):
+        api_module._warn_for_risky_api_exposure(["https://research.example.com"])
+
+    assert "API bearer auth is disabled" in caplog.text
+
+
+def test_load_persisted_batch_jobs_marks_unfinished_jobs_interrupted(tmp_path, monkeypatch):
+    batch_dir = tmp_path / "batch_jobs"
+    batch_dir.mkdir()
+    (batch_dir / "job-1.json").write_text(
+        json.dumps(
+            {
+                "job_id": "job-1",
+                "symbols": ["AAPL"],
+                "mode": "quick",
+                "status": "running",
+                "results": {},
+                "submitted_at": "2026-03-15T10:00:00",
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(api_module, "BATCH_JOBS_DIR", batch_dir)
+
+    jobs = api_module._load_persisted_batch_jobs()
+
+    assert jobs["job-1"]["status"] == "interrupted"
+    assert "Process restarted" in jobs["job-1"]["error"]
+
+
+def test_persist_batch_job_writes_json_snapshot(tmp_path, monkeypatch):
+    batch_dir = tmp_path / "batch_jobs"
+    monkeypatch.setattr(api_module, "BATCH_JOBS_DIR", batch_dir)
+
+    api_module._persist_batch_job("job-1", {"status": "pending", "symbols": ["AAPL"], "results": {}})
+
+    payload = json.loads((batch_dir / "job-1.json").read_text(encoding="utf-8"))
+    assert payload["job_id"] == "job-1"
+    assert payload["status"] == "pending"
+
+
+def test_run_batch_analysis_persists_completed_state(tmp_path, monkeypatch):
+    batch_dir = tmp_path / "batch_jobs"
+    monkeypatch.setattr(api_module, "BATCH_JOBS_DIR", batch_dir)
+
+    async def fake_run_workflow_analysis(symbol, mode):
+        return AnalysisWorkflowState(
+            symbol=symbol,
+            mode=mode,
+            recommendation={"action": "HOLD"},
+            errors=[],
+        )
+
+    monkeypatch.setattr(api_module, "run_workflow_analysis", fake_run_workflow_analysis)
+    api_module.app.state.analysis_jobs = {
+        "job-persisted": {
+            "symbols": ["AAPL"],
+            "mode": "quick",
+            "status": "pending",
+            "results": {},
+            "submitted_at": "now",
+        }
+    }
+
+    asyncio.run(api_module._run_batch_analysis("job-persisted", ["AAPL"], "quick"))
+
+    payload = json.loads((batch_dir / "job-persisted.json").read_text(encoding="utf-8"))
+    assert payload["status"] == "completed"
+    assert payload["success_count"] == 1
+    assert payload["results"]["AAPL"]["status"] == "completed"
+
+
 def test_analyze_symbol_uses_workflow_runner(monkeypatch):
     monkeypatch.setattr(api_module, "Agent", object())
     calls = {}

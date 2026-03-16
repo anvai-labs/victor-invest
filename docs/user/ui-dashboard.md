@@ -14,7 +14,9 @@ uvicorn victor_invest.api.app:app --reload
 uvicorn victor_invest.api.app:app --host 0.0.0.0 --port 8000
 ```
 
-**Access**: http://localhost:8000/dashboard
+**Access**: http://localhost:8000/ui
+
+`/dashboard` is retained as a compatibility redirect, but `/ui` is the canonical route.
 
 ---
 
@@ -87,7 +89,8 @@ Compare multiple symbols side-by-side
 
 ```bash
 # Single symbol
-curl -X POST http://localhost:8000/ui/api/analysis/AAPL/refresh
+curl -X POST http://localhost:8000/ui/api/analysis/AAPL/refresh \
+  -H "Authorization: Bearer $VICTOR_API_BEARER_TOKEN"
 
 # Batch sweep
 python scripts/sweep_ui_cache.py --parallel 8
@@ -99,13 +102,16 @@ python scripts/sweep_ui_cache.py --parallel 8
 
 ```bash
 # Health check
-GET /api/health
+GET /ui/api/health
 
 # Run analysis
-POST /api/analyze/{symbol}
+POST /analyze/{symbol}
 
 # Get cached result
 GET /ui/api/analysis/{symbol}/latest
+
+# Get symbol history
+GET /ui/api/analysis/{symbol}/history
 
 # Rankings
 GET /ui/api/rankings
