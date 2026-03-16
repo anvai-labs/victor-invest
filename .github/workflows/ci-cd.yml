@@ -138,9 +138,6 @@ jobs:
           - name: 'develop (latest)'
             install: 'git+https://github.com/vjsingh1984/victor.git@develop'
             sdk_install: 'git+https://github.com/vjsingh1984/victor.git@develop#subdirectory=victor-sdk'
-          - name: 'main (stable)'
-            install: 'git+https://github.com/vjsingh1984/victor.git@main'
-            sdk_install: 'git+https://github.com/vjsingh1984/victor.git@main#subdirectory=victor-sdk'
 
     steps:
       - uses: actions/checkout@v4
