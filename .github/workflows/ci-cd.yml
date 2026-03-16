@@ -10,6 +10,9 @@ on:
 
 env:
   PYTHON_VERSION: '3.11'
+  # Install victor-ai from source (develop branch) until framework.extensions
+  # is available in a released PyPI version.
+  VICTOR_AI_SOURCE: 'git+https://github.com/vjsingh1984/victor.git@develop'
 
 jobs:
   # Code Quality Checks
@@ -35,6 +38,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          pip install "${{ env.VICTOR_AI_SOURCE }}"
           pip install -e ".[dev]"
 
       - name: Run isort import checker
@@ -94,6 +98,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          pip install "${{ env.VICTOR_AI_SOURCE }}"
           pip install -e ".[dev]"
 
       - name: Run unit tests with coverage
@@ -126,9 +131,11 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ['3.11']
-        victor-version:
-          - 'victor-ai==0.5.0'
-          - 'victor-ai>=0.5.0,<0.6.0'
+        victor-source:
+          - name: 'develop (latest)'
+            install: 'git+https://github.com/vjsingh1984/victor.git@develop'
+          - name: 'main (stable)'
+            install: 'git+https://github.com/vjsingh1984/victor.git@main'
 
     steps:
       - uses: actions/checkout@v4
@@ -141,8 +148,8 @@ jobs:
       - name: Install dependencies and Victor version
         run: |
           python -m pip install --upgrade pip
+          pip install "${{ matrix.victor-source.install }}"
           pip install -e ".[dev]"
-          pip install --upgrade --force-reinstall "${{ matrix.victor-version }}"
 
       - name: Show Victor version
         run: |
@@ -172,6 +179,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          pip install "${{ env.VICTOR_AI_SOURCE }}"
           pip install -e ".[dev]"
 
       - name: Run workflow benchmark gate
