@@ -75,7 +75,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 from victor.framework.workflows import BaseYAMLWorkflowProvider
 
 if TYPE_CHECKING:
-    from victor.framework.extensions import WorkflowResult
+    from victor.workflows.executor import WorkflowResult
 
 from victor_invest.workflows.graphs import (
     build_comprehensive_graph,
