@@ -33,7 +33,7 @@ def test_version_is_consistent_across_package_and_vertical_metadata():
 
 def test_pyproject_pins_supported_victor_version_range():
     pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
-    assert "victor-ai>=0.5.0,<0.6.0" in pyproject
+    assert "victor-ai>=0.5.7,<0.6.0" in pyproject
 
 
 def test_pyproject_registers_investment_vertical_entrypoint():
