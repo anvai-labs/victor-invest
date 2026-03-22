@@ -168,6 +168,11 @@ victor-invest = "victor_invest.cli:main"
 # Legacy CLI (deprecated - use 'investigator' instead)
 investigator-legacy = "cli_orchestrator:cli"
 
+# New plugin entry point (preferred by victor-ai >=0.5.7)
+[project.entry-points."victor.plugins"]
+investment = "victor_invest.vertical:plugin"
+
+# Legacy vertical entry point (kept for backward compat with older victor-ai)
 [project.entry-points."victor.verticals"]
 investment = "victor_invest.vertical:InvestmentVertical"
 
