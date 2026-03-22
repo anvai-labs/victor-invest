@@ -1,0 +1,76 @@
+name: Core Compatibility Check
+
+# Triggered by codingagent (victor-ai) when develop/main is pushed.
+# Runs our test suite against the specified victor-ai commit to detect
+# breaking changes early.
+
+on:
+  repository_dispatch:
+    types: [core-compat-check]
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  compat-test:
+    name: Victor Core Compat (${{ github.event.client_payload.victor_branch }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: investigator
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_database
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install victor-ai from triggering commit
+        run: |
+          python -m pip install --upgrade pip
+          VICTOR_REF="${{ github.event.client_payload.victor_ref }}"
+          VICTOR_BRANCH="${{ github.event.client_payload.victor_branch }}"
+          echo "Installing victor-ai @ ${VICTOR_REF} (branch: ${VICTOR_BRANCH})"
+          pip install "git+https://github.com/vjsingh1984/victor.git@${VICTOR_REF}#subdirectory=victor-sdk"
+          pip install "git+https://github.com/vjsingh1984/victor.git@${VICTOR_REF}"
+          pip install -e ".[dev]"
+
+      - name: Show installed versions
+        run: |
+          python -c "
+          import importlib.metadata as m
+          print('victor-ai:', m.version('victor-ai'))
+          print('victor-sdk:', m.version('victor-sdk'))
+          print('victor-invest:', m.version('victor-invest'))
+          "
+
+      - name: Run unit tests
+        env:
+          DATABASE_URL: postgresql://investigator:test_password@localhost:5432/test_database
+          TESTING: true
+        run: pytest tests/unit/ -v --tb=short
+
+      - name: Report result
+        if: always()
+        run: |
+          echo "## Core Compatibility Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Victor ref:** \`${{ github.event.client_payload.victor_ref }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Victor branch:** \`${{ github.event.client_payload.victor_branch }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by:** ${{ github.event.client_payload.triggered_by }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Source run:** ${{ github.event.client_payload.run_url }}" >> $GITHUB_STEP_SUMMARY
