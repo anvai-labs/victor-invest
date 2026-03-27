@@ -30,26 +30,57 @@ export function FundamentalTab({ fundamental }: FundamentalTabProps) {
             <TableHeader>
               <TableRow>
                 <TableHead>Model</TableHead>
-                <TableHead className="text-right">Fair Value</TableHead>
+                <TableHead className="text-right">Model Fair Value</TableHead>
                 <TableHead className="text-right">Weight</TableHead>
+                <TableHead className="text-right">Contribution</TableHead>
                 <TableHead className="text-right">Confidence</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {fundamental.models.map((m) => (
-                <TableRow key={m.name}>
-                  <TableCell className="font-medium">{m.name}</TableCell>
-                  <TableCell className="text-right font-mono">
-                    {fmtMoney(m.fair_value)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {(m.weight * 100).toFixed(0)}%
-                  </TableCell>
-                  <TableCell className="text-right capitalize">
-                    {m.confidence}
-                  </TableCell>
-                </TableRow>
-              ))}
+              {fundamental.models.map((m) => {
+                const contribution =
+                  m.fair_value != null ? m.fair_value * m.weight : null;
+                return (
+                  <TableRow key={m.name}>
+                    <TableCell className="font-medium">{m.name}</TableCell>
+                    <TableCell className="text-right font-mono">
+                      {fmtMoney(m.fair_value)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {(m.weight * 100).toFixed(0)}%
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-slate-500 dark:text-slate-400">
+                      {fmtMoney(contribution)}
+                    </TableCell>
+                    <TableCell className="text-right capitalize">
+                      {m.confidence}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {(() => {
+                const blended = fundamental.models.reduce(
+                  (sum, m) =>
+                    m.fair_value != null ? sum + m.fair_value * m.weight : sum,
+                  0,
+                );
+                const hasAny = fundamental.models.some(
+                  (m) => m.fair_value != null,
+                );
+                return hasAny ? (
+                  <TableRow className="border-t-2 font-semibold">
+                    <TableCell>Blended Fair Value</TableCell>
+                    <TableCell />
+                    <TableCell className="text-right">
+                      {`${(fundamental.models.reduce((s, m) => s + m.weight, 0) * 100).toFixed(0)}%`}
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {fmtMoney(blended)}
+                    </TableCell>
+                    <TableCell />
+                  </TableRow>
+                ) : null;
+              })()}
             </TableBody>
           </Table>
         </CardContent>
