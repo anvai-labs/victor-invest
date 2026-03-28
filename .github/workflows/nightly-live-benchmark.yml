@@ -12,6 +12,8 @@ on:
 
 env:
   PYTHON_VERSION: "3.11"
+  VICTOR_AI_SOURCE: 'git+https://github.com/vjsingh1984/victor.git@develop'
+  VICTOR_SDK_SOURCE: 'git+https://github.com/vjsingh1984/victor.git@develop#subdirectory=victor-sdk'
 
 jobs:
   nightly-live-benchmark:
@@ -29,6 +31,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          pip install "${{ env.VICTOR_SDK_SOURCE }}"
+          pip install "${{ env.VICTOR_AI_SOURCE }}"
           pip install -e ".[dev]"
 
       - name: Run nightly live benchmark (non-blocking)
