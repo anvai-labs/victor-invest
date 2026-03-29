@@ -1378,7 +1378,7 @@ class DCFValuation:
         if not self.quarterly_metrics:
             return 0.10  # Default 10%
 
-        latest = self.quarterly_metrics[-1]
+        latest = self.quarterly_metrics[0]  # Most recent quarter (ordered newest-first)
 
         # Get market cap (equity value) with split adjustment
         # Shares from SEC are actual (not split-adjusted), price from tickerdata is split-adjusted
@@ -2096,7 +2096,7 @@ class DCFValuation:
         if not self.quarterly_metrics:
             return enterprise_value
 
-        latest = self.quarterly_metrics[-1]
+        latest = self.quarterly_metrics[0]  # Most recent quarter (ordered newest-first)
 
         # Equity Value = Enterprise Value - Net Debt + Cash
         balance_sheet = latest.get("balance_sheet", {})
@@ -2203,9 +2203,12 @@ class DCFValuation:
         if self._shares_outstanding_cache is not None:
             return self._shares_outstanding_cache
 
-        # Use shares_outstanding directly from latest quarterly data
+        # Use shares_outstanding from the MOST RECENT quarterly data.
+        # quarterly_metrics is ordered most-recent-first, so [0] is latest.
+        # Using [-1] (oldest) caused pre-split shares to be used for companies
+        # like CMG (50:1 split) where old 10-Q filings still have pre-split counts.
         if self.quarterly_metrics:
-            latest = self.quarterly_metrics[-1]
+            latest = self.quarterly_metrics[0]
 
             # Debug: show what values exist at each location
             top_level_value = latest.get("shares_outstanding")
@@ -2265,6 +2268,28 @@ class DCFValuation:
                         shares_value,
                     )
                     shares_value *= 1_000_000.0
+
+                # Split detection: compare most-recent vs oldest quarter shares.
+                # If they differ by >3x, a stock split likely occurred and we should
+                # verify we're using the post-split (most recent) value.
+                if len(self.quarterly_metrics) >= 4:
+                    oldest = self.quarterly_metrics[-1]
+                    oldest_shares = oldest.get("weighted_average_diluted_shares_outstanding") or oldest.get(
+                        "shares_outstanding"
+                    )
+                    if oldest_shares:
+                        oldest_val = float(oldest_shares)
+                        if oldest_val < 100_000:
+                            oldest_val *= 1_000_000.0
+                        ratio = shares_value / oldest_val if oldest_val > 0 else 1.0
+                        if ratio > 3.0 or ratio < 0.33:
+                            logger.warning(
+                                "%s - Likely stock split detected: newest shares=%.0f, oldest shares=%.0f (ratio=%.1fx). Using newest.",
+                                self.symbol,
+                                shares_value,
+                                oldest_val,
+                                ratio,
+                            )
 
                 # Sanity check: For known dual-class companies, verify against database
                 # if shares are suspiciously low (< 1B for large-cap tech companies)

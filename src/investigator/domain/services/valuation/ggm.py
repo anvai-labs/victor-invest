@@ -372,7 +372,9 @@ class GordonGrowthModel:
         if not self.quarterly_metrics:
             return 0
 
-        latest = self.quarterly_metrics[-1]
+        # Use most recent quarter ([0]) — quarterly_metrics is ordered most-recent-first.
+        # Using [-1] (oldest) would pull stale data from pre-split periods.
+        latest = self.quarterly_metrics[0]
 
         # Get ROE (Return on Equity)
         roe = self._to_float(latest.get("roe", 0) or 0)

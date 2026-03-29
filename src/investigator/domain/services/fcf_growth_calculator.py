@@ -150,8 +150,8 @@ class FCFGrowthCalculator:
 
             margin_pct = (ttm_fcf / ttm_revenue) * 100
         else:
-            # Latest quarter only
-            latest = quarterly_metrics[-1]
+            # Latest quarter only (index 0 = most recent, ordered newest-first)
+            latest = quarterly_metrics[0]
             fcf = latest.get("free_cash_flow", 0)
             revenue = latest.get("total_revenue", 0)
 

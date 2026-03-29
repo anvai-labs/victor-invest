@@ -418,7 +418,7 @@ class InvestmentSynthesizer:
                     # Get market cap from latest quarterly metrics
                     market_cap_billions = 0.0
                     if quarterly_metrics:
-                        latest_market_cap = quarterly_metrics[-1].get("market_cap", 0)
+                        latest_market_cap = quarterly_metrics[0].get("market_cap", 0)
                         market_cap_billions = latest_market_cap / 1e9 if latest_market_cap > 0 else 0.0
 
                     # Step 5: Create ValuationFrameworkPlanner
@@ -2452,7 +2452,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                     )
 
         # RED FLAG #2: Negative cash flow with positive earnings
-        latest_quarter = quarterly_metrics[-1] if quarterly_metrics else {}
+        latest_quarter = quarterly_metrics[0] if quarterly_metrics else {}
         net_income = latest_quarter.get("net_income", 0) or 0
         ocf = latest_quarter.get("operating_cash_flow", 0) or 0
 
@@ -2468,8 +2468,8 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
         # RED FLAG #3: Debt/Equity spike
         if len(quarterly_metrics) >= 4:
-            latest = quarterly_metrics[-1]
-            four_quarters_ago = quarterly_metrics[-4]
+            latest = quarterly_metrics[0]
+            four_quarters_ago = quarterly_metrics[3]
 
             latest_de = latest.get("debt_to_equity", 0)
             prev_de = four_quarters_ago.get("debt_to_equity", 0)
@@ -2505,8 +2505,8 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
         # RED FLAG #5: Accounts receivable days increasing
         if len(quarterly_metrics) >= 4:
-            latest = quarterly_metrics[-1]
-            four_quarters_ago = quarterly_metrics[-4]
+            latest = quarterly_metrics[0]
+            four_quarters_ago = quarterly_metrics[3]
 
             latest_ar_days = latest.get("accounts_receivable_days", 0)
             prev_ar_days = four_quarters_ago.get("accounts_receivable_days", 0)
@@ -2784,7 +2784,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 "growth_risk": 10.0,
             }
 
-        latest = quarterly_metrics[-1] if quarterly_metrics else {}
+        latest = quarterly_metrics[0] if quarterly_metrics else {}
 
         # 1. Financial Health Risk (0-10, lower is better)
         # Based on leverage, liquidity, solvency
@@ -2947,8 +2947,8 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 self.main_logger.warning("Insufficient quarterly data for positioning matrix")
                 return {}
 
-            latest = quarterly_metrics[-1]
-            year_ago = quarterly_metrics[-4] if len(quarterly_metrics) >= 4 else quarterly_metrics[0]
+            latest = quarterly_metrics[0]
+            year_ago = quarterly_metrics[3] if len(quarterly_metrics) >= 4 else quarterly_metrics[0]
 
             # Calculate target company metrics
             target_revenue = latest.get("revenue", 0) or 0
