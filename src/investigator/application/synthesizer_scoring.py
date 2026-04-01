@@ -90,8 +90,8 @@ def calculate_technical_score(llm_responses: Dict[str, Any]) -> float:
 
 
 def calculate_weighted_score(
-    fundamental_score: float,
-    technical_score: float,
+    fundamental_score: Optional[float],
+    technical_score: Optional[float],
     *,
     fundamental_weight: float,
     technical_weight: float,

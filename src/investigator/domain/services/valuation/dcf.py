@@ -216,7 +216,7 @@ class DCFValuation:
         if self.symbol in sector_overrides:
             override_sector = sector_overrides[self.symbol]
             logger.info(f"{self.symbol} - Sector (OVERRIDE): {override_sector} (correcting database misclassification)")
-            return override_sector
+            return str(override_sector)
 
         try:
             from investigator.config import get_config
@@ -232,7 +232,7 @@ class DCFValuation:
             sector = info.get("sector")
             if sector:
                 logger.info(f"{self.symbol} - Sector: {sector}")
-                return sector
+                return str(sector)
 
             logger.warning(f"No sector available for {self.symbol}, using Default")
             return "Default"
@@ -639,7 +639,7 @@ class DCFValuation:
                     f"(OCF: ${cash_flow.get('operating_cash_flow', 0) / 1e9:.2f}B, "
                     f"CapEx: ${cash_flow.get('capital_expenditures', 0) / 1e9:.2f}B)"
                 )
-                return fcf
+                return float(fcf)
 
             # Calculate FCF if not directly available
             ocf = cash_flow.get("operating_cash_flow", 0) or 0
@@ -651,7 +651,7 @@ class DCFValuation:
                     f"🔍 {self.symbol} - Calculated SEC FCF: ${fcf / 1e9:.2f}B "
                     f"(OCF: ${ocf / 1e9:.2f}B - CapEx: ${capex / 1e9:.2f}B)"
                 )
-                return fcf
+                return float(fcf)
 
             logger.warning(f"🔍 {self.symbol} - SEC format detected but no FCF data available")
             return 0
@@ -731,7 +731,7 @@ class DCFValuation:
                     f"  Smoothed vs TTM: {((smoothed_annual_fcf - ttm_fcf) / ttm_fcf * 100) if ttm_fcf != 0 else 0:.1f}% difference"
                 )
 
-                return smoothed_annual_fcf
+                return float(smoothed_annual_fcf)
 
         # FALLBACK: Use TTM (4 quarters sum) if insufficient data
         logger.warning(
@@ -1080,7 +1080,7 @@ class DCFValuation:
             "is_true_underperformer": is_true_underperformer,
         }
 
-        projections = []
+        projections: List[float] = []
 
         if use_fading_dcf:
             # Strategic investor or healthy company: Use Fading DCF (default, optimistic)
@@ -1335,7 +1335,7 @@ class DCFValuation:
             + (f" (clamped to {fcf_growth_clamped * 100:.1f}%)" if fcf_growth != fcf_growth_clamped else "")
         )
 
-        return fcf_growth_clamped
+        return float(fcf_growth_clamped)
 
     def _calculate_terminal_value(self, final_year_fcf: float, terminal_growth_rate: float = 0.03) -> float:
         """
@@ -1378,7 +1378,7 @@ class DCFValuation:
         if not self.quarterly_metrics:
             return 0.10  # Default 10%
 
-        latest = self.quarterly_metrics[-1]
+        latest = self.quarterly_metrics[0]  # Most recent quarter (ordered newest-first)
 
         # Get market cap (equity value) with split adjustment
         # Shares from SEC are actual (not split-adjusted), price from tickerdata is split-adjusted
@@ -1574,7 +1574,7 @@ class DCFValuation:
             tax_rate * 100,
         )
 
-        return wacc
+        return float(wacc)
 
     def _get_unlevered_beta(self) -> float:
         """
@@ -1670,7 +1670,7 @@ class DCFValuation:
             fetcher = get_market_data_fetcher(config)
             info = fetcher.get_stock_info(self.symbol)
 
-            return info.get("Sector", "Default")
+            return str(info.get("Sector", "Default"))
         except Exception as e:
             logger.debug(f"{self.symbol} - Unable to get sector from symbol table: {e}")
             return "Default"
@@ -1955,14 +1955,14 @@ class DCFValuation:
             f"  Rationale: {'Maintaining current margins' if terminal_margin > config_margin else 'Using config target'}"
         )
 
-        return terminal_margin
+        return float(terminal_margin)
 
     def _calculate_levered_beta(
         self,
         beta_unlevered: float,
         total_debt: float,
         equity: float,
-        market_cap: float = None,
+        market_cap: Optional[float] = None,
     ) -> float:
         """
         Calculate levered beta using improved beta selection logic
@@ -2016,7 +2016,7 @@ class DCFValuation:
 
         logger.info(f"{self.symbol} - Beta treatment: {treatment} - {rationale}")
 
-        return beta
+        return float(beta)
 
     def _get_risk_free_rate(self) -> float:
         """
@@ -2041,7 +2041,7 @@ class DCFValuation:
                     f"{self.symbol} - Using 10Y Treasury rate from FRED: {treasury_rate * 100:.2f}% "
                     f"(as of {indicators['DGS10']['date']})"
                 )
-                return treasury_rate
+                return float(treasury_rate)
             else:
                 logger.warning(f"{self.symbol} - DGS10 not available, using default risk-free rate: 4.5%")
                 return 0.045
@@ -2064,7 +2064,7 @@ class DCFValuation:
         Returns:
             Total present value of cash flows
         """
-        pv_total = 0
+        pv_total: float = 0.0
         for year, fcf in enumerate(fcf_projections, start=1):
             discount_factor = (1 + wacc) ** year
             pv = fcf / discount_factor
@@ -2096,7 +2096,7 @@ class DCFValuation:
         if not self.quarterly_metrics:
             return enterprise_value
 
-        latest = self.quarterly_metrics[-1]
+        latest = self.quarterly_metrics[0]  # Most recent quarter (ordered newest-first)
 
         # Equity Value = Enterprise Value - Net Debt + Cash
         balance_sheet = latest.get("balance_sheet", {})
@@ -2203,9 +2203,12 @@ class DCFValuation:
         if self._shares_outstanding_cache is not None:
             return self._shares_outstanding_cache
 
-        # Use shares_outstanding directly from latest quarterly data
+        # Use shares_outstanding from the MOST RECENT quarterly data.
+        # quarterly_metrics is ordered most-recent-first, so [0] is latest.
+        # Using [-1] (oldest) caused pre-split shares to be used for companies
+        # like CMG (50:1 split) where old 10-Q filings still have pre-split counts.
         if self.quarterly_metrics:
-            latest = self.quarterly_metrics[-1]
+            latest = self.quarterly_metrics[0]
 
             # Debug: show what values exist at each location
             top_level_value = latest.get("shares_outstanding")
@@ -2265,6 +2268,28 @@ class DCFValuation:
                         shares_value,
                     )
                     shares_value *= 1_000_000.0
+
+                # Split detection: compare most-recent vs oldest quarter shares.
+                # If they differ by >3x, a stock split likely occurred and we should
+                # verify we're using the post-split (most recent) value.
+                if len(self.quarterly_metrics) >= 4:
+                    oldest = self.quarterly_metrics[-1]
+                    oldest_shares = oldest.get("weighted_average_diluted_shares_outstanding") or oldest.get(
+                        "shares_outstanding"
+                    )
+                    if oldest_shares:
+                        oldest_val = float(oldest_shares)
+                        if oldest_val < 100_000:
+                            oldest_val *= 1_000_000.0
+                        ratio = shares_value / oldest_val if oldest_val > 0 else 1.0
+                        if ratio > 3.0 or ratio < 0.33:
+                            logger.warning(
+                                "%s - Likely stock split detected: newest shares=%.0f, oldest shares=%.0f (ratio=%.1fx). Using newest.",
+                                self.symbol,
+                                shares_value,
+                                oldest_val,
+                                ratio,
+                            )
 
                 # Sanity check: For known dual-class companies, verify against database
                 # if shares are suspiciously low (< 1B for large-cap tech companies)
@@ -2594,7 +2619,7 @@ class DCFValuation:
                 f"🔍 {self.symbol} - SEC format: Using sector-based revenue growth estimate "
                 f"({self.sector}: {default_growth:.1f}%) - single FY snapshot cannot calculate YoY"
             )
-            return default_growth
+            return float(default_growth)
 
         if not self.quarterly_metrics or len(self.quarterly_metrics) < 8:
             logger.warning(
@@ -2854,7 +2879,7 @@ class DCFValuation:
             f"min={sector_caps['min_growth'] * 100:.0f}%, max={sector_caps['max_growth'] * 100:.0f}%"
         )
 
-        return sector_caps
+        return dict(sector_caps)
 
     def _get_terminal_growth_adjustment(self, classification: str) -> float:
         """

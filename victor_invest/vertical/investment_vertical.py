@@ -66,6 +66,7 @@ from typing import Any, Dict, List, Optional
 
 from victor.core.vertical_types import StageDefinition
 from victor.core.verticals.base import VerticalBase
+from victor.core.verticals.registration import register_vertical
 
 DEFAULT_INVESTMENT_TOOL_NAMES = [
     "sec_filing",
@@ -90,6 +91,16 @@ def _ensure_investment_tool_pack_registered(tool_names: List[str]) -> None:
     return
 
 
+@register_vertical(
+    name="investment",
+    version="0.5.0",
+    min_framework_version=">=0.6.0",
+    canonicalize_tool_names=True,
+    tool_dependency_strategy="auto",
+    strict_mode=False,
+    load_priority=70,
+    plugin_namespace="external",
+)
 class InvestmentVertical(VerticalBase):
     """Investment research and analysis vertical.
 

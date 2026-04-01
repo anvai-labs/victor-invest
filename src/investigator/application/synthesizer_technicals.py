@@ -81,10 +81,10 @@ def _parse_json_from_response(content: str) -> Dict[str, Any]:
                     break
 
         if json_end > 0:
-            return json.loads(json_part[:json_end])
-        return json.loads(json_part)
+            return dict(json.loads(json_part[:json_end]))
+        return dict(json.loads(json_part))
 
-    return json.loads(json_content)
+    return dict(json.loads(json_content))
 
 
 def extract_technical_indicators(llm_responses: Dict[str, Any], *, logger: Optional[Any] = None) -> Dict[str, Any]:

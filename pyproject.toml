@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "victor-invest"
-version = "0.5.0"
+version = "0.6.0"
 description = "AI-powered investment analysis platform combining SEC fundamentals, technical indicators, and multi-model valuation synthesis"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -42,9 +42,9 @@ classifiers = [
 ]
 
 dependencies = [
-    # Victor AI Framework (requires >=0.5.7 for framework.extensions)
-    "victor-ai>=0.5.7,<0.6.0",
-    "victor-sdk>=0.5.7,<0.6.0",
+    # Victor AI Framework (requires >=0.6.0 for @register_vertical and new SDK)
+    "victor-ai>=0.6.0",
+    "victor-sdk>=0.6.0",  # Keep SDK in sync with victor-ai
 
     # Core dependencies
     "requests>=2.31.0",

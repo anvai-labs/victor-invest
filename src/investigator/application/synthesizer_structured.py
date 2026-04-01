@@ -57,7 +57,8 @@ def calculate_quarterly_trends(quarterly_data: List[Dict[str, Any]], *, logger: 
                     {"period": period, "value": quarter["operating_cash_flow"] / 1_000_000}
                 )
 
-            if quarter.get("revenue") and quarter.get("revenue") > 0:
+            revenue = quarter.get("revenue", 0)
+            if revenue and revenue > 0:
                 net_margin = (quarter.get("net_income", 0) / quarter["revenue"]) * 100
                 op_margin = (quarter.get("operating_income", 0) / quarter["revenue"]) * 100
                 trends["margin_trends"].append(

@@ -14,7 +14,7 @@ import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Generator, List, Optional
 
 import numpy as np
 import psycopg2
@@ -128,15 +128,15 @@ if os.environ.get("INVESTIGATOR_ENABLE_CHARTS", "0") == "1":
     try:
         from utils.chart_generator import ChartGenerator as _RealChartGenerator
 
-        ChartGenerator = _RealChartGenerator
+        ChartGenerator: type = _RealChartGenerator
     except Exception as chart_import_error:
         logger.warning(
             "Failed to import chart generator (%s). Falling back to stub implementation.",
             chart_import_error,
         )
-        ChartGenerator = _StubChartGenerator
+        ChartGenerator: type = _StubChartGenerator  # type: ignore[no-redef]
 else:
-    ChartGenerator = _StubChartGenerator
+    ChartGenerator: type = _StubChartGenerator  # type: ignore[no-redef]
 
 
 # InvestmentRecommendation is now imported from investigator.domain.models
@@ -268,7 +268,7 @@ class InvestmentSynthesizer:
         if not fundamentals:
             return None
 
-        def _candidate_dicts() -> List[Dict[str, Any]]:
+        def _candidate_dicts() -> Generator[Dict[str, Any], None, None]:
             for key, payload in fundamentals.items():
                 if isinstance(payload, dict):
                     yield payload
@@ -366,6 +366,7 @@ class InvestmentSynthesizer:
 
             # Tier 3: DCF Valuation Analysis
             inferred_period = self._infer_period_from_fundamental(llm_responses)
+            current_period_label: Optional[str] = None
             if inferred_period:
                 current_period_label = inferred_period
             else:
@@ -418,7 +419,7 @@ class InvestmentSynthesizer:
                     # Get market cap from latest quarterly metrics
                     market_cap_billions = 0.0
                     if quarterly_metrics:
-                        latest_market_cap = quarterly_metrics[-1].get("market_cap", 0)
+                        latest_market_cap = quarterly_metrics[0].get("market_cap", 0)
                         market_cap_billions = latest_market_cap / 1e9 if latest_market_cap > 0 else 0.0
 
                     # Step 5: Create ValuationFrameworkPlanner
@@ -662,7 +663,7 @@ class InvestmentSynthesizer:
                             time_horizon_days=252,
                             simulations=10000,
                         )
-                        monte_carlo_results.scenarios = scenarios
+                        monte_carlo_results.scenarios = scenarios  # type: ignore[attr-defined]
                 else:
                     symbol_logger.warning("Cannot run Monte Carlo simulation - current price not available")
 
@@ -751,11 +752,6 @@ class InvestmentSynthesizer:
 
             # Extract comprehensive SEC analysis data
             sec_data = self._extract_sec_comprehensive_data(llm_responses)
-            if not isinstance(sec_data, dict):
-                symbol_logger.warning(
-                    f"SEC data extraction returned unexpected type: {type(sec_data)}, using empty dict"
-                )
-                sec_data = {}
             symbol_logger.info(
                 f"SEC data extracted: business_quality={sec_data.get('business_quality_score', 0):.1f}, financial_health={sec_data.get('financial_health_score', 0):.1f}"
             )
@@ -763,12 +759,6 @@ class InvestmentSynthesizer:
             # Extract technical indicators
             try:
                 tech_indicators = self._extract_technical_indicators(llm_responses)
-                # Ensure tech_indicators is a dict, not a float or other type
-                if not isinstance(tech_indicators, dict):
-                    symbol_logger.warning(
-                        f"Technical indicators extraction returned unexpected type: {type(tech_indicators)}, using empty dict"
-                    )
-                    tech_indicators = {}
                 symbol_logger.info(
                     f"Technical indicators extracted: trend={tech_indicators.get('trend_direction', 'N/A')}, support_levels={len(tech_indicators.get('support_levels', []))}"
                 )
@@ -800,7 +790,7 @@ class InvestmentSynthesizer:
                 }
                 # Set placeholder values for direct extraction
                 synthesis_prompt = "Direct extraction from LLM analysis responses - no synthesis prompt needed"
-                synthesis_response = ""  # Will be set later
+                synthesis_response: Any = ""  # Will be set later
                 synthesis_metadata = {
                     "source": "direct_extraction",
                     "model": "comprehensive_analysis",
@@ -1085,8 +1075,8 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 symbol_logger.info("Direct extraction recommendation created successfully")
 
             # Handle different response types and capture additional insights
-            additional_insights = []
-            additional_risks = []
+            additional_insights: List[str] = []
+            additional_risks: List[str] = []
 
             # DEBUG: Inspect final ai_recommendation structure
             symbol_logger.info("=== AI_RECOMMENDATION DEBUG START ===")
@@ -1256,7 +1246,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             )
 
             # Attach extensible insights for enhanced reporting and future evolution
-            recommendation.extensible_insights = extensible_insights
+            recommendation.extensible_insights = extensible_insights  # type: ignore[attr-defined]
             symbol_logger.info(f"Attached extensible insights structure with {len(extensible_insights)} sections")
 
             # Evaluate alerts (Tier 3 Enhancement #14)
@@ -1337,7 +1327,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             )
 
             # Track report generation in database
-            processing_time = int((time.time() - start_time)) if "start_time" in locals() else None
+            processing_time: Optional[int] = int((time.time() - start_time)) if "start_time" in locals() else None
             self._track_report_generation(recommendation, processing_time=processing_time)
 
             return recommendation
@@ -1596,8 +1586,8 @@ Your responses must be precise, quantitative, and suitable for institutional inv
     def _track_report_generation(
         self,
         recommendation: "InvestmentRecommendation",
-        report_filename: str = None,
-        processing_time: int = None,
+        report_filename: Optional[str] = None,
+        processing_time: Optional[int] = None,
     ):
         """Track report generation in database for historical analysis"""
         try:
@@ -1732,7 +1722,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
                     price_data = pd.read_parquet(price_data_path)
                     tech_chart = self.chart_generator.generate_technical_chart(
-                        rec.symbol, price_data, rec.support_resistance
+                        rec.symbol, price_data, rec.support_resistance or {}
                     )
                     if tech_chart:
                         chart_paths.append(tech_chart)
@@ -1859,12 +1849,12 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             self.main_logger.error(f"Error generating report: {e}")
             raise
 
-    def _fetch_llm_responses(self, symbol: str) -> Dict[str, Dict]:
+    def _fetch_llm_responses(self, symbol: str) -> Dict[str, Any]:
         """Fetch ALL LLM responses for comprehensive synthesis including 8 quarterly + comprehensive + technical"""
         self.main_logger.info(f"Fetching LLM responses for {symbol}")
 
         try:
-            llm_responses = {"fundamental": {}, "technical": None}
+            llm_responses: Dict[str, Any] = {"fundamental": {}, "technical": None}
 
             # 1. FETCH COMPREHENSIVE FUNDAMENTAL ANALYSIS
             fiscal_year, fiscal_period = self._get_latest_fiscal_period()
@@ -2311,7 +2301,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             Dictionary with relative valuation analysis
         """
         try:
-            relative = {}
+            relative: Dict[str, Any] = {}
 
             # Calculate premium/discount for each metric
             for metric in ["pe_ratio", "pb_ratio", "ps_ratio", "peg_ratio"]:
@@ -2430,7 +2420,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         Returns:
             List of red flags with severity (high/medium/low)
         """
-        red_flags = []
+        red_flags: List[Dict[str, Any]] = []
 
         if not quarterly_metrics or len(quarterly_metrics) < 2:
             return red_flags
@@ -2452,7 +2442,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                     )
 
         # RED FLAG #2: Negative cash flow with positive earnings
-        latest_quarter = quarterly_metrics[-1] if quarterly_metrics else {}
+        latest_quarter = quarterly_metrics[0] if quarterly_metrics else {}
         net_income = latest_quarter.get("net_income", 0) or 0
         ocf = latest_quarter.get("operating_cash_flow", 0) or 0
 
@@ -2468,8 +2458,8 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
         # RED FLAG #3: Debt/Equity spike
         if len(quarterly_metrics) >= 4:
-            latest = quarterly_metrics[-1]
-            four_quarters_ago = quarterly_metrics[-4]
+            latest = quarterly_metrics[0]
+            four_quarters_ago = quarterly_metrics[3]
 
             latest_de = latest.get("debt_to_equity", 0)
             prev_de = four_quarters_ago.get("debt_to_equity", 0)
@@ -2505,8 +2495,8 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
         # RED FLAG #5: Accounts receivable days increasing
         if len(quarterly_metrics) >= 4:
-            latest = quarterly_metrics[-1]
-            four_quarters_ago = quarterly_metrics[-4]
+            latest = quarterly_metrics[0]
+            four_quarters_ago = quarterly_metrics[3]
 
             latest_ar_days = latest.get("accounts_receivable_days", 0)
             prev_ar_days = four_quarters_ago.get("accounts_receivable_days", 0)
@@ -2660,7 +2650,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 "years_available": len(yearly_data),
             }
 
-        metrics = {"years_analyzed": len(yearly_data)}
+        metrics: Dict[str, Any] = {"years_analyzed": len(yearly_data)}
 
         # Revenue CAGR
         revenue_values = [(y["year"], y["revenue"]) for y in yearly_data if y["revenue"] and y["revenue"] > 0]
@@ -2770,7 +2760,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         """
         import numpy as np
 
-        risk_scores = {}
+        risk_scores: Dict[str, Any] = {}
 
         if not quarterly_metrics or len(quarterly_metrics) == 0:
             return {
@@ -2784,7 +2774,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 "growth_risk": 10.0,
             }
 
-        latest = quarterly_metrics[-1] if quarterly_metrics else {}
+        latest = quarterly_metrics[0] if quarterly_metrics else {}
 
         # 1. Financial Health Risk (0-10, lower is better)
         # Based on leverage, liquidity, solvency
@@ -2947,8 +2937,8 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 self.main_logger.warning("Insufficient quarterly data for positioning matrix")
                 return {}
 
-            latest = quarterly_metrics[-1]
-            year_ago = quarterly_metrics[-4] if len(quarterly_metrics) >= 4 else quarterly_metrics[0]
+            latest = quarterly_metrics[0]
+            year_ago = quarterly_metrics[3] if len(quarterly_metrics) >= 4 else quarterly_metrics[0]
 
             # Calculate target company metrics
             target_revenue = latest.get("revenue", 0) or 0
@@ -3558,7 +3548,8 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 WHERE industry = (SELECT industry FROM peer_metrics WHERE symbol = :symbol LIMIT 1)
             """)
             with self.db_manager.get_session() as session:
-                return session.execute(query, {"symbol": target_symbol}).scalar()
+                raw_result = session.execute(query, {"symbol": target_symbol}).scalar()
+                return int(raw_result) if raw_result is not None else None
 
         return calculate_data_quality_detailed(
             symbol,
@@ -3684,7 +3675,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         self,
         llm_responses: Dict,
         ai_recommendation: Dict,
-        additional_risks: List[str] = None,
+        additional_risks: Optional[List[str]] = None,
     ) -> List[str]:
         """Extract and prioritize comprehensive risk factors"""
         return extract_comprehensive_risks(llm_responses, ai_recommendation, additional_risks)
@@ -3693,7 +3684,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         self,
         llm_responses: Dict,
         ai_recommendation: Dict,
-        additional_insights: List[str] = None,
+        additional_insights: Optional[List[str]] = None,
     ) -> List[str]:
         """Extract and prioritize comprehensive insights"""
         return extract_comprehensive_insights(llm_responses, ai_recommendation, additional_insights)
@@ -3724,7 +3715,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
             model_info = {
                 "model": metadata["model"],
-                "temperature": self.config.ollama.temperatures.get_temperature(
+                "temperature": self.config.ollama.temperatures.get_temperature(  # type: ignore[attr-defined]
                     "balanced"
                 ),  # Synthesis uses balanced temperature (0.1)
                 "top_p": 0.9,
@@ -4112,7 +4103,7 @@ Respond with detailed JSON investment analysis."""
         )
 
         symbol_logger.info(f"Generated quarterly synthesis prompt: {len(quarterly_synthesis_prompt)} characters")
-        return quarterly_synthesis_prompt
+        return str(quarterly_synthesis_prompt)
 
     def _extract_quarterly_trends(self, quarterly_analyses: List[Dict]) -> str:
         """Extract and summarize trends across quarters for quarterly synthesis"""
@@ -4440,7 +4431,7 @@ def main():
                 print(f"Current Price: ${recommendation.current_price:.2f}")
                 upside = (
                     ((recommendation.price_target / recommendation.current_price - 1) * 100)
-                    if recommendation.current_price > 0
+                    if recommendation.current_price and recommendation.current_price > 0
                     else 0
                 )
                 print(f"Upside Potential: {upside:+.1f}%")

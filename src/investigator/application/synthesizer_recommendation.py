@@ -16,7 +16,7 @@ def calculate_consistency_bonus(quality_indicators: List[float]) -> float:
     std_dev = variance**0.5
 
     max_bonus = 1.0
-    return max(0.0, max_bonus - (std_dev / 2.0))
+    return float(max(0.0, max_bonus - (std_dev / 2.0)))
 
 
 def determine_final_recommendation(
@@ -59,11 +59,11 @@ def calculate_price_target(symbol: str, ai_recommendation: Dict[str, Any], curre
     if "investment_recommendation" in ai_recommendation:
         target_data = ai_recommendation["investment_recommendation"].get("target_price", {})
         if target_data.get("12_month_target"):
-            return target_data["12_month_target"]
+            return float(target_data["12_month_target"])
 
     ai_targets = ai_recommendation.get("price_targets", {})
     if ai_targets.get("12_month"):
-        return ai_targets["12_month"]
+        return float(ai_targets["12_month"])
 
     if current_price <= 0:
         logger.warning(f"No current price available for {symbol}, using placeholder for target calculation")
@@ -124,7 +124,7 @@ def extract_position_size(ai_recommendation: Dict[str, Any]) -> str:
             return "MODERATE"
         if weight > 0:
             return "SMALL"
-    return ai_recommendation.get("position_size", "MODERATE")
+    return str(ai_recommendation.get("position_size", "MODERATE"))
 
 
 def extract_catalysts(ai_recommendation: Dict[str, Any]) -> List[str]:

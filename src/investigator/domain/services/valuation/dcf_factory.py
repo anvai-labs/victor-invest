@@ -26,7 +26,7 @@ Date: 2025-01-05
 
 import logging
 from enum import Enum
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Type, Union
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +77,7 @@ class DCFFactory:
     @classmethod
     def create(
         cls,
-        model_type: str,
+        model_type: Union[str, DCFModelType],
         company_profile: Optional[Any] = None,
         **kwargs: Any,
     ) -> Any:
@@ -85,7 +85,7 @@ class DCFFactory:
         Create a DCF model instance.
 
         Args:
-            model_type: Model type ("standard", "damodaran")
+            model_type: Model type ("standard", "damodaran") or DCFModelType enum
             company_profile: CompanyProfile for modern models (required for damodaran)
             **kwargs: Additional arguments passed to model constructor
 
@@ -104,10 +104,10 @@ class DCFFactory:
 
         # Normalize model type
         try:
-            if isinstance(model_type, str):
-                model_enum = DCFModelType(model_type.lower())
-            else:
+            if isinstance(model_type, DCFModelType):
                 model_enum = model_type
+            else:
+                model_enum = DCFModelType(model_type.lower())
         except ValueError:
             valid_types = [t.value for t in DCFModelType]
             raise ValueError(f"Unknown model type: {model_type}. Valid types: {valid_types}")
@@ -122,11 +122,8 @@ class DCFFactory:
                 raise ValueError("company_profile required for Damodaran DCF model")
             return model_class(company_profile, **kwargs)
 
-        elif model_enum == DCFModelType.STANDARD:
-            # Standard DCF requires different initialization
-            raise ValueError("Standard DCF requires legacy initialization. Use DCFFactory.create_legacy() instead.")
-
-        return model_class(**kwargs)
+        # Standard DCF requires different initialization
+        raise ValueError("Standard DCF requires legacy initialization. Use DCFFactory.create_legacy() instead.")
 
     @classmethod
     def create_legacy(
@@ -234,6 +231,9 @@ class DCFFactory:
             ]
         ):
             logger.info("Auto-selected Standard DCF (legacy data integration)")
+            assert symbol is not None
+            assert quarterly_metrics is not None
+            assert multi_year_data is not None
             return cls.create_legacy(
                 symbol=symbol,
                 quarterly_metrics=quarterly_metrics,
@@ -262,7 +262,7 @@ class DCFFactory:
         return [t.value for t in DCFModelType]
 
     @classmethod
-    def get_model_description(cls, model_type: str) -> Dict[str, str]:
+    def get_model_description(cls, model_type: str) -> Dict[str, Any]:
         """
         Get description of a DCF model type.
 

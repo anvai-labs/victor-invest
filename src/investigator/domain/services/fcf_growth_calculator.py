@@ -62,7 +62,7 @@ class FCFGrowthCalculator:
             return 0.0
 
         # Step 1: Calculate TTM FCF for each fiscal year
-        ttm_fcf_by_year = {}
+        ttm_fcf_by_year: Dict[int, List[float]] = {}
         for q in quarterly_metrics:
             year = q.get("fiscal_year")
             fcf = q.get("free_cash_flow", 0)
@@ -118,7 +118,7 @@ class FCFGrowthCalculator:
             f"End FCF (FY {sorted_years[0]}): ${end_fcf / 1e6:.1f}M"
         )
 
-        return final_growth
+        return float(final_growth)
 
     def calculate_fcf_margin(self, quarterly_metrics: List[Dict[str, Any]], ttm: bool = True) -> float:
         """
@@ -150,8 +150,8 @@ class FCFGrowthCalculator:
 
             margin_pct = (ttm_fcf / ttm_revenue) * 100
         else:
-            # Latest quarter only
-            latest = quarterly_metrics[-1]
+            # Latest quarter only (index 0 = most recent, ordered newest-first)
+            latest = quarterly_metrics[0]
             fcf = latest.get("free_cash_flow", 0)
             revenue = latest.get("total_revenue", 0)
 
@@ -162,7 +162,7 @@ class FCFGrowthCalculator:
 
         logger.debug(f"{self.symbol} - FCF Margin ({'TTM' if ttm else 'Q'}): {margin_pct:.1f}%")
 
-        return margin_pct
+        return float(margin_pct)
 
     def __repr__(self) -> str:
         """String representation"""

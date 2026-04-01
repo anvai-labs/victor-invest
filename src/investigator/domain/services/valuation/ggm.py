@@ -314,7 +314,7 @@ class GordonGrowthModel:
                 )
             except ImportError:
                 logger.warning("utils.quarterly_calculator not available - using simple growth rate")
-                return self._calculate_simple_growth_rate()
+                return 0.0
 
             # Get 8 quarters for 2-year trend analysis
             quarters_8 = get_rolling_ttm_periods(self.quarterly_metrics, compute_missing=True, num_quarters=8)
@@ -334,7 +334,7 @@ class GordonGrowthModel:
                     )
 
                     # Cap at 15% for dividend growth (rarely sustainable above this)
-                    return max(0, min(yoy_growth, 0.15))
+                    return float(max(0, min(yoy_growth, 0.15)))
 
         # Fallback: Use multi-year annual data
         if not self.multi_year_data or len(self.multi_year_data) < 2:
@@ -358,7 +358,7 @@ class GordonGrowthModel:
         if first_div > 0 and last_div > first_div:
             cagr = ((last_div / first_div) ** (1 / years)) - 1
             # Cap at 15% for dividend growth (rarely sustainable above this)
-            return max(0, min(cagr, 0.15))
+            return float(max(0, min(cagr, 0.15)))
 
         return 0
 
@@ -372,7 +372,9 @@ class GordonGrowthModel:
         if not self.quarterly_metrics:
             return 0
 
-        latest = self.quarterly_metrics[-1]
+        # Use most recent quarter ([0]) — quarterly_metrics is ordered most-recent-first.
+        # Using [-1] (oldest) would pull stale data from pre-split periods.
+        latest = self.quarterly_metrics[0]
 
         # Get ROE (Return on Equity)
         roe = self._to_float(latest.get("roe", 0) or 0)
@@ -410,7 +412,7 @@ class GordonGrowthModel:
         Returns:
             Dict with 'valid' flag and 'reason' if invalid
         """
-        warnings = []
+        warnings: List[str] = []
 
         # Constraint 1: g < r (critical)
         if growth_rate >= cost_of_equity:
@@ -546,9 +548,6 @@ class GordonGrowthModel:
 
     def _extract_dividends(self, period: Dict) -> Optional[float]:
         """Extract dividends_paid from a quarterly period dict."""
-        if not isinstance(period, dict):
-            return None
-
         cash_flow = period.get("cash_flow")
         if isinstance(cash_flow, dict):
             dividends = cash_flow.get("dividends_paid")
@@ -569,9 +568,6 @@ class GordonGrowthModel:
 
     def _extract_shares(self, period: Dict, prefer_diluted: bool = False) -> Optional[float]:
         """Extract share count from a quarterly period dict."""
-        if not isinstance(period, dict):
-            return None
-
         preferred_keys = [
             "weighted_average_diluted_shares_outstanding",
             "shares_outstanding",

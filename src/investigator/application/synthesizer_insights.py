@@ -134,20 +134,22 @@ def analyze_field_completeness(ai_recommendation: Dict[str, Any]) -> Dict[str, A
         "downside_risks",
     ]
 
-    completeness = {
+    present_fields: List[str] = []
+    missing_fields: List[str] = []
+    completeness: Dict[str, Any] = {
         "total_standard_fields": len(standard_fields),
-        "present_fields": [],
-        "missing_fields": [],
+        "present_fields": present_fields,
+        "missing_fields": missing_fields,
         "completeness_ratio": 0.0,
     }
 
     for field in standard_fields:
         if field in ai_recommendation and ai_recommendation[field]:
-            completeness["present_fields"].append(field)
+            present_fields.append(field)
         else:
-            completeness["missing_fields"].append(field)
+            missing_fields.append(field)
 
-    completeness["completeness_ratio"] = len(completeness["present_fields"]) / len(standard_fields)
+    completeness["completeness_ratio"] = len(present_fields) / len(standard_fields)
     return completeness
 
 

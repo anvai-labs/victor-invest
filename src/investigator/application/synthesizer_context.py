@@ -29,7 +29,7 @@ def extract_quarterly_trends(quarterly_analyses: List[Dict[str, Any]]) -> str:
     return "\n".join(trends)
 
 
-def extract_financial_metrics_from_quarter(quarter_data: Dict[str, Any], period: str) -> Optional[Dict[str, Any]]:
+def extract_financial_metrics_from_quarter(quarter_data: Any, period: str) -> Optional[Dict[str, Any]]:
     """Extract a normalized set of financial metrics from one quarter payload."""
     metrics: Dict[str, Any] = {"period": period}
 
