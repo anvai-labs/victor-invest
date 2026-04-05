@@ -172,10 +172,6 @@ investigator-legacy = "cli_orchestrator:cli"
 [project.entry-points."victor.plugins"]
 investment = "victor_invest.vertical:plugin"
 
-# Legacy vertical entry point (kept for backward compat with older victor-ai)
-[project.entry-points."victor.verticals"]
-investment = "victor_invest.vertical:InvestmentVertical"
-
 [project.urls]
 Homepage = "https://github.com/vjsingh1984/victor-invest"
 Documentation = "https://github.com/vjsingh1984/victor-invest#readme"
