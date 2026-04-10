@@ -527,28 +527,27 @@ async def _run_llm_synthesis(
         # Use Victor framework's provider API if provider specified, otherwise use legacy
         if provider and provider != "ollama":
             # Use Victor's provider registry for non-Ollama providers
-            from victor.providers.registry import ProviderRegistry
-
-            from investigator.config import get_config
+            from victor_invest.compat.providers import create_provider
             from victor_invest.framework_bootstrap import (
                 PROVIDER_DEFAULT_MODELS,
                 resolve_model_from_env,
             )
-
-            config = get_config()
 
             # Resolve model if not specified
             resolved_model = model or resolve_model_from_env(provider, None)
             if not resolved_model:
                 resolved_model = PROVIDER_DEFAULT_MODELS.get(provider, "gpt-oss:20b")
 
-            # Get provider class and create instance
-            provider_class = ProviderRegistry.get(provider)
-            provider_instance = provider_class(
+            # Create provider via factory (isolates victor.providers import)
+            provider_instance = create_provider(
+                provider,
                 model=resolved_model,
                 temperature=0.3,
                 max_tokens=4096,
             )
+            if provider_instance is None:
+                logger.warning("Cannot create provider %s — falling back to legacy", provider)
+                return None
 
             # Extract key technical data (same as before)
             trend = technical.get("trend", {})
