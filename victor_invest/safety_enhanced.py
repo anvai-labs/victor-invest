@@ -80,7 +80,8 @@ except ImportError:
             logger.debug(f"SafetyCoordinator not available, skipping rule: {rule.rule_id}")
 
 
-from victor.core.verticals.protocols import SafetyExtensionProtocol, SafetyPattern
+from victor_sdk.verticals.protocols import SafetyExtensionProtocol
+from victor_sdk.verticals.protocols.promoted_types import SafetyPatternData as SafetyPattern
 
 logger = logging.getLogger(__name__)
 

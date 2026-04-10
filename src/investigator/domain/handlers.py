@@ -47,7 +47,7 @@ from datetime import date, datetime
 from typing import TYPE_CHECKING, Any, List
 
 if TYPE_CHECKING:
-    from victor.tools.registry import ToolRegistry
+    from victor_sdk.verticals.protocols.tools import ToolRegistryProtocol as ToolRegistry
     from victor.workflows.definition import ComputeNode
     from victor.workflows.executor import NodeResult, WorkflowContext
 

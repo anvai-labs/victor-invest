@@ -40,7 +40,7 @@ from victor_invest.compat.handlers import BaseHandler, handler_decorator
 
 if TYPE_CHECKING:
     from victor.framework.extensions import ComputeNode, WorkflowContext
-    from victor.tools.registry import ToolRegistry
+    from victor_sdk.verticals.protocols.tools import ToolRegistryProtocol as ToolRegistry
 
 logger = logging.getLogger(__name__)
 
