@@ -64,8 +64,8 @@ See: docs/ARCHITECTURE_DECISION_DATA_ACCESS.md for full rationale.
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from victor.core.vertical_types import StageDefinition
-from victor.core.verticals.base import VerticalBase
+from victor_sdk import StageDefinition, ToolSet, VerticalBase
+from victor_sdk.verticals import register_vertical
 
 DEFAULT_INVESTMENT_TOOL_NAMES = [
     "sec_filing",
@@ -90,6 +90,16 @@ def _ensure_investment_tool_pack_registered(tool_names: List[str]) -> None:
     return
 
 
+@register_vertical(
+    name="investment",
+    version="0.5.0",
+    min_framework_version=">=0.6.0",
+    canonicalize_tool_names=True,
+    tool_dependency_strategy="auto",
+    strict_mode=False,
+    load_priority=70,
+    plugin_namespace="victor.investment",
+)
 class InvestmentVertical(VerticalBase):
     """Investment research and analysis vertical.
 
@@ -104,7 +114,16 @@ class InvestmentVertical(VerticalBase):
     name = "investment"
     description = "Institutional-grade investment research and equity analysis"
     version = "0.5.0"
+    VERTICAL_API_VERSION = 1
     _yaml_config_cache: Optional[Dict[str, Any]] = None
+
+    @classmethod
+    def get_name(cls) -> str:
+        return cls.name
+
+    @classmethod
+    def get_description(cls) -> str:
+        return cls.description
 
     @classmethod
     def _vertical_config_path(cls) -> Path:
@@ -143,7 +162,7 @@ class InvestmentVertical(VerticalBase):
             stages[stage_name] = StageDefinition(
                 name=stage_name,
                 description=str(stage_data.get("description", "")),
-                tools=set(stage_data.get("tools", []) or []),
+                optional_tools=[str(tool) for tool in (stage_data.get("tools", []) or [])],
                 keywords=list(stage_data.get("keywords", []) or []),
                 next_stages=set(stage_data.get("next_stages", []) or []),
             )
@@ -231,6 +250,19 @@ class InvestmentVertical(VerticalBase):
         """
         _ = use_yaml
         config = super().get_config(use_cache=use_cache)
+
+        if isinstance(getattr(config, "tools", None), list):
+            try:
+                from victor.framework.tools import ToolSet as RuntimeToolSet
+            except Exception:
+                config.tools = ToolSet(names=list(config.tools))
+            else:
+                config.tools = RuntimeToolSet.from_tools(config.tools)
+
+        if not hasattr(config, "provider_hints"):
+            setattr(config, "provider_hints", cls.get_provider_hints())
+        if not hasattr(config, "evaluation_criteria"):
+            setattr(config, "evaluation_criteria", cls.get_evaluation_criteria())
 
         # Backward compatibility for tests/callers that expect config.name.
         if not hasattr(config, "name"):

@@ -24,8 +24,6 @@ from typing import Any, Dict, Optional
 
 from victor_sdk import PluginContext, VictorPlugin
 
-from victor_invest.vertical.investment_vertical import InvestmentVertical
-
 
 class InvestmentPlugin(VictorPlugin):
     """Victor Plugin for Investment vertical.
@@ -40,6 +38,8 @@ class InvestmentPlugin(VictorPlugin):
 
     def register(self, context: PluginContext) -> None:
         """Register investment vertical and tools."""
+        from victor_invest.vertical.investment_vertical import InvestmentVertical
+
         context.register_vertical(InvestmentVertical)
 
     def get_cli_app(self) -> Optional[Any]:
@@ -71,5 +71,14 @@ class InvestmentPlugin(VictorPlugin):
 
 # Module-level plugin instance for entry point resolution
 plugin = InvestmentPlugin()
+
+
+def __getattr__(name: str):
+    if name == "InvestmentVertical":
+        from victor_invest.vertical.investment_vertical import InvestmentVertical
+
+        return InvestmentVertical
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = ["InvestmentVertical", "InvestmentPlugin", "plugin"]
