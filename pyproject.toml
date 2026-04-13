@@ -107,7 +107,7 @@ dependencies = [
 
     # Message Queue
     "celery>=5.3.0",
-    "kombu>=5.3.0",
+    "kombu>=5.6.2",
 
     # Monitoring
     "prometheus-client>=0.18.0",
