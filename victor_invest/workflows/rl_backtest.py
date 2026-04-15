@@ -57,15 +57,17 @@ Example:
 """
 
 import asyncio
+import importlib
 import logging
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, Dict, List, Optional
 
-from dateutil.relativedelta import relativedelta
-from victor.framework.graph import END, StateGraph
+from victor_sdk.graph_runtime import END, StateGraph
 
 from victor_invest.tools import RLBacktestTool, ValuationTool
+
+relativedelta = importlib.import_module("dateutil.relativedelta").relativedelta
 
 logger = logging.getLogger(__name__)
 

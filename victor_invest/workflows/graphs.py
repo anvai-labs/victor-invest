@@ -90,10 +90,10 @@ Example:
 
 import asyncio
 import logging
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, cast
 from weakref import WeakKeyDictionary
 
-from victor.framework.graph import END, StateGraph
+from victor_sdk.graph_runtime import END, StateGraph
 
 from victor_invest.agents import (
     FUNDAMENTAL_AGENT_SPEC,
@@ -622,8 +622,7 @@ Respond ONLY with the JSON object, no other text."""
             end = response_text.rfind("}") + 1
             if start >= 0 and end > start:
                 json_str = response_text[start:end]
-                result: dict[Any, Any] | None = json.loads(json_str)
-                return result
+                return cast(dict[Any, Any], json.loads(json_str))
 
         else:
             # Legacy path for Ollama or when provider not specified
@@ -709,8 +708,7 @@ Respond ONLY with the JSON object, no other text."""
             end = response_text.rfind("}") + 1
             if start >= 0 and end > start:
                 json_str = response_text[start:end]
-                result: dict[Any, Any] | None = json.loads(json_str)
-                return result
+                return cast(dict[Any, Any], json.loads(json_str))
 
         return None
 

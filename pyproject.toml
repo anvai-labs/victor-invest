@@ -201,6 +201,14 @@ where = ["src", "."]
 include = ["investigator*", "victor_invest*"]
 exclude = ["tests*", "docs*"]
 
+[tool.victor.contract_audit]
+source_roots = ["victor_invest"]
+exclude = [
+    "victor_invest/api/**",
+    "victor_invest/cli.py",
+    "victor_invest/framework_bootstrap.py",
+]
+
 [tool.black]
 line-length = 120
 target-version = ['py311', 'py312']
