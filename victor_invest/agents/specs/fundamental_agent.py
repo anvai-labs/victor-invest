@@ -18,7 +18,7 @@ Defines the agent responsible for company valuation
 and financial health analysis.
 """
 
-from victor.framework.extensions import (
+from victor_sdk.agent_spec_runtime import (
     AgentCapabilities,
     AgentConstraints,
     AgentSpec,

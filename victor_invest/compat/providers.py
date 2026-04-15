@@ -26,7 +26,7 @@ def create_provider(
     Returns None if victor-ai is not installed.
     """
     try:
-        from victor.providers.registry import ProviderRegistry
+        from victor_sdk.provider_runtime import ProviderRegistry
 
         return ProviderRegistry.create(
             provider_name,
@@ -36,9 +36,7 @@ def create_provider(
             **kwargs,
         )
     except ImportError:
-        logger.warning(
-            "victor-ai not installed — cannot create provider %s", provider_name
-        )
+        logger.warning("victor-ai not installed — cannot create provider %s", provider_name)
         return None
     except Exception as e:
         logger.error("Failed to create provider %s: %s", provider_name, e)

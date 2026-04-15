@@ -170,9 +170,21 @@ victor-invest = "victor_invest.cli:main"
 # Legacy CLI (deprecated - use 'investigator' instead)
 investigator-legacy = "cli_orchestrator:cli"
 
-# New plugin entry point (preferred by victor-ai >=0.5.7)
+# Plugin and extension entry points (preferred by victor-ai >=0.7.0)
 [project.entry-points."victor.plugins"]
 invest = "victor_invest.plugin:plugin"
+
+[project.entry-points."victor.tool_dependencies"]
+invest = "victor_invest.tool_dependencies:get_provider"
+
+[project.entry-points."victor.safety_rules"]
+invest = "victor_invest.safety_enhanced:create_investment_safety_rules"
+
+[project.entry-points."victor.prompt_contributors"]
+invest = "victor_invest.prompts.contributor:InvestmentPromptContributor"
+
+[project.entry-points."victor.workflow_providers"]
+invest = "victor_invest.workflows:InvestmentWorkflowProvider"
 
 [project.urls]
 Homepage = "https://github.com/vjsingh1984/victor-invest"
