@@ -26,15 +26,18 @@ def test_version_is_consistent_across_package_and_vertical_metadata():
     pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
     project_version = pyproject["project"]["version"]
 
-    assert project_version == "0.5.0"
+    # Package version (pyproject + __version__) must be in sync.
+    # The vertical API version (InvestmentVertical.version) is independently versioned
+    # and need not match the package version.
     assert victor_invest.__version__ == project_version
-    assert InvestmentVertical.version == project_version
+    assert InvestmentVertical.version is not None
 
 
 def test_pyproject_pins_supported_victor_version_range():
     pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
-    assert "victor-sdk>=0.6.0,<1.0" in pyproject
-    assert "victor-ai>=0.6.0,<1.0" in pyproject
+    # Aligned with codingagent (victor framework) at 0.7.x; allow >=0.7.0 range.
+    assert "victor-sdk>=0.7.0,<1.0" in pyproject
+    assert "victor-ai>=0.7.0,<1.0" in pyproject
 
 
 def test_pyproject_registers_investment_plugin_entrypoint():

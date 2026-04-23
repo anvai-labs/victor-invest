@@ -170,10 +170,14 @@ victor-invest = "victor_invest.cli:main"
 # Legacy CLI (deprecated - use 'investigator' instead)
 investigator-legacy = "cli_orchestrator:cli"
 
-# Plugin and extension entry points (preferred by victor-ai >=0.7.0)
+# Plugin entry point (consolidated, SDK >= 0.7.0).
+# All registration (tools, vertical, dependencies, safety) is handled inside
+# InvestmentPlugin.register(context) so only this one entry point is needed.
 [project.entry-points."victor.plugins"]
-invest = "victor_invest.plugin:plugin"
+investment = "victor_invest.vertical:plugin"
 
+# Sidecar entry points kept for backward compatibility with SDK < 0.7.0 hosts
+# that scan these groups directly instead of calling plugin.register(context).
 [project.entry-points."victor.tool_dependencies"]
 invest = "victor_invest.tool_dependencies:get_provider"
 

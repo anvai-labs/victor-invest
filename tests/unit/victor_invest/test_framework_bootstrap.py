@@ -86,6 +86,13 @@ def test_prepare_orchestrator_reports_registration_failure(monkeypatch):
 
 
 def test_create_investment_orchestrator_bootstrap_flow(monkeypatch):
+    """create_investment_orchestrator wires up handlers, role provider, Agent.create,
+    and prepare_orchestrator in the correct order.
+
+    Vertical registration is now handled internally by Agent.create(vertical=...).
+    No manual VerticalRegistry.register() call is expected from this function.
+    """
+
     class _FakeAgent:
         def __init__(self, orchestrator):
             self._orchestrator = orchestrator
@@ -96,7 +103,6 @@ def test_create_investment_orchestrator_bootstrap_flow(monkeypatch):
     fake_orchestrator = object()
     calls = {
         "ensure_handlers": 0,
-        "register_vertical": 0,
         "register_role_provider": 0,
         "prepare": 0,
         "agent_create": 0,
@@ -104,12 +110,6 @@ def test_create_investment_orchestrator_bootstrap_flow(monkeypatch):
 
     def _ensure_handlers():
         calls["ensure_handlers"] += 1
-
-    def _vr_get(_name):
-        return None
-
-    def _vr_register(_vertical):
-        calls["register_vertical"] += 1
 
     def _register_role_provider():
         calls["register_role_provider"] += 1
@@ -124,8 +124,6 @@ def test_create_investment_orchestrator_bootstrap_flow(monkeypatch):
         calls["agent_create"] += 1
         return _FakeAgent(fake_orchestrator)
 
-    monkeypatch.setattr(framework_bootstrap.VerticalRegistry, "get", _vr_get)
-    monkeypatch.setattr(framework_bootstrap.VerticalRegistry, "register", _vr_register)
     monkeypatch.setattr(
         framework_bootstrap,
         "register_investment_role_provider",
@@ -149,15 +147,17 @@ def test_create_investment_orchestrator_bootstrap_flow(monkeypatch):
 
     assert result is fake_orchestrator
     assert calls["ensure_handlers"] == 1
-    assert calls["register_vertical"] == 1
     assert calls["register_role_provider"] == 1
     assert calls["prepare"] == 1
     assert calls["agent_create"] == 1
 
 
-def test_create_investment_orchestrator_skips_vertical_register_when_present(
+def test_create_investment_orchestrator_delegates_vertical_to_agent_create(
     monkeypatch,
 ):
+    """Agent.create is called with vertical=InvestmentVertical so the framework
+    handles vertical registration — no sidecar VerticalRegistry call needed."""
+
     class _FakeAgent:
         def __init__(self, orchestrator):
             self._orchestrator = orchestrator
@@ -166,19 +166,12 @@ def test_create_investment_orchestrator_skips_vertical_register_when_present(
             return self._orchestrator
 
     fake_orchestrator = object()
-    calls = {"register_vertical": 0}
-
-    def _vr_get(_name):
-        return object()
-
-    def _vr_register(_vertical):
-        calls["register_vertical"] += 1
+    agent_create_kwargs: dict = {}
 
     async def _agent_create(**kwargs):
+        agent_create_kwargs.update(kwargs)
         return _FakeAgent(fake_orchestrator)
 
-    monkeypatch.setattr(framework_bootstrap.VerticalRegistry, "get", _vr_get)
-    monkeypatch.setattr(framework_bootstrap.VerticalRegistry, "register", _vr_register)
     monkeypatch.setattr(framework_bootstrap.Agent, "create", _agent_create)
     monkeypatch.setattr(
         framework_bootstrap,
@@ -199,4 +192,7 @@ def test_create_investment_orchestrator_skips_vertical_register_when_present(
     )
 
     assert result is fake_orchestrator
-    assert calls["register_vertical"] == 0
+    # vertical= must be passed so Agent.create handles registration
+    from victor_invest.vertical import InvestmentVertical
+
+    assert agent_create_kwargs.get("vertical") is InvestmentVertical
