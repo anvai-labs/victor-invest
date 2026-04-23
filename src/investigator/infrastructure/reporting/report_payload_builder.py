@@ -129,15 +129,8 @@ class ReportPayloadBuilder:
         """
         self.logger.info(f"Building PDF payload for {symbol}")
 
-        # Unwrap LLM response if needed
+        # Unwrap LLM response if needed (_unwrap_response always returns a dict)
         unwrapped = self._unwrap_response(synthesis_report)
-        if not isinstance(unwrapped, dict):
-            self.logger.warning(
-                "Unwrapped synthesis payload is %s for %s. Falling back to empty payload.",
-                type(unwrapped),
-                symbol,
-            )
-            unwrapped = {}
 
         # Extract core fields
         recommendation = self._extract_recommendation(unwrapped)
@@ -209,6 +202,21 @@ class ReportPayloadBuilder:
             "chart_paths": chart_paths or [],
         }
 
+        # Add alias keys that report_generator expects
+        # Map composite_score → overall_score for report renderer
+        payload["overall_score"] = payload["composite_score"]
+
+        # Initialize financial statement scores (may be backfilled from comprehensive data)
+        payload.setdefault("income_score", 0)
+        payload.setdefault("cashflow_score", 0)
+        payload.setdefault("balance_score", 0)
+        payload.setdefault("data_quality_score", 0)
+
+        # Backfill technical indicators from technical_data for PDF rendering
+        # (support/resistance levels, trend direction, momentum signals, entry/exit signals)
+        if technical_data:
+            payload = self._backfill_technical_indicators(payload, technical_data)
+
         self.logger.info(
             f"✅ Built payload for {symbol}: {recommendation.get('action', 'hold').upper()} "
             f"(composite: {payload['composite_score']:.1f}/10, "
@@ -267,7 +275,7 @@ class ReportPayloadBuilder:
 
         # Further unwrap if report key exists and is a dict
         if isinstance(data, dict) and isinstance(data.get("report"), dict):
-            return data["report"]
+            return dict(data["report"])
 
         return data if isinstance(data, dict) else {}
 
@@ -449,7 +457,7 @@ class ReportPayloadBuilder:
             # Current format: executive_summary contains thesis
             thesis = exec_summary.get("investment_thesis", "")
             insights = data.get("key_insights", [])
-            drivers = []  # Not always present in executive_summary
+            drivers: List[Any] = []  # Not always present in executive_summary
         elif isinstance(thesis_data, str):
             # Legacy format: thesis is a direct string
             thesis = thesis_data
@@ -459,7 +467,7 @@ class ReportPayloadBuilder:
             # Legacy format: thesis is nested dict
             thesis = thesis_data.get("summary", thesis_data.get("thesis", ""))
             insights = thesis_data.get("key_insights", thesis_data.get("insights", []))
-            drivers = thesis_data.get("value_drivers", thesis_data.get("drivers", []))
+            drivers = list(thesis_data.get("value_drivers") or thesis_data.get("drivers") or [])
         else:
             thesis = ""
             insights = []
@@ -583,6 +591,102 @@ class ReportPayloadBuilder:
                 self.logger.info(f"✅ Backfilled market_cap from technical agent: ${market_cap:,.0f}")
 
         return financials
+
+    def _backfill_technical_indicators(self, payload: Dict, technical_data: Dict) -> Dict:
+        """
+        Backfill technical indicator fields from technical analysis data.
+
+        These fields are needed by PDFReportGenerator._create_technical_summary()
+        and _create_entry_exit_section() to render technical analysis pages.
+
+        Args:
+            payload: The partially built payload dict to add indicators to
+            technical_data: Raw technical analysis data from the technical agent
+
+        Returns:
+            Updated payload dict with technical indicator fields
+        """
+        if not technical_data or not isinstance(technical_data, dict):
+            return payload
+
+        # Extract from technical analysis response - handle nested structures
+        tech_response = technical_data.get("analysis", {}).get("response", {})
+        if not isinstance(tech_response, dict):
+            tech_response = {}
+
+        # Also check top-level and technical_indicators sub-dict
+        tech_indicators = tech_response.get("technical_indicators", {})
+        if not isinstance(tech_indicators, dict):
+            tech_indicators = {}
+
+        # --- Support levels ---
+        if not payload.get("support_levels"):
+            support = (
+                tech_response.get("support_levels")
+                or tech_indicators.get("support_levels")
+                or technical_data.get("support_levels")
+            )
+            if support and isinstance(support, list) and len(support) > 0:
+                payload["support_levels"] = support
+                self.logger.info(f"✅ Backfilled support_levels from technical agent: {support[:3]}")
+
+        # --- Resistance levels ---
+        if not payload.get("resistance_levels"):
+            resistance = (
+                tech_response.get("resistance_levels")
+                or tech_indicators.get("resistance_levels")
+                or technical_data.get("resistance_levels")
+            )
+            if resistance and isinstance(resistance, list) and len(resistance) > 0:
+                payload["resistance_levels"] = resistance
+                self.logger.info(f"✅ Backfilled resistance_levels from technical agent: {resistance[:3]}")
+
+        # --- Trend direction ---
+        if not payload.get("trend_direction") or payload.get("trend_direction") == "NEUTRAL":
+            trend = (
+                tech_response.get("trend_direction")
+                or tech_response.get("trend")
+                or tech_indicators.get("trend_direction")
+                or technical_data.get("trend_direction")
+            )
+            if trend and isinstance(trend, str) and trend.strip():
+                payload["trend_direction"] = trend.strip().upper()
+                self.logger.info(f"✅ Backfilled trend_direction from technical agent: {payload['trend_direction']}")
+
+        # --- Momentum signals ---
+        if not payload.get("momentum_signals"):
+            signals = (
+                tech_response.get("momentum_signals")
+                or tech_response.get("signals")
+                or tech_indicators.get("momentum_signals")
+                or technical_data.get("momentum_signals")
+            )
+            if signals and isinstance(signals, list) and len(signals) > 0:
+                payload["momentum_signals"] = signals[:5]
+                self.logger.info(f"✅ Backfilled {len(signals[:5])} momentum_signals from technical agent")
+
+        # --- Entry signals ---
+        if not payload.get("entry_signals"):
+            entry = tech_response.get("entry_signals") or technical_data.get("entry_signals")
+            if entry and isinstance(entry, list) and len(entry) > 0:
+                payload["entry_signals"] = entry[:5]
+                self.logger.info(f"✅ Backfilled {len(entry[:5])} entry_signals from technical agent")
+
+        # --- Exit signals ---
+        if not payload.get("exit_signals"):
+            exit_sigs = tech_response.get("exit_signals") or technical_data.get("exit_signals")
+            if exit_sigs and isinstance(exit_sigs, list) and len(exit_sigs) > 0:
+                payload["exit_signals"] = exit_sigs[:5]
+                self.logger.info(f"✅ Backfilled {len(exit_sigs[:5])} exit_signals from technical agent")
+
+        # --- Optimal entry zone ---
+        if not payload.get("optimal_entry_zone"):
+            zone = tech_response.get("optimal_entry_zone") or technical_data.get("optimal_entry_zone")
+            if zone and isinstance(zone, dict):
+                payload["optimal_entry_zone"] = zone
+                self.logger.info("✅ Backfilled optimal_entry_zone from technical agent")
+
+        return payload
 
     def _scale_score(self, score: float) -> float:
         """

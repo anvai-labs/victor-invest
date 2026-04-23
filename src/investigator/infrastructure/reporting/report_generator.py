@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 try:
-    import markdown
+    import markdown  # type: ignore[import-untyped]
 
     MARKDOWN_AVAILABLE = True
 except ImportError:
@@ -69,7 +69,7 @@ except ImportError:
 
     canvas = _CanvasFallback()
 
-    class Flowable:  # type: ignore[too-many-ancestors]
+    class Flowable:  # type: ignore[no-redef]
         pass
 
 
@@ -918,7 +918,9 @@ class PDFReportGenerator:
         hold_count = total_symbols - buy_count - sell_count
 
         avg_score = (
-            sum(r.get("overall_score", 5.0) for r in recommendations) / total_symbols if total_symbols > 0 else 0
+            sum(self._scale_score_value(r.get("overall_score", 5.0)) for r in recommendations) / total_symbols
+            if total_symbols > 0
+            else 0
         )
 
         # Create portfolio overview table with visual elements
@@ -980,12 +982,14 @@ class PDFReportGenerator:
             elements.append(Spacer(1, 0.2 * inch))
 
             # Sort by overall score and get top 3
-            top_recs = sorted(recommendations, key=lambda x: x.get("overall_score", 0), reverse=True)[:3]
+            top_recs = sorted(
+                recommendations, key=lambda x: self._scale_score_value(x.get("overall_score", 0)), reverse=True
+            )[:3]
 
             # Create visual cards for top recommendations
             for i, rec in enumerate(top_recs):
                 symbol = rec.get("symbol", "N/A")
-                overall_score = rec.get("overall_score", 0)
+                overall_score = self._scale_score_value(rec.get("overall_score", 0))
                 recommendation = rec.get("recommendation", "N/A")
                 confidence = rec.get("confidence", "MEDIUM")
                 current_price = rec.get("current_price", 0)
@@ -1115,106 +1119,102 @@ class PDFReportGenerator:
         # Scores table - Enhanced with SEC comprehensive scores when available
         scores_data = [["Metric", "Score", "Rating"]]
 
-        # Core synthesis scores
+        # Core synthesis scores (scaled to 0-10)
+        overall_s = self._scale_score_value(recommendation.get("overall_score", 0))
+        fund_s = self._scale_score_value(recommendation.get("fundamental_score", 0))
+        tech_s = self._scale_score_value(recommendation.get("technical_score", 0))
+
         scores_data.extend(
             [
                 [
                     "Overall Score",
-                    f"{recommendation.get('overall_score', 0):.1f}/10",
-                    self._get_rating(recommendation.get("overall_score", 0)),
+                    f"{overall_s:.1f}/10",
+                    self._get_rating(overall_s),
                 ],
                 [
                     "Fundamental Score",
-                    f"{recommendation.get('fundamental_score', 0):.1f}/10",
-                    self._get_rating(recommendation.get("fundamental_score", 0)),
+                    f"{fund_s:.1f}/10",
+                    self._get_rating(fund_s),
                 ],
                 [
                     "Technical Score",
-                    f"{recommendation.get('technical_score', 0):.1f}/10",
-                    self._get_rating(recommendation.get("technical_score", 0)),
+                    f"{tech_s:.1f}/10",
+                    self._get_rating(tech_s),
                 ],
             ]
         )
 
-        # Financial statement component scores
-        scores_data.extend(
-            [
-                [
-                    "Income Statement",
-                    f"{recommendation.get('income_score', 0):.1f}/10",
-                    self._get_rating(recommendation.get("income_score", 0)),
-                ],
-                [
-                    "Cash Flow",
-                    f"{recommendation.get('cashflow_score', 0):.1f}/10",
-                    self._get_rating(recommendation.get("cashflow_score", 0)),
-                ],
-                [
-                    "Balance Sheet",
-                    f"{recommendation.get('balance_score', 0):.1f}/10",
-                    self._get_rating(recommendation.get("balance_score", 0)),
-                ],
-            ]
-        )
+        # Financial statement component scores (only show if > 0)
+        income_s = self._scale_score_value(recommendation.get("income_score", 0))
+        cashflow_s = self._scale_score_value(recommendation.get("cashflow_score", 0))
+        balance_s = self._scale_score_value(recommendation.get("balance_score", 0))
+
+        if income_s > 0:
+            scores_data.append(["Income Statement", f"{income_s:.1f}/10", self._get_rating(income_s)])
+        if cashflow_s > 0:
+            scores_data.append(["Cash Flow", f"{cashflow_s:.1f}/10", self._get_rating(cashflow_s)])
+        if balance_s > 0:
+            scores_data.append(["Balance Sheet", f"{balance_s:.1f}/10", self._get_rating(balance_s)])
 
         # Investment characteristic scores
+        growth_s = self._scale_score_value(recommendation.get("growth_score", 0))
+        value_s = self._scale_score_value(recommendation.get("value_score", 0))
+
         scores_data.extend(
             [
                 [
                     "Growth Score",
-                    f"{recommendation.get('growth_score', 0):.1f}/10",
-                    self._get_rating(recommendation.get("growth_score", 0)),
+                    f"{growth_s:.1f}/10",
+                    self._get_rating(growth_s),
                 ],
                 [
                     "Value Score",
-                    f"{recommendation.get('value_score', 0):.1f}/10",
-                    self._get_rating(recommendation.get("value_score", 0)),
+                    f"{value_s:.1f}/10",
+                    self._get_rating(value_s),
                 ],
             ]
         )
 
         # Quality scores - prioritize comprehensive analysis when available, remove duplicates
         if comprehensive_data.get("business_quality_score") is not None:
-            bq_score = comprehensive_data["business_quality_score"]
-            # Handle dict format for scores (e.g., {"score": 8.5, "explanation": "..."})
-            if isinstance(bq_score, dict):
-                bq_score = bq_score.get("score", 0)
+            bq_score = self._scale_score_value(comprehensive_data["business_quality_score"])
             scores_data.append(
                 [
                     "Business Quality",
-                    f"{float(bq_score):.1f}/10",
-                    self._get_rating(float(bq_score)),
+                    f"{bq_score:.1f}/10",
+                    self._get_rating(bq_score),
                 ]
             )
         else:
-            scores_data.append(
-                [
-                    "Business Quality",
-                    f"{recommendation.get('business_quality_score', 0):.1f}/10",
-                    self._get_rating(recommendation.get("business_quality_score", 0)),
-                ]
-            )
+            bq_score = self._scale_score_value(recommendation.get("business_quality_score", 0))
+            if bq_score > 0:
+                scores_data.append(
+                    [
+                        "Business Quality",
+                        f"{bq_score:.1f}/10",
+                        self._get_rating(bq_score),
+                    ]
+                )
 
         if comprehensive_data.get("data_quality_score") is not None:
-            dq_score = comprehensive_data["data_quality_score"]
-            # Handle dict format for scores
-            if isinstance(dq_score, dict):
-                dq_score = dq_score.get("score", 0)
+            dq_score = self._scale_score_value(comprehensive_data["data_quality_score"])
             scores_data.append(
                 [
                     "Data Quality",
-                    f"{float(dq_score):.1f}/10",
-                    self._get_rating(float(dq_score)),
+                    f"{dq_score:.1f}/10",
+                    self._get_rating(dq_score),
                 ]
             )
         else:
-            scores_data.append(
-                [
-                    "Data Quality",
-                    f"{recommendation.get('data_quality_score', 0):.1f}/10",
-                    self._get_rating(recommendation.get("data_quality_score", 0)),
-                ]
-            )
+            dq_score = self._scale_score_value(recommendation.get("data_quality_score", 0))
+            if dq_score > 0:
+                scores_data.append(
+                    [
+                        "Data Quality",
+                        f"{dq_score:.1f}/10",
+                        self._get_rating(dq_score),
+                    ]
+                )
 
         scores_table = Table(scores_data, colWidths=[2.5 * inch, 1.5 * inch, 1.5 * inch])
         scores_table.setStyle(
@@ -3321,7 +3321,7 @@ class PDFReportGenerator:
 
             if comp_data and comp_data.get("investment_thesis"):
                 logger.info(f"📊 Using SEC comprehensive investment thesis for {symbol}")
-                return comp_data["investment_thesis"]
+                return str(comp_data["investment_thesis"])
 
             # Try to build thesis from key insights and risks
             if comp_data and (comp_data.get("key_insights") or comp_data.get("key_risks")):
@@ -3361,7 +3361,7 @@ class PDFReportGenerator:
 
     def _create_technical_summary(self, recommendation: Dict) -> List:
         """Create visual technical analysis summary using structured data"""
-        elements = []
+        elements: List = []
 
         # Extract technical indicators from the recommendation (set by direct extraction)
         support_levels = recommendation.get("support_levels", [])
@@ -3468,6 +3468,30 @@ class PDFReportGenerator:
         else:
             return "Poor"
 
+    @staticmethod
+    def _scale_score_value(score) -> float:
+        """
+        Normalize any score to 0-10 scale for display.
+
+        Handles both 0-100 and 0-10 scale inputs, and also handles
+        dict format scores like {"score": 8.5, ...}.
+
+        Args:
+            score: A numeric score (0-10 or 0-100), dict with "score" key, or None
+
+        Returns:
+            Float normalized to 0-10 scale
+        """
+        if isinstance(score, dict):
+            score = score.get("score", 0)
+        try:
+            val = float(score)
+        except (TypeError, ValueError):
+            return 0.0
+        if val > 10:
+            return round(val / 10, 1)
+        return round(val, 1)
+
     def _create_entry_exit_section(self, recommendation: Dict) -> List:
         """
         Create entry/exit signal section with visual components.
@@ -3478,7 +3502,7 @@ class PDFReportGenerator:
         Returns:
             List of ReportLab flowables
         """
-        elements = []
+        elements: List = []
 
         entry_signals = recommendation.get("entry_signals", [])
         exit_signals = recommendation.get("exit_signals", [])
