@@ -691,9 +691,10 @@ class SECDataProcessor:
         Ensure shares_outstanding is populated using diluted share counts when necessary.
         """
         data = filing.setdefault("data", {})
-        if data.get("shares_outstanding") is None:
+        # Treat both None and 0 as missing — a 0-share count is always wrong for a public company
+        if not data.get("shares_outstanding"):
             diluted = data.get("weighted_average_diluted_shares_outstanding")
-            if diluted is not None:
+            if diluted:
                 data["shares_outstanding"] = diluted
 
     def _enrich_book_value_per_share(self, filing: Dict) -> None:

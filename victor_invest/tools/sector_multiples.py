@@ -35,12 +35,12 @@ Example:
 import logging
 from typing import Any, List, Optional
 
-from victor_invest.tools.base import ToolResult
+from victor_invest.tools.base import BaseTool, ToolResult
 
 logger = logging.getLogger(__name__)
 
 
-class SectorMultiplesTool:
+class SectorMultiplesTool(BaseTool):
     """
     Tool for calculating and managing sector/industry valuation multiples.
 
@@ -55,8 +55,7 @@ class SectorMultiplesTool:
     )
 
     def __init__(self, config=None):
-        """Initialize tool with optional config."""
-        self.config = config
+        super().__init__(config)
 
     async def execute(self, _exec_ctx=None, **kwargs) -> ToolResult:
         """

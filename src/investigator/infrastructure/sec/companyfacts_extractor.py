@@ -1343,7 +1343,7 @@ class SECCompanyFactsExtractor:
             # =====================================================
             shares_outstanding = get_metric(None, canonical_name="shares_outstanding")
 
-            # Also get DEI namespace shares (more authoritative - always actual shares, not millions)
+            # Also get DEI namespace shares (authoritative — filed as of cover page, exact count)
             dei = facts_data["facts"].get("dei", {})
             dei_shares = None
             if dei:
@@ -1356,25 +1356,41 @@ class SECCompanyFactsExtractor:
                         dei_shares = dei_value
                         logger.info(f"✅ {symbol} - Found DEI EntityCommonStockSharesOutstanding: {dei_shares:,.0f}")
 
-            # Use DEI shares if available and reasonable (> 1 million shares)
-            if dei_shares and dei_shares > 1_000_000:
+            # Cross-validate us-gaap val against DEI to detect scale mismatches.
+            # SEC filers are supposed to report absolute share counts, but some (especially older
+            # or non-compliant filings) report in thousands or millions.
+            if shares_outstanding and dei_shares and dei_shares > 0 and shares_outstanding > 0:
+                ratio = dei_shares / shares_outstanding
+                if 900 <= ratio <= 1100:
+                    # us-gaap reported in thousands; DEI has the true absolute count
+                    logger.warning(
+                        f"⚠️  {symbol} - Shares scale mismatch detected (DEI/us-gaap ratio={ratio:.1f}x). "
+                        f"us-gaap val {shares_outstanding:,.0f} is in thousands; normalising ×1000."
+                    )
+                    shares_outstanding = shares_outstanding * 1_000
+                elif 900_000 <= ratio <= 1_100_000:
+                    logger.warning(
+                        f"⚠️  {symbol} - Shares scale mismatch detected (DEI/us-gaap ratio={ratio:.1f}x). "
+                        f"us-gaap val {shares_outstanding:,.0f} is in millions; normalising ×1,000,000."
+                    )
+                    shares_outstanding = shares_outstanding * 1_000_000
+
+            # Use DEI shares if available; DEI is the cover-page count (most precise, point-in-time)
+            if dei_shares and dei_shares > 1_000:
                 shares_outstanding = dei_shares
 
-            # Fallback: Try weighted average diluted shares
-            weighted_avg_diluted = get_metric(None, canonical_name="weighted_average_shares_diluted")
+            # Fallback: Try weighted average diluted shares (correct canonical key)
+            weighted_avg_diluted = get_metric(None, canonical_name="weighted_average_diluted_shares_outstanding")
             if not shares_outstanding and weighted_avg_diluted:
                 shares_outstanding = weighted_avg_diluted
                 logger.info(
-                    f"ℹ️  {symbol} - Using weighted_average_shares_diluted as shares_outstanding: {shares_outstanding:,.0f}"
+                    f"ℹ️  {symbol} - Using weighted_average_diluted_shares_outstanding as shares_outstanding: "
+                    f"{shares_outstanding:,.0f}"
                 )
 
-            # Fallback: Try weighted average basic shares
-            weighted_avg_basic = get_metric(None, canonical_name="weighted_average_shares_basic")
-            if not shares_outstanding and weighted_avg_basic:
-                shares_outstanding = weighted_avg_basic
-                logger.info(
-                    f"ℹ️  {symbol} - Using weighted_average_shares_basic as shares_outstanding: {shares_outstanding:,.0f}"
-                )
+            # Fallback: shares_outstanding canonical includes basic weighted-average as last resort
+            if not shares_outstanding:
+                logger.warning(f"⚠️  {symbol} - shares_outstanding could not be determined from any source")
 
             # =====================================================
             # EBITDA - Calculate from operating_income + D&A
@@ -1447,7 +1463,6 @@ class SECCompanyFactsExtractor:
                 "shares_outstanding": shares_outstanding,
                 "common_stock_shares_outstanding": shares_outstanding,  # Alias
                 "weighted_average_diluted_shares_outstanding": weighted_avg_diluted,
-                "weighted_average_shares_basic": weighted_avg_basic,
                 # Insurance-specific metrics
                 "premiums_earned": premiums_earned,
                 "claims_incurred": claims_incurred,
