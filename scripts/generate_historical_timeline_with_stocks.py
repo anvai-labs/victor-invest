@@ -22,18 +22,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from sqlalchemy import create_engine
-import pandas as pd
 import json
 from datetime import datetime
+
+import pandas as pd
+from sqlalchemy import create_engine
 
 print("=" * 80)
 print("GENERATING HISTORICAL SECTOR TIMELINE VISUALIZATION WITH REPRESENTATIVE STOCKS")
 print("=" * 80)
 
-SEC_DB_URL = (
-    "postgresql://investigator:investigator@dataserver1.singh.local:5432/sec_database"
-)
+SEC_DB_URL = "postgresql://investigator:investigator@dataserver1.singh.local:5432/sec_database"
 engine = create_engine(SEC_DB_URL)
 
 # Fetch sector medians
@@ -352,9 +351,7 @@ html_output = f"""<!DOCTYPE html>
 </html>"""
 
 # Write to file
-output_path = Path(
-    "docs/assets/visualizations/sector_timeline_historical_with_stocks.html"
-)
+output_path = Path("docs/assets/visualizations/sector_timeline_historical_with_stocks.html")
 output_path.write_text(html_output)
 
 print(f"\n{'=' * 80}")

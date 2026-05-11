@@ -168,9 +168,7 @@ class SmartValuationAdjuster:
             "bias": metrics.valuation_bias.value,
             "discount_to_fair": metrics.discount_to_fair_value,
             "multiplier": bias_mult,
-            "rationale": self._get_bias_rationale(
-                metrics.valuation_bias, metrics.discount_to_fair_value
-            ),
+            "rationale": self._get_bias_rationale(metrics.valuation_bias, metrics.discount_to_fair_value),
         }
 
         # 3. Risk-based adjustment
@@ -205,9 +203,7 @@ class SmartValuationAdjuster:
 
         # 6. Sector adjustment
         sector = analysis_context.get("sector", "default").lower()
-        sector_mult = self.sector_adjustments.get(
-            sector, self.sector_adjustments["default"]
-        )
+        sector_mult = self.sector_adjustments.get(sector, self.sector_adjustments["default"])
         adjusted_target *= sector_mult
         adjustment_details["sector"] = {
             "sector": sector,
@@ -216,24 +212,16 @@ class SmartValuationAdjuster:
         }
 
         # 7. Extreme valuation protection
-        adjusted_target = self._apply_extreme_valuation_protection(
-            adjusted_target, metrics, adjustment_details
-        )
+        adjusted_target = self._apply_extreme_valuation_protection(adjusted_target, metrics, adjustment_details)
 
         # Calculate overall adjustment
-        overall_adjustment = (
-            (adjusted_target - base_target) / base_target if base_target > 0 else 0
-        )
+        overall_adjustment = (adjusted_target - base_target) / base_target if base_target > 0 else 0
         adjustment_details["summary"] = {
             "base_target": base_target,
             "adjusted_target": adjusted_target,
             "overall_adjustment": overall_adjustment,
             "adjustment_direction": (
-                "upward"
-                if overall_adjustment > 0
-                else "downward"
-                if overall_adjustment < 0
-                else "neutral"
+                "upward" if overall_adjustment > 0 else "downward" if overall_adjustment < 0 else "neutral"
             ),
         }
 
@@ -359,9 +347,7 @@ class SmartValuationAdjuster:
     ) -> Dict[str, Any]:
         """Generate comprehensive valuation summary"""
         current_to_target = (
-            (adjusted_target - metrics.current_price) / metrics.current_price
-            if metrics.current_price > 0
-            else 0
+            (adjusted_target - metrics.current_price) / metrics.current_price if metrics.current_price > 0 else 0
         )
 
         # Determine investment appeal
@@ -383,15 +369,12 @@ class SmartValuationAdjuster:
             "investment_appeal": appeal,
             "valuation_bias": metrics.valuation_bias.value,
             "quality_tier": metrics.quality_tier.value,
-            "margin_of_safety": max(0, current_to_target)
-            if current_to_target > 0
-            else 0,
+            "margin_of_safety": max(0, current_to_target) if current_to_target > 0 else 0,
             "risk_of_loss": max(0, -current_to_target) if current_to_target < 0 else 0,
             "adjustment_summary": adjustment_details.get("summary", {}),
             "key_adjustments": [
                 adj
                 for key, adj in adjustment_details.items()
-                if key in ["quality", "valuation_bias", "risk", "trend"]
-                and adj.get("multiplier", 1.0) != 1.0
+                if key in ["quality", "valuation_bias", "risk", "trend"] and adj.get("multiplier", 1.0) != 1.0
             ],
         }

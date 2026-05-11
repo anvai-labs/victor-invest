@@ -10,8 +10,8 @@ import asyncio
 import inspect
 from dataclasses import is_dataclass
 
-from victor.framework.workflows.base_handler import BaseHandler
 from victor.framework.extensions import WorkflowContext
+from victor.framework.workflows.base_handler import BaseHandler
 
 
 class MockNode:

@@ -6,7 +6,9 @@ Joins via symbol/cik to get tickerdata shares and price data.
 """
 
 import logging
+
 from sqlalchemy import text
+
 from investigator.infrastructure.database.db import get_db_manager
 from investigator.infrastructure.database.symbol_repository import SymbolRepository
 
@@ -50,15 +52,11 @@ def main():
                   AND shares_outstanding IS NULL
                   AND DATE(period_end_date) = :date
             """)
-            result = sec_session.execute(
-                update, {"symbol": symbol, "date": date, "shares": shares}
-            )
+            result = sec_session.execute(update, {"symbol": symbol, "date": date, "shares": shares})
             update_count += result.rowcount
 
         sec_session.commit()
-        print(
-            f"  Updated {update_count} rows with shares_outstanding (exact date match)"
-        )
+        print(f"  Updated {update_count} rows with shares_outstanding (exact date match)")
 
     print("\nStep 2: Populating remaining shares from nearby dates...")
 
@@ -101,9 +99,7 @@ def main():
             ).fetchone()
 
             if result and result[0]:
-                batch_updates.append(
-                    {"symbol": symbol, "period_end": period_end, "shares": result[0]}
-                )
+                batch_updates.append({"symbol": symbol, "period_end": period_end, "shares": result[0]})
 
         # Batch update
         with sec_db.get_session() as sec_session:
@@ -179,9 +175,7 @@ def main():
               AND shares_outstanding IS NOT NULL
         """)
         result = sec_session.execute(update_diluted_shares)
-        print(
-            f"  Updated {result.rowcount} rows with weighted_average_diluted_shares_outstanding"
-        )
+        print(f"  Updated {result.rowcount} rows with weighted_average_diluted_shares_outstanding")
 
         sec_session.commit()
 

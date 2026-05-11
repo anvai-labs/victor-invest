@@ -27,9 +27,7 @@ def calculate_change(start: float, end: float) -> Tuple[float, str]:
     if start == 0:
         return 0.0, "N/A"
     change_pct = ((end - start) / start) * 100
-    status = (
-        "SWELLING" if change_pct > 5 else "SHRINKING" if change_pct < -5 else "STABLE"
-    )
+    status = "SWELLING" if change_pct > 5 else "SHRINKING" if change_pct < -5 else "STABLE"
     return change_pct, status
 
 
@@ -46,9 +44,7 @@ def calculate_volatility(values: List[float]) -> float:
     return swing_pct
 
 
-def generate_sector_report(
-    sector_name: str, sector_data: Dict, years: List[int]
-) -> str:
+def generate_sector_report(sector_name: str, sector_data: Dict, years: List[int]) -> str:
     """Generate a formatted report for a single sector."""
 
     ps_values = sector_data.get("ps", [])
@@ -159,9 +155,7 @@ def generate_sector_report(
             f"- **Moderate Volatility**: P/S multiple showed significant swings ({ps_volatility:.1f}% swing)"
         )
     else:
-        report_lines.append(
-            f"- **Stable**: P/S multiple remained relatively stable ({ps_volatility:.1f}% swing)"
-        )
+        report_lines.append(f"- **Stable**: P/S multiple remained relatively stable ({ps_volatility:.1f}% swing)")
 
     if ps_status == "SWELLING":
         report_lines.append(
@@ -172,9 +166,7 @@ def generate_sector_report(
             "- **Contracting**: Sector multiples contracted over the period, suggesting normalization or declining sentiment"
         )
     else:
-        report_lines.append(
-            "- **Stable**: Sector multiples remained relatively flat over the period"
-        )
+        report_lines.append("- **Stable**: Sector multiples remained relatively flat over the period")
 
     report_lines.append("")
     return "\n".join(report_lines)
@@ -222,9 +214,7 @@ def main():
             {
                 "sector": sector_name,
                 "ps_2016": ps_start,
-                "ps_2024": ps_values[-2]
-                if len(ps_values) > 1
-                else None,  # 2024 is second to last
+                "ps_2024": ps_values[-2] if len(ps_values) > 1 else None,  # 2024 is second to last
                 "ps_2025": ps_end,
                 "ps_change": ps_change,
                 "ps_status": ps_status,
@@ -267,9 +257,7 @@ def generate_summary_report(summaries: List[Dict], output_dir: Path):
         change = f"{s['ps_change']:+.1f}%" if s["ps_change"] else "N/A"
         status = s.get("ps_status", "N/A")
         vol = f"{s['ps_volatility']:.1f}%" if s["ps_volatility"] else "N/A"
-        report_lines.append(
-            f"| {sector} | {ps_2016} | {ps_2024} | {ps_2025} | {change} | {status} | {vol} |"
-        )
+        report_lines.append(f"| {sector} | {ps_2016} | {ps_2024} | {ps_2025} | {change} | {status} | {vol} |")
 
     # Identify trends
     expanding = [s["sector"] for s in summaries if s.get("ps_status") == "SWELLING"]
@@ -370,9 +358,7 @@ def generate_summary_report(summaries: List[Dict], output_dir: Path):
             "- **Market-Wide Expansion**: Most sectors experienced valuation expansion, suggesting broad bullish sentiment"
         )
     else:
-        report_lines.append(
-            "- **Mixed Market**: Sectors showed divergent trends, suggesting stock-picking environment"
-        )
+        report_lines.append("- **Mixed Market**: Sectors showed divergent trends, suggesting stock-picking environment")
 
     if high_volatility:
         report_lines.append(

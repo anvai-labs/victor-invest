@@ -19,9 +19,7 @@ logger = logging.getLogger(__name__)
 class NewsSentimentAnalyzer:
     """Analyze news sentiment for stocks"""
 
-    def __init__(
-        self, db_manager=None, ollama_client=None, newsapi_key: Optional[str] = None
-    ):
+    def __init__(self, db_manager=None, ollama_client=None, newsapi_key: Optional[str] = None):
         """
         Initialize news sentiment analyzer
 
@@ -54,17 +52,13 @@ class NewsSentimentAnalyzer:
 
             if not articles or len(articles) == 0:
                 logger.warning(f"No news articles found for {symbol}")
-                return self._get_default_sentiment(
-                    symbol, days, "No news articles found"
-                )
+                return self._get_default_sentiment(symbol, days, "No news articles found")
 
             # Filter irrelevant articles
             articles = self._filter_articles(articles)
 
             if len(articles) == 0:
-                return self._get_default_sentiment(
-                    symbol, days, "No relevant articles after filtering"
-                )
+                return self._get_default_sentiment(symbol, days, "No relevant articles after filtering")
 
             # Analyze sentiment for each article
             article_sentiments = []
@@ -79,9 +73,7 @@ class NewsSentimentAnalyzer:
                     continue
 
             if not article_sentiments:
-                return self._get_default_sentiment(
-                    symbol, days, "Could not analyze article sentiments"
-                )
+                return self._get_default_sentiment(symbol, days, "Could not analyze article sentiments")
 
             # Calculate aggregate sentiment
             aggregate = self._calculate_aggregate_sentiment(article_sentiments)
@@ -118,9 +110,7 @@ class NewsSentimentAnalyzer:
         try:
             # Check if we have a valid API key
             if not self.newsapi_key or self.newsapi_key == "placeholder":
-                logger.info(
-                    f"NewsAPI key not configured, skipping news fetch for {symbol}"
-                )
+                logger.info(f"NewsAPI key not configured, skipping news fetch for {symbol}")
                 return []
 
             # Calculate date range
@@ -337,9 +327,7 @@ Focus on implications for stock price. Be objective and balanced.
 
         for i, sentiment in enumerate(article_sentiments):
             # More recent articles (earlier in list) get higher weight
-            recency_weight = 1.0 + (
-                0.5 * (len(article_sentiments) - i) / len(article_sentiments)
-            )
+            recency_weight = 1.0 + (0.5 * (len(article_sentiments) - i) / len(article_sentiments))
             score = sentiment.get("sentiment_score", 5.0)
 
             weighted_sum += score * recency_weight
@@ -398,9 +386,7 @@ Focus on implications for stock price. Be objective and balanced.
             "older_avg": round(older_avg, 1),
         }
 
-    def _detect_sentiment_price_divergence(
-        self, sentiment_data: Dict, price_data: Dict
-    ) -> Optional[Dict]:
+    def _detect_sentiment_price_divergence(self, sentiment_data: Dict, price_data: Dict) -> Optional[Dict]:
         """
         Detect divergences between sentiment and price movement
 

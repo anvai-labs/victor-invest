@@ -87,9 +87,7 @@ class CreditRiskCalculator(BaseCollector):
             else:
                 symbols = get_russell1000_symbols()
 
-            self.logger.info(
-                f"Calculating credit risk scores for {len(symbols)} symbols"
-            )
+            self.logger.info(f"Calculating credit risk scores for {len(symbols)} symbols")
 
             conn = get_database_connection()
             cursor = conn.cursor()
@@ -115,18 +113,14 @@ class CreditRiskCalculator(BaseCollector):
                     try:
                         assessment = asyncio.run(service.calculate_from_symbol(symbol))
                     except Exception as e:
-                        self.logger.warning(
-                            f"Failed to calculate scores for {symbol}: {e}"
-                        )
+                        self.logger.warning(f"Failed to calculate scores for {symbol}: {e}")
                         self.metrics.records_failed += 1
                         continue
 
                     # Extract scores from assessment
                     z_score = assessment.altman.score if assessment.altman else None
                     z_interpretation = (
-                        assessment.altman.zone.value
-                        if assessment.altman and assessment.altman.zone
-                        else None
+                        assessment.altman.zone.value if assessment.altman and assessment.altman.zone else None
                     )
 
                     m_score = assessment.beneish.score if assessment.beneish else None
@@ -136,9 +130,7 @@ class CreditRiskCalculator(BaseCollector):
                         else None
                     )
 
-                    f_score = (
-                        assessment.piotroski.score if assessment.piotroski else None
-                    )
+                    f_score = assessment.piotroski.score if assessment.piotroski else None
                     f_interpretation = (
                         assessment.piotroski.strength.value
                         if assessment.piotroski and assessment.piotroski.strength
@@ -217,9 +209,7 @@ class CreditRiskCalculator(BaseCollector):
             cursor.close()
             conn.close()
 
-            self.logger.info(
-                f"Calculated credit risk for {self.metrics.records_inserted} symbols"
-            )
+            self.logger.info(f"Calculated credit risk for {self.metrics.records_inserted} symbols")
 
         except ImportError as e:
             self.logger.error(f"Credit risk analyzers not available: {e}")
@@ -296,10 +286,7 @@ class CreditRiskCalculator(BaseCollector):
             if tier_scores[tier] > 0:
                 # But also consider if majority of models agree on better tier
                 better_score = sum(
-                    tier_scores[t]
-                    for t in list(DISTRESS_TIERS.keys())[
-                        : list(DISTRESS_TIERS.keys()).index(tier)
-                    ]
+                    tier_scores[t] for t in list(DISTRESS_TIERS.keys())[: list(DISTRESS_TIERS.keys()).index(tier)]
                 )
                 if better_score >= 2:
                     continue
@@ -347,9 +334,7 @@ class CreditRiskCalculator(BaseCollector):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Calculate credit risk scores for companies"
-    )
+    parser = argparse.ArgumentParser(description="Calculate credit risk scores for companies")
     parser.add_argument(
         "--symbols",
         type=str,

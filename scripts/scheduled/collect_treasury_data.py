@@ -76,16 +76,11 @@ class TreasuryDataCollector(BaseCollector):
             if last_date:
                 # Incremental: fetch from day after last date
                 start_date = last_date + timedelta(days=1)
-                self.logger.info(
-                    f"Incremental fetch: {start_date} to {end_date} "
-                    f"(last record: {last_date})"
-                )
+                self.logger.info(f"Incremental fetch: {start_date} to {end_date} (last record: {last_date})")
             else:
                 # Full fetch: use configured lookback
                 start_date = end_date - timedelta(days=self.lookback_days)
-                self.logger.info(
-                    f"Full fetch: {start_date} to {end_date} (no existing data)"
-                )
+                self.logger.info(f"Full fetch: {start_date} to {end_date} (no existing data)")
 
             # Skip if no new dates to fetch
             if start_date > end_date:
@@ -204,16 +199,11 @@ class TreasuryDataCollector(BaseCollector):
                         self.metrics.records_inserted += 1
 
                     # Track high watermark
-                    if (
-                        self.metrics.high_watermark_date is None
-                        or record_date > self.metrics.high_watermark_date
-                    ):
+                    if self.metrics.high_watermark_date is None or record_date > self.metrics.high_watermark_date:
                         self.metrics.high_watermark_date = record_date
 
                 except Exception as e:
-                    self.logger.warning(
-                        f"Failed to process yield for {yield_data.get('date')}: {e}"
-                    )
+                    self.logger.warning(f"Failed to process yield for {yield_data.get('date')}: {e}")
                     self.metrics.records_failed += 1
 
             conn.commit()
@@ -238,9 +228,7 @@ class TreasuryDataCollector(BaseCollector):
 
 def main():
     parser = argparse.ArgumentParser(description="Collect Treasury yield curve data")
-    parser.add_argument(
-        "--days", type=int, default=7, help="Number of days to look back (default: 7)"
-    )
+    parser.add_argument("--days", type=int, default=7, help="Number of days to look back (default: 7)")
     args = parser.parse_args()
 
     collector = TreasuryDataCollector(lookback_days=args.days)

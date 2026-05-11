@@ -87,9 +87,7 @@ class RegionalFedCollector(BaseCollector):
 
             client = get_atlanta_fed_client()
             data = await client.get_all_indicators()
-            self.logger.info(
-                f"Atlanta Fed: collected {len([v for v in data.values() if v])} indicators"
-            )
+            self.logger.info(f"Atlanta Fed: collected {len([v for v in data.values() if v])} indicators")
             return {"atlanta": data}
         except Exception as e:
             self.logger.warning(f"Atlanta Fed collection failed: {e}")
@@ -105,9 +103,7 @@ class RegionalFedCollector(BaseCollector):
 
             client = get_philly_fed_client()
             data = await client.get_all_indicators()
-            self.logger.info(
-                f"Philadelphia Fed: collected {len([v for v in data.values() if v])} indicators"
-            )
+            self.logger.info(f"Philadelphia Fed: collected {len([v for v in data.values() if v])} indicators")
             return {"philadelphia": data}
         except Exception as e:
             self.logger.warning(f"Philadelphia Fed collection failed: {e}")
@@ -123,9 +119,7 @@ class RegionalFedCollector(BaseCollector):
 
             client = get_chicago_fed_client()
             data = await client.get_all_indicators()
-            self.logger.info(
-                f"Chicago Fed: collected {len([v for v in data.values() if v])} indicators"
-            )
+            self.logger.info(f"Chicago Fed: collected {len([v for v in data.values() if v])} indicators")
             return {"chicago": data}
         except Exception as e:
             self.logger.warning(f"Chicago Fed collection failed: {e}")
@@ -141,9 +135,7 @@ class RegionalFedCollector(BaseCollector):
 
             client = get_cleveland_fed_client()
             data = await client.get_all_indicators()
-            self.logger.info(
-                f"Cleveland Fed: collected {len([v for v in data.values() if v])} indicators"
-            )
+            self.logger.info(f"Cleveland Fed: collected {len([v for v in data.values() if v])} indicators")
             return {"cleveland": data}
         except Exception as e:
             self.logger.warning(f"Cleveland Fed collection failed: {e}")
@@ -159,9 +151,7 @@ class RegionalFedCollector(BaseCollector):
 
             client = get_dallas_fed_client()
             data = await client.get_all_indicators()
-            self.logger.info(
-                f"Dallas Fed: collected {len([v for v in data.values() if v])} indicators"
-            )
+            self.logger.info(f"Dallas Fed: collected {len([v for v in data.values() if v])} indicators")
             return {"dallas": data}
         except Exception as e:
             self.logger.warning(f"Dallas Fed collection failed: {e}")
@@ -177,9 +167,7 @@ class RegionalFedCollector(BaseCollector):
 
             client = get_kc_fed_client()
             data = await client.get_all_indicators()
-            self.logger.info(
-                f"Kansas City Fed: collected {len([v for v in data.values() if v])} indicators"
-            )
+            self.logger.info(f"Kansas City Fed: collected {len([v for v in data.values() if v])} indicators")
             return {"kansas_city": data}
         except Exception as e:
             self.logger.warning(f"Kansas City Fed collection failed: {e}")
@@ -195,9 +183,7 @@ class RegionalFedCollector(BaseCollector):
 
             client = get_richmond_fed_client()
             data = await client.get_all_indicators()
-            self.logger.info(
-                f"Richmond Fed: collected {len([v for v in data.values() if v])} indicators"
-            )
+            self.logger.info(f"Richmond Fed: collected {len([v for v in data.values() if v])} indicators")
             return {"richmond": data}
         except Exception as e:
             self.logger.warning(f"Richmond Fed collection failed: {e}")
@@ -220,9 +206,7 @@ class RegionalFedCollector(BaseCollector):
                 "recession_probability": recession_prob,
                 "gscpi": gscpi,
             }
-            self.logger.info(
-                f"NY Fed: collected {len([v for v in data.values() if v])} indicators"
-            )
+            self.logger.info(f"NY Fed: collected {len([v for v in data.values() if v])} indicators")
             return {"new_york": data}
         except Exception as e:
             self.logger.warning(f"NY Fed collection failed: {e}")
@@ -352,9 +336,7 @@ class RegionalFedCollector(BaseCollector):
     def collect(self) -> CollectionMetrics:
         """Collect all Regional Fed economic data."""
         try:
-            self.logger.info(
-                f"Collecting data from {len(self.districts)} Fed districts"
-            )
+            self.logger.info(f"Collecting data from {len(self.districts)} Fed districts")
 
             # Run async collection
             loop = asyncio.new_event_loop()
@@ -385,20 +367,14 @@ class RegionalFedCollector(BaseCollector):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Collect Regional Federal Reserve economic data"
-    )
-    parser.add_argument(
-        "--districts", type=str, help="Comma-separated list of districts (default: all)"
-    )
+    parser = argparse.ArgumentParser(description="Collect Regional Federal Reserve economic data")
+    parser.add_argument("--districts", type=str, help="Comma-separated list of districts (default: all)")
     parser.add_argument(
         "--indicator",
         type=str,
         help="Specific indicator to collect (e.g., gdpnow, cfnai)",
     )
-    parser.add_argument(
-        "--dry-run", action="store_true", help="Collect but don't store to database"
-    )
+    parser.add_argument("--dry-run", action="store_true", help="Collect but don't store to database")
     args = parser.parse_args()
 
     districts = None

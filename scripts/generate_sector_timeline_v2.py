@@ -10,18 +10,16 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from sqlalchemy import create_engine
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from sqlalchemy import create_engine
 
 print("=" * 80)
 print("GENERATING SECTOR TIMELINE VISUALIZATION (Plotly Python)")
 print("=" * 80)
 
-SEC_DB_URL = (
-    "postgresql://investigator:investigator@dataserver1.singh.local:5432/sec_database"
-)
+SEC_DB_URL = "postgresql://investigator:investigator@dataserver1.singh.local:5432/sec_database"
 engine = create_engine(SEC_DB_URL)
 
 # Fetch sector medians
@@ -105,9 +103,7 @@ metrics = ["pe", "ps", "pb"]
 metric_names = ["P/E", "P/S", "P/B"]
 
 for sector in sector_medians["sector"].unique():
-    sector_data = sector_medians[sector_medians["sector"] == sector].sort_values(
-        "fiscal_year"
-    )
+    sector_data = sector_medians[sector_medians["sector"] == sector].sort_values("fiscal_year")
     color = sector_colors.get(sector, "gray")
 
     for i, metric in enumerate(metrics):

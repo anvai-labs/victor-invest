@@ -82,12 +82,7 @@ class SystemInfo:
 
                 if result.returncode == 0:
                     cpu_info = result.stdout.strip().lower()
-                    if (
-                        "apple" in cpu_info
-                        or "m1" in cpu_info
-                        or "m2" in cpu_info
-                        or "m3" in cpu_info
-                    ):
+                    if "apple" in cpu_info or "m1" in cpu_info or "m2" in cpu_info or "m3" in cpu_info:
                         # Apple Silicon - unified memory
                         # Reserve some memory for system (typically 25-30%)
                         available_for_gpu = total_memory_gb * 0.7
@@ -173,9 +168,7 @@ class SystemInfo:
                             return memory_gb
 
             # Try lspci for integrated GPUs
-            result = subprocess.run(
-                ["lspci", "-v"], capture_output=True, text=True, timeout=10
-            )
+            result = subprocess.run(["lspci", "-v"], capture_output=True, text=True, timeout=10)
 
             if result.returncode == 0:
                 # Look for GPU info in lspci output
@@ -210,9 +203,7 @@ class SystemInfo:
                             memory_bytes = int(line.strip())
                             if memory_bytes > 0:
                                 memory_gb = memory_bytes / (1024**3)
-                                logger.info(
-                                    f"Windows GPU detected: {memory_gb:.1f}GB VRAM"
-                                )
+                                logger.info(f"Windows GPU detected: {memory_gb:.1f}GB VRAM")
                                 return memory_gb
                         except ValueError:
                             continue
@@ -233,9 +224,7 @@ class SystemInfo:
         summary = {
             "platform": system,
             "gpu_memory_gb": gpu_memory,
-            "reserved_memory_gb": max(
-                2.0, gpu_memory * 0.15
-            ),  # Reserve 15% or 2GB minimum
+            "reserved_memory_gb": max(2.0, gpu_memory * 0.15),  # Reserve 15% or 2GB minimum
             "available_memory_gb": gpu_memory * 0.85,
             "python_version": platform.python_version(),
             "architecture": platform.machine(),

@@ -39,11 +39,9 @@ from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 from victor_invest.compat.handlers import BaseHandler, handler_decorator
 
 if TYPE_CHECKING:
-    from victor_sdk.workflows import (
-        ComputeNodeProtocol as ComputeNode,
-        WorkflowContextProtocol as WorkflowContext,
-    )
     from victor_sdk.verticals.protocols.tools import ToolRegistryProtocol as ToolRegistry
+    from victor_sdk.workflows import ComputeNodeProtocol as ComputeNode
+    from victor_sdk.workflows import WorkflowContextProtocol as WorkflowContext
 
 logger = logging.getLogger(__name__)
 

@@ -12,11 +12,9 @@ import time
 from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar
 
 if TYPE_CHECKING:
-    from victor_sdk.workflows import (
-        ComputeNodeProtocol as ComputeNode,
-        WorkflowContextProtocol as WorkflowContext,
-    )
     from victor_sdk.verticals.protocols.tools import ToolRegistryProtocol as ToolRegistry
+    from victor_sdk.workflows import ComputeNodeProtocol as ComputeNode
+    from victor_sdk.workflows import WorkflowContextProtocol as WorkflowContext
 
 logger = logging.getLogger(__name__)
 

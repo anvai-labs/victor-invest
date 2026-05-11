@@ -144,9 +144,7 @@ class BetaModelCollector(BaseCollector):
                 winsorize_pct=self.winsorize_pct,
             )
             if returns.empty or self.benchmark not in returns.columns:
-                self.metrics.errors.append(
-                    f"Benchmark returns unavailable for {self.benchmark}"
-                )
+                self.metrics.errors.append(f"Benchmark returns unavailable for {self.benchmark}")
                 return self.metrics
 
             ff_factors = self._load_ff_factors(
@@ -163,9 +161,7 @@ class BetaModelCollector(BaseCollector):
                     end_date=as_of_date,
                 )
 
-            symbol_fundamentals = self._load_symbol_fundamentals(
-                conn=conn, symbols=symbols
-            )
+            symbol_fundamentals = self._load_symbol_fundamentals(conn=conn, symbols=symbols)
             benchmark_returns = returns[self.benchmark]
 
             estimates: List[BetaEstimate] = []
@@ -244,11 +240,7 @@ class BetaModelCollector(BaseCollector):
                             lookback_months=lookback,
                             market_estimate=market_estimate,
                             ff6_estimate=ff6_estimate,
-                            fundamental_estimate=(
-                                fundamental_estimate.get(lookback)
-                                if fundamental_estimate
-                                else None
-                            ),
+                            fundamental_estimate=(fundamental_estimate.get(lookback) if fundamental_estimate else None),
                         )
                         if blend_estimate is not None:
                             estimates.append(blend_estimate)
@@ -335,9 +327,7 @@ class BetaModelCollector(BaseCollector):
         )
 
     def _get_latest_trading_date(self, cursor, benchmark: str) -> Optional[date]:
-        cursor.execute(
-            "SELECT MAX(date) FROM tickerdata WHERE ticker = %s", (benchmark,)
-        )
+        cursor.execute("SELECT MAX(date) FROM tickerdata WHERE ticker = %s", (benchmark,))
         row = cursor.fetchone()
         latest = row[0] if row else None
         if latest:
@@ -422,9 +412,7 @@ class BetaModelCollector(BaseCollector):
                 df[col] = self._winsorize_series(df[col], winsorize_pct)
         return df.dropna(how="all")
 
-    def _load_ff_factors_from_csv(
-        self, start_date: date, end_date: date, winsorize_pct: float
-    ) -> pd.DataFrame:
+    def _load_ff_factors_from_csv(self, start_date: date, end_date: date, winsorize_pct: float) -> pd.DataFrame:
         candidate_paths = [
             PROJECT_ROOT / "data" / "factors" / "ff6.csv",
             PROJECT_ROOT.parent / "ibkrtrading" / "data" / "factors" / "ff6.csv",
@@ -437,9 +425,7 @@ class BetaModelCollector(BaseCollector):
         try:
             raw = pd.read_csv(source_path)
         except Exception as exc:
-            self.logger.warning(
-                "Failed reading FF factors CSV fallback %s: %s", source_path, exc
-            )
+            self.logger.warning("Failed reading FF factors CSV fallback %s: %s", source_path, exc)
             return pd.DataFrame()
 
         if raw.empty:
@@ -465,10 +451,7 @@ class BetaModelCollector(BaseCollector):
             return pd.DataFrame()
 
         raw["date"] = pd.to_datetime(raw["date"], errors="coerce")
-        raw = raw[
-            (raw["date"] >= pd.Timestamp(start_date))
-            & (raw["date"] <= pd.Timestamp(end_date))
-        ]
+        raw = raw[(raw["date"] >= pd.Timestamp(start_date)) & (raw["date"] <= pd.Timestamp(end_date))]
         raw = raw.dropna(subset=["date"]).set_index("date").sort_index()
         for col in ["mkt_rf", "smb", "hml", "rmw", "cma", "umd", "rf"]:
             raw[col] = pd.to_numeric(raw[col], errors="coerce")
@@ -529,9 +512,7 @@ class BetaModelCollector(BaseCollector):
         series = pd.Series(rf.values, index=df["date"]).sort_index()
         return series
 
-    def _load_symbol_fundamentals(
-        self, conn, symbols: Sequence[str]
-    ) -> Dict[str, Dict[str, Any]]:
+    def _load_symbol_fundamentals(self, conn, symbols: Sequence[str]) -> Dict[str, Dict[str, Any]]:
         query = """
             SELECT *
             FROM symbol
@@ -663,9 +644,7 @@ class BetaModelCollector(BaseCollector):
             ["sec_sector", "sector", "Sector", "gics_sector"],
         )
         beta_lookup_key = industry or sector or "Default"
-        unlevered_beta, exact_match = self.cost_of_capital.get_unlevered_beta(
-            str(beta_lookup_key)
-        )
+        unlevered_beta, exact_match = self.cost_of_capital.get_unlevered_beta(str(beta_lookup_key))
         debt_to_equity = self._extract_debt_to_equity(row)
         tax_rate = self._extract_tax_rate(row)
         levered_beta = self.cost_of_capital.calculate_levered_beta(
@@ -675,9 +654,7 @@ class BetaModelCollector(BaseCollector):
         )
         if not np.isfinite(levered_beta):
             levered_beta = unlevered_beta
-        levered_beta = float(
-            np.clip(levered_beta, -self.max_abs_beta, self.max_abs_beta)
-        )
+        levered_beta = float(np.clip(levered_beta, -self.max_abs_beta, self.max_abs_beta))
 
         out: Dict[int, BetaEstimate] = {}
         for lookback in windows:
@@ -752,18 +729,14 @@ class BetaModelCollector(BaseCollector):
         if total_weight <= 0:
             return None
 
-        beta = (
-            sum(beta_val * weight for _, beta_val, weight, _, _ in components)
-            / total_weight
-        )
+        beta = sum(beta_val * weight for _, beta_val, weight, _, _ in components) / total_weight
         alpha_vals = [
             (alpha_val, weight)
             for _, _, weight, alpha_val, _ in components
             if alpha_val is not None and np.isfinite(alpha_val)
         ]
         alpha = (
-            sum(alpha_val * weight for alpha_val, weight in alpha_vals)
-            / sum(weight for _, weight in alpha_vals)
+            sum(alpha_val * weight for alpha_val, weight in alpha_vals) / sum(weight for _, weight in alpha_vals)
             if alpha_vals
             else None
         )
@@ -772,11 +745,7 @@ class BetaModelCollector(BaseCollector):
             for model in (market_estimate, ff6_estimate)
             if model is not None and model.r_squared is not None
         ]
-        r2 = (
-            sum(v * w for v, w in r2_vals) / sum(w for _, w in r2_vals)
-            if r2_vals
-            else None
-        )
+        r2 = sum(v * w for v, w in r2_vals) / sum(w for _, w in r2_vals) if r2_vals else None
         obs = max((obs for _, _, _, _, obs in components), default=0)
 
         return BetaEstimate(
@@ -905,13 +874,9 @@ class BetaModelCollector(BaseCollector):
                 f"r2_ff6_{lookback}m",
                 f"r2_ff6_{lookback}_month",
             ]
-            self._set_first_existing(
-                updates, symbol_columns, beta_candidates, estimate.beta
-            )
+            self._set_first_existing(updates, symbol_columns, beta_candidates, estimate.beta)
             if estimate.r_squared is not None:
-                self._set_first_existing(
-                    updates, symbol_columns, r2_candidates, estimate.r_squared
-                )
+                self._set_first_existing(updates, symbol_columns, r2_candidates, estimate.r_squared)
             return
 
         if estimate.model == "fundamental":
@@ -931,9 +896,7 @@ class BetaModelCollector(BaseCollector):
                     f"beta_fundamental_{lookback}m",
                     f"beta_fundamental_{lookback}_month",
                 ]
-            self._set_first_existing(
-                updates, symbol_columns, beta_candidates, estimate.beta
-            )
+            self._set_first_existing(updates, symbol_columns, beta_candidates, estimate.beta)
             return
 
         if estimate.model == "blended":
@@ -948,17 +911,11 @@ class BetaModelCollector(BaseCollector):
                 f"r2_blended_{lookback}_month",
                 f"r2_blend_{lookback}m",
             ]
-            self._set_first_existing(
-                updates, symbol_columns, beta_candidates, estimate.beta
-            )
+            self._set_first_existing(updates, symbol_columns, beta_candidates, estimate.beta)
             if estimate.r_squared is not None:
-                self._set_first_existing(
-                    updates, symbol_columns, r2_candidates, estimate.r_squared
-                )
+                self._set_first_existing(updates, symbol_columns, r2_candidates, estimate.r_squared)
 
-    def _apply_symbol_updates(
-        self, cursor, symbol_updates: Dict[str, Dict[str, Any]]
-    ) -> int:
+    def _apply_symbol_updates(self, cursor, symbol_updates: Dict[str, Dict[str, Any]]) -> int:
         updated_rows = 0
         for symbol, values in symbol_updates.items():
             if not values:
@@ -1019,9 +976,7 @@ class BetaModelCollector(BaseCollector):
         return alpha, beta, r2
 
     @staticmethod
-    def _ols_multi_factor(
-        x: np.ndarray, y: np.ndarray
-    ) -> Tuple[float, np.ndarray, float]:
+    def _ols_multi_factor(x: np.ndarray, y: np.ndarray) -> Tuple[float, np.ndarray, float]:
         x = np.asarray(x, dtype=float)
         y = np.asarray(y, dtype=float)
         mask = np.isfinite(y)
@@ -1063,12 +1018,8 @@ class BetaModelCollector(BaseCollector):
             if parsed is not None and np.isfinite(parsed):
                 return float(np.clip(parsed, 0.0, 10.0))
 
-        total_debt = self._safe_float(row.get("total_debt")) or self._safe_float(
-            row.get("totaldebt")
-        )
-        market_cap = self._safe_float(row.get("mktcap")) or self._safe_float(
-            row.get("market_cap")
-        )
+        total_debt = self._safe_float(row.get("total_debt")) or self._safe_float(row.get("totaldebt"))
+        market_cap = self._safe_float(row.get("mktcap")) or self._safe_float(row.get("market_cap"))
         if total_debt is not None and market_cap and market_cap > 0:
             return float(np.clip(total_debt / market_cap, 0.0, 10.0))
 
@@ -1134,9 +1085,7 @@ def _parse_models(value: str) -> Set[str]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Calculate market/FF6/fundamental beta models"
-    )
+    parser = argparse.ArgumentParser(description="Calculate market/FF6/fundamental beta models")
     parser.add_argument(
         "--symbols",
         type=str,
@@ -1197,9 +1146,7 @@ def main() -> None:
         action="store_true",
         help="Disable FRED DFF fallback for risk-free series",
     )
-    parser.add_argument(
-        "--dry-run", action="store_true", help="Compute but do not write"
-    )
+    parser.add_argument("--dry-run", action="store_true", help="Compute but do not write")
     args = parser.parse_args()
 
     symbols = None
@@ -1209,13 +1156,9 @@ def main() -> None:
     collector = BetaModelCollector(
         symbols=symbols,
         universe=args.universe,
-        models=args.models
-        if isinstance(args.models, set)
-        else _parse_models(args.models),
+        models=args.models if isinstance(args.models, set) else _parse_models(args.models),
         benchmark=args.benchmark,
-        windows=args.windows
-        if isinstance(args.windows, list)
-        else _parse_windows(args.windows),
+        windows=args.windows if isinstance(args.windows, list) else _parse_windows(args.windows),
         frequency=args.frequency,
         min_obs=max(20, int(args.min_obs)),
         winsorize_pct=max(0.0, min(float(args.winsorize_pct), 0.49)),

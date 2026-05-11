@@ -53,8 +53,8 @@ if TYPE_CHECKING:
 
 
 try:
-    from victor_sdk.verticals.protocols import WorkflowProviderProtocol
     from victor.workflows.definition import WorkflowDefinition
+    from victor_sdk.verticals.protocols import WorkflowProviderProtocol
 
     class InvestmentWorkflowProvider(WorkflowProviderProtocol):
         """Provides investment-specific workflows.

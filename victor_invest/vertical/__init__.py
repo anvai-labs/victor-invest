@@ -65,8 +65,9 @@ class InvestmentPlugin(VictorPlugin):
         #    Without this, the framework knows the tool names from get_tools() but has no
         #    instances to invoke when running as a plugin (no standalone bootstrap).
         try:
-            from victor_invest.tools import get_all_tools
             from victor_sdk.verticals.protocols import ToolPluginHelper
+
+            from victor_invest.tools import get_all_tools
 
             tool_map = {t.name: t for t in get_all_tools()}
             ToolPluginHelper.from_instances(tool_map).register(context)

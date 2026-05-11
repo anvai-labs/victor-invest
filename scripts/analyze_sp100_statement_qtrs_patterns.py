@@ -63,9 +63,7 @@ def get_cik_for_symbol(conn, symbol: str) -> str:
     return str(result["cik"]).zfill(10) if result else None
 
 
-def analyze_statement_qtrs_pattern(
-    conn, cik: str, symbol: str, statement_type: str, tags: List[str]
-) -> Dict:
+def analyze_statement_qtrs_pattern(conn, cik: str, symbol: str, statement_type: str, tags: List[str]) -> Dict:
     """
     Analyze qtrs availability for a specific statement type across all periods.
 
@@ -139,29 +137,17 @@ def main():
             stock_analysis["statements"][stmt_type] = pattern
 
             print(f"\n{stmt_type.upper().replace('_', ' ')}:")
-            print(
-                f"  Q1: qtrs=0:{pattern['Q1']['qtrs_0']}, qtrs=1:{pattern['Q1']['qtrs_1']}"
-            )
-            print(
-                f"  Q2: qtrs=1:{pattern['Q2']['qtrs_1']}, qtrs=2:{pattern['Q2']['qtrs_2']}"
-            )
-            print(
-                f"  Q3: qtrs=1:{pattern['Q3']['qtrs_1']}, qtrs=3:{pattern['Q3']['qtrs_3']}"
-            )
+            print(f"  Q1: qtrs=0:{pattern['Q1']['qtrs_0']}, qtrs=1:{pattern['Q1']['qtrs_1']}")
+            print(f"  Q2: qtrs=1:{pattern['Q2']['qtrs_1']}, qtrs=2:{pattern['Q2']['qtrs_2']}")
+            print(f"  Q3: qtrs=1:{pattern['Q3']['qtrs_1']}, qtrs=3:{pattern['Q3']['qtrs_3']}")
             print(f"  FY: qtrs=4:{pattern['FY']['qtrs_4']}")
 
         # Determine recommended approach
-        income_q2_has_individual = (
-            stock_analysis["statements"]["income_statement"]["Q2"]["qtrs_1"] > 0
-        )
-        cashflow_q2_has_individual = (
-            stock_analysis["statements"]["cash_flow_statement"]["Q2"]["qtrs_1"] > 0
-        )
+        income_q2_has_individual = stock_analysis["statements"]["income_statement"]["Q2"]["qtrs_1"] > 0
+        cashflow_q2_has_individual = stock_analysis["statements"]["cash_flow_statement"]["Q2"]["qtrs_1"] > 0
 
         (stock_analysis["statements"]["income_statement"]["Q2"]["qtrs_2"] > 0)
-        cashflow_q2_has_ytd = (
-            stock_analysis["statements"]["cash_flow_statement"]["Q2"]["qtrs_2"] > 0
-        )
+        cashflow_q2_has_ytd = stock_analysis["statements"]["cash_flow_statement"]["Q2"]["qtrs_2"] > 0
 
         print("\n  RECOMMENDATION FOR Q2:")
         if income_q2_has_individual and cashflow_q2_has_individual:
@@ -183,15 +169,9 @@ def main():
     print("SUMMARY STATISTICS")
     print(f"{'=' * 100}\n")
 
-    q2_qtrs_1_count = sum(
-        1 for r in all_results if r.get("q2_recommendation") == "qtrs_1"
-    )
-    q2_qtrs_2_mixed_count = sum(
-        1 for r in all_results if r.get("q2_recommendation") == "qtrs_2_mixed"
-    )
-    q2_insufficient_count = sum(
-        1 for r in all_results if r.get("q2_recommendation") == "insufficient"
-    )
+    q2_qtrs_1_count = sum(1 for r in all_results if r.get("q2_recommendation") == "qtrs_1")
+    q2_qtrs_2_mixed_count = sum(1 for r in all_results if r.get("q2_recommendation") == "qtrs_2_mixed")
+    q2_insufficient_count = sum(1 for r in all_results if r.get("q2_recommendation") == "insufficient")
 
     total = len(all_results)
     print("Q2 Pattern Distribution:")

@@ -70,8 +70,9 @@ class TestSDKBoundaryContract:
 
     def test_vertical_inherits_sdk_base(self):
         """InvestmentVertical must inherit from SDK VerticalBase."""
-        from victor_invest.vertical.investment_vertical import InvestmentVertical
         from victor_sdk.verticals.protocols.base import VerticalBase
+
+        from victor_invest.vertical.investment_vertical import InvestmentVertical
 
         assert issubclass(InvestmentVertical, VerticalBase), (
             "InvestmentVertical must inherit from victor_sdk VerticalBase"

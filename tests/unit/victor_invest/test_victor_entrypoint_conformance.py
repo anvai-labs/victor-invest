@@ -47,7 +47,7 @@ def test_pyproject_registers_investment_plugin_entrypoint():
 
 
 def test_investment_plugin_implements_victor_plugin_protocol():
-    from victor_sdk import VictorPlugin, VerticalBase
+    from victor_sdk import VerticalBase, VictorPlugin
 
     from victor_invest.vertical import InvestmentPlugin, plugin
     from victor_invest.vertical.investment_vertical import InvestmentVertical

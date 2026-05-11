@@ -66,9 +66,7 @@ def main():
         all_samples.extend(symbols)
 
     print("Command to test with sample symbols:")
-    print(
-        f"  investigator cache warm --symbols {','.join(all_samples[:10])} --process-raw --force-refresh"
-    )
+    print(f"  investigator cache warm --symbols {','.join(all_samples[:10])} --process-raw --force-refresh")
     print()
 
     print("=" * 80)
@@ -96,9 +94,7 @@ def main():
 
     print("Check processed data:")
     print('  python3 -c "')
-    print(
-        "  import pandas as pd; from investigator.infrastructure.database.db import DatabaseManager;"
-    )
+    print("  import pandas as pd; from investigator.infrastructure.database.db import DatabaseManager;")
     print(
         "  df = pd.read_sql('SELECT sector, COUNT(*) FROM sec_companyfacts_processed GROUP BY sector', DatabaseManager().engine)"
     )

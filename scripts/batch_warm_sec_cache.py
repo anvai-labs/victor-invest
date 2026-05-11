@@ -26,12 +26,10 @@ from typing import Callable
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from sqlalchemy import create_engine, text
-from sqlalchemy.exc import OperationalError, DBAPIError
+from sqlalchemy.exc import DBAPIError, OperationalError
 
 
-def retry_on_connection_error(
-    func: Callable, max_retries: int = 3, base_delay: float = 2.0
-):
+def retry_on_connection_error(func: Callable, max_retries: int = 3, base_delay: float = 2.0):
     """
     Retry function on database connection errors with exponential backoff.
     """
@@ -61,9 +59,7 @@ TIERS = {
 }
 
 # SEC database has foreign tables to stock.symbol and stock.tickerdata
-SEC_DB_URL = (
-    "postgresql://investigator:investigator@dataserver1.singh.local:5432/sec_database"
-)
+SEC_DB_URL = "postgresql://investigator:investigator@dataserver1.singh.local:5432/sec_database"
 
 
 def get_symbols_to_process(
@@ -118,9 +114,7 @@ def get_symbols_to_process(
     return retry_on_connection_error(_query)
 
 
-def get_total_symbols_to_process(
-    exclude_recent_days: int = 30, max_stockid: int = DEFAULT_MAX_STOCKID
-) -> int:
+def get_total_symbols_to_process(exclude_recent_days: int = 30, max_stockid: int = DEFAULT_MAX_STOCKID) -> int:
     """Get total count of stock symbols needing processing."""
 
     def _query():
@@ -191,9 +185,7 @@ def process_batch(symbols: list, batch_num: int, dry_run: bool = False):
     sub_batch_size = 50
     for i in range(0, len(tickers), sub_batch_size):
         sub_batch = tickers[i : i + sub_batch_size]
-        print(
-            f"\n  Processing sub-batch {i // sub_batch_size + 1}: {', '.join(sub_batch[:5])}..."
-        )
+        print(f"\n  Processing sub-batch {i // sub_batch_size + 1}: {', '.join(sub_batch[:5])}...")
 
         cmd = [
             "investigator",
@@ -247,9 +239,7 @@ Recommendation: Use stockid <= 3000 for best balance of coverage and quality.
     parser.add_argument("--batch-size", type=int, default=100, help="Symbols per batch")
     parser.add_argument("--max-batches", type=int, default=None, help="Max batches")
     parser.add_argument("--dry-run", action="store_true", help="Dry run")
-    parser.add_argument(
-        "--exclude-days", type=int, default=30, help="Exclude recent days"
-    )
+    parser.add_argument("--exclude-days", type=int, default=30, help="Exclude recent days")
     parser.add_argument("--start-batch", type=int, default=0, help="Start from batch N")
     parser.add_argument(
         "--max-stockid",
@@ -314,9 +304,7 @@ Recommendation: Use stockid <= 3000 for best balance of coverage and quality.
         process_batch(symbols, batch_num)
 
         processed = min(offset + args.batch_size, total)
-        print(
-            f"\nProgress: {processed}/{total} symbols ({processed / total * 100:.1f}%)"
-        )
+        print(f"\nProgress: {processed}/{total} symbols ({processed / total * 100:.1f}%)")
 
         offset += args.batch_size
         time.sleep(5)

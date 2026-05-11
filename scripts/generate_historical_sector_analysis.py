@@ -20,18 +20,18 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from investigator.domain.services.sector_multiples_history import SectorMultiplesHistory
-from sqlalchemy import create_engine
-import pandas as pd
 from datetime import datetime
+
+import pandas as pd
+from sqlalchemy import create_engine
+
+from investigator.domain.services.sector_multiples_history import SectorMultiplesHistory
 
 print("=" * 80)
 print("HISTORICAL SECTOR ANALYSIS - CALCULATION & VISUALIZATION")
 print("=" * 80)
 
-SEC_DB_URL = (
-    "postgresql://investigator:investigator@dataserver1.singh.local:5432/sec_database"
-)
+SEC_DB_URL = "postgresql://investigator:investigator@dataserver1.singh.local:5432/sec_database"
 
 # Step 1: Calculate historical multiples for all years
 print("\n" + "=" * 80)
@@ -57,9 +57,7 @@ for year in years:
                 ps = metrics.get("ps", 0)
                 pb = metrics.get("pb", 0)
                 sample = metrics.get("sample_size", 0)
-                print(
-                    f"    {sector}: n={sample}, PE={pe:.2f}, PS={ps:.2f}, PB={pb:.2f}"
-                )
+                print(f"    {sector}: n={sample}, PE={pe:.2f}, PS={ps:.2f}, PB={pb:.2f}")
         else:
             print(f"  ⚠️ No data for FY{year}")
     except Exception as e:
@@ -243,9 +241,7 @@ subprocess.run(["open", str(output_path)])
 print("\n" + "=" * 80)
 print("✅ COMPLETE!")
 print("=" * 80)
-print(
-    f"📊 Calculated {sum(len(r) for r in all_results.values())} sector-year combinations"
-)
+print(f"📊 Calculated {sum(len(r) for r in all_results.values())} sector-year combinations")
 print("📈 Generated historical timeline visualization")
 print(f"🔗 File: {output_path}")
 print("=" * 80)

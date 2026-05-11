@@ -91,22 +91,16 @@ def get_pending_updates(db, days: int, batch_size: int) -> list:
         return results
 
 
-def get_price_on_date(
-    price_service: PriceHistoryService, symbol: str, target_date: date
-) -> float | None:
+def get_price_on_date(price_service: PriceHistoryService, symbol: str, target_date: date) -> float | None:
     """Get stock price on a specific date from tickerdata table."""
-    return price_service._get_price_sync(
-        symbol, target_date, use_adj_close=True, search_days=5
-    )
+    return price_service._get_price_sync(symbol, target_date, use_adj_close=True, search_days=5)
 
 
 # Note: calculate_reward is now imported from investigator.domain.services.rl.reward_calculator
 # This ensures consistency with rl_backtest.py and outcome_tracker.py
 
 
-def update_30d_outcomes(
-    db, price_service: PriceHistoryService, batch_size: int, dry_run: bool
-) -> tuple:
+def update_30d_outcomes(db, price_service: PriceHistoryService, batch_size: int, dry_run: bool) -> tuple:
     """Update 30-day outcomes."""
     pending = get_pending_updates(db, 30, batch_size)
     updated = 0
@@ -141,9 +135,7 @@ def update_30d_outcomes(
     return updated, errors, len(pending)
 
 
-def update_90d_outcomes(
-    db, price_service: PriceHistoryService, batch_size: int, dry_run: bool
-) -> tuple:
+def update_90d_outcomes(db, price_service: PriceHistoryService, batch_size: int, dry_run: bool) -> tuple:
     """Update 90-day outcomes and calculate rewards."""
     pending = get_pending_updates(db, 90, batch_size)
     updated = 0
@@ -192,9 +184,7 @@ def update_90d_outcomes(
     return updated, errors, len(pending)
 
 
-def update_365d_outcomes(
-    db, price_service: PriceHistoryService, batch_size: int, dry_run: bool
-) -> tuple:
+def update_365d_outcomes(db, price_service: PriceHistoryService, batch_size: int, dry_run: bool) -> tuple:
     """Update 365-day outcomes."""
     pending = get_pending_updates(db, 365, batch_size)
     updated = 0
@@ -244,23 +234,15 @@ def update_365d_outcomes(
 def get_stats(db) -> dict:
     """Get outcome statistics."""
     with db.get_session() as session:
-        total = session.execute(
-            text("SELECT COUNT(*) FROM valuation_outcomes")
-        ).scalar()
+        total = session.execute(text("SELECT COUNT(*) FROM valuation_outcomes")).scalar()
         with_30d = session.execute(
-            text(
-                "SELECT COUNT(*) FROM valuation_outcomes WHERE actual_price_30d IS NOT NULL"
-            )
+            text("SELECT COUNT(*) FROM valuation_outcomes WHERE actual_price_30d IS NOT NULL")
         ).scalar()
         with_90d = session.execute(
-            text(
-                "SELECT COUNT(*) FROM valuation_outcomes WHERE actual_price_90d IS NOT NULL"
-            )
+            text("SELECT COUNT(*) FROM valuation_outcomes WHERE actual_price_90d IS NOT NULL")
         ).scalar()
         with_365d = session.execute(
-            text(
-                "SELECT COUNT(*) FROM valuation_outcomes WHERE actual_price_365d IS NOT NULL"
-            )
+            text("SELECT COUNT(*) FROM valuation_outcomes WHERE actual_price_365d IS NOT NULL")
         ).scalar()
 
         pending_30d = session.execute(
@@ -303,18 +285,10 @@ def get_stats(db) -> dict:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Update valuation outcomes with actual prices"
-    )
-    parser.add_argument(
-        "--batch", type=int, default=1000, help="Batch size per update type"
-    )
-    parser.add_argument(
-        "--dry-run", action="store_true", help="Preview without updating"
-    )
-    parser.add_argument(
-        "--stats-only", action="store_true", help="Only show statistics"
-    )
+    parser = argparse.ArgumentParser(description="Update valuation outcomes with actual prices")
+    parser.add_argument("--batch", type=int, default=1000, help="Batch size per update type")
+    parser.add_argument("--dry-run", action="store_true", help="Preview without updating")
+    parser.add_argument("--stats-only", action="store_true", help="Only show statistics")
     args = parser.parse_args()
 
     print("=" * 70)
@@ -333,9 +307,7 @@ def main():
     print(f"  Total predictions: {stats['total']}")
     print(f"  With 30d outcomes: {stats['with_30d']} (pending: {stats['pending_30d']})")
     print(f"  With 90d outcomes: {stats['with_90d']} (pending: {stats['pending_90d']})")
-    print(
-        f"  With 365d outcomes: {stats['with_365d']} (pending: {stats['pending_365d']})"
-    )
+    print(f"  With 365d outcomes: {stats['with_365d']} (pending: {stats['pending_365d']})")
 
     if args.stats_only:
         return
@@ -344,21 +316,15 @@ def main():
     print(f"\nUpdating outcomes (batch size: {args.batch})...")
 
     print("\n30-day outcomes:")
-    updated, errors, total = update_30d_outcomes(
-        db, price_service, args.batch, args.dry_run
-    )
+    updated, errors, total = update_30d_outcomes(db, price_service, args.batch, args.dry_run)
     print(f"  Pending: {total}, Updated: {updated}, Errors: {errors}")
 
     print("\n90-day outcomes (with rewards):")
-    updated, errors, total = update_90d_outcomes(
-        db, price_service, args.batch, args.dry_run
-    )
+    updated, errors, total = update_90d_outcomes(db, price_service, args.batch, args.dry_run)
     print(f"  Pending: {total}, Updated: {updated}, Errors: {errors}")
 
     print("\n365-day outcomes:")
-    updated, errors, total = update_365d_outcomes(
-        db, price_service, args.batch, args.dry_run
-    )
+    updated, errors, total = update_365d_outcomes(db, price_service, args.batch, args.dry_run)
     print(f"  Pending: {total}, Updated: {updated}, Errors: {errors}")
 
     # Show updated stats

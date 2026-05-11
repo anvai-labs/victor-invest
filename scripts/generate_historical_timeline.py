@@ -21,18 +21,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from sqlalchemy import create_engine
-import pandas as pd
 import json
 from datetime import datetime
+
+import pandas as pd
+from sqlalchemy import create_engine
 
 print("=" * 80)
 print("GENERATING HISTORICAL SECTOR TIMELINE VISUALIZATION")
 print("=" * 80)
 
-SEC_DB_URL = (
-    "postgresql://investigator:investigator@dataserver1.singh.local:5432/sec_database"
-)
+SEC_DB_URL = "postgresql://investigator:investigator@dataserver1.singh.local:5432/sec_database"
 engine = create_engine(SEC_DB_URL)
 
 # Check if we have historical data

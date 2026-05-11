@@ -306,8 +306,8 @@ class InvestmentWorkflowProvider(BaseYAMLWorkflowProvider):
                 synthesis = result.context.get("synthesis")
                 print(f"Recommendation: {synthesis.get('recommendation')}")
         """
-        from victor_sdk.workflow_executor_runtime import WorkflowExecutor
         from victor.tools.registry import ToolRegistry
+        from victor_sdk.workflow_executor_runtime import WorkflowExecutor
 
         # Ensure handlers are registered
         ensure_handlers_registered()
@@ -405,8 +405,8 @@ def ensure_handlers_registered() -> None:
         # Last-resort bridge: push handlers from framework registry to
         # executor registry directly when helper APIs are unavailable.
         try:
-            from victor_sdk.workflow_executor_runtime import register_compute_handler
             from victor_sdk.handler_runtime import get_handler_registry
+            from victor_sdk.workflow_executor_runtime import register_compute_handler
 
             registry = get_handler_registry()
             # list_handlers returns Dict[str, List[str]] mapping vertical names to handler names

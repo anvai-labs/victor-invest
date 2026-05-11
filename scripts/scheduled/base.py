@@ -129,9 +129,7 @@ class LockFile:
             return self
         except BlockingIOError:
             self.lock_file.close()
-            raise RuntimeError(
-                f"Job '{self.job_name}' is already running. Lock file: {self.lock_path}"
-            )
+            raise RuntimeError(f"Job '{self.job_name}' is already running. Lock file: {self.lock_path}")
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.lock_file:
@@ -171,9 +169,7 @@ def setup_logging(
     log_file = log_dir / f"{job_name}.log"
     file_handler = logging.FileHandler(log_file)
     file_handler.setLevel(level)
-    file_formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    file_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     file_handler.setFormatter(file_formatter)
     logger.addHandler(file_handler)
 
@@ -181,9 +177,7 @@ def setup_logging(
     if console:
         console_handler = logging.StreamHandler()
         console_handler.setLevel(level)
-        console_formatter = logging.Formatter(
-            "%(asctime)s - %(levelname)s - %(message)s"
-        )
+        console_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
         console_handler.setFormatter(console_formatter)
         logger.addHandler(console_handler)
 
@@ -349,10 +343,7 @@ def retry_with_backoff(
             last_exception = e
             if attempt < max_retries:
                 if logger:
-                    logger.warning(
-                        f"Attempt {attempt + 1}/{max_retries + 1} failed: {e}. "
-                        f"Retrying in {delay:.1f}s..."
-                    )
+                    logger.warning(f"Attempt {attempt + 1}/{max_retries + 1} failed: {e}. Retrying in {delay:.1f}s...")
                 time.sleep(delay)
                 delay *= backoff_factor
             else:
@@ -477,10 +468,7 @@ class FibonacciRateLimiter:
             self._consecutive_429s += 1
             delay = self._get_fibonacci_delay(self._consecutive_429s)
             self._backoff_until = time.time() + delay
-            self.logger.warning(
-                f"Rate limited (429). Fibonacci backoff: {delay}s "
-                f"(attempt {self._consecutive_429s})"
-            )
+            self.logger.warning(f"Rate limited (429). Fibonacci backoff: {delay}s (attempt {self._consecutive_429s})")
             return delay
 
     def __enter__(self) -> "FibonacciRateLimiter":
@@ -859,11 +847,7 @@ def upsert_with_hash(
             SET {", ".join(set_clauses)}
             WHERE {where_sql}
             """,
-            tuple(
-                [data[col] for col in update_cols]
-                + [new_hash]
-                + list(key_lookup.values())
-            ),
+            tuple([data[col] for col in update_cols] + [new_hash] + list(key_lookup.values())),
         )
         return "updated", False
 
@@ -975,9 +959,7 @@ class BaseCollector(ABC):
                     self.metrics.records_skipped,
                     self.metrics.success,
                     len(self.metrics.errors),
-                    "\n".join(self.metrics.errors[:10])
-                    if self.metrics.errors
-                    else None,
+                    "\n".join(self.metrics.errors[:10]) if self.metrics.errors else None,
                     self.metrics.high_watermark_date,
                     self.metrics.high_watermark_value,
                 ),
