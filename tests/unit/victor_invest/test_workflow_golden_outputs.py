@@ -2,6 +2,7 @@ import asyncio
 import json
 from pathlib import Path
 
+import pytest
 from victor.framework.extensions import (
     ExecutorNodeStatus,
     NodeResult,
@@ -9,7 +10,6 @@ from victor.framework.extensions import (
     get_compute_handler,
     register_compute_handler,
 )
-from victor.tools.registry import ToolRegistry
 
 from victor_invest.workflows import (
     InvestmentWorkflowProvider,
@@ -79,9 +79,6 @@ def _run_standard_workflow(symbol: str, synthesis_output: dict):
         for name, handler in original.items():
             if handler is not None:
                 register_compute_handler(name, handler)
-
-
-import pytest
 
 
 @pytest.mark.skip(reason="WorkflowExecutor API changed - needs rewrite for new API")
