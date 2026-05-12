@@ -143,3 +143,4 @@ audit/
 # Generated analysis outputs
 batch_analysis_results*.jsonl
 recommendations*.json
+.victor/

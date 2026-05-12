@@ -1,0 +1,107 @@
+# Investment Vertical Tool Dependencies
+# Defines tool relationships for investment analysis workflows
+#
+# Workflows: quick (technical), standard (technical+fundamental),
+# comprehensive (full institutional), peer comparison, backtesting
+
+version: "1.0"
+vertical: investment
+
+# Tool transition probabilities
+transitions:
+  # SEC filings lead to valuation
+  sec_filing:
+    - tool: valuation
+      weight: 0.5
+    - tool: sec_filing
+      weight: 0.2
+    - tool: market_data
+      weight: 0.2
+    - tool: cache
+      weight: 0.1
+
+  # Valuation leads to synthesis or more data
+  valuation:
+    - tool: technical_indicators
+      weight: 0.3
+    - tool: market_data
+      weight: 0.3
+    - tool: entry_exit_signals
+      weight: 0.2
+    - tool: cache
+      weight: 0.2
+
+  # Technical analysis leads to signals
+  technical_indicators:
+    - tool: entry_exit_signals
+      weight: 0.4
+    - tool: market_data
+      weight: 0.3
+    - tool: valuation
+      weight: 0.2
+    - tool: cache
+      weight: 0.1
+
+  # Market data feeds into analysis
+  market_data:
+    - tool: technical_indicators
+      weight: 0.3
+    - tool: valuation
+      weight: 0.3
+    - tool: entry_exit_signals
+      weight: 0.2
+    - tool: sec_filing
+      weight: 0.2
+
+  # Entry/exit signals are terminal or loop back
+  entry_exit_signals:
+    - tool: cache
+      weight: 0.5
+    - tool: technical_indicators
+      weight: 0.3
+    - tool: valuation
+      weight: 0.2
+
+# Tool clusters (frequently used together)
+clusters:
+  fundamental_analysis:
+    - sec_filing
+    - valuation
+    - market_data
+    - cache
+  technical_analysis:
+    - technical_indicators
+    - market_data
+    - entry_exit_signals
+  full_analysis:
+    - sec_filing
+    - valuation
+    - technical_indicators
+    - market_data
+    - entry_exit_signals
+    - cache
+
+# Composed patterns (multi-step workflows)
+composed_patterns:
+  quick_screen:
+    description: "Quick technical screening"
+    steps:
+      - market_data
+      - technical_indicators
+      - entry_exit_signals
+  fundamental_deep_dive:
+    description: "Full fundamental analysis"
+    steps:
+      - sec_filing
+      - valuation
+      - market_data
+      - entry_exit_signals
+  comprehensive_review:
+    description: "Institutional-grade full review"
+    steps:
+      - sec_filing
+      - valuation
+      - technical_indicators
+      - market_data
+      - entry_exit_signals
+      - cache

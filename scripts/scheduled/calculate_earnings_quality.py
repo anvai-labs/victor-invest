@@ -190,15 +190,11 @@ class EarningsQualityCalculator(BaseCollector):
             self.logger.debug(f"Could not get financial data for {symbol}: {e}")
             return []
 
-    def _calculate_quality_metrics(
-        self, data: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+    def _calculate_quality_metrics(self, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Calculate earnings quality metrics from financial data."""
         try:
             # Extract key financial values
-            net_income = self._get_value(
-                data, ["netIncome", "net_income", "NetIncomeLoss"]
-            )
+            net_income = self._get_value(data, ["netIncome", "net_income", "NetIncomeLoss"])
             ocf = self._get_value(
                 data,
                 [
@@ -207,12 +203,8 @@ class EarningsQualityCalculator(BaseCollector):
                     "NetCashProvidedByUsedInOperatingActivities",
                 ],
             )
-            total_assets = self._get_value(
-                data, ["totalAssets", "total_assets", "Assets"]
-            )
-            current_assets = self._get_value(
-                data, ["currentAssets", "current_assets", "AssetsCurrent"]
-            )
+            total_assets = self._get_value(data, ["totalAssets", "total_assets", "Assets"])
+            current_assets = self._get_value(data, ["currentAssets", "current_assets", "AssetsCurrent"])
             current_liabilities = self._get_value(
                 data,
                 ["currentLiabilities", "current_liabilities", "LiabilitiesCurrent"],
@@ -245,9 +237,7 @@ class EarningsQualityCalculator(BaseCollector):
                     "AccountsReceivableNetCurrent",
                 ],
             )
-            total_debt = (
-                self._get_value(data, ["totalDebt", "total_debt", "LongTermDebt"]) or 0
-            )
+            total_debt = self._get_value(data, ["totalDebt", "total_debt", "LongTermDebt"]) or 0
             retained_earnings = (
                 self._get_value(
                     data,
@@ -259,16 +249,10 @@ class EarningsQualityCalculator(BaseCollector):
                 )
                 or 0
             )
-            working_capital = self._get_value(
-                data, ["workingCapital", "working_capital"]
-            ) or (
-                (current_assets - current_liabilities)
-                if current_assets and current_liabilities
-                else None
+            working_capital = self._get_value(data, ["workingCapital", "working_capital"]) or (
+                (current_assets - current_liabilities) if current_assets and current_liabilities else None
             )
-            ebit = self._get_value(
-                data, ["ebit", "operatingIncome", "OperatingIncomeLoss"]
-            )
+            ebit = self._get_value(data, ["ebit", "operatingIncome", "OperatingIncomeLoss"])
             market_cap = self._get_value(data, ["marketCap", "market_cap"])
 
             # 1. Total Accruals
@@ -436,9 +420,7 @@ class EarningsQualityCalculator(BaseCollector):
 
 def main():
     parser = argparse.ArgumentParser(description="Calculate earnings quality metrics")
-    parser.add_argument(
-        "--symbols", type=str, help="Comma-separated list of symbols (default: S&P 500)"
-    )
+    parser.add_argument("--symbols", type=str, help="Comma-separated list of symbols (default: S&P 500)")
     args = parser.parse_args()
 
     symbols = None

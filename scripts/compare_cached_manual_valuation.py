@@ -149,9 +149,7 @@ def _period_sort_key(point: QuarterPoint) -> Tuple[datetime, int]:
     return dt, rank
 
 
-def select_recent_quarters(
-    points: List[QuarterPoint], n: int = 8
-) -> List[QuarterPoint]:
+def select_recent_quarters(points: List[QuarterPoint], n: int = 8) -> List[QuarterPoint]:
     quarters = [p for p in points if p.fiscal_period.startswith("Q")]
     quarters.sort(key=_period_sort_key)
     return quarters[-n:]
@@ -164,9 +162,7 @@ def sum_metric(points: List[QuarterPoint], field: str) -> Optional[float]:
     return float(sum(vals))
 
 
-def load_pipeline_valuation_from_log(
-    symbol: str, log_path: Optional[Path]
-) -> Dict[str, Any]:
+def load_pipeline_valuation_from_log(symbol: str, log_path: Optional[Path]) -> Dict[str, Any]:
     symbol = symbol.upper()
 
     if log_path is None:
@@ -176,9 +172,7 @@ def load_pipeline_valuation_from_log(
             reverse=True,
         )
         if not candidates:
-            raise FileNotFoundError(
-                "No comprehensive run logs found under artifacts/logs"
-            )
+            raise FileNotFoundError("No comprehensive run logs found under artifacts/logs")
         log_path = candidates[0]
 
     text = log_path.read_text(errors="ignore")
@@ -237,12 +231,9 @@ def fetch_yahoo_snapshot(symbol: str) -> Dict[str, Any]:
     info = ticker.info
     fast = ticker.fast_info
     return {
-        "current_price": _safe_num(info.get("currentPrice"))
-        or _safe_num(fast.get("lastPrice")),
-        "market_cap": _safe_num(info.get("marketCap"))
-        or _safe_num(fast.get("marketCap")),
-        "shares_outstanding": _safe_num(info.get("sharesOutstanding"))
-        or _safe_num(fast.get("shares")),
+        "current_price": _safe_num(info.get("currentPrice")) or _safe_num(fast.get("lastPrice")),
+        "market_cap": _safe_num(info.get("marketCap")) or _safe_num(fast.get("marketCap")),
+        "shares_outstanding": _safe_num(info.get("sharesOutstanding")) or _safe_num(fast.get("shares")),
         "beta": _safe_num(info.get("beta")),
         "trailing_pe": _safe_num(info.get("trailingPE")),
         "forward_pe": _safe_num(info.get("forwardPE")),
@@ -291,12 +282,8 @@ def fetch_pipeline_snapshot(pipeline: Dict[str, Any]) -> Dict[str, Any]:
         or _safe_num(ratios.get("current_price"))
         or _safe_num(company_profile.get("current_price"))
     )
-    market_cap = _safe_num(ratios.get("market_cap")) or _safe_num(
-        company_profile.get("market_cap")
-    )
-    shares = _safe_num(ratios.get("shares_outstanding")) or _safe_num(
-        company_profile.get("shares_outstanding")
-    )
+    market_cap = _safe_num(ratios.get("market_cap")) or _safe_num(company_profile.get("market_cap"))
+    shares = _safe_num(ratios.get("shares_outstanding")) or _safe_num(company_profile.get("shares_outstanding"))
     beta = _safe_num(company_profile.get("beta"))
     trailing_pe = _safe_num(ratios.get("pe_ratio"))
     price_to_sales = _safe_num(ratios.get("price_to_sales"))
@@ -304,16 +291,8 @@ def fetch_pipeline_snapshot(pipeline: Dict[str, Any]) -> Dict[str, Any]:
     ebitda = _safe_num(company_profile.get("ebitda")) or _safe_num(
         (methods.get("ev_ebitda") or {}).get("assumptions", {}).get("ttm_ebitda")
     )
-    enterprise_value = _safe_num(
-        (methods.get("ev_ebitda") or {})
-        .get("assumptions", {})
-        .get("enterprise_value_fair")
-    )
-    enterprise_to_ebitda = (
-        enterprise_value / ebitda
-        if enterprise_value and ebitda and ebitda > 0
-        else None
-    )
+    enterprise_value = _safe_num((methods.get("ev_ebitda") or {}).get("assumptions", {}).get("enterprise_value_fair"))
+    enterprise_to_ebitda = enterprise_value / ebitda if enterprise_value and ebitda and ebitda > 0 else None
 
     if market_cap is None and current_price and shares and shares > 0:
         market_cap = current_price * shares
@@ -335,9 +314,7 @@ def fetch_pipeline_snapshot(pipeline: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def get_market_snapshot(
-    symbol: str, market_source: str, pipeline: Dict[str, Any]
-) -> Tuple[Dict[str, Any], List[str]]:
+def get_market_snapshot(symbol: str, market_source: str, pipeline: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
     errors: List[str] = []
     source = (market_source or "auto").lower()
 
@@ -439,9 +416,7 @@ Context:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Compare cached manual valuation vs pipeline valuation"
-    )
+    parser = argparse.ArgumentParser(description="Compare cached manual valuation vs pipeline valuation")
     parser.add_argument("--symbol", default="STX")
     parser.add_argument("--log-path", type=Path, default=None)
     parser.add_argument("--llm-model", default="qwen3-coder-tools:30b-64K")
@@ -460,9 +435,7 @@ def main() -> None:
     points = derive_missing_q4(points)
     recent_8 = select_recent_quarters(points, n=8)
     if len(recent_8) < 8:
-        raise ValueError(
-            f"Need at least 8 quarters, found {len(recent_8)} for {symbol}"
-        )
+        raise ValueError(f"Need at least 8 quarters, found {len(recent_8)} for {symbol}")
 
     prior_4 = recent_8[:4]
     latest_4 = recent_8[4:]
@@ -496,12 +469,8 @@ def main() -> None:
     pipeline_methods = pipeline.get("methods", {})
     pipeline_company_profile = pipeline.get("company_profile", {}) or {}
     pipeline_ratios = pipeline.get("ratios", {}) or {}
-    market_snapshot, market_snapshot_errors = get_market_snapshot(
-        symbol, args.market_source, pipeline
-    )
-    current_price = (
-        market_snapshot.get("current_price") or pipeline.get("current_price") or 0.0
-    )
+    market_snapshot, market_snapshot_errors = get_market_snapshot(symbol, args.market_source, pipeline)
+    current_price = market_snapshot.get("current_price") or pipeline.get("current_price") or 0.0
 
     # Manual DCF assumptions anchored on SEC trend + market risk proxy.
     rf = 0.0416
@@ -531,39 +500,20 @@ def main() -> None:
         shares=shares,
     )
 
-    pipeline_sector_pe = _safe_num(
-        (pipeline_methods.get("pe") or {})
-        .get("assumptions", {})
-        .get("sector_median_pe")
-    )
-    target_pe = (
-        market_snapshot.get("forward_pe")
-        or market_snapshot.get("trailing_pe")
-        or pipeline_sector_pe
-        or 20.0
-    )
+    pipeline_sector_pe = _safe_num((pipeline_methods.get("pe") or {}).get("assumptions", {}).get("sector_median_pe"))
+    target_pe = market_snapshot.get("forward_pe") or market_snapshot.get("trailing_pe") or pipeline_sector_pe or 20.0
     target_pe = max(10.0, min(40.0, target_pe))
     fair_pe = eps_ttm * target_pe
 
-    pipeline_sector_ps = _safe_num(
-        (pipeline_methods.get("ps") or {})
-        .get("assumptions", {})
-        .get("sector_median_ps")
-    )
+    pipeline_sector_ps = _safe_num((pipeline_methods.get("ps") or {}).get("assumptions", {}).get("sector_median_ps"))
     current_ps = market_snapshot.get("price_to_sales")
-    target_ps = (
-        max(2.0, min(12.0, current_ps * 0.65))
-        if current_ps and current_ps > 0
-        else (pipeline_sector_ps or 5.0)
-    )
+    target_ps = max(2.0, min(12.0, current_ps * 0.65)) if current_ps and current_ps > 0 else (pipeline_sector_ps or 5.0)
     fair_ps = revenue_per_share * target_ps
 
     fair_ev_ebitda = None
     market_ebitda = market_snapshot.get("ebitda")
     pipeline_sector_ev = _safe_num(
-        (pipeline_methods.get("ev_ebitda") or {})
-        .get("assumptions", {})
-        .get("sector_median_ev_ebitda")
+        (pipeline_methods.get("ev_ebitda") or {}).get("assumptions", {}).get("sector_median_ev_ebitda")
     )
     target_ev_ebitda = (
         max(6.0, min(20.0, (market_snapshot.get("enterprise_to_ebitda") or 0.0) * 0.65))
@@ -573,25 +523,13 @@ def main() -> None:
     if market_ebitda and market_ebitda > 0:
         fair_ev_ebitda = ((market_ebitda * target_ev_ebitda) - net_debt) / shares
 
-    pipeline_sector_pb = _safe_num(
-        (pipeline_methods.get("pb") or {})
-        .get("assumptions", {})
-        .get("sector_median_pb")
-    )
+    pipeline_sector_pb = _safe_num((pipeline_methods.get("pb") or {}).get("assumptions", {}).get("sector_median_pb"))
     current_pb = market_snapshot.get("price_to_book")
-    target_pb = (
-        max(0.8, min(8.0, current_pb * 0.65))
-        if current_pb and current_pb > 0
-        else (pipeline_sector_pb or 2.0)
+    target_pb = max(0.8, min(8.0, current_pb * 0.65)) if current_pb and current_pb > 0 else (pipeline_sector_pb or 2.0)
+    book_value_per_share = _safe_num(pipeline_ratios.get("book_value_per_share")) or _safe_num(
+        pipeline_company_profile.get("book_value_per_share")
     )
-    book_value_per_share = _safe_num(
-        pipeline_ratios.get("book_value_per_share")
-    ) or _safe_num(pipeline_company_profile.get("book_value_per_share"))
-    fair_pb = (
-        book_value_per_share * target_pb
-        if book_value_per_share and book_value_per_share > 0
-        else None
-    )
+    fair_pb = book_value_per_share * target_pb if book_value_per_share and book_value_per_share > 0 else None
 
     is_financial = is_financial_company(
         pipeline_company_profile.get("sector"),
@@ -606,9 +544,7 @@ def main() -> None:
             "ps_anchor": 0.10 if fair_ps > 0 else 0.0,
         }
         total_weight = sum(blend_weights.values()) or 1.0
-        blend_weights = {
-            k: (v / total_weight) for k, v in blend_weights.items() if v > 0
-        }
+        blend_weights = {k: (v / total_weight) for k, v in blend_weights.items() if v > 0}
         manual_blended = (
             fair_pe * blend_weights.get("pe_anchor", 0.0)
             + (fair_pb or 0.0) * blend_weights.get("pb_anchor", 0.0)
@@ -661,21 +597,13 @@ def main() -> None:
     pipeline_summary = {
         "blended_fair_value": pipeline.get("fair_value_blended"),
         "current_price": pipeline.get("current_price"),
-        "dcf_professional": _safe_num(
-            (pipeline_methods.get("dcf_professional") or {}).get("fair_value_per_share")
-        ),
+        "dcf_professional": _safe_num((pipeline_methods.get("dcf_professional") or {}).get("fair_value_per_share")),
         "pe": _safe_num((pipeline_methods.get("pe") or {}).get("fair_value_per_share")),
-        "ev_ebitda": _safe_num(
-            (pipeline_methods.get("ev_ebitda") or {}).get("fair_value_per_share")
-        ),
+        "ev_ebitda": _safe_num((pipeline_methods.get("ev_ebitda") or {}).get("fair_value_per_share")),
         "ps": _safe_num((pipeline_methods.get("ps") or {}).get("fair_value_per_share")),
         "pb": _safe_num((pipeline_methods.get("pb") or {}).get("fair_value_per_share")),
-        "ggm": _safe_num(
-            (pipeline_methods.get("ggm") or {}).get("fair_value_per_share")
-        ),
-        "damodaran_dcf": _safe_num(
-            (pipeline_methods.get("damodaran_dcf") or {}).get("fair_value_per_share")
-        ),
+        "ggm": _safe_num((pipeline_methods.get("ggm") or {}).get("fair_value_per_share")),
+        "damodaran_dcf": _safe_num((pipeline_methods.get("damodaran_dcf") or {}).get("fair_value_per_share")),
     }
 
     manual_summary = {
@@ -795,9 +723,7 @@ def main() -> None:
         "- This report compares valuation strategies, not recommendation text quality.",
     ]
     if market_snapshot_errors:
-        md_lines.append(
-            f"- Market snapshot fallback notes: `{'; '.join(market_snapshot_errors)}`"
-        )
+        md_lines.append(f"- Market snapshot fallback notes: `{'; '.join(market_snapshot_errors)}`")
     if llm_error:
         md_lines.append(f"- Direct LLM valuation error: `{llm_error}`")
 

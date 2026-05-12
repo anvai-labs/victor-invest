@@ -80,9 +80,7 @@ def format_sentiment_output(data: dict) -> str:
 
     # Transaction summary
     txns = data.get("transactions", {})
-    lines.append(
-        f"\nTransactions ({data.get('metadata', {}).get('analysis_period_days', 90)} days):"
-    )
+    lines.append(f"\nTransactions ({data.get('metadata', {}).get('analysis_period_days', 90)} days):")
     lines.append(f"  Purchases: {txns.get('purchase_count', 0)}")
     lines.append(f"  Sales:     {txns.get('sale_count', 0)}")
     lines.append(f"  Total:     {txns.get('total_count', 0)}")
@@ -103,9 +101,7 @@ def format_sentiment_output(data: dict) -> str:
     # Signals
     signals = data.get("signals", {})
     lines.append("\nSignals:")
-    lines.append(
-        f"  Cluster Detected:    {'Yes' if signals.get('cluster_detected') else 'No'}"
-    )
+    lines.append(f"  Cluster Detected:    {'Yes' if signals.get('cluster_detected') else 'No'}")
     if signals.get("cluster_detected"):
         lines.append(f"  Cluster Type:        {signals.get('cluster_type', 'unknown')}")
     lines.append(f"  Significant Filings: {signals.get('significant_filings', 0)}")
@@ -136,15 +132,9 @@ def format_recent_output(data: dict) -> str:
     summary = data.get("summary", {})
     lines.append(f"\nSummary ({data.get('period_days', 90)} days):")
     lines.append(f"  Total Transactions: {summary.get('total_count', 0)}")
-    lines.append(
-        f"  Purchase Value:     {format_currency(summary.get('purchase_value', 0))}"
-    )
-    lines.append(
-        f"  Sale Value:         {format_currency(summary.get('sale_value', 0))}"
-    )
-    lines.append(
-        f"  Net Value:          {format_currency(summary.get('net_value', 0))}"
-    )
+    lines.append(f"  Purchase Value:     {format_currency(summary.get('purchase_value', 0))}")
+    lines.append(f"  Sale Value:         {format_currency(summary.get('sale_value', 0))}")
+    lines.append(f"  Net Value:          {format_currency(summary.get('net_value', 0))}")
 
     transactions = data.get("transactions", [])
     if transactions:
@@ -186,19 +176,13 @@ def format_clusters_output(data: dict) -> str:
             lines.append(f"\n--- Cluster {i} ---")
             lines.append(f"  Type:         {c.get('cluster_type', 'unknown')}")
             period = c.get("period", {})
-            lines.append(
-                f"  Period:       {period.get('start_date')} to {period.get('end_date')}"
-            )
+            lines.append(f"  Period:       {period.get('start_date')} to {period.get('end_date')}")
             lines.append(f"  Days:         {period.get('days', 0)}")
             activity = c.get("activity", {})
             lines.append(f"  Insiders:     {activity.get('insider_count', 0)}")
             lines.append(f"  Transactions: {activity.get('transaction_count', 0)}")
-            lines.append(
-                f"  Total Value:  {format_currency(activity.get('total_value', 0))}"
-            )
-            lines.append(
-                f"  Significant:  {'Yes' if c.get('is_significant') else 'No'}"
-            )
+            lines.append(f"  Total Value:  {format_currency(activity.get('total_value', 0))}")
+            lines.append(f"  Significant:  {'Yes' if c.get('is_significant') else 'No'}")
             insiders = c.get("insiders", [])
             if insiders:
                 lines.append(f"  Participants: {', '.join(insiders[:5])}")
@@ -271,36 +255,24 @@ Examples:
 
     # Action arguments (mutually exclusive)
     action_group = parser.add_mutually_exclusive_group(required=True)
-    action_group.add_argument(
-        "--sentiment", action="store_true", help="Get insider sentiment analysis"
-    )
-    action_group.add_argument(
-        "--recent", action="store_true", help="Get recent insider transactions"
-    )
-    action_group.add_argument(
-        "--clusters", action="store_true", help="Detect cluster buying/selling activity"
-    )
+    action_group.add_argument("--sentiment", action="store_true", help="Get insider sentiment analysis")
+    action_group.add_argument("--recent", action="store_true", help="Get recent insider transactions")
+    action_group.add_argument("--clusters", action="store_true", help="Detect cluster buying/selling activity")
     action_group.add_argument(
         "--key-insiders",
         action="store_true",
         help="Get key insider (C-suite, directors) summary",
     )
-    action_group.add_argument(
-        "--fetch", action="store_true", help="Fetch fresh Form 4 filings from SEC EDGAR"
-    )
+    action_group.add_argument("--fetch", action="store_true", help="Fetch fresh Form 4 filings from SEC EDGAR")
 
     # Options
-    parser.add_argument(
-        "--days", type=int, default=90, help="Analysis period in days (default: 90)"
-    )
+    parser.add_argument("--days", type=int, default=90, help="Analysis period in days (default: 90)")
     parser.add_argument(
         "--significant-only",
         action="store_true",
         help="For --recent: only show significant transactions",
     )
-    parser.add_argument(
-        "--json", action="store_true", help="Output raw JSON instead of formatted text"
-    )
+    parser.add_argument("--json", action="store_true", help="Output raw JSON instead of formatted text")
 
     args = parser.parse_args()
 

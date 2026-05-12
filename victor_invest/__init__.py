@@ -38,7 +38,7 @@ Example:
     agent = await Agent.create(vertical=InvestmentVertical)
 """
 
-__version__ = "0.5.0"
+__version__ = "0.7.0"
 __author__ = "Vijaykumar Singh"
 __email__ = "singhvjd@gmail.com"
 __license__ = "Apache-2.0"

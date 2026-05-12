@@ -20,12 +20,11 @@ import logging
 import os
 from typing import Callable, Optional
 
-from victor.core.verticals.base import VerticalRegistry
 from victor.framework import Agent
 
 from victor_invest.role_provider import register_investment_role_provider
 from victor_invest.tools import register_investment_tools
-from victor_invest.vertical import InvestmentVertical
+from victor_invest.vertical.investment_vertical import InvestmentVertical
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +112,7 @@ def resolve_model_from_env(provider: str, model: Optional[str]) -> Optional[str]
             model_config = config.ollama.models.get("synthesis")
             if model_config:
                 logger.debug(f"Using model from config.yaml ollama.models.synthesis: {model_config}")
-                return model_config
+                return str(model_config)
         elif provider == "anthropic":
             # Check for victor_llm config section (new)
             if hasattr(config, "victor_llm"):
@@ -121,14 +120,14 @@ def resolve_model_from_env(provider: str, model: Optional[str]) -> Optional[str]
                 model_config = anthropic_config.get("model")
                 if model_config:
                     logger.debug(f"Using model from config.yaml victor_llm.anthropic.model: {model_config}")
-                    return model_config
+                    return str(model_config)
         elif provider == "openai":
             if hasattr(config, "victor_llm"):
                 openai_config = config.victor_llm.get("openai", {})
                 model_config = openai_config.get("model")
                 if model_config:
                     logger.debug(f"Using model from config.yaml victor_llm.openai.model: {model_config}")
-                    return model_config
+                    return str(model_config)
     except Exception as e:
         logger.debug(f"Could not load model from config.yaml: {e}")
 
@@ -208,9 +207,8 @@ async def create_investment_orchestrator(
     if ensure_handlers:
         ensure_handlers()
 
-    if not VerticalRegistry.get("investment"):
-        VerticalRegistry.register(InvestmentVertical)
-
+    # Register role provider for the standalone app path.
+    # In the plugin path this is done by InvestmentPlugin.on_activate().
     register_investment_role_provider()
 
     # Resolve provider from environment if not specified

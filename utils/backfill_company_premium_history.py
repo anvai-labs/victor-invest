@@ -48,6 +48,7 @@ def get_symbols_to_backfill(sectors: List[str] = None, limit: int = None) -> Lis
         List of symbols
     """
     from sqlalchemy import create_engine, text
+
     from investigator.config import get_config
 
     config = get_config()
@@ -80,9 +81,7 @@ def get_symbols_to_backfill(sectors: List[str] = None, limit: int = None) -> Lis
     return symbols
 
 
-def backfill_symbol(
-    symbol: str, service: CompanyPremiumHistory, years: List[int]
-) -> dict:
+def backfill_symbol(symbol: str, service: CompanyPremiumHistory, years: List[int]) -> dict:
     """Backfill premium data for a single symbol.
 
     Args:
@@ -106,9 +105,7 @@ def backfill_symbol(
     for year in years:
         try:
             # Calculate premium for FY
-            premium_data = service.calculate_premium_for_period(
-                symbol=symbol, fiscal_year=year, fiscal_period="FY"
-            )
+            premium_data = service.calculate_premium_for_period(symbol=symbol, fiscal_year=year, fiscal_period="FY")
 
             if premium_data:
                 # Store in database
@@ -185,15 +182,10 @@ def backfill_company_premium_history(
         if dry_run:
             # Just calculate, don't store
             for year in years:
-                premium_data = service.calculate_premium_for_period(
-                    symbol=symbol, fiscal_year=year, fiscal_period="FY"
-                )
+                premium_data = service.calculate_premium_for_period(symbol=symbol, fiscal_year=year, fiscal_period="FY")
                 if premium_data:
                     total_success += 1
-                    logger.info(
-                        f"  {symbol} FY{year}: "
-                        f"P/E premium = {premium_data.get('pe_premium_pct', 'N/A')}%"
-                    )
+                    logger.info(f"  {symbol} FY{year}: P/E premium = {premium_data.get('pe_premium_pct', 'N/A')}%")
                 else:
                     total_skipped += 1
         else:
@@ -217,9 +209,7 @@ def backfill_company_premium_history(
 
 def main():
     """Main entry point for CLI usage."""
-    parser = argparse.ArgumentParser(
-        description="Backfill company sector premium history"
-    )
+    parser = argparse.ArgumentParser(description="Backfill company sector premium history")
 
     parser.add_argument(
         "--sectors",

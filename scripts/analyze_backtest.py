@@ -32,9 +32,7 @@ def analyze_backtest(log_file: str = "logs/rl_backtest_sp500_parallel.log"):
         for line in f:
             match = re.search(pattern, line)
             if match:
-                symbol, lookback, fv, price, gap, signal, conf, long_r, short_r = (
-                    match.groups()
-                )
+                symbol, lookback, fv, price, gap, signal, conf, long_r, short_r = match.groups()
                 sector = metadata_service.get_sector(symbol) or "Unknown"
 
                 try:
@@ -71,9 +69,7 @@ def analyze_backtest(log_file: str = "logs/rl_backtest_sp500_parallel.log"):
     print("\n" + "=" * 70)
     print(f"BACKTEST PROGRESS - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 70)
-    print(
-        f"Symbols processed: {unique_symbols}/616 ({unique_symbols / 616 * 100:.1f}%)"
-    )
+    print(f"Symbols processed: {unique_symbols}/616 ({unique_symbols / 616 * 100:.1f}%)")
     print(f"Total signals: {total_signals}")
     print()
 
@@ -108,25 +104,13 @@ def analyze_backtest(log_file: str = "logs/rl_backtest_sp500_parallel.log"):
         if s["short_reward"] is not None:
             by_sector[s["sector"]]["short_rewards"].append(s["short_reward"])
 
-    print(
-        f"{'Sector':<25} {'LONG':>6} {'SHORT':>6} {'SKIP':>6} {'L_Avg':>8} {'S_Avg':>8}"
-    )
+    print(f"{'Sector':<25} {'LONG':>6} {'SHORT':>6} {'SKIP':>6} {'L_Avg':>8} {'S_Avg':>8}")
     print("-" * 65)
     for sector in sorted(by_sector.keys()):
         data = by_sector[sector]
-        l_avg = (
-            sum(data["long_rewards"]) / len(data["long_rewards"])
-            if data["long_rewards"]
-            else 0
-        )
-        s_avg = (
-            sum(data["short_rewards"]) / len(data["short_rewards"])
-            if data["short_rewards"]
-            else 0
-        )
-        print(
-            f"{sector:<25} {data['LONG']:>6} {data['SHORT']:>6} {data['SKIP']:>6} {l_avg:>+8.3f} {s_avg:>+8.3f}"
-        )
+        l_avg = sum(data["long_rewards"]) / len(data["long_rewards"]) if data["long_rewards"] else 0
+        s_avg = sum(data["short_rewards"]) / len(data["short_rewards"]) if data["short_rewards"] else 0
+        print(f"{sector:<25} {data['LONG']:>6} {data['SHORT']:>6} {data['SKIP']:>6} {l_avg:>+8.3f} {s_avg:>+8.3f}")
     print()
 
     # By Lookback
@@ -149,25 +133,13 @@ def analyze_backtest(log_file: str = "logs/rl_backtest_sp500_parallel.log"):
         if s["short_reward"] is not None:
             by_lb[s["lookback"]]["short_rewards"].append(s["short_reward"])
 
-    print(
-        f"{'Lookback':>10} {'LONG':>6} {'SHORT':>6} {'SKIP':>6} {'L_Avg':>8} {'S_Avg':>8}"
-    )
+    print(f"{'Lookback':>10} {'LONG':>6} {'SHORT':>6} {'SKIP':>6} {'L_Avg':>8} {'S_Avg':>8}")
     print("-" * 55)
     for lb in sorted(by_lb.keys(), reverse=True):
         data = by_lb[lb]
-        l_avg = (
-            sum(data["long_rewards"]) / len(data["long_rewards"])
-            if data["long_rewards"]
-            else 0
-        )
-        s_avg = (
-            sum(data["short_rewards"]) / len(data["short_rewards"])
-            if data["short_rewards"]
-            else 0
-        )
-        print(
-            f"{lb:>7}m {data['LONG']:>6} {data['SHORT']:>6} {data['SKIP']:>6} {l_avg:>+8.3f} {s_avg:>+8.3f}"
-        )
+        l_avg = sum(data["long_rewards"]) / len(data["long_rewards"]) if data["long_rewards"] else 0
+        s_avg = sum(data["short_rewards"]) / len(data["short_rewards"]) if data["short_rewards"] else 0
+        print(f"{lb:>7}m {data['LONG']:>6} {data['SHORT']:>6} {data['SKIP']:>6} {l_avg:>+8.3f} {s_avg:>+8.3f}")
     print()
 
     # By Confidence
@@ -183,9 +155,7 @@ def analyze_backtest(log_file: str = "logs/rl_backtest_sp500_parallel.log"):
     for conf in sorted(by_conf.keys()):
         data = by_conf[conf]
         total = data["LONG"] + data["SHORT"] + data["SKIP"]
-        print(
-            f"{conf:>7}% {data['LONG']:>6} {data['SHORT']:>6} {data['SKIP']:>6} {total:>6}"
-        )
+        print(f"{conf:>7}% {data['LONG']:>6} {data['SHORT']:>6} {data['SKIP']:>6} {total:>6}")
     print()
 
     # Signal Accuracy
@@ -257,9 +227,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "log_file", nargs="?", default="logs/rl_backtest_sp500_parallel.log"
-    )
+    parser.add_argument("log_file", nargs="?", default="logs/rl_backtest_sp500_parallel.log")
     parser.add_argument("--watch", action="store_true", help="Poll every 10 minutes")
     args = parser.parse_args()
 

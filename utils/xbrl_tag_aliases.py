@@ -632,9 +632,7 @@ class XBRLTagAliasMapper:
         """
         return self.REVERSE_MAP.get(xbrl_tag)
 
-    def extract_value_with_fallbacks(
-        self, data: Dict[str, Any], canonical_name: str, default: Any = None
-    ) -> Any:
+    def extract_value_with_fallbacks(self, data: Dict[str, Any], canonical_name: str, default: Any = None) -> Any:
         """
         Extract value from data dict trying all XBRL tag aliases in priority order.
 
@@ -654,19 +652,13 @@ class XBRLTagAliasMapper:
         aliases = self.get_xbrl_aliases(canonical_name)
         for alias in aliases:
             if alias in data and data[alias] is not None:
-                logger.debug(
-                    f"Resolved '{canonical_name}' using XBRL tag '{alias}' → value: {data[alias]}"
-                )
+                logger.debug(f"Resolved '{canonical_name}' using XBRL tag '{alias}' → value: {data[alias]}")
                 return data[alias]
 
-        logger.warning(
-            f"No value found for '{canonical_name}' (tried {len(aliases)} aliases: {aliases[:3]}...)"
-        )
+        logger.warning(f"No value found for '{canonical_name}' (tried {len(aliases)} aliases: {aliases[:3]}...)")
         return default
 
-    def normalize_xbrl_dict(
-        self, xbrl_data: Dict[str, Any], include_unmatched: bool = False
-    ) -> Dict[str, Any]:
+    def normalize_xbrl_dict(self, xbrl_data: Dict[str, Any], include_unmatched: bool = False) -> Dict[str, Any]:
         """
         Convert XBRL tag dictionary to canonical snake_case dictionary.
 
@@ -728,9 +720,7 @@ class XBRLTagAliasMapper:
             "total_canonical_metrics": len(all_canonical),
             "found_metrics": len(found_canonical),
             "missing_metrics": len(missing),
-            "coverage_pct": (len(found_canonical) / len(all_canonical)) * 100
-            if all_canonical
-            else 0,
+            "coverage_pct": (len(found_canonical) / len(all_canonical)) * 100 if all_canonical else 0,
             "found_list": sorted(found_canonical),
             "missing_list": sorted(missing),
         }
@@ -759,15 +749,11 @@ def resolve_to_canonical(xbrl_tag: str) -> Optional[str]:
     return get_tag_mapper().resolve_to_canonical(xbrl_tag)
 
 
-def extract_with_fallbacks(
-    data: Dict[str, Any], canonical_name: str, default: Any = None
-) -> Any:
+def extract_with_fallbacks(data: Dict[str, Any], canonical_name: str, default: Any = None) -> Any:
     """Extract value from data trying all XBRL tag aliases."""
     return get_tag_mapper().extract_value_with_fallbacks(data, canonical_name, default)
 
 
-def normalize_xbrl_dict(
-    xbrl_data: Dict[str, Any], include_unmatched: bool = False
-) -> Dict[str, Any]:
+def normalize_xbrl_dict(xbrl_data: Dict[str, Any], include_unmatched: bool = False) -> Dict[str, Any]:
     """Convert XBRL dict to canonical snake_case dict."""
     return get_tag_mapper().normalize_xbrl_dict(xbrl_data, include_unmatched)

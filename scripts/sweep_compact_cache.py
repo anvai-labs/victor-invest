@@ -27,13 +27,12 @@ from typing import List, Optional
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from investigator.infrastructure.database.db import DatabaseManager
 from sqlalchemy import text
 
+from investigator.infrastructure.database.db import DatabaseManager
 
-def get_symbols_with_sec_filing(
-    limit: Optional[int] = None, start_stockid: int = 1
-) -> List[str]:
+
+def get_symbols_with_sec_filing(limit: Optional[int] = None, start_stockid: int = 1) -> List[str]:
     """Get all symbols with is_sec_filing=true in order of stockid.
 
     Args:
@@ -141,9 +140,7 @@ async def run_sweep(
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Sweep symbols with SEC filings in compact mode"
-    )
+    parser = argparse.ArgumentParser(description="Sweep symbols with SEC filings in compact mode")
     parser.add_argument(
         "--parallel",
         type=int,

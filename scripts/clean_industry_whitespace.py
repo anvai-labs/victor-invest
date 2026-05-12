@@ -14,9 +14,7 @@ import os
 from sqlalchemy import create_engine, text
 
 # Setup logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -28,9 +26,7 @@ def get_stock_engine():
     db_user = "stockuser"
     db_password = os.environ.get("STOCK_DB_PASSWORD", "")
 
-    connection_string = (
-        f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
-    )
+    connection_string = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
     return create_engine(connection_string, pool_pre_ping=True)
 
 

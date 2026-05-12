@@ -31,56 +31,9 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
-# SafetyCoordinator was removed in Victor 0.5.6, make import optional
-try:
-    from victor.framework.extensions import (
-        SafetyAction,
-        SafetyCategory,
-        SafetyCoordinator,
-        SafetyRule,
-    )
-
-    SAFETY_COORDINATOR_AVAILABLE = True
-except ImportError:
-    # SafetyCoordinator not available in this version of Victor
-    # Provide stub types for compatibility
-    SAFETY_COORDINATOR_AVAILABLE = False
-
-    from dataclasses import dataclass
-    from enum import Enum
-
-    class SafetyAction(str, Enum):  # type: ignore[no-redef]
-        BLOCK = "block"
-        REQUIRE_CONFIRMATION = "require_confirmation"
-        ALLOW = "allow"
-        WARN = "warn"
-
-    class SafetyCategory(str, Enum):  # type: ignore[no-redef]
-        SHELL = "shell"
-        FILE_WRITE = "file_write"
-        NETWORK = "network"
-        DATA_ACCESS = "data_access"
-
-    @dataclass
-    class SafetyRule:  # type: ignore[no-redef]
-        rule_id: str
-        category: SafetyCategory
-        pattern: str
-        description: str
-        action: SafetyAction
-        severity: int
-        tool_names: List[str]
-        confirmation_prompt: Optional[str] = None
-
-    class SafetyCoordinator:  # type: ignore[no-redef]
-        """Stub implementation when SafetyCoordinator is not available."""
-
-        @staticmethod
-        def register_rule(rule: SafetyRule) -> None:
-            logger.debug(f"SafetyCoordinator not available, skipping rule: {rule.rule_id}")
-
-
-from victor.core.verticals.protocols import SafetyExtensionProtocol, SafetyPattern
+from victor_sdk.safety import SafetyAction, SafetyCategory, SafetyCoordinator, SafetyRule
+from victor_sdk.verticals.protocols import SafetyExtensionProtocol
+from victor_sdk.verticals.protocols.promoted_types import SafetyPatternData as SafetyPattern
 
 logger = logging.getLogger(__name__)
 
@@ -401,7 +354,13 @@ class EnhancedInvestSafetyExtension(SafetyExtensionProtocol):
         return self._coordinator.get_stats_dict()  # type: ignore[no-any-return]
 
 
+def create_investment_safety_rules() -> "EnhancedInvestSafetyExtension":
+    """Entry point factory for victor.safety_rules."""
+    return EnhancedInvestSafetyExtension()
+
+
 __all__ = [
     "InvestmentSafetyRules",
     "EnhancedInvestSafetyExtension",
+    "create_investment_safety_rules",
 ]

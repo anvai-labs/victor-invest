@@ -28,7 +28,6 @@ from typing import List, Optional, Tuple
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
-
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,

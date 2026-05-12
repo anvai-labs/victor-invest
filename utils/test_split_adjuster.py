@@ -67,9 +67,7 @@ class SplitAnalyzer:
                 for row in result
             ]
 
-    def calculate_adjustment_factor(
-        self, symbol: str, from_year: int, to_year: int
-    ) -> float:
+    def calculate_adjustment_factor(self, symbol: str, from_year: int, to_year: int) -> float:
         """Calculate cumulative split adjustment factor between two years"""
         splits = self.get_splits(symbol)
         factor = 1.0
@@ -82,9 +80,7 @@ class SplitAnalyzer:
 
         return factor
 
-    def get_eps_data(
-        self, symbol: str, start_year: int, end_year: int
-    ) -> Dict[int, float]:
+    def get_eps_data(self, symbol: str, start_year: int, end_year: int) -> Dict[int, float]:
         """Get raw EPS data for a symbol"""
         with self.engine.connect() as conn:
             result = conn.execute(
@@ -103,9 +99,7 @@ class SplitAnalyzer:
             )
             return {row[0]: float(row[1]) for row in result}
 
-    def analyze_symbol(
-        self, symbol: str, start_year: int = 2016, end_year: int = 2024
-    ) -> Optional[Dict]:
+    def analyze_symbol(self, symbol: str, start_year: int = 2016, end_year: int = 2024) -> Optional[Dict]:
         """Comprehensive analysis of a symbol with split adjustments"""
         eps_data = self.get_eps_data(symbol, start_year, end_year)
 
@@ -130,11 +124,7 @@ class SplitAnalyzer:
         if start_year in eps_data and end_year in eps_data:
             raw_growth = ((eps_data[end_year] / eps_data[start_year]) - 1) * 100
             adjusted_growth = (
-                (
-                    adjusted_data[end_year]["split_adjusted_eps"]
-                    / adjusted_data[start_year]["split_adjusted_eps"]
-                )
-                - 1
+                (adjusted_data[end_year]["split_adjusted_eps"] / adjusted_data[start_year]["split_adjusted_eps"]) - 1
             ) * 100
         else:
             raw_growth = None
@@ -165,9 +155,7 @@ class SplitAnalyzer:
             print("Stock Split History:")
             print("-" * 90)
             for split in splits:
-                print(
-                    f"  {split.split_date.strftime('%Y-%m-%d')}: {split.split_ratio}x split - {split.description}"
-                )
+                print(f"  {split.split_date.strftime('%Y-%m-%d')}: {split.split_ratio}x split - {split.description}")
         else:
             print("Stock Split History: No splits recorded")
         print()
@@ -192,10 +180,7 @@ class SplitAnalyzer:
         print()
         print("Growth Rate Comparison:")
         print("-" * 90)
-        if (
-            analysis["raw_growth"] is not None
-            and analysis["adjusted_growth"] is not None
-        ):
+        if analysis["raw_growth"] is not None and analysis["adjusted_growth"] is not None:
             raw = analysis["raw_growth"]
             adj = analysis["adjusted_growth"]
 
@@ -237,9 +222,7 @@ def main():
     print("COMPARATIVE SUMMARY: All Symbols")
     print(f"{'=' * 130}\n")
 
-    print(
-        f"{'Symbol':<10} {'Splits':<20} {'Raw Growth':>15} {'Adj Growth':>15} {'Difference':>15} {'Status'}"
-    )
+    print(f"{'Symbol':<10} {'Splits':<20} {'Raw Growth':>15} {'Adj Growth':>15} {'Difference':>15} {'Status'}")
     print("-" * 130)
 
     for analysis in summary_data:
@@ -249,11 +232,7 @@ def main():
         adj = analysis["adjusted_growth"] or 0
         diff = adj - raw
 
-        splits_str = (
-            ", ".join(f"{s.split_date.year} ({s.split_ratio}x)" for s in splits)
-            if splits
-            else "None"
-        )
+        splits_str = ", ".join(f"{s.split_date.year} ({s.split_ratio}x)" for s in splits) if splits else "None"
 
         if abs(diff) > 10:
             status = "⚠️ MISLEADING"
@@ -262,9 +241,7 @@ def main():
         else:
             status = "✓ Accurate"
 
-        print(
-            f"{symbol:<10} {splits_str:<20} {raw:>13.1f}% {adj:>13.1f}% {diff:>13.1f}% {status}"
-        )
+        print(f"{symbol:<10} {splits_str:<20} {raw:>13.1f}% {adj:>13.1f}% {diff:>13.1f}% {status}")
 
     print(f"\n{'=' * 130}")
     print("KEY FINDINGS:")

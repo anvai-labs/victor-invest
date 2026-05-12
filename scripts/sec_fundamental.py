@@ -31,9 +31,7 @@ try:
     from utils.ticker_cik_mapper import TickerCIKMapper, ticker_to_cik_padded  # noqa: F401
 except ImportError as e:
     print(f"Import error: {e}")
-    print(
-        "Please ensure all dependencies are installed and config/utils modules are available"
-    )
+    print("Please ensure all dependencies are installed and config/utils modules are available")
     exit(1)
 
 try:
@@ -50,14 +48,10 @@ def main():
     """Main function for standalone execution"""
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="InvestiGator SEC Fundamental Analysis"
-    )
+    parser = argparse.ArgumentParser(description="InvestiGator SEC Fundamental Analysis")
     parser.add_argument("--symbol", required=True, help="Stock symbol to analyze")
     parser.add_argument("--config", default="config.json", help="Configuration file")
-    parser.add_argument(
-        "--test-connection", action="store_true", help="Test connections only"
-    )
+    parser.add_argument("--test-connection", action="store_true", help="Test connections only")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose logging")
     parser.add_argument(
         "--skip-comprehensive",
@@ -91,9 +85,7 @@ def main():
 
         if args.test_connection:
             main_logger.info("Testing system connections...")
-            main_logger.info(
-                "✅ All connections working (using consolidated architecture)"
-            )
+            main_logger.info("✅ All connections working (using consolidated architecture)")
             return 0
 
         # Perform fundamental analysis using consolidated architecture
@@ -101,14 +93,10 @@ def main():
 
         try:
             # Use the consolidated analyzer
-            result = analyzer.analyze_symbol(
-                args.symbol, skip_comprehensive=args.skip_comprehensive
-            )
+            result = analyzer.analyze_symbol(args.symbol, skip_comprehensive=args.skip_comprehensive)
 
             if result:
-                main_logger.info(
-                    f"✅ Analysis completed successfully for {args.symbol}"
-                )
+                main_logger.info(f"✅ Analysis completed successfully for {args.symbol}")
 
                 # Display data quality information if available
                 if "data_quality" in result:
@@ -119,9 +107,7 @@ def main():
                     )
 
                     if quality.get("recommendations"):
-                        for rec in quality["recommendations"][
-                            :2
-                        ]:  # Show first 2 recommendations
+                        for rec in quality["recommendations"][:2]:  # Show first 2 recommendations
                             main_logger.info(f"    {rec}")
 
                 # Display summary from the correct key

@@ -105,7 +105,7 @@ def _display_provider_info(provider: Optional[str], model: Optional[str]) -> tup
 
 
 async def _create_workflow_executor(provider: Optional[str], model: Optional[str], timeout: float):
-    from victor.framework.extensions import WorkflowExecutor
+    from victor_sdk.workflow_executor_runtime import WorkflowExecutor
 
     from victor_invest.workflows import ensure_handlers_registered
 

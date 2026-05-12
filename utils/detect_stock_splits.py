@@ -27,32 +27,23 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from sqlalchemy import create_engine, text
 import os
+
+from sqlalchemy import create_engine, text
 
 
 def get_database_url():
     """Get database URL from environment."""
-    db_host = os.environ.get(
-        "SEC_DB_HOST", os.environ.get("DB_HOST", "dataserver1.singh.local")
-    )
+    db_host = os.environ.get("SEC_DB_HOST", os.environ.get("DB_HOST", "dataserver1.singh.local"))
     db_port = os.environ.get("SEC_DB_PORT", os.environ.get("DB_PORT", "5432"))
-    db_name = os.environ.get(
-        "SEC_DB_NAME", os.environ.get("DB_DATABASE", "sec_database")
-    )
-    db_user = os.environ.get(
-        "SEC_DB_USER", os.environ.get("DB_USERNAME", "investigator")
-    )
-    db_pass = os.environ.get(
-        "SEC_DB_PASSWORD", os.environ.get("DB_PASSWORD", "investigator")
-    )
+    db_name = os.environ.get("SEC_DB_NAME", os.environ.get("DB_DATABASE", "sec_database"))
+    db_user = os.environ.get("SEC_DB_USER", os.environ.get("DB_USERNAME", "investigator"))
+    db_pass = os.environ.get("SEC_DB_PASSWORD", os.environ.get("DB_PASSWORD", "investigator"))
 
     return f"postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
 
 
-def detect_splits_for_symbol(
-    engine, symbol: str, min_increase_pct: float = 50.0, max_ratio: float = 25.0
-):
+def detect_splits_for_symbol(engine, symbol: str, min_increase_pct: float = 50.0, max_ratio: float = 25.0):
     """
     Detect potential stock splits for a single symbol.
 
@@ -108,12 +99,8 @@ def detect_splits_for_symbol(
 
                 if abs(ratio - whole_ratio) <= tolerance and ratio <= max_ratio:
                     # Found a potential split!
-                    confidence = (
-                        "HIGH" if abs(ratio - whole_ratio) <= 0.05 else "MEDIUM"
-                    )
-                    potential_splits.append(
-                        (period_end_date, ratio, confidence, prev_shares, shares)
-                    )
+                    confidence = "HIGH" if abs(ratio - whole_ratio) <= 0.05 else "MEDIUM"
+                    potential_splits.append((period_end_date, ratio, confidence, prev_shares, shares))
                     print(f"  🔍 Potential {whole_ratio}:1 split detected:")
                     print(f"     Date: {period_end_date}")
                     print(f"     Ratio: {ratio:.2f}x (target: {whole_ratio}x)")
@@ -214,9 +201,7 @@ def main():
         print(f"Symbol: {symbol}")
 
         # Detect potential splits
-        detected = detect_splits_for_symbol(
-            engine, symbol, args.threshold, args.max_ratio
-        )
+        detected = detect_splits_for_symbol(engine, symbol, args.threshold, args.max_ratio)
 
         for period_end_date, ratio, confidence, prev_shares, new_shares in detected:
             # Check if already recorded
@@ -238,9 +223,7 @@ def main():
                         existing_ratio_float = float(existing_ratio)
                         if abs(ratio_float - existing_ratio_float) <= 0.2:
                             already_recorded = True
-                            print(
-                                f"     ✓ Already recorded (existing: {existing_ratio}x on {existing_date})"
-                            )
+                            print(f"     ✓ Already recorded (existing: {existing_ratio}x on {existing_date})")
                             break
 
             if not already_recorded:
@@ -288,13 +271,9 @@ ON CONFLICT (symbol, split_date) DO NOTHING;
                 f.write("-- Auto-detected stock splits\n")
                 f.write(f"-- Generated: {datetime.now().isoformat()}\n")
                 f.write(f"-- Detection threshold: {args.threshold}% increase\n\n")
-                f.write(
-                    "-- IMPORTANT: Review and verify each split before adding to database!\n\n"
-                )
+                f.write("-- IMPORTANT: Review and verify each split before adding to database!\n\n")
                 f.writelines(export_statements)
-            print(
-                f"\n✅ Exported {len(export_statements)} INSERT statements to {args.export_sql}"
-            )
+            print(f"\n✅ Exported {len(export_statements)} INSERT statements to {args.export_sql}")
             print(f"   Review the file and run: psql -f {args.export_sql}")
     else:
         print("\n✅ No new splits detected (all existing splits are up to date)")

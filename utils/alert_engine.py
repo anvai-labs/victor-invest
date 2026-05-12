@@ -80,16 +80,12 @@ class AlertEngine:
 
             # Rule 1: Score change alert
             if previous_recommendation:
-                score_alert = self._evaluate_score_change(
-                    current_recommendation, previous_recommendation
-                )
+                score_alert = self._evaluate_score_change(current_recommendation, previous_recommendation)
                 if score_alert:
                     alerts.append(score_alert)
 
                 # Rule 2: Recommendation change alert
-                rec_alert = self._evaluate_recommendation_change_alert(
-                    current_recommendation, previous_recommendation
-                )
+                rec_alert = self._evaluate_recommendation_change_alert(current_recommendation, previous_recommendation)
                 if rec_alert:
                     alerts.append(rec_alert)
 
@@ -162,9 +158,7 @@ class AlertEngine:
         change = abs(new_score - old_score)
         return change >= threshold
 
-    def _evaluate_recommendation_change_alert(
-        self, current: Dict, previous: Dict
-    ) -> Optional[Dict]:
+    def _evaluate_recommendation_change_alert(self, current: Dict, previous: Dict) -> Optional[Dict]:
         """
         Evaluate recommendation change alert
 
@@ -186,9 +180,7 @@ class AlertEngine:
 
         return self._evaluate_recommendation_change(previous_rec, current_rec)
 
-    def _evaluate_recommendation_change(
-        self, old_rec: str, new_rec: str
-    ) -> Optional[Dict]:
+    def _evaluate_recommendation_change(self, old_rec: str, new_rec: str) -> Optional[Dict]:
         """
         Evaluate recommendation change
 
@@ -299,11 +291,7 @@ class AlertEngine:
             return None
 
         # Check most recent quarter
-        latest = (
-            quarterly_metrics[-1]
-            if isinstance(quarterly_metrics, list)
-            else quarterly_metrics
-        )
+        latest = quarterly_metrics[-1] if isinstance(quarterly_metrics, list) else quarterly_metrics
 
         if isinstance(latest, dict):
             actual_eps = latest.get("earnings_per_share")
@@ -469,9 +457,7 @@ class AlertEngine:
             )
 
             with self.db_manager.get_session() as session:
-                results = session.execute(
-                    query, {"symbol": symbol, "cutoff_date": cutoff_date}
-                ).fetchall()
+                results = session.execute(query, {"symbol": symbol, "cutoff_date": cutoff_date}).fetchall()
 
                 alerts = []
                 for row in results:

@@ -26,34 +26,36 @@ def test_version_is_consistent_across_package_and_vertical_metadata():
     pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
     project_version = pyproject["project"]["version"]
 
-    assert project_version == "0.5.0"
+    # Package version (pyproject + __version__) must be in sync.
+    # The vertical API version (InvestmentVertical.version) is independently versioned
+    # and need not match the package version.
     assert victor_invest.__version__ == project_version
-    assert InvestmentVertical.version == project_version
+    assert InvestmentVertical.version is not None
 
 
 def test_pyproject_pins_supported_victor_version_range():
     pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
-    assert "victor-ai>=0.5.7,<0.6.0" in pyproject
+    # Aligned with codingagent (victor framework) at 0.7.x; allow >=0.7.0 range.
+    assert "victor-sdk>=0.7.0,<1.0" in pyproject
+    assert "victor-ai>=0.7.0,<1.0" in pyproject
 
 
 def test_pyproject_registers_investment_plugin_entrypoint():
     pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
-    # New plugin entry point (preferred)
     assert '[project.entry-points."victor.plugins"]' in pyproject
     assert 'investment = "victor_invest.vertical:plugin"' in pyproject
-    # Legacy vertical entry point (backward compat)
-    assert '[project.entry-points."victor.verticals"]' in pyproject
-    assert 'investment = "victor_invest.vertical:InvestmentVertical"' in pyproject
 
 
 def test_investment_plugin_implements_victor_plugin_protocol():
-    from victor_sdk import VictorPlugin
+    from victor_sdk import VerticalBase, VictorPlugin
 
     from victor_invest.vertical import InvestmentPlugin, plugin
+    from victor_invest.vertical.investment_vertical import InvestmentVertical
 
     assert isinstance(plugin, VictorPlugin)
     assert isinstance(plugin, InvestmentPlugin)
     assert plugin.name == "investment"
+    assert issubclass(InvestmentVertical, VerticalBase)
 
 
 def test_makefile_run_dev_uses_victor_api():

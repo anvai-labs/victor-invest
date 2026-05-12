@@ -39,9 +39,7 @@ def analyze_log(symbol, sector):
     print(f"{'=' * 80}")
 
     # Check SEC data extraction
-    sec_extraction = re.search(
-        r"Extracting SEC company facts.*?(?:✅|❌|ERROR)", content, re.DOTALL
-    )
+    sec_extraction = re.search(r"Extracting SEC company facts.*?(?:✅|❌|ERROR)", content, re.DOTALL)
     if sec_extraction:
         print("✅ SEC extraction found")
     else:
@@ -50,18 +48,13 @@ def analyze_log(symbol, sector):
     # Check for revenue extraction (sector-specific)
     if sector.startswith("Utilities"):
         if "RegulatedAndUnregulatedOperatingRevenue" in content:
-            print(
-                "✅ Utility-specific revenue tag found: RegulatedAndUnregulatedOperatingRevenue"
-            )
+            print("✅ Utility-specific revenue tag found: RegulatedAndUnregulatedOperatingRevenue")
         elif "total_revenue" in content and "None" not in content:
             print("✅ Revenue extracted")
         else:
             print("⚠️  Revenue extraction unclear")
     elif sector.startswith("Financials"):
-        if (
-            "InterestAndDividendIncomeOperating" in content
-            or "InterestIncomeOperating" in content
-        ):
+        if "InterestAndDividendIncomeOperating" in content or "InterestIncomeOperating" in content:
             print("✅ Financial institution revenue tags found")
         elif "total_revenue" in content:
             print("✅ Revenue extracted")
@@ -99,9 +92,7 @@ def analyze_log(symbol, sector):
     for name, pattern in llm_patterns.items():
         if re.search(pattern, content):
             # Check if there are JSON extraction failures for this type
-            context = re.findall(
-                rf"{pattern}.*?(?:Failed to extract JSON|✅)", content, re.DOTALL
-            )
+            context = re.findall(rf"{pattern}.*?(?:Failed to extract JSON|✅)", content, re.DOTALL)
             if context and "Failed to extract JSON" in str(context):
                 print(f"  ⚠️  {name}: JSON extraction issues")
             else:
@@ -124,15 +115,11 @@ def analyze_log(symbol, sector):
     ]
     metrics_found = []
     for metric in critical_metrics:
-        if re.search(rf"'{metric}':\s*[0-9]", content) or re.search(
-            rf'"{metric}":\s*[0-9]', content
-        ):
+        if re.search(rf"'{metric}':\s*[0-9]", content) or re.search(rf'"{metric}":\s*[0-9]', content):
             metrics_found.append(metric)
 
     if metrics_found:
-        print(
-            f"✅ Critical metrics found: {len(metrics_found)}/4 ({', '.join(metrics_found)})"
-        )
+        print(f"✅ Critical metrics found: {len(metrics_found)}/4 ({', '.join(metrics_found)})")
 
     # Sector-specific checks
     print("\nSector-Specific Checks:")
@@ -144,10 +131,7 @@ def analyze_log(symbol, sector):
     elif sector.startswith("Real Estate"):
         if "REIT" in content or "NoncontrollingInterest" in content:
             print("  ✅ REIT-specific items detected")
-        if (
-            "TemporaryEquity" in content
-            or "RedeemableNoncontrollingInterest" in content
-        ):
+        if "TemporaryEquity" in content or "RedeemableNoncontrollingInterest" in content:
             print("  ✅ Complex REIT equity structure detected")
     elif sector.startswith("Financials"):
         if "InterestIncome" in content or "InterestExpense" in content:

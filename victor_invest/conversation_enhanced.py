@@ -31,52 +31,9 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from enum import Enum
 from typing import Any, Dict, List, Optional
 
-# ConversationCoordinator was removed/renamed in Victor 0.5.6, make import optional
-try:
-    from victor.framework.extensions import (
-        ConversationCoordinator,
-        ConversationStats,
-        TurnType,
-    )
-
-    CONVERSATION_COORDINATOR_AVAILABLE = True
-except ImportError:
-    # ConversationCoordinator not available in this version of Victor
-    # Provide stub types for compatibility
-    CONVERSATION_COORDINATOR_AVAILABLE = False
-
-    class TurnType(str, Enum):  # type: ignore[no-redef]
-        USER = "user"
-        ASSISTANT = "assistant"
-        SYSTEM = "system"
-        TOOL_CALL = "tool_call"
-        TOOL_RESULT = "tool_result"
-
-    @dataclass
-    class ConversationStats:  # type: ignore[no-redef]
-        total_turns: int = 0
-        user_turns: int = 0
-        assistant_turns: int = 0
-        tool_calls: int = 0
-
-    class ConversationCoordinator:  # type: ignore[no-redef]
-        """Stub implementation when ConversationCoordinator is not available."""
-
-        def __init__(self, *args, **kwargs):
-            self._context = {}
-
-        def get_stats(self) -> ConversationStats:
-            return ConversationStats()
-
-        def add_turn(self, *args, **kwargs):
-            pass
-
-        def get_context(self) -> Dict[str, Any]:
-            return self._context
-
+from victor_sdk.conversation import ConversationCoordinator, ConversationStats, TurnType
 
 logger = logging.getLogger(__name__)
 

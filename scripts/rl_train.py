@@ -58,9 +58,7 @@ def load_experiences(min_samples: int = 50, horizon: str = "90d") -> list:
     tracker = OutcomeTracker()
 
     # Load ALL available experiences for the specified horizon (no limit)
-    experiences = tracker.get_training_experiences(
-        limit=None, exclude_used=False, horizon=horizon
-    )
+    experiences = tracker.get_training_experiences(limit=None, exclude_used=False, horizon=horizon)
 
     if len(experiences) < min_samples:
         logger.error(f"Not enough experiences: {len(experiences)} < {min_samples}")
@@ -134,9 +132,7 @@ def train_policy(
 
     if resume_from and Path(resume_from).exists():
         # Load existing policy for incremental training
-        logger.info(
-            f"Loading existing policy from {resume_from} for incremental training..."
-        )
+        logger.info(f"Loading existing policy from {resume_from} for incremental training...")
 
         # Calculate adaptive noise variance based on dataset size
         # For large datasets, we need higher noise variance to prevent posterior collapse
@@ -145,9 +141,7 @@ def train_policy(
         n_samples = len(experiences)
         adaptive_noise_variance = 0.1 * np.sqrt(n_samples / 50000)
         adaptive_noise_variance = min(adaptive_noise_variance, 10.0)  # Cap at 10.0
-        logger.info(
-            f"Adaptive noise_variance: {adaptive_noise_variance:.4f} (based on {n_samples} samples)"
-        )
+        logger.info(f"Adaptive noise_variance: {adaptive_noise_variance:.4f} (based on {n_samples} samples)")
 
         policy = ContextualBanditPolicy(
             n_features=None,
@@ -170,9 +164,7 @@ def train_policy(
         n_samples = len(experiences)
         adaptive_noise_variance = 0.1 * np.sqrt(n_samples / 50000)
         adaptive_noise_variance = min(adaptive_noise_variance, 10.0)  # Cap at 10.0
-        logger.info(
-            f"Adaptive noise_variance: {adaptive_noise_variance:.4f} (based on {n_samples} samples)"
-        )
+        logger.info(f"Adaptive noise_variance: {adaptive_noise_variance:.4f} (based on {n_samples} samples)")
 
         policy = ContextualBanditPolicy(
             n_features=None,
@@ -205,9 +197,7 @@ def train_policy(
     return policy, normalizer, metrics, eval_metrics
 
 
-def save_policy(
-    policy, normalizer, metrics, eval_metrics, analysis: dict, horizon: str = "90d"
-):
+def save_policy(policy, normalizer, metrics, eval_metrics, analysis: dict, horizon: str = "90d"):
     """Save trained policy and training log.
 
     Args:
@@ -284,18 +274,12 @@ def deploy_policy(horizon: str = "90d"):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Train RL policy on valuation outcomes for specific holding period"
-    )
+    parser = argparse.ArgumentParser(description="Train RL policy on valuation outcomes for specific holding period")
     parser.add_argument("--epochs", type=int, default=20, help="Training epochs")
     parser.add_argument("--batch-size", type=int, default=32, help="Batch size")
-    parser.add_argument(
-        "--min-samples", type=int, default=50, help="Minimum samples required"
-    )
+    parser.add_argument("--min-samples", type=int, default=50, help="Minimum samples required")
     parser.add_argument("--deploy", action="store_true", help="Deploy after training")
-    parser.add_argument(
-        "--validation-split", type=float, default=0.15, help="Validation split"
-    )
+    parser.add_argument("--validation-split", type=float, default=0.15, help="Validation split")
     parser.add_argument(
         "--horizon",
         type=str,

@@ -10,14 +10,15 @@ Creates interactive charts showing:
 """
 
 import json
+import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-import sys
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlalchemy import text
+
 from investigator.infrastructure.database.db import get_db_manager
 
 
@@ -85,19 +86,10 @@ def fetch_sector_aggregates_from_db(
             # Fill in missing years and build result
             for sector in result.keys():
                 for year in sorted(years):
-                    if (
-                        sector in data_by_sector_year
-                        and year in data_by_sector_year[sector]
-                    ):
-                        result[sector]["pe"].append(
-                            data_by_sector_year[sector][year]["pe"]
-                        )
-                        result[sector]["ps"].append(
-                            data_by_sector_year[sector][year]["ps"]
-                        )
-                        result[sector]["pb"].append(
-                            data_by_sector_year[sector][year]["pb"]
-                        )
+                    if sector in data_by_sector_year and year in data_by_sector_year[sector]:
+                        result[sector]["pe"].append(data_by_sector_year[sector][year]["pe"])
+                        result[sector]["ps"].append(data_by_sector_year[sector][year]["ps"])
+                        result[sector]["pb"].append(data_by_sector_year[sector][year]["pb"])
                     else:
                         result[sector]["pe"].append(None)
                         result[sector]["ps"].append(None)
@@ -270,23 +262,17 @@ def generate_svg_chart(
     svg_lines = []
 
     # Header
-    svg_lines.append(
-        f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">'
-    )
+    svg_lines.append(f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">')
     svg_lines.append("<style>")
     svg_lines.append("  .title { font: bold 20px sans-serif; fill: #333; }")
     svg_lines.append("  .axis-label { font: 14px sans-serif; fill: #666; }")
     svg_lines.append("  .grid-line { stroke: #e0e0e0; stroke-width: 1; }")
-    svg_lines.append(
-        "  .sector-line { fill: none; stroke-width: 3; stroke-linecap: round; }"
-    )
+    svg_lines.append("  .sector-line { fill: none; stroke-width: 3; stroke-linecap: round; }")
     svg_lines.append("  .legend-text { font: 12px sans-serif; fill: #555; }")
     svg_lines.append("</style>")
 
     # Title
-    svg_lines.append(
-        f'<text x="{width // 2}" y="35" text-anchor="middle" class="title">{title}</text>'
-    )
+    svg_lines.append(f'<text x="{width // 2}" y="35" text-anchor="middle" class="title">{title}</text>')
 
     # Y-axis grid lines and labels
     y_ticks = 8
@@ -335,12 +321,8 @@ def generate_svg_chart(
 
         if len(points) >= 2:
             path_data = "M " + " L ".join(points)
-            stroke_dasharray = (
-                f' stroke-dasharray="{dash_pattern}"' if dash_pattern != "none" else ""
-            )
-            svg_lines.append(
-                f'<path d="{path_data}" class="sector-line" stroke="{color}"{stroke_dasharray} />'
-            )
+            stroke_dasharray = f' stroke-dasharray="{dash_pattern}"' if dash_pattern != "none" else ""
+            svg_lines.append(f'<path d="{path_data}" class="sector-line" stroke="{color}"{stroke_dasharray} />')
 
     # Legend with line styles
     legend_y = margin["top"]
@@ -352,16 +334,12 @@ def generate_svg_chart(
         y_pos = legend_y + i * 20
 
         # Draw line sample instead of rectangle
-        stroke_dasharray = (
-            f' stroke-dasharray="{dash_pattern}"' if dash_pattern != "none" else ""
-        )
+        stroke_dasharray = f' stroke-dasharray="{dash_pattern}"' if dash_pattern != "none" else ""
         svg_lines.append(
             f'<line x1="{legend_x}" y1="{y_pos}" x2="{legend_x + 15}" y2="{y_pos}" '
             f'stroke="{color}" stroke-width="3"{stroke_dasharray} />'
         )
-        svg_lines.append(
-            f'<text x="{legend_x + 20}" y="{y_pos + 4}" class="legend-text">{sector}</text>'
-        )
+        svg_lines.append(f'<text x="{legend_x + 20}" y="{y_pos + 4}" class="legend-text">{sector}</text>')
 
     svg_lines.append("</svg>")
 
@@ -573,17 +551,12 @@ def main():
         s
         for s in sector_aggregates.keys()
         if any(
-            v is not None
-            for v in sector_aggregates[s]["pe"]
-            + sector_aggregates[s]["ps"]
-            + sector_aggregates[s]["pb"]
+            v is not None for v in sector_aggregates[s]["pe"] + sector_aggregates[s]["ps"] + sector_aggregates[s]["pb"]
         )
     ]
 
     if len(sectors_with_data) < 3:
-        print(
-            f"  Only {len(sectors_with_data)} sectors with data in DB, falling back to JSON..."
-        )
+        print(f"  Only {len(sectors_with_data)} sectors with data in DB, falling back to JSON...")
         json_path = output_dir / "sector_trends_data.json"
         if json_path.exists():
             years, sector_aggregates = load_existing_json_data(str(json_path))
@@ -601,9 +574,7 @@ def main():
         str(html_path),
     )
 
-    print(
-        f"\n✓ Complete! Open {html_path} in your browser to view the interactive charts."
-    )
+    print(f"\n✓ Complete! Open {html_path} in your browser to view the interactive charts.")
 
 
 if __name__ == "__main__":

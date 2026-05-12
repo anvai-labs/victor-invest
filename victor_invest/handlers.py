@@ -39,8 +39,9 @@ from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 from victor_invest.compat.handlers import BaseHandler, handler_decorator
 
 if TYPE_CHECKING:
-    from victor.framework.extensions import ComputeNode, WorkflowContext
-    from victor.tools.registry import ToolRegistry
+    from victor_sdk.verticals.protocols.tools import ToolRegistryProtocol as ToolRegistry
+    from victor_sdk.workflows import ComputeNodeProtocol as ComputeNode
+    from victor_sdk.workflows import WorkflowContextProtocol as WorkflowContext
 
 logger = logging.getLogger(__name__)
 
@@ -1039,9 +1040,7 @@ Provide your response as a JSON object with this exact structure:
         Returns LLM-generated synthesis dict or None if unavailable.
         """
         try:
-            from victor.providers.base import Message
-            from victor.providers.registry import ProviderRegistry
-
+            from victor_invest.compat.providers import create_provider
             from victor_invest.framework_bootstrap import (
                 PROVIDER_DEFAULT_MODELS,
                 resolve_model_from_env,
@@ -1055,13 +1054,14 @@ Provide your response as a JSON object with this exact structure:
             # Cache key for provider instance (reduces keychain access)
             cache_key = f"{provider}:{resolved_model}"
             if cache_key not in self._victor_providers:
-                # Use ProviderRegistry.create() which automatically retrieves API key from keyring
-                provider_instance = ProviderRegistry.create(
+                provider_instance = create_provider(
                     provider,
                     model=resolved_model,
                     temperature=0.3,
                     max_tokens=4096,
                 )
+                if provider_instance is None:
+                    return None
                 self._victor_providers[cache_key] = provider_instance
                 logger.debug(f"Cached Victor provider: {cache_key}")
             else:
@@ -1129,6 +1129,8 @@ Provide your response as a JSON object with this exact structure:
             max_retries = 3
             for attempt in range(max_retries):
                 try:
+                    from victor_sdk.provider_runtime import Message
+
                     # Create message list
                     messages = [Message(role="user", content=prompt)]
 

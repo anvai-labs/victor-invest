@@ -12,8 +12,9 @@ import time
 from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar
 
 if TYPE_CHECKING:
-    from victor.framework.extensions import ComputeNode, WorkflowContext
-    from victor.tools.registry import ToolRegistry
+    from victor_sdk.verticals.protocols.tools import ToolRegistryProtocol as ToolRegistry
+    from victor_sdk.workflows import ComputeNodeProtocol as ComputeNode
+    from victor_sdk.workflows import WorkflowContextProtocol as WorkflowContext
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 # -----------------------------------------------------------------------------
 
 try:
-    from victor.framework.workflows.base_handler import BaseHandler
+    from victor_sdk.handler_runtime import BaseHandler
 except Exception:
 
     class BaseHandler:  # type: ignore[no-redef]
@@ -38,7 +39,7 @@ except Exception:
             raise NotImplementedError("BaseHandler.execute() must be implemented")
 
         async def __call__(self, node, context, tool_registry):
-            from victor.framework.extensions import ExecutorNodeStatus, NodeResult
+            from victor_sdk.workflow_executor_runtime import ExecutorNodeStatus, NodeResult
 
             start_time = time.time()
             try:
@@ -72,7 +73,7 @@ except Exception:
 # -----------------------------------------------------------------------------
 
 try:
-    from victor.framework.handler_registry import handler_decorator as handler_decorator
+    from victor_sdk.handler_runtime import handler_decorator as handler_decorator
 except Exception:
     _T = TypeVar("_T")
 
@@ -84,7 +85,7 @@ except Exception:
     ) -> None:
         try:
             # Try new Victor API first (register_vertical_handlers, register_global_handler)
-            from victor.framework.handler_registry import (
+            from victor_sdk.handler_runtime import (
                 register_global_handler,
                 register_vertical_handlers,
             )
@@ -107,7 +108,7 @@ except Exception:
         except Exception:
             # Fallback to old Victor 0.5.0 API (get_handler_registry())
             try:
-                from victor.framework.handler_registry import get_handler_registry
+                from victor_sdk.handler_runtime import get_handler_registry
 
                 registry = get_handler_registry()
                 if vertical:
@@ -130,7 +131,7 @@ except Exception:
 
     def _register_with_executor(name: str, instance: Any) -> None:
         try:
-            from victor.framework.extensions import register_compute_handler
+            from victor_sdk.workflow_executor_runtime import register_compute_handler
 
             register_compute_handler(name, instance)
         except Exception as exc:

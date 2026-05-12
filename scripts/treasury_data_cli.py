@@ -122,18 +122,12 @@ def format_spread_output(data: dict) -> str:
 
     inversion = data.get("inversion", {})
     lines.append("\nInversion Status:")
-    lines.append(
-        f"  Is Inverted:        {'Yes' if inversion.get('is_inverted') else 'No'}"
-    )
-    lines.append(
-        f"  Deeply Inverted:    {'Yes' if inversion.get('is_deeply_inverted') else 'No'}"
-    )
+    lines.append(f"  Is Inverted:        {'Yes' if inversion.get('is_inverted') else 'No'}")
+    lines.append(f"  Deeply Inverted:    {'Yes' if inversion.get('is_deeply_inverted') else 'No'}")
     lines.append(f"  Days Inverted:      {inversion.get('days_inverted', 0)}")
 
     lines.append(f"\nCurve Shape: {data.get('curve_shape', 'unknown').upper()}")
-    lines.append(
-        f"Investment Signal: {data.get('investment_signal', 'unknown').upper()}"
-    )
+    lines.append(f"Investment Signal: {data.get('investment_signal', 'unknown').upper()}")
 
     lines.append(f"\n{'=' * 60}")
     return "\n".join(lines)
@@ -156,16 +150,12 @@ def format_regime_output(data: dict) -> str:
 
     signals = data.get("signals", {})
     lines.append("\nInvestment Signals:")
-    lines.append(
-        f"  Signal:         {signals.get('investment_signal', 'unknown').upper()}"
-    )
+    lines.append(f"  Signal:         {signals.get('investment_signal', 'unknown').upper()}")
     lines.append(f"  Risk-Free Rate: {signals.get('risk_free_rate', 'N/A')}%")
 
     inversion = data.get("inversion", {})
     if inversion.get("is_inverted"):
-        lines.append(
-            f"\n  [!] Yield curve inverted for {inversion.get('days_inverted', 0)} days"
-        )
+        lines.append(f"\n  [!] Yield curve inverted for {inversion.get('days_inverted', 0)} days")
 
     interpretation = data.get("interpretation", "")
     if interpretation:
@@ -204,26 +194,18 @@ def format_recession_output(data: dict) -> str:
     lines.append(f"  {bar}")
 
     lines.append(f"\nEconomic Phase:       {recession.get('phase', 'unknown').upper()}")
-    lines.append(
-        f"Investment Posture:   {recession.get('investment_posture', 'unknown').upper()}"
-    )
+    lines.append(f"Investment Posture:   {recession.get('investment_posture', 'unknown').upper()}")
 
     yield_curve = data.get("yield_curve", {})
     lines.append("\nYield Curve Indicators:")
-    lines.append(
-        f"  Inverted:           {'Yes' if yield_curve.get('is_inverted') else 'No'}"
-    )
+    lines.append(f"  Inverted:           {'Yes' if yield_curve.get('is_inverted') else 'No'}")
     lines.append(f"  Days Inverted:      {yield_curve.get('inversion_days', 0)}")
 
     supply_chain = data.get("supply_chain", {})
     if supply_chain.get("gscpi_value") is not None:
         lines.append("\nSupply Chain (GSCPI):")
-        lines.append(
-            f"  Value:              {supply_chain.get('gscpi_value', 'N/A'):.2f} std dev"
-        )
-        lines.append(
-            f"  Stressed:           {'Yes' if supply_chain.get('is_stressed') else 'No'}"
-        )
+        lines.append(f"  Value:              {supply_chain.get('gscpi_value', 'N/A'):.2f} std dev")
+        lines.append(f"  Stressed:           {'Yes' if supply_chain.get('is_stressed') else 'No'}")
 
     interpretation = data.get("interpretation", "")
     if interpretation:
@@ -253,22 +235,14 @@ def format_summary_output(data: dict) -> str:
     lines.append(f"\nDate: {data.get('date', 'N/A')}")
 
     lines.append("\nECONOMIC ASSESSMENT")
-    lines.append(
-        f"  Phase:              {data.get('economic_phase', 'unknown').upper()}"
-    )
-    lines.append(
-        f"  Investment Posture: {data.get('investment_posture', 'unknown').upper()}"
-    )
+    lines.append(f"  Phase:              {data.get('economic_phase', 'unknown').upper()}")
+    lines.append(f"  Investment Posture: {data.get('investment_posture', 'unknown').upper()}")
 
     risk = data.get("risk_metrics", {})
     lines.append("\nRISK METRICS")
     lines.append(f"  Recession Prob:     {risk.get('recession_probability', 0):.1f}%")
-    lines.append(
-        f"  Curve Inverted:     {'Yes' if risk.get('yield_curve_inverted') else 'No'}"
-    )
-    lines.append(
-        f"  Supply Chain Stress: {'Yes' if risk.get('supply_chain_stress') else 'No'}"
-    )
+    lines.append(f"  Curve Inverted:     {'Yes' if risk.get('yield_curve_inverted') else 'No'}")
+    lines.append(f"  Supply Chain Stress: {'Yes' if risk.get('supply_chain_stress') else 'No'}")
 
     guidance = data.get("allocation_guidance", {})
     equity_range = guidance.get("equity_range", (0, 0))
@@ -297,26 +271,10 @@ def format_history_output(data: dict) -> str:
     lines.append(f"Data Points: {data.get('data_points', 0)}")
 
     lines.append("\nSummary:")
-    lines.append(
-        f"  Current: {summary.get('current', 'N/A'):.3f}%"
-        if summary.get("current")
-        else "  Current: N/A"
-    )
-    lines.append(
-        f"  Average: {summary.get('average', 'N/A'):.3f}%"
-        if summary.get("average")
-        else "  Average: N/A"
-    )
-    lines.append(
-        f"  Min:     {summary.get('min', 'N/A'):.3f}%"
-        if summary.get("min")
-        else "  Min: N/A"
-    )
-    lines.append(
-        f"  Max:     {summary.get('max', 'N/A'):.3f}%"
-        if summary.get("max")
-        else "  Max: N/A"
-    )
+    lines.append(f"  Current: {summary.get('current', 'N/A'):.3f}%" if summary.get("current") else "  Current: N/A")
+    lines.append(f"  Average: {summary.get('average', 'N/A'):.3f}%" if summary.get("average") else "  Average: N/A")
+    lines.append(f"  Min:     {summary.get('min', 'N/A'):.3f}%" if summary.get("min") else "  Min: N/A")
+    lines.append(f"  Max:     {summary.get('max', 'N/A'):.3f}%" if summary.get("max") else "  Max: N/A")
 
     history = data.get("history", [])
     if history:
@@ -324,9 +282,7 @@ def format_history_output(data: dict) -> str:
         lines.append(f"  {'Date':<12} {'Yield':>10}")
         lines.append(f"  {'-' * 24}")
         for entry in history[:10]:
-            lines.append(
-                f"  {entry.get('date', 'N/A'):<12} {entry.get('yield', 0):>9.3f}%"
-            )
+            lines.append(f"  {entry.get('date', 'N/A'):<12} {entry.get('yield', 0):>9.3f}%")
 
     lines.append(f"\n{'=' * 50}")
     return "\n".join(lines)
@@ -349,24 +305,12 @@ Examples:
 
     # Action arguments (mutually exclusive)
     action_group = parser.add_mutually_exclusive_group(required=True)
-    action_group.add_argument(
-        "--curve", action="store_true", help="Get current yield curve"
-    )
-    action_group.add_argument(
-        "--spread", action="store_true", help="Get yield spread analysis"
-    )
-    action_group.add_argument(
-        "--regime", action="store_true", help="Get market regime from yield curve"
-    )
-    action_group.add_argument(
-        "--recession", action="store_true", help="Get recession probability assessment"
-    )
-    action_group.add_argument(
-        "--summary", action="store_true", help="Get comprehensive market regime summary"
-    )
-    action_group.add_argument(
-        "--history", action="store_true", help="Get historical yield data"
-    )
+    action_group.add_argument("--curve", action="store_true", help="Get current yield curve")
+    action_group.add_argument("--spread", action="store_true", help="Get yield spread analysis")
+    action_group.add_argument("--regime", action="store_true", help="Get market regime from yield curve")
+    action_group.add_argument("--recession", action="store_true", help="Get recession probability assessment")
+    action_group.add_argument("--summary", action="store_true", help="Get comprehensive market regime summary")
+    action_group.add_argument("--history", action="store_true", help="Get historical yield data")
 
     # Options
     parser.add_argument(
@@ -381,9 +325,7 @@ Examples:
         default="10y",
         help="Maturity for historical data (default: 10y)",
     )
-    parser.add_argument(
-        "--json", action="store_true", help="Output raw JSON instead of formatted text"
-    )
+    parser.add_argument("--json", action="store_true", help="Output raw JSON instead of formatted text")
 
     args = parser.parse_args()
 

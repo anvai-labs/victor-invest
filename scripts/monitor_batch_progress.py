@@ -15,13 +15,12 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-import pandas as pd
-from sqlalchemy import create_engine
 from datetime import datetime
 
-SEC_DB_URL = (
-    "postgresql://investigator:investigator@dataserver1.singh.local:5432/sec_database"
-)
+import pandas as pd
+from sqlalchemy import create_engine
+
+SEC_DB_URL = "postgresql://investigator:investigator@dataserver1.singh.local:5432/sec_database"
 
 
 def check_progress():
@@ -107,9 +106,7 @@ def check_progress():
 
         print("\n📈 Progress Estimate:")
         print(f"  Target: {total_target:,} symbols")
-        print(
-            f"  Processed: {current_symbols:,} symbols ({current_symbols / total_target * 100:.1f}%)"
-        )
+        print(f"  Processed: {current_symbols:,} symbols ({current_symbols / total_target * 100:.1f}%)")
         print(f"  Remaining: {remaining:,} symbols")
         print(f"  ETA: {eta_minutes:.0f} minutes ({eta_hours:.1f} hours)")
 

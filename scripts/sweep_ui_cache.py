@@ -31,14 +31,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlalchemy import text
 
-
 # UI Cache Directory (must match victor_invest/api/app.py)
 UI_CACHE_DIR = Path("artifacts/ui_cache")
 
 
-def get_symbols_with_sec_filing(
-    limit: Optional[int] = None, start_stockid: int = 1
-) -> List[str]:
+def get_symbols_with_sec_filing(limit: Optional[int] = None, start_stockid: int = 1) -> List[str]:
     """Get all symbols with is_sec_filing=true in order of stockid.
 
     Args:
@@ -48,8 +45,9 @@ def get_symbols_with_sec_filing(
     Returns:
         List of symbols
     """
-    from investigator.infrastructure.database.symbol_repository import SymbolRepository
     from dataclasses import dataclass
+
+    from investigator.infrastructure.database.symbol_repository import SymbolRepository
 
     @dataclass
     class SymbolRow:
@@ -111,9 +109,7 @@ def write_ui_cache(symbol: str, payload: dict, source: str) -> Path:
         "payload": payload,
     }
 
-    cache_path.write_text(
-        json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    cache_path.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
 
     return cache_path
 
@@ -218,9 +214,7 @@ async def run_sweep(
                 payload = json.load(f)
 
             # Write to UI cache
-            write_ui_cache(
-                symbol=symbol, payload=payload, source=f"sweep_ui_cache_{timestamp}"
-            )
+            write_ui_cache(symbol=symbol, payload=payload, source=f"sweep_ui_cache_{timestamp}")
 
             processed += 1
             summary["symbols_processed"].append(symbol)

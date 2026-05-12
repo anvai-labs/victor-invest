@@ -19,9 +19,7 @@ if str(REPO_ROOT) not in sys.path:
 from victor_invest.latency_budgets import evaluate_latency  # noqa: E402
 
 
-def _run_analysis_mode_cli(
-    symbol: str, mode: str, force_refresh: bool
-) -> Dict[str, object]:
+def _run_analysis_mode_cli(symbol: str, mode: str, force_refresh: bool) -> Dict[str, object]:
     cmd = [
         sys.executable,
         "-m",
@@ -66,12 +64,8 @@ def _build_stub_handlers_for_mode(mode: str) -> Dict[str, object]:
 
     if mode_lower == "quick":
         return {
-            "fetch_market_data": _stub_handler(
-                {"status": "success", "data": {"source": "market"}}
-            ),
-            "run_technical_analysis": _stub_handler(
-                {"status": "success", "data": {"trend": "bullish"}}
-            ),
+            "fetch_market_data": _stub_handler({"status": "success", "data": {"source": "market"}}),
+            "run_technical_analysis": _stub_handler({"status": "success", "data": {"trend": "bullish"}}),
             "run_synthesis": _stub_handler(
                 {
                     "status": "success",
@@ -84,18 +78,10 @@ def _build_stub_handlers_for_mode(mode: str) -> Dict[str, object]:
 
     if mode_lower == "standard":
         return {
-            "fetch_sec_data": _stub_handler(
-                {"status": "success", "data": {"source": "sec"}}
-            ),
-            "fetch_market_data": _stub_handler(
-                {"status": "success", "data": {"source": "market"}}
-            ),
-            "run_fundamental_analysis": _stub_handler(
-                {"status": "success", "data": {"score": 72}}
-            ),
-            "run_technical_analysis": _stub_handler(
-                {"status": "success", "data": {"trend": "bullish"}}
-            ),
+            "fetch_sec_data": _stub_handler({"status": "success", "data": {"source": "sec"}}),
+            "fetch_market_data": _stub_handler({"status": "success", "data": {"source": "market"}}),
+            "run_fundamental_analysis": _stub_handler({"status": "success", "data": {"score": 72}}),
+            "run_technical_analysis": _stub_handler({"status": "success", "data": {"trend": "bullish"}}),
             "run_synthesis": _stub_handler(
                 {
                     "status": "success",
@@ -108,27 +94,13 @@ def _build_stub_handlers_for_mode(mode: str) -> Dict[str, object]:
 
     if mode_lower == "comprehensive":
         return {
-            "fetch_sec_data": _stub_handler(
-                {"status": "success", "data": {"source": "sec"}}
-            ),
-            "fetch_market_data": _stub_handler(
-                {"status": "success", "data": {"source": "market"}}
-            ),
-            "fetch_macro_data": _stub_handler(
-                {"status": "success", "data": {"regime": "neutral"}}
-            ),
-            "run_fundamental_analysis": _stub_handler(
-                {"status": "success", "data": {"score": 72}}
-            ),
-            "run_technical_analysis": _stub_handler(
-                {"status": "success", "data": {"trend": "bullish"}}
-            ),
-            "run_market_context_analysis": _stub_handler(
-                {"status": "success", "market_regime": "neutral"}
-            ),
-            "identify_peers": _stub_handler(
-                {"peers": ["MSFT"], "peer_metrics": {"MSFT": {}}}
-            ),
+            "fetch_sec_data": _stub_handler({"status": "success", "data": {"source": "sec"}}),
+            "fetch_market_data": _stub_handler({"status": "success", "data": {"source": "market"}}),
+            "fetch_macro_data": _stub_handler({"status": "success", "data": {"regime": "neutral"}}),
+            "run_fundamental_analysis": _stub_handler({"status": "success", "data": {"score": 72}}),
+            "run_technical_analysis": _stub_handler({"status": "success", "data": {"trend": "bullish"}}),
+            "run_market_context_analysis": _stub_handler({"status": "success", "market_regime": "neutral"}),
+            "identify_peers": _stub_handler({"peers": ["MSFT"], "peer_metrics": {"MSFT": {}}}),
             "run_synthesis": _stub_handler(
                 {
                     "status": "success",
@@ -137,9 +109,7 @@ def _build_stub_handlers_for_mode(mode: str) -> Dict[str, object]:
                     "price_target": 220.0,
                 }
             ),
-            "generate_report": _stub_handler(
-                {"status": "success", "path": "report.pdf"}
-            ),
+            "generate_report": _stub_handler({"status": "success", "path": "report.pdf"}),
         }
 
     raise ValueError(f"Unsupported mode for stub benchmarking: {mode}")
@@ -147,7 +117,6 @@ def _build_stub_handlers_for_mode(mode: str) -> Dict[str, object]:
 
 def _run_analysis_mode_stub(symbol: str, mode: str) -> Dict[str, object]:
     try:
-        from victor.tools.registry import ToolRegistry
         from victor.workflows.executor import (
             WorkflowExecutor,
             get_compute_handler,
@@ -185,13 +154,9 @@ def _run_analysis_mode_stub(symbol: str, mode: str) -> Dict[str, object]:
         for name, handler in handlers.items():
             register_compute_handler(name, handler)
 
-        executor = WorkflowExecutor(
-            _MinimalOrchestrator(), tool_registry=ToolRegistry()
-        )
+        executor = WorkflowExecutor(_MinimalOrchestrator())
         started_at = time.perf_counter()
-        result = executor.execute(
-            workflow, initial_context={"symbol": symbol}, timeout=60.0
-        )
+        result = executor.execute(workflow, initial_context={"symbol": symbol}, timeout=60.0)
 
         # Keep asyncio import local so --help works without importing event loop modules.
         import asyncio
@@ -202,9 +167,7 @@ def _run_analysis_mode_stub(symbol: str, mode: str) -> Dict[str, object]:
         return {
             "elapsed_seconds": elapsed_seconds,
             "exit_code": 0 if workflow_result.success else 1,
-            "stderr_tail": ""
-            if workflow_result.success
-            else "Workflow execution returned failure",
+            "stderr_tail": "" if workflow_result.success else "Workflow execution returned failure",
         }
     finally:
         for name, handler in original.items():
@@ -212,9 +175,7 @@ def _run_analysis_mode_stub(symbol: str, mode: str) -> Dict[str, object]:
                 register_compute_handler(name, handler)
 
 
-def _run_analysis_mode(
-    symbol: str, mode: str, force_refresh: bool, runner: str
-) -> Dict[str, object]:
+def _run_analysis_mode(symbol: str, mode: str, force_refresh: bool, runner: str) -> Dict[str, object]:
     if runner == "cli":
         return _run_analysis_mode_cli(symbol, mode, force_refresh)
     if runner == "stub":
@@ -229,12 +190,8 @@ def _benchmark_mode(
     runner: str,
     budget_profile: str,
 ) -> Dict[str, object]:
-    run_result = _run_analysis_mode(
-        symbol=symbol, mode=mode, force_refresh=force_refresh, runner=runner
-    )
-    evaluation = evaluate_latency(
-        mode, run_result["elapsed_seconds"], profile=budget_profile
-    )
+    run_result = _run_analysis_mode(symbol=symbol, mode=mode, force_refresh=force_refresh, runner=runner)
+    evaluation = evaluate_latency(mode, run_result["elapsed_seconds"], profile=budget_profile)
 
     return {
         "mode": evaluation.mode,
@@ -252,9 +209,7 @@ def _benchmark_mode(
 
 def _parse_args(argv: List[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--symbol", default="AAPL", help="Symbol to benchmark (default: AAPL)"
-    )
+    parser.add_argument("--symbol", default="AAPL", help="Symbol to benchmark (default: AAPL)")
     parser.add_argument(
         "--modes",
         nargs="+",
@@ -292,9 +247,7 @@ def _parse_args(argv: List[str]) -> argparse.Namespace:
 
 def main(argv: List[str] | None = None) -> int:
     args = _parse_args(argv or sys.argv[1:])
-    budget_profile = args.budget_profile or (
-        "ci_stub" if args.runner == "stub" else "production"
-    )
+    budget_profile = args.budget_profile or ("ci_stub" if args.runner == "stub" else "production")
 
     results = [
         _benchmark_mode(

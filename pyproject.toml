@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "victor-invest"
-version = "0.5.0"
+version = "0.7.0"
 description = "AI-powered investment analysis platform combining SEC fundamentals, technical indicators, and multi-model valuation synthesis"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -42,9 +42,8 @@ classifiers = [
 ]
 
 dependencies = [
-    # Victor AI Framework (requires >=0.5.7 for framework.extensions)
-    "victor-ai>=0.6.0,<1.0",
-    "victor-sdk>=0.6.0,<1.0",
+    # Victor SDK definition contract
+    "victor-sdk>=0.7.0,<1.0",
 
     # Core dependencies
     "requests>=2.31.0",
@@ -138,6 +137,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+runtime = [
+    "victor-ai>=0.7.0,<1.0",
+]
 dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
@@ -168,10 +170,29 @@ victor-invest = "victor_invest.cli:main"
 # Legacy CLI (deprecated - use 'investigator' instead)
 investigator-legacy = "cli_orchestrator:cli"
 
-# New plugin entry point (preferred by victor-ai >=0.5.7)
+# Plugin entry point (consolidated, SDK >= 0.7.0).
+# All registration (tools, vertical, dependencies, safety) is handled inside
+# InvestmentPlugin.register(context) so only this one entry point is needed.
 [project.entry-points."victor.plugins"]
 investment = "victor_invest.vertical:plugin"
 
+<<<<<<< HEAD
+# Sidecar entry points kept for backward compatibility with SDK < 0.7.0 hosts
+# that scan these groups directly instead of calling plugin.register(context).
+[project.entry-points."victor.tool_dependencies"]
+invest = "victor_invest.tool_dependencies:get_provider"
+
+[project.entry-points."victor.safety_rules"]
+invest = "victor_invest.safety_enhanced:create_investment_safety_rules"
+
+[project.entry-points."victor.prompt_contributors"]
+invest = "victor_invest.prompts.contributor:InvestmentPromptContributor"
+
+[project.entry-points."victor.workflow_providers"]
+invest = "victor_invest.workflows:InvestmentWorkflowProvider"
+
+=======
+>>>>>>> main
 [project.urls]
 Homepage = "https://github.com/vjsingh1984/victor-invest"
 Documentation = "https://github.com/vjsingh1984/victor-invest#readme"
@@ -186,6 +207,14 @@ package-dir = {"" = "src", "victor_invest" = "victor_invest"}
 where = ["src", "."]
 include = ["investigator*", "victor_invest*"]
 exclude = ["tests*", "docs*"]
+
+[tool.victor.contract_audit]
+source_roots = ["victor_invest"]
+exclude = [
+    "victor_invest/api/**",
+    "victor_invest/cli.py",
+    "victor_invest/framework_bootstrap.py",
+]
 
 [tool.black]
 line-length = 120

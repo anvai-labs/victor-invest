@@ -17,9 +17,7 @@ logger = logging.getLogger(__name__)
 class EmailNotifier:
     """Email notifier for sending alert notifications"""
 
-    def __init__(
-        self, smtp_host: str, smtp_port: int, sender_email: str, sender_password: str
-    ):
+    def __init__(self, smtp_host: str, smtp_port: int, sender_email: str, sender_password: str):
         """
         Initialize email notifier
 
@@ -93,9 +91,7 @@ class EmailNotifier:
 
         return grouped
 
-    def _format_html_body(
-        self, grouped: Dict[str, List[Dict]], all_alerts: List[Dict]
-    ) -> str:
+    def _format_html_body(self, grouped: Dict[str, List[Dict]], all_alerts: List[Dict]) -> str:
         """
         Format email body as HTML
 
@@ -176,9 +172,7 @@ class EmailNotifier:
         </div>
         """
 
-    def _format_text_body(
-        self, grouped: Dict[str, List[Dict]], all_alerts: List[Dict]
-    ) -> str:
+    def _format_text_body(self, grouped: Dict[str, List[Dict]], all_alerts: List[Dict]) -> str:
         """
         Format email body as plain text
 
@@ -245,9 +239,7 @@ class EmailNotifier:
 Time: {timestamp.strftime("%Y-%m-%d %H:%M")}
 """
 
-    def send_alert_email(
-        self, recipient: str, alerts: List[Dict], format: str = "html"
-    ) -> bool:
+    def send_alert_email(self, recipient: str, alerts: List[Dict], format: str = "html") -> bool:
         """
         Send alert email to a recipient
 
@@ -288,9 +280,7 @@ Time: {timestamp.strftime("%Y-%m-%d %H:%M")}
             logger.error(f"Error sending alert email to {recipient}: {e}")
             return False
 
-    def send_batch_alerts(
-        self, recipients: List[str], alerts: List[Dict], format: str = "html"
-    ) -> Dict[str, bool]:
+    def send_batch_alerts(self, recipients: List[str], alerts: List[Dict], format: str = "html") -> Dict[str, bool]:
         """
         Send alerts to multiple recipients
 

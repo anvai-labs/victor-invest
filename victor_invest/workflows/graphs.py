@@ -90,10 +90,10 @@ Example:
 
 import asyncio
 import logging
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, cast
 from weakref import WeakKeyDictionary
 
-from victor.framework.graph import END, StateGraph
+from victor_sdk.graph_runtime import END, StateGraph
 
 from victor_invest.agents import (
     FUNDAMENTAL_AGENT_SPEC,
@@ -527,28 +527,27 @@ async def _run_llm_synthesis(
         # Use Victor framework's provider API if provider specified, otherwise use legacy
         if provider and provider != "ollama":
             # Use Victor's provider registry for non-Ollama providers
-            from victor.providers.registry import ProviderRegistry
-
-            from investigator.config import get_config
+            from victor_invest.compat.providers import create_provider
             from victor_invest.framework_bootstrap import (
                 PROVIDER_DEFAULT_MODELS,
                 resolve_model_from_env,
             )
-
-            config = get_config()
 
             # Resolve model if not specified
             resolved_model = model or resolve_model_from_env(provider, None)
             if not resolved_model:
                 resolved_model = PROVIDER_DEFAULT_MODELS.get(provider, "gpt-oss:20b")
 
-            # Get provider class and create instance
-            provider_class = ProviderRegistry.get(provider)
-            provider_instance = provider_class(
+            # Create provider via factory (isolates victor.providers import)
+            provider_instance = create_provider(
+                provider,
                 model=resolved_model,
                 temperature=0.3,
                 max_tokens=4096,
             )
+            if provider_instance is None:
+                logger.warning("Cannot create provider %s — falling back to legacy", provider)
+                return None
 
             # Extract key technical data (same as before)
             trend = technical.get("trend", {})
@@ -623,8 +622,7 @@ Respond ONLY with the JSON object, no other text."""
             end = response_text.rfind("}") + 1
             if start >= 0 and end > start:
                 json_str = response_text[start:end]
-                result: dict[Any, Any] | None = json.loads(json_str)
-                return result
+                return cast(dict[Any, Any], json.loads(json_str))
 
         else:
             # Legacy path for Ollama or when provider not specified
@@ -710,8 +708,7 @@ Respond ONLY with the JSON object, no other text."""
             end = response_text.rfind("}") + 1
             if start >= 0 and end > start:
                 json_str = response_text[start:end]
-                result: dict[Any, Any] | None = json.loads(json_str)
-                return result
+                return cast(dict[Any, Any], json.loads(json_str))
 
         return None
 

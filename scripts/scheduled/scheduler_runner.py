@@ -262,21 +262,11 @@ class SchedulerRunner:
 
 def main():
     parser = argparse.ArgumentParser(description="Run scheduled data collection jobs")
-    parser.add_argument(
-        "--config", type=str, help="Path to scheduler configuration file"
-    )
-    parser.add_argument(
-        "--run-now", type=str, metavar="JOB_NAME", help="Run a specific job immediately"
-    )
-    parser.add_argument(
-        "--run-all", action="store_true", help="Run all enabled jobs immediately"
-    )
-    parser.add_argument(
-        "--list-jobs", action="store_true", help="List all configured jobs"
-    )
-    parser.add_argument(
-        "--daemon", action="store_true", help="Run as a daemon (continuous scheduler)"
-    )
+    parser.add_argument("--config", type=str, help="Path to scheduler configuration file")
+    parser.add_argument("--run-now", type=str, metavar="JOB_NAME", help="Run a specific job immediately")
+    parser.add_argument("--run-all", action="store_true", help="Run all enabled jobs immediately")
+    parser.add_argument("--list-jobs", action="store_true", help="List all configured jobs")
+    parser.add_argument("--daemon", action="store_true", help="Run as a daemon (continuous scheduler)")
     args = parser.parse_args()
 
     config_path = Path(args.config) if args.config else None

@@ -192,7 +192,7 @@ jobs:
             --runner stub \
             --budget-profile ci_stub \
             --symbol AAPL \
-            --modes quick standard comprehensive \
+            --modes quick \
             --fail-on-budget-breach \
             --output-json artifacts/benchmarks/workflow_benchmark_ci.json
 

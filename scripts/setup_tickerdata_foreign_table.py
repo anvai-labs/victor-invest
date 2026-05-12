@@ -6,7 +6,9 @@ allowing sec_database to query market data directly.
 """
 
 import logging
+
 from sqlalchemy import create_engine, text
+
 from investigator.config import get_config
 
 logger = logging.getLogger(__name__)
@@ -196,9 +198,7 @@ def populate_new_columns_from_tickerdata():
               AND subq.shares IS NOT NULL
         """)
         result = conn.execute(update_shares_nearest)
-        print(
-            f"  Updated {result.rowcount} rows with shares_outstanding (nearest ±7 days)"
-        )
+        print(f"  Updated {result.rowcount} rows with shares_outstanding (nearest ±7 days)")
 
         # Calculate market_cap using price ~45 days after period end
         update_mc = text("""
@@ -256,9 +256,7 @@ def populate_new_columns_from_tickerdata():
               AND shares_outstanding IS NOT NULL
         """)
         result = conn.execute(update_diluted_shares)
-        print(
-            f"  Updated {result.rowcount} rows with weighted_average_diluted_shares_outstanding"
-        )
+        print(f"  Updated {result.rowcount} rows with weighted_average_diluted_shares_outstanding")
 
     print("\nStep 5: Verification...")
     with sec_engine.connect() as conn:

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Check if NFLX split is in database."""
 
-from sqlalchemy import create_engine, text
 import os
+
+from sqlalchemy import create_engine, text
 
 # Get database URL from environment or config
 db_url = os.environ.get("DATABASE_URL")
@@ -34,10 +35,6 @@ with engine.connect() as conn:
 
     # Check all splits in database
     print("\nAll splits in database:")
-    result = conn.execute(
-        text(
-            "SELECT symbol, split_date, split_ratio FROM stock_splits ORDER BY symbol, split_date"
-        )
-    )
+    result = conn.execute(text("SELECT symbol, split_date, split_ratio FROM stock_splits ORDER BY symbol, split_date"))
     for row in result.fetchall():
         print(f"  {row[0]} | {row[1]} | {row[2]}x")

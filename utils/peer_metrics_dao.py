@@ -42,9 +42,7 @@ class PeerMetricsDAO:
             metrics_json = json.dumps(metrics_data)
 
             # Convert peer_symbols list to PostgreSQL array format
-            peer_symbols_array = (
-                "{" + ",".join(peer_symbols) + "}" if peer_symbols else None
-            )
+            peer_symbols_array = "{" + ",".join(peer_symbols) + "}" if peer_symbols else None
 
             # Use current date for calculation_date
             calc_date = date.today()
@@ -84,9 +82,7 @@ class PeerMetricsDAO:
                     },
                 )
 
-            self.logger.info(
-                f"Saved peer metrics for {symbol} in group {peer_group_id}"
-            )
+            self.logger.info(f"Saved peer metrics for {symbol} in group {peer_group_id}")
             return True
 
         except Exception as e:
@@ -96,9 +92,7 @@ class PeerMetricsDAO:
             if conn:
                 conn.close()
 
-    def get_peer_metrics(
-        self, peer_group_id: str, symbol: str, metric_type: str
-    ) -> Optional[Dict[str, Any]]:
+    def get_peer_metrics(self, peer_group_id: str, symbol: str, metric_type: str) -> Optional[Dict[str, Any]]:
         """Get peer metrics from database"""
         conn = None
         try:
@@ -135,15 +129,9 @@ class PeerMetricsDAO:
                     "industry": result.industry,
                     "metrics_data": result.metrics_data,
                     "peer_symbols": result.peer_symbols,
-                    "calculation_date": result.calculation_date.isoformat()
-                    if result.calculation_date
-                    else None,
-                    "created_at": result.created_at.isoformat()
-                    if result.created_at
-                    else None,
-                    "updated_at": result.updated_at.isoformat()
-                    if result.updated_at
-                    else None,
+                    "calculation_date": result.calculation_date.isoformat() if result.calculation_date else None,
+                    "created_at": result.created_at.isoformat() if result.created_at else None,
+                    "updated_at": result.updated_at.isoformat() if result.updated_at else None,
                 }
 
             return None
@@ -155,9 +143,7 @@ class PeerMetricsDAO:
             if conn:
                 conn.close()
 
-    def get_peer_group_metrics(
-        self, peer_group_id: str, metric_type: str = None
-    ) -> List[Dict[str, Any]]:
+    def get_peer_group_metrics(self, peer_group_id: str, metric_type: str = None) -> List[Dict[str, Any]]:
         """Get all metrics for a peer group"""
         conn = None
         try:
@@ -202,15 +188,9 @@ class PeerMetricsDAO:
                     "industry": row.industry,
                     "metrics_data": row.metrics_data,
                     "peer_symbols": row.peer_symbols,
-                    "calculation_date": row.calculation_date.isoformat()
-                    if row.calculation_date
-                    else None,
-                    "created_at": row.created_at.isoformat()
-                    if row.created_at
-                    else None,
-                    "updated_at": row.updated_at.isoformat()
-                    if row.updated_at
-                    else None,
+                    "calculation_date": row.calculation_date.isoformat() if row.calculation_date else None,
+                    "created_at": row.created_at.isoformat() if row.created_at else None,
+                    "updated_at": row.updated_at.isoformat() if row.updated_at else None,
                 }
                 for row in results
             ]
@@ -251,15 +231,9 @@ class PeerMetricsDAO:
                     "industry": row.industry,
                     "metrics_data": row.metrics_data,
                     "peer_symbols": row.peer_symbols,
-                    "calculation_date": row.calculation_date.isoformat()
-                    if row.calculation_date
-                    else None,
-                    "created_at": row.created_at.isoformat()
-                    if row.created_at
-                    else None,
-                    "updated_at": row.updated_at.isoformat()
-                    if row.updated_at
-                    else None,
+                    "calculation_date": row.calculation_date.isoformat() if row.calculation_date else None,
+                    "created_at": row.created_at.isoformat() if row.created_at else None,
+                    "updated_at": row.updated_at.isoformat() if row.updated_at else None,
                 }
                 for row in results
             ]
@@ -271,9 +245,7 @@ class PeerMetricsDAO:
             if conn:
                 conn.close()
 
-    def delete_peer_metrics(
-        self, peer_group_id: str = None, symbol: str = None, metric_type: str = None
-    ) -> int:
+    def delete_peer_metrics(self, peer_group_id: str = None, symbol: str = None, metric_type: str = None) -> int:
         """Delete peer metrics based on criteria"""
         conn = None
         try:
@@ -315,9 +287,7 @@ class PeerMetricsDAO:
             if conn:
                 conn.close()
 
-    def get_latest_calculation_date(
-        self, peer_group_id: str = None, symbol: str = None
-    ) -> Optional[date]:
+    def get_latest_calculation_date(self, peer_group_id: str = None, symbol: str = None) -> Optional[date]:
         """Get the latest calculation date for given criteria"""
         conn = None
         try:

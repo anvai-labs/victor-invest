@@ -69,10 +69,7 @@ class _VictorExternalVerticalNoiseFilter(logging.Filter):
 
     def filter(self, record: logging.LogRecord) -> bool:
         message = record.getMessage()
-        if (
-            "External vertical '" in message
-            and "conflicts with existing vertical" in message
-        ):
+        if "External vertical '" in message and "conflicts with existing vertical" in message:
             return False
         if (
             "Failed to load external vertical 'security_analysis'" in message
@@ -88,10 +85,7 @@ def _configure_victor_external_vertical_warning_filter() -> None:
         return
 
     logger = logging.getLogger("victor.core.verticals.base")
-    if any(
-        isinstance(existing, _VictorExternalVerticalNoiseFilter)
-        for existing in logger.filters
-    ):
+    if any(isinstance(existing, _VictorExternalVerticalNoiseFilter) for existing in logger.filters):
         return
 
     logger.addFilter(_VictorExternalVerticalNoiseFilter())
@@ -144,11 +138,7 @@ def setup_logging(log_level: str = "INFO", log_file: Optional[str] = None):
             logging.getLogger(name).setLevel(logging.WARNING)
 
     # Canonical mapper debug tracing can be toggled independently
-    if (
-        profile == "debug"
-        or numeric_level <= logging.DEBUG
-        or os.getenv("INVESTIGATOR_DEBUG_CANONICAL") == "1"
-    ):
+    if profile == "debug" or numeric_level <= logging.DEBUG or os.getenv("INVESTIGATOR_DEBUG_CANONICAL") == "1":
         # logging.getLogger("utils.canonical_key_mapper").setLevel(logging.DEBUG)  # Module doesn't exist
         pass
 
@@ -258,9 +248,7 @@ def generate_executive_summary(full_analysis: dict) -> dict:
             "expected_return": f"{((valuation.get('price_target_12_month', 0) - ratios.get('current_price', 0)) / ratios.get('current_price', 1) * 100) if ratios.get('current_price', 0) > 0 else 0:.1f}%",
             # Investment grade
             "investment_grade": valuation.get("investment_grade", "N/A"),
-            "financial_health_score": health_analysis.get(
-                "overall_health_score", "N/A"
-            ),
+            "financial_health_score": health_analysis.get("overall_health_score", "N/A"),
             # Key strengths (top 3)
             "key_strengths": (
                 investment_thesis.get("value_drivers", [])[:3]
@@ -281,9 +269,7 @@ def generate_executive_summary(full_analysis: dict) -> dict:
                 else "N/A"
             ),
             # Data quality
-            "data_quality": full_analysis.get("fundamental", {})
-            .get("data_quality", {})
-            .get("quality_grade", "N/A"),
+            "data_quality": full_analysis.get("fundamental", {}).get("data_quality", {}).get("quality_grade", "N/A"),
             "data_quality_score": full_analysis.get("fundamental", {})
             .get("data_quality", {})
             .get("data_quality_score", "N/A"),
@@ -377,7 +363,6 @@ def sector_multiples_refresh(
     from investigator.domain.services.sector_multiples_refresh import (
         SectorMultiplesRefresh,
     )
-    from investigator.infrastructure.database.db import get_db_manager
 
     # Parse sector/industry lists
     sector_list = None
@@ -403,9 +388,7 @@ def sector_multiples_refresh(
         )
 
         if not calculated:
-            click.echo(
-                "No sector multiples calculated. Check logs for details.", err=True
-            )
+            click.echo("No sector multiples calculated. Check logs for details.", err=True)
             return 1
 
         # Display results
@@ -462,9 +445,7 @@ def sector_multiples_refresh(
     is_flag=True,
     help="Enable verbose logging (equivalent to --log-level DEBUG)",
 )
-@click.option(
-    "--legacy", is_flag=True, help="Use legacy orchestrator instead of Victor workflows"
-)
+@click.option("--legacy", is_flag=True, help="Use legacy orchestrator instead of Victor workflows")
 @click.pass_context
 def cli(ctx, config, log_level, log_file, verbose, legacy):
     """InvestiGator - Agentic AI Investment Analysis System"""
@@ -501,9 +482,7 @@ def cli(ctx, config, log_level, log_file, verbose, legacy):
     default="standard",
     help="Output detail level: minimal (summary), standard (deduped), compact (machine-readable), verbose (full metadata)",
 )
-@click.option(
-    "--report", is_flag=True, default=False, help="Generate PDF investment report"
-)
+@click.option("--report", is_flag=True, default=False, help="Generate PDF investment report")
 @click.option(
     "--force-refresh",
     is_flag=True,
@@ -584,9 +563,7 @@ def analyze(
                 args += ["--output", output]
             if report:
                 args.append("--report")
-            click.echo(
-                "Routing to Victor workflows. Set INVESTIGATOR_LEGACY=1 to use legacy orchestrator."
-            )
+            click.echo("Routing to Victor workflows. Set INVESTIGATOR_LEGACY=1 to use legacy orchestrator.")
             _forward_to_victor_cli(args)
             return
 
@@ -668,19 +645,14 @@ def analyze(
             # Wait for results with progress indicator
             with click.progressbar(length=100, label="Analyzing") as bar:
                 elapsed = 0
-                while (
-                    elapsed < 900
-                ):  # 15 minute timeout (exceeds agent timeout in agents/base.py:270)
+                while elapsed < 900:  # 15 minute timeout (exceeds agent timeout in agents/base.py:270)
                     status = await orchestrator.get_status(task_id)
 
                     if status["status"] == "completed":
                         bar.update(100 - bar.pos)
                         break
                     elif status["status"] == "processing":
-                        progress = (
-                            status.get("agents_completed", 0)
-                            / status.get("total_agents", 1)
-                        ) * 100
+                        progress = (status.get("agents_completed", 0) / status.get("total_agents", 1)) * 100
                         bar.update(progress - bar.pos)
 
                     await asyncio.sleep(2)
@@ -711,9 +683,7 @@ def analyze(
                                 failures.append(f"{agent_name}: {error_msg}")
 
                 if failures:
-                    click.echo(
-                        "\n❌ Analysis failed - critical agent errors:", err=True
-                    )
+                    click.echo("\n❌ Analysis failed - critical agent errors:", err=True)
                     for failure in failures:
                         click.echo(f"  - {failure}", err=True)
                     sys.exit(1)
@@ -724,9 +694,7 @@ def analyze(
                 formatted_results = format_analysis_output(results, detail_level_enum)
 
                 # Generate executive summary using MINIMAL detail level
-                exec_summary = format_analysis_output(
-                    results, OutputDetailLevel.MINIMAL
-                )
+                exec_summary = format_analysis_output(results, OutputDetailLevel.MINIMAL)
 
                 # Display executive summary to console (always shown)
                 # Extract nested values from MINIMAL format
@@ -741,9 +709,7 @@ def analyze(
                         else rec
                     )
                     compact_price = (
-                        formatted_results.get("price", {})
-                        if isinstance(formatted_results.get("price"), dict)
-                        else {}
+                        formatted_results.get("price", {}) if isinstance(formatted_results.get("price"), dict) else {}
                     )
                     compact_valuation = (
                         formatted_results.get("valuation", {})
@@ -757,30 +723,18 @@ def analyze(
                     )
                     val = {
                         **val,
-                        "current_price": compact_price.get(
-                            "current", val.get("current_price")
-                        ),
-                        "price_target_12m": compact_price.get(
-                            "target", val.get("price_target_12m")
-                        ),
-                        "expected_return_pct": compact_price.get(
-                            "expected_return_pct", val.get("expected_return_pct")
-                        ),
+                        "current_price": compact_price.get("current", val.get("current_price")),
+                        "price_target_12m": compact_price.get("target", val.get("price_target_12m")),
+                        "expected_return_pct": compact_price.get("expected_return_pct", val.get("expected_return_pct")),
                         "investment_grade": rec.get(
                             "investment_grade",
-                            compact_valuation.get(
-                                "investment_grade", val.get("investment_grade")
-                            ),
+                            compact_valuation.get("investment_grade", val.get("investment_grade")),
                         ),
                     }
                     dq = {
                         **dq,
-                        "overall_score": compact_quality.get(
-                            "data_quality_score", dq.get("overall_score")
-                        ),
-                        "assessment": compact_quality.get(
-                            "quality_grade", dq.get("assessment")
-                        ),
+                        "overall_score": compact_quality.get("data_quality_score", dq.get("overall_score")),
+                        "assessment": compact_quality.get("quality_grade", dq.get("assessment")),
                     }
 
                 click.echo("\n" + "=" * 60)
@@ -855,24 +809,18 @@ def analyze(
                         click.echo("\nGenerating PDF report...")
 
                         # Convert results to InvestmentRecommendation format
-                        recommendation = convert_to_investment_recommendation(
-                            results, symbol
-                        )
+                        recommendation = convert_to_investment_recommendation(results, symbol)
 
                         # Initialize synthesizer for report generation
                         synthesizer = InvestmentSynthesizer()
 
                         # Generate PDF report
-                        report_path = synthesizer.generate_report(
-                            [recommendation], report_type="synthesis"
-                        )
+                        report_path = synthesizer.generate_report([recommendation], report_type="synthesis")
 
                         click.echo(f"✅ PDF report generated: {report_path}")
 
                     except Exception as e:
-                        click.echo(
-                            f"❌ Failed to generate PDF report: {str(e)}", err=True
-                        )
+                        click.echo(f"❌ Failed to generate PDF report: {str(e)}", err=True)
                         # Don't fail the entire command if PDF generation fails
 
             else:
@@ -940,12 +888,8 @@ def batch(ctx, symbols, mode, output_dir, detail_level, force_refresh, refresh_a
     if _should_forward_to_victor(ctx):
         can_forward = not force_refresh and detail_level == "standard"
         if can_forward:
-            args = (
-                ["batch"] + list(symbols) + ["--mode", mode, "--output-dir", output_dir]
-            )
-            click.echo(
-                "Routing to Victor batch workflows. Set INVESTIGATOR_LEGACY=1 to use legacy orchestrator."
-            )
+            args = ["batch"] + list(symbols) + ["--mode", mode, "--output-dir", output_dir]
+            click.echo("Routing to Victor batch workflows. Set INVESTIGATOR_LEGACY=1 to use legacy orchestrator.")
             _forward_to_victor_cli(args)
             return
 
@@ -986,30 +930,20 @@ def batch(ctx, symbols, mode, output_dir, detail_level, force_refresh, refresh_a
             detail_level_enum = OutputDetailLevel(detail_level)
             with click.progressbar(symbols, label="Processing") as bar:
                 for symbol, task_id in zip(bar, task_ids):
-                    result = await orchestrator.get_results(
-                        task_id, wait=True, timeout=300
-                    )
+                    result = await orchestrator.get_results(task_id, wait=True, timeout=300)
                     if result:
                         results[symbol] = result
 
                         # Apply detail level formatting
-                        formatted_result = format_analysis_output(
-                            result, detail_level_enum
-                        )
+                        formatted_result = format_analysis_output(result, detail_level_enum)
 
                         # Save individual result
-                        output_file = (
-                            Path(output_dir)
-                            / f"{symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-                        )
+                        output_file = Path(output_dir) / f"{symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
                         with open(output_file, "w") as f:
                             json.dump(formatted_result, f, indent=2, default=str)
 
             # Save summary
-            summary_file = (
-                Path(output_dir)
-                / f"batch_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-            )
+            summary_file = Path(output_dir) / f"batch_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
             with open(summary_file, "w") as f:
                 json.dump(
                     {
@@ -1048,9 +982,7 @@ def compare(ctx, target, peers, output):
         args = ["compare", target] + list(peers)
         if output:
             args += ["--output", output]
-        click.echo(
-            "Routing to Victor peer comparison. Set INVESTIGATOR_LEGACY=1 to use legacy orchestrator."
-        )
+        click.echo("Routing to Victor peer comparison. Set INVESTIGATOR_LEGACY=1 to use legacy orchestrator.")
         _forward_to_victor_cli(args)
         return
 
@@ -1110,13 +1042,9 @@ def serve(ctx, host, port, workers, reload):
 
     if _should_forward_to_victor(ctx):
         if workers != 4 or reload:
-            click.echo(
-                "Victor serve does not support --workers/--reload; ignoring those flags."
-            )
+            click.echo("Victor serve does not support --workers/--reload; ignoring those flags.")
         args = ["serve", "--host", host, "--port", str(port)]
-        click.echo(
-            "Routing to Victor API server. Set INVESTIGATOR_LEGACY=1 to use legacy orchestrator."
-        )
+        click.echo("Routing to Victor API server. Set INVESTIGATOR_LEGACY=1 to use legacy orchestrator.")
         _forward_to_victor_cli(args)
         return
 
@@ -1149,9 +1077,7 @@ def status(ctx):
     config = ctx.obj["config"]
 
     if _should_forward_to_victor(ctx):
-        click.echo(
-            "Routing to Victor status. Set INVESTIGATOR_LEGACY=1 to use legacy orchestrator."
-        )
+        click.echo("Routing to Victor status. Set INVESTIGATOR_LEGACY=1 to use legacy orchestrator.")
         _forward_to_victor_cli(["status"])
         return
 
@@ -1216,9 +1142,7 @@ def metrics(ctx, days):
 
     if _should_forward_to_victor(ctx):
         args = ["metrics", "--days", str(days)]
-        click.echo(
-            "Routing to Victor metrics. Set INVESTIGATOR_LEGACY=1 to use legacy orchestrator."
-        )
+        click.echo("Routing to Victor metrics. Set INVESTIGATOR_LEGACY=1 to use legacy orchestrator.")
         _forward_to_victor_cli(args)
         return
 
@@ -1270,9 +1194,7 @@ def metrics(ctx, days):
             for agent, metrics in latest["agent_metrics"].items():
                 click.echo(f"  {agent}:")
                 click.echo(f"    Executions: {metrics.get('executions', 0)}")
-                click.echo(
-                    f"    Avg Duration: {metrics.get('average_duration', 0):.2f}s"
-                )
+                click.echo(f"    Avg Duration: {metrics.get('average_duration', 0):.2f}s")
                 click.echo(
                     f"    Success Rate: {((metrics.get('executions', 0) - metrics.get('failures', 0)) / max(metrics.get('executions', 1), 1) * 100):.1f}%"
                 )
@@ -1344,9 +1266,7 @@ def metrics(ctx, days):
     default=False,
     help="Disable FRED DFF fallback risk-free series",
 )
-@click.option(
-    "--dry-run", is_flag=True, default=False, help="Compute but do not write results"
-)
+@click.option("--dry-run", is_flag=True, default=False, help="Compute but do not write results")
 @click.pass_context
 def beta_refresh(
     ctx,
@@ -1393,15 +1313,11 @@ def beta_refresh(
             args.append("--no-fred-rf")
         if dry_run:
             args.append("--dry-run")
-        click.echo(
-            "Routing to Victor beta refresh. Set INVESTIGATOR_LEGACY=1 to use legacy command."
-        )
+        click.echo("Routing to Victor beta refresh. Set INVESTIGATOR_LEGACY=1 to use legacy command.")
         _forward_to_victor_cli(args)
         return
 
-    script_path = (
-        Path(__file__).parent / "scripts" / "scheduled" / "calculate_beta_models.py"
-    )
+    script_path = Path(__file__).parent / "scripts" / "scheduled" / "calculate_beta_models.py"
     cmd = [
         sys.executable,
         str(script_path),
@@ -1443,9 +1359,7 @@ def pull(ctx, model):
     """Pull an Ollama model"""
     config = ctx.obj["config"]
     if _should_forward_to_victor(ctx):
-        click.echo(
-            "Routing to Victor model pull. Set INVESTIGATOR_LEGACY=1 to use legacy orchestrator."
-        )
+        click.echo("Routing to Victor model pull. Set INVESTIGATOR_LEGACY=1 to use legacy orchestrator.")
         _forward_to_victor_cli(["pull", model])
         return
 
@@ -1492,13 +1406,9 @@ def format_results_text(results: dict) -> str:
 
                 if "recommendation" in synthesis:
                     rec = synthesis["recommendation"]
-                    output.append(
-                        f"\nRecommendation: {rec.get('final_recommendation', 'N/A').upper()}"
-                    )
+                    output.append(f"\nRecommendation: {rec.get('final_recommendation', 'N/A').upper()}")
                     output.append(f"Conviction: {rec.get('conviction_level', 'N/A')}")
-                    output.append(
-                        f"Expected Return: {rec.get('expected_return', 0):.1%}"
-                    )
+                    output.append(f"Expected Return: {rec.get('expected_return', 0):.1%}")
 
             elif "analysis" in agent_data:
                 analysis = agent_data["analysis"]
@@ -1509,9 +1419,7 @@ def format_results_text(results: dict) -> str:
     return "\n".join(output)
 
 
-def convert_to_investment_recommendation(
-    results: dict, symbol: str
-) -> InvestmentRecommendation:
+def convert_to_investment_recommendation(results: dict, symbol: str) -> InvestmentRecommendation:
     """
     Convert AgentOrchestrator results to InvestmentRecommendation format
 
@@ -1558,12 +1466,8 @@ def convert_to_investment_recommendation(
     stop_loss = recommendation_data.get("stop_loss")
 
     # Extract entry/exit strategies
-    entry_strategy = recommendation_data.get(
-        "entry_strategy", "Market order at current levels"
-    )
-    exit_strategy = recommendation_data.get(
-        "exit_strategy", "Target-based or stop-loss exit"
-    )
+    entry_strategy = recommendation_data.get("entry_strategy", "Market order at current levels")
+    exit_strategy = recommendation_data.get("exit_strategy", "Target-based or stop-loss exit")
 
     # Determine time horizon and position size
     expected_return = recommendation_data.get("expected_return", 0.0)
@@ -1659,9 +1563,7 @@ def clean_cache(ctx, clean_all, clean_db, clean_disk, symbol):
             args.append("--disk")
         if symbol:
             args += ["--symbol", symbol]
-        click.echo(
-            "Routing to Victor cache management. Set INVESTIGATOR_LEGACY=1 to use legacy orchestrator."
-        )
+        click.echo("Routing to Victor cache management. Set INVESTIGATOR_LEGACY=1 to use legacy orchestrator.")
         _forward_to_victor_cli(args)
         return
 
@@ -1698,9 +1600,7 @@ def clean_cache(ctx, clean_all, clean_db, clean_disk, symbol):
                                     f"❌ Error cleaning DB handler {handler}: {exc}",
                                     err=True,
                                 )
-                click.echo(
-                    f"✅ Database cache cleared for {symbol} (entries removed: {deleted})"
-                )
+                click.echo(f"✅ Database cache cleared for {symbol} (entries removed: {deleted})")
             else:
                 click.echo("Cleaning database cache...")
                 cache_manager.clear(CacheType.LLM_RESPONSE, storage_type="rdbms")
@@ -1722,9 +1622,7 @@ def clean_cache(ctx, clean_all, clean_db, clean_disk, symbol):
                                     f"❌ Error cleaning disk handler {handler}: {exc}",
                                     err=True,
                                 )
-                click.echo(
-                    f"✅ Disk cache cleared for {symbol} (entries removed: {deleted})"
-                )
+                click.echo(f"✅ Disk cache cleared for {symbol} (entries removed: {deleted})")
             else:
                 click.echo("Cleaning disk cache...")
                 cache_manager.clear(CacheType.LLM_RESPONSE, storage_type="disk")
@@ -1759,9 +1657,7 @@ def inspect_cache(ctx, symbol, verbose):
             args += ["--symbol", symbol]
         if verbose:
             args.append("--verbose")
-        click.echo(
-            "Routing to Victor cache inspection. Set INVESTIGATOR_LEGACY=1 to use legacy orchestrator."
-        )
+        click.echo("Routing to Victor cache inspection. Set INVESTIGATOR_LEGACY=1 to use legacy orchestrator.")
         _forward_to_victor_cli(args)
         return
 
@@ -1803,9 +1699,7 @@ def inspect_cache(ctx, symbol, verbose):
 def cache_sizes(ctx):
     """Show cache sizes by type"""
     if _should_forward_to_victor(ctx):
-        click.echo(
-            "Routing to Victor cache sizes. Set INVESTIGATOR_LEGACY=1 to use legacy orchestrator."
-        )
+        click.echo("Routing to Victor cache sizes. Set INVESTIGATOR_LEGACY=1 to use legacy orchestrator.")
         _forward_to_victor_cli(["cache-sizes"])
         return
 
@@ -1851,9 +1745,7 @@ def test_system(ctx, verbose):
         args = ["test-system"]
         if verbose:
             args.append("--verbose")
-        click.echo(
-            "Routing to Victor system tests. Set INVESTIGATOR_LEGACY=1 to use legacy orchestrator."
-        )
+        click.echo("Routing to Victor system tests. Set INVESTIGATOR_LEGACY=1 to use legacy orchestrator.")
         _forward_to_victor_cli(args)
         return
 
@@ -1989,23 +1881,17 @@ def cache_facts(ctx, symbols_file, symbol_list, parallel, process_raw, hydrate_f
             try:
                 with open(path) as handle:
                     symbols = [
-                        line.strip().upper()
-                        for line in handle
-                        if line.strip() and not line.lstrip().startswith("#")
+                        line.strip().upper() for line in handle if line.strip() and not line.lstrip().startswith("#")
                     ]
             except OSError as exc:
-                raise click.ClickException(
-                    f"Unable to read {symbols_file}: {exc}"
-                ) from exc
+                raise click.ClickException(f"Unable to read {symbols_file}: {exc}") from exc
             return sorted(set(symbols))
 
         try:
             with open(path) as handle:
                 payload = json.load(handle)
         except json.JSONDecodeError as exc:
-            raise click.ClickException(
-                f"Unable to parse {symbols_file}: {exc}"
-            ) from exc
+            raise click.ClickException(f"Unable to parse {symbols_file}: {exc}") from exc
         except OSError as exc:
             raise click.ClickException(f"Unable to read {symbols_file}: {exc}") from exc
 
@@ -2050,28 +1936,17 @@ def cache_facts(ctx, symbols_file, symbol_list, parallel, process_raw, hydrate_f
                 companyfacts = row.companyfacts
                 if isinstance(companyfacts, str):
                     companyfacts = json.loads(companyfacts)
-                hash_suffix = hashlib.sha256(
-                    json.dumps(companyfacts, sort_keys=True).encode()
-                ).hexdigest()[:12]
-                sec_agent._persist_raw_companyfacts(
-                    symbol, row.cik, companyfacts, hash_suffix
-                )
+                hash_suffix = hashlib.sha256(json.dumps(companyfacts, sort_keys=True).encode()).hexdigest()[:12]
+                sec_agent._persist_raw_companyfacts(symbol, row.cik, companyfacts, hash_suffix)
                 written += 1
                 click.echo(f"🗃️  {symbol} raw cache hydrated from DB")
 
-        click.echo(
-            f"\nHydrated {written}/{len(symbols)} symbols from sec_companyfacts_raw"
-        )
+        click.echo(f"\nHydrated {written}/{len(symbols)} symbols from sec_companyfacts_raw")
         if missing:
-            click.echo(
-                f"Symbols missing in DB: {', '.join(missing[:20])}{' ...' if len(missing) > 20 else ''}"
-            )
+            click.echo(f"Symbols missing in DB: {', '.join(missing[:20])}{' ...' if len(missing) > 20 else ''}")
         return
 
-    click.echo(
-        f"Fetching raw CompanyFacts for {len(symbols)} symbols "
-        f"(parallel={parallel}, process_raw={process_raw})"
-    )
+    click.echo(f"Fetching raw CompanyFacts for {len(symbols)} symbols (parallel={parallel}, process_raw={process_raw})")
 
     async def _runner():
         sem = asyncio.Semaphore(max(1, parallel))
@@ -2080,13 +1955,9 @@ def cache_facts(ctx, symbols_file, symbol_list, parallel, process_raw, hydrate_f
         async def _fetch(symbol: str):
             async with sem:
                 try:
-                    await sec_agent._fetch_and_cache_companyfacts(
-                        symbol, process_raw=process_raw
-                    )
+                    await sec_agent._fetch_and_cache_companyfacts(symbol, process_raw=process_raw)
                     results.append((symbol, True, "cached"))
-                    click.echo(
-                        f"✅ {symbol} cached{' (processed)' if process_raw else ' (raw-only)'}"
-                    )
+                    click.echo(f"✅ {symbol} cached{' (processed)' if process_raw else ' (raw-only)'}")
                 except Exception as exc:
                     results.append((symbol, False, str(exc)))
                     click.echo(f"❌ {symbol} failed: {exc}")
@@ -2115,9 +1986,7 @@ def setup_database(ctx):
     """Initialize database schema"""
     from sqlalchemy import text
 
-    from investigator.infrastructure.database.db import (
-        get_database_engine as get_engine,
-    )
+    from investigator.infrastructure.database.db import get_database_engine as get_engine
 
     click.echo("Setting up database...")
 
@@ -2167,9 +2036,7 @@ def setup_system(ctx):
     # Install dependencies
     if not ctx.params.get("skip_deps"):
         click.echo("\n2. Installing dependencies...")
-        result = subprocess.run(
-            ["pip", "install", "-r", "requirements.txt"], capture_output=True
-        )
+        result = subprocess.run(["pip", "install", "-r", "requirements.txt"], capture_output=True)
         if result.returncode == 0:
             click.echo("   ✅ Dependencies installed")
             steps.append(("Dependencies", True))
@@ -2229,9 +2096,7 @@ def system_stats(ctx):
     click.echo(f"  CPU Cores: {psutil.cpu_count()}")
     click.echo(f"  CPU Usage: {psutil.cpu_percent()}%")
     memory = psutil.virtual_memory()
-    click.echo(
-        f"  Memory: {memory.used / (1024**3):.1f}GB / {memory.total / (1024**3):.1f}GB ({memory.percent}%)"
-    )
+    click.echo(f"  Memory: {memory.used / (1024**3):.1f}GB / {memory.total / (1024**3):.1f}GB ({memory.percent}%)")
 
     # Disk usage
     click.echo("\nDisk:")
@@ -2260,9 +2125,7 @@ def system_stats(ctx):
     # Database status
     click.echo("\nDatabase:")
     try:
-        from investigator.infrastructure.database.db import (
-            get_database_engine as get_engine,
-        )
+        from investigator.infrastructure.database.db import get_database_engine as get_engine
 
         engine = get_engine()
         click.echo("  Status: ✅ Connected")

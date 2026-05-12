@@ -23,8 +23,8 @@ from datetime import datetime  # noqa: E402
 from typing import List, Optional, Set  # noqa: E402
 
 from sqlalchemy import create_engine, text  # noqa: E402
-from victor_invest.workflows.graphs import run_analysis  # noqa: E402
 
+from victor_invest.workflows.graphs import run_analysis  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
