@@ -117,7 +117,6 @@ def _build_stub_handlers_for_mode(mode: str) -> Dict[str, object]:
 
 def _run_analysis_mode_stub(symbol: str, mode: str) -> Dict[str, object]:
     try:
-        from victor.tools.registry import ToolRegistry
         from victor.workflows.executor import (
             WorkflowExecutor,
             get_compute_handler,
@@ -155,7 +154,7 @@ def _run_analysis_mode_stub(symbol: str, mode: str) -> Dict[str, object]:
         for name, handler in handlers.items():
             register_compute_handler(name, handler)
 
-        executor = WorkflowExecutor(_MinimalOrchestrator(), tool_registry=ToolRegistry())
+        executor = WorkflowExecutor(_MinimalOrchestrator())
         started_at = time.perf_counter()
         result = executor.execute(workflow, initial_context={"symbol": symbol}, timeout=60.0)
 
