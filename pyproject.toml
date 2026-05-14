@@ -176,7 +176,6 @@ investigator-legacy = "cli_orchestrator:cli"
 [project.entry-points."victor.plugins"]
 investment = "victor_invest.vertical:plugin"
 
-<<<<<<< HEAD
 # Sidecar entry points kept for backward compatibility with SDK < 0.7.0 hosts
 # that scan these groups directly instead of calling plugin.register(context).
 [project.entry-points."victor.tool_dependencies"]
@@ -191,8 +190,6 @@ invest = "victor_invest.prompts.contributor:InvestmentPromptContributor"
 [project.entry-points."victor.workflow_providers"]
 invest = "victor_invest.workflows:InvestmentWorkflowProvider"
 
-=======
->>>>>>> main
 [project.urls]
 Homepage = "https://github.com/vjsingh1984/victor-invest"
 Documentation = "https://github.com/vjsingh1984/victor-invest#readme"
