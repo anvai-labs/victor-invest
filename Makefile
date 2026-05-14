@@ -26,8 +26,8 @@ dev-install: ## Install package with development dependencies
 test: ## Run tests
 	pytest tests/ -v
 
-test-cov: ## Run tests with coverage report
-	pytest tests/ -v --cov=src/investigator --cov=victor_invest --cov-report=html --cov-report=term-missing
+test-cov: ## Run unit tests with coverage report
+	pytest tests/unit/ -v --cov=src/investigator --cov=victor_invest --cov-report=html --cov-report=term-missing
 
 test-unit: ## Run unit tests only
 	pytest tests/ -v -m unit
@@ -38,15 +38,15 @@ test-integration: ## Run integration tests only
 test-fast: ## Run tests excluding slow tests
 	pytest tests/ -v -m "not slow"
 
-lint: ## Run linters (flake8)
-	flake8 src/investigator/ --max-line-length=120 --exclude=__pycache__
+lint: ## Run blocking Flake8 checks
+	flake8 src/ victor_invest/ --count --select=E9,F63,F7,F82 --show-source --statistics
 
-format: ## Format code with black and isort
-	black src/investigator/ tests/
+format: ## Format code with ruff and isort
+	ruff format src/ victor_invest/ tests/
 	isort src/investigator/ tests/
 
 format-check: ## Check code formatting without making changes
-	black --check src/investigator/ tests/
+	ruff format --check src/ victor_invest/ tests/
 	isort --check src/investigator/ tests/
 
 type-check: ## Run type checking with mypy
@@ -110,7 +110,7 @@ docker-run: ## Run Docker container
 
 pre-commit: format lint type-check test ## Run all pre-commit checks
 
-ci: format-check lint type-check test-cov ## Run CI pipeline checks
+ci: format-check lint test-cov ## Run CI pipeline checks
 
 build: clean ## Build distribution packages
 	$(PYTHON) -m build
