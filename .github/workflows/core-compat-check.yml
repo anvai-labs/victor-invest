@@ -46,7 +46,7 @@ jobs:
           VICTOR_REF="${{ github.event.client_payload.victor_ref }}"
           VICTOR_BRANCH="${{ github.event.client_payload.victor_branch }}"
           echo "Installing victor-ai @ ${VICTOR_REF} (branch: ${VICTOR_BRANCH})"
-          pip install "git+https://github.com/vjsingh1984/victor.git@${VICTOR_REF}#subdirectory=victor-sdk"
+          pip install "git+https://github.com/vjsingh1984/victor.git@${VICTOR_REF}#subdirectory=victor-contracts"
           pip install "git+https://github.com/vjsingh1984/victor.git@${VICTOR_REF}"
           pip install -e ".[dev]"
 
@@ -55,7 +55,7 @@ jobs:
           python -c "
           import importlib.metadata as m
           print('victor-ai:', m.version('victor-ai'))
-          print('victor-sdk:', m.version('victor-sdk'))
+          print('victor-contracts:', m.version('victor-contracts'))
           print('victor-invest:', m.version('victor-invest'))
           "
 
