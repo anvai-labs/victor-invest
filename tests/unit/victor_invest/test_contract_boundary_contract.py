@@ -57,9 +57,9 @@ class TestContractBoundaryContract:
             "victor_invest/vertical/investment_vertical.py",
         ]
         banned_imports = (
-            "from victor" "_sdk import",
-            "from victor" "_sdk.verticals import",
-            "from victor" "_sdk.verticals.protocols import",
+            "from victor_sdk import",
+            "from victor_sdk.verticals import",
+            "from victor_sdk.verticals.protocols import",
         )
 
         for module in modules:
