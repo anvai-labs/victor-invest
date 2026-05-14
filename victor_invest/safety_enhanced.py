@@ -31,9 +31,9 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
-from victor_sdk.safety import SafetyAction, SafetyCategory, SafetyCoordinator, SafetyRule
-from victor_sdk.verticals.protocols import SafetyExtensionProtocol
-from victor_sdk.verticals.protocols.promoted_types import SafetyPatternData as SafetyPattern
+from victor_contracts.safety import SafetyAction, SafetyCategory, SafetyCoordinator, SafetyRule
+from victor_contracts.verticals.protocols import SafetyExtensionProtocol
+from victor_contracts.verticals.protocols.promoted_types import SafetyPatternData as SafetyPattern
 
 logger = logging.getLogger(__name__)
 

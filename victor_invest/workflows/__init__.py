@@ -72,10 +72,10 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
-from victor_sdk.workflow_runtime import BaseYAMLWorkflowProvider
+from victor_contracts.workflow_runtime import BaseYAMLWorkflowProvider
 
 if TYPE_CHECKING:
-    from victor_sdk.workflow_executor_runtime import WorkflowResult
+    from victor_contracts.workflow_executor_runtime import WorkflowResult
 
 from victor_invest.workflows.graphs import (
     build_comprehensive_graph,
@@ -237,7 +237,7 @@ class InvestmentWorkflowProvider(BaseYAMLWorkflowProvider):
                 synthesis = result.context.get("synthesis")
                 print(f"Recommendation: {synthesis.get('recommendation')}")
         """
-        from victor_sdk.workflow_executor_runtime import WorkflowExecutor
+        from victor_contracts.workflow_executor_runtime import WorkflowExecutor
 
         from victor_invest.framework_bootstrap import create_investment_orchestrator
 
@@ -307,7 +307,7 @@ class InvestmentWorkflowProvider(BaseYAMLWorkflowProvider):
                 print(f"Recommendation: {synthesis.get('recommendation')}")
         """
         from victor.tools.registry import ToolRegistry
-        from victor_sdk.workflow_executor_runtime import WorkflowExecutor
+        from victor_contracts.workflow_executor_runtime import WorkflowExecutor
 
         # Ensure handlers are registered
         ensure_handlers_registered()
@@ -378,7 +378,7 @@ def ensure_handlers_registered() -> None:
     synced = False
     sync_method_used = None
     try:
-        from victor_sdk.handler_runtime import sync_handlers_with_executor
+        from victor_contracts.handler_runtime import sync_handlers_with_executor
 
         sync_handlers_with_executor(direction="to_executor")
         synced = True
@@ -390,7 +390,7 @@ def ensure_handlers_registered() -> None:
         # Compatibility path for newer/older Victor variants:
         # use registry.sync_with_executor() if available.
         try:
-            from victor_sdk.handler_runtime import get_handler_registry
+            from victor_contracts.handler_runtime import get_handler_registry
 
             registry = get_handler_registry()
             sync_method = getattr(registry, "sync_with_executor", None)
@@ -405,8 +405,8 @@ def ensure_handlers_registered() -> None:
         # Last-resort bridge: push handlers from framework registry to
         # executor registry directly when helper APIs are unavailable.
         try:
-            from victor_sdk.handler_runtime import get_handler_registry
-            from victor_sdk.workflow_executor_runtime import register_compute_handler
+            from victor_contracts.handler_runtime import get_handler_registry
+            from victor_contracts.workflow_executor_runtime import register_compute_handler
 
             registry = get_handler_registry()
             # list_handlers returns Dict[str, List[str]] mapping vertical names to handler names

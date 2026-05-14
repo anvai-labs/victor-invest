@@ -43,7 +43,7 @@ classifiers = [
 
 dependencies = [
     # Victor SDK definition contract
-    "victor-sdk>=0.7.0,<1.0",
+    "victor-contracts>=0.7.0,<1.0",
 
     # Core dependencies
     "requests>=2.31.0",

@@ -93,7 +93,7 @@ import logging
 from typing import Any, Callable, Dict, Optional, cast
 from weakref import WeakKeyDictionary
 
-from victor_sdk.graph_runtime import END, StateGraph
+from victor_contracts.graph_runtime import END, StateGraph
 
 from victor_invest.agents import (
     FUNDAMENTAL_AGENT_SPEC,
