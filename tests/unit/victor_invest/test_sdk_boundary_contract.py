@@ -1,7 +1,7 @@
-"""SDK Boundary Contract Tests for victor-invest.
+"""Contract Boundary Tests for victor-invest.
 
-Validates that the investment vertical adheres to SDK boundary rules:
-1. Plugin.py and vertical definition use SDK imports only (module-level)
+Validates that the investment vertical adheres to contract boundary rules:
+1. Plugin.py and vertical definition use contract imports only (module-level)
 2. pyproject.toml keeps victor-sdk in base deps, victor-ai in optional
 3. Vertical class inherits from SDK VerticalBase
 4. Core imports are banned from production modules
@@ -32,7 +32,7 @@ _BANNED_IMPORTS = (
 
 
 class TestSDKBoundaryContract:
-    """Ensure invest production code respects SDK boundary."""
+    """Ensure invest production code respects contract boundary."""
 
     def test_sdk_boundary_modules_avoid_core_imports(self):
         """Key modules must not have module-level core imports."""
@@ -42,7 +42,27 @@ class TestSDKBoundaryContract:
                 continue
             source = filepath.read_text(encoding="utf-8")
             for banned in _BANNED_IMPORTS:
-                assert banned not in source, f"{module} imports from banned path '{banned}'. Use victor_sdk instead."
+                assert banned not in source, (
+                    f"{module} imports from banned path '{banned}'. Use victor_contracts instead."
+                )
+
+    def test_public_contract_modules_use_contract_namespace(self):
+        """Public plugin and vertical modules must import definitions from victor_contracts."""
+        modules = [
+            "victor_invest/plugin.py",
+            "victor_invest/vertical/__init__.py",
+            "victor_invest/vertical/investment_vertical.py",
+        ]
+        banned_imports = (
+            "from victor_sdk import",
+            "from victor_sdk.verticals import",
+            "from victor_sdk.verticals.protocols import",
+        )
+
+        for module in modules:
+            source = (_REPO_ROOT / module).read_text(encoding="utf-8")
+            for banned in banned_imports:
+                assert banned not in source, f"{module} still imports {banned}"
 
     def test_pyproject_sdk_in_base_deps(self):
         """victor-sdk must be in base dependencies, not optional."""
@@ -70,12 +90,12 @@ class TestSDKBoundaryContract:
 
     def test_vertical_inherits_sdk_base(self):
         """InvestmentVertical must inherit from SDK VerticalBase."""
-        from victor_sdk.verticals.protocols.base import VerticalBase
+        from victor_contracts.verticals.protocols.base import VerticalBase
 
         from victor_invest.vertical.investment_vertical import InvestmentVertical
 
         assert issubclass(InvestmentVertical, VerticalBase), (
-            "InvestmentVertical must inherit from victor_sdk VerticalBase"
+            "InvestmentVertical must inherit from victor_contracts VerticalBase"
         )
 
     def test_plugin_implements_victor_plugin(self):

@@ -33,7 +33,7 @@ Example:
 """
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from victor_invest.tools.base import BaseTool, ToolResult
 
@@ -130,6 +130,8 @@ class FairMultipleCalculatorTool(BaseTool):
         )
 
         # Calculate for single metric or all
+        result_data: dict[str, Any]
+
         if metric == "all":
             results = calculator.calculate_all_fair_multiples(symbol=symbol, sector=sector, industry=industry)
 
@@ -190,8 +192,12 @@ class FairMultipleCalculatorTool(BaseTool):
                 },
             }
 
+        multiples = result_data.get("multiples")
+        metric_count = len(multiples) if isinstance(multiples, dict) else 1
         logger.info(
-            f"Fair multiple calculation complete for {symbol}: {len(result_data.get('multiples', {})) or 1} metric(s)"
+            "Fair multiple calculation complete for %s: %s metric(s)",
+            symbol,
+            metric_count,
         )
 
         return ToolResult.create_success(result_data)

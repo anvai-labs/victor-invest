@@ -64,8 +64,8 @@ See: docs/ARCHITECTURE_DECISION_DATA_ACCESS.md for full rationale.
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from victor_sdk import StageDefinition, ToolSet, VerticalBase
-from victor_sdk.verticals import register_vertical
+from victor_contracts import StageDefinition, ToolSet, VerticalBase
+from victor_contracts.verticals import register_vertical
 
 DEFAULT_INVESTMENT_TOOL_NAMES = [
     "sec_filing",

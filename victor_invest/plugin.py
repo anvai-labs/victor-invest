@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Optional
 
-from victor_sdk import PluginContext, VictorPlugin
+from victor_contracts import PluginContext, VictorPlugin
 
 logger = logging.getLogger(__name__)
 
