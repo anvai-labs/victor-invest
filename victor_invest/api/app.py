@@ -58,7 +58,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from pydantic import BaseModel, Field
+from sqlalchemy import bindparam, text
 
+from investigator.application.decision_input_extractor import from_symbol_ranking_row
+from investigator.domain.services.investment_decision_policy import InvestmentDecisionPolicy
 from victor_invest import __version__ as VICTOR_INVEST_VERSION
 
 # Victor framework imports
@@ -213,8 +216,6 @@ async def lifespan(app: FastAPI):
 
     # Try to initialize database
     try:
-        from sqlalchemy import text
-
         from investigator.infrastructure.database import get_database_engine
 
         engine = get_database_engine()
@@ -660,6 +661,24 @@ def _get_latest_ui_payload(symbol: str) -> Optional[Dict[str, Any]]:
         return from_logs
 
     return None
+
+
+def _ui_view_matches_valuation_request(
+    view: Dict[str, Any],
+    *,
+    valuation_basis: str,
+    forward_horizon: Optional[str],
+) -> bool:
+    """Return whether a normalized UI view matches a requested valuation basis."""
+    summary = view.get("summary", {}) if isinstance(view, dict) else {}
+    actual_basis = str(summary.get("valuation_basis") or "").strip().lower()
+    actual_horizon = str(summary.get("forward_horizon") or "").strip().lower()
+
+    if actual_basis != valuation_basis:
+        return False
+    if valuation_basis == "forward":
+        return actual_horizon == str(forward_horizon or "1y").strip().lower()
+    return True
 
 
 def _normalize_valuation_inputs(basis: Optional[str], horizon: Optional[str]) -> tuple[str, str]:
@@ -1200,6 +1219,162 @@ def _load_rankable_cache_entries() -> List[Dict[str, Any]]:
     return list(latest_by_symbol.values())
 
 
+def _load_rankable_db_entries() -> List[Dict[str, Any]]:
+    """
+    Load latest valuation rows from the database-backed symbol table.
+
+    The UI cache remains a useful fallback, but the database is the source of
+    truth for batch-generated fair values and avoids requiring a prior UI hit.
+    """
+    engine = getattr(getattr(app, "state", None), "db_engine", None)
+    if engine is None:
+        return []
+
+    try:
+        with engine.connect() as conn:
+            col_rows = conn.execute(
+                text("""
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'symbol'
+                """)
+            ).fetchall()
+            cols = {str(row[0]) for row in col_rows}
+            required = {"ticker", "fair_value_blended", "valuation_updated_at"}
+            if not required.issubset(cols):
+                return []
+
+            split_table_rows = conn.execute(
+                text("""
+                    SELECT table_name
+                    FROM information_schema.tables
+                    WHERE table_schema = 'public'
+                      AND table_name = 'stock_splits'
+                """)
+            ).fetchall()
+            has_stock_splits = bool(split_table_rows)
+
+            def col(name: str) -> str:
+                return f"s.{name}" if name in cols else "NULL"
+
+            sector_candidates = [
+                f"s.{name}" for name in ("sec_sector", "sector", "sec_industry", "industry") if name in cols
+            ]
+            sector_expr = f"COALESCE({', '.join(sector_candidates)})" if sector_candidates else "NULL"
+            current_price_expr = "td.close"
+            if has_stock_splits:
+                split_adjustment_expr = "COALESCE(split_adj.adjustment_factor, 1.0)"
+                split_count_expr = "COALESCE(split_adj.split_count, 0)"
+                split_join = """
+                LEFT JOIN LATERAL (
+                    SELECT
+                        EXP(SUM(LN(ss.split_ratio::double precision))) AS adjustment_factor,
+                        COUNT(*) AS split_count
+                    FROM stock_splits ss
+                    WHERE UPPER(ss.symbol) = UPPER(s.ticker)
+                      AND ss.split_date > s.valuation_updated_at::date
+                      AND ss.split_ratio > 0
+                ) split_adj ON true
+                """
+            else:
+                split_adjustment_expr = "1.0"
+                split_count_expr = "0"
+                split_join = ""
+            target_expr = f"(s.fair_value_blended / {split_adjustment_expr})"
+            quality_expr = col("data_quality_score")
+            agreement_expr = col("model_agreement_score")
+            confidence_candidates = [
+                f"s.{name}"
+                for name in ("overall_confidence", "model_confidence", "confidence_score", "model_agreement_score")
+                if name in cols
+            ]
+            confidence_expr = f"COALESCE({', '.join(confidence_candidates)})" if confidence_candidates else "NULL"
+            if "dispersion_ratio" in cols:
+                dispersion_expr = "s.dispersion_ratio"
+            elif "model_agreement_score" in cols:
+                dispersion_expr = "GREATEST(0.0, 1.0 - s.model_agreement_score)"
+            else:
+                dispersion_expr = "NULL"
+            applicable_expr = col("applicable_models")
+
+            query = text(f"""
+                SELECT
+                    s.ticker AS symbol,
+                    {sector_expr} AS sector,
+                    {col("valuation_signal")} AS action,
+                    {confidence_expr} AS confidence_score,
+                    {current_price_expr} AS current_price,
+                    {target_expr} AS target_price,
+                    s.fair_value_blended AS raw_target_price,
+                    {split_adjustment_expr} AS split_adjustment_factor,
+                    {split_count_expr} AS split_adjustments_applied,
+                    CASE
+                        WHEN td.close > 0 AND {target_expr} > 0
+                        THEN (({target_expr} / td.close) - 1.0) * 100.0
+                        ELSE NULL
+                    END AS expected_return_pct,
+                    {quality_expr} AS data_quality_score,
+                    {col("quality_grade")} AS quality_grade,
+                    {agreement_expr} AS model_agreement_score,
+                    {dispersion_expr} AS dispersion_ratio,
+                    {col("valuation_basis")} AS valuation_basis,
+                    {col("forward_horizon")} AS forward_horizon,
+                    s.valuation_updated_at AS cached_at,
+                    {applicable_expr} AS weighted_model_count
+                FROM symbol s
+                JOIN LATERAL (
+                    SELECT close
+                    FROM tickerdata
+                    WHERE tickerdata.ticker = s.ticker
+                    ORDER BY tickerdata.date DESC
+                    LIMIT 1
+                ) td ON true
+                {split_join}
+                WHERE s.fair_value_blended IS NOT NULL
+                  AND s.valuation_updated_at IS NOT NULL
+            """)
+            rows = conn.execute(query).mappings().all()
+    except Exception as exc:
+        logger.warning("Failed to load DB-backed ranking entries: %s", exc)
+        return []
+
+    entries: List[Dict[str, Any]] = []
+    for row in rows:
+        cached_at = row.get("cached_at")
+        cached_at_text = cached_at.isoformat() if hasattr(cached_at, "isoformat") else str(cached_at or "")
+        entries.append(
+            {
+                "symbol": str(row.get("symbol") or "").upper(),
+                "sector": str(row.get("sector") or "Unknown"),
+                "action": row.get("action"),
+                "confidence_score": _to_confidence_percent(row.get("confidence_score")),
+                "recommendation_confidence_score": None,
+                "valuation_confidence_score": _to_confidence_percent(row.get("confidence_score")),
+                "current_price": _safe_float(row.get("current_price")),
+                "target_price": _safe_float(row.get("target_price")),
+                "raw_target_price": _safe_float(row.get("raw_target_price")),
+                "split_adjustment_factor": _safe_float(row.get("split_adjustment_factor")) or 1.0,
+                "split_adjustments_applied": int(_safe_float(row.get("split_adjustments_applied")) or 0),
+                "expected_return_pct": _safe_float(row.get("expected_return_pct")),
+                "data_quality_score": _safe_float(row.get("data_quality_score")),
+                "quality_grade": row.get("quality_grade"),
+                "model_agreement_score": _safe_float(row.get("model_agreement_score")),
+                "dispersion_ratio": _safe_float(row.get("dispersion_ratio")),
+                "valuation_basis": row.get("valuation_basis") or "ttm",
+                "forward_horizon": row.get("forward_horizon"),
+                "cached_at": cached_at_text,
+                "cached_at_epoch": _parse_cached_at_epoch(cached_at_text, 0.0),
+                "source": "db:symbol",
+                "weighted_model_count": int(_safe_float(row.get("weighted_model_count")) or 0),
+                "max_model_weight": None,
+                "dominant_model": None,
+            }
+        )
+
+    return [entry for entry in entries if entry.get("symbol")]
+
+
 def _load_symbol_metadata(symbols: List[str]) -> Dict[str, Dict[str, Any]]:
     """
     Best-effort metadata enrichment from symbol table (beta/mktcap/sector).
@@ -1374,6 +1549,70 @@ def _compute_portfolio_preview(
     }
 
 
+def _attach_decision_policy(item: Dict[str, Any]) -> None:
+    """Attach deterministic decision policy fields to a rankable item."""
+    try:
+        policy_output = InvestmentDecisionPolicy().evaluate(from_symbol_ranking_row(item))
+    except Exception as exc:
+        logger.debug("Decision policy ranking enrichment skipped for %s: %s", item.get("symbol"), exc)
+        return
+
+    payload = {
+        "action": policy_output.action,
+        "display_action": str(policy_output.action).replace("_", " "),
+        "confidence": policy_output.confidence,
+        "score": policy_output.score,
+        "expected_return_pct": policy_output.expected_return_pct,
+        "guardrails_triggered": list(policy_output.guardrails_triggered),
+        "evidence": policy_output.evidence,
+    }
+    item["decision_policy"] = payload
+    item["decision_action"] = policy_output.action
+    item["decision_confidence"] = policy_output.confidence
+    item["decision_score"] = policy_output.score
+    item["guardrails_triggered"] = list(policy_output.guardrails_triggered)
+
+
+def _decision_action_rank(action: Optional[str], *, side: str) -> int:
+    action_text = str(action or "").upper()
+    if side == "long":
+        return {
+            "STRONG_BUY": 5,
+            "BUY": 4,
+            "HOLD": 3,
+            "REVIEW": 2,
+            "SELL": 1,
+            "STRONG_SELL": 0,
+        }.get(action_text, 0)
+    return {
+        "STRONG_SELL": 5,
+        "SELL": 4,
+        "HOLD": 3,
+        "REVIEW": 2,
+        "BUY": 1,
+        "STRONG_BUY": 0,
+    }.get(action_text, 0)
+
+
+def _long_ranking_key(item: Dict[str, Any]) -> tuple[float, float, float, float]:
+    return (
+        float(_decision_action_rank(item.get("decision_action"), side="long")),
+        _safe_float(item.get("expected_return_pct")) or -9999.0,
+        _safe_float(item.get("model_agreement_score")) or 0.0,
+        _safe_float(item.get("data_quality_score")) or 0.0,
+    )
+
+
+def _short_ranking_key(item: Dict[str, Any]) -> tuple[float, float, float, float]:
+    expected = _safe_float(item.get("expected_return_pct"))
+    return (
+        float(_decision_action_rank(item.get("decision_action"), side="short")),
+        abs(expected) if expected is not None else -9999.0,
+        _safe_float(item.get("model_agreement_score")) or 0.0,
+        _safe_float(item.get("data_quality_score")) or 0.0,
+    )
+
+
 def _build_rankings_payload(
     entries: List[Dict[str, Any]],
     *,
@@ -1397,10 +1636,14 @@ def _build_rankings_payload(
     min_target_multiple: float = 0.1,
     max_target_multiple: float = 10.0,
     require_positive_target: bool = True,
+    exclude_split_suspects: bool = True,
+    split_suspect_min_multiple: float = 4.0,
+    split_suspect_max_inverse_multiple: float = 0.25,
     symbol_metadata: Optional[Dict[str, Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     now_epoch = datetime.utcnow().timestamp()
     filtered: List[Dict[str, Any]] = []
+    split_suspect_count = 0
     for item in entries:
         expected = _safe_float(item.get("expected_return_pct"))
         if expected is None:
@@ -1458,8 +1701,21 @@ def _build_rankings_payload(
             target_multiple = target_price / current_price
             if target_multiple < min_target_multiple or target_multiple > max_target_multiple:
                 continue
+            is_split_suspect = (
+                exclude_split_suspects
+                and agreement is not None
+                and agreement >= 0.7
+                and (
+                    target_multiple >= split_suspect_min_multiple
+                    or target_multiple <= split_suspect_max_inverse_multiple
+                )
+            )
+            if is_split_suspect:
+                split_suspect_count += 1
+                continue
             enriched["target_multiple"] = round(target_multiple, 4)
 
+        _attach_decision_policy(enriched)
         filtered.append(enriched)
 
     symbol_metadata = symbol_metadata or {}
@@ -1467,12 +1723,13 @@ def _build_rankings_payload(
     short_candidates = [x for x in filtered if (_safe_float(x.get("expected_return_pct")) or 0.0) < 0]
     overall_longs = sorted(
         long_candidates,
-        key=lambda x: _safe_float(x.get("expected_return_pct")) or -9999,
+        key=_long_ranking_key,
         reverse=True,
     )[:limit]
     overall_shorts = sorted(
         short_candidates,
-        key=lambda x: _safe_float(x.get("expected_return_pct")) or 9999,
+        key=_short_ranking_key,
+        reverse=True,
     )[:limit]
 
     grouped: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
@@ -1487,12 +1744,13 @@ def _build_rankings_payload(
 
         sorted_longs = sorted(
             [x for x in items if (_safe_float(x.get("expected_return_pct")) or 0.0) > 0],
-            key=lambda x: _safe_float(x.get("expected_return_pct")) or -9999,
+            key=_long_ranking_key,
             reverse=True,
         )
         sorted_shorts = sorted(
             [x for x in items if (_safe_float(x.get("expected_return_pct")) or 0.0) < 0],
-            key=lambda x: _safe_float(x.get("expected_return_pct")) or 9999,
+            key=_short_ranking_key,
+            reverse=True,
         )
 
         longs = sorted_longs[:per_sector]
@@ -1605,11 +1863,15 @@ def _build_rankings_payload(
             "min_target_multiple": min_target_multiple,
             "max_target_multiple": max_target_multiple,
             "require_positive_target": require_positive_target,
+            "exclude_split_suspects": exclude_split_suspects,
+            "split_suspect_min_multiple": split_suspect_min_multiple,
+            "split_suspect_max_inverse_multiple": split_suspect_max_inverse_multiple,
         },
         "universe": {
             "cached_symbols": len(entries),
             "eligible_symbols": len(filtered),
             "sector_count": len({str(i.get("sector") or "Unknown") for i in filtered}),
+            "split_suspect_symbols": split_suspect_count,
         },
         "overall": {
             "longs": overall_longs,
@@ -1643,8 +1905,11 @@ def _compute_rankings(
     min_target_multiple: float,
     max_target_multiple: float,
     require_positive_target: bool,
+    exclude_split_suspects: bool,
 ) -> Dict[str, Any]:
-    entries = _load_rankable_cache_entries()
+    entries = _load_rankable_db_entries()
+    if not entries:
+        entries = _load_rankable_cache_entries()
     if not entries:
         return {
             "generated_at": datetime.utcnow().isoformat(),
@@ -1669,8 +1934,14 @@ def _compute_rankings(
                 "min_target_multiple": min_target_multiple,
                 "max_target_multiple": max_target_multiple,
                 "require_positive_target": require_positive_target,
+                "exclude_split_suspects": exclude_split_suspects,
             },
-            "universe": {"cached_symbols": 0, "eligible_symbols": 0, "sector_count": 0},
+            "universe": {
+                "cached_symbols": 0,
+                "eligible_symbols": 0,
+                "sector_count": 0,
+                "split_suspect_symbols": 0,
+            },
             "overall": {"longs": [], "shorts": []},
             "sectors": [],
             "pairs": [],
@@ -1700,6 +1971,7 @@ def _compute_rankings(
         min_target_multiple=min_target_multiple,
         max_target_multiple=max_target_multiple,
         require_positive_target=require_positive_target,
+        exclude_split_suspects=exclude_split_suspects,
         symbol_metadata=metadata,
     )
 
@@ -1715,6 +1987,9 @@ def _rankings_to_csv(payload: Dict[str, Any], export_type: str) -> str:
                 "rank",
                 "symbol",
                 "sector",
+                "decision_action",
+                "decision_confidence",
+                "decision_score",
                 "expected_return_pct",
                 "confidence_score",
                 "valuation_confidence_score",
@@ -1739,6 +2014,9 @@ def _rankings_to_csv(payload: Dict[str, Any], export_type: str) -> str:
                         idx,
                         item.get("symbol"),
                         item.get("sector"),
+                        item.get("decision_action"),
+                        item.get("decision_confidence"),
+                        item.get("decision_score"),
                         item.get("expected_return_pct"),
                         item.get("confidence_score"),
                         item.get("valuation_confidence_score"),
@@ -1975,7 +2253,7 @@ def _build_chart_payload(symbol: str, days: int, ui_view: Optional[Dict[str, Any
 
     last_row = data.iloc[-1]
     current_price = _safe_float(summary.get("current_price")) or _safe_float(last_row.get("Close"))
-    fair_value = _safe_float(summary.get("target_price")) or _safe_float(summary.get("blended_fair_value"))
+    fair_value = _safe_float(summary.get("blended_fair_value")) or _safe_float(summary.get("target_price"))
 
     level_payload = {
         "pivot_point": _safe_float(levels.get("pivot_point")),
@@ -2023,14 +2301,11 @@ def _build_chart_payload(symbol: str, days: int, ui_view: Optional[Dict[str, Any
 
 
 def _get_latest_orchestrator_payload(symbol: str) -> Optional[Dict[str, Any]]:
-    """Fetch latest analysis payload from llm_responses (legacy + compact variants)."""
+    """Fetch the newest valid analysis payload from llm_responses."""
     try:
         if getattr(app.state, "db_engine", None) is None:
             return None
 
-        from investigator.infrastructure.database.db import get_llm_responses_dao
-
-        dao = get_llm_responses_dao()
         candidate_types = (
             "orchestrator_comprehensive",
             "orchestrator_standard",
@@ -2054,13 +2329,49 @@ def _get_latest_orchestrator_payload(symbol: str) -> Optional[Dict[str, Any]]:
                 "source": f"db:{row.get('llm_type')}",
             }
 
-        for llm_type in candidate_types:
-            hit = _row_to_payload(dao.get_llm_response(symbol=symbol, llm_type=llm_type))
-            if hit:
-                return hit
+        with app.state.db_engine.connect() as conn:
+            orchestrator_rows = (
+                conn.execute(
+                    text("""
+                    SELECT symbol, form_type, period, prompt, model_info, response, metadata, llm_type, ts
+                    FROM llm_responses
+                    WHERE symbol = :symbol
+                      AND llm_type IN :candidate_types
+                    ORDER BY ts DESC
+                    LIMIT 20
+                """).bindparams(bindparam("candidate_types", expanding=True)),
+                    {"symbol": symbol, "candidate_types": list(candidate_types)},
+                )
+                .mappings()
+                .all()
+            )
 
-        # Final fallback: latest row for symbol regardless of llm_type.
-        return _row_to_payload(dao.get_llm_response(symbol=symbol))
+            for row in orchestrator_rows:
+                hit = _row_to_payload(dict(row))
+                if hit:
+                    return hit
+
+            fallback_rows = (
+                conn.execute(
+                    text("""
+                    SELECT symbol, form_type, period, prompt, model_info, response, metadata, llm_type, ts
+                    FROM llm_responses
+                    WHERE symbol = :symbol
+                    ORDER BY ts DESC
+                    LIMIT 20
+                """),
+                    {"symbol": symbol},
+                )
+                .mappings()
+                .all()
+            )
+
+            for row in fallback_rows:
+                hit = _row_to_payload(dict(row))
+                if hit:
+                    return hit
+
+        return None
     except Exception as exc:
         logger.warning("Failed to load latest orchestrator payload for %s: %s", symbol, exc)
         return None
@@ -2335,23 +2646,35 @@ async def ui_refresh_analysis(symbol: str, request: UIRefreshRequest):
         if legacy_exec["returncode"] == 0:
             if legacy_exec.get("parsed_payload"):
                 parsed_payload = legacy_exec["parsed_payload"]
-                _save_ui_cache(
-                    normalized_symbol,
-                    parsed_payload,
-                    source="legacy_cli_stdout",
-                    cached_at=datetime.utcnow().isoformat(),
-                )
-                refresh_result_available = True
-                return {
-                    "symbol": normalized_symbol,
-                    "mode": analysis_mode.value,
-                    "status": "completed",
-                    "cached_at": datetime.utcnow().isoformat(),
-                    "source": "legacy_cli_stdout",
-                    "valuation_basis": valuation_basis,
-                    "forward_horizon": forward_horizon,
-                    "view": _extract_ui_view_from_payload(parsed_payload),
-                }
+                view = _extract_ui_view_from_payload(parsed_payload)
+                if not _ui_view_matches_valuation_request(
+                    view,
+                    valuation_basis=valuation_basis,
+                    forward_horizon=forward_horizon,
+                ):
+                    legacy_error = (
+                        "Legacy CLI produced analysis with a different valuation basis/horizon "
+                        f"than requested ({valuation_basis}/{forward_horizon})."
+                    )
+                    parsed_payload = None
+                else:
+                    _save_ui_cache(
+                        normalized_symbol,
+                        parsed_payload,
+                        source="legacy_cli_stdout",
+                        cached_at=datetime.utcnow().isoformat(),
+                    )
+                    refresh_result_available = True
+                    return {
+                        "symbol": normalized_symbol,
+                        "mode": analysis_mode.value,
+                        "status": "completed",
+                        "cached_at": datetime.utcnow().isoformat(),
+                        "source": "legacy_cli_stdout",
+                        "valuation_basis": valuation_basis,
+                        "forward_horizon": forward_horizon,
+                        "view": view,
+                    }
         else:
             legacy_error = legacy_exec["stdout"][-5000:] if legacy_exec.get("stdout") else "legacy CLI failed"
 
@@ -2376,16 +2699,29 @@ async def ui_refresh_analysis(symbol: str, request: UIRefreshRequest):
     cached = _get_latest_ui_payload(normalized_symbol)
     if cached:
         payload = cached["payload"]
-        return {
-            "symbol": normalized_symbol,
-            "mode": analysis_mode.value,
-            "status": "completed",
-            "cached_at": cached.get("cached_at"),
-            "source": cached.get("source"),
-            "valuation_basis": valuation_basis,
-            "forward_horizon": forward_horizon,
-            "view": _extract_ui_view_from_payload(payload),
-        }
+        view = _extract_ui_view_from_payload(payload)
+        if not _ui_view_matches_valuation_request(
+            view,
+            valuation_basis=valuation_basis,
+            forward_horizon=forward_horizon,
+        ):
+            logger.warning(
+                "Skipping cached analysis for %s after refresh because basis/horizon did not match %s/%s",
+                normalized_symbol,
+                valuation_basis,
+                forward_horizon,
+            )
+        else:
+            return {
+                "symbol": normalized_symbol,
+                "mode": analysis_mode.value,
+                "status": "completed",
+                "cached_at": cached.get("cached_at"),
+                "source": cached.get("source"),
+                "valuation_basis": valuation_basis,
+                "forward_horizon": forward_horizon,
+                "view": view,
+            }
 
     if live_result is not None:
         recommendation = live_result.recommendation if isinstance(live_result.recommendation, dict) else {}
@@ -2398,6 +2734,7 @@ async def ui_refresh_analysis(symbol: str, request: UIRefreshRequest):
                     recommendation.get("confidence_score") if isinstance(recommendation, dict) else None
                 ),
                 "valuation_basis": valuation_basis,
+                "forward_horizon": forward_horizon if valuation_basis == "forward" else None,
                 "thesis": (recommendation.get("executive_summary", "") if isinstance(recommendation, dict) else ""),
                 "key_catalysts": (recommendation.get("key_catalysts", []) if isinstance(recommendation, dict) else []),
                 "key_risks": (recommendation.get("key_risks", []) if isinstance(recommendation, dict) else []),
@@ -2513,12 +2850,13 @@ async def ui_rankings(
     min_target_multiple: float = Query(0.1, ge=0.0, le=100.0),
     max_target_multiple: float = Query(10.0, ge=0.0, le=1000.0),
     require_positive_target: bool = Query(True),
+    exclude_split_suspects: bool = Query(True),
 ):
     """
-    Rank cached symbols for long/short screening overall and per sector.
+    Rank symbols for long/short screening overall and per sector.
 
-    Uses dashboard cache entries (artifacts/ui_cache/*.json), so this endpoint is
-    fast and works directly with precomputed analyses.
+    Uses database-backed fair values first, then dashboard cache entries
+    (artifacts/ui_cache/*.json) as a fallback.
     """
     return _compute_rankings(
         limit=limit,
@@ -2541,6 +2879,7 @@ async def ui_rankings(
         min_target_multiple=min_target_multiple,
         max_target_multiple=max_target_multiple,
         require_positive_target=require_positive_target,
+        exclude_split_suspects=exclude_split_suspects,
     )
 
 
@@ -2567,6 +2906,7 @@ async def ui_rankings_export_csv(
     min_target_multiple: float = Query(0.1, ge=0.0, le=100.0),
     max_target_multiple: float = Query(10.0, ge=0.0, le=1000.0),
     require_positive_target: bool = Query(True),
+    exclude_split_suspects: bool = Query(True),
 ):
     payload = _compute_rankings(
         limit=limit,
@@ -2589,6 +2929,7 @@ async def ui_rankings_export_csv(
         min_target_multiple=min_target_multiple,
         max_target_multiple=max_target_multiple,
         require_positive_target=require_positive_target,
+        exclude_split_suspects=exclude_split_suspects,
     )
     csv_data = _rankings_to_csv(payload, export_type)
     filename = f"rankings_{export_type}_{datetime.utcnow().strftime('%Y%m%d')}.csv"

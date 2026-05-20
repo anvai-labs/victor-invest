@@ -59,6 +59,10 @@ payload = _compute_rankings(
     require_dispersion=True,
     max_single_model_weight=0.8,
     require_multi_model=True,
+    min_target_multiple=0.1,
+    max_target_multiple=10.0,
+    require_positive_target=True,
+    exclude_split_suspects=True,
 )
 
 reports_dir = Path("artifacts/reports")

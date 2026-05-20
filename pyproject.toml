@@ -339,14 +339,20 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["src/investigator", "victor_invest"]
+branch = true
+source = ["investigator", "victor_invest"]
 omit = [
-    "*/tests/*",
-    "*/test_*",
-    "*/__pycache__/*",
+    "tests/*",
+    "artifacts/*",
+    "data/*",
+    "docs/*",
+    "frontend/*",
 ]
 
 [tool.coverage.report]
+precision = 2
+show_missing = true
+skip_empty = true
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
@@ -356,3 +362,12 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "@abstractmethod",
 ]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.coverage.xml]
+output = "coverage.xml"
+
+[tool.coverage.json]
+output = "coverage.json"

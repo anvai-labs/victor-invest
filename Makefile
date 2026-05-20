@@ -1,10 +1,14 @@
-.PHONY: help install dev-install test test-cov lint format type-check clean run analyze status cache-clean benchmark-workflows frontend-install frontend-dev frontend-build frontend-lint frontend-type-check
+.PHONY: help install dev-install test test-cov coverage-report coverage-modules coverage-gate lint format type-check clean run analyze status cache-clean benchmark-workflows frontend-install frontend-dev frontend-build frontend-lint frontend-type-check
 
 .DEFAULT_GOAL := help
 
-# Python >=3.11 required. Prefer python3.11 if available, else fall back to python3.
-PYTHON := $(shell command -v python3.11 2>/dev/null || echo python3)
+# Python >=3.11 required. Prefer the workspace venv used by local automation,
+# then python3.11 if available, else fall back to python3.
+PYTHON := $(shell if [ -x ../.venv/bin/python ]; then echo ../.venv/bin/python; elif command -v python3.11 >/dev/null 2>&1; then command -v python3.11; else echo python3; fi)
 PIP := $(PYTHON) -m pip
+PYTEST := $(PYTHON) -m pytest
+COVERAGE_MIN ?= 66.67
+COVERAGE_PATHS := investigator victor_invest
 
 # Colors for output
 CYAN := \033[0;36m
@@ -24,19 +28,27 @@ dev-install: ## Install package with development dependencies
 	$(PIP) install -e ".[dev,viz,jupyter]"
 
 test: ## Run tests
-	pytest tests/ -v
+	$(PYTEST) tests/ -v
 
-test-cov: ## Run unit tests with coverage report
-	pytest tests/unit/ -v --cov=src/investigator --cov=victor_invest --cov-report=html --cov-report=term-missing
+test-cov: coverage-report ## Run unit tests with repo-wide coverage report
+
+coverage-report: ## Generate repo-wide module coverage reports without enforcing a threshold
+	$(PYTEST) tests/unit/ -v --cov=investigator --cov=victor_invest --cov-report=term-missing --cov-report=html --cov-report=xml --cov-report=json
+
+coverage-modules: coverage-report ## Generate repo-wide coverage and print grouped package/module summary
+	$(PYTHON) scripts/report_module_coverage.py coverage.json
+
+coverage-gate: ## Enforce repo-wide coverage threshold (default COVERAGE_MIN=66.67)
+	$(PYTEST) tests/unit/ -v --cov=investigator --cov=victor_invest --cov-report=term-missing --cov-report=html --cov-report=xml --cov-report=json --cov-fail-under=$(COVERAGE_MIN)
 
 test-unit: ## Run unit tests only
-	pytest tests/ -v -m unit
+	$(PYTEST) tests/ -v -m unit
 
 test-integration: ## Run integration tests only
-	pytest tests/ -v -m integration
+	$(PYTEST) tests/ -v -m integration
 
 test-fast: ## Run tests excluding slow tests
-	pytest tests/ -v -m "not slow"
+	$(PYTEST) tests/ -v -m "not slow"
 
 lint: ## Run blocking Flake8 checks
 	flake8 src/ victor_invest/ --count --select=E9,F63,F7,F82 --show-source --statistics
