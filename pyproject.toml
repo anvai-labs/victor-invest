@@ -46,7 +46,7 @@ dependencies = [
     "victor-contracts>=0.7.0,<1.0",
 
     # Core dependencies
-    "requests>=2.32.0,<2.34",
+    "requests>=2.32.0,<2.35",
     "pandas>=2.0.0",
     "numpy>=1.24.0,<2.3",
     "scipy>=1.11.0",
