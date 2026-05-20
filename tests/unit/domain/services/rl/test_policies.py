@@ -10,12 +10,106 @@ from unittest.mock import MagicMock
 import pytest
 
 from investigator.domain.services.rl.feature_normalizer import FeatureNormalizer
-from investigator.domain.services.rl.models import GrowthStage, ValuationContext
-from investigator.domain.services.rl.policy.base import UniformPolicy
+from investigator.domain.services.rl.models import Experience, GrowthStage, RewardSignal, ValuationContext
+from investigator.domain.services.rl.policy.base import RLPolicy, UniformPolicy
 from investigator.domain.services.rl.policy.contextual_bandit import (
     ContextualBanditPolicy,
 )
+from investigator.domain.services.rl.policy.dual_policy import DualRLPolicy
 from investigator.domain.services.rl.policy.hybrid import HybridPolicy
+
+
+class _RecordingPolicy(RLPolicy):
+    def __init__(self, **kwargs):
+        super().__init__(name="recording", **kwargs)
+        self.updates = []
+        self._ready = True
+
+    def predict(self, context):
+        return {"dcf": 60.0, "pe": 40.0}
+
+    def update(self, context, action, reward):
+        self.updates.append((context.symbol, action, reward))
+        self._update_count += 1
+
+    def save(self, path):
+        return True
+
+    def load(self, path):
+        return True
+
+
+class _FakeTechnicalPolicy:
+    def __init__(self):
+        self._update_count = 0
+        self._ready = True
+        self.loaded = []
+        self.saved = []
+        self.updated = []
+
+    def predict_position(self, context):
+        return 1, 0.82
+
+    def predict(self, context):
+        return {"skip": 0.05, "long": 0.82, "short": 0.13}
+
+    def update(self, context, action, reward):
+        self.updated.append((action, reward))
+        self._update_count += 1
+
+    def save(self, path):
+        self.saved.append(path)
+        return True
+
+    def load(self, path):
+        self.loaded.append(path)
+        return True
+
+    def get_state(self):
+        return {"policy": "technical"}
+
+    def get_action_stats(self):
+        return {"long": 3}
+
+
+class _FakeFundamentalPolicy:
+    def __init__(self):
+        self._update_count = 0
+        self._ready = True
+        self.loaded = []
+        self.saved = []
+        self.weights_updates = []
+        self.period_updates = []
+
+    def predict(self, context):
+        return {"dcf": 55.0, "pe": 45.0}
+
+    def predict_holding_period(self, context):
+        return "6m"
+
+    def update_weights(self, context, weights, reward):
+        self.weights_updates.append((weights, reward))
+        self._update_count += 1
+
+    def update_holding_period(self, context, period, reward):
+        self.period_updates.append((period, reward))
+
+    def save(self, path):
+        self.saved.append(path)
+        return True
+
+    def load(self, path):
+        self.loaded.append(path)
+        return True
+
+    def get_state(self):
+        return {"policy": "fundamental"}
+
+    def get_model_stats(self):
+        return {"dcf": 2}
+
+    def get_holding_period_stats(self):
+        return {"6m": 2}
 
 
 class TestUniformPolicy:
@@ -283,3 +377,92 @@ class TestPolicyHelperMethods:
         # Others should still have values
         assert masked["dcf"] > 0
         assert masked["pe"] > 0
+
+    def test_base_policy_batch_confidence_state_and_dict_mask(self):
+        """Test inherited RLPolicy helper methods through a concrete subclass."""
+        context = ValuationContext(symbol="TEST", analysis_date=date(2024, 1, 15))
+        policy = _RecordingPolicy(model_names=["dcf", "pe"])
+        experiences = [
+            Experience(
+                id=1,
+                symbol="TEST",
+                analysis_date=date(2024, 1, 15),
+                context=context,
+                weights_used={"dcf": 70.0, "pe": 30.0},
+                tier_classification="tier_1",
+                blended_fair_value=120.0,
+                current_price=100.0,
+                reward=RewardSignal(reward_90d=0.4),
+            ),
+            Experience(
+                id=2,
+                symbol="MISS",
+                analysis_date=date(2024, 1, 16),
+                context=context,
+                weights_used={"dcf": 50.0, "pe": 50.0},
+                tier_classification="tier_2",
+                blended_fair_value=95.0,
+                current_price=100.0,
+                reward=RewardSignal(),
+            ),
+        ]
+
+        processed = policy.batch_update(experiences)
+        weights, confidence = policy.predict_with_confidence(context)
+        masked = policy.apply_applicability_mask(
+            {"dcf": 60.0, "pe": 20.0, "ggm": 20.0},
+            {"dcf_applicable": True, "pe_applicable": False, "ggm_applicable": False},
+        )
+        features = policy._extract_features(context)
+        state = policy.get_state()
+
+        assert processed == 1
+        assert policy.updates == [("TEST", {"dcf": 70.0, "pe": 30.0}, 0.4)]
+        assert weights == {"dcf": 60.0, "pe": 40.0}
+        assert confidence == 0.5
+        assert policy.get_exploration_bonus(context) == {"dcf": 0.0, "pe": 0.0}
+        assert masked["dcf"] == 100.0
+        assert masked["pe"] == 0.0
+        assert masked["ggm"] == 0.0
+        assert features.size > 0
+        assert state["name"] == "recording"
+        assert state["update_count"] == 1
+
+
+class TestDualPolicy:
+    """Tests for dual technical/fundamental policy composition."""
+
+    def test_predict_update_save_load_and_stats(self, tmp_path):
+        context = ValuationContext(symbol="NVDA", analysis_date=date(2024, 1, 15))
+        technical = _FakeTechnicalPolicy()
+        fundamental = _FakeFundamentalPolicy()
+        policy = DualRLPolicy(
+            technical_policy=technical,
+            fundamental_policy=fundamental,
+            technical_path=str(tmp_path / "technical.pkl"),
+            fundamental_path=str(tmp_path / "fundamental.pkl"),
+        )
+
+        prediction = policy.predict_full(context)
+        policy.update(context, prediction, 0.7, {"1m": None, "6m": 0.8})
+        policy.update_position(context, -1, -0.4)
+        policy.update_weights(context, {"dcf": 65.0, "pe": 35.0}, 0.5)
+        policy.update_holding_period(context, "12m", 0.2)
+
+        assert policy.predict_position(context) == (1, 0.82)
+        assert policy.predict_weights(context) == {"dcf": 55.0, "pe": 45.0}
+        assert policy.predict_holding_period(context) == "6m"
+        assert prediction["position"] == 1
+        assert prediction["position_confidence"] == 0.82
+        assert technical.updated[0] == (1, 0.7)
+        assert technical.updated[1] == (2, -0.4)
+        assert fundamental.weights_updates[0] == ({"dcf": 55.0, "pe": 45.0}, 0.7)
+        assert fundamental.weights_updates[1] == ({"dcf": 65.0, "pe": 35.0}, 0.5)
+        assert fundamental.period_updates == [("6m", 0.8), ("12m", 0.2)]
+        assert policy.save() is True
+        assert policy.load() is True
+        assert policy.is_ready() is True
+        assert policy.get_state()["technical_updates"] == technical._update_count
+        assert policy.get_action_stats() == {"long": 3}
+        assert policy.get_model_stats() == {"dcf": 2}
+        assert policy.get_holding_period_stats() == {"6m": 2}

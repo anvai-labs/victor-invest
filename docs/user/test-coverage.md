@@ -28,6 +28,12 @@ Run the critical-module coverage gate:
 make coverage-critical
 ```
 
+Run the deterministic RL core/training coverage gate:
+
+```bash
+make coverage-rl
+```
+
 `make` prefers `../.venv/bin/python` when that workspace virtualenv exists. Override the interpreter explicitly if needed:
 
 ```bash
@@ -39,9 +45,11 @@ This writes:
 - terminal module summary with missing lines
 - grouped package/module summary through `scripts/report_module_coverage.py`
 - critical valuation/FRED module gate through `scripts/assert_critical_coverage.py`
+- RL core/training module gate through `scripts/assert_rl_coverage.py`
 - `htmlcov/index.html`
 - `coverage.xml`
 - `coverage.json`
+- `rl-coverage.json` when running `make coverage-rl`
 
 Run the enforced repo-wide coverage gate:
 
@@ -71,8 +79,8 @@ pytest tests/unit -q --cov=src/investigator --cov=victor_invest --cov-report=ter
 
 Result:
 
-- tests: `1639 passed`, `19 skipped`
-- repo-wide coverage: `29.23%`
+- tests: `1671 passed`, `19 skipped`
+- repo-wide coverage: `29.92%`
 - 66.67% gate status: failing
 
 The repo-wide 66.67% gate is intentionally available through `make coverage-gate`, but it is not yet suitable as a required commit hook because large legacy surfaces remain lightly tested. The highest-priority low-coverage areas are older CLI orchestration, LLM adapters, report generation, broad tool wrappers, and large multi-responsibility API/workflow modules that should be split before file-level gates are practical.
@@ -102,6 +110,7 @@ Focus first on modules changed by a feature branch. For each changed module:
 
 - New deterministic domain/application modules should target at least 66.67% coverage before merge.
 - Critical valuation/FRED persistence modules are enforced at 67% or higher by `make coverage-critical`.
+- Deterministic RL core/training modules are enforced at 67% or higher by `make coverage-rl`.
 - Repo-wide coverage is tracked every run and should move upward over time.
 - The repo-wide 66.67% gate becomes enforceable once legacy low-coverage modules are either tested, retired, or explicitly excluded by architectural decision.
 
@@ -119,3 +128,17 @@ The critical-module gate focuses on the production path that extracts fair-value
 | `unified_valuation_executor.py` | Shared multi-model valuation execution and blending. |
 | `valuation_run_repository.py` | Stores valuation run/model audit trails. |
 | `macro_indicators.py` | Reads canonical FRED macro values and derived Buffett Indicator inputs. |
+
+## RL Core Modules
+
+The RL gate focuses on deterministic learning contracts and intentionally excludes DB-heavy outcome tracking adapters from the file-level gate:
+
+| Module | Responsibility |
+| --- | --- |
+| `reward_calculator.py` | Converts predicted fair value and realized prices into a consistent reward signal. |
+| `feature_extractor.py` | Builds RL state/context features from financial, technical, data-quality, and insider inputs. |
+| `feature_normalizer.py` | Fits, transforms, persists, and reports feature normalization statistics. |
+| `models.py` | Defines RL contexts, rewards, experiences, metrics, holding periods, and A/B test results. |
+| `policy/base.py` | Defines shared policy contracts and applicability/weight helper behavior. |
+| `policy/dual_policy.py` | Composes technical timing and fundamental weighting/holding-period policies. |
+| `training/experience_collector.py` | Collects, filters, splits, balances, and summarizes training experiences. |

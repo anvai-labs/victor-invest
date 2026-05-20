@@ -1,4 +1,4 @@
-.PHONY: help install dev-install test test-cov coverage-report coverage-modules coverage-critical coverage-gate lint format type-check clean run analyze status cache-clean benchmark-workflows frontend-install frontend-dev frontend-build frontend-lint frontend-type-check
+.PHONY: help install dev-install test test-cov coverage-report coverage-modules coverage-critical coverage-rl coverage-gate lint format type-check clean run analyze status cache-clean benchmark-workflows frontend-install frontend-dev frontend-build frontend-lint frontend-type-check
 
 .DEFAULT_GOAL := help
 
@@ -40,6 +40,10 @@ coverage-modules: coverage-report ## Generate repo-wide coverage and print group
 
 coverage-critical: coverage-report ## Enforce 67% coverage for critical valuation and macro modules
 	$(PYTHON) scripts/assert_critical_coverage.py coverage.json
+
+coverage-rl: ## Enforce 67% coverage for deterministic RL core and training modules
+	$(PYTEST) tests/unit/domain/services/rl -q --cov=investigator --cov-report=term-missing --cov-report=json:rl-coverage.json
+	$(PYTHON) scripts/assert_rl_coverage.py rl-coverage.json
 
 coverage-gate: ## Enforce repo-wide coverage threshold (default COVERAGE_MIN=66.67)
 	$(PYTEST) tests/unit/ -v --cov=investigator --cov=victor_invest --cov-report=term-missing --cov-report=html --cov-report=xml --cov-report=json --cov-fail-under=$(COVERAGE_MIN)
