@@ -22,6 +22,12 @@ Generate the same reports and print a grouped package/module summary:
 make coverage-modules
 ```
 
+Run the critical-module coverage gate:
+
+```bash
+make coverage-critical
+```
+
 `make` prefers `../.venv/bin/python` when that workspace virtualenv exists. Override the interpreter explicitly if needed:
 
 ```bash
@@ -32,6 +38,7 @@ This writes:
 
 - terminal module summary with missing lines
 - grouped package/module summary through `scripts/report_module_coverage.py`
+- critical valuation/FRED module gate through `scripts/assert_critical_coverage.py`
 - `htmlcov/index.html`
 - `coverage.xml`
 - `coverage.json`
@@ -64,11 +71,11 @@ pytest tests/unit -q --cov=src/investigator --cov=victor_invest --cov-report=ter
 
 Result:
 
-- tests: `1618 passed`, `19 skipped`
-- repo-wide coverage: `28.67%`
+- tests: `1639 passed`, `19 skipped`
+- repo-wide coverage: `29.23%`
 - 66.67% gate status: failing
 
-The repo-wide 66.67% gate is intentionally available through `make coverage-gate`, but it is not yet suitable as a required commit hook because large legacy surfaces remain lightly tested. The highest-priority low-coverage areas are older CLI orchestration, LLM adapters, report generation, and broad tool wrappers.
+The repo-wide 66.67% gate is intentionally available through `make coverage-gate`, but it is not yet suitable as a required commit hook because large legacy surfaces remain lightly tested. The highest-priority low-coverage areas are older CLI orchestration, LLM adapters, report generation, broad tool wrappers, and large multi-responsibility API/workflow modules that should be split before file-level gates are practical.
 
 ## How To Read Module Coverage
 
@@ -94,5 +101,21 @@ Focus first on modules changed by a feature branch. For each changed module:
 ## Coverage Policy
 
 - New deterministic domain/application modules should target at least 66.67% coverage before merge.
+- Critical valuation/FRED persistence modules are enforced at 67% or higher by `make coverage-critical`.
 - Repo-wide coverage is tracked every run and should move upward over time.
 - The repo-wide 66.67% gate becomes enforceable once legacy low-coverage modules are either tested, retired, or explicitly excluded by architectural decision.
+
+## Critical Modules
+
+The critical-module gate focuses on the production path that extracts fair-value inputs, makes deterministic recommendations, persists valuation/macro data, and formats that output for the UI:
+
+| Module | Responsibility |
+| --- | --- |
+| `decision_input_extractor.py` | Normalizes valuation, TA, and quality inputs for deterministic policy decisions. |
+| `result_formatter.py` | Produces compact/minimal output consumed by CLI/API/UI paths. |
+| `symbol_update.py` | Persists fair-value, ratio, and SEC-derived metrics into `symbol`. |
+| `investment_decision_policy.py` | Converts FV cushion, TA, and quality signals into deterministic action/confidence. |
+| `robust_valuation_service.py` | Runs robust multi-method valuation logic and guards. |
+| `unified_valuation_executor.py` | Shared multi-model valuation execution and blending. |
+| `valuation_run_repository.py` | Stores valuation run/model audit trails. |
+| `macro_indicators.py` | Reads canonical FRED macro values and derived Buffett Indicator inputs. |

@@ -12,6 +12,7 @@ build/
 .coverage
 coverage.json
 coverage.xml
+*-coverage.json
 .pytest_cache/
 htmlcov/
 .coveragerc

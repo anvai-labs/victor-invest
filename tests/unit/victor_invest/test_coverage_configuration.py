@@ -6,6 +6,7 @@ def test_makefile_exposes_repo_wide_coverage_targets():
 
     assert "coverage-report:" in makefile
     assert "coverage-modules:" in makefile
+    assert "coverage-critical:" in makefile
     assert "coverage-gate:" in makefile
     assert "PYTEST := $(PYTHON) -m pytest" in makefile
     assert "--cov=investigator --cov=victor_invest" in makefile
@@ -33,9 +34,10 @@ def test_user_docs_describe_coverage_reports_and_current_baseline():
 
     assert "make coverage-report" in docs
     assert "make coverage-modules" in docs
+    assert "make coverage-critical" in docs
     assert "make coverage-gate" in docs
     assert "COVERAGE_MIN=66.67" in docs
-    assert "repo-wide coverage: `28.67%`" in docs
+    assert "repo-wide coverage: `29.23%`" in docs
     assert "htmlcov/index.html" in docs
     assert "[Module Guide](module-guide.md)" in docs
     assert "[Module Guide](user/module-guide.md)" in docs_readme
@@ -59,3 +61,13 @@ def test_module_coverage_reporter_groups_source_roots():
 
     assert "victor_invest.api" in "\n".join(rows)
     assert "50.00%" in "\n".join(rows)
+
+
+def test_critical_coverage_gate_tracks_fair_value_and_macro_modules():
+    from scripts.assert_critical_coverage import CRITICAL_MODULES, THRESHOLD
+
+    assert THRESHOLD == 67.0
+    assert "src/investigator/domain/agents/symbol_update.py" in CRITICAL_MODULES
+    assert "src/investigator/domain/services/unified_valuation_executor.py" in CRITICAL_MODULES
+    assert "src/investigator/infrastructure/external/fred/macro_indicators.py" in CRITICAL_MODULES
+    assert "src/investigator/infrastructure/database/valuation_run_repository.py" in CRITICAL_MODULES
