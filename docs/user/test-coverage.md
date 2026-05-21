@@ -79,8 +79,8 @@ pytest tests/unit -q --cov=src/investigator --cov=victor_invest --cov-report=ter
 
 Result:
 
-- tests: `1671 passed`, `19 skipped`
-- repo-wide coverage: `29.92%`
+- tests: `1683 passed`, `19 skipped`
+- repo-wide coverage: `30.11%`
 - 66.67% gate status: failing
 
 The repo-wide 66.67% gate is intentionally available through `make coverage-gate`, but it is not yet suitable as a required commit hook because large legacy surfaces remain lightly tested. The highest-priority low-coverage areas are older CLI orchestration, LLM adapters, report generation, broad tool wrappers, and large multi-responsibility API/workflow modules that should be split before file-level gates are practical.
@@ -139,6 +139,8 @@ The RL gate focuses on deterministic learning contracts and intentionally exclud
 | `feature_extractor.py` | Builds RL state/context features from financial, technical, data-quality, and insider inputs. |
 | `feature_normalizer.py` | Fits, transforms, persists, and reports feature normalization statistics. |
 | `models.py` | Defines RL contexts, rewards, experiences, metrics, holding periods, and A/B test results. |
+| `monitoring/ab_testing.py` | Routes deterministic A/B assignments and recommends rollout changes from test results. |
+| `monitoring/metrics.py` | Maps persisted RL outcomes into sector, tier, model, trend, and summary metrics. |
 | `policy/base.py` | Defines shared policy contracts and applicability/weight helper behavior. |
 | `policy/dual_policy.py` | Composes technical timing and fundamental weighting/holding-period policies. |
 | `training/experience_collector.py` | Collects, filters, splits, balances, and summarizes training experiences. |

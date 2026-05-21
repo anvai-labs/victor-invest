@@ -106,7 +106,7 @@ class ABTestingFramework:
             True if should use RL, False for baseline.
         """
         group = self.get_assignment(symbol)
-        return group == ABTestGroup.RL
+        return bool(group == ABTestGroup.RL)
 
     def get_assignment(self, symbol: str) -> ABTestGroup:
         """
@@ -336,7 +336,7 @@ class ABTestingFramework:
                     {"days": days},
                 ).fetchall()
 
-                breakdown = {"rl": {}, "baseline": {}}
+                breakdown: Dict[str, Dict[str, Dict[str, Any]]] = {"rl": {}, "baseline": {}}
                 for row in result:
                     group = row[0]
                     sector = row[1] or "Unknown"
@@ -442,7 +442,9 @@ class ABTestingFramework:
                 (results.rl_mean_reward - results.baseline_mean_reward) / abs(results.baseline_mean_reward) * 100
             )
 
-        if results.is_significant:
+        is_statistically_significant = results.reward_p_value < (1 - self.config.confidence_level)
+
+        if is_statistically_significant:
             if improvement_pct > 10:
                 # Strong positive result - expand
                 return {

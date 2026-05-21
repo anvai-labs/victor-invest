@@ -39,7 +39,7 @@ def test_user_docs_describe_coverage_reports_and_current_baseline():
     assert "make coverage-rl" in docs
     assert "make coverage-gate" in docs
     assert "COVERAGE_MIN=66.67" in docs
-    assert "repo-wide coverage: `29.92%`" in docs
+    assert "repo-wide coverage: `30.11%`" in docs
     assert "scripts/assert_rl_coverage.py" in docs
     assert "htmlcov/index.html" in docs
     assert "[Module Guide](module-guide.md)" in docs
@@ -83,5 +83,7 @@ def test_rl_coverage_gate_tracks_core_and_training_modules():
     assert "src/investigator/domain/services/rl/reward_calculator.py" in RL_MODULES
     assert "src/investigator/domain/services/rl/feature_extractor.py" in RL_MODULES
     assert "src/investigator/domain/services/rl/feature_normalizer.py" in RL_MODULES
+    assert "src/investigator/domain/services/rl/monitoring/ab_testing.py" in RL_MODULES
+    assert "src/investigator/domain/services/rl/monitoring/metrics.py" in RL_MODULES
     assert "src/investigator/domain/services/rl/policy/dual_policy.py" in RL_MODULES
     assert "src/investigator/domain/services/rl/training/experience_collector.py" in RL_MODULES

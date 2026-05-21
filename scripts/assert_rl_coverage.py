@@ -14,6 +14,8 @@ RL_MODULES = [
     "src/investigator/domain/services/rl/feature_extractor.py",
     "src/investigator/domain/services/rl/feature_normalizer.py",
     "src/investigator/domain/services/rl/models.py",
+    "src/investigator/domain/services/rl/monitoring/ab_testing.py",
+    "src/investigator/domain/services/rl/monitoring/metrics.py",
     "src/investigator/domain/services/rl/policy/base.py",
     "src/investigator/domain/services/rl/policy/dual_policy.py",
     "src/investigator/domain/services/rl/training/experience_collector.py",
