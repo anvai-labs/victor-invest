@@ -321,10 +321,21 @@ Tests updated: `test_workflow_runtime_paths`, `test_api_yaml_integration`.
   standard+quick report nodes and the ReportLab PDF generator; HTML output; replace the live
   `handlers.py:1391` balance_sheet placeholder with the financial-health score in the synthesis path.
 
+**P3 evaluation robustness (done 2026-06-14):**
+- `RewardCalculator.calculate` extended (backward-compatible; defaults frictionless) with
+  `transaction_cost_bps` (round-trip), `borrow_cost_bps_annual` (shorts only, prorated), and
+  `benchmark_return` (rewards the benchmark-relative alpha return, not raw market beta). New
+  `RewardComponents` fields expose gross vs net, costs, and the benchmark used.
+- New `investigator/domain/services/rl/evaluation.py`: `newey_west_tstat` (HAC t-test robust to
+  overlapping-window autocorrelation), `block_bootstrap_ci` (circular block bootstrap, deterministic),
+  `effective_sample_size` (overlap down-weighting), `walk_forward_splits` (expanding-window OOS with
+  embargo), `dedup_mirrored_positions` (collapse LONG/SHORT mirrors), and `evaluate_reward_significance`
+  tying them into one summary. 14 unit tests.
+- Remaining (smaller): wire the cost/benchmark params into the live backtest reward generation
+  (kept frictionless by default to preserve existing recorded rewards); date-aware sector multiples /
+  config thresholds (completes point-in-time from 0.1).
+
 Scoped follow-ups (not yet implemented — each its own effort):
 - **C (full) Survivorship-free universe**: point-in-time constituent snapshots incl. delisted names;
   delisting as terminal loss-bearing exit.
-- **P3 Robustness**: transaction costs / borrow; benchmark-relative rewards; overlapping-sample
-  significance (Newey-West / block bootstrap); walk-forward OOS.
-</content>
-</invoke>
+

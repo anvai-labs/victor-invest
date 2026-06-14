@@ -26,10 +26,14 @@ class RewardComponents:
     annualized_return: float  # Annualized position return
     risk_adjusted_return: float  # After beta adjustment
     direction_correct: bool  # Was direction prediction correct
-    position_return: float  # Raw position return (profit/loss)
+    position_return: float  # Net position return after costs/benchmark (profit/loss)
     direction_factor: float  # Multiplier applied for direction
     predicted_direction: int  # 1 = long, -1 = short
     actual_direction: int  # 1 = up, -1 = down
+    gross_position_return: float = 0.0  # Position return before costs/benchmark
+    transaction_cost: float = 0.0  # Round-trip transaction cost applied (fraction)
+    borrow_cost: float = 0.0  # Short borrow cost applied (fraction, prorated)
+    benchmark_return: Optional[float] = None  # Benchmark return used for alpha, if any
 
 
 class RewardCalculator:
@@ -83,6 +87,9 @@ class RewardCalculator:
         actual_price: float,
         days: int = 90,
         beta: float = 1.0,
+        transaction_cost_bps: float = 0.0,
+        borrow_cost_bps_annual: float = 0.0,
+        benchmark_return: Optional[float] = None,
     ) -> RewardComponents:
         """
         Calculate risk-adjusted, annualized reward signal.
@@ -93,6 +100,13 @@ class RewardCalculator:
             actual_price: Stock price after `days` elapsed
             days: Number of days between prediction and outcome
             beta: Stock beta for risk adjustment (default 1.0)
+            transaction_cost_bps: Round-trip transaction cost (commission + slippage)
+                in basis points, deducted from the position return. Default 0 (frictionless).
+            borrow_cost_bps_annual: Annual short-borrow cost in basis points, prorated
+                by the holding period and deducted from SHORT positions only. Default 0.
+            benchmark_return: When provided, reward is computed on the benchmark-relative
+                (alpha) return rather than the absolute return, so the policy is not
+                rewarded for merely capturing market beta. Default None (absolute).
 
         Returns:
             RewardComponents with full breakdown of calculation
@@ -127,9 +141,20 @@ class RewardCalculator:
         # Long profits when stock goes up (raw_return positive)
         # Short profits when stock goes down (raw_return negative)
         if predicted_direction == 1:  # Long
-            position_return = raw_return
+            gross_position_return = raw_return
         else:  # Short
-            position_return = -raw_return  # Profit when stock drops
+            gross_position_return = -raw_return  # Profit when stock drops
+
+        # Net out frictions: round-trip transaction cost (both sides) plus, for shorts,
+        # a prorated borrow cost. Defaults of 0 preserve the original frictionless reward.
+        transaction_cost = transaction_cost_bps / 10_000.0
+        borrow_cost = (borrow_cost_bps_annual / 10_000.0) * (days / 365.0) if predicted_direction == -1 else 0.0
+        position_return = gross_position_return - transaction_cost - borrow_cost
+
+        # Benchmark-relative (alpha) return: subtract the benchmark's directional
+        # contribution so the policy is not rewarded for market beta alone.
+        if benchmark_return is not None:
+            position_return = position_return - predicted_direction * benchmark_return
 
         # Annualized position return
         # For gains: (1 + r)^(365/days) - 1
@@ -178,6 +203,10 @@ class RewardCalculator:
             direction_factor=float(direction_factor),
             predicted_direction=predicted_direction,
             actual_direction=actual_direction,
+            gross_position_return=float(gross_position_return),
+            transaction_cost=float(transaction_cost),
+            borrow_cost=float(borrow_cost),
+            benchmark_return=benchmark_return,
         )
 
     def calculate_simple(
