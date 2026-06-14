@@ -1539,6 +1539,50 @@ def options_screen(
         console.print(f"[green]Wrote {output}[/green]")
 
 
+@cli.command("analyst-report")
+@click.argument("symbol")
+@click.option(
+    "--mode",
+    "-m",
+    type=click.Choice(["quick", "standard", "comprehensive"]),
+    default="comprehensive",
+    help="Analysis mode to run before building the report",
+)
+@click.option("--output", "-o", type=click.Path(), default=None, help="Write the markdown report to this path")
+def analyst_report(symbol: str, mode: str, output: str | None):
+    """Run analysis for SYMBOL and emit an institutional-style analyst report (markdown)."""
+    from datetime import date as _date
+
+    from victor_invest.reporting import build_analyst_report, render_markdown
+    from victor_invest.workflows import AnalysisMode
+    from victor_invest.workflows.graphs import run_analysis
+
+    mode_map = {
+        "quick": AnalysisMode.QUICK,
+        "standard": AnalysisMode.STANDARD,
+        "comprehensive": AnalysisMode.COMPREHENSIVE,
+    }
+
+    async def _run():
+        state = await run_analysis(symbol.upper(), mode_map[mode])
+        report = build_analyst_report(state, data_as_of=_date.today().isoformat())
+        return report, render_markdown(report)
+
+    report, markdown = asyncio.run(_run())
+    console.print(
+        f"\n[bold blue]{report.symbol}[/bold blue] — {report.rating.action} "
+        f"({report.rating.confidence}), composite {report.rating.composite_score}/100, "
+        f"PT {report.rating.price_target}"
+    )
+    if output:
+        with open(output, "w") as f:
+            f.write(markdown)
+        console.print(f"[green]Wrote analyst report to {output}[/green]")
+    else:
+        console.print("")
+        console.print(markdown)
+
+
 @cli.command("clean-cache")
 @click.option("--all", "clean_all", is_flag=True, help="Clean all caches")
 @click.option("--db", "clean_db", is_flag=True, help="Clean database cache only")

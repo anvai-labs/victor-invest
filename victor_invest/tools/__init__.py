@@ -82,6 +82,7 @@ from victor_invest.tools.fair_multiple_calculator import FairMultipleCalculatorT
 from victor_invest.tools.insider_trading import InsiderTradingTool
 from victor_invest.tools.institutional_holdings import InstitutionalHoldingsTool
 from victor_invest.tools.macro_data import MacroDataTool
+from victor_invest.tools.analyst_report import AnalystReportTool
 from victor_invest.tools.market_data import MarketDataTool
 from victor_invest.tools.market_regime import MarketRegimeTool
 from victor_invest.tools.options_screen import OptionsScreenTool
@@ -108,6 +109,7 @@ TOOL_CLASSES = [
     EntryExitSignalTool,
     RLBacktestTool,
     OptionsScreenTool,
+    AnalystReportTool,
     MacroDataTool,
     CreditRiskTool,
     InsiderTradingTool,
@@ -248,6 +250,7 @@ __all__ = [
     "EntryExitSignalTool",
     "RLBacktestTool",
     "OptionsScreenTool",
+    "AnalystReportTool",
     "MacroDataTool",
     "CreditRiskTool",
     "InsiderTradingTool",

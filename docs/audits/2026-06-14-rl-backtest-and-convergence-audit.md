@@ -301,10 +301,27 @@ compute executor swallows a handler's `NodeResult(FAILED)`, so a missing `synthe
 treated as the failure signal (and `run_analysis` still has the StateGraph fallback).
 Tests updated: `test_workflow_runtime_paths`, `test_api_yaml_integration`.
 
+**G Analyst-report overhaul (done 2026-06-14):** New `victor_invest/reporting/` package:
+- Typed `AnalystReport` schema (rating, valuation with fair-value range + methodology, scenario
+  analysis, technical setup, financial-health screens, score breakdown, provenance) — `schema.py`.
+- Deterministic `build_analyst_report` (`builder.py`) surfaces analytics the legacy PDF path drops:
+  full indicator set (RSI/MACD/Stochastic/Bollinger/ATR/OBV/VWAP/SMA/EMA), support/resistance +
+  Fibonacci, per-model fair values + low/base/high range + margin of safety, and deterministically
+  generated bull/base/bear scenarios with a probability-weighted target. No LLM.
+- One canonical scoring rubric (`scoring.py`, 60/40 composite + documented rating/PT precedence),
+  resolving the three divergent formulas for the report's headline numbers.
+- Financial-health screens (`financial_health.py`) wrap the existing credit-risk calculators
+  (Altman Z / Piotroski F / Beneish M) — replaces the need for the hardcoded `balance_sheet=60`.
+- Markdown renderer (`markdown.py`) + provenance manifest (`provenance.py`: git SHA, config
+  version, data as-of, model/provider, timestamp).
+- Exposed via `AnalystReportTool` (registered) and a `victor-invest analyst-report SYMBOL` CLI.
+- 11 unit tests (scoring, builder, markdown, financial-health, tool). Verified end-to-end via the
+  CLI (report degrades gracefully when upstream market data is unavailable).
+- Remaining (smaller follow-ups): wire the markdown report into the YAML `generate_report` node /
+  standard+quick report nodes and the ReportLab PDF generator; HTML output; replace the live
+  `handlers.py:1391` balance_sheet placeholder with the financial-health score in the synthesis path.
+
 Scoped follow-ups (not yet implemented — each its own effort):
-- **G Analyst-report overhaul** (P2): unified typed `AnalystReport` schema; surface
-  RSI/MACD/Stochastic/Bollinger/Fibonacci/patterns; DCF sensitivity + scenarios + risk matrix;
-  quality flags (Altman/Piotroski/Beneish); one scoring rubric; provenance manifest; markdown/HTML.
 - **C (full) Survivorship-free universe**: point-in-time constituent snapshots incl. delisted names;
   delisting as terminal loss-bearing exit.
 - **P3 Robustness**: transaction costs / borrow; benchmark-relative rewards; overlapping-sample
