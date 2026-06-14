@@ -42,13 +42,15 @@ from victor_invest.tools.base import BaseTool, ToolResult
 
 logger = logging.getLogger(__name__)
 
-# Holding periods in days for multi-period reward calculation
+# Holding periods in days for multi-period reward calculation.
+# NOTE: "18m" is 548 days (not 540) to match the valuation_outcomes *_548d columns
+# and the ~1.5-year (18 * 30.44) convention used throughout the schema.
 HOLDING_PERIODS = {
     "1m": 30,
     "3m": 90,
     "6m": 180,
     "12m": 365,
-    "18m": 540,
+    "18m": 548,
     "24m": 730,
     "36m": 1095,
 }
@@ -217,6 +219,7 @@ class RLBacktestTool(BaseTool):
                     multi_period_data=kwargs.get("multi_period_data"),
                     model_agreement_score=kwargs.get("model_agreement_score"),
                     min_data_quality=kwargs.get("min_data_quality", 0.0),
+                    survivorship_flag=kwargs.get("survivorship_flag", False),
                 )
             elif action == "get_historical_data":
                 return await self._get_historical_data(
@@ -332,6 +335,7 @@ class RLBacktestTool(BaseTool):
         multi_period_data: Optional[Dict[str, Any]] = None,
         model_agreement_score: Optional[float] = None,
         min_data_quality: float = 0.0,
+        survivorship_flag: bool = False,
     ) -> ToolResult:
         """Record prediction to database.
 
@@ -442,6 +446,7 @@ class RLBacktestTool(BaseTool):
                     data_quality_score=data_quality_score,
                     model_agreement_score=model_agreement_score,
                     sources_failed=sources_failed,
+                    survivorship_flag=survivorship_flag,
                     entry_date=analysis_date,
                     exit_date_30d=self._parse_iso_date(exit_dates.get("1m")),
                     exit_date_90d=self._parse_iso_date(exit_dates.get("3m")),

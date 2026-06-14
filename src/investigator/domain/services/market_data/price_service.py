@@ -94,16 +94,20 @@ class PriceService:
         Get stock closing price on or near target date.
 
         Searches backwards from target_date up to search_days to handle
-        weekends and holidays.
+        weekends and holidays. The backward search is bounded by search_days so a
+        stale price from far before target_date (e.g. near a data gap or a
+        delisting) is never silently returned; in that case None is returned and
+        the caller should drop the observation.
 
         Args:
             symbol: Stock ticker
             target_date: Date to get price for
-            search_days: Max days to search backward (default: 5)
+            search_days: Max calendar days to search backward (default: 5)
 
         Returns:
-            Closing price or None if not found
+            Closing price or None if no trading day exists within search_days
         """
+        min_date = target_date - timedelta(days=search_days)
         with self.stock_engine.connect() as conn:
             result = conn.execute(
                 text("""
@@ -111,10 +115,11 @@ class PriceService:
                     FROM tickerdata
                     WHERE ticker = :symbol
                       AND date <= :target_date
+                      AND date >= :min_date
                     ORDER BY date DESC
                     LIMIT 1
                 """),
-                {"symbol": symbol, "target_date": target_date},
+                {"symbol": symbol, "target_date": target_date, "min_date": min_date},
             ).fetchone()
 
             if result:

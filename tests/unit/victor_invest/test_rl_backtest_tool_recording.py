@@ -1,7 +1,17 @@
 import asyncio
 from datetime import date
 
-from victor_invest.tools.rl_backtest import RLBacktestTool
+from victor_invest.tools.rl_backtest import HOLDING_PERIODS, RLBacktestTool
+
+
+def test_holding_periods_map_to_record_kwarg_day_counts():
+    """Every holding period must align 1:1 with a *_<days>d record kwarg suffix."""
+    # These are the day-count suffixes used by record_prediction_with_outcomes
+    # (actual_price_<n>d / reward_<n>d / exit_date_<n>d).
+    record_kwarg_days = {30, 90, 180, 365, 548, 730, 1095}
+    assert set(HOLDING_PERIODS.values()) == record_kwarg_days
+    # 18m must be 548 (not 540) to match the *_548d columns.
+    assert HOLDING_PERIODS["18m"] == 548
 
 
 class _FakeOutcomeTracker:
@@ -110,6 +120,8 @@ def test_record_prediction_uses_multi_horizon_outcome_tracker(monkeypatch):
     assert short_call["reward_90d"] == -0.3
     assert short_call["per_model_rewards"]["position_type"] == "SHORT"
     assert short_call["position_predicted_fv"] == 90.0
+    # survivorship_flag defaults to False when not supplied by the caller.
+    assert long_call["survivorship_flag"] is False
 
 
 def test_record_prediction_skips_non_positive_fair_value(monkeypatch):

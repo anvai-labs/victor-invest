@@ -71,13 +71,14 @@ relativedelta = importlib.import_module("dateutil.relativedelta").relativedelta
 
 logger = logging.getLogger(__name__)
 
-# Holding periods for multi-period rewards (aligned with RLBacktestTool)
+# Holding periods for multi-period rewards (aligned with RLBacktestTool).
+# "18m" is 548 days to match the valuation_outcomes *_548d columns.
 HOLDING_PERIODS = {
     "1m": 30,
     "3m": 90,
     "6m": 180,
     "12m": 365,
-    "18m": 540,
+    "18m": 548,
     "24m": 730,
     "36m": 1095,
 }
@@ -100,6 +101,10 @@ class RLBacktestWorkflowState:
     symbol: str
     lookback_months_list: List[int] = field(default_factory=list)
     interval: str = "quarterly"
+    # Whether the universe this symbol was drawn from may carry survivorship bias
+    # (e.g. a currently-listed-only universe). Persisted on each recorded row so the
+    # training query can opt to exclude such observations.
+    survivorship_flag: bool = True
     predictions: List[Dict[str, Any]] = field(default_factory=list)
     errors: List[str] = field(default_factory=list)
     completed_steps: List[str] = field(default_factory=list)
@@ -129,6 +134,7 @@ class RLBacktestWorkflowState:
             "symbol": self.symbol,
             "lookback_months_list": self.lookback_months_list,
             "interval": self.interval,
+            "survivorship_flag": self.survivorship_flag,
             "predictions": self.predictions,
             "errors": self.errors,
             "completed_steps": self.completed_steps,
@@ -145,6 +151,7 @@ class RLBacktestWorkflowState:
             symbol=data.get("symbol", ""),
             lookback_months_list=data.get("lookback_months_list", []),
             interval=data.get("interval", "quarterly"),
+            survivorship_flag=data.get("survivorship_flag", True),
             predictions=data.get("predictions", []),
             errors=data.get("errors", []),
             completed_steps=data.get("completed_steps", []),
@@ -423,6 +430,10 @@ async def record_predictions(state_input) -> dict:
                 fair_values=fair_values,
                 weights=weights,
                 tier_classification=tier,
+                # Reuse the multi-period rewards already computed in calculate_rewards
+                # instead of recomputing them in the recording step.
+                multi_period_data=reward_info.get("multi_period"),
+                survivorship_flag=state.survivorship_flag,
                 context_features={
                     "lookback_months": months_back,
                     "interval": state.interval,
