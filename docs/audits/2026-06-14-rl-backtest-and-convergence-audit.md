@@ -285,8 +285,23 @@ convergence was dead-code removal, not a risky 25-handler rewrite:
   `peer_comparison` agent-node, and LLM-gating deltas make this higher-risk), and rewriting the 25
   class-based handlers to plain functions (cosmetic — the shim already yields `NodeResult`).
 
+**Main-pipeline executor switch (done 2026-06-14):** Switched `run_yaml_analysis`
+(graphs.py) and `InvestmentVertical.run_analysis` from the custom `run_workflow_with_handlers`
+WorkflowExecutor path to the canonical `run_compiled_workflow` (UnifiedWorkflowCompiler), and
+removed `run_workflow_with_handlers`. Empirical investigation found the old method was in fact
+**broken** in the installed framework (it passed a `tool_registry` kwarg that
+`CompiledWorkflowExecutor.__init__` rejects → always `TypeError`, so the YAML path silently fell
+back to the StateGraph). The compiled path is a verified functional drop-in: a result adapter
+(`graph_result_to_context`) maps `GraphExecutionResult.state` → the (context, success, errors)
+shape; node constraints (`llm_allowed` synthesis gating) and condition/transform escape hatches
+work; `ensure_handlers_registered()` is invoked before compiling so handlers resolve from the
+compute registry. Verified end-to-end against real handlers (quick + standard analyses for AAPL
+produce real synthesis with no "handler not found"). Caveat documented in code: the compiled
+compute executor swallows a handler's `NodeResult(FAILED)`, so a missing `synthesis` output is
+treated as the failure signal (and `run_analysis` still has the StateGraph fallback).
+Tests updated: `test_workflow_runtime_paths`, `test_api_yaml_integration`.
+
 Scoped follow-ups (not yet implemented — each its own effort):
-- **Main-pipeline executor switch** to `run_compiled_workflow` (the higher-risk remainder of E/F above).
 - **G Analyst-report overhaul** (P2): unified typed `AnalystReport` schema; surface
   RSI/MACD/Stochastic/Bollinger/Fibonacci/patterns; DCF sensitivity + scenarios + risk matrix;
   quality flags (Altman/Piotroski/Beneish); one scoring rubric; provenance manifest; markdown/HTML.

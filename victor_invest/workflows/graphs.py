@@ -1214,46 +1214,63 @@ async def run_stategraph_analysis(
         return state
 
 
+def graph_result_to_context(workflow_result: Any) -> tuple[Dict[str, Any], bool, list[str]]:
+    """Adapt a Victor ``GraphExecutionResult`` into (context_dict, success, errors).
+
+    ``run_compiled_workflow`` returns a ``GraphExecutionResult`` whose merged state
+    dict holds every node output by ``output_key`` (no ``.context`` attribute). This
+    helper normalizes that into the (context, success, errors) shape the analysis
+    consumers expect, collecting top-level and per-node errors.
+
+    Caveat (documented framework behavior): the compiled compute executor does not
+    propagate a handler's ``NodeResult(status=FAILED)`` into ``GraphExecutionResult``
+    — node results report success and the failed node's output is simply absent. So
+    callers must treat a missing expected output (e.g. ``synthesis``) as the failure
+    signal; ``run_analysis`` additionally falls back to the StateGraph path.
+    """
+    state = getattr(workflow_result, "state", None)
+    to_dict = getattr(state, "to_dict", None)
+    if callable(to_dict):
+        try:
+            state = to_dict()
+        except Exception:
+            pass
+    context_data: Dict[str, Any] = dict(state) if isinstance(state, dict) else {}
+
+    success = bool(getattr(workflow_result, "success", False))
+
+    errors: list[str] = []
+    top_level_error = getattr(workflow_result, "error", None)
+    if top_level_error:
+        errors.append(str(top_level_error))
+    node_results = context_data.get("_node_results")
+    if isinstance(node_results, dict):
+        for node_id, node_result in node_results.items():
+            node_error = getattr(node_result, "error", None)
+            if node_error or getattr(node_result, "success", True) is False:
+                errors.append(f"{node_id}: {node_error or 'failed'}")
+    for key in ("_errors", "_error"):
+        bucket = context_data.get(key)
+        if bucket:
+            errors.append(str(bucket))
+    return context_data, success, errors
+
+
 async def run_yaml_analysis(
     symbol: str,
     mode: AnalysisMode = AnalysisMode.STANDARD,
 ) -> AnalysisWorkflowState:
-    """Run analysis using YAML workflows executed by Victor's WorkflowExecutor.
+    """Run analysis using YAML workflows executed by Victor's compiled-workflow path.
 
-    This path relies on `InvestmentWorkflowProvider.run_workflow_with_handlers(...)`,
-    which in turn uses the framework handler registry/sync contracts.
+    Uses the canonical ``InvestmentWorkflowProvider.run_compiled_workflow(...)``
+    (UnifiedWorkflowCompiler), which resolves the registered compute handlers, honors
+    node constraints (``llm_allowed`` gating for synthesis), and runs the condition/
+    transform escape-hatch nodes.
     """
-    from victor_invest.workflows import InvestmentWorkflowProvider
-
-    def _context_to_dict(ctx: Any) -> Dict[str, Any]:
-        if ctx is None:
-            return {}
-        if isinstance(ctx, dict):
-            return dict(ctx)
-        to_dict = getattr(ctx, "to_dict", None)
-        if callable(to_dict):
-            data = to_dict()
-            if isinstance(data, dict):
-                return data
-        try:
-            return dict(ctx)
-        except Exception:
-            return {}
-
-    def _collect_errors(workflow_result: Any) -> list[str]:
-        errors: list[str] = []
-        top_level_error = getattr(workflow_result, "error", None)
-        if top_level_error:
-            errors.append(str(top_level_error))
-
-        context_obj = getattr(workflow_result, "context", None)
-        node_results = getattr(context_obj, "node_results", None)
-        if isinstance(node_results, dict):
-            for node_id, node_result in node_results.items():
-                node_error = getattr(node_result, "error", None)
-                if node_error:
-                    errors.append(f"{node_id}: {node_error}")
-        return errors
+    from victor_invest.workflows import (
+        InvestmentWorkflowProvider,
+        ensure_handlers_registered,
+    )
 
     workflow_map = {
         AnalysisMode.QUICK: "quick",
@@ -1264,14 +1281,18 @@ async def run_yaml_analysis(
     workflow_name = workflow_map.get(mode, "standard")
     symbol_normalized = symbol.upper()
 
+    # run_compiled_workflow does not auto-register handlers; the compiler resolves
+    # them from the canonical compute registry, so ensure they are registered first.
+    ensure_handlers_registered()
+
     logger.info("Running YAML workflow '%s' for %s", workflow_name, symbol_normalized)
     provider = InvestmentWorkflowProvider()
-    workflow_result = await provider.run_workflow_with_handlers(
+    workflow_result = await provider.run_compiled_workflow(
         workflow_name,
         context={"symbol": symbol_normalized},
     )
 
-    context_data = _context_to_dict(getattr(workflow_result, "context", None))
+    context_data, success, errors = graph_result_to_context(workflow_result)
     synthesis = context_data.get("synthesis") or {}
     recommendation = context_data.get("recommendation") or {
         "action": synthesis.get("recommendation", "HOLD"),
@@ -1282,8 +1303,11 @@ async def run_yaml_analysis(
         "reasoning": synthesis.get("reasoning", ""),
     }
 
-    errors = _collect_errors(workflow_result)
-    if not getattr(workflow_result, "success", False) and not errors:
+    # Missing synthesis is the reliable failure signal on the compiled path
+    # (handler FAILED status is not surfaced in success/_node_results).
+    if not synthesis and not errors:
+        errors.append(f"Workflow '{workflow_name}' produced no synthesis output")
+    if not success and not errors:
         errors.append(f"Workflow '{workflow_name}' execution failed")
 
     return AnalysisWorkflowState(

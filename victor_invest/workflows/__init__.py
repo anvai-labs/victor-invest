@@ -41,7 +41,7 @@ Example:
         print(f"Recommendation: {synthesis.get('recommendation')}")
 
     # Compute-only workflow execution (no orchestrator needed)
-    result = await provider.run_workflow_with_handlers(
+    result = await provider.run_compiled_workflow(
         "comprehensive",
         context={"symbol": "AAPL"},
     )
@@ -64,8 +64,10 @@ workflow handler registry. YAML workflows reference handlers by path.
 
 Note on Execution Models:
 - run_agentic_workflow(): Uses WorkflowExecutor with orchestrator for agent nodes
-- run_workflow_with_handlers(): Uses WorkflowExecutor for compute handlers
-- run_compiled_workflow(): Uses UnifiedWorkflowCompiler (LangGraph) for transforms
+  (required for workflows containing `type: agent` nodes, e.g. peer_comparison).
+- run_compiled_workflow(): Canonical compute-handler path via UnifiedWorkflowCompiler.
+  Resolves registered compute handlers, honors node constraints (llm_allowed) and
+  condition/transform escape hatches. Used for quick/standard/comprehensive.
 """
 
 import logging
@@ -122,15 +124,16 @@ class InvestmentWorkflowProvider(BaseYAMLWorkflowProvider):
         )
 
         # Compute-only execution (uses registered handlers)
-        result = await provider.run_workflow_with_handlers(
+        result = await provider.run_compiled_workflow(
             "comprehensive",
             context={"symbol": "AAPL"},
         )
 
     Execution Models:
         - run_agentic_workflow(): Full orchestrator support for agent nodes
-        - run_workflow_with_handlers(): WorkflowExecutor for compute handlers
-        - run_compiled_workflow(): UnifiedWorkflowCompiler for LangGraph transforms
+          (peer_comparison and any `type: agent` workflow).
+        - run_compiled_workflow(): Canonical compute-handler path via
+          UnifiedWorkflowCompiler (quick/standard/comprehensive).
     """
 
     def _get_escape_hatches_module(self) -> str:
@@ -266,90 +269,12 @@ class InvestmentWorkflowProvider(BaseYAMLWorkflowProvider):
             timeout=timeout,
         )
 
-    async def run_workflow_with_handlers(
-        self,
-        workflow_name: str,
-        context: Optional[Dict[str, Any]] = None,
-        timeout: Optional[float] = None,
-    ) -> "WorkflowResult":
-        """Execute a YAML workflow using registered compute handlers.
-
-        This method executes workflows using WorkflowExecutor with the handlers
-        registered via register_compute_handler(). This is the recommended method
-        for running investment workflows that use the context-stuffing pattern.
-
-        Note: This method uses WorkflowExecutor (handler-based execution) rather
-        than UnifiedWorkflowCompiler (LangGraph-based execution). The handlers
-        in victor_invest.handlers are designed for WorkflowExecutor.
-
-        For workflows with full agent node support (LLM reasoning), use
-        run_agentic_workflow() instead.
-
-        Args:
-            workflow_name: Name of the YAML workflow (e.g., "comprehensive")
-            context: Initial context data (e.g., {"symbol": "AAPL"})
-            timeout: Optional overall timeout in seconds (default: 300)
-
-        Returns:
-            WorkflowResult with execution outcome and outputs
-
-        Raises:
-            ValueError: If workflow_name is not found
-
-        Example:
-            provider = InvestmentWorkflowProvider()
-            result = await provider.run_workflow_with_handlers(
-                "comprehensive",
-                context={"symbol": "AAPL"},
-            )
-            if result.success:
-                synthesis = result.context.get("synthesis")
-                print(f"Recommendation: {synthesis.get('recommendation')}")
-        """
-        from victor.tools.registry import ToolRegistry
-        from victor_contracts.workflow_executor_runtime import WorkflowExecutor
-
-        # Ensure handlers are registered
-        ensure_handlers_registered()
-
-        workflow = self.get_workflow(workflow_name)
-        if not workflow:
-            raise ValueError(f"Unknown workflow: {workflow_name}")
-
-        # Create minimal mock orchestrator for compute-only workflows
-        # Agent nodes would fail, but compute handlers work fine
-        class _MinimalOrchestrator:
-            pass
-
-        orchestrator = _MinimalOrchestrator()
-
-        # Create tool registry (handlers may need it)
-        tool_registry = ToolRegistry()
-
-        # Register investment tools for compute node tool access
-        try:
-            from victor_invest.tools import register_investment_tools
-
-            stats = register_investment_tools(tool_registry)
-            if stats.get("errors"):
-                logger.warning("Some investment tools failed to register: %s", stats["errors"])
-        except Exception as exc:
-            logger.warning("Investment tool registration failed: %s", exc)
-
-        # Create executor with handler support
-        executor = WorkflowExecutor(
-            orchestrator,
-            tool_registry=tool_registry,
-            max_parallel=4,
-            default_timeout=timeout or 300.0,
-        )
-
-        # Execute workflow with initial context
-        return await executor.execute(
-            workflow,
-            initial_context=context or {},
-            timeout=timeout,
-        )
+    # Compute-handler workflow execution is provided by the inherited
+    # BaseYAMLWorkflowProvider.run_compiled_workflow() (UnifiedWorkflowCompiler).
+    # The previous run_workflow_with_handlers() WorkflowExecutor path was removed:
+    # it passed a tool_registry kwarg the installed CompiledWorkflowExecutor rejects
+    # (always raised TypeError), and the compiled path resolves the same registered
+    # compute handlers via the canonical compute registry.
 
     # Inherited from BaseYAMLWorkflowProvider:
     # - run_compiled_workflow(): Uses UnifiedWorkflowCompiler (LangGraph)

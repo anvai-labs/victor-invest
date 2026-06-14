@@ -447,16 +447,23 @@ class InvestmentVertical(VerticalBase):
         """
         workflow_provider = cls.get_workflow_provider()
         if workflow_provider:
-            # Use run_workflow_with_handlers() for handler-based execution
-            # This avoids deprecated run_workflow() while maintaining handler support
-            result = await workflow_provider.run_workflow_with_handlers(
+            # Canonical compiled-workflow path (UnifiedWorkflowCompiler) over the
+            # registered compute handlers.
+            from victor_invest.workflows import ensure_handlers_registered
+            from victor_invest.workflows.graphs import graph_result_to_context
+
+            # The compiler resolves handlers from the compute registry; ensure
+            # they are registered before compiling.
+            ensure_handlers_registered()
+
+            result = await workflow_provider.run_compiled_workflow(
                 mode,
                 context={"symbol": symbol},
             )
-            # Convert WorkflowResult to dict
-            if hasattr(result, "context") and result.context:
-                return result.context.to_dict() if hasattr(result.context, "to_dict") else dict(result.context)
-            return {"success": result.success, "error": getattr(result, "error", None)}
+            context_data, success, errors = graph_result_to_context(result)
+            if context_data:
+                return context_data
+            return {"success": success, "error": errors[0] if errors else None}
 
         # Fallback to direct workflow call
         from victor_invest.workflows import AnalysisMode

@@ -5,23 +5,17 @@ from victor_invest.workflows.state import AnalysisWorkflowState
 
 
 class _FakeNodeResult:
-    def __init__(self, error=None):
+    def __init__(self, error=None, success=True):
         self.error = error
-
-
-class _FakeContext(dict):
-    def __init__(self, data, node_results=None):
-        super().__init__(data)
-        self.node_results = node_results or {}
-
-    def to_dict(self):
-        return dict(self)
-
-
-class _FakeWorkflowResult:
-    def __init__(self, *, success, context, error=None):
         self.success = success
-        self.context = context
+
+
+class _FakeGraphResult:
+    """Mimics victor GraphExecutionResult (state dict, success, error)."""
+
+    def __init__(self, *, success, state, error=None):
+        self.success = success
+        self.state = state
         self.error = error
 
 
@@ -31,19 +25,17 @@ def test_run_yaml_analysis_uses_provider_execution(monkeypatch):
     calls = {}
 
     class FakeProvider:
-        async def run_workflow_with_handlers(self, workflow_name, context):
+        async def run_compiled_workflow(self, workflow_name, context):
             calls["workflow_name"] = workflow_name
             calls["context"] = dict(context)
-            return _FakeWorkflowResult(
+            return _FakeGraphResult(
                 success=True,
-                context=_FakeContext(
-                    {
-                        "fundamental_analysis": {"status": "success"},
-                        "technical_analysis": {"status": "success"},
-                        "market_context": {"status": "success"},
-                        "synthesis": {"recommendation": "BUY", "confidence": "HIGH"},
-                    }
-                ),
+                state={
+                    "fundamental_analysis": {"status": "success"},
+                    "technical_analysis": {"status": "success"},
+                    "market_context": {"status": "success"},
+                    "synthesis": {"recommendation": "BUY", "confidence": "HIGH"},
+                },
             )
 
     monkeypatch.setattr(workflows_pkg, "InvestmentWorkflowProvider", FakeProvider)
@@ -62,15 +54,15 @@ def test_run_yaml_analysis_collects_top_level_and_node_errors(monkeypatch):
     import victor_invest.workflows as workflows_pkg
 
     class FakeProvider:
-        async def run_workflow_with_handlers(self, workflow_name, context):
-            return _FakeWorkflowResult(
+        async def run_compiled_workflow(self, workflow_name, context):
+            return _FakeGraphResult(
                 success=False,
-                context=_FakeContext(
-                    {"synthesis": {}},
-                    node_results={
-                        "run_synthesis": _FakeNodeResult(error="llm timeout"),
+                state={
+                    "synthesis": {},
+                    "_node_results": {
+                        "run_synthesis": _FakeNodeResult(error="llm timeout", success=False),
                     },
-                ),
+                },
                 error="workflow failed",
             )
 
@@ -83,16 +75,36 @@ def test_run_yaml_analysis_collects_top_level_and_node_errors(monkeypatch):
     assert "run_synthesis: llm timeout" in state.errors
 
 
+def test_run_yaml_analysis_flags_missing_synthesis_as_failure(monkeypatch):
+    """On the compiled path a swallowed handler failure shows up as missing synthesis."""
+    import victor_invest.workflows as workflows_pkg
+
+    class FakeProvider:
+        async def run_compiled_workflow(self, workflow_name, context):
+            # success=True but synthesis absent (compiled executor swallows FAILED).
+            return _FakeGraphResult(success=True, state={"technical_analysis": {"status": "success"}})
+
+    monkeypatch.setattr(workflows_pkg, "InvestmentWorkflowProvider", FakeProvider)
+
+    state = asyncio.run(graphs.run_yaml_analysis("aapl", AnalysisMode.STANDARD))
+
+    assert state.synthesis == {}
+    assert any("no synthesis output" in e for e in state.errors)
+
+
 def test_run_yaml_analysis_maps_custom_mode_to_comprehensive(monkeypatch):
     import victor_invest.workflows as workflows_pkg
 
     calls = {}
 
     class FakeProvider:
-        async def run_workflow_with_handlers(self, workflow_name, context):
+        async def run_compiled_workflow(self, workflow_name, context):
             calls["workflow_name"] = workflow_name
             calls["context"] = dict(context)
-            return _FakeWorkflowResult(success=True, context=_FakeContext({"synthesis": {}}))
+            return _FakeGraphResult(
+                success=True,
+                state={"synthesis": {"recommendation": "HOLD"}},
+            )
 
     monkeypatch.setattr(workflows_pkg, "InvestmentWorkflowProvider", FakeProvider)
 
