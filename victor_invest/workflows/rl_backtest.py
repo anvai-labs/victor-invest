@@ -599,76 +599,48 @@ async def run_rl_backtest(
     lookback_months_list: Optional[List[int]] = None,
     max_lookback_months: int = 120,
     interval: str = "quarterly",
-    use_yaml_workflow: bool = True,
 ) -> RLBacktestWorkflowState:
-    """Convenience function to run a complete RL backtest workflow.
+    """Run a complete RL backtest workflow for a single symbol.
 
-    Uses InvestmentWorkflowProvider (BaseYAMLWorkflowProvider pattern) for
-    YAML-based workflow execution with shared handlers, or falls back to
-    Python StateGraph for backwards compatibility.
+    Executes the deterministic StateGraph (built from the canonical
+    ``victor_contracts.graph_runtime.StateGraph`` primitive) end to end:
+    fetch_historical_data → run_historical_valuation → calculate_rewards →
+    record_predictions → finalize_backtest.
+
+    This is the single per-symbol execution path. Batch orchestration over many
+    symbols is handled by ``run_rl_backtest_batch`` (and by the ``rl_backtest``
+    YAML workflow's ``process_backtest_batch`` handler, which delegates here per
+    symbol), so there is no second in-function execution branch to keep in sync.
 
     Args:
         symbol: Stock ticker symbol to backtest.
         lookback_months_list: Explicit list of lookback periods.
         max_lookback_months: Max lookback (used if lookback_months_list not provided).
         interval: Interval type ("quarterly" or "monthly").
-        use_yaml_workflow: If True, use YAML workflow via InvestmentWorkflowProvider.
 
     Returns:
         Final RLBacktestWorkflowState with results.
 
     Example:
-        # Run 10-year quarterly backtest via YAML workflow
         result = await run_rl_backtest("AAPL", max_lookback_months=120)
-
-        # Run with explicit lookback periods
         result = await run_rl_backtest("AAPL", lookback_months_list=[12, 24, 36])
-
-        # Use Python StateGraph fallback
-        result = await run_rl_backtest("AAPL", use_yaml_workflow=False)
     """
-    # Generate lookback list if not provided
     if lookback_months_list is None:
         lookback_months_list = generate_lookback_list(max_lookback_months, interval)
 
-    if use_yaml_workflow:
-        # Use InvestmentWorkflowProvider (BaseYAMLWorkflowProvider pattern)
-        try:
-            # Import here to avoid circular imports
-            from victor_invest.workflows import InvestmentWorkflowProvider
-
-            provider = InvestmentWorkflowProvider()
-            workflow_result = await provider.run_workflow_with_handlers(
-                "rl_backtest",
-                context={
-                    "symbol": symbol,
-                    "max_lookback_months": max_lookback_months,
-                    "interval": interval,
-                    "lookback_dates": lookback_months_list,
-                },
-            )
-
-            # Convert to RLBacktestWorkflowState
-            return _convert_yaml_result_to_state(symbol, lookback_months_list, interval, workflow_result)
-
-        except Exception as e:
-            logger.warning(f"YAML workflow execution failed, falling back to Python: {e}")
-
-    # Fallback: Python StateGraph execution
     state = RLBacktestWorkflowState(
         symbol=symbol,
         lookback_months_list=lookback_months_list,
         interval=interval,
     )
 
-    # Build and compile graph
+    # Build and compile the StateGraph, then execute.
     graph = build_rl_backtest_graph()
     compiled = graph.compile()
-
-    # Execute workflow
     result = await compiled.invoke(state.to_dict())
 
-    # Convert result back to state
+    # Normalize the graph result (GraphExecutionResult.state, dict, or a Victor
+    # state wrapper exposing get_state()/to_dict()) back into our state object.
     if hasattr(result, "state"):
         result_data = result.state
     elif isinstance(result, dict):
@@ -684,50 +656,6 @@ async def run_rl_backtest(
         return result_data
     else:
         return state
-
-
-def _convert_yaml_result_to_state(
-    symbol: str,
-    lookback_months_list: List[int],
-    interval: str,
-    workflow_result: Any,
-) -> RLBacktestWorkflowState:
-    """Convert YAML workflow result to RLBacktestWorkflowState."""
-    state = RLBacktestWorkflowState(
-        symbol=symbol,
-        lookback_months_list=lookback_months_list,
-        interval=interval,
-    )
-
-    # Extract from workflow result context
-    if hasattr(workflow_result, "context"):
-        ctx = workflow_result.context
-        if hasattr(ctx, "get"):
-            state.predictions = ctx.get("predictions", [])
-            state.metadata = ctx.get("metadata", {})
-            if ctx.get("backtest_results"):
-                backtest = ctx.get("backtest_results", {})
-                state.predictions = backtest.get("predictions", state.predictions)
-                state.metadata = backtest.get("metadata", state.metadata)
-    elif isinstance(workflow_result, dict):
-        state.predictions = workflow_result.get("predictions", [])
-        state.metadata = workflow_result.get("metadata", {})
-
-    # Collect errors from workflow result and per-node failures when available.
-    top_level_error = getattr(workflow_result, "error", None)
-    if top_level_error:
-        state.add_error(str(top_level_error))
-
-    context_obj = getattr(workflow_result, "context", None)
-    node_results = getattr(context_obj, "node_results", None)
-    if isinstance(node_results, dict):
-        for node_id, node_result in node_results.items():
-            node_error = getattr(node_result, "error", None)
-            if node_error:
-                state.add_error(f"{node_id}: {node_error}")
-
-    state.mark_step_completed("yaml_workflow_complete")
-    return state
 
 
 async def run_rl_backtest_batch(

@@ -2405,7 +2405,6 @@ class ProcessBacktestBatchHandler(BaseHandler):
             symbol=symbol,
             lookback_months_list=lookback_dates,
             interval=interval,
-            use_yaml_workflow=False,
         )
 
         return result.to_dict(), 0

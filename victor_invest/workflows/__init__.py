@@ -364,72 +364,26 @@ _handlers_registered = False
 def ensure_handlers_registered() -> None:
     """Register Investment domain handlers lazily on first use.
 
-    This lazy registration pattern prevents circular imports that can occur
-    when handlers.py imports from workflows or related modules during module
-    initialization. Handlers are registered once on first workflow execution.
+    Importing :mod:`victor_invest.handlers` runs the ``@handler_decorator``
+    side-effects, which is the canonical registration path in Victor v0.7.0: the
+    decorator calls ``register_compute_handler(name, instance)`` so every handler
+    lands in the framework compute registry that both the WorkflowExecutor and the
+    UnifiedWorkflowCompiler resolve through ``get_compute_handler``.
+
+    The legacy ``sync_handlers_with_executor`` / ``registry.sync_with_executor`` /
+    manual-bridge fallbacks were removed: the first two do not exist in v0.7.0 and
+    the manual bridge merely re-registered handlers the decorator had already
+    registered. Lazy import here also avoids the circular import that direct
+    module-level registration would cause.
     """
     global _handlers_registered
     if _handlers_registered:
         return
+
+    # Import side-effect registers all handlers into the canonical compute registry.
     from victor_invest.handlers import register_handlers
 
     register_handlers()
-
-    synced = False
-    sync_method_used = None
-    try:
-        from victor_contracts.handler_runtime import sync_handlers_with_executor
-
-        sync_handlers_with_executor(direction="to_executor")
-        synced = True
-        sync_method_used = "sync_handlers_with_executor"
-    except Exception:
-        pass
-
-    if not synced:
-        # Compatibility path for newer/older Victor variants:
-        # use registry.sync_with_executor() if available.
-        try:
-            from victor_contracts.handler_runtime import get_handler_registry
-
-            registry = get_handler_registry()
-            sync_method = getattr(registry, "sync_with_executor", None)
-            if callable(sync_method):
-                sync_method(direction="to_executor")
-                synced = True
-                sync_method_used = "registry.sync_with_executor"
-        except Exception:
-            pass
-
-    if not synced:
-        # Last-resort bridge: push handlers from framework registry to
-        # executor registry directly when helper APIs are unavailable.
-        try:
-            from victor_contracts.handler_runtime import get_handler_registry
-            from victor_contracts.workflow_executor_runtime import register_compute_handler
-
-            registry = get_handler_registry()
-            # list_handlers returns Dict[str, List[str]] mapping vertical names to handler names
-            handlers_map = registry.list_handlers()
-            pushed = 0
-            for vertical_name, handler_names in handlers_map.items():
-                for handler_name in handler_names:
-                    handler = registry.get_handler(vertical_name, handler_name)
-                    if handler:
-                        register_compute_handler(handler_name, handler)
-                        pushed += 1
-            synced = pushed > 0
-            sync_method_used = "manual_executor_bridge"
-        except Exception:
-            pass
-
-    if not synced:
-        logger.warning(
-            "Handler sync helpers unavailable; relying on decorator-side registration for executor compatibility"
-        )
-    else:
-        logger.debug("Handler sync completed using %s", sync_method_used)
-
     _handlers_registered = True
 
 

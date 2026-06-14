@@ -265,11 +265,28 @@ repo mypy debt bypassed with `--no-verify`, zero new mypy findings):
 | K Redundant recompute | ✅ Done | workflow passes precomputed `multi_period_data` |
 | C Survivorship flag | ✅ Done (flag) | threaded `survivorship_flag`; PIT universe still TODO |
 | H Repo hygiene + options-screen tool | ✅ Done | `.gitignore`, `OptionsScreenTool`, `_options_math`, CLI, tests |
+| E/F Handler convergence + single execution path | ✅ Done | see below |
+
+**E/F (done 2026-06-14):** Investigation confirmed handlers already reach the canonical
+v0.7.0 compute registry and already return `NodeResult` via the `victor_contracts.handler_runtime`
+shim (decorator → `register_compute_handler`), and both the WorkflowExecutor and the
+UnifiedWorkflowCompiler resolve `type: compute` nodes through the same `get_compute_handler`. So
+convergence was dead-code removal, not a risky 25-handler rewrite:
+- **F**: collapsed `run_rl_backtest` to a single StateGraph path (a canonical
+  `victor_contracts.graph_runtime` primitive); removed the redundant `use_yaml_workflow` YAML
+  branch and `_convert_yaml_result_to_state`; updated the script caller and `ProcessBacktestBatchHandler`.
+- **E**: simplified `ensure_handlers_registered` to rely on the decorator import side-effect
+  (canonical registration), removing the confirmed-dead `sync_handlers_with_executor` /
+  `registry.sync_with_executor` / manual-bridge fallbacks.
+- Tests updated to the canonical contract (`test_handler_registration_sync`,
+  `test_rl_backtest_runtime_paths`).
+- **Deliberately NOT changed (separate staged effort):** switching the main `analyze` pipeline
+  from `run_agentic_workflow`/`run_workflow_with_handlers` to `run_compiled_workflow` (return-type,
+  `peer_comparison` agent-node, and LLM-gating deltas make this higher-risk), and rewriting the 25
+  class-based handlers to plain functions (cosmetic — the shim already yields `NodeResult`).
 
 Scoped follow-ups (not yet implemented — each its own effort):
-- **E/F Handler convergence + single execution path** (P1.4): migrate `@handler_decorator`/
-  `BaseHandler` → canonical `register_compute_handler`/`NodeResult`; remove the dead YAML-vs-
-  StateGraph fork. Largest/riskiest refactor; gate behind framework import-boundary tests.
+- **Main-pipeline executor switch** to `run_compiled_workflow` (the higher-risk remainder of E/F above).
 - **G Analyst-report overhaul** (P2): unified typed `AnalystReport` schema; surface
   RSI/MACD/Stochastic/Bollinger/Fibonacci/patterns; DCF sensitivity + scenarios + risk matrix;
   quality flags (Altman/Piotroski/Beneish); one scoring rubric; provenance manifest; markdown/HTML.
