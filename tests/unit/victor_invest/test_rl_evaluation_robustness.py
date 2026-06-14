@@ -9,6 +9,7 @@ from investigator.domain.services.rl.evaluation import (
     evaluate_reward_significance,
     newey_west_lags,
     newey_west_tstat,
+    quantify_survivorship_bias,
     walk_forward_splits,
 )
 from investigator.domain.services.rl.reward_calculator import RewardCalculator
@@ -153,3 +154,37 @@ def test_evaluate_reward_significance_end_to_end():
     long_summary = evaluate_reward_significance(rows, horizon="365d", sampling_interval_days=91)
     # reward_365d is absent -> no observations, but the overlap math is exercised separately
     assert long_summary["n_observations"] == 0
+
+
+def test_quantify_survivorship_bias_detects_drag_from_delisted():
+    rng = np.random.default_rng(11)
+    rows = []
+    # Survivors: positive rewards.
+    for i in range(120):
+        rows.append(
+            {
+                "symbol": f"S{i}",
+                "analysis_date": f"2020-01-{(i % 28) + 1:02d}",
+                "position_type": "LONG",
+                "reward_90d": 0.03 + rng.normal(0, 0.01),
+                "delisted": False,
+            }
+        )
+    # Delisted names: strongly negative LONG rewards (terminal losses).
+    for i in range(30):
+        rows.append(
+            {
+                "symbol": f"D{i}",
+                "analysis_date": f"2020-02-{(i % 28) + 1:02d}",
+                "position_type": "LONG",
+                "reward_90d": -0.8 + rng.normal(0, 0.02),
+                "delisted": True,
+            }
+        )
+
+    out = quantify_survivorship_bias(rows, horizon="90d")
+    assert out["n_delisted_observations"] == 30
+    assert out["survivors_only"]["mean_reward"] > 0
+    assert out["full_including_delisted"]["mean_reward"] < out["survivors_only"]["mean_reward"]
+    assert out["mean_reward_delta"] < 0
+    assert out["bias_detected"] is True

@@ -122,6 +122,45 @@ class UniverseService:
             source="index_membership",
         )
 
+    def upsert_membership(
+        self,
+        symbol: str,
+        index_name: str,
+        effective_date: date,
+        removal_date: Optional[date] = None,
+        source: str = "unknown",
+    ) -> bool:
+        """Insert/update one membership record (idempotent on symbol+index+effective)."""
+        from sqlalchemy import text
+
+        try:
+            with self.db.get_session() as session:
+                session.execute(
+                    text(
+                        """
+                        INSERT INTO index_membership (
+                            symbol, index_name, effective_date, removal_date, source, updated_at
+                        ) VALUES (:symbol, :index_name, :effective_date, :removal_date, :source, CURRENT_TIMESTAMP)
+                        ON CONFLICT (symbol, index_name, effective_date) DO UPDATE SET
+                            removal_date = EXCLUDED.removal_date,
+                            source = EXCLUDED.source,
+                            updated_at = CURRENT_TIMESTAMP
+                        """
+                    ),
+                    {
+                        "symbol": symbol.upper(),
+                        "index_name": index_name,
+                        "effective_date": effective_date,
+                        "removal_date": removal_date,
+                        "source": source,
+                    },
+                )
+                session.commit()
+            return True
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Failed to upsert membership %s/%s: %s", symbol, index_name, exc)
+            return False
+
     # ------------------------------------------------------------------ live (DB)
     def get_live_universe(
         self,

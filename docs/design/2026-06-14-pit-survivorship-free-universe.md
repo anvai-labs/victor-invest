@@ -258,8 +258,30 @@ survivorship delta and running it through the P3 significance toolkit.
   zero); emits `delisted`/`delist_date`/`terminal_exits` in the output.
 - 13 unit tests (extractor, terminal-exit math, backfill, reward integration). mypy/ruff clean.
 
-**Remaining:** C3 (index_membership + loader — the budget-gated PIT membership), C4 (UniverseService
-+ refactor call sites + reconcile the survivorship_flag default), C5 (metadata as_of_date), C6
-(validation harness). A backfill driver script (iterate symbols → `backfill_delisting` → `upsert`)
-is also pending; it needs DB + EDGAR connectivity to run.
+**C3 + C4 + C6 shipped (2026-06-14):**
+- `index_membership` table — migration `014_add_index_membership.sql` (PIT constituents, effective/
+  removal dates, source provenance). Source-agnostic: load from any feed via the CSV loader.
+- `UniverseService` (`market_data/universe_service.py`): `get_universe(as_of_date, index, top_n,
+  sector, mode)` with `live` + `pit` modes and `auto` selection; pure `members_as_of`
+  (effective ≤ D < removal) unit-tested without a DB; `upsert_membership`. Refactored
+  `scripts/rl_backtest_workflow.py` universe selection to delegate (also removed its broken
+  hardcoded connection string). Reconciled `survivorship_flag` default to **True** (conservative)
+  across tool + workflow state.
+- Validation harness `quantify_survivorship_bias` (in the P3 `evaluation.py`): compares survivors-only
+  vs full (incl. delisted) reward distributions and reports the mean delta + significance via the
+  overlap-robust toolkit. Tested.
+- Driver scripts: `scripts/load_index_membership.py` (source-agnostic CSV loader) and
+  `scripts/backfill_delistings.py` (EDGAR Form 25/15 → `delisting_events`, last price from the final
+  `tickerdata` close). Both need DB/EDGAR connectivity to run.
+
+**C5 descoped (documented):** a meaningful PIT `SymbolMetadataService.get_metadata(as_of_date)` is
+blocked by `symbol` being a current-snapshot FDW foreign table — historical metadata simply isn't
+available there. The actionable PIT signals ("was this a member / alive as of D") are already served
+by `UniverseService` (PIT membership) + `DelistingService` (delisting date), so the metadata change
+is not worth touching that hot path. Revisit only if a historical fundamentals/metadata feed lands.
+
+**Genuinely remaining (data-acquisition, budget-gated):** populate `index_membership` (and run the
+delisting backfill) from a real source — Sharadar/Norgate/CRSP for membership, or a free
+reconstruction. The code path is complete and source-agnostic; only the data + a one-time load run
+remain, which require the budget decision and live connectivity.
 

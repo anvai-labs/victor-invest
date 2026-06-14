@@ -256,3 +256,42 @@ def evaluate_reward_significance(
         "bootstrap_ci_95": {"low": round(low, 6), "high": round(high, 6)},
         "significant_5pct": bool(sig.p_value < 0.05) if not math.isnan(sig.p_value) else False,
     }
+
+
+def quantify_survivorship_bias(
+    rows: Sequence[Dict[str, Any]],
+    *,
+    horizon: str = "90d",
+    delisted_key: str = "delisted",
+    long_reward_key: Optional[str] = None,
+    sampling_interval_days: float = 91.0,
+) -> Dict[str, Any]:
+    """Quantify survivorship bias by comparing a survivors-only vs full sample.
+
+    A survivorship-biased backtest omits names that delisted (their terminal,
+    usually loss-bearing outcomes never appear). This compares the reward
+    distribution of the survivors-only subset (rows where ``delisted`` is falsy)
+    against the full set (including delisted/terminal outcomes), reporting the mean
+    delta and significance of each via the overlap-robust toolkit.
+
+    A meaningfully negative ``mean_delta`` (full < survivors-only) is the signature
+    of removed survivorship bias — the delisted names drag realized returns down.
+    """
+    survivors = [r for r in rows if not r.get(delisted_key)]
+    full = list(rows)
+    n_delisted = len(full) - len(survivors)
+
+    survivors_eval = evaluate_reward_significance(
+        survivors, horizon=horizon, sampling_interval_days=sampling_interval_days
+    )
+    full_eval = evaluate_reward_significance(full, horizon=horizon, sampling_interval_days=sampling_interval_days)
+    mean_delta = round(full_eval["mean_reward"] - survivors_eval["mean_reward"], 6)
+
+    return {
+        "horizon": horizon,
+        "n_delisted_observations": n_delisted,
+        "survivors_only": survivors_eval,
+        "full_including_delisted": full_eval,
+        "mean_reward_delta": mean_delta,
+        "bias_detected": mean_delta < 0 and n_delisted > 0,
+    }
