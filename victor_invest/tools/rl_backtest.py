@@ -105,6 +105,7 @@ class RLBacktestTool(BaseTool):
         self._outcome_tracker: Optional[Any] = None
         self._reward_calculator: Optional[Any] = None
         self._data_source_manager: Optional[Any] = None
+        self._delisting_service: Optional[Any] = None
         self._db: Optional[Any] = None
 
     async def initialize(self) -> None:
@@ -120,6 +121,9 @@ class RLBacktestTool(BaseTool):
                 SharesService,
                 SymbolMetadataService,
                 get_technical_analysis_service,
+            )
+            from investigator.domain.services.market_data.delisting_service import (
+                DelistingService,
             )
 
             # RL infrastructure
@@ -148,6 +152,7 @@ class RLBacktestTool(BaseTool):
             self._outcome_tracker = OutcomeTracker()
             self._reward_calculator = get_reward_calculator()
             self._data_source_manager = DataSourceManager()
+            self._delisting_service = DelistingService()
 
             self._initialized = True
             logger.info("RLBacktestTool initialized with shared services and DataSourceManager")
@@ -613,28 +618,45 @@ class RLBacktestTool(BaseTool):
         long_predicted_fv = round(current_price * (1.0 + conviction_band), 4) if current_price > 0 else None
         short_predicted_fv = round(current_price * (1.0 - conviction_band), 4) if current_price > 0 else None
 
+        # Look up any delisting once so a name that delists mid-horizon resolves to a
+        # realized terminal exit (loss-bearing) instead of a dropped None row.
+        delisting = self._delisting_service.get_delisting(symbol) if self._delisting_service else None
+        # Floor a total-loss (recovery=0) terminal price to a tiny fraction of entry so
+        # the shared reward calculator (which neutralizes actual_price<=0) registers a
+        # near-total loss rather than a zero reward.
+        loss_floor = round(current_price * 1e-4, 6) if current_price > 0 else 0.0
+
         prices: Dict[str, Any] = {}
         exit_dates: Dict[str, Any] = {}
         long_rewards: Dict[str, Any] = {}
         short_rewards: Dict[str, Any] = {}
+        terminal_exits: Dict[str, bool] = {}
 
         for period, days in HOLDING_PERIODS.items():
             target_date = analysis_date + timedelta(days=days)
             if self._price_service is None:
                 continue
             future_price = self._price_service.get_price(symbol, target_date)
+            exit_dt = target_date
+            is_terminal = False
+
+            # No market price for the horizon: if the symbol delisted on/before the
+            # target date, use the terminal exit value (last_price * recovery).
+            if (not future_price or future_price <= 0) and delisting is not None and self._delisting_service:
+                terminal = self._delisting_service.terminal_exit_price(delisting, target_date)
+                if terminal is not None:
+                    future_price = terminal if terminal > 0 else loss_floor
+                    exit_dt = delisting.delist_date
+                    is_terminal = True
 
             if future_price and future_price > 0:
-                prices[period] = round(future_price, 2)
-                exit_dates[period] = target_date.isoformat()
+                prices[period] = round(future_price, 4)
+                exit_dates[period] = exit_dt.isoformat()
+                terminal_exits[period] = is_terminal
 
-                # Calculate rewards using shared calculator
-                # RewardCalculator.calculate() derives LONG/SHORT from predicted_fv vs price:
-                # - predicted_fv > price_at_prediction => LONG
-                # - predicted_fv < price_at_prediction => SHORT
-                # We simulate this by setting fake fair values to force the desired direction
+                # RewardCalculator derives LONG/SHORT from predicted_fv vs entry price;
+                # we force each direction with the synthetic conviction-band fair values.
                 if current_price > 0 and self._reward_calculator is not None:
-                    # LONG: synthetic predicted FV above entry price (long signal)
                     long_result = self._reward_calculator.calculate(
                         predicted_fv=long_predicted_fv,
                         price_at_prediction=current_price,
@@ -642,7 +664,6 @@ class RLBacktestTool(BaseTool):
                         days=days,
                         beta=beta,
                     )
-                    # SHORT: synthetic predicted FV below entry price (short signal)
                     short_result = self._reward_calculator.calculate(
                         predicted_fv=short_predicted_fv,
                         price_at_prediction=current_price,
@@ -657,14 +678,18 @@ class RLBacktestTool(BaseTool):
                 exit_dates[period] = None
                 long_rewards[period] = None
                 short_rewards[period] = None
+                terminal_exits[period] = False
 
         return {
             "entry_date": analysis_date.isoformat(),
             "conviction_band": conviction_band,
             "long_predicted_fv": long_predicted_fv,
             "short_predicted_fv": short_predicted_fv,
+            "delisted": delisting is not None,
+            "delist_date": delisting.delist_date.isoformat() if delisting else None,
             "prices": prices,
             "exit_dates": exit_dates,
+            "terminal_exits": terminal_exits,
             "long_rewards": long_rewards,
             "short_rewards": short_rewards,
         }

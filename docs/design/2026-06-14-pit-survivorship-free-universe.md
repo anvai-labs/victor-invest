@@ -234,4 +234,32 @@ the reward path treat delisting as a terminal loss (C1–C2, high value, low ris
 then (2) **acquire/reconstruct PIT index membership** and route all universe selection through one
 as-of-date service (C3–C4, gated on a data-sourcing decision). Validate by quantifying the
 survivorship delta and running it through the P3 significance toolkit.
-</content>
+
+---
+
+## 10. Implementation status (2026-06-14)
+
+**C1 + C2 shipped** (the no-budget, high-value delisting half):
+- `delisting_events` table — migration `schema/migrations/013_add_delisting_events.sql` (modeled on
+  `stock_splits`).
+- `DelistingService` (`market_data/delisting_service.py`) — DB DAO (`get_delisting`/`get_delistings`/
+  `upsert_delisting`) plus the pure `terminal_exit_price` (`last_price * recovery`, reason-based
+  default recovery: bankruptcy/compliance/voluntary → 0, acquired → 1).
+- EDGAR extractor (`infrastructure/sec/delisting_extractor.py`) — pure
+  `extract_delisting_from_submissions` (Form 25/25-NSE removal; Form 15 deregistration fallback) +
+  `backfill_delisting` wiring the SEC client and last-close lookup.
+- `PriceService.get_last_close` — unbounded most-recent `(date, close)`. Needed because the P1
+  staleness cap makes `get_current_price` return None for delisted names; confirmed assumption:
+  **`tickerdata` rows simply stop at delisting/merger**, so the final row is the last traded price
+  and de-facto last-trade date (used to refine the delist date and set `last_price`).
+- Reward path (`RLBacktestTool._get_multi_period_data`) — when a horizon has no market price and the
+  symbol delisted on/before the target date, it realizes the terminal exit (total-loss floored to a
+  tiny fraction of entry so the shared reward calculator registers a near-total loss instead of a
+  zero); emits `delisted`/`delist_date`/`terminal_exits` in the output.
+- 13 unit tests (extractor, terminal-exit math, backfill, reward integration). mypy/ruff clean.
+
+**Remaining:** C3 (index_membership + loader — the budget-gated PIT membership), C4 (UniverseService
++ refactor call sites + reconcile the survivorship_flag default), C5 (metadata as_of_date), C6
+(validation harness). A backfill driver script (iterate symbols → `backfill_delisting` → `upsert`)
+is also pending; it needs DB + EDGAR connectivity to run.
+

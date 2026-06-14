@@ -138,6 +138,33 @@ class PriceService:
         """
         return self.get_price(symbol, date.today())
 
+    def get_last_close(self, symbol: str) -> Optional[tuple[date, float]]:
+        """Get the most recent (date, close) with NO staleness bound.
+
+        Unlike ``get_price``/``get_current_price`` (which cap the backward search so
+        stale prices are not returned for live names), this returns the final
+        available ``tickerdata`` row regardless of age. For a delisted/merged name
+        — whose ``tickerdata`` rows simply stop at delisting — this is the last
+        traded price and the de-facto last-trade date, the natural source for a
+        delisting event's ``last_price``.
+        """
+        with self.stock_engine.connect() as conn:
+            result = conn.execute(
+                text(
+                    """
+                    SELECT date, close
+                    FROM tickerdata
+                    WHERE ticker = :symbol
+                    ORDER BY date DESC
+                    LIMIT 1
+                    """
+                ),
+                {"symbol": symbol},
+            ).fetchone()
+            if result and result[1] is not None:
+                return (result[0], float(result[1]))
+            return None
+
     def get_price_data(
         self,
         symbol: str,
