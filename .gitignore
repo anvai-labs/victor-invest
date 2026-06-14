@@ -41,16 +41,14 @@ data/market_context_cache/
 data/*.txt
 data/*.json
 
-# Artifacts (new structure)
-artifacts/results/*.json
-artifacts/metrics/*.json
-artifacts/logs/*.log
-artifacts/cache/
-artifacts/ui_cache/
-artifacts/batch_jobs/
-!artifacts/results/.gitkeep
-!artifacts/metrics/.gitkeep
-!artifacts/logs/.gitkeep
+# Artifacts (run output) - ignore the whole tree, keep directory placeholders only.
+artifacts/**
+!artifacts/
+!artifacts/**/
+!artifacts/**/.gitkeep
+
+# Ad-hoc scratch scripts (productize before committing; never commit tmp_*.py)
+tmp_*.py
 
 # nohup output
 nohup.out

@@ -1464,6 +1464,81 @@ def serve(port: int, host: str):
         console.print("Install with: pip install uvicorn fastapi")
 
 
+@cli.command("options-screen")
+@click.option(
+    "--universe",
+    type=click.Choice(["top_n", "sector", "industry", "symbols"]),
+    default="top_n",
+    help="Universe selection mode",
+)
+@click.option("--limit", type=int, default=1000, help="Max universe size for top_n/sector/industry")
+@click.option("--symbols", type=str, default=None, help="Comma-separated tickers for --universe symbols")
+@click.option("--sector", type=str, default=None, help="Sector filter for --universe sector")
+@click.option("--industry", type=str, default=None, help="Industry filter for --universe industry")
+@click.option("--cash-budget", type=float, default=100_000.0, help="Cash budget / collateral cap")
+@click.option("--target-delta", "target_deltas", multiple=True, type=float, help="Target abs put delta(s)")
+@click.option("--expiry", type=str, default=None, help="Option expiry (YYYY-MM-DD)")
+@click.option("--as-of", type=str, default=None, help="Pricing date (YYYY-MM-DD, default today)")
+@click.option("--output", "-o", type=click.Path(), default=None, help="Write JSON result to this path")
+def options_screen(
+    universe: str,
+    limit: int,
+    symbols: str | None,
+    sector: str | None,
+    industry: str | None,
+    cash_budget: float,
+    target_deltas: tuple[float, ...],
+    expiry: str | None,
+    as_of: str | None,
+    output: str | None,
+):
+    """Screen a universe for cash-secured put candidates."""
+    import json
+    from datetime import date as _date
+
+    from victor_invest.tools import OptionsScreenTool
+
+    async def _run():
+        tool = OptionsScreenTool()
+        return await tool.execute(
+            universe=universe,
+            limit=limit,
+            symbols=[s.strip() for s in symbols.split(",")] if symbols else None,
+            sector=sector,
+            industry=industry,
+            cash_budget=cash_budget,
+            target_deltas=list(target_deltas) or None,
+            expiry=_date.fromisoformat(expiry) if expiry else None,
+            as_of=_date.fromisoformat(as_of) if as_of else None,
+        )
+
+    result = asyncio.run(_run())
+    if not result.success:
+        console.print(f"[red]Screen failed: {result.error}[/red]")
+        return
+
+    data = result.output
+    candidates = data.get("candidates", [])
+    console.print(
+        f"\n[bold blue]Options Screen[/bold blue] — universe={universe}, "
+        f"{data.get('universe_size', 0)} names, {len(candidates)} candidates"
+    )
+    for row in candidates[:40]:
+        console.print(
+            f"  {row['ticker']:<6} px={row['price']:<8} fv={row['fair_value']:<8} "
+            f"up={row['fv_upside_pct']}% rsi={row['rsi14']} trend={row['trend_score']} score={row['score']}"
+        )
+    basket = data.get("basket", [])
+    console.print(
+        f"\n[bold]Basket[/bold]: {len(basket)} positions, "
+        f"collateral={data.get('basket_collateral', 0)}, remaining={data.get('remaining_cash', 0)}"
+    )
+    if output:
+        with open(output, "w") as f:
+            json.dump(data, f, indent=2, default=str)
+        console.print(f"[green]Wrote {output}[/green]")
+
+
 @cli.command("clean-cache")
 @click.option("--all", "clean_all", is_flag=True, help="Clean all caches")
 @click.option("--db", "clean_db", is_flag=True, help="Clean database cache only")

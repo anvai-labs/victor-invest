@@ -84,6 +84,7 @@ from victor_invest.tools.institutional_holdings import InstitutionalHoldingsTool
 from victor_invest.tools.macro_data import MacroDataTool
 from victor_invest.tools.market_data import MarketDataTool
 from victor_invest.tools.market_regime import MarketRegimeTool
+from victor_invest.tools.options_screen import OptionsScreenTool
 from victor_invest.tools.rl_backtest import RLBacktestTool
 from victor_invest.tools.robust_valuation import RobustValuationTool
 from victor_invest.tools.sec_filing import SECFilingTool
@@ -106,6 +107,7 @@ TOOL_CLASSES = [
     CacheTool,
     EntryExitSignalTool,
     RLBacktestTool,
+    OptionsScreenTool,
     MacroDataTool,
     CreditRiskTool,
     InsiderTradingTool,
@@ -245,6 +247,7 @@ __all__ = [
     "CacheTool",
     "EntryExitSignalTool",
     "RLBacktestTool",
+    "OptionsScreenTool",
     "MacroDataTool",
     "CreditRiskTool",
     "InsiderTradingTool",
