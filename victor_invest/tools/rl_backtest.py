@@ -224,7 +224,7 @@ class RLBacktestTool(BaseTool):
                     multi_period_data=kwargs.get("multi_period_data"),
                     model_agreement_score=kwargs.get("model_agreement_score"),
                     min_data_quality=kwargs.get("min_data_quality", 0.0),
-                    survivorship_flag=kwargs.get("survivorship_flag", False),
+                    survivorship_flag=kwargs.get("survivorship_flag", True),
                 )
             elif action == "get_historical_data":
                 return await self._get_historical_data(
@@ -340,7 +340,7 @@ class RLBacktestTool(BaseTool):
         multi_period_data: Optional[Dict[str, Any]] = None,
         model_agreement_score: Optional[float] = None,
         min_data_quality: float = 0.0,
-        survivorship_flag: bool = False,
+        survivorship_flag: bool = True,
     ) -> ToolResult:
         """Record prediction to database.
 

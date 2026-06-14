@@ -120,8 +120,9 @@ def test_record_prediction_uses_multi_horizon_outcome_tracker(monkeypatch):
     assert short_call["reward_90d"] == -0.3
     assert short_call["per_model_rewards"]["position_type"] == "SHORT"
     assert short_call["position_predicted_fv"] == 90.0
-    # survivorship_flag defaults to False when not supplied by the caller.
-    assert long_call["survivorship_flag"] is False
+    # survivorship_flag defaults to True (conservative: assume biased unless a PIT
+    # universe proves the observation is survivorship-safe).
+    assert long_call["survivorship_flag"] is True
 
 
 def test_record_prediction_skips_non_positive_fair_value(monkeypatch):
