@@ -47,6 +47,7 @@ Example:
 
 import asyncio
 import logging
+from datetime import date
 from typing import Any, Dict, List, Optional
 
 # Shared market data services (used by rl_backtest, batch_analysis_runner, victor_invest)
@@ -222,6 +223,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
         current_price: Optional[float] = None,
         cost_of_equity: Optional[float] = None,
         terminal_growth_rate: Optional[float] = None,
+        as_of_date: Optional[date] = None,
         **kwargs,
     ) -> ToolResult:
         """Execute valuation model(s) for a symbol.
@@ -242,6 +244,9 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             current_price: Current stock price for upside calculation
             cost_of_equity: Required rate of return (default: calculated from CAPM)
             terminal_growth_rate: Long-term growth rate for DCF (default: sector-based)
+            as_of_date: Point-in-time date for fundamentals. When set, only filings
+                filed on or before this date are used (avoids look-ahead bias in
+                historical backtests). Defaults to today's latest fundamentals.
             **kwargs: Additional model-specific parameters
 
         Returns:
@@ -258,7 +263,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
             # Fetch data if not provided
             if quarterly_metrics is None or multi_year_data is None:
-                data_result = await self._fetch_valuation_data(symbol)
+                data_result = await self._fetch_valuation_data(symbol, as_of_date=as_of_date)
                 if not data_result["success"]:
                     return ToolResult.create_failure(
                         f"Failed to fetch data for valuation: {data_result.get('error')}",
@@ -323,7 +328,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 metadata={"symbol": symbol, "model": model},
             )
 
-    async def _fetch_valuation_data(self, symbol: str) -> Dict[str, Any]:
+    async def _fetch_valuation_data(self, symbol: str, as_of_date: Optional[date] = None) -> Dict[str, Any]:
         """Fetch required data for valuation.
 
         Attempts multiple sources:
@@ -332,6 +337,9 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
         Args:
             symbol: Stock ticker
+            as_of_date: Point-in-time date. When provided, the non-date-aware
+                database-manager path is bypassed and only SEC filings filed on or
+                before this date are used (point-in-time correctness for backtests).
 
         Returns:
             Dict with quarterly_metrics, multi_year_data, and success flag
@@ -340,8 +348,10 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             quarterly_metrics: list[Any] = []
             multi_year_data: list[Any] = []
 
-            # Try database manager first
-            if self._db_manager:
+            # Try database manager first. The db-manager fetch is NOT date-aware, so
+            # when a point-in-time as_of_date is requested we skip it and rely on the
+            # date-filtered SEC path below to avoid look-ahead bias.
+            if self._db_manager and as_of_date is None:
                 db_manager = self._db_manager
                 loop = asyncio.get_event_loop()
                 try:
@@ -376,6 +386,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                         symbol=symbol,
                         action="get_quarterly_financials",
                         num_periods=12,
+                        as_of_date=as_of_date,
                     )
 
                     if quarterly_result.success and quarterly_result.output:

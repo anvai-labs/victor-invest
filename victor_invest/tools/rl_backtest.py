@@ -214,6 +214,9 @@ class RLBacktestTool(BaseTool):
                     weights=weights or {},
                     tier_classification=tier_classification,
                     context_features=context_features or {},
+                    multi_period_data=kwargs.get("multi_period_data"),
+                    model_agreement_score=kwargs.get("model_agreement_score"),
+                    min_data_quality=kwargs.get("min_data_quality", 0.0),
                 )
             elif action == "get_historical_data":
                 return await self._get_historical_data(
@@ -326,44 +329,127 @@ class RLBacktestTool(BaseTool):
         weights: Dict[str, float],
         tier_classification: str,
         context_features: Dict,
+        multi_period_data: Optional[Dict[str, Any]] = None,
+        model_agreement_score: Optional[float] = None,
+        min_data_quality: float = 0.0,
     ) -> ToolResult:
         """Record prediction to database.
 
         If context_features is empty, uses DataSourceManager to fetch
-        consolidated data and extract RL features automatically.
+        consolidated data and extract RL features automatically. Low-quality
+        observations (missing fair value, empty features, or data quality below
+        ``min_data_quality``) are skipped so they never become training labels.
+
+        Args:
+            multi_period_data: Precomputed multi-period rewards/prices. When None
+                it is computed here (kept for backward compatibility); callers that
+                already computed it should pass it to avoid recomputation.
+            model_agreement_score: Optional cross-model agreement score persisted
+                for downstream training-quality filtering.
+            min_data_quality: Minimum data-quality score (0-100) required to record.
         """
         if not self._outcome_tracker:
             return ToolResult.create_failure("Outcome tracker not available")
 
         try:
-            # Calculate multi-period data
             metadata = await self._get_metadata(symbol)
             beta = metadata.get("beta", 1.0)
-            multi_period_data = await self._get_multi_period_data(symbol, analysis_date, current_price, beta)
+            if multi_period_data is None:
+                multi_period_data = await self._get_multi_period_data(symbol, analysis_date, current_price, beta)
 
-            # If context_features not provided, use DataSourceManager
+            # Capture data-quality provenance; auto-fetch RL features when not provided.
+            data_quality_score: Optional[float] = None
+            sources_failed: Optional[int] = None
             if not context_features and self._data_source_manager:
                 try:
                     consolidated = self._data_source_manager.get_data(symbol=symbol, as_of_date=analysis_date)
                     context_features = consolidated.get_rl_features()
+                    data_quality_score = self._quality_to_score(getattr(consolidated, "overall_quality", None))
+                    failed = getattr(consolidated, "sources_failed", None)
+                    sources_failed = len(failed) if isinstance(failed, (list, tuple, set)) else failed
                     logger.debug(f"Auto-fetched {len(context_features)} RL features for {symbol}")
                 except Exception as e:
                     logger.warning(f"Could not fetch RL features via DataSourceManager: {e}")
                     context_features = {}
 
+            # Quality gate: do not record observations that would be noisy/invalid
+            # training labels.
+            skip_reason = self._quality_gate_reason(
+                fair_value=fair_value,
+                context_features=context_features,
+                data_quality_score=data_quality_score,
+                min_data_quality=min_data_quality,
+            )
+            if skip_reason:
+                logger.info(f"Skipping prediction for {symbol} @ {analysis_date}: {skip_reason}")
+                return ToolResult.create_success(
+                    output={
+                        "symbol": symbol,
+                        "analysis_date": analysis_date.isoformat(),
+                        "record_ids": [],
+                        "status": "skipped",
+                        "skip_reason": skip_reason,
+                        "data_quality_score": data_quality_score,
+                    },
+                    metadata={"tool": "rl_backtest", "action": "record_prediction"},
+                )
+
+            conviction_band = multi_period_data.get("conviction_band")
+            predicted_fv_by_position = {
+                "LONG": multi_period_data.get("long_predicted_fv"),
+                "SHORT": multi_period_data.get("short_predicted_fv"),
+            }
+
             record_ids = []
             for position_type in ["LONG", "SHORT"]:
-                record_id = self._outcome_tracker.record_prediction(
+                rewards_key = "long_rewards" if position_type == "LONG" else "short_rewards"
+                rewards = multi_period_data.get(rewards_key, {})
+                prices = multi_period_data.get("prices", {})
+                exit_dates = multi_period_data.get("exit_dates", {})
+
+                record_id = self._outcome_tracker.record_prediction_with_outcomes(
                     symbol=symbol,
                     analysis_date=analysis_date,
                     blended_fair_value=fair_value,
                     current_price=current_price,
-                    fair_values=fair_values,
-                    weights=weights,
+                    model_fair_values=fair_values,
+                    model_weights=weights,
                     tier_classification=tier_classification,
                     context_features=context_features,
-                    per_model_rewards={"multi_period": multi_period_data},
+                    actual_price_30d=prices.get("1m"),
+                    actual_price_90d=prices.get("3m"),
+                    actual_price_180d=prices.get("6m"),
+                    actual_price_365d=prices.get("12m"),
+                    actual_price_548d=prices.get("18m"),
+                    actual_price_730d=prices.get("24m"),
+                    actual_price_1095d=prices.get("36m"),
+                    reward_30d=rewards.get("1m"),
+                    reward_90d=rewards.get("3m"),
+                    reward_180d=rewards.get("6m"),
+                    reward_365d=rewards.get("12m"),
+                    reward_548d=rewards.get("18m"),
+                    reward_730d=rewards.get("24m"),
+                    reward_1095d=rewards.get("36m"),
+                    multi_period_rewards={position_type.lower(): rewards},
+                    per_model_rewards={
+                        "multi_period": multi_period_data,
+                        "position_type": position_type,
+                    },
+                    policy_version="backtest_workflow_v1",
                     position_type=position_type,
+                    position_predicted_fv=predicted_fv_by_position[position_type],
+                    conviction_band=conviction_band,
+                    data_quality_score=data_quality_score,
+                    model_agreement_score=model_agreement_score,
+                    sources_failed=sources_failed,
+                    entry_date=analysis_date,
+                    exit_date_30d=self._parse_iso_date(exit_dates.get("1m")),
+                    exit_date_90d=self._parse_iso_date(exit_dates.get("3m")),
+                    exit_date_180d=self._parse_iso_date(exit_dates.get("6m")),
+                    exit_date_365d=self._parse_iso_date(exit_dates.get("12m")),
+                    exit_date_548d=self._parse_iso_date(exit_dates.get("18m")),
+                    exit_date_730d=self._parse_iso_date(exit_dates.get("24m")),
+                    exit_date_1095d=self._parse_iso_date(exit_dates.get("36m")),
                 )
                 if record_id:
                     record_ids.append(record_id)
@@ -375,6 +461,7 @@ class RLBacktestTool(BaseTool):
                     "record_ids": record_ids,
                     "position_types": ["LONG", "SHORT"],
                     "context_features_count": len(context_features),
+                    "data_quality_score": data_quality_score,
                 },
                 metadata={
                     "tool": "rl_backtest",
@@ -383,6 +470,56 @@ class RLBacktestTool(BaseTool):
             )
         except Exception as e:
             return ToolResult.create_failure(f"Failed to record prediction: {e}")
+
+    @staticmethod
+    def _quality_to_score(quality: Any) -> Optional[float]:
+        """Map a DataQuality enum/value to a 0-100 score, or None when unknown."""
+        if quality is None:
+            return None
+        # Numeric value already on a 0-1 or 0-100 scale.
+        value = getattr(quality, "value", None)
+        if isinstance(value, (int, float)):
+            return float(value) * 100.0 if value <= 1.0 else float(value)
+        name = getattr(quality, "name", str(quality)).upper()
+        name_scores = {
+            "EXCELLENT": 100.0,
+            "HIGH": 90.0,
+            "GOOD": 80.0,
+            "MEDIUM": 60.0,
+            "MODERATE": 60.0,
+            "FAIR": 50.0,
+            "LOW": 30.0,
+            "POOR": 20.0,
+            "UNKNOWN": None,
+            "NONE": 0.0,
+        }
+        return name_scores.get(name)
+
+    @staticmethod
+    def _quality_gate_reason(
+        *,
+        fair_value: float,
+        context_features: Dict,
+        data_quality_score: Optional[float],
+        min_data_quality: float,
+    ) -> Optional[str]:
+        """Return a reason string if the observation should be skipped, else None."""
+        if not fair_value or fair_value <= 0:
+            return "non-positive blended fair value"
+        if not context_features:
+            return "empty context features"
+        if data_quality_score is not None and data_quality_score < min_data_quality:
+            return f"data quality {data_quality_score:.0f} < min {min_data_quality:.0f}"
+        return None
+
+    @staticmethod
+    def _parse_iso_date(value: Any) -> Optional[date]:
+        """Parse ISO date strings produced by multi-period reward calculation."""
+        if not value:
+            return None
+        if isinstance(value, date):
+            return value
+        return date.fromisoformat(str(value))
 
     async def _get_historical_data(
         self,
@@ -458,8 +595,19 @@ class RLBacktestTool(BaseTool):
         analysis_date: date,
         current_price: float,
         beta: float,
+        conviction_band: float = 0.10,
     ) -> Dict[str, Any]:
-        """Get multi-period prices, exit dates, and rewards."""
+        """Get multi-period prices, exit dates, and rewards.
+
+        The contrastive LONG/SHORT dataset is generated by assuming a synthetic
+        predicted fair value ``conviction_band`` above (LONG) and below (SHORT) the
+        entry price. These synthetic fair values are returned as
+        ``long_predicted_fv``/``short_predicted_fv`` so callers can persist the exact
+        prediction that produced each reward, keeping features and labels coherent.
+        """
+        long_predicted_fv = round(current_price * (1.0 + conviction_band), 4) if current_price > 0 else None
+        short_predicted_fv = round(current_price * (1.0 - conviction_band), 4) if current_price > 0 else None
+
         prices: Dict[str, Any] = {}
         exit_dates: Dict[str, Any] = {}
         long_rewards: Dict[str, Any] = {}
@@ -481,17 +629,17 @@ class RLBacktestTool(BaseTool):
                 # - predicted_fv < price_at_prediction => SHORT
                 # We simulate this by setting fake fair values to force the desired direction
                 if current_price > 0 and self._reward_calculator is not None:
-                    # For LONG: set predicted_fv higher than entry price
+                    # LONG: synthetic predicted FV above entry price (long signal)
                     long_result = self._reward_calculator.calculate(
-                        predicted_fv=current_price * 1.10,  # 10% above = LONG signal
+                        predicted_fv=long_predicted_fv,
                         price_at_prediction=current_price,
                         actual_price=future_price,
                         days=days,
                         beta=beta,
                     )
-                    # For SHORT: set predicted_fv lower than entry price
+                    # SHORT: synthetic predicted FV below entry price (short signal)
                     short_result = self._reward_calculator.calculate(
-                        predicted_fv=current_price * 0.90,  # 10% below = SHORT signal
+                        predicted_fv=short_predicted_fv,
                         price_at_prediction=current_price,
                         actual_price=future_price,
                         days=days,
@@ -507,6 +655,9 @@ class RLBacktestTool(BaseTool):
 
         return {
             "entry_date": analysis_date.isoformat(),
+            "conviction_band": conviction_band,
+            "long_predicted_fv": long_predicted_fv,
+            "short_predicted_fv": short_predicted_fv,
             "prices": prices,
             "exit_dates": exit_dates,
             "long_rewards": long_rewards,

@@ -155,11 +155,23 @@ class RLBacktestWorkflowState:
         )
 
 
+def _unwrap_state_mapping(state_input: Any) -> Any:
+    """Return the underlying mapping for Victor state wrappers."""
+    if hasattr(state_input, "get_state"):
+        return state_input.get_state()
+    if hasattr(state_input, "to_dict") and not isinstance(state_input, RLBacktestWorkflowState):
+        return state_input.to_dict()
+    return state_input
+
+
 def _ensure_state(state_input) -> RLBacktestWorkflowState:
-    """Convert dict to RLBacktestWorkflowState if needed."""
-    if isinstance(state_input, dict):
-        return RLBacktestWorkflowState.from_dict(state_input)
-    result: RLBacktestWorkflowState = state_input
+    """Convert dict-like workflow state to RLBacktestWorkflowState if needed."""
+    if isinstance(state_input, RLBacktestWorkflowState):
+        return state_input
+    state_data = _unwrap_state_mapping(state_input)
+    if isinstance(state_data, dict):
+        return RLBacktestWorkflowState.from_dict(state_data)
+    result: RLBacktestWorkflowState = state_data
     return result
 
 
@@ -270,11 +282,13 @@ async def run_historical_valuation(state_input) -> dict:
             price = data.get("price")
 
             if price and price > 0:
-                # Run valuation with historical price
+                # Run valuation with historical price using point-in-time fundamentals
+                # (filings filed on or before the analysis date) to avoid look-ahead bias.
                 result = await valuation_tool.execute(
                     symbol=state.symbol,
                     model="all",
                     current_price=price,
+                    as_of_date=date.fromisoformat(hist_data["analysis_date"]),
                 )
                 if result.success:
                     valuation_results[months_back] = {
@@ -395,17 +409,7 @@ async def record_predictions(state_input) -> dict:
             val_result = state.valuation_results.get(months_back, {})
             valuation = val_result.get("valuation", {})
 
-            # Extract fair values and weights from valuation
-            fair_values = {}
-            weights = {}
-            if isinstance(valuation, dict):
-                fair_values = valuation.get("fair_values", {})
-                weights = valuation.get("weights", {})
-                blended_fair_value = valuation.get("blended_fair_value", 0)
-                tier = valuation.get("tier_classification", "")
-            else:
-                blended_fair_value = 0
-                tier = ""
+            fair_values, weights, blended_fair_value, tier = _extract_valuation_payload(valuation)
 
             analysis_date = date.fromisoformat(reward_info["analysis_date"])
             price = reward_info.get("price", 0)
@@ -454,6 +458,38 @@ async def record_predictions(state_input) -> dict:
         state.add_error(error_msg)
 
     return _state_to_dict(state)
+
+
+def _extract_valuation_payload(valuation: Any) -> tuple[Dict[str, Any], Dict[str, Any], float, str]:
+    """Normalize valuation tool outputs into the outcome-tracker payload."""
+    if not isinstance(valuation, dict):
+        return {}, {}, 0.0, ""
+
+    fair_values = dict(valuation.get("fair_values") or {})
+    weights = dict(valuation.get("weights") or valuation.get("model_weights") or {})
+
+    models = valuation.get("models")
+    if isinstance(models, dict):
+        if not fair_values:
+            fair_values = {
+                model_name: model_result.get("fair_value_per_share")
+                for model_name, model_result in models.items()
+                if isinstance(model_result, dict) and model_result.get("fair_value_per_share") is not None
+            }
+        if not weights:
+            weights = {
+                model_name: model_result.get("weight", 0.0)
+                for model_name, model_result in models.items()
+                if isinstance(model_result, dict) and model_result.get("weight") is not None
+            }
+
+    blended_fair_value = (
+        valuation.get("blended_fair_value")
+        or valuation.get("consensus_fair_value")
+        or valuation.get("fair_value_per_share")
+        or 0.0
+    )
+    return fair_values, weights, float(blended_fair_value or 0.0), str(valuation.get("tier_classification") or "")
 
 
 async def finalize_backtest(state_input) -> dict:
@@ -628,6 +664,8 @@ async def run_rl_backtest(
         result_data = result
     else:
         result_data = result
+
+    result_data = _unwrap_state_mapping(result_data)
 
     if isinstance(result_data, dict):
         return RLBacktestWorkflowState.from_dict(result_data)

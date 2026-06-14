@@ -260,6 +260,12 @@ class ValuationOutcomesDAO:
         ab_test_group: Optional[str] = None,
         policy_version: Optional[str] = None,
         position_type: str = "inferred",
+        position_predicted_fv: Optional[float] = None,
+        conviction_band: Optional[float] = None,
+        data_quality_score: Optional[float] = None,
+        model_agreement_score: Optional[float] = None,
+        sources_failed: Optional[int] = None,
+        survivorship_flag: bool = False,
         entry_date: Optional[date] = None,
         exit_date_30d: Optional[date] = None,
         exit_date_90d: Optional[date] = None,
@@ -279,6 +285,13 @@ class ValuationOutcomesDAO:
             entry_date: Date when position was entered (defaults to analysis_date)
             exit_date_30d, exit_date_90d, ..., exit_date_1095d: Exit dates for each holding period
             multi_period_rewards: Consolidated rewards dict with all periods
+            position_predicted_fv: Synthetic/predicted fair value that produced this
+                position's reward (keeps features and label coherent).
+            conviction_band: Fractional band used to derive the synthetic FV.
+            data_quality_score: 0-100 data-quality score for training-set filtering.
+            model_agreement_score: Cross-model agreement score (0-100).
+            sources_failed: Count of data sources that failed during enrichment.
+            survivorship_flag: True if the universe selection may carry survivorship bias.
 
         Returns:
             Record ID if successful, None otherwise.
@@ -336,6 +349,8 @@ class ValuationOutcomesDAO:
                             reward_548d, reward_730d, reward_1095d,
                             multi_period_rewards, per_model_rewards,
                             outcome_updated_at, ab_test_group, policy_version, position_type,
+                            position_predicted_fv, conviction_band, data_quality_score,
+                            model_agreement_score, sources_failed, survivorship_flag,
                             entry_date, exit_date_30d, exit_date_90d, exit_date_180d,
                             exit_date_365d, exit_date_548d, exit_date_730d, exit_date_1095d
                         ) VALUES (
@@ -351,6 +366,8 @@ class ValuationOutcomesDAO:
                             :reward_548d, :reward_730d, :reward_1095d,
                             :multi_period_rewards, :per_model_rewards,
                             CURRENT_TIMESTAMP, :ab_test_group, :policy_version, :position_type,
+                            :position_predicted_fv, :conviction_band, :data_quality_score,
+                            :model_agreement_score, :sources_failed, :survivorship_flag,
                             :entry_date, :exit_date_30d, :exit_date_90d, :exit_date_180d,
                             :exit_date_365d, :exit_date_548d, :exit_date_730d, :exit_date_1095d
                         )
@@ -386,6 +403,12 @@ class ValuationOutcomesDAO:
                             per_model_rewards = EXCLUDED.per_model_rewards,
                             ab_test_group = EXCLUDED.ab_test_group,
                             policy_version = EXCLUDED.policy_version,
+                            position_predicted_fv = EXCLUDED.position_predicted_fv,
+                            conviction_band = EXCLUDED.conviction_band,
+                            data_quality_score = EXCLUDED.data_quality_score,
+                            model_agreement_score = EXCLUDED.model_agreement_score,
+                            sources_failed = EXCLUDED.sources_failed,
+                            survivorship_flag = EXCLUDED.survivorship_flag,
                             entry_date = EXCLUDED.entry_date,
                             exit_date_30d = EXCLUDED.exit_date_30d,
                             exit_date_90d = EXCLUDED.exit_date_90d,
@@ -437,6 +460,20 @@ class ValuationOutcomesDAO:
                         "ab_test_group": ab_test_group,
                         "policy_version": policy_version,
                         "position_type": position_type,
+                        "position_predicted_fv": (
+                            _convert_numpy_types(position_predicted_fv) if position_predicted_fv is not None else None
+                        ),
+                        "conviction_band": (
+                            _convert_numpy_types(conviction_band) if conviction_band is not None else None
+                        ),
+                        "data_quality_score": (
+                            _convert_numpy_types(data_quality_score) if data_quality_score is not None else None
+                        ),
+                        "model_agreement_score": (
+                            _convert_numpy_types(model_agreement_score) if model_agreement_score is not None else None
+                        ),
+                        "sources_failed": sources_failed,
+                        "survivorship_flag": survivorship_flag,
                         "entry_date": effective_entry_date,
                         "exit_date_30d": exit_date_30d,
                         "exit_date_90d": exit_date_90d,
@@ -650,6 +687,8 @@ class ValuationOutcomesDAO:
         limit: Optional[int] = 10000,
         exclude_used: bool = True,
         horizon: str = "90d",
+        min_data_quality: Optional[float] = None,
+        exclude_survivorship: bool = False,
     ) -> List[Dict[str, Any]]:
         """Get experiences ready for training for a specific horizon.
 
@@ -658,6 +697,9 @@ class ValuationOutcomesDAO:
             exclude_used: If True, exclude experiences already used for training.
             horizon: Which reward horizon to filter by (e.g., "90d", "180d", "365d", "730d").
                      Only returns experiences where reward for this horizon is NOT NULL.
+            min_data_quality: If set, only return rows whose data_quality_score is NULL
+                     (legacy rows) or >= this threshold.
+            exclude_survivorship: If True, exclude rows flagged with survivorship bias.
         """
         try:
             with self.db.get_session() as session:
@@ -667,12 +709,19 @@ class ValuationOutcomesDAO:
                 horizon_days = horizon.rstrip("d")
 
                 # Build query with or without limit
+                params: Dict[str, Any] = {}
                 if limit is None:
                     limit_clause = ""
-                    params = {}
                 else:
                     limit_clause = "LIMIT :limit"
-                    params = {"limit": limit}
+                    params["limit"] = limit
+
+                quality_clause = ""
+                if min_data_quality is not None:
+                    quality_clause = "AND (data_quality_score IS NULL OR data_quality_score >= :min_data_quality)"
+                    params["min_data_quality"] = min_data_quality
+
+                survivorship_clause = "AND COALESCE(survivorship_flag, FALSE) = FALSE" if exclude_survivorship else ""
 
                 results = session.execute(
                     text(f"""
@@ -690,6 +739,8 @@ class ValuationOutcomesDAO:
                         FROM valuation_outcomes
                         WHERE reward_{horizon_days}d IS NOT NULL
                               {used_clause}
+                              {quality_clause}
+                              {survivorship_clause}
                         ORDER BY analysis_date DESC
                         {limit_clause}
                     """),
@@ -953,6 +1004,12 @@ class OutcomeTracker:
         ab_test_group: Optional[ABTestGroup] = None,
         policy_version: Optional[str] = None,
         position_type: str = "inferred",
+        position_predicted_fv: Optional[float] = None,
+        conviction_band: Optional[float] = None,
+        data_quality_score: Optional[float] = None,
+        model_agreement_score: Optional[float] = None,
+        sources_failed: Optional[int] = None,
+        survivorship_flag: bool = False,
         entry_date: Optional[date] = None,
         exit_date_30d: Optional[date] = None,
         exit_date_90d: Optional[date] = None,
@@ -1038,6 +1095,12 @@ class OutcomeTracker:
             ab_test_group=ab_group_str,
             policy_version=policy_version,
             position_type=position_type,
+            position_predicted_fv=position_predicted_fv,
+            conviction_band=conviction_band,
+            data_quality_score=data_quality_score,
+            model_agreement_score=model_agreement_score,
+            sources_failed=sources_failed,
+            survivorship_flag=survivorship_flag,
             entry_date=entry_date,
             exit_date_30d=exit_date_30d,
             exit_date_90d=exit_date_90d,

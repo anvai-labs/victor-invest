@@ -56,6 +56,7 @@ Example:
 
 import asyncio
 import logging
+from datetime import date
 from typing import Any, Dict, Optional
 
 from victor_invest.tools.base import BaseTool, ToolResult
@@ -183,7 +184,8 @@ Parameters:
                 return await self._get_company_facts(symbol)
             elif action == "get_quarterly_financials":
                 num_periods = kwargs.get("num_periods", 12)
-                return await self._get_quarterly_financials(symbol, num_periods)
+                as_of_date = kwargs.get("as_of_date")
+                return await self._get_quarterly_financials(symbol, num_periods, as_of_date=as_of_date)
             elif action == "search_filings":
                 return await self._search_filings(symbol, form_type, limit)
             elif action == "extract_metrics":
@@ -312,7 +314,9 @@ Parameters:
 
         return derive_q4_from_fy(quarters_data, symbol)
 
-    async def _get_quarterly_financials(self, symbol: str, num_periods: int = 12) -> ToolResult:
+    async def _get_quarterly_financials(
+        self, symbol: str, num_periods: int = 12, as_of_date: Optional[date] = None
+    ) -> ToolResult:
         """Get quarterly financial data using the legacy pipeline.
 
         This method uses the same data pipeline as the legacy CLI to ensure
@@ -322,6 +326,8 @@ Parameters:
         Args:
             symbol: Stock ticker
             num_periods: Maximum number of periods to return (default: 12)
+            as_of_date: Point-in-time date. When set, only filings filed on or
+                before this date are returned (look-ahead-free historical data).
 
         Returns:
             ToolResult with quarterly financial data in dict format
@@ -345,6 +351,7 @@ Parameters:
                 lambda: query_recent_processed_periods(
                     symbol=symbol,
                     num_quarters=num_periods,
+                    as_of_date=as_of_date,
                     db_manager=db_manager,
                     fiscal_period_service=fiscal_period_service,
                     logger=logger,

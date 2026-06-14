@@ -85,6 +85,14 @@ CREATE TABLE IF NOT EXISTS valuation_outcomes (
     -- Position type for dual policy signals
     position_type VARCHAR(20) DEFAULT 'inferred',  -- 'LONG', 'SHORT', 'inferred'
 
+    -- Evaluation-integrity / provenance (migration 012)
+    position_predicted_fv NUMERIC(12,2),   -- synthetic FV that produced this position's reward
+    conviction_band NUMERIC(5,4),          -- fractional band used to derive the synthetic FV
+    data_quality_score NUMERIC(5,2),       -- 0-100 data quality at recording time
+    model_agreement_score NUMERIC(5,2),    -- 0-100 cross-model agreement
+    sources_failed INTEGER,                -- count of failed data sources
+    survivorship_flag BOOLEAN DEFAULT FALSE,  -- universe survivorship-bias flag
+
     -- Metadata
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
