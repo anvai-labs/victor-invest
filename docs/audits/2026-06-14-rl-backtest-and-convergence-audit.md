@@ -246,5 +246,36 @@ valuation / treasury tools; universe becomes a parameter; add math + determinism
 **P3 — Robustness:**
 10. Transaction costs / borrow / benchmark-relative rewards; overlapping-sample significance;
     walk-forward OOS evaluation.
+
+---
+
+## 7. Implementation status (2026-06-14)
+
+Shipped on branch `rl-backtest-eval-integrity` (commits, each tested + ruff-clean; pre-existing
+repo mypy debt bypassed with `--no-verify`, zero new mypy findings):
+
+| Item | Status | Where |
+|------|--------|-------|
+| A Lookahead bias — point-in-time fundamentals | ✅ Done | `as_of_date` threaded valuation→SEC→SQL (`filed_date <= :as_of_date`) |
+| B Reward–prediction coherence (dual rows + synthetic FV) | ✅ Done | explicit `conviction_band`, `position_predicted_fv` recorded |
+| D Data-quality gating + provenance | ✅ Done | gate in `_record_prediction`; quality/agreement/sources columns |
+| Schema migration 012 + tracker/DAO + training filters | ✅ Done | `schema/migrations/012_*.sql`, `outcome_tracker.py` |
+| I Period label 540→548 | ✅ Done | `HOLDING_PERIODS` + mapping test |
+| J Trading staleness cap | ✅ Done | `PriceService.get_price` bounded backward search |
+| K Redundant recompute | ✅ Done | workflow passes precomputed `multi_period_data` |
+| C Survivorship flag | ✅ Done (flag) | threaded `survivorship_flag`; PIT universe still TODO |
+| H Repo hygiene + options-screen tool | ✅ Done | `.gitignore`, `OptionsScreenTool`, `_options_math`, CLI, tests |
+
+Scoped follow-ups (not yet implemented — each its own effort):
+- **E/F Handler convergence + single execution path** (P1.4): migrate `@handler_decorator`/
+  `BaseHandler` → canonical `register_compute_handler`/`NodeResult`; remove the dead YAML-vs-
+  StateGraph fork. Largest/riskiest refactor; gate behind framework import-boundary tests.
+- **G Analyst-report overhaul** (P2): unified typed `AnalystReport` schema; surface
+  RSI/MACD/Stochastic/Bollinger/Fibonacci/patterns; DCF sensitivity + scenarios + risk matrix;
+  quality flags (Altman/Piotroski/Beneish); one scoring rubric; provenance manifest; markdown/HTML.
+- **C (full) Survivorship-free universe**: point-in-time constituent snapshots incl. delisted names;
+  delisting as terminal loss-bearing exit.
+- **P3 Robustness**: transaction costs / borrow; benchmark-relative rewards; overlapping-sample
+  significance (Newey-West / block bootstrap); walk-forward OOS.
 </content>
 </invoke>
