@@ -12,8 +12,8 @@ on:
 
 env:
   PYTHON_VERSION: "3.11"
-  VICTOR_AI_SOURCE: 'git+https://github.com/vjsingh1984/victor.git@develop'
-  VICTOR_CONTRACTS_SOURCE: 'git+https://github.com/vjsingh1984/victor.git@develop#subdirectory=victor-contracts'
+  VICTOR_AI_SOURCE: 'git+https://github.com/anvai-labs/victor.git@develop'
+  VICTOR_CONTRACTS_SOURCE: 'git+https://github.com/anvai-labs/victor.git@develop#subdirectory=victor-contracts'
 
 jobs:
   nightly-live-benchmark:

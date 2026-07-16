@@ -216,8 +216,8 @@ git commit --amend
 
 | Resource | Link |
 |----------|------|
-| **Issues** | https://github.com/vjsingh1984/victor-invest/issues |
-| **Discussions** | https://github.com/vjsingh1984/victor-invest/discussions |
+| **Issues** | https://github.com/anvai-labs/victor-invest/issues |
+| **Discussions** | https://github.com/anvai-labs/victor-invest/discussions |
 | **CLAUDE.md** | In repo root (dev guidelines) |
 
 ---

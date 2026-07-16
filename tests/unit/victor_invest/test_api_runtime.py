@@ -19,7 +19,7 @@ def test_api_runner_alias_targets_yaml_workflow_path():
 
 
 def test_api_contract_alias_routes_present():
-    route_paths = {route.path for route in api_module.app.routes}
+    route_paths = {route.path for route in api_module.app.routes if hasattr(route, "path")}
     assert "/dashboard" in route_paths
     assert "/ui/api/health" in route_paths
     assert "/api/health" in route_paths

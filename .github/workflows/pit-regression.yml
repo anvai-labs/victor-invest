@@ -8,8 +8,8 @@ on:
 env:
   # Install victor-ai from source (develop branch) until framework.extensions
   # is available in a released PyPI version.
-  VICTOR_AI_SOURCE: 'git+https://github.com/vjsingh1984/victor.git@develop'
-  VICTOR_CONTRACTS_SOURCE: 'git+https://github.com/vjsingh1984/victor.git@develop#subdirectory=victor-contracts'
+  VICTOR_AI_SOURCE: 'git+https://github.com/anvai-labs/victor.git@develop'
+  VICTOR_CONTRACTS_SOURCE: 'git+https://github.com/anvai-labs/victor.git@develop#subdirectory=victor-contracts'
 
 jobs:
   pit-regression:

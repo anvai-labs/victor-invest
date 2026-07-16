@@ -10,7 +10,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Optional
 
-
 ACTION_STRONG_BUY = "STRONG_BUY"
 ACTION_BUY = "BUY"
 ACTION_HOLD = "HOLD"
