@@ -191,11 +191,11 @@ invest = "victor_invest.prompts.contributor:InvestmentPromptContributor"
 invest = "victor_invest.workflows:InvestmentWorkflowProvider"
 
 [project.urls]
-Homepage = "https://github.com/vjsingh1984/victor-invest"
-Documentation = "https://github.com/vjsingh1984/victor-invest#readme"
-Repository = "https://github.com/vjsingh1984/victor-invest"
-Issues = "https://github.com/vjsingh1984/victor-invest/issues"
-Changelog = "https://github.com/vjsingh1984/victor-invest/releases"
+Homepage = "https://github.com/anvai-labs/victor-invest"
+Documentation = "https://github.com/anvai-labs/victor-invest#readme"
+Repository = "https://github.com/anvai-labs/victor-invest"
+Issues = "https://github.com/anvai-labs/victor-invest/issues"
+Changelog = "https://github.com/anvai-labs/victor-invest/releases"
 
 [tool.setuptools]
 package-dir = {"" = "src", "victor_invest" = "victor_invest"}

@@ -12,8 +12,8 @@ env:
   PYTHON_VERSION: '3.11'
   # Install victor-ai from source (develop branch) until framework.extensions
   # is available in a released PyPI version.
-  VICTOR_AI_SOURCE: 'git+https://github.com/vjsingh1984/victor.git@develop'
-  VICTOR_CONTRACTS_SOURCE: 'git+https://github.com/vjsingh1984/victor.git@develop#subdirectory=victor-contracts'
+  VICTOR_AI_SOURCE: 'git+https://github.com/anvai-labs/victor.git@develop'
+  VICTOR_CONTRACTS_SOURCE: 'git+https://github.com/anvai-labs/victor.git@develop#subdirectory=victor-contracts'
 
 jobs:
   # Code Quality Checks
@@ -136,8 +136,8 @@ jobs:
         python-version: ['3.11']
         victor-source:
           - name: 'develop (latest)'
-            install: 'git+https://github.com/vjsingh1984/victor.git@develop'
-            contracts_install: 'git+https://github.com/vjsingh1984/victor.git@develop#subdirectory=victor-contracts'
+            install: 'git+https://github.com/anvai-labs/victor.git@develop'
+            contracts_install: 'git+https://github.com/anvai-labs/victor.git@develop#subdirectory=victor-contracts'
 
     steps:
       - uses: actions/checkout@v6

@@ -46,8 +46,8 @@ jobs:
           VICTOR_REF="${{ github.event.client_payload.victor_ref }}"
           VICTOR_BRANCH="${{ github.event.client_payload.victor_branch }}"
           echo "Installing victor-ai @ ${VICTOR_REF} (branch: ${VICTOR_BRANCH})"
-          pip install "git+https://github.com/vjsingh1984/victor.git@${VICTOR_REF}#subdirectory=victor-contracts"
-          pip install "git+https://github.com/vjsingh1984/victor.git@${VICTOR_REF}"
+          pip install "git+https://github.com/anvai-labs/victor.git@${VICTOR_REF}#subdirectory=victor-contracts"
+          pip install "git+https://github.com/anvai-labs/victor.git@${VICTOR_REF}"
           pip install -e ".[dev]"
 
       - name: Show installed versions
