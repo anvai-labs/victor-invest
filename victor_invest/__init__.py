@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@ Example:
 
 __version__ = "0.7.0"
 __author__ = "Vijaykumar Singh"
-__email__ = "singhvjd@gmail.com"
+__email__ = "vijay@anvaiops.com"
 __license__ = "Apache-2.0"
 
 from victor_invest.conversation_enhanced import (  # noqa: F401

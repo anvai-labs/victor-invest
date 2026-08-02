@@ -15,7 +15,7 @@ We take security seriously. If you discover a security vulnerability, please rep
 
 **DO NOT** create a public GitHub issue for security vulnerabilities.
 
-Instead, please email security concerns to: **singhvjd@gmail.com**
+Instead, please email security concerns to: **vijay@anvaiops.com**
 
 Include the following information:
 - Description of the vulnerability
@@ -127,6 +127,6 @@ We appreciate security researchers who:
 
 ## Contact
 
-For security concerns: **singhvjd@gmail.com**
+For security concerns: **vijay@anvaiops.com**
 
 For general questions: Use GitHub Issues or Discussions
