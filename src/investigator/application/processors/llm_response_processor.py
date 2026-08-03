@@ -252,7 +252,7 @@ class LLMResponseProcessor:
         try:
             return json.loads(text)
         except Exception:
-            pass
+            logger.debug("extract_json_from_text: suppressed error", exc_info=True)
 
         # Look for JSON in markdown code block
         json_match = re.search(r"```json\s*(.*?)```", text, re.DOTALL)
@@ -260,7 +260,7 @@ class LLMResponseProcessor:
             try:
                 return json.loads(json_match.group(1).strip())
             except Exception:
-                pass
+                logger.debug("extract_json_from_text: suppressed error", exc_info=True)
 
         # Look for JSON-like content (starts with { and ends with })
         brace_match = re.search(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", text, re.DOTALL)
@@ -268,7 +268,7 @@ class LLMResponseProcessor:
             try:
                 return json.loads(brace_match.group(0))
             except Exception:
-                pass
+                logger.debug("extract_json_from_text: suppressed error", exc_info=True)
 
         return None
 

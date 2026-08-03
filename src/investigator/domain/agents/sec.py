@@ -6,6 +6,7 @@ Specialized agent for processing and analyzing SEC filings using Ollama LLMs
 import asyncio
 import gzip
 import json
+import logging
 import math
 import re
 from dataclasses import dataclass
@@ -28,6 +29,8 @@ from investigator.infrastructure.database.market_data import (  # Singleton patt
 # Use direct module imports to avoid circular dependency with sec package __init__.py
 from investigator.infrastructure.sec.sec_api import SECApiClient
 from investigator.infrastructure.sec.xbrl_parser import XBRLParser
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -682,7 +685,7 @@ TEXT:
                         return True
                 except Exception:
                     # Fall through to direct override attribute checks.
-                    pass
+                    logger.debug("_resolve_force_refresh: suppressed error", exc_info=True)
 
             override_enabled = bool(getattr(cache_manager, "_force_refresh_override", False))
             if override_enabled:

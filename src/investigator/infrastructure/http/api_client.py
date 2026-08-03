@@ -532,7 +532,7 @@ class OllamaAPIClient(BaseAPIClient):
             try:
                 import subprocess
 
-                result = subprocess.run(["sysctl", "hw.memsize"], capture_output=True, text=True)
+                result = subprocess.run(["sysctl", "hw.memsize"], capture_output=True, text=True, check=False)
                 if result.returncode == 0:
                     system_memory_bytes = int(result.stdout.split(": ")[1])
                     system_memory_gb = system_memory_bytes / (1024**3)

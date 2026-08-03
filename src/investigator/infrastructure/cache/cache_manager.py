@@ -130,7 +130,7 @@ class CacheManager:
 
                 config = get_config()
             except Exception:
-                pass
+                logger.debug("_initialize_default_handlers: suppressed error", exc_info=True)
 
         if not config or not hasattr(config, "cache_control"):
             logger.warning("No cache configuration found - using minimal defaults")
@@ -560,7 +560,7 @@ class CacheManager:
             if hasattr(self, "_executor") and self._executor:
                 self._executor.shutdown(wait=False, cancel_futures=True)
         except Exception:
-            pass  # Ignore errors during cleanup
+            logger.debug("__del__: suppressed error", exc_info=True)
 
     # ========================================================================
     # End of Async Wrappers

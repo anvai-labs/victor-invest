@@ -522,7 +522,7 @@ class ValuationContextExtractor:
                 result = self.profitability_classifier.classify(financials, ratios)
                 return result.get("score", 0.5)
             except Exception:
-                pass
+                logger.debug("_calculate_profitability_score: suppressed error", exc_info=True)
 
         # Fallback: simple calculation based on margins
         gross_margin = self._safe_get_float(ratios, "gross_margin", 0)

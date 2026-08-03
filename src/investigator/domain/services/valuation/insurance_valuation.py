@@ -360,7 +360,7 @@ def value_insurance_company(
                 warnings.append("shares_outstanding derived from market_cap/current_price")
                 logger.info(f"{symbol} - Derived shares_outstanding from market cap: {shares_outstanding / 1e6:.1f}M")
             except Exception:
-                pass
+                logger.debug("value_insurance_company: suppressed error", exc_info=True)
 
     # Validate required data
     if not all([stockholders_equity, shares_outstanding]):

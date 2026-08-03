@@ -572,6 +572,7 @@ def _extract_payload_from_log_text(raw: str, symbol: str) -> dict[str, Any] | No
         try:
             parsed, _ = decoder.raw_decode(json_candidate)
         except Exception:
+            logger.debug("_extract_payload_from_log_text: suppressed error", exc_info=True)
             continue
         if _is_analysis_payload(parsed):
             parsed_symbol = str(parsed.get("symbol", "")).upper()
@@ -899,7 +900,7 @@ def _apply_thesis_fallback(result: dict[str, Any]) -> dict[str, Any]:
         if not summary.get("key_risks"):
             summary["key_risks"] = thesis_data.get("bear_case_considerations", [])
     except Exception:
-        pass  # Template fallback is best-effort
+        logger.debug("_apply_thesis_fallback: suppressed error", exc_info=True)
     return result
 
 
@@ -1156,6 +1157,7 @@ def _load_rankable_cache_entries() -> list[dict[str, Any]]:
         try:
             raw = json.loads(path.read_text(encoding="utf-8"))
         except Exception:
+            logger.debug("_load_rankable_cache_entries: suppressed error", exc_info=True)
             continue
 
         payload = raw.get("payload") if isinstance(raw, dict) else None
@@ -1167,6 +1169,7 @@ def _load_rankable_cache_entries() -> list[dict[str, Any]]:
         try:
             view = _extract_ui_view_from_payload(payload)  # type: ignore[arg-type]
         except Exception:
+            logger.debug("_load_rankable_cache_entries: suppressed error", exc_info=True)
             continue
 
         summary = view.get("summary", {}) if isinstance(view, dict) else {}
@@ -2822,6 +2825,7 @@ async def ui_history(limit: int = Query(20, ge=1, le=200)):
                     }
                 )
             except Exception:
+                logger.debug("ui_history: suppressed error", exc_info=True)
                 continue
     except Exception as exc:
         logger.warning("UI history load failed: %s", exc)

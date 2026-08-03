@@ -202,6 +202,7 @@ class ResilientParser:
                     if not df.empty:
                         break
                 except Exception:
+                    logger.debug("parse_excel: suppressed error", exc_info=True)
                     continue
             else:
                 return None
@@ -246,7 +247,7 @@ class ResilientParser:
                 try:
                     prev_value = float(prev[value_col])
                 except Exception:
-                    pass
+                    logger.debug("parse_excel: suppressed error", exc_info=True)
 
             return {
                 "date": obs_date,
@@ -277,6 +278,7 @@ class ResilientParser:
                     if not df.empty:
                         break
                 except Exception:
+                    logger.debug("parse_csv: suppressed error", exc_info=True)
                     continue
             else:
                 return None
@@ -353,7 +355,7 @@ class ResilientParser:
                         try:
                             obs_date = datetime.strptime(str(latest["date"]), "%Y-%m-%d").date()
                         except Exception:
-                            pass
+                            logger.debug("parse_json: suppressed error", exc_info=True)
 
                     # Try to find a value field
                     value = None

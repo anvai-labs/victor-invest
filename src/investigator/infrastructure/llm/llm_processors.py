@@ -609,7 +609,7 @@ class LLMExecutionHandler(ILLMHandler):
                     self._log_to_both(symbol, json_keys_msg)
             except Exception:
                 # Not JSON or parsing failed - that's fine
-                pass
+                logger.debug("handle: suppressed error", exc_info=True)
 
             self.logger.debug(
                 f"🔍 OLLAMA API DEBUG - Full response keys: {list(response_data.keys()) if response_data else 'None'}"

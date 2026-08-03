@@ -451,7 +451,7 @@ class TreasuryApiClient:
                     if value is not None:
                         yields[maturity] = value
                 except Exception:
-                    pass
+                    logger.debug("_fetch_from_fred_fallback: suppressed error", exc_info=True)
 
             if len(yields) > 1:  # Has at least one yield besides date
                 return [yields]

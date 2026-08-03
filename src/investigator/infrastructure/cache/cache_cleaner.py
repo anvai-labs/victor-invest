@@ -198,7 +198,7 @@ class CacheCleanupService:
 
         except Exception:
             # Silently fail - will use mtime fallback
-            pass
+            logger.debug("_get_expires_at_from_file: suppressed error", exc_info=True)
 
         return None
 

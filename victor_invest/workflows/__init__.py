@@ -384,7 +384,7 @@ def ensure_handlers_registered() -> None:
         synced = True
         sync_method_used = "sync_handlers_with_executor"
     except Exception:
-        pass
+        logger.debug("ensure_handlers_registered: suppressed error", exc_info=True)
 
     if not synced:
         # Compatibility path for newer/older Victor variants:
@@ -399,7 +399,7 @@ def ensure_handlers_registered() -> None:
                 synced = True
                 sync_method_used = "registry.sync_with_executor"
         except Exception:
-            pass
+            logger.debug("ensure_handlers_registered: suppressed error", exc_info=True)
 
     if not synced:
         # Last-resort bridge: push handlers from framework registry to
@@ -421,7 +421,7 @@ def ensure_handlers_registered() -> None:
             synced = pushed > 0
             sync_method_used = "manual_executor_bridge"
         except Exception:
-            pass
+            logger.debug("ensure_handlers_registered: suppressed error", exc_info=True)
 
     if not synced:
         logger.warning(

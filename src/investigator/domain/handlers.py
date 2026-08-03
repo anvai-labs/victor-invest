@@ -40,10 +40,12 @@ Usage:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from dataclasses import dataclass
 from datetime import date, datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -177,8 +179,7 @@ class ValuationComputeHandler(HandlerBase):
             # Get dynamic weights for model blending
             import yaml
 
-            with open("config.yaml", "r") as f:
-                config = yaml.safe_load(f)
+            config = yaml.safe_load(await asyncio.to_thread(Path("config.yaml").read_text))
             valuation_config = config.get("valuation", {})
             weighting_service = DynamicModelWeightingService(valuation_config)
             weights, tier, weight_audit = weighting_service.determine_weights(
@@ -301,8 +302,7 @@ class RLWeightDecisionHandler(HandlerBase):
                 RLModelWeightingService,
             )
 
-            with open("config.yaml", "r") as f:
-                config = yaml.safe_load(f)
+            config = yaml.safe_load(await asyncio.to_thread(Path("config.yaml").read_text))
             valuation_config = config.get("valuation", {})
             fallback_service = DynamicModelWeightingService(valuation_config)
 

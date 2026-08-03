@@ -47,6 +47,7 @@ Example:
 
 import asyncio
 import logging
+from pathlib import Path
 from typing import Any
 
 # Shared market data services (used by rl_backtest, batch_analysis_runner, victor_invest)
@@ -1098,8 +1099,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 )
 
                 # Load valuation config directly from YAML
-                with open("config.yaml", "r") as f:
-                    config = yaml.safe_load(f)
+                config = yaml.safe_load(await asyncio.to_thread(Path("config.yaml").read_text))
                 valuation_config = config.get("valuation", {})
 
                 # Initialize metadata service for sector/industry lookup

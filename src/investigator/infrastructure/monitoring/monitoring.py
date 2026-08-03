@@ -374,8 +374,7 @@ class MetricsCollector:
 
         try:
             filename.parent.mkdir(parents=True, exist_ok=True)
-            with open(filename, "w") as f:
-                json.dump(export_data, f, indent=2, default=str)
+            await asyncio.to_thread(filename.write_text, json.dumps(export_data, indent=2, default=str))
         except Exception as e:
             self.logger.error(f"Failed to export metrics to file: {e}")
 

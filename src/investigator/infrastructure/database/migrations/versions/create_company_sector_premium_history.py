@@ -178,7 +178,7 @@ def upgrade():
             )
         except Exception:
             # Index might already exist
-            pass
+            logger.debug("upgrade: suppressed error", exc_info=True)
 
     logger.info("Indexes created successfully")
 

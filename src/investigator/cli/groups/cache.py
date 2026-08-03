@@ -2,10 +2,13 @@
 Cache management commands for InvestiGator CLI
 """
 
+import logging
 import sys
 from pathlib import Path
 
 import click
+
+logger = logging.getLogger(__name__)
 
 
 @click.group()
@@ -63,7 +66,7 @@ def clean(ctx, clean_all, clean_db, clean_disk, symbol, cache_type, force):
                 try:
                     cache_manager.clear(ct)
                 except Exception:
-                    pass
+                    logger.debug("clean: suppressed error", exc_info=True)
             click.echo("All caches cleared")
 
         elif clean_db:
@@ -126,7 +129,7 @@ def _clean_db_symbol(cache_manager, symbol: str):
                 try:
                     deleted += handler.delete_by_symbol(symbol)
                 except Exception:
-                    pass
+                    logger.debug("_clean_db_symbol: suppressed error", exc_info=True)
     click.echo(f"Deleted {deleted} database cache entries for {symbol}")
 
 
@@ -143,7 +146,7 @@ def _clean_disk_symbol(cache_manager, symbol: str):
                 try:
                     deleted += handler.delete_by_symbol(symbol)
                 except Exception:
-                    pass
+                    logger.debug("_clean_disk_symbol: suppressed error", exc_info=True)
     click.echo(f"Deleted {deleted} disk cache entries for {symbol}")
 
 

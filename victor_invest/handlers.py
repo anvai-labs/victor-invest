@@ -680,7 +680,7 @@ class RunSynthesisHandler(BaseHandler):
                 await self._llm_client.close()
                 self._llm_client = None
             except Exception:
-                pass
+                logger.debug("execute: suppressed error", exc_info=True)
 
         return output, 1 if llm_result else 0
 

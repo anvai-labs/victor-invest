@@ -366,7 +366,7 @@ class MarketRegimeCache:
                             else:
                                 underperforming += 1
                     except Exception:
-                        pass
+                        logger.debug("_compute_market_breadth: suppressed error", exc_info=True)
 
                 breadth_data["sectors_outperforming"] = outperforming
                 breadth_data["sectors_underperforming"] = underperforming
@@ -645,7 +645,7 @@ class MarketRegimeCache:
                 ]:
                     self.cache_manager.delete(cache_type, cache_key)
             except Exception:
-                pass
+                logger.debug("clear_cache: suppressed error", exc_info=True)
 
         logger.info(f"Cleared all market regime cache for {date}")
 

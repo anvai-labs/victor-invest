@@ -13,6 +13,7 @@ Usage:
 
 import asyncio
 import json
+import logging
 import os
 import subprocess
 import sys
@@ -45,6 +46,8 @@ from victor_invest.workflows import (
     InvestmentWorkflowProvider,
 )
 
+logger = logging.getLogger(__name__)
+
 console = Console()
 
 
@@ -57,7 +60,7 @@ def _get_ollama_base_url() -> str:
         if base_url:
             return str(base_url)
     except Exception:
-        pass
+        logger.debug("_get_ollama_base_url: suppressed error", exc_info=True)
     return os.getenv("OLLAMA_URL") or os.getenv("OLLAMA_BASE_URL") or "http://localhost:11434"
 
 
@@ -881,7 +884,7 @@ def beta_refresh(
 
     console.print("[bold blue]Running beta refresh job...[/bold blue]")
     console.print(" ".join(cmd))
-    result = subprocess.run(cmd, cwd=str(project_root))
+    result = subprocess.run(cmd, cwd=str(project_root), check=False)
     if result.returncode != 0:
         raise SystemExit(result.returncode)
 
@@ -1296,6 +1299,7 @@ def metrics(days: int):
                 if timestamp >= cutoff_date:
                     all_metrics.append(data)
         except Exception:
+            logger.debug("metrics: suppressed error", exc_info=True)
             continue
 
     if not all_metrics:
@@ -1497,7 +1501,7 @@ def clean_cache(clean_all, clean_db, clean_disk, symbol):
                 try:
                     cache_manager.clear(cache_type)
                 except Exception:
-                    pass
+                    logger.debug("clean_cache: suppressed error", exc_info=True)
             console.print("[green]✅ All caches cleared[/green]")
 
         elif clean_db:
@@ -1522,7 +1526,7 @@ def clean_cache(clean_all, clean_db, clean_disk, symbol):
                     try:
                         cache_manager.clear(ct, storage_type="rdbms")
                     except Exception:
-                        pass
+                        logger.debug("clean_cache: suppressed error", exc_info=True)
                 console.print("[green]✅ Database cache cleared[/green]")
 
         elif clean_disk:
@@ -1547,7 +1551,7 @@ def clean_cache(clean_all, clean_db, clean_disk, symbol):
                     try:
                         cache_manager.clear(ct, storage_type="disk")
                     except Exception:
-                        pass
+                        logger.debug("clean_cache: suppressed error", exc_info=True)
                 console.print("[green]✅ Disk cache cleared[/green]")
 
         elif symbol:

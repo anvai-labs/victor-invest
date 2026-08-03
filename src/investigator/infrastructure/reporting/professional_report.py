@@ -10,6 +10,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+logger = logging.getLogger(__name__)
+
 try:
     from reportlab.graphics import renderPDF  # noqa: F401
     from reportlab.graphics.charts.barcharts import VerticalBarChart  # noqa: F401
@@ -34,9 +36,7 @@ try:
     REPORTLAB_AVAILABLE = True
 except ImportError:
     REPORTLAB_AVAILABLE = False
-    logging.warning("reportlab not available")
-
-logger = logging.getLogger(__name__)
+    logger.warning("reportlab not available")
 
 
 class GaugeChart(Flowable):

@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Callable
 from typing import Any
 
 from investigator.application.synthesizer_recommendation import calculate_consistency_bonus
+
+logger = logging.getLogger(__name__)
 
 FundamentalScoreCalculator = Callable[[dict[str, Any]], float]
 QuarterlyBusinessQualityAnalyzer = Callable[[str, str], float]
@@ -240,7 +243,7 @@ def extract_business_quality_score(
             if "business_quality_score" in parsed:
                 return float(parsed["business_quality_score"])
         except Exception:
-            pass
+            logger.debug("extract_business_quality_score: suppressed error", exc_info=True)
 
     quarterly_analyses = llm_responses.get("fundamental", {})
     quality_indicators = []

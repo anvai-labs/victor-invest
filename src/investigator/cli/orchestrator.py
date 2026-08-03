@@ -43,6 +43,8 @@ except ImportError:
 from investigator.application import InvestmentSynthesizer  # noqa: E402
 from investigator.domain.models import InvestmentRecommendation  # noqa: E402
 
+logger = logging.getLogger(__name__)
+
 
 # Configure logging
 def setup_logging(log_level: str = "INFO", log_file: str | None = None):
@@ -214,7 +216,7 @@ def generate_executive_summary(full_analysis: dict) -> dict:
         return summary
 
     except Exception as e:
-        logging.error(f"Error generating executive summary: {e}")
+        logger.exception("Error generating executive summary")
         return {
             "error": f"Failed to generate summary: {e}",
             "symbol": full_analysis.get("symbol", "Unknown"),
@@ -334,7 +336,7 @@ def analyze(
                         cache_manager.delete(cache_type, {"symbol": symbol})
                 except Exception:
                     # Silently continue if cache doesn't exist
-                    pass
+                    logger.debug("run_analysis: suppressed error", exc_info=True)
 
             click.echo(f"✅ Cache cleared for {symbol}")
         else:
@@ -844,6 +846,7 @@ def metrics(ctx, days):
                     if timestamp >= cutoff_date:
                         all_metrics.append(data)
             except Exception:
+                logger.debug("show_metrics: suppressed error", exc_info=True)
                 continue
 
         if not all_metrics:
@@ -1315,7 +1318,7 @@ def inspect_cache(ctx, symbol, verbose):
                 else:
                     click.echo(f"  ❌ {cache_type.value}: Not cached")
             except Exception:
-                pass
+                logger.debug("inspect_cache: suppressed error", exc_info=True)
     else:
         click.echo("\nCache Statistics:")
         # Show overall cache stats
@@ -1396,7 +1399,7 @@ def test_system(ctx, verbose):
     results = []
     for test_name, cmd in tests:
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10, check=False)
             if result.returncode == 0:
                 results.append((test_name, "✅ PASS"))
                 if verbose:
@@ -1441,7 +1444,7 @@ def run_tests(ctx, pattern, verbose):
     if verbose:
         cmd.append("-v")
 
-    result = subprocess.run(cmd)
+    result = subprocess.run(cmd, check=False)
     sys.exit(result.returncode)
 
 
@@ -1647,14 +1650,14 @@ def setup_system(ctx):
 
     # Check Python version
     click.echo("\n1. Checking Python version...")
-    result = subprocess.run(["python3", "--version"], capture_output=True, text=True)
+    result = subprocess.run(["python3", "--version"], capture_output=True, text=True, check=False)
     click.echo(f"   {result.stdout.strip()}")
     steps.append(("Python", result.returncode == 0))
 
     # Install dependencies
     if not ctx.params.get("skip_deps"):
         click.echo("\n2. Installing dependencies...")
-        result = subprocess.run(["pip", "install", "-r", "requirements.txt"], capture_output=True)
+        result = subprocess.run(["pip", "install", "-r", "requirements.txt"], capture_output=True, check=False)
         if result.returncode == 0:
             click.echo("   ✅ Dependencies installed")
             steps.append(("Dependencies", True))

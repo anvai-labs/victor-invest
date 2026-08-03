@@ -4,6 +4,7 @@ Master agent that synthesizes insights from all specialized agents using Ollama 
 """
 
 import json
+import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime
@@ -29,6 +30,8 @@ from investigator.domain.services.toon_formatter import (
 )
 from investigator.infrastructure.cache import CacheManager
 from investigator.infrastructure.utils import extract_json_from_text
+
+logger = logging.getLogger(__name__)
 
 try:
     from json_repair import repair_json as repair_malformed_json
@@ -183,7 +186,7 @@ class SynthesisAgent(InvestmentAgent):
                 if isinstance(extracted, dict):
                     return extracted
             except Exception:
-                pass
+                logger.debug("_parse_json_payload: suppressed error", exc_info=True)
 
             # Final fallback: repair malformed JSON emitted by smaller local models.
             if repair_malformed_json is not None:
@@ -196,7 +199,7 @@ class SynthesisAgent(InvestmentAgent):
                         if isinstance(parsed, dict):
                             return parsed
                 except Exception:
-                    pass
+                    logger.debug("_parse_json_payload: suppressed error", exc_info=True)
 
             if wrapped:
                 self.logger.warning("Failed to parse wrapped LLM response as JSON")

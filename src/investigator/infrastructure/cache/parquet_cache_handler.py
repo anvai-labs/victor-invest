@@ -197,7 +197,7 @@ class ParquetCacheStorageHandler(CacheStorageHandler):
                         # Try to convert to datetime
                         df[col] = pd.to_datetime(df[col])
                     except Exception:
-                        pass  # Keep as is if conversion fails
+                        logger.debug("set: suppressed error", exc_info=True)
 
             # Save DataFrame to parquet using configuration
             write_kwargs = self.parquet_config.get_write_kwargs()

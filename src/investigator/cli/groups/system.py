@@ -2,12 +2,15 @@
 System management commands for InvestiGator CLI
 """
 
+import logging
 import platform
 import subprocess
 import sys
 from pathlib import Path
 
 import click
+
+logger = logging.getLogger(__name__)
 
 
 @click.group()
@@ -134,7 +137,7 @@ def test(ctx, verbose, pattern, coverage):
     if coverage:
         cmd.extend(["--cov=investigator", "--cov-report=term-missing"])
 
-    result = subprocess.run(cmd)
+    result = subprocess.run(cmd, check=False)
     sys.exit(result.returncode)
 
 
@@ -161,7 +164,7 @@ def setup(ctx, skip_deps, skip_db):
     # 2. Install dependencies
     if not skip_deps:
         click.echo("\n2. Installing dependencies...")
-        result = subprocess.run(["pip", "install", "-r", "requirements.txt"], capture_output=True)
+        result = subprocess.run(["pip", "install", "-r", "requirements.txt"], capture_output=True, check=False)
         if result.returncode == 0:
             click.echo("   Dependencies installed")
             steps.append(("Dependencies", True))
@@ -209,7 +212,7 @@ def setup(ctx, skip_deps, skip_db):
                             try:
                                 conn.execute(text(statement))
                             except Exception:
-                                pass  # Table may already exist
+                                logger.debug("setup: suppressed error", exc_info=True)
                     conn.commit()
 
                 click.echo("   Database schema initialized")
@@ -329,7 +332,7 @@ def config(ctx, edit, validate):
         import os
 
         editor = os.environ.get("EDITOR", "vim")
-        subprocess.run([editor, str(config_path)])
+        subprocess.run([editor, str(config_path)], check=False)
         return
 
     if not config_path.exists():
@@ -399,9 +402,9 @@ def logs(ctx, lines, follow, level):
         cmd = ["tail", "-f", str(latest)]
         if level:
             cmd = f"tail -f {latest} | grep {level}"
-            subprocess.run(cmd, shell=True)
+            subprocess.run(cmd, shell=True, check=False)
         else:
-            subprocess.run(cmd)
+            subprocess.run(cmd, check=False)
     else:
         with open(latest) as f:
             all_lines = f.readlines()
@@ -438,6 +441,7 @@ def metrics(ctx, days):
                 if ts >= cutoff:
                     all_metrics.append(data)
         except Exception:
+            logger.debug("metrics: suppressed error", exc_info=True)
             continue
 
     if not all_metrics:

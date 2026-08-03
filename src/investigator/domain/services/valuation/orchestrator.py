@@ -180,7 +180,7 @@ class MultiModelValuationOrchestrator:
                 model["weight"] = normalized_weights.get(model_name, 0.0) / 100.0  # Convert back to 0-1 range
         except ValueError as e:
             # Fallback if normalization fails (shouldn't happen but handle gracefully)
-            logging.warning(f"Weight normalization failed: {e}, using equal weights")
+            logger.warning("Weight normalization failed: %s, using equal weights", e)
             equal_weight = 1.0 / len(applicable)
             for model in applicable:
                 model["weight"] = equal_weight

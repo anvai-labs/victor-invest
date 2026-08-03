@@ -13,13 +13,15 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
+
 try:
     import markdown  # type: ignore[import-untyped]
 
     MARKDOWN_AVAILABLE = True
 except ImportError:
     MARKDOWN_AVAILABLE = False
-    logging.warning("markdown not available - some report features will be limited")
+    logger.warning("markdown not available - some report features will be limited")
 
 try:
     from reportlab.graphics import renderPDF  # noqa: F401
@@ -46,7 +48,7 @@ try:
     REPORTLAB_AVAILABLE = True
 except ImportError:
     REPORTLAB_AVAILABLE = False
-    logging.warning("reportlab not available - PDF report generation will be disabled")
+    logger.warning("reportlab not available - PDF report generation will be disabled")
 
     # Keep module importable in environments without reportlab.
     # Report generation paths already gate on REPORTLAB_AVAILABLE.
@@ -69,9 +71,6 @@ except ImportError:
 
     class Flowable:  # type: ignore[no-redef]
         pass
-
-
-logger = logging.getLogger(__name__)
 
 
 class ScoreCard(Flowable):
