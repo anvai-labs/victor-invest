@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Iterable, Mapping
 from typing import Any
 
@@ -361,7 +362,7 @@ def _to_float(value: Any) -> float | None:
         if value is None or value == "":
             return None
         number = float(value)
-        if number != number:
+        if math.isnan(number):
             return None
         return number
     except (TypeError, ValueError):

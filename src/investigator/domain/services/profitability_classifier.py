@@ -27,6 +27,7 @@ Usage:
 """
 
 import logging
+import math
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, ClassVar
@@ -266,7 +267,7 @@ class ProfitabilityClassifier:
 
         try:
             num = float(value)
-            if not (num != num):  # Check for NaN
+            if not math.isnan(num):
                 return num
         except (TypeError, ValueError):
             pass

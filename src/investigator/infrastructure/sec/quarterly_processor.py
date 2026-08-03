@@ -316,7 +316,7 @@ class SECQuarterlyProcessor:
             missing_categories = []
 
             # Check for existing cached data first
-            for category in frame_concepts.keys():
+            for category in frame_concepts:
                 cached_data = self._get_cached_category_data(qd, category)
                 if cached_data:
                     financial_data[category] = cached_data

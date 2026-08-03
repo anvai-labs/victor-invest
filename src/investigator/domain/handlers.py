@@ -1092,21 +1092,21 @@ def list_handlers() -> list[str]:
 
 
 __all__ = [
+    # Registry
+    "HANDLERS",
+    "BlendedValuationHandler",
     # Base class
     "HandlerBase",
     # Handler classes
     "MetadataFetchHandler",
-    "PriceDataFetchHandler",
-    "SECDataExtractHandler",
-    "ValuationComputeHandler",
-    "SectorValuationHandler",
-    "BlendedValuationHandler",
-    "RLWeightDecisionHandler",
     "OutcomeTrackingHandler",
+    "PriceDataFetchHandler",
+    "RLWeightDecisionHandler",
+    "SECDataExtractHandler",
+    "SectorValuationHandler",
     "TechnicalAnalysisHandler",
-    # Registry
-    "HANDLERS",
-    "register_handlers",
+    "ValuationComputeHandler",
     "get_handler",
     "list_handlers",
+    "register_handlers",
 ]

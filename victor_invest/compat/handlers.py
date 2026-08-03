@@ -74,7 +74,7 @@ except Exception:
 # -----------------------------------------------------------------------------
 
 try:
-    from victor_contracts.handler_runtime import handler_decorator as handler_decorator
+    from victor_contracts.handler_runtime import handler_decorator
 except Exception:
     _T = TypeVar("_T")
 

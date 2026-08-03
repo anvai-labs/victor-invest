@@ -19,6 +19,7 @@ Data Flow:
 
 import json
 import logging
+import math
 import os
 from datetime import datetime
 from typing import Any
@@ -70,7 +71,7 @@ class SymbolUpdateAgent(InvestmentAgent):
             if value is None:
                 return None
             numeric = float(value)
-            if numeric != numeric:
+            if math.isnan(numeric):
                 return None
             return numeric
         except (TypeError, ValueError):

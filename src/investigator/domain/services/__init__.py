@@ -18,11 +18,11 @@ from investigator.domain.services.fiscal_period_normalizer import (
 
 __all__ = [
     "DataNormalizer",
+    "FiscalPeriod",
     # TD1 FIX: FiscalPeriodNormalizer for YTD-to-quarterly conversion
     "FiscalPeriodNormalizer",
-    "FiscalPeriod",
     "QuarterlyConversionResult",
-    "get_fiscal_period_normalizer",
-    "convert_ytd_to_quarterly",
     "compute_q4",
+    "convert_ytd_to_quarterly",
+    "get_fiscal_period_normalizer",
 ]

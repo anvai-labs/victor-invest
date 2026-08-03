@@ -163,7 +163,7 @@ class TestBoundedMultiplierApplicator:
     def test_validate_weights_zero_total(self, applicator):
         """Test weight validation with zero total."""
         weights = {"dcf": 0.0, "pe": 0.0, "ps": 0.0}
-        is_valid, issues = applicator.validate_weights(weights)
+        is_valid, _issues = applicator.validate_weights(weights)
         assert is_valid is False
 
     def test_custom_config(self):

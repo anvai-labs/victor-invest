@@ -470,7 +470,7 @@ class InsiderActivityService:
             ]
 
             # Get unique insiders in window
-            insiders = set(f.get("owner_name") for f in window_filings if f.get("owner_name"))
+            insiders = {f.get("owner_name") for f in window_filings if f.get("owner_name")}
 
             if len(insiders) >= self.CLUSTER_MIN_INSIDERS:
                 total_value = sum(abs(f.get("total_value", 0)) for f in window_filings)

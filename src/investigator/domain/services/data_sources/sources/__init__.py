@@ -34,27 +34,27 @@ from .sec import (
 from .treasury import TreasuryYieldSource
 
 __all__ = [
-    # FRED
-    "FredMacroSource",
-    # Treasury
-    "TreasuryYieldSource",
-    # CBOE
-    "CBOEVolatilitySource",
     # Fed Districts
     "AtlantaFedSource",
+    # CBOE
+    "CBOEVolatilitySource",
     "ChicagoFedSource",
     "ClevelandFedSource",
     "DallasFedSource",
-    "KansasCityFedSource",
-    "NewYorkFedSource",
-    "PhiladelphiaFedSource",
-    "RichmondFedSource",
+    # FRED
+    "FredMacroSource",
     # SEC
     "InsiderTransactionSource",
     "InstitutionalHoldingsSource",
-    "SECQuarterlySource",
+    "KansasCityFedSource",
+    "NewYorkFedSource",
+    "PhiladelphiaFedSource",
     # Market
     "PriceHistorySource",
-    "TechnicalIndicatorSource",
+    "RichmondFedSource",
+    "SECQuarterlySource",
     "ShortInterestSource",
+    "TechnicalIndicatorSource",
+    # Treasury
+    "TreasuryYieldSource",
 ]

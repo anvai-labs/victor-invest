@@ -434,27 +434,27 @@ def ensure_handlers_registered() -> None:
 
 
 __all__ = [
-    # YAML-first workflow provider
-    "InvestmentWorkflowProvider",
-    # Lazy handler registration
-    "ensure_handlers_registered",
     # Analysis state definitions
     "AnalysisMode",
     "AnalysisWorkflowState",
+    # YAML-first workflow provider
+    "InvestmentWorkflowProvider",
+    # RL Backtest state
+    "RLBacktestWorkflowState",
+    "build_comprehensive_graph",
     # Analysis graph builders (Python-based, for backwards compatibility)
     "build_graph_for_mode",
     "build_quick_graph",
-    "build_standard_graph",
-    "build_comprehensive_graph",
-    # Analysis convenience
-    "run_analysis",
-    "run_yaml_analysis",
-    # RL Backtest state
-    "RLBacktestWorkflowState",
     # RL Backtest graph builders
     "build_rl_backtest_graph",
+    "build_standard_graph",
+    # Lazy handler registration
+    "ensure_handlers_registered",
+    "generate_lookback_list",
+    # Analysis convenience
+    "run_analysis",
     # RL Backtest convenience
     "run_rl_backtest",
     "run_rl_backtest_batch",
-    "generate_lookback_list",
+    "run_yaml_analysis",
 ]

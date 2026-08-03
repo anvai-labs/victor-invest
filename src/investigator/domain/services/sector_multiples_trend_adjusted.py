@@ -166,7 +166,7 @@ class SectorMultiplesTrendAdjusted:
                     continue
 
                 # Apply adjustment
-                adjusted_value, adjustment_info = self._apply_trend_adjustment(
+                adjusted_value, _adjustment_info = self._apply_trend_adjustment(
                     current_value=current_value,
                     metric=metric,
                     trend_metrics=trend_metrics,

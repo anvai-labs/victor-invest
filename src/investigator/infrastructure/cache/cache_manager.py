@@ -906,7 +906,7 @@ class CacheManager:
         """Clear all data from all cache types and handlers"""
         all_success = True
 
-        for cache_type in self.handlers.keys():
+        for cache_type in self.handlers:
             success = self.clear_cache_type(cache_type)
             if not success:
                 all_success = False
@@ -1220,7 +1220,7 @@ class CacheManager:
 
                 # Handle both with and without microseconds
                 if "." in cached_at_str:
-                    cached_at = datetime.fromisoformat(cached_at_str.replace("Z", "+00:00"))
+                    cached_at = datetime.fromisoformat(cached_at_str)
                 else:
                     cached_at = datetime.fromisoformat(cached_at_str.replace("Z", ""))
 
@@ -1689,7 +1689,7 @@ class CacheManager:
                     elif isinstance(value, (int, float)):
                         return datetime.fromtimestamp(value)
                     elif isinstance(value, str):
-                        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+                        return datetime.fromisoformat(value)
                 except (ValueError, TypeError):
                     continue
 

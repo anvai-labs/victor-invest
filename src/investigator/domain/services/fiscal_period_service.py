@@ -253,11 +253,11 @@ class FiscalPeriodService:
         facts = company_facts.get("facts", {})
         us_gaap = facts.get("us-gaap", {})
 
-        for concept, concept_data in us_gaap.items():
+        for concept_data in us_gaap.values():
             if "units" not in concept_data:
                 continue
 
-            for unit_type, unit_data in concept_data["units"].items():
+            for unit_data in concept_data["units"].values():
                 for entry in unit_data:
                     # Look for fiscal year entries (form 10-K with fy field)
                     form = entry.get("form", "")

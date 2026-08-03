@@ -98,7 +98,7 @@ class WeightNormalizer:
 
                     rounded = {k: base_weight for k in rounded}
                     # Add remainder to first model
-                    first_model = list(rounded.keys())[0]
+                    first_model = next(iter(rounded.keys()))
                     rounded[first_model] += remainder
                 else:
                     rounded[max_model] = new_value

@@ -12,7 +12,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from typing import Any, Optional
+from typing import Any, Optional, Self
 
 from .base import DataCategory, DataQuality, DataSource
 from .registry import get_registry
@@ -348,7 +348,7 @@ class DataSourceManager:
 
     _instance: Optional["DataSourceManager"] = None
 
-    def __new__(cls) -> "DataSourceManager":
+    def __new__(cls) -> Self:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._initialized = False

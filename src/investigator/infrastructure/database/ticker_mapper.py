@@ -241,7 +241,7 @@ class TickerCIKMapper:
 
     def get_all_tickers(self) -> list[str]:
         """Get list of all available tickers."""
-        return sorted([t.upper() for t in self.ticker_map.keys()])
+        return sorted([t.upper() for t in self.ticker_map])
 
     def ticker_exists(self, ticker: str) -> bool:
         """Check if a ticker exists in the mapping."""

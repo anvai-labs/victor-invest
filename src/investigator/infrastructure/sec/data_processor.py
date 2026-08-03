@@ -174,7 +174,7 @@ class SECDataProcessor:
         # Build bulk table lookup as fallback
         bulk_lookup = self._build_adsh_fiscal_lookup(cik, self.engine) if self.engine else {}
 
-        for filing_key, filing in filings.items():
+        for filing in filings.values():
             adsh = filing["adsh"]
             fy = filing["fiscal_year"]
             fp = filing["fiscal_period"]
@@ -182,9 +182,9 @@ class SECDataProcessor:
 
             # Strategy 1: Collect all period_end dates for this ADSH+fy+fp from actual data
             period_ends = []
-            for tag_name, tag_data in us_gaap.items():
+            for tag_data in us_gaap.values():
                 units = tag_data.get("units", {})
-                for unit_type, unit_data in units.items():
+                for unit_data in units.values():
                     for entry in unit_data:
                         if entry.get("accn") == adsh and entry.get("fy") == fy and entry.get("fp") == fp:
                             end_date = entry.get("end")
@@ -291,7 +291,7 @@ class SECDataProcessor:
 
         # Use the most recent FY to detect the fiscal year-end month/day
         fy_periods.sort(key=lambda x: x[0], reverse=True)
-        latest_fy_year, latest_fy_end = fy_periods[0]
+        _latest_fy_year, latest_fy_end = fy_periods[0]
 
         try:
             fy_end_date = datetime.strptime(latest_fy_end, "%Y-%m-%d")
@@ -1680,7 +1680,7 @@ class SECDataProcessor:
             # Use sector-aware extraction with automatic fallback chains
             extracted_fields = set()
 
-            for period_key, filing in filings.items():
+            for filing in filings.values():
                 adsh = filing["adsh"]  # Extract adsh from filing dict
                 for canonical_key in self.CANONICAL_KEYS_TO_EXTRACT:
                     mapping = self.canonical_mapper.mappings.get(canonical_key)
@@ -1734,7 +1734,7 @@ class SECDataProcessor:
             # PHASE 3: Calculate derived metrics using CanonicalKeyMapper
             # Derived metrics include free_cash_flow, total_debt, and other calculated values
             processed_filings = []
-            for period_key, filing in filings.items():
+            for filing in filings.values():
                 adsh = filing["adsh"]  # Extract adsh from filing dict
                 # Use CanonicalKeyMapper to calculate derived values
                 for canonical_key in self.CANONICAL_KEYS_TO_EXTRACT:

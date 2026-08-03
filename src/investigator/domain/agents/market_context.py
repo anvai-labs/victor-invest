@@ -688,7 +688,7 @@ class ETFMarketContextAgent(InvestmentAgent):
 
         # Build timeframe context string for the prompt
         timeframe_context = []
-        for tf_name, tf_days in self.timeframes.items():
+        for tf_name in self.timeframes:
             meta = self.timeframe_metadata[tf_name]
             timeframe_context.append(f"  • {meta['label']}: {meta['description']}")
 
@@ -1200,7 +1200,7 @@ class ETFMarketContextAgent(InvestmentAgent):
         # Add sector ETFs
         for timeframe_data in sector_context.values():
             if isinstance(timeframe_data, dict):
-                for etf_symbol in timeframe_data.keys():
+                for etf_symbol in timeframe_data:
                     if etf_symbol not in [
                         "sector",
                         "primary_etf",

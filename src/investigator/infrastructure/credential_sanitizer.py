@@ -323,7 +323,7 @@ def redact_credentials(text: str) -> str:
 
     result = text
 
-    for pattern_type, patterns in CREDENTIAL_PATTERNS.items():
+    for patterns in CREDENTIAL_PATTERNS.values():
         for regex, confidence, severity in patterns:
 
             def redactor(match):

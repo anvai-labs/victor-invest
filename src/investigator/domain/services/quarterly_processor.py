@@ -1654,8 +1654,8 @@ def calculate_q4_with_fallback(
                 warnings.append("Computed revenue is negative")
                 confidence *= 0.7
 
-            metrics_computed = [k for k in cash_flow.keys() if k != "is_ytd"]
-            metrics_computed += [k for k in income.keys() if k != "is_ytd"]
+            metrics_computed = [k for k in cash_flow if k != "is_ytd"]
+            metrics_computed += [k for k in income if k != "is_ytd"]
 
             logger.info(
                 f"✅ Q4 computed via EXACT method for FY {fiscal_year} "

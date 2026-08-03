@@ -432,7 +432,7 @@ class FileCacheStorageHandler(CacheStorageHandler):
                     return True
 
                 # Try with .gz extension if original doesn't exist
-                if not file_path.suffix == ".gz":
+                if file_path.suffix != ".gz":
                     gz_path = file_path.with_suffix(file_path.suffix + ".gz")
                     if gz_path.exists():
                         logger.debug(f"Cache EXISTS (compressed): {gz_path}")
@@ -478,7 +478,7 @@ class FileCacheStorageHandler(CacheStorageHandler):
                     deleted = True
 
                 # Also try to delete compressed version
-                if not file_path.suffix == ".gz":
+                if file_path.suffix != ".gz":
                     gz_path = file_path.with_suffix(file_path.suffix + ".gz")
                     if gz_path.exists():
                         gz_path.unlink()

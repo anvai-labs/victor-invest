@@ -80,8 +80,10 @@ class ExtractionAudit:
 
         lines = [
             f"Extraction Audit: {self.canonical_key}",
-            f"  Target: period_end={self.target_period_end}, "
-            f"fiscal={self.target_fiscal_year}-{self.target_fiscal_period}",
+            (
+                f"  Target: period_end={self.target_period_end}, "
+                f"fiscal={self.target_fiscal_year}-{self.target_fiscal_period}"
+            ),
             f"  Attempts: {len(self.attempts)} ({len(successful)} succeeded, {len(failed)} failed)",
         ]
 

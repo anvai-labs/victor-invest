@@ -140,7 +140,7 @@ class UnifiedValuationExecutor:
         financials = self._build_financials_dict()
         ratios = self._build_ratios_dict()
 
-        weights, tier, audit_trail = self.weighting_service.determine_weights(
+        weights, tier, _audit_trail = self.weighting_service.determine_weights(
             symbol=self.symbol,
             financials=financials,
             ratios=ratios,

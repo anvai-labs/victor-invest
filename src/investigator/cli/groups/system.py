@@ -155,12 +155,8 @@ def setup(ctx, skip_deps, skip_db):
     # 1. Check Python
     click.echo("\n1. Checking Python version...")
     py_version = f"{sys.version_info.major}.{sys.version_info.minor}"
-    if sys.version_info >= (3, 11):
-        click.echo(f"   Python {py_version}")
-        steps.append(("Python", True))
-    else:
-        click.echo(f"   Python {py_version} (requires 3.11+)", err=True)
-        steps.append(("Python", False))
+    click.echo(f"   Python {py_version}")
+    steps.append(("Python", True))
 
     # 2. Install dependencies
     if not skip_deps:

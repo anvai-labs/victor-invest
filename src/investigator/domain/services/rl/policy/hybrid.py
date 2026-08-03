@@ -162,7 +162,7 @@ class HybridPolicy(RLPolicy):
         4. Normalize to 100%
         """
         # Step 1: Get base weights from tier-based system
-        base_weights, tier, audit = self._get_base_weights(context)
+        base_weights, _tier, _audit = self._get_base_weights(context)
 
         # Step 2: Get adjustment multipliers from RL
         adjustments = self._get_adjustments(context)

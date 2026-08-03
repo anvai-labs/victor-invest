@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+import math
 import re
 from typing import Any
 
@@ -16,7 +17,7 @@ def _to_float(value: Any) -> float | None:
         return None
     try:
         parsed = float(str(value).replace(",", "").strip())
-        if parsed != parsed:  # NaN guard
+        if math.isnan(parsed):
             return None
         return parsed
     except (TypeError, ValueError):

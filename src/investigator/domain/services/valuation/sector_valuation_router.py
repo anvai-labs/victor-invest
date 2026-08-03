@@ -993,7 +993,7 @@ class SectorValuationRouter:
                 result.industry_adjustments = adjustments_list
 
                 # Apply adjustments to fair value
-                adjusted_value, reasons = apply_adjustments_to_fair_value(
+                adjusted_value, _reasons = apply_adjustments_to_fair_value(
                     base_fair_value=result.fair_value,
                     adjustments=adjustments,
                 )

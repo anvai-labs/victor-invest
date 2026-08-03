@@ -308,7 +308,7 @@ class DeterministicAnalyzer:
         yoy_growth = comparisons.get("avg_yoy_growth")
         qoq_growth = comparisons.get("latest_qoq_growth")
         yoy_label, yoy_score = classify_growth(yoy_growth)
-        qoq_label, qoq_score = classify_growth(qoq_growth)
+        _qoq_label, qoq_score = classify_growth(qoq_growth)
 
         consistency_score = revenue_trend.get("consistency_score")
         if consistency_score is None:
@@ -442,7 +442,7 @@ class DeterministicAnalyzer:
 
         gross_label, gross_score = classify_margin(gross_margin)
         op_label, op_score = classify_margin(operating_margin)
-        net_label, net_score = classify_margin(net_margin)
+        _net_label, net_score = classify_margin(net_margin)
 
         gross_history = margin_trend.get("gross_margins") or []
         margin_trend.get("operating_margins") or []
@@ -460,7 +460,7 @@ class DeterministicAnalyzer:
             return "Low", 45.0
 
         roe_label, roe_score = classify_returns(roe)
-        roa_label, roa_score = classify_returns(roa)
+        _roa_label, roa_score = classify_returns(roa)
 
         margin_direction = margin_trend.get("net_margin_trend", "stable")
         direction_comment = {

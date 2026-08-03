@@ -232,15 +232,15 @@ class SECDataFacade:
                 )
 
             # Populate income statement
-            income_categories = [k for k in detailed.keys() if k.startswith("income_statement_")]
+            income_categories = [k for k in detailed if k.startswith("income_statement_")]
             quarterly_data.financial_data.income_statement = {cat: detailed[cat] for cat in income_categories}
 
             # Populate balance sheet
-            balance_categories = [k for k in detailed.keys() if k.startswith("balance_sheet_")]
+            balance_categories = [k for k in detailed if k.startswith("balance_sheet_")]
             quarterly_data.financial_data.balance_sheet = {cat: detailed[cat] for cat in balance_categories}
 
             # Populate cash flow
-            cashflow_categories = [k for k in detailed.keys() if k.startswith("cash_flow_")]
+            cashflow_categories = [k for k in detailed if k.startswith("cash_flow_")]
             quarterly_data.financial_data.cash_flow_statement = {cat: detailed[cat] for cat in cashflow_categories}
 
             # Store comprehensive data

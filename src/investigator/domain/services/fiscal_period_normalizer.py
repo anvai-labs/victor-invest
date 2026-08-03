@@ -376,11 +376,11 @@ class FiscalPeriodNormalizer:
             if taxonomy not in facts:
                 continue
 
-            for concept, concept_data in facts[taxonomy].items():
+            for concept_data in facts[taxonomy].values():
                 if "units" not in concept_data:
                     continue
 
-                for unit_type, unit_data in concept_data["units"].items():
+                for unit_data in concept_data["units"].values():
                     for entry in unit_data:
                         # Look for fiscal year entries (form 10-K)
                         if entry.get("form") == "10-K" and entry.get("fy"):

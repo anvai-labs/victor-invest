@@ -269,7 +269,7 @@ class InvestmentSynthesizer:
             return None
 
         def _candidate_dicts() -> list[dict[str, Any]]:
-            for key, payload in fundamentals.items():
+            for payload in fundamentals.values():
                 if isinstance(payload, dict):
                     yield payload
                     meta = payload.get("metadata")
@@ -1516,7 +1516,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         """
         scores = []
 
-        for crisis_id, crisis_data in crisis_results.items():
+        for crisis_data in crisis_results.values():
             perf = crisis_data.get("performance", {})
 
             # Score revenue stability (0-10)
@@ -1867,7 +1867,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             llm_responses = {"fundamental": {}, "technical": None}
 
             # 1. FETCH COMPREHENSIVE FUNDAMENTAL ANALYSIS
-            fiscal_year, fiscal_period = self._get_latest_fiscal_period()
+            fiscal_year, _fiscal_period = self._get_latest_fiscal_period()
             comp_cache_key = {
                 "symbol": symbol,
                 "form_type": "COMPREHENSIVE",
@@ -1877,11 +1877,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
             comp_resp = self.cache_manager.get(CacheType.LLM_RESPONSE, comp_cache_key)
             if comp_resp:
-                response_data = (
-                    comp_resp.get("response", {})
-                    if isinstance(comp_resp.get("response"), dict)
-                    else comp_resp.get("response", {})
-                )
+                response_data = comp_resp.get("response", {})
                 llm_responses["fundamental"]["comprehensive"] = {
                     "content": response_data,
                     "metadata": comp_resp.get("metadata", {}),
@@ -1920,11 +1916,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 cached_resp = self.cache_manager.get(CacheType.LLM_RESPONSE, cache_key)
 
                 if cached_resp:
-                    response_data = (
-                        cached_resp.get("response", {})
-                        if isinstance(cached_resp.get("response"), dict)
-                        else cached_resp.get("response", {})
-                    )
+                    response_data = cached_resp.get("response", {})
 
                     key = f"{form_type}_{period}"
                     llm_responses["fundamental"][key] = {
@@ -1983,7 +1975,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                         else:
                             tech_content = raw_response
                     else:
-                        tech_content = raw_response if isinstance(raw_response, dict) else raw_response
+                        tech_content = raw_response
 
                     llm_responses["technical"] = {
                         "content": tech_content,

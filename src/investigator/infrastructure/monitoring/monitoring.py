@@ -411,7 +411,7 @@ class MetricsCollector:
         total_duration = 0
         total_count = 0
 
-        for agent_type, durations in self.agent_metrics["durations"].items():
+        for durations in self.agent_metrics["durations"].values():
             if durations:
                 total_duration += sum(durations)
                 total_count += len(durations)
@@ -422,7 +422,7 @@ class MetricsCollector:
         """Serialize agent metrics for export"""
         serialized = {}
 
-        for agent_type in self.agent_metrics["executions"].keys():
+        for agent_type in self.agent_metrics["executions"]:
             durations = self.agent_metrics["durations"].get(agent_type, [])
 
             serialized[agent_type] = {

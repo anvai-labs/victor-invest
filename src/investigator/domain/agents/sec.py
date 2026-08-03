@@ -6,6 +6,7 @@ Specialized agent for processing and analyzing SEC filings using Ollama LLMs
 import asyncio
 import gzip
 import json
+import math
 import re
 from dataclasses import dataclass
 from datetime import datetime
@@ -544,7 +545,7 @@ TEXT:
             return None
         try:
             parsed = float(str(value).replace(",", "").strip())
-            if parsed != parsed:  # NaN
+            if math.isnan(parsed):
                 return None
             return parsed
         except (TypeError, ValueError):

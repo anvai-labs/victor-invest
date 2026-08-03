@@ -13,7 +13,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date
 from functools import lru_cache
-from typing import Any, Optional
+from typing import Any, Optional, Self
 
 from .base import (
     CompositeDataSource,
@@ -100,7 +100,7 @@ class DataSourceRegistry:
 
     _instance: Optional["DataSourceRegistry"] = None
 
-    def __new__(cls) -> "DataSourceRegistry":
+    def __new__(cls) -> Self:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._initialized = False
@@ -357,4 +357,4 @@ def check_source_health(source_name: str) -> dict[str, Any]:
 def check_all_sources_health() -> list[dict[str, Any]]:
     """Check health of all registered sources"""
     registry = get_registry()
-    return [check_source_health(name) for name in registry._sources.keys()]
+    return [check_source_health(name) for name in registry._sources]

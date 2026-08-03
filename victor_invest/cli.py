@@ -271,7 +271,7 @@ def _convert_to_investment_recommendation(result, symbol: str):
     signals = trend_data.get("signals", {})
     key_insights = []
     if signals:
-        for category, indicators in signals.items():
+        for indicators in signals.values():
             if isinstance(indicators, dict):
                 for indicator, signal in indicators.items():
                     if signal in ["bullish", "bearish"]:
@@ -1720,7 +1720,7 @@ def from_batch(
 
     # Filter results
     filtered = []
-    symbol_filter = set(s.upper() for s in symbols.split(",")) if symbols else None
+    symbol_filter = {s.upper() for s in symbols.split(",")} if symbols else None
 
     for r in results:
         # Must be successful

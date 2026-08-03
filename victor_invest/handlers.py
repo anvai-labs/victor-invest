@@ -3422,38 +3422,38 @@ def register_handlers() -> None:
 
 
 __all__ = [
+    "AnalyzePeersHandler",
+    # Fair multiple calculator
+    "CalculateFairMultipleHandler",
+    "FetchMacroDataHandler",
+    "FetchMarketDataHandler",
     # Data collection handlers
     "FetchSECDataHandler",
-    "FetchMarketDataHandler",
-    "FetchMacroDataHandler",
+    "GenerateFairValueReportHandler",
+    # RL backtest
+    "GenerateLookbackDatesHandler",
+    # Report generation
+    "GenerateReportHandler",
+    "GenerateRobustValuationReportHandler",
+    "HistoricalSectorMultiplesHandler",
+    # Peer comparison
+    "IdentifyPeersHandler",
+    "PeerCompareAnalysisHandler",
+    "ProcessBacktestBatchHandler",
+    # Sector multiples
+    "RefreshSectorMultiplesHandler",
+    # Robust valuation
+    "RobustValuationAnalyzeHandler",
     # Analysis handlers
     "RunFundamentalAnalysisHandler",
-    "RunTechnicalAnalysisHandler",
     "RunMarketContextHandler",
     # Synthesis handlers
     "RunSynthesisHandler",
-    # Report generation
-    "GenerateReportHandler",
-    # Peer comparison
-    "IdentifyPeersHandler",
-    "AnalyzePeersHandler",
-    # RL backtest
-    "GenerateLookbackDatesHandler",
-    "ProcessBacktestBatchHandler",
+    "RunTechnicalAnalysisHandler",
     "SaveRLPredictionsHandler",
-    # Sector multiples
-    "RefreshSectorMultiplesHandler",
-    "HistoricalSectorMultiplesHandler",
     "SectorMultiplesTimelineHandler",
-    "SectorMultiplesTrendHandler",
     "SectorMultiplesTrendAdjustedHandler",
-    # Fair multiple calculator
-    "CalculateFairMultipleHandler",
-    "GenerateFairValueReportHandler",
-    # Robust valuation
-    "RobustValuationAnalyzeHandler",
-    "PeerCompareAnalysisHandler",
-    "GenerateRobustValuationReportHandler",
+    "SectorMultiplesTrendHandler",
     # Helper functions
     "_format_fundamental",
     "_format_technical",

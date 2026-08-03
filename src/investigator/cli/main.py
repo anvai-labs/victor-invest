@@ -34,10 +34,10 @@ if str(project_root) not in sys.path:
 from .groups import analyze, backtest, cache, data, macro, sector_multiples, system
 from .utils import load_config, setup_logging
 
-CONTEXT_SETTINGS = dict(
-    help_option_names=["-h", "--help"],
-    max_content_width=120,
-)
+CONTEXT_SETTINGS = {
+    "help_option_names": ["-h", "--help"],
+    "max_content_width": 120,
+}
 
 
 class _VictorExternalVerticalNoiseFilter(logging.Filter):

@@ -468,7 +468,7 @@ class CacheControlConfig:
     def storage(self) -> list[str]:
         """Get list of enabled storage backends"""
         storage = []
-        for cache_type, config in self.cache_types.items():
+        for config in self.cache_types.values():
             if config.disk.enabled and "disk" not in storage:
                 storage.append("disk")
             if config.rdbms.enabled and "rdbms" not in storage:

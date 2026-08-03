@@ -468,20 +468,20 @@ TRANSFORMS = {
 }
 
 __all__ = [
-    # Conditions
-    "data_quality_check",
-    "valuation_confidence_check",
-    "recommendation_strength",
-    "should_request_peer_comparison",
-    "technical_signal_strength",
-    "insider_sentiment_check",
-    "risk_level_assessment",
-    # Transforms
-    "merge_analysis_results",
-    "calculate_composite_score",
-    "format_investment_thesis",
-    "aggregate_peer_metrics",
     # Registries
     "CONDITIONS",
     "TRANSFORMS",
+    "aggregate_peer_metrics",
+    "calculate_composite_score",
+    # Conditions
+    "data_quality_check",
+    "format_investment_thesis",
+    "insider_sentiment_check",
+    # Transforms
+    "merge_analysis_results",
+    "recommendation_strength",
+    "risk_level_assessment",
+    "should_request_peer_comparison",
+    "technical_signal_strength",
+    "valuation_confidence_check",
 ]

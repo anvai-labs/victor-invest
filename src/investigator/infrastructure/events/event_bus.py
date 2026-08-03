@@ -191,7 +191,7 @@ class EventBus:
         while self.running:
             try:
                 # Get event with timeout to allow checking running status
-                priority, event = await asyncio.wait_for(self.event_queue.get(), timeout=1.0)
+                _priority, event = await asyncio.wait_for(self.event_queue.get(), timeout=1.0)
 
                 # Process event
                 await self._deliver_event(event)

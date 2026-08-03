@@ -767,7 +767,7 @@ class QueuedLLMProcessor(ILLMProcessor, ILLMSubject):
         while not self.stop_event.is_set():
             try:
                 # Get request with timeout
-                priority, timestamp, request, future = self.request_queue.get(timeout=1.0)
+                _priority, _timestamp, request, future = self.request_queue.get(timeout=1.0)
 
                 # Notify observers
                 self.notify_started(request)

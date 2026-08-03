@@ -1588,9 +1588,7 @@ class ProfessionalReportGenerator:
         if financial_metrics:
             story.append(Paragraph("Financial Metrics: Company vs Sector", self.styles["SectionHeader"]))
             # Calculate table height based on number of metrics
-            num_metrics = len(
-                [k for k in financial_metrics.keys() if financial_metrics.get(k, {}).get("company") is not None]
-            )
+            num_metrics = len([k for k in financial_metrics if financial_metrics.get(k, {}).get("company") is not None])
             table_height = 30 + min(num_metrics, 6) * 20
             story.append(FinancialMetricsTable(400, table_height, financial_metrics))
             story.append(Spacer(1, 16))

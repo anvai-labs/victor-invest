@@ -49,7 +49,6 @@ def _extract_quarter_metric(entry: Any, metric_candidates: list[str]) -> float:
         if isinstance(financial_data, dict):
             candidate_dicts.append(financial_data)
 
-    saw_zero = False
     for payload in candidate_dicts:
         for metric in metric_candidates:
             if metric not in payload:
@@ -57,9 +56,8 @@ def _extract_quarter_metric(entry: Any, metric_candidates: list[str]) -> float:
             value = _coerce_float(payload.get(metric))
             if value != 0:
                 return value
-            saw_zero = True
 
-    return 0.0 if saw_zero else 0.0
+    return 0.0
 
 
 def calculate_ttm_metrics(

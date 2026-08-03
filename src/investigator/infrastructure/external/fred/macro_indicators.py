@@ -674,7 +674,7 @@ class MacroIndicatorsFetcher:
             }
 
         # Generate alerts for significant changes or levels
-        for ind_id, data in indicators.items():
+        for data in indicators.values():
             if data.get("change_pct"):
                 # Alert on large changes
                 if abs(data["change_pct"]) > 10:

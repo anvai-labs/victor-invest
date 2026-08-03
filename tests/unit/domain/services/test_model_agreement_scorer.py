@@ -236,7 +236,7 @@ class TestModelAgreementScorer:
             "ps": 20.0,
         }
 
-        weighted_fv, effective_weights = scorer.get_weighted_fair_value(
+        weighted_fv, _effective_weights = scorer.get_weighted_fair_value(
             fair_values, weights, apply_outlier_penalty=True
         )
 

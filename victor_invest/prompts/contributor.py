@@ -62,9 +62,11 @@ class InvestmentPromptContributor(PromptContributorProtocol):
     def get_system_prompt_sections(self) -> list[str]:
         """Return additional system prompt sections for investment context."""
         return [
-            "When analyzing investments, always cite specific financial metrics "
-            "and data sources. Provide explicit confidence levels for price targets "
-            "and clearly separate factual analysis from forward-looking projections.",
+            (
+                "When analyzing investments, always cite specific financial metrics "
+                "and data sources. Provide explicit confidence levels for price targets "
+                "and clearly separate factual analysis from forward-looking projections."
+            ),
         ]
 
     def get_grounding_addendum(self) -> str | None:

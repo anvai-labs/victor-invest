@@ -10,7 +10,7 @@ Date: 2025-12-30
 
 import logging
 from threading import Lock
-from typing import Optional
+from typing import Optional, Self
 
 from investigator.domain.services.industry_datasets.base import (
     BaseIndustryDataset,
@@ -41,7 +41,7 @@ class IndustryDatasetRegistry:
     _instance: Optional["IndustryDatasetRegistry"] = None
     _lock: Lock = Lock()
 
-    def __new__(cls) -> "IndustryDatasetRegistry":
+    def __new__(cls) -> Self:
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:

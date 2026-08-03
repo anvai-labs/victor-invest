@@ -153,7 +153,7 @@ class SECCompanyFactsExtractor:
 
             # Parse ISO format timestamp
             if isinstance(fetched_at_str, str):
-                fetched_at = datetime.fromisoformat(fetched_at_str.replace("Z", "+00:00"))
+                fetched_at = datetime.fromisoformat(fetched_at_str)
             else:
                 fetched_at = fetched_at_str
 
@@ -785,7 +785,7 @@ class SECCompanyFactsExtractor:
             else:
                 logger.warning(f"[DEBUG_FY_FIX] {symbol} - No CIK provided to _determine_latest_fiscal_period!")
 
-            for tag_name, tag_data in us_gaap.items():
+            for tag_data in us_gaap.values():
                 units = tag_data.get("units", {})
                 usd_data = units.get("USD", [])
                 if not usd_data:
@@ -1284,7 +1284,7 @@ class SECCompanyFactsExtractor:
                             return value
 
                     # Try other currency units if USD not available
-                    for unit_name, unit_data in units.items():
+                    for unit_data in units.values():
                         if unit_data:
                             value = self._get_latest_value(unit_data, prefer_annual)
                             if value is not None:

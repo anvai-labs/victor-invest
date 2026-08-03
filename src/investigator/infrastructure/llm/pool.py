@@ -148,7 +148,7 @@ class ResourceAwareOllamaPool:
 
         # Concurrency control
         self.lock = asyncio.Lock()
-        self.server_locks = {url: asyncio.Lock() for url in self.servers.keys()}
+        self.server_locks = {url: asyncio.Lock() for url in self.servers}
         self.capacity_available = asyncio.Condition(self.lock)  # Wait/notify for capacity changes
 
         # HTTP session
@@ -360,7 +360,7 @@ class ResourceAwareOllamaPool:
         Updates all servers via /api/ps first
         """
         # Update all server statuses in parallel
-        await asyncio.gather(*[self.update_server_status(url) for url in self.servers.keys()])
+        await asyncio.gather(*[self.update_server_status(url) for url in self.servers])
 
         spec = spec or self._get_model_spec(model_name)
 
@@ -587,7 +587,7 @@ class ResourceAwareOllamaPool:
                 f"(req≈{self._estimate_kv_cache_gb(spec, prompt_tokens, response_tokens):.1f}GB KV cache)"
             )
 
-        server_url, request_vram, reuse_existing = selection
+        server_url, request_vram, _reuse_existing = selection
 
         request_vram = max(0.0, request_vram)
 
@@ -632,7 +632,7 @@ class ResourceAwareOllamaPool:
 
     async def get_pool_status(self) -> dict[str, Any]:
         """Get detailed status of all servers"""
-        await asyncio.gather(*[self.update_server_status(url) for url in self.servers.keys()])
+        await asyncio.gather(*[self.update_server_status(url) for url in self.servers])
 
         async with self.lock:
             return {
