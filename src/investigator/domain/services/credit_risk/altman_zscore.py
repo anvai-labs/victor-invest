@@ -42,7 +42,7 @@ import logging
 from dataclasses import dataclass
 from datetime import date
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from investigator.domain.services.credit_risk.protocols import (
     CreditScoreResult,
@@ -79,12 +79,12 @@ class AltmanZScoreResult(CreditScoreResult):
         bankruptcy_probability: Estimated probability of bankruptcy
     """
 
-    zone: Optional[AltmanZone] = None
+    zone: AltmanZone | None = None
     model_used: AltmanModel = AltmanModel.ORIGINAL
-    bankruptcy_probability: Optional[float] = None
+    bankruptcy_probability: float | None = None
     score_name: str = "Altman Z-Score"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary."""
         result = super().to_dict()
         result.update(
@@ -148,7 +148,7 @@ class AltmanZScoreCalculator:
         """Return calculator description."""
         return self._description
 
-    def validate_data(self, data: FinancialData) -> List[str]:
+    def validate_data(self, data: FinancialData) -> list[str]:
         """Validate required financial data fields.
 
         Args:
@@ -238,12 +238,12 @@ class AltmanZScoreCalculator:
 
         except Exception as e:
             logger.error(f"Error calculating Altman Z-Score for {data.symbol}: {e}")
-            result.warnings.append(f"Calculation error: {str(e)}")
+            result.warnings.append(f"Calculation error: {e!s}")
             result.interpretation = "Calculation failed"
 
         return result
 
-    def _calculate_components(self, data: FinancialData) -> Dict[str, Any]:
+    def _calculate_components(self, data: FinancialData) -> dict[str, Any]:
         """Calculate individual Z-Score components.
 
         Args:
@@ -297,7 +297,7 @@ class AltmanZScoreCalculator:
 
         return components
 
-    def _calculate_original(self, components: Dict[str, Any]) -> Optional[float]:
+    def _calculate_original(self, components: dict[str, Any]) -> float | None:
         """Calculate original Altman Z-Score (manufacturing).
 
         Z = 1.2×X1 + 1.4×X2 + 3.3×X3 + 0.6×X4 + 1.0×X5
@@ -323,7 +323,7 @@ class AltmanZScoreCalculator:
 
         return z_score
 
-    def _calculate_revised(self, components: Dict[str, Any]) -> Optional[float]:
+    def _calculate_revised(self, components: dict[str, Any]) -> float | None:
         """Calculate revised Altman Z'-Score (non-manufacturing).
 
         Z' = 6.56×X1 + 3.26×X2 + 6.72×X3 + 1.05×X4
@@ -351,7 +351,7 @@ class AltmanZScoreCalculator:
 
         return z_score
 
-    def _classify_original(self, z_score: Optional[float]) -> Optional[AltmanZone]:
+    def _classify_original(self, z_score: float | None) -> AltmanZone | None:
         """Classify Z-Score into risk zones (original model)."""
         if z_score is None:
             return None
@@ -363,7 +363,7 @@ class AltmanZScoreCalculator:
         else:
             return AltmanZone.GREY
 
-    def _classify_revised(self, z_score: Optional[float]) -> Optional[AltmanZone]:
+    def _classify_revised(self, z_score: float | None) -> AltmanZone | None:
         """Classify Z-Score into risk zones (revised model)."""
         if z_score is None:
             return None
@@ -375,7 +375,7 @@ class AltmanZScoreCalculator:
         else:
             return AltmanZone.GREY
 
-    def _get_interpretation(self, zone: Optional[AltmanZone], score: Optional[float]) -> str:
+    def _get_interpretation(self, zone: AltmanZone | None, score: float | None) -> str:
         """Generate human-readable interpretation of the score."""
         if zone is None or score is None:
             return "Unable to calculate Z-Score due to missing data"
@@ -398,7 +398,7 @@ class AltmanZScoreCalculator:
                 "Company shows signs of financial stress and potential default."
             )
 
-    def _estimate_bankruptcy_prob(self, z_score: Optional[float]) -> Optional[float]:
+    def _estimate_bankruptcy_prob(self, z_score: float | None) -> float | None:
         """Estimate bankruptcy probability from Z-Score.
 
         Based on Altman's research, approximate probabilities:

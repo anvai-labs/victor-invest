@@ -97,7 +97,7 @@ def inspect_cache_handlers():
             print(f"  {handler_type}: {count}")
 
     except Exception as e:
-        print(f"Error inspecting handlers: {str(e)}")
+        print(f"Error inspecting handlers: {e!s}")
 
 
 def test_cache_write_operations():
@@ -186,7 +186,7 @@ def test_cache_write_operations():
                     print(f"  Failed: {', '.join(failed_ops)}")
 
     except Exception as e:
-        print(f"Error in write tests: {str(e)}")
+        print(f"Error in write tests: {e!s}")
 
 
 def identify_cache_issues():

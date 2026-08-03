@@ -11,7 +11,7 @@ This prevents drift between training and production reward signals.
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 
@@ -197,12 +197,12 @@ class RewardCalculator:
 
     def calculate_per_model_rewards(
         self,
-        model_fair_values: Dict[str, Optional[float]],
+        model_fair_values: dict[str, float | None],
         price_at_prediction: float,
         actual_price: float,
         days: int = 90,
         beta: float = 1.0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Calculate rewards for each valuation model individually.
 
@@ -238,7 +238,7 @@ class RewardCalculator:
 
 
 # Singleton instance for convenience
-_calculator: Optional[RewardCalculator] = None
+_calculator: RewardCalculator | None = None
 
 
 def get_reward_calculator() -> RewardCalculator:

@@ -7,10 +7,11 @@ import asyncio
 import fnmatch
 import logging
 from collections import defaultdict
+from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Set
+from typing import Any
 
 
 class EventPriority(Enum):
@@ -27,12 +28,12 @@ class Event:
     """Event data structure"""
 
     type: str
-    data: Dict[str, Any]
+    data: dict[str, Any]
     source: str
     timestamp: datetime = field(default_factory=datetime.now)
     priority: EventPriority = EventPriority.NORMAL
-    correlation_id: Optional[str] = None
-    metadata: Dict = field(default_factory=dict)
+    correlation_id: str | None = None
+    metadata: dict = field(default_factory=dict)
 
 
 class EventBus:
@@ -41,17 +42,17 @@ class EventBus:
     """
 
     def __init__(self, max_queue_size: int = 1000):
-        self.subscribers: Dict[str, List[Callable]] = defaultdict(list)
-        self.async_subscribers: Dict[str, List[Callable]] = defaultdict(list)
+        self.subscribers: dict[str, list[Callable]] = defaultdict(list)
+        self.async_subscribers: dict[str, list[Callable]] = defaultdict(list)
         self.event_queue: asyncio.Queue = asyncio.Queue(maxsize=max_queue_size)
         self.running = False
         self.logger = logging.getLogger(self.__class__.__name__)
 
         # Event filtering
-        self.filters: Dict[str, Callable] = {}
+        self.filters: dict[str, Callable] = {}
 
         # Event history for debugging
-        self.event_history: List[Event] = []
+        self.event_history: list[Event] = []
         self.max_history_size = 100
 
         # Metrics
@@ -63,10 +64,10 @@ class EventBus:
         }
 
         # Pattern subscriptions (for wildcard matching)
-        self.pattern_subscribers: List[tuple[str, Callable]] = []
+        self.pattern_subscribers: list[tuple[str, Callable]] = []
 
         # Event processing task
-        self.processor_task: Optional[asyncio.Task] = None
+        self.processor_task: asyncio.Task | None = None
 
     async def start(self):
         """Start the event bus processor"""
@@ -91,7 +92,7 @@ class EventBus:
 
         self.logger.info("Event bus stopped")
 
-    def subscribe(self, event_type: str, handler: Callable, filter_func: Optional[Callable] = None):
+    def subscribe(self, event_type: str, handler: Callable, filter_func: Callable | None = None):
         """
         Subscribe to an event type
 
@@ -141,10 +142,10 @@ class EventBus:
     async def publish(
         self,
         event_type: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         source: str = "unknown",
         priority: EventPriority = EventPriority.NORMAL,
-        correlation_id: Optional[str] = None,
+        correlation_id: str | None = None,
         **metadata,
     ):
         """
@@ -181,7 +182,7 @@ class EventBus:
             self.metrics["events_dropped"] += 1
             self.logger.warning(f"Event queue full, dropping event: {event_type}")
 
-    async def emit(self, event_type: str, data: Dict[str, Any], **kwargs):
+    async def emit(self, event_type: str, data: dict[str, Any], **kwargs):
         """Convenience method for publishing events"""
         await self.publish(event_type, data, **kwargs)
 
@@ -198,7 +199,7 @@ class EventBus:
                 # Mark task as done
                 self.event_queue.task_done()
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 continue
             except Exception as e:
                 self.logger.error(f"Error processing event: {e}")
@@ -278,9 +279,9 @@ class EventBus:
     async def wait_for(
         self,
         event_type: str,
-        timeout: Optional[float] = None,
-        filter_func: Optional[Callable] = None,
-    ) -> Optional[Event]:
+        timeout: float | None = None,
+        filter_func: Callable | None = None,
+    ) -> Event | None:
         """
         Wait for a specific event
 
@@ -303,7 +304,7 @@ class EventBus:
         try:
             event = await asyncio.wait_for(future, timeout)
             return event
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return None
         finally:
             self.unsubscribe(event_type, handler)
@@ -312,10 +313,10 @@ class EventBus:
         self,
         request_type: str,
         response_type: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         source: str,
         timeout: float = 30.0,
-    ) -> Optional[Event]:
+    ) -> Event | None:
         """
         Send request and wait for response (RPC-style)
 
@@ -348,7 +349,7 @@ class EventBus:
         # Wait for response
         return await response_task
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         """Get event bus metrics"""
         return {
             **self.metrics,
@@ -358,10 +359,10 @@ class EventBus:
 
     def get_history(
         self,
-        event_type: Optional[str] = None,
-        source: Optional[str] = None,
+        event_type: str | None = None,
+        source: str | None = None,
         limit: int = 10,
-    ) -> List[Event]:
+    ) -> list[Event]:
         """
         Get event history
 
@@ -383,7 +384,7 @@ class EventBus:
 
         return events[-limit:]
 
-    async def broadcast(self, event_type: str, data: Dict[str, Any], **kwargs):
+    async def broadcast(self, event_type: str, data: dict[str, Any], **kwargs):
         """Broadcast event to all subscribers (alias for publish)"""
         await self.publish(event_type, data, **kwargs)
 
@@ -391,7 +392,7 @@ class EventBus:
         """Clear event history"""
         self.event_history.clear()
 
-    async def subscribe_async(self, patterns: List[str]) -> AsyncIterator[Event]:
+    async def subscribe_async(self, patterns: list[str]) -> AsyncIterator[Event]:
         """
         Async iterator for subscribing to multiple event patterns
 
@@ -428,9 +429,9 @@ class EventChannel:
     def __init__(self, name: str, event_bus: EventBus):
         self.name = name
         self.event_bus = event_bus
-        self.subscribers: Set[Callable] = set()
+        self.subscribers: set[Callable] = set()
 
-    async def publish(self, data: Dict[str, Any], **kwargs):
+    async def publish(self, data: dict[str, Any], **kwargs):
         """Publish to this channel"""
         await self.event_bus.publish(f"channel:{self.name}", data, **kwargs)
 
@@ -444,7 +445,7 @@ class EventChannel:
         self.event_bus.unsubscribe(f"channel:{self.name}", handler)
         self.subscribers.discard(handler)
 
-    async def request(self, data: Dict[str, Any], timeout: float = 30.0) -> Optional[Event]:
+    async def request(self, data: dict[str, Any], timeout: float = 30.0) -> Event | None:
         """Send request and wait for response on this channel"""
         return await self.event_bus.request_response(
             f"channel:{self.name}:request",

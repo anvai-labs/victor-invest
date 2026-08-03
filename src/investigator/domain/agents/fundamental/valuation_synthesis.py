@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence
+from collections.abc import Callable, Iterable, Sequence
+from typing import Any
 
 from investigator.domain.services.data_normalizer import round_for_prompt
 from investigator.domain.services.safe_formatters import format_number
 
 
-def _to_row(name: str, result: Dict[str, Any], applicable_default: bool) -> Dict[str, Any]:
+def _to_row(name: str, result: dict[str, Any], applicable_default: bool) -> dict[str, Any]:
     return {
         "name": name,
         "fair_value": result.get("fair_value_per_share", 0),
@@ -20,15 +21,15 @@ def _to_row(name: str, result: Dict[str, Any], applicable_default: bool) -> Dict
 
 def build_valuation_summary_rows(
     *,
-    dcf_professional: Optional[Dict[str, Any]],
-    ggm_entry: Optional[Dict[str, Any]],
-    normalized_pe: Optional[Dict[str, Any]],
-    normalized_ev_ebitda: Optional[Dict[str, Any]],
-    normalized_ps: Optional[Dict[str, Any]],
-    normalized_pb: Optional[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
+    dcf_professional: dict[str, Any] | None,
+    ggm_entry: dict[str, Any] | None,
+    normalized_pe: dict[str, Any] | None,
+    normalized_ev_ebitda: dict[str, Any] | None,
+    normalized_ps: dict[str, Any] | None,
+    normalized_pb: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
     """Build normalized valuation-model rows for table rendering."""
-    rows: List[Dict[str, Any]] = []
+    rows: list[dict[str, Any]] = []
     if isinstance(dcf_professional, dict):
         rows.append(_to_row("DCF", dcf_professional, True))
     if isinstance(ggm_entry, dict):
@@ -45,17 +46,17 @@ def build_valuation_summary_rows(
 
 
 def build_models_detail_lines(
-    models: Iterable[Dict[str, Any]],
+    models: Iterable[dict[str, Any]],
     *,
     format_currency: Callable[[Any], str],
     format_percentage: Callable[[Any], str],
-) -> List[str]:
+) -> list[str]:
     """Build human-readable per-model detail lines used in valuation synthesis prompt."""
 
     def _fmt_float(value: Any, decimals: int = 1) -> str:
         return format_number(value, decimals=decimals, thousands_separator=False)
 
-    lines: List[str] = []
+    lines: list[str] = []
     for model in models:
         if not isinstance(model, dict):
             continue
@@ -68,7 +69,7 @@ def build_models_detail_lines(
             )
             assumptions = model.get("assumptions") or {}
             metadata = model.get("metadata") or {}
-            extra_bits: List[str] = []
+            extra_bits: list[str] = []
             if model.get("model") == "dcf":
                 if "wacc" in assumptions:
                     extra_bits.append(f"WACC {format_percentage(assumptions.get('wacc'))}")
@@ -115,10 +116,10 @@ def build_models_detail_lines(
 
 def build_valuation_synthesis_prompt(
     *,
-    data_quality: Dict[str, Any],
+    data_quality: dict[str, Any],
     trend_context: str,
-    sector: Optional[str],
-    industry: Optional[str],
+    sector: str | None,
+    industry: str | None,
     archetype_labels: str,
     data_quality_flags: Sequence[str],
     current_price: Any,

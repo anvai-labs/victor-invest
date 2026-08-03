@@ -29,7 +29,7 @@ Example:
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class AnalysisMode(str, Enum):
@@ -75,27 +75,27 @@ class AnalysisWorkflowState:
     mode: AnalysisMode
 
     # LLM Configuration (for synthesis node)
-    llm_provider: Optional[str] = None
-    llm_model: Optional[str] = None
+    llm_provider: str | None = None
+    llm_model: str | None = None
 
     # Data collection results
-    sec_data: Optional[Dict[str, Any]] = None
-    market_data: Optional[Dict[str, Any]] = None
+    sec_data: dict[str, Any] | None = None
+    market_data: dict[str, Any] | None = None
 
     # Analysis results
-    fundamental_analysis: Optional[Dict[str, Any]] = None
-    technical_analysis: Optional[Dict[str, Any]] = None
-    market_context: Optional[Dict[str, Any]] = None
+    fundamental_analysis: dict[str, Any] | None = None
+    technical_analysis: dict[str, Any] | None = None
+    market_context: dict[str, Any] | None = None
 
     # Synthesis
-    synthesis: Optional[Dict[str, Any]] = None
-    recommendation: Optional[Dict[str, Any]] = None
+    synthesis: dict[str, Any] | None = None
+    recommendation: dict[str, Any] | None = None
 
     # Tracking
-    errors: List[str] = field(default_factory=list)
-    completed_steps: List[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    completed_steps: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert state to dictionary for serialization.
 
         Returns:
@@ -118,7 +118,7 @@ class AnalysisWorkflowState:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AnalysisWorkflowState":
+    def from_dict(cls, data: dict[str, Any]) -> "AnalysisWorkflowState":
         """Create state from dictionary.
 
         Args:

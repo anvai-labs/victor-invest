@@ -25,7 +25,7 @@ valuation multiples because:
 """
 
 import logging
-from typing import Any, List, Optional
+from typing import Any
 
 from investigator.domain.services.valuation.models.common import clamp
 
@@ -43,7 +43,7 @@ class GrowthCalculator:
     """
 
     @staticmethod
-    def calculate_revenue_growth_ttm(*, quarterly_data: List[Any], logger: Any = logger) -> Optional[float]:
+    def calculate_revenue_growth_ttm(*, quarterly_data: list[Any], logger: Any = logger) -> float | None:
         """Calculate revenue growth using TTM (Trailing Twelve Months) comparison.
 
         Primary method: TTM Revenue Growth
@@ -179,7 +179,7 @@ class GrowthCalculator:
         return None
 
     @staticmethod
-    def calculate_growth_multiplier_pe(revenue_growth: Optional[float]) -> float:
+    def calculate_growth_multiplier_pe(revenue_growth: float | None) -> float:
         """Calculate P/E growth multiplier based on revenue growth.
 
         Growth multiplier formula: clamp(1.0 + revenue_growth, 0.8, 2.5)
@@ -201,7 +201,7 @@ class GrowthCalculator:
         return clamp(1.0 + float(revenue_growth), 0.8, 2.5)
 
     @staticmethod
-    def calculate_growth_multiplier_ps(revenue_growth: Optional[float]) -> float:
+    def calculate_growth_multiplier_ps(revenue_growth: float | None) -> float:
         """Calculate P/S growth adjustment based on revenue growth.
 
         P/S growth adjustment follows the formula:
@@ -232,7 +232,7 @@ class GrowthCalculator:
             return float(6 + clamp((growth_pct - 30) * 0.1, 0, 2))
 
     @staticmethod
-    def calculate_ev_ebitda_growth_factor(revenue_growth: Optional[float]) -> float:
+    def calculate_ev_ebitda_growth_factor(revenue_growth: float | None) -> float:
         """Calculate EV/EBITDA growth factor based on revenue growth.
 
         Growth factor scales from 1.0x at 0% revenue growth to 1.6x at 30% revenue growth.

@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, TypeVar
 
 if TYPE_CHECKING:
     from victor_contracts.verticals.protocols.tools import ToolRegistryProtocol as ToolRegistry
@@ -32,9 +33,9 @@ except Exception:
 
         async def execute(
             self,
-            node: "ComputeNode",
-            context: "WorkflowContext",
-            tool_registry: "ToolRegistry",
+            node: ComputeNode,
+            context: WorkflowContext,
+            tool_registry: ToolRegistry,
         ):
             raise NotImplementedError("BaseHandler.execute() must be implemented")
 
@@ -80,8 +81,8 @@ except Exception:
     def _register_with_handler_registry(
         name: str,
         instance: Any,
-        vertical: Optional[str],
-        description: Optional[str],
+        vertical: str | None,
+        description: str | None,
     ) -> None:
         try:
             # Try new Victor API first (register_vertical_handlers, register_global_handler)
@@ -140,8 +141,8 @@ except Exception:
     def handler_decorator(
         name: str,
         *,
-        vertical: Optional[str] = None,
-        description: Optional[str] = None,
+        vertical: str | None = None,
+        description: str | None = None,
     ) -> Callable[[type[_T]], type[_T]]:
         """Decorator compatibility shim for class-based handlers."""
 

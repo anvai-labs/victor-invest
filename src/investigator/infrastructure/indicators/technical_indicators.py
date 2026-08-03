@@ -6,7 +6,6 @@ Centralized calculation of all technical analysis indicators
 
 import logging
 from datetime import datetime
-from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -228,7 +227,7 @@ class TechnicalIndicatorCalculator:
 
     def _calculate_stochastic(
         self, df: pd.DataFrame, k_period: int = 14, d_period: int = 3
-    ) -> Tuple[pd.Series, pd.Series]:
+    ) -> tuple[pd.Series, pd.Series]:
         """Calculate Stochastic Oscillator"""
         low_min = df["Low"].rolling(window=k_period, min_periods=1).min()
         high_max = df["High"].rolling(window=k_period, min_periods=1).max()
@@ -254,7 +253,7 @@ class TechnicalIndicatorCalculator:
         money_ratio = positive_flow / negative_flow.replace(0, np.inf)
         return 100 - (100 / (1 + money_ratio))
 
-    def _calculate_adx(self, df: pd.DataFrame, period: int = 14) -> Tuple[pd.Series, pd.Series, pd.Series]:
+    def _calculate_adx(self, df: pd.DataFrame, period: int = 14) -> tuple[pd.Series, pd.Series, pd.Series]:
         """
         Calculate Average Directional Index (ADX) and Directional Indicators.
 

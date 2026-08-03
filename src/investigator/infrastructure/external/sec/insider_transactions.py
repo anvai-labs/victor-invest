@@ -43,7 +43,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import aiohttp
 import requests
@@ -111,16 +111,16 @@ class TransactionType(Enum):
 class InsiderTransaction:
     """Represents a single insider transaction."""
 
-    transaction_date: Optional[date] = None
-    transaction_code: Optional[str] = None
-    transaction_type: Optional[TransactionType] = None
+    transaction_date: date | None = None
+    transaction_code: str | None = None
+    transaction_type: TransactionType | None = None
     shares: float = 0.0
     price_per_share: float = 0.0
     total_value: float = 0.0
     is_derivative: bool = False
-    security_title: Optional[str] = None
-    acquired_disposed: Optional[str] = None  # "A" or "D"
-    post_transaction_shares: Optional[float] = None
+    security_title: str | None = None
+    acquired_disposed: str | None = None  # "A" or "D"
+    post_transaction_shares: float | None = None
 
     def __post_init__(self):
         if self.transaction_code and not self.transaction_type:
@@ -133,7 +133,7 @@ class InsiderTransaction:
 class ReportingOwner:
     """Represents the insider filing the form."""
 
-    cik: Optional[str] = None
+    cik: str | None = None
     name: str = ""
     title: str = ""
     is_director: bool = False
@@ -175,13 +175,13 @@ class Form4Filing:
     """Represents a parsed Form 4 filing."""
 
     accession_number: str = ""
-    filing_date: Optional[date] = None
-    issuer_cik: Optional[str] = None
+    filing_date: date | None = None
+    issuer_cik: str | None = None
     issuer_name: str = ""
     issuer_symbol: str = ""
-    reporting_owner: Optional[ReportingOwner] = None
-    transactions: List[InsiderTransaction] = field(default_factory=list)
-    footnotes: List[str] = field(default_factory=list)
+    reporting_owner: ReportingOwner | None = None
+    transactions: list[InsiderTransaction] = field(default_factory=list)
+    footnotes: list[str] = field(default_factory=list)
 
     @property
     def total_purchase_value(self) -> float:
@@ -210,7 +210,7 @@ class Form4Filing:
             return True
         return False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "accession_number": self.accession_number,
@@ -272,7 +272,7 @@ class InsiderTransactionFetcher:
         """
         self._rate_limit = rate_limit
         self._last_request = 0.0
-        self._session: Optional[aiohttp.ClientSession] = None
+        self._session: aiohttp.ClientSession | None = None
 
     async def _ensure_session(self) -> aiohttp.ClientSession:
         """Ensure aiohttp session exists."""
@@ -287,7 +287,7 @@ class InsiderTransactionFetcher:
             )
         return self._session
 
-    async def _rate_limited_request(self, url: str) -> Optional[str]:
+    async def _rate_limited_request(self, url: str) -> str | None:
         """Make a rate-limited request to SEC API."""
         import time
 
@@ -311,7 +311,7 @@ class InsiderTransactionFetcher:
             logger.error(f"Error fetching {url}: {e}")
             return None
 
-    def _sync_request(self, url: str) -> Optional[str]:
+    def _sync_request(self, url: str) -> str | None:
         """Synchronous request for non-async contexts."""
         try:
             response = requests.get(
@@ -329,7 +329,7 @@ class InsiderTransactionFetcher:
             logger.error(f"Error fetching {url}: {e}")
             return None
 
-    async def fetch_recent_filings(self, symbol: str, days: int = 30, cik: Optional[str] = None) -> List[Form4Filing]:
+    async def fetch_recent_filings(self, symbol: str, days: int = 30, cik: str | None = None) -> list[Form4Filing]:
         """Fetch recent Form 4 filings for a symbol.
 
         Args:
@@ -404,7 +404,7 @@ class InsiderTransactionFetcher:
             logger.error(f"Error processing submissions for {symbol}: {e}")
             return []
 
-    def parse_form4_xml(self, xml_content: str) -> Optional[Form4Filing]:
+    def parse_form4_xml(self, xml_content: str) -> Form4Filing | None:
         """Parse Form 4 XML content.
 
         Args:
@@ -471,7 +471,7 @@ class InsiderTransactionFetcher:
             logger.error(f"Error parsing Form 4 XML: {e}")
             return None
 
-    def _parse_transaction(self, elem: ET.Element, is_derivative: bool = False) -> Optional[InsiderTransaction]:
+    def _parse_transaction(self, elem: ET.Element, is_derivative: bool = False) -> InsiderTransaction | None:
         """Parse a single transaction element."""
         try:
             trans = InsiderTransaction(is_derivative=is_derivative)
@@ -513,7 +513,7 @@ class InsiderTransactionFetcher:
             logger.debug(f"Error parsing transaction: {e}")
             return None
 
-    def _get_xml_text(self, elem: Optional[ET.Element], path: str, default: str = "") -> str:
+    def _get_xml_text(self, elem: ET.Element | None, path: str, default: str = "") -> str:
         """Safely get text from XML element."""
         if elem is None:
             return default
@@ -524,7 +524,7 @@ class InsiderTransactionFetcher:
 
         return default
 
-    async def _find_form4_xml_url(self, base_url: str, primary_doc: str) -> Optional[str]:
+    async def _find_form4_xml_url(self, base_url: str, primary_doc: str) -> str | None:
         """Find the actual Form 4 XML file URL.
 
         The primaryDocument field often points to XSLT-transformed views
@@ -550,7 +550,7 @@ class InsiderTransactionFetcher:
 
         return None
 
-    async def _get_cik(self, symbol: str) -> Optional[str]:
+    async def _get_cik(self, symbol: str) -> str | None:
         """Get CIK for a symbol from SEC ticker mapping."""
         try:
             # Use SEC's ticker.txt mapping
@@ -573,7 +573,7 @@ class InsiderTransactionFetcher:
 
 
 # Singleton instance
-_insider_fetcher: Optional[InsiderTransactionFetcher] = None
+_insider_fetcher: InsiderTransactionFetcher | None = None
 
 
 def get_insider_transaction_fetcher() -> InsiderTransactionFetcher:

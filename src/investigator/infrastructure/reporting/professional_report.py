@@ -9,7 +9,7 @@ import math
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 try:
     from reportlab.graphics import renderPDF  # noqa: F401
@@ -21,9 +21,9 @@ try:
     from reportlab.lib.pagesizes import letter
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import inch
-    from reportlab.platypus import HRFlowable  # noqa: F401
-    from reportlab.platypus import KeepTogether  # noqa: F401
     from reportlab.platypus import (
+        HRFlowable,
+        KeepTogether,
         Paragraph,
         SimpleDocTemplate,
         Spacer,
@@ -677,7 +677,7 @@ class PriceTargetChart(Flowable):
 class FinancialMetricsTable(Flowable):
     """Financial metrics comparison table: Company vs Sector vs Peers"""
 
-    def __init__(self, width, height, metrics: Dict):
+    def __init__(self, width, height, metrics: dict):
         Flowable.__init__(self)
         self.width = width
         self.height = height
@@ -797,7 +797,7 @@ class TrendChart(Flowable):
         self,
         width,
         height,
-        data_points: List,
+        data_points: list,
         label: str,
         format_type: str = "currency",
     ):
@@ -896,7 +896,7 @@ class TrendChart(Flowable):
 class InvestmentActionBox(Flowable):
     """Investment action plan visual box with entry/exit levels"""
 
-    def __init__(self, width, height, action_data: Dict):
+    def __init__(self, width, height, action_data: dict):
         Flowable.__init__(self)
         self.width = width
         self.height = height
@@ -995,7 +995,7 @@ class InvestmentActionBox(Flowable):
 class ValuationMethodologyBox(Flowable):
     """Callout box explaining valuation methodology and assumptions"""
 
-    def __init__(self, width, height, methodology: Dict):
+    def __init__(self, width, height, methodology: dict):
         Flowable.__init__(self)
         self.width = width
         self.height = height
@@ -1202,7 +1202,7 @@ class ProfessionalReportGenerator:
 
         return text.strip()
 
-    def _format_synthesis_text(self, text: str) -> List[Dict[str, Any]]:
+    def _format_synthesis_text(self, text: str) -> list[dict[str, Any]]:
         """Format LLM synthesis text with proper section breaks and structure.
 
         Parses the synthesis text to identify ALL CAPS section headers and
@@ -1323,7 +1323,7 @@ class ProfessionalReportGenerator:
 
         return final_sections
 
-    def generate_report(self, data: Dict[str, Any]) -> str:
+    def generate_report(self, data: dict[str, Any]) -> str:
         """
         Generate professional investment report.
 
@@ -1368,7 +1368,7 @@ class ProfessionalReportGenerator:
         logger.info(f"Generated professional report: {filepath}")
         return str(filepath)
 
-    def _build_story(self, data: Dict) -> List:
+    def _build_story(self, data: dict) -> list:
         """Build the report content"""
         story = []
         symbol = data.get("symbol", "UNKNOWN")
@@ -1982,7 +1982,7 @@ class ProfessionalReportGenerator:
         return story
 
 
-def generate_professional_report(data: Dict[str, Any], output_dir: Path | None = None) -> str:
+def generate_professional_report(data: dict[str, Any], output_dir: Path | None = None) -> str:
     """Convenience function to generate a professional report"""
     generator = ProfessionalReportGenerator(output_dir=output_dir)
     return generator.generate_report(data)

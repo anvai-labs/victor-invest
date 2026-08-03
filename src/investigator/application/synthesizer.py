@@ -12,9 +12,9 @@ import json
 import logging
 import os
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 import psycopg2
@@ -262,13 +262,13 @@ class InvestmentSynthesizer:
             self.main_logger.warning(f"Could not determine fiscal period: {e}, using defaults")
             return datetime.now().year, "FY"
 
-    def _infer_period_from_fundamental(self, llm_responses: Dict[str, Dict]) -> Optional[str]:
+    def _infer_period_from_fundamental(self, llm_responses: dict[str, dict]) -> str | None:
         """Extract fiscal period label directly from cached fundamental analyses if available."""
         fundamentals = llm_responses.get("fundamental") or {}
         if not fundamentals:
             return None
 
-        def _candidate_dicts() -> List[Dict[str, Any]]:
+        def _candidate_dicts() -> list[dict[str, Any]]:
             for key, payload in fundamentals.items():
                 if isinstance(payload, dict):
                     yield payload
@@ -470,7 +470,7 @@ class InvestmentSynthesizer:
                         cache_payload = {
                             "response": dcf_valuation,
                             "metadata": {
-                                "cached_at": datetime.now(timezone.utc).isoformat(),
+                                "cached_at": datetime.now(UTC).isoformat(),
                                 "analysis_type": "deterministic_dcf",
                                 "source": "synthesizer",
                                 "period": current_period_label,
@@ -1001,7 +1001,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             # Debug: Check what the synthesis response contains
             self.main_logger.info(f"Synthesis response type: {type(synthesis_response)}")
             self.main_logger.info(f"Synthesis response length: {len(str(synthesis_response))}")
-            self.main_logger.info(f"Synthesis response preview: {str(synthesis_response)}")
+            self.main_logger.info(f"Synthesis response preview: {synthesis_response!s}")
 
             # Parse JSON synthesis response with metadata
             synthesis_metadata = {
@@ -1058,7 +1058,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             except Exception as e:
                 import traceback
 
-                symbol_logger.error(f"EXCEPTION in JSON validation: {str(e)}")
+                symbol_logger.error(f"EXCEPTION in JSON validation: {e!s}")
                 symbol_logger.error(f"Exception type: {type(e).__name__}")
                 symbol_logger.error(f"Exception traceback: {traceback.format_exc()}")
                 symbol_logger.error(f"Raw LLM response (first 500 chars): {str(synthesis_response)[:500]}")
@@ -1230,7 +1230,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
                 entry_strategy=ai_recommendation.get("entry_strategy", ""),
                 exit_strategy=ai_recommendation.get("exit_strategy", ""),
                 stop_loss=stop_loss,
-                analysis_timestamp=datetime.now(timezone.utc),
+                analysis_timestamp=datetime.now(UTC),
                 data_quality_score=data_quality,
                 analysis_thinking=ai_recommendation.get("analysis_thinking", thinking_content),
                 synthesis_details=ai_recommendation.get("synthesis_details", additional_details),
@@ -1337,22 +1337,22 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             )
 
             # Track report generation in database
-            processing_time = int((time.time() - start_time)) if "start_time" in locals() else None
+            processing_time = int(time.time() - start_time) if "start_time" in locals() else None
             self._track_report_generation(recommendation, processing_time=processing_time)
 
             return recommendation
 
         except Exception as e:
             if "symbol_logger" in locals():
-                symbol_logger.error(f"Investment synthesis failed: {str(e)}")
+                symbol_logger.error(f"Investment synthesis failed: {e!s}")
             self.main_logger.error(f"Error synthesizing analysis for {symbol}: {e}")
             import traceback
 
             self.main_logger.error(f"Traceback: {traceback.format_exc()}")
             # Raise the exception instead of returning a default recommendation
-            raise RuntimeError(f"Investment synthesis failed for {symbol}: {str(e)}")
+            raise RuntimeError(f"Investment synthesis failed for {symbol}: {e!s}")
 
-    def _analyze_recession_performance(self, symbol: str, multi_year_data: List[Dict]) -> Dict:
+    def _analyze_recession_performance(self, symbol: str, multi_year_data: list[dict]) -> dict:
         """
         Analyze company performance during major economic crises
 
@@ -1413,7 +1413,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             self.main_logger.error(f"Error analyzing recession performance for {symbol}: {e}")
             return {}
 
-    def _calculate_crisis_metrics(self, symbol: str, start_date: str, end_date: str, recovery_end: str) -> Dict:
+    def _calculate_crisis_metrics(self, symbol: str, start_date: str, end_date: str, recovery_end: str) -> dict:
         """
         Calculate performance during and after crisis
 
@@ -1502,7 +1502,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             self.main_logger.error(f"Error calculating crisis metrics for {symbol}: {e}")
             return {}
 
-    def _calculate_defensive_score(self, crisis_results: Dict) -> float:
+    def _calculate_defensive_score(self, crisis_results: dict) -> float:
         """
         Calculate overall defensive characteristics score (0-10)
 
@@ -1675,7 +1675,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
     def generate_report(
         self,
-        recommendations: List[InvestmentRecommendation],
+        recommendations: list[InvestmentRecommendation],
         report_type: str = "synthesis",
     ) -> str:
         """
@@ -1859,7 +1859,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             self.main_logger.error(f"Error generating report: {e}")
             raise
 
-    def _fetch_llm_responses(self, symbol: str) -> Dict[str, Dict]:
+    def _fetch_llm_responses(self, symbol: str) -> dict[str, dict]:
         """Fetch ALL LLM responses for comprehensive synthesis including 8 quarterly + comprehensive + technical"""
         self.main_logger.info(f"Fetching LLM responses for {symbol}")
 
@@ -2029,7 +2029,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             self.main_logger.error(f"Error fetching LLM responses: {e}")
             return {"fundamental": {}, "technical": None}
 
-    def _fetch_latest_data(self, symbol: str) -> Dict:
+    def _fetch_latest_data(self, symbol: str) -> dict:
         """Fetch latest fundamental and technical data from parquet files"""
         self.main_logger.info(f"Fetching latest data for {symbol}")
 
@@ -2150,7 +2150,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             # Fail immediately as requested - no fallbacks that give wrong answers
             raise RuntimeError(f"Failed to fetch latest data for {symbol}: {e}")
 
-    def _fetch_historical_scores(self, symbol: str) -> List[Dict]:
+    def _fetch_historical_scores(self, symbol: str) -> list[dict]:
         """
         Fetch historical investment scores from synthesis_results table
 
@@ -2203,7 +2203,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             self.main_logger.error(f"Error fetching historical scores for {symbol}: {e}")
             return []
 
-    def _fetch_peer_valuation_metrics(self, symbol: str) -> Dict:
+    def _fetch_peer_valuation_metrics(self, symbol: str) -> dict:
         """
         Fetch valuation metrics for symbol and its peers
 
@@ -2299,7 +2299,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             self.main_logger.error(f"Error fetching peer valuation metrics: {e}")
             return {}
 
-    def _calculate_relative_valuation(self, target: Dict, peer_medians: Dict) -> Dict:
+    def _calculate_relative_valuation(self, target: dict, peer_medians: dict) -> dict:
         """
         Calculate relative valuation metrics
 
@@ -2356,7 +2356,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             self.main_logger.error(f"Error calculating relative valuation: {e}")
             return {}
 
-    def _calculate_score_trend(self, score_history: List[Dict]) -> Dict:
+    def _calculate_score_trend(self, score_history: list[dict]) -> dict:
         """
         Analyze score trend to determine if improving or declining
 
@@ -2414,10 +2414,10 @@ Your responses must be precise, quantitative, and suitable for institutional inv
     def _detect_red_flags(
         self,
         symbol: str,
-        quarterly_metrics: List[Dict],
-        quarterly_trends: Dict,
-        latest_data: Dict,
-    ) -> List[Dict]:
+        quarterly_metrics: list[dict],
+        quarterly_trends: dict,
+        latest_data: dict,
+    ) -> list[dict]:
         """
         Detect warning signs in financial data
 
@@ -2523,7 +2523,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
         return red_flags
 
-    def _fetch_multi_year_financials(self, symbol: str, years: int = 5) -> List[Dict]:
+    def _fetch_multi_year_financials(self, symbol: str, years: int = 5) -> list[dict]:
         """
         Fetch multi-year annual financial data from SEC tables
 
@@ -2599,7 +2599,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             self.main_logger.error(f"Error fetching multi-year financials for {symbol}: {e}")
             return []
 
-    def _structure_yearly_sec_data(self, rows: List) -> List[Dict]:
+    def _structure_yearly_sec_data(self, rows: list) -> list[dict]:
         """Structure raw SEC data into yearly metrics"""
         yearly_data = {}
 
@@ -2647,7 +2647,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         # Convert to sorted list
         return sorted(yearly_data.values(), key=lambda x: x["year"])
 
-    def _calculate_multi_year_metrics(self, yearly_data: List[Dict]) -> Dict:
+    def _calculate_multi_year_metrics(self, yearly_data: list[dict]) -> dict:
         """
         Calculate CAGR, trends, and patterns from multi-year data
 
@@ -2722,7 +2722,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
         return metrics
 
-    def _detect_cyclical_pattern(self, yearly_data: List[Dict]) -> str:
+    def _detect_cyclical_pattern(self, yearly_data: list[dict]) -> str:
         """Detect if business shows cyclical pattern"""
         revenue_values = [y["revenue"] for y in yearly_data if y["revenue"] and y["revenue"] > 0]
 
@@ -2752,10 +2752,10 @@ Your responses must be precise, quantitative, and suitable for institutional inv
     def _calculate_risk_scores(
         self,
         symbol: str,
-        quarterly_metrics: List[Dict],
-        latest_data: Dict,
-        multi_year_trends: Optional[Dict],
-    ) -> Dict:
+        quarterly_metrics: list[dict],
+        latest_data: dict,
+        multi_year_trends: dict | None,
+    ) -> dict:
         """
         Calculate multi-dimensional risk scores across 5 dimensions
 
@@ -2913,7 +2913,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             "growth_risk": 0.15,
         }
 
-        overall_risk = sum(risk_scores[k] * weights[k] for k in weights.keys())
+        overall_risk = sum(risk_scores[k] * weights[k] for k in weights)
         risk_scores["overall_risk"] = round(overall_risk, 1)
 
         # Risk rating
@@ -2930,7 +2930,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
         return risk_scores
 
-    def _fetch_competitive_positioning_data(self, symbol: str, quarterly_metrics: List[Dict]) -> Dict:
+    def _fetch_competitive_positioning_data(self, symbol: str, quarterly_metrics: list[dict]) -> dict:
         """
         Fetch competitive positioning data for matrix visualization
 
@@ -3036,7 +3036,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             self.main_logger.error(traceback.format_exc())
             return {}
 
-    def _build_peer_performance_leaderboard(self, symbol: str, quarterly_metrics: List[Dict]) -> Dict:
+    def _build_peer_performance_leaderboard(self, symbol: str, quarterly_metrics: list[dict]) -> dict:
         """
         Build peer performance leaderboard with rankings
 
@@ -3159,7 +3159,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             self.main_logger.error(traceback.format_exc())
             return {}
 
-    def _calculate_volume_profile(self, symbol: str, latest_data: Dict) -> Dict:
+    def _calculate_volume_profile(self, symbol: str, latest_data: dict) -> dict:
         """
         Calculate volume profile showing volume distribution across price levels
 
@@ -3322,7 +3322,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             self.main_logger.error(traceback.format_exc())
             return {}
 
-    def _fetch_quarterly_metrics(self, symbol: str, limit: int = 12) -> List[Dict]:
+    def _fetch_quarterly_metrics(self, symbol: str, limit: int = 12) -> list[dict]:
         """
         Fetch quarterly financial metrics from database for trend analysis
 
@@ -3383,7 +3383,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             self.main_logger.error(f"Error fetching quarterly metrics for {symbol}: {e}")
             return []
 
-    def _fetch_price_history(self, symbol: str, days: int = 252) -> List[Dict]:
+    def _fetch_price_history(self, symbol: str, days: int = 252) -> list[dict]:
         """
         Fetch historical price data (OHLCV) from database or cache for pattern recognition
 
@@ -3468,7 +3468,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             self.main_logger.error(f"Error fetching price history for {symbol}: {e}")
             return []
 
-    def _calculate_quarterly_trends(self, quarterly_data: List[Dict]) -> Dict:
+    def _calculate_quarterly_trends(self, quarterly_data: list[dict]) -> dict:
         """
         Calculate quarter-over-quarter and year-over-year trends
 
@@ -3480,38 +3480,38 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         """
         return calculate_quarterly_trends(quarterly_data, logger=self.main_logger)
 
-    def _calculate_fundamental_score(self, llm_responses: Dict) -> float:
+    def _calculate_fundamental_score(self, llm_responses: dict) -> float:
         """Calculate fundamental score from LLM responses"""
         return calculate_fundamental_score(llm_responses)
 
-    def _calculate_technical_score(self, llm_responses: Dict) -> float:
+    def _calculate_technical_score(self, llm_responses: dict) -> float:
         """Calculate technical score from structured JSON LLM response"""
         return calculate_technical_score(llm_responses)
 
-    def _extract_technical_indicators(self, llm_responses: Dict) -> Dict:
+    def _extract_technical_indicators(self, llm_responses: dict) -> dict:
         """Extract technical indicators from structured technical analysis JSON response"""
         return extract_technical_indicators(llm_responses, logger=self.main_logger)
 
-    def _extract_momentum_signals(self, content: Dict) -> List[str]:
+    def _extract_momentum_signals(self, content: dict) -> list[str]:
         """Extract momentum signals from technical analysis response"""
         return extract_momentum_signals(content)
 
-    def _extract_legacy_technical_indicators(self, content: str) -> Dict:
+    def _extract_legacy_technical_indicators(self, content: str) -> dict:
         """Extract technical indicators from legacy format response"""
         return extract_legacy_technical_indicators(content)
 
-    def _extract_sec_comprehensive_data(self, llm_responses: Dict) -> Dict:
+    def _extract_sec_comprehensive_data(self, llm_responses: dict) -> dict:
         """Extract all valuable data from SEC comprehensive analysis"""
         return extract_sec_comprehensive_data(llm_responses)
 
     def _create_recommendation_from_llm_data(
         self,
         symbol: str,
-        sec_data: Dict,
-        tech_indicators: Dict,
+        sec_data: dict,
+        tech_indicators: dict,
         current_price: float,
         overall_score: float,
-    ) -> Dict:
+    ) -> dict:
         """Create investment recommendation by combining SEC comprehensive and technical analysis data"""
         recommendation = create_recommendation_from_llm_data(
             symbol,
@@ -3535,10 +3535,10 @@ Your responses must be precise, quantitative, and suitable for institutional inv
     def _calculate_data_quality_detailed(
         self,
         symbol: str,
-        llm_responses: Dict,
-        quarterly_metrics: List,
-        latest_data: Dict,
-    ) -> Dict:
+        llm_responses: dict,
+        quarterly_metrics: list,
+        latest_data: dict,
+    ) -> dict:
         """
         Calculate detailed data quality score with component breakdown
 
@@ -3552,7 +3552,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             Dictionary with overall score, grade, and component scores
         """
 
-        def _get_peer_count(target_symbol: str) -> Optional[int]:
+        def _get_peer_count(target_symbol: str) -> int | None:
             query = text("""
                 SELECT COUNT(*) FROM peer_metrics
                 WHERE industry = (SELECT industry FROM peer_metrics WHERE symbol = :symbol LIMIT 1)
@@ -3569,7 +3569,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             logger=self.main_logger,
         )
 
-    def _assess_data_quality(self, llm_responses: Dict, latest_data: Dict) -> float:
+    def _assess_data_quality(self, llm_responses: dict, latest_data: dict) -> float:
         """Assess overall data quality and completeness, prioritizing SEC comprehensive analysis
 
         Returns:
@@ -3577,11 +3577,11 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         """
         return assess_data_quality(llm_responses, latest_data)
 
-    def _parse_synthesis_response(self, response: str) -> Dict:
+    def _parse_synthesis_response(self, response: str) -> dict:
         """Parse the synthesis LLM response"""
         return parse_synthesis_response(response, logger=self.main_logger)
 
-    def _extract_income_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
+    def _extract_income_score(self, llm_responses: dict, ai_recommendation: dict) -> float:
         """Extract income statement score from responses"""
         return extract_income_score(
             llm_responses,
@@ -3589,7 +3589,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             calculate_fundamental_score=self._calculate_fundamental_score,
         )
 
-    def _extract_cashflow_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
+    def _extract_cashflow_score(self, llm_responses: dict, ai_recommendation: dict) -> float:
         """Extract cash flow score from responses"""
         return extract_cashflow_score(
             llm_responses,
@@ -3597,7 +3597,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             calculate_fundamental_score=self._calculate_fundamental_score,
         )
 
-    def _extract_balance_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
+    def _extract_balance_score(self, llm_responses: dict, ai_recommendation: dict) -> float:
         """Extract balance sheet score from responses"""
         return extract_balance_score(
             llm_responses,
@@ -3605,7 +3605,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             calculate_fundamental_score=self._calculate_fundamental_score,
         )
 
-    def _extract_growth_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
+    def _extract_growth_score(self, llm_responses: dict, ai_recommendation: dict) -> float:
         """Extract growth prospects score from responses"""
         return extract_growth_score(
             llm_responses,
@@ -3613,7 +3613,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             calculate_fundamental_score=self._calculate_fundamental_score,
         )
 
-    def _extract_value_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
+    def _extract_value_score(self, llm_responses: dict, ai_recommendation: dict) -> float:
         """Extract value investment score from responses"""
         return extract_value_score(
             llm_responses,
@@ -3621,7 +3621,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             calculate_fundamental_score=self._calculate_fundamental_score,
         )
 
-    def _extract_business_quality_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
+    def _extract_business_quality_score(self, llm_responses: dict, ai_recommendation: dict) -> float:
         """
         Extract business quality score from SEC comprehensive analysis.
 
@@ -3643,58 +3643,58 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         """Analyze individual quarterly content for business quality indicators"""
         return analyze_quarterly_business_quality(content, period)
 
-    def _calculate_consistency_bonus(self, quality_indicators: List[float]) -> float:
+    def _calculate_consistency_bonus(self, quality_indicators: list[float]) -> float:
         """Calculate bonus for consistent business quality across quarters"""
         return calculate_consistency_bonus(quality_indicators)
 
     def _determine_final_recommendation(
-        self, overall_score: float, ai_recommendation: Dict, data_quality: float
-    ) -> Dict:
+        self, overall_score: float, ai_recommendation: dict, data_quality: float
+    ) -> dict:
         """Determine final recommendation with risk management"""
         return determine_final_recommendation(overall_score, ai_recommendation, data_quality)
 
     def _calculate_price_target(
         self,
         symbol: str,
-        llm_responses: Dict,
-        ai_recommendation: Dict,
+        llm_responses: dict,
+        ai_recommendation: dict,
         current_price: float,
     ) -> float:
         """Calculate sophisticated price target"""
         _ = llm_responses  # retained for backward-compatible method signature
         return calculate_price_target(symbol, ai_recommendation, current_price, self.main_logger)
 
-    def _calculate_stop_loss(self, current_price: float, recommendation: Dict, overall_score: float) -> float:
+    def _calculate_stop_loss(self, current_price: float, recommendation: dict, overall_score: float) -> float:
         """Calculate stop loss based on risk management"""
         return calculate_stop_loss(current_price, recommendation, overall_score)
 
-    def _extract_position_size(self, ai_recommendation: Dict) -> str:
+    def _extract_position_size(self, ai_recommendation: dict) -> str:
         """Extract position size recommendation"""
         return extract_position_size(ai_recommendation)
 
-    def _extract_catalysts(self, ai_recommendation: Dict) -> List[str]:
+    def _extract_catalysts(self, ai_recommendation: dict) -> list[str]:
         """Extract key catalysts from recommendation"""
         return extract_catalysts(ai_recommendation)
 
-    def _extract_insights_from_text(self, text_details: str) -> tuple[List[str], List[str]]:
+    def _extract_insights_from_text(self, text_details: str) -> tuple[list[str], list[str]]:
         """Extract insights and risks from additional text details beyond JSON"""
         return extract_insights_from_text(text_details)
 
     def _extract_comprehensive_risks(
         self,
-        llm_responses: Dict,
-        ai_recommendation: Dict,
-        additional_risks: List[str] | None = None,
-    ) -> List[str]:
+        llm_responses: dict,
+        ai_recommendation: dict,
+        additional_risks: list[str] | None = None,
+    ) -> list[str]:
         """Extract and prioritize comprehensive risk factors"""
         return extract_comprehensive_risks(llm_responses, ai_recommendation, additional_risks)
 
     def _extract_comprehensive_insights(
         self,
-        llm_responses: Dict,
-        ai_recommendation: Dict,
-        additional_insights: List[str] | None = None,
-    ) -> List[str]:
+        llm_responses: dict,
+        ai_recommendation: dict,
+        additional_insights: list[str] | None = None,
+    ) -> list[str]:
         """Extract and prioritize comprehensive insights"""
         return extract_comprehensive_insights(llm_responses, ai_recommendation, additional_insights)
 
@@ -3784,7 +3784,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         except Exception as e:
             self.main_logger.error(f"Error saving synthesis LLM response: {e}")
 
-    def _get_previous_recommendation(self, symbol: str) -> Optional[Dict]:
+    def _get_previous_recommendation(self, symbol: str) -> dict | None:
         """
         Get the most recent previous recommendation for a symbol
 
@@ -3895,9 +3895,8 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         except Exception as e:
             self.main_logger.error(f"Failed to save synthesis results for {symbol}: {e}")
             # Don't fail the entire synthesis if database save fails
-            pass
 
-    def _get_market_summary(self) -> Dict:
+    def _get_market_summary(self) -> dict:
         """Get market summary data for weekly reports"""
         # Placeholder - would fetch real market data
         return {
@@ -3913,7 +3912,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             "commentary": "Markets showed resilience this week despite mixed economic data.",
         }
 
-    def _calculate_portfolio_performance(self, recommendations: List[Dict]) -> Dict:
+    def _calculate_portfolio_performance(self, recommendations: list[dict]) -> dict:
         """Calculate portfolio performance metrics"""
         if not recommendations:
             return {}
@@ -3935,7 +3934,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
             "worst_performer": sorted_by_score[-1]["symbol"] if sorted_by_score else "N/A",
         }
 
-    def _create_synthesis_prompt(self, symbol: str, llm_responses: Dict, latest_data: Dict) -> str:
+    def _create_synthesis_prompt(self, symbol: str, llm_responses: dict, latest_data: dict) -> str:
         """Create comprehensive synthesis prompt using Jinja2 template with all quarterly analyses, comprehensive analysis, and technical data"""
 
         # 1. ORGANIZE FUNDAMENTAL DATA BY TYPE
@@ -4044,7 +4043,7 @@ Technical: {"✅" if technical_analysis else "❌"}
 Respond with detailed JSON investment analysis."""
 
     def _create_quarterly_synthesis_prompt(
-        self, symbol: str, llm_responses: Dict, latest_data: Dict, prompt_manager
+        self, symbol: str, llm_responses: dict, latest_data: dict, prompt_manager
     ) -> str:
         """Create quarterly synthesis prompt using last N quarters + technical analysis (no comprehensive analysis)"""
 
@@ -4114,11 +4113,11 @@ Respond with detailed JSON investment analysis."""
         symbol_logger.info(f"Generated quarterly synthesis prompt: {len(quarterly_synthesis_prompt)} characters")
         return quarterly_synthesis_prompt
 
-    def _extract_quarterly_trends(self, quarterly_analyses: List[Dict]) -> str:
+    def _extract_quarterly_trends(self, quarterly_analyses: list[dict]) -> str:
         """Extract and summarize trends across quarters for quarterly synthesis"""
         return extract_quarterly_trends(quarterly_analyses)
 
-    def _extract_financial_metrics_from_quarter(self, quarter_data: Dict, period: str) -> Optional[Dict]:
+    def _extract_financial_metrics_from_quarter(self, quarter_data: dict, period: str) -> dict | None:
         """Extract key financial metrics from a quarterly analysis"""
         try:
             return extract_financial_metrics_from_quarter(quarter_data, period)
@@ -4126,11 +4125,11 @@ Respond with detailed JSON investment analysis."""
             self.main_logger.warning(f"Error extracting metrics from quarter {period}: {e}")
             return None
 
-    def _create_financial_trends_analysis(self, metrics_by_quarter: List[Dict]) -> str:
+    def _create_financial_trends_analysis(self, metrics_by_quarter: list[dict]) -> str:
         """Create financial trends analysis from quarterly metrics"""
         return create_financial_trends_analysis(metrics_by_quarter, logger=self.main_logger)
 
-    def _extract_technical_signals_from_text(self, technical_text: str) -> Dict:
+    def _extract_technical_signals_from_text(self, technical_text: str) -> dict:
         """Extract technical signals from text analysis"""
         return extract_technical_signals_from_text(technical_text, logger=self.main_logger)
 
@@ -4150,23 +4149,23 @@ Respond with detailed JSON investment analysis."""
         """Check for golden/death cross pattern"""
         return check_ma_cross(sma_50, sma_200)
 
-    def _assess_trend_strength(self, tech_data: Dict) -> str:
+    def _assess_trend_strength(self, tech_data: dict) -> str:
         """Assess overall trend strength from technical data"""
         return assess_trend_strength(tech_data)
 
-    def _calculate_bb_position(self, tech_data: Dict) -> str:
+    def _calculate_bb_position(self, tech_data: dict) -> str:
         """Calculate Bollinger Band position"""
         return calculate_bb_position(tech_data)
 
-    def _assess_volume_trend(self, tech_data: Dict) -> str:
+    def _assess_volume_trend(self, tech_data: dict) -> str:
         """Assess volume trend"""
         return assess_volume_trend(tech_data)
 
-    def _assess_volume_price_relationship(self, tech_data: Dict) -> str:
+    def _assess_volume_price_relationship(self, tech_data: dict) -> str:
         """Assess volume-price relationship"""
         return assess_volume_price_relationship(tech_data)
 
-    def _create_fallback_recommendation(self, raw_response: Any, symbol: str, overall_score: float) -> Dict[str, Any]:
+    def _create_fallback_recommendation(self, raw_response: Any, symbol: str, overall_score: float) -> dict[str, Any]:
         """
         Create a fallback recommendation when JSON parsing fails
 
@@ -4182,11 +4181,11 @@ Respond with detailed JSON investment analysis."""
 
     def _create_extensible_insights_structure(
         self,
-        ai_recommendation: Dict,
+        ai_recommendation: dict,
         thinking_content: str,
         additional_details: str,
         symbol: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create an extensible structure for capturing additional insights that can evolve with
         prompt and response changes. This structure is designed to be included in the final
@@ -4281,11 +4280,11 @@ Respond with detailed JSON investment analysis."""
                 },
             }
 
-    def _extract_reasoning_themes(self, thinking_content: str) -> List[str]:
+    def _extract_reasoning_themes(self, thinking_content: str) -> list[str]:
         """Extract key reasoning themes from thinking content"""
         return extract_reasoning_themes(thinking_content)
 
-    def _extract_decision_process(self, thinking_content: str) -> Dict[str, Any]:
+    def _extract_decision_process(self, thinking_content: str) -> dict[str, Any]:
         """Extract decision-making process from thinking content"""
         return extract_decision_process(thinking_content)
 
@@ -4293,37 +4292,37 @@ Respond with detailed JSON investment analysis."""
         """Detect if content contains markdown formatting"""
         return detect_markdown_content(content)
 
-    def _extract_bullet_points(self, content: str) -> List[str]:
+    def _extract_bullet_points(self, content: str) -> list[str]:
         """Extract bullet points from content"""
         return extract_bullet_points(content)
 
-    def _extract_numerical_insights(self, content: str) -> List[Dict[str, Any]]:
+    def _extract_numerical_insights(self, content: str) -> list[dict[str, Any]]:
         """Extract numerical insights from content"""
         return extract_numerical_insights(content)
 
-    def _analyze_field_completeness(self, ai_recommendation: Dict) -> Dict[str, Any]:
+    def _analyze_field_completeness(self, ai_recommendation: dict) -> dict[str, Any]:
         """Analyze completeness of standard fields in AI recommendation"""
         return analyze_field_completeness(ai_recommendation)
 
-    def _identify_custom_fields(self, ai_recommendation: Dict) -> List[str]:
+    def _identify_custom_fields(self, ai_recommendation: dict) -> list[str]:
         """Identify custom/non-standard fields in the response"""
         return identify_custom_fields(ai_recommendation)
 
-    def _check_fallback_flags(self, ai_recommendation: Dict) -> Dict[str, bool]:
+    def _check_fallback_flags(self, ai_recommendation: dict) -> dict[str, bool]:
         """Check for various fallback and error flags"""
         return check_fallback_flags(ai_recommendation)
 
     def _recommend_report_sections(
-        self, ai_recommendation: Dict, thinking_content: str, additional_details: str
-    ) -> List[str]:
+        self, ai_recommendation: dict, thinking_content: str, additional_details: str
+    ) -> list[str]:
         """Recommend which report sections should be included based on available content"""
         return recommend_report_sections(ai_recommendation, thinking_content, additional_details)
 
-    def _extract_priority_insights(self, thinking_content: str, additional_details: str) -> List[str]:
+    def _extract_priority_insights(self, thinking_content: str, additional_details: str) -> list[str]:
         """Extract the most important insights for highlighting in reports"""
         return extract_priority_insights(thinking_content, additional_details)
 
-    def _suggest_visualizations(self, ai_recommendation: Dict) -> List[str]:
+    def _suggest_visualizations(self, ai_recommendation: dict) -> list[str]:
         """Suggest visualizations based on the content of the recommendation"""
         return suggest_visualizations(ai_recommendation)
 

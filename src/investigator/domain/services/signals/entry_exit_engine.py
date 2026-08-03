@@ -19,7 +19,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import Any, ClassVar
 
 import pandas as pd
 
@@ -114,7 +114,7 @@ class EntrySignal:
     trend_alignment: bool = False
     created_at: datetime = field(default_factory=datetime.now)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "signal_type": self.signal_type.value,
             "price_level": round(self.price_level, 2),
@@ -143,7 +143,7 @@ class ExitSignal:
     partial_exit_pct: float = 100.0  # Percentage to exit
     created_at: datetime = field(default_factory=datetime.now)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "signal_type": self.signal_type.value,
             "price_level": round(self.price_level, 2),
@@ -168,7 +168,7 @@ class OptimalEntryZone:
     recommended_allocation_pct: float  # % of portfolio
     max_position_size_pct: float
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "lower_bound": round(self.lower_bound, 2),
             "upper_bound": round(self.upper_bound, 2),
@@ -219,10 +219,10 @@ class EntryExitEngine:
     def generate_entry_signals(
         self,
         price_data: pd.DataFrame,
-        indicators: Optional[Dict[str, Any]] = None,
-        valuation: Optional[Dict[str, Any]] = None,
-        support_resistance: Optional[Dict[str, float]] = None,
-    ) -> List[EntrySignal]:
+        indicators: dict[str, Any] | None = None,
+        valuation: dict[str, Any] | None = None,
+        support_resistance: dict[str, float] | None = None,
+    ) -> list[EntrySignal]:
         """
         Generate entry signals based on technical and fundamental confluence.
 
@@ -848,9 +848,9 @@ class EntryExitEngine:
     def generate_exit_signals(
         self,
         price_data: pd.DataFrame,
-        indicators: Optional[Dict[str, Any]] = None,
-        position_info: Optional[Dict[str, Any]] = None,
-    ) -> List[ExitSignal]:
+        indicators: dict[str, Any] | None = None,
+        position_info: dict[str, Any] | None = None,
+    ) -> list[ExitSignal]:
         """
         Generate exit signals for existing or hypothetical positions.
 
@@ -1281,10 +1281,10 @@ class EntryExitEngine:
         self,
         current_price: float,
         fair_value: float,
-        support_levels: List[float],
-        resistance_levels: List[float],
+        support_levels: list[float],
+        resistance_levels: list[float],
         volatility: float,
-        atr: Optional[float] = None,
+        atr: float | None = None,
     ) -> OptimalEntryZone:
         """
         Calculate optimal entry zone with bounds and timing.
@@ -1393,7 +1393,7 @@ class EntryExitEngine:
         self,
         signal: EntrySignal,
         price_data: pd.DataFrame,
-        valuation: Optional[Dict[str, Any]] = None,
+        valuation: dict[str, Any] | None = None,
     ) -> float:
         """
         Score an entry signal from 0-100 based on multiple factors.
@@ -1443,8 +1443,8 @@ class EntryExitEngine:
         self,
         df: pd.DataFrame,
         name: str,
-        indicators: Optional[Dict[str, Any]] = None,
-    ) -> Optional[float]:
+        indicators: dict[str, Any] | None = None,
+    ) -> float | None:
         """Get indicator value from DataFrame or indicators dict"""
         # Try indicators dict first
         if indicators and name in indicators:
@@ -1470,7 +1470,7 @@ class EntryExitEngine:
         df: pd.DataFrame,
         name: str,
         periods_back: int = 1,
-    ) -> Optional[float]:
+    ) -> float | None:
         """Get previous indicator value"""
         if name in df.columns and len(df) > periods_back:
             val = df[name].iloc[-(periods_back + 1)]
@@ -1483,7 +1483,7 @@ class EntryExitEngine:
         df: pd.DataFrame,
         name: str,
         window: int = 50,
-    ) -> Optional[float]:
+    ) -> float | None:
         """Get rolling average of an indicator"""
         if name in df.columns and len(df) >= window:
             avg = df[name].tail(window).mean()
@@ -1500,9 +1500,9 @@ class EntryExitEngine:
     def _is_trend_bullish(
         self,
         price: float,
-        sma_20: Optional[float],
-        sma_50: Optional[float],
-        sma_200: Optional[float],
+        sma_20: float | None,
+        sma_50: float | None,
+        sma_200: float | None,
     ) -> bool:
         """Check if trend is bullish based on moving average alignment"""
         bullish_count = 0
@@ -1522,7 +1522,7 @@ class EntryExitEngine:
 
 
 # Singleton instance
-_engine: Optional[EntryExitEngine] = None
+_engine: EntryExitEngine | None = None
 
 
 def get_entry_exit_engine() -> EntryExitEngine:

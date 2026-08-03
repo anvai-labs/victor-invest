@@ -36,7 +36,7 @@ import logging
 from dataclasses import dataclass
 from datetime import date
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import aiohttp
 
@@ -88,17 +88,17 @@ class ManufacturingSurvey:
 
     date: date
     diffusion_index: float
-    new_orders: Optional[float] = None
-    shipments: Optional[float] = None
-    unfilled_orders: Optional[float] = None
-    employment: Optional[float] = None
-    avg_employee_workweek: Optional[float] = None
-    prices_paid: Optional[float] = None
-    prices_received: Optional[float] = None
-    future_activity: Optional[float] = None
-    future_employment: Optional[float] = None
-    future_capex: Optional[float] = None
-    outlook: Optional[ManufacturingOutlook] = None
+    new_orders: float | None = None
+    shipments: float | None = None
+    unfilled_orders: float | None = None
+    employment: float | None = None
+    avg_employee_workweek: float | None = None
+    prices_paid: float | None = None
+    prices_received: float | None = None
+    future_activity: float | None = None
+    future_employment: float | None = None
+    future_capex: float | None = None
+    outlook: ManufacturingOutlook | None = None
 
     def __post_init__(self):
         if self.outlook is None:
@@ -148,8 +148,8 @@ class LeadingIndex:
     date: date
     state: str
     leading_index: float
-    previous_value: Optional[float] = None
-    six_month_change: Optional[float] = None
+    previous_value: float | None = None
+    six_month_change: float | None = None
 
     @property
     def interpretation(self) -> str:
@@ -182,9 +182,9 @@ class CoincidentIndex:
     date: date
     state: str
     coincident_index: float
-    one_month_change: Optional[float] = None
-    three_month_change: Optional[float] = None
-    twelve_month_change: Optional[float] = None
+    one_month_change: float | None = None
+    three_month_change: float | None = None
+    twelve_month_change: float | None = None
 
 
 @dataclass
@@ -237,7 +237,7 @@ class PhiladelphiaFedClient:
         print(f"US Leading: {leading.leading_index}")
     """
 
-    def __init__(self, session: Optional[aiohttp.ClientSession] = None):
+    def __init__(self, session: aiohttp.ClientSession | None = None):
         self._session = session
         self._owns_session = session is None
 
@@ -258,7 +258,7 @@ class PhiladelphiaFedClient:
             await self._session.close()
             self._session = None
 
-    async def get_manufacturing_survey(self) -> Optional[ManufacturingSurvey]:
+    async def get_manufacturing_survey(self) -> ManufacturingSurvey | None:
         """Get the latest Manufacturing Business Outlook Survey.
 
         Returns:
@@ -277,7 +277,7 @@ class PhiladelphiaFedClient:
             logger.warning(f"Failed to fetch manufacturing survey: {e}")
             return None
 
-    def _parse_manufacturing_excel(self, content: bytes) -> Optional[ManufacturingSurvey]:
+    def _parse_manufacturing_excel(self, content: bytes) -> ManufacturingSurvey | None:
         """Parse manufacturing survey from Excel file."""
         try:
             import io
@@ -295,7 +295,7 @@ class PhiladelphiaFedClient:
             obs_date = pd.to_datetime(latest[date_col]).date()
 
             # Find key columns
-            def find_col(keywords: List[str]) -> Optional[str]:
+            def find_col(keywords: list[str]) -> str | None:
                 for col in df.columns:
                     col_lower = col.lower() if isinstance(col, str) else str(col).lower()
                     if all(k in col_lower for k in keywords):
@@ -322,7 +322,7 @@ class PhiladelphiaFedClient:
             logger.debug(f"Could not parse manufacturing Excel: {e}")
             return None
 
-    async def get_leading_index(self, state: str = "US") -> Optional[LeadingIndex]:
+    async def get_leading_index(self, state: str = "US") -> LeadingIndex | None:
         """Get the leading index for a state.
 
         Args:
@@ -344,7 +344,7 @@ class PhiladelphiaFedClient:
             logger.warning(f"Failed to fetch leading index: {e}")
             return None
 
-    def _parse_leading_index_excel(self, content: bytes, state: str) -> Optional[LeadingIndex]:
+    def _parse_leading_index_excel(self, content: bytes, state: str) -> LeadingIndex | None:
         """Parse leading index from Excel file."""
         try:
             import io
@@ -389,7 +389,7 @@ class PhiladelphiaFedClient:
             logger.debug(f"Could not parse leading index Excel: {e}")
             return None
 
-    async def get_coincident_index(self, state: str = "US") -> Optional[CoincidentIndex]:
+    async def get_coincident_index(self, state: str = "US") -> CoincidentIndex | None:
         """Get the coincident index for a state.
 
         Args:
@@ -411,7 +411,7 @@ class PhiladelphiaFedClient:
             logger.warning(f"Failed to fetch coincident index: {e}")
             return None
 
-    def _parse_coincident_index_excel(self, content: bytes, state: str) -> Optional[CoincidentIndex]:
+    def _parse_coincident_index_excel(self, content: bytes, state: str) -> CoincidentIndex | None:
         """Parse coincident index from Excel file."""
         try:
             import io
@@ -456,7 +456,7 @@ class PhiladelphiaFedClient:
             logger.debug(f"Could not parse coincident index Excel: {e}")
             return None
 
-    async def get_ads_index(self) -> Optional[ADSIndex]:
+    async def get_ads_index(self) -> ADSIndex | None:
         """Get the latest ADS Business Conditions Index.
 
         Returns:
@@ -475,7 +475,7 @@ class PhiladelphiaFedClient:
             logger.warning(f"Failed to fetch ADS index: {e}")
             return None
 
-    def _parse_ads_excel(self, content: bytes) -> Optional[ADSIndex]:
+    def _parse_ads_excel(self, content: bytes) -> ADSIndex | None:
         """Parse ADS index from Excel file."""
         try:
             import io
@@ -502,7 +502,7 @@ class PhiladelphiaFedClient:
             logger.debug(f"Could not parse ADS Excel: {e}")
             return None
 
-    async def get_all_indicators(self) -> Dict[str, Any]:
+    async def get_all_indicators(self) -> dict[str, Any]:
         """Get all Philadelphia Fed indicators.
 
         Returns:
@@ -527,7 +527,7 @@ class PhiladelphiaFedClient:
 
 
 # Singleton instance
-_client: Optional[PhiladelphiaFedClient] = None
+_client: PhiladelphiaFedClient | None = None
 
 
 def get_philly_fed_client() -> PhiladelphiaFedClient:

@@ -23,7 +23,6 @@ def system(ctx):
         investigator system setup
         investigator system info
     """
-    pass
 
 
 @system.command("status")

@@ -23,7 +23,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import date
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy import create_engine, text
 
@@ -45,7 +45,7 @@ class DataQualityWarning:
     code: str
     message: str
     severity: WarningSeverity
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
 
     def __str__(self) -> str:
         return f"[{self.severity.value.upper()}] {self.code}: {self.message}"
@@ -102,8 +102,8 @@ class DataValidationService:
     def validate_shares(
         self,
         symbol: str,
-        current_price: Optional[float] = None,
-    ) -> List[DataQualityWarning]:
+        current_price: float | None = None,
+    ) -> list[DataQualityWarning]:
         """
         Validate shares data for consistency across sources.
 
@@ -205,8 +205,8 @@ class DataValidationService:
     def validate_financials(
         self,
         symbol: str,
-        financials: Dict[str, Any],
-    ) -> List[DataQualityWarning]:
+        financials: dict[str, Any],
+    ) -> list[DataQualityWarning]:
         """
         Validate financial data for completeness and consistency.
 
@@ -284,9 +284,9 @@ class DataValidationService:
     def assess_data_quality(
         self,
         symbol: str,
-        financials: Optional[Dict[str, Any]] = None,
-        current_price: Optional[float] = None,
-    ) -> Dict[str, Any]:
+        financials: dict[str, Any] | None = None,
+        current_price: float | None = None,
+    ) -> dict[str, Any]:
         """
         Comprehensive data quality assessment.
 
@@ -336,7 +336,7 @@ class DataValidationService:
             ],
         }
 
-    def _get_sec_shares(self, symbol: str) -> Optional[float]:
+    def _get_sec_shares(self, symbol: str) -> float | None:
         """Get shares from most recent SEC filing."""
         with self.sec_engine.connect() as conn:
             result = conn.execute(
@@ -352,7 +352,7 @@ class DataValidationService:
             ).fetchone()
             return float(result[0]) if result and result[0] else None
 
-    def _get_sec_latest_filed_date(self, symbol: str) -> Optional[date]:
+    def _get_sec_latest_filed_date(self, symbol: str) -> date | None:
         """Get most recent SEC filing date."""
         with self.sec_engine.connect() as conn:
             result = conn.execute(
@@ -367,7 +367,7 @@ class DataValidationService:
             ).fetchone()
             return result[0] if result else None
 
-    def _get_symbol_data(self, symbol: str) -> Optional[Dict[str, Any]]:
+    def _get_symbol_data(self, symbol: str) -> dict[str, Any] | None:
         """Get data from symbol table."""
         with self.stock_engine.connect() as conn:
             result = conn.execute(

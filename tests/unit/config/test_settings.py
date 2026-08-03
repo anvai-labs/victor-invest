@@ -59,10 +59,8 @@ class TestSettingsValidation:
         """Test settings are immutable after initialization."""
         # Pydantic settings should prevent modification
         # This would test frozen=True behavior
-        pass
 
     def test_environment_variable_override(self):
         """Test environment variables can override defaults."""
         # Would test .env file loading
         # Would test os.environ override
-        pass

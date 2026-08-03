@@ -12,7 +12,7 @@ import json
 import logging
 from contextlib import contextmanager
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy import (
     JSON,
@@ -177,7 +177,7 @@ class TechnicalIndicatorsDAO:
     def __init__(self, db_manager: DatabaseManager):
         self.db = db_manager
 
-    def save_indicators(self, indicators_data: Dict) -> bool:
+    def save_indicators(self, indicators_data: dict) -> bool:
         """Save technical indicators to database"""
         try:
             with self.db.get_session() as session:
@@ -190,7 +190,7 @@ class TechnicalIndicatorsDAO:
             logger.error(f"Failed to save technical indicators: {e}")
             return False
 
-    def get_latest_indicators(self, symbol: str) -> Optional[Dict]:
+    def get_latest_indicators(self, symbol: str) -> dict | None:
         """Get latest technical indicators for symbol"""
         try:
             with self.db.get_session() as session:
@@ -237,9 +237,9 @@ class LLMResponseStoreDAO:
         form_type: str,
         period: str,
         prompt: str,
-        model_info: Dict,
-        response: Dict,
-        metadata: Dict,
+        model_info: dict,
+        response: dict,
+        metadata: dict,
         llm_type: str,
     ) -> bool:
         """Save LLM response to database"""
@@ -284,7 +284,7 @@ class LLMResponseStoreDAO:
         form_type: str | None = None,
         period: str | None = None,
         llm_type: str | None = None,
-    ) -> Optional[Dict]:
+    ) -> dict | None:
         """Get LLM response from database"""
         try:
             with self.db.get_session() as session:
@@ -322,7 +322,7 @@ class LLMResponseStoreDAO:
             logger.error(f"Failed to get LLM response: {e}")
             return None
 
-    def get_llm_responses_by_symbol(self, symbol: str, llm_type: str | None = None) -> List[Dict]:
+    def get_llm_responses_by_symbol(self, symbol: str, llm_type: str | None = None) -> list[dict]:
         """Get all LLM responses for a symbol"""
         try:
             with self.db.get_session() as session:
@@ -453,7 +453,7 @@ class TickerCIKMappingDAO:
             logger.error(f"Failed to save ticker mapping: {e}")
             return False
 
-    def get_cik(self, ticker: str) -> Optional[str]:
+    def get_cik(self, ticker: str) -> str | None:
         """Get CIK for ticker"""
         try:
             with self.db.get_session() as session:
@@ -466,7 +466,7 @@ class TickerCIKMappingDAO:
             logger.error(f"Failed to get CIK for {ticker}: {e}")
             return None
 
-    def get_all_mappings(self) -> List[Dict]:
+    def get_all_mappings(self) -> list[dict]:
         """Get all ticker-CIK mappings"""
         try:
             with self.db.get_session() as session:
@@ -501,8 +501,8 @@ class SECResponseStoreDAO:
         fiscal_year: int,
         fiscal_period: str,
         category: str,
-        response_data: Dict,
-        metadata: Dict,
+        response_data: dict,
+        metadata: dict,
     ) -> bool:
         """Persist SEC response payload to sec_responses table"""
         try:
@@ -540,7 +540,7 @@ class SECResponseStoreDAO:
         fiscal_year: int,
         fiscal_period: str,
         category: str,
-    ) -> Optional[Dict]:
+    ) -> dict | None:
         """Retrieve SEC response for a specific fiscal period"""
         try:
             with self.db.get_session() as session:
@@ -574,7 +574,7 @@ class SECResponseStoreDAO:
             logger.error(f"Failed to get SEC response: {e}")
             return None
 
-    def get_latest_response(self, symbol: str, form_type: str, category: Optional[str] = None) -> Optional[Dict]:
+    def get_latest_response(self, symbol: str, form_type: str, category: str | None = None) -> dict | None:
         """Retrieve the most recently updated SEC response for a symbol"""
         try:
             with self.db.get_session() as session:
@@ -636,7 +636,7 @@ class AllSubmissionStoreDAO:
     def __init__(self, db_manager: DatabaseManager):
         self.db = db_manager
 
-    def save_submission(self, symbol: str, cik: str, company_name: str, submissions_data: Dict, **kwargs) -> bool:
+    def save_submission(self, symbol: str, cik: str, company_name: str, submissions_data: dict, **kwargs) -> bool:
         """Save or update submission data - uses symbol as primary key"""
         try:
             with self.db.get_session() as session:
@@ -665,7 +665,7 @@ class AllSubmissionStoreDAO:
             logger.error(f"Failed to save submission data: {e}")
             return False
 
-    def get_submission(self, symbol: str, cik: str | None = None, max_age_days: int = 7) -> Optional[Dict]:
+    def get_submission(self, symbol: str, cik: str | None = None, max_age_days: int = 7) -> dict | None:
         """Get submission data by symbol (primary key) - CIK is optional for compatibility"""
         try:
             with self.db.get_session() as session:
@@ -740,7 +740,7 @@ class QuarterlyMetricsDAO:
         fiscal_period: str,
         cik: str,
         form_type: str,
-        metrics_data: Dict,
+        metrics_data: dict,
         company_name: str | None = None,
         **kwargs,
     ) -> bool:
@@ -792,7 +792,7 @@ class QuarterlyMetricsDAO:
         fiscal_year: str | None = None,
         fiscal_period: str | None = None,
         max_age_days: int = 90,
-    ) -> Optional[Dict]:
+    ) -> dict | None:
         """Get quarterly metrics by composite key"""
         try:
             with self.db.get_session() as session:
@@ -936,8 +936,8 @@ class AllCompanyFactsStoreDAO:
         symbol: str,
         cik: str,
         company_name: str,
-        companyfacts: Dict[str, Any],
-        metadata: Optional[Dict[str, Any]] = None,
+        companyfacts: dict[str, Any],
+        metadata: dict[str, Any] | None = None,
     ) -> bool:
         """Store company facts data for a symbol using optimized upsert"""
         try:
@@ -977,7 +977,7 @@ class AllCompanyFactsStoreDAO:
             logger.error(f"Error storing company facts for {symbol}: {e}")
             return False
 
-    def get_company_facts(self, symbol: str) -> Optional[Dict[str, Any]]:
+    def get_company_facts(self, symbol: str) -> dict[str, Any] | None:
         """Retrieve company facts for a symbol"""
         try:
             logger.info(f"🔍 DB GET_COMPANY_FACTS: Starting query for {symbol}")
@@ -1031,7 +1031,7 @@ class AllCompanyFactsStoreDAO:
 
         return None
 
-    def get_all_symbols(self) -> List[str]:
+    def get_all_symbols(self) -> list[str]:
         """Get all symbols that have company facts stored"""
         try:
             with self.db_manager.get_session() as session:

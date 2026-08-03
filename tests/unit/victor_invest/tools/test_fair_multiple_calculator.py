@@ -144,7 +144,6 @@ class TestCompanyFairMultipleCalculator:
         """Test fair multiple calculation with database data."""
         # This test requires actual database data
         # Enable for integration testing
-        pass
 
     @pytest.mark.skipif(
         True,
@@ -154,7 +153,6 @@ class TestCompanyFairMultipleCalculator:
         """Test calculating all fair multiples with database data."""
         # This test requires actual database data
         # Enable for integration testing
-        pass
 
     @pytest.mark.skipif(
         True,
@@ -164,7 +162,6 @@ class TestCompanyFairMultipleCalculator:
         """Test fair value report generation with database data."""
         # This test requires actual database data
         # Enable for integration testing
-        pass
 
 
 class TestFairMultipleResult:

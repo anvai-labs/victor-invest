@@ -15,6 +15,6 @@ from .prompt_manager import (
 
 __all__ = [
     "PromptManager",
-    "get_prompt_manager",
     "get_enhanced_prompt_manager",
+    "get_prompt_manager",
 ]

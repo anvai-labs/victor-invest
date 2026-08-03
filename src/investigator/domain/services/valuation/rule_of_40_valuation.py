@@ -24,7 +24,7 @@ Usage:
 
 import logging
 from dataclasses import dataclass
-from typing import Any, ClassVar, Dict, Optional
+from typing import Any, ClassVar
 
 from investigator.domain.services.valuation.models.base import (
     BaseValuationModel,
@@ -111,11 +111,11 @@ class RuleOf40Valuation(BaseValuationModel):
 
     def calculate(
         self,
-        revenue_growth: Optional[float] = None,
-        fcf_margin: Optional[float] = None,
-        current_revenue: Optional[float] = None,
-        shares_outstanding: Optional[float] = None,
-        current_price: Optional[float] = None,
+        revenue_growth: float | None = None,
+        fcf_margin: float | None = None,
+        current_revenue: float | None = None,
+        shares_outstanding: float | None = None,
+        current_price: float | None = None,
         **kwargs: Any,
     ) -> ValuationOutput:
         """
@@ -227,7 +227,7 @@ class RuleOf40Valuation(BaseValuationModel):
             metadata=metadata,
         )
 
-    def estimate_confidence(self, raw_output: Dict[str, Any]) -> float:
+    def estimate_confidence(self, raw_output: dict[str, Any]) -> float:
         """Estimate confidence for the Rule of 40 model."""
         score = raw_output.get("rule_40_score", 0)
         classification = raw_output.get("score_classification", "unknown")

@@ -7,8 +7,9 @@ deterministic decision produced here.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, Mapping, Optional
+from typing import Any
 
 ACTION_STRONG_BUY = "STRONG_BUY"
 ACTION_BUY = "BUY"
@@ -38,19 +39,19 @@ STRONG_SELL_DOWNSIDE = -25.0
 @dataclass(frozen=True)
 class DecisionInputs:
     symbol: str
-    current_price: Optional[float]
-    fair_value: Optional[float]
-    expected_return_pct: Optional[float]
-    technical_score: Optional[float]
-    technical_signal: Optional[str]
-    model_agreement_score: Optional[float]
-    dispersion_ratio: Optional[float]
-    data_quality_score: Optional[float]
-    applicable_models: Optional[int]
-    valuation_age_hours: Optional[float]
+    current_price: float | None
+    fair_value: float | None
+    expected_return_pct: float | None
+    technical_score: float | None
+    technical_signal: str | None
+    model_agreement_score: float | None
+    dispersion_ratio: float | None
+    data_quality_score: float | None
+    applicable_models: int | None
+    valuation_age_hours: float | None
     divergence_flag: bool = False
     split_suspect: bool = False
-    llm_recommendation: Optional[str] = None
+    llm_recommendation: str | None = None
     extra_evidence: Mapping[str, Any] = field(default_factory=dict)
 
 
@@ -59,7 +60,7 @@ class DecisionOutput:
     action: str
     confidence: str
     score: float
-    expected_return_pct: Optional[float]
+    expected_return_pct: float | None
     guardrails_triggered: tuple[str, ...]
     evidence: dict[str, Any]
 
@@ -165,7 +166,7 @@ class InvestmentDecisionPolicy:
         return action
 
     @staticmethod
-    def _expected_return(inputs: DecisionInputs) -> Optional[float]:
+    def _expected_return(inputs: DecisionInputs) -> float | None:
         if inputs.expected_return_pct is not None:
             return float(inputs.expected_return_pct)
         if inputs.current_price and inputs.current_price > 0 and inputs.fair_value and inputs.fair_value > 0:
@@ -173,7 +174,7 @@ class InvestmentDecisionPolicy:
         return None
 
     @staticmethod
-    def _action_from_expected_return(expected_return: Optional[float]) -> str:
+    def _action_from_expected_return(expected_return: float | None) -> str:
         if expected_return is None:
             return ACTION_REVIEW
         if expected_return >= STRONG_BUY_UPSIDE:
@@ -187,7 +188,7 @@ class InvestmentDecisionPolicy:
         return ACTION_HOLD
 
     @staticmethod
-    def _score_from_expected_return(expected_return: Optional[float]) -> float:
+    def _score_from_expected_return(expected_return: float | None) -> float:
         if expected_return is None:
             return 0.0
         return round(max(0.0, min(100.0, 50.0 + float(expected_return))), 2)
@@ -197,7 +198,7 @@ class InvestmentDecisionPolicy:
         return round((score + 50.0) / 2.0, 2)
 
     def _is_technical_contradiction(
-        self, action: str, technical_signal: Optional[str], technical_score: Optional[float]
+        self, action: str, technical_signal: str | None, technical_score: float | None
     ) -> bool:
         if action in {ACTION_HOLD, ACTION_REVIEW}:
             return False
@@ -211,7 +212,7 @@ class InvestmentDecisionPolicy:
         return action in {ACTION_SELL, ACTION_STRONG_SELL} and bullish
 
     @staticmethod
-    def _normalize_signal(signal: Optional[str]) -> Optional[str]:
+    def _normalize_signal(signal: str | None) -> str | None:
         if signal is None:
             return None
         value = str(signal).strip().lower().replace("_", " ")
@@ -224,7 +225,7 @@ class InvestmentDecisionPolicy:
         return value or None
 
     @staticmethod
-    def _normalize_action(action: Optional[str]) -> Optional[str]:
+    def _normalize_action(action: str | None) -> str | None:
         if action is None:
             return None
         value = str(action).strip().upper().replace(" ", "_").replace("-", "_")

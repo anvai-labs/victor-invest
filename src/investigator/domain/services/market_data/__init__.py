@@ -57,7 +57,7 @@ def get_stock_db_url() -> str:
     """
     password = os.environ.get("STOCK_DB_PASSWORD")
     if not password:
-        raise EnvironmentError(
+        raise OSError(
             "STOCK_DB_PASSWORD environment variable not set. "
             "Please source your ~/.investigator/env file or set the variable."
         )
@@ -90,38 +90,38 @@ def get_sec_db_url() -> str:
     return f"postgresql://{user}:{password}@{host}:{port}/{database}"
 
 
-from investigator.domain.services.market_data.metadata_service import (  # noqa: E402
+from investigator.domain.services.market_data.metadata_service import (
     SymbolMetadata,
     SymbolMetadataService,
 )
-from investigator.domain.services.market_data.price_service import (  # noqa: E402
+from investigator.domain.services.market_data.price_service import (
     PriceService,
 )
-from investigator.domain.services.market_data.shares_service import (  # noqa: E402
+from investigator.domain.services.market_data.shares_service import (
     SharesHistory,
     SharesService,
 )
-from investigator.domain.services.market_data.technical_analysis_service import (  # noqa: E402
+from investigator.domain.services.market_data.technical_analysis_service import (
     TechnicalAnalysisService,
     TechnicalFeatures,
     get_technical_analysis_service,
 )
-from investigator.domain.services.market_data.validation_service import (  # noqa: E402
+from investigator.domain.services.market_data.validation_service import (
     DataQualityWarning,
     DataValidationService,
 )
 
 __all__ = [
-    "get_stock_db_url",
-    "get_sec_db_url",
-    "SharesService",
-    "SharesHistory",
-    "PriceService",
-    "DataValidationService",
     "DataQualityWarning",
-    "SymbolMetadataService",
+    "DataValidationService",
+    "PriceService",
+    "SharesHistory",
+    "SharesService",
     "SymbolMetadata",
+    "SymbolMetadataService",
     "TechnicalAnalysisService",
     "TechnicalFeatures",
+    "get_sec_db_url",
+    "get_stock_db_url",
     "get_technical_analysis_service",
 ]

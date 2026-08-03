@@ -14,7 +14,7 @@ import logging
 import os
 import ssl
 from datetime import datetime
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import Any, ClassVar
 
 try:
     import certifi
@@ -38,7 +38,7 @@ FRED_API_BASE = "https://api.stlouisfed.org/fred"
 logger = logging.getLogger(__name__)
 
 
-def _get_fred_api_key() -> Optional[str]:
+def _get_fred_api_key() -> str | None:
     """Get FRED API key from victor keyring or environment.
 
     Resolution order:
@@ -156,7 +156,7 @@ class MacroIndicatorsFetcher:
         self.logger = logging.getLogger(__name__)
         self.SessionLocal = get_stock_db_manager()
         self._api_key = _get_fred_api_key()
-        self._session: Optional[aiohttp.ClientSession] = None
+        self._session: aiohttp.ClientSession | None = None
 
     async def _get_session(self) -> aiohttp.ClientSession:
         """Get or create aiohttp session."""
@@ -171,7 +171,7 @@ class MacroIndicatorsFetcher:
         series_id: str,
         start_date: str,
         end_date: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Fetch indicator data from FRED API.
 
         Args:
@@ -193,7 +193,7 @@ class MacroIndicatorsFetcher:
             self.logger.warning("FRED_API_KEY not configured. Set via: victor keys --set-service fred --keyring")
             return {}
 
-        result: Dict[str, Any] = {
+        result: dict[str, Any] = {
             "name": self.KEY_INDICATORS.get(series_id, series_id),
             "category": "unknown",
             "frequency": "daily",
@@ -219,7 +219,7 @@ class MacroIndicatorsFetcher:
                 async with session.get(meta_url, params=meta_params) as response:
                     if response.status == 200:
                         data = await response.json()
-                        if "seriess" in data and data["seriess"]:
+                        if data.get("seriess"):
                             series_info = data["seriess"][0]
                             result["name"] = series_info.get("title", result["name"])
                             result["frequency"] = series_info.get("frequency", "daily")
@@ -280,9 +280,7 @@ class MacroIndicatorsFetcher:
         finally:
             session.close()
 
-    def get_latest_values(
-        self, indicator_ids: Optional[List[str]] = None, lookback_days: int = 1095
-    ) -> Dict[str, Dict]:
+    def get_latest_values(self, indicator_ids: list[str] | None = None, lookback_days: int = 1095) -> dict[str, dict]:
         """
         Get latest values for specified indicators
 
@@ -417,9 +415,9 @@ class MacroIndicatorsFetcher:
 
     def get_latest_indicators(
         self,
-        indicator_ids: Optional[List[str]] = None,
+        indicator_ids: list[str] | None = None,
         lookback_days: int = 1095,
-    ) -> Dict[str, Dict]:
+    ) -> dict[str, dict]:
         """
         Backwards-compatible alias for legacy callers expecting get_latest_indicators().
         """
@@ -432,8 +430,8 @@ class MacroIndicatorsFetcher:
     def get_time_series(
         self,
         indicator_id: str,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         limit: int = 1000,
     ) -> pd.DataFrame:
         """
@@ -516,7 +514,7 @@ class MacroIndicatorsFetcher:
             self.logger.error(f"Error fetching time series for {indicator_id}: {e}")
             return pd.DataFrame(columns=["date", "value"])
 
-    def get_vti_price(self) -> Optional[Dict[str, Any]]:
+    def get_vti_price(self) -> dict[str, Any] | None:
         """
         Get latest VTI (Total Stock Market ETF) price from tickerdata table
 
@@ -542,7 +540,7 @@ class MacroIndicatorsFetcher:
             self.logger.error(f"Error fetching VTI price: {e}")
             return None
 
-    def calculate_buffett_indicator(self) -> Optional[Dict]:
+    def calculate_buffett_indicator(self) -> dict | None:
         """
         Calculate the Buffett Indicator: Total Stock Market Cap / GDP
 
@@ -629,7 +627,7 @@ class MacroIndicatorsFetcher:
             self.logger.error(f"Error calculating Buffett Indicator: {e}")
             return None
 
-    def get_macro_summary(self) -> Dict:
+    def get_macro_summary(self) -> dict:
         """
         Get a comprehensive summary of macro conditions
 
@@ -638,7 +636,7 @@ class MacroIndicatorsFetcher:
         """
         indicators = self.get_latest_values()
 
-        summary: Dict[str, Any] = {
+        summary: dict[str, Any] = {
             "timestamp": datetime.now().isoformat(),
             "indicators": indicators,
             "categories": {},
@@ -717,7 +715,7 @@ class MacroIndicatorsFetcher:
         return summary
 
 
-def format_indicator_for_display(indicator_id: str, data: Dict) -> str:
+def format_indicator_for_display(indicator_id: str, data: dict) -> str:
     """
     Format an indicator for display in reports
 
@@ -761,7 +759,7 @@ def format_indicator_for_display(indicator_id: str, data: Dict) -> str:
 
 
 # Singleton instance for scheduled collectors
-_macro_indicator_fetcher: Optional[MacroIndicatorsFetcher] = None
+_macro_indicator_fetcher: MacroIndicatorsFetcher | None = None
 
 
 def get_macro_indicator_fetcher() -> MacroIndicatorsFetcher:

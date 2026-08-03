@@ -21,7 +21,7 @@ Date: 2025-11-02
 import json
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -59,31 +59,31 @@ class ReportDataContract:
 
     # Investment thesis
     investment_thesis: str = ""
-    key_insights: List[str] = field(default_factory=list)
-    value_drivers: List[str] = field(default_factory=list)
+    key_insights: list[str] = field(default_factory=list)
+    value_drivers: list[str] = field(default_factory=list)
 
     # Risk assessment
-    risk_assessment: Dict[str, Any] = field(default_factory=dict)
+    risk_assessment: dict[str, Any] = field(default_factory=dict)
     overall_risk: float = 50.0  # 0-100
-    primary_risks: List[str] = field(default_factory=list)
+    primary_risks: list[str] = field(default_factory=list)
     risk_tier: str = "MEDIUM"
 
     # Scenarios
-    scenarios: Dict[str, Any] = field(default_factory=dict)
-    bull_case: Optional[Dict] = None
-    base_case: Optional[Dict] = None
-    bear_case: Optional[Dict] = None
+    scenarios: dict[str, Any] = field(default_factory=dict)
+    bull_case: dict | None = None
+    base_case: dict | None = None
+    bear_case: dict | None = None
 
     # Action plan
-    action_plan: Dict[str, Any] = field(default_factory=dict)
-    specific_actions: List[str] = field(default_factory=list)
+    action_plan: dict[str, Any] = field(default_factory=dict)
+    specific_actions: list[str] = field(default_factory=list)
 
     # Trends and analysis
-    multi_year_trends: Dict[str, Any] = field(default_factory=dict)
-    trend_analysis: Dict[str, Any] = field(default_factory=dict)
+    multi_year_trends: dict[str, Any] = field(default_factory=dict)
+    trend_analysis: dict[str, Any] = field(default_factory=dict)
 
     # Conflicts and reconciliation
-    conflicts: List[str] = field(default_factory=list)
+    conflicts: list[str] = field(default_factory=list)
     reconciliation: str = ""
 
     # Data quality
@@ -91,7 +91,7 @@ class ReportDataContract:
     data_quality_score: float = 0.0
 
     # Charts
-    chart_paths: List[str] = field(default_factory=list)
+    chart_paths: list[str] = field(default_factory=list)
 
 
 class ReportPayloadBuilder:
@@ -102,7 +102,7 @@ class ReportPayloadBuilder:
     to convert raw synthesis data into PDF-ready recommendation dicts.
     """
 
-    def __init__(self, logger: Optional[logging.Logger] = None):
+    def __init__(self, logger: logging.Logger | None = None):
         """Initialize the payload builder."""
         self.logger = logger or logging.getLogger(__name__)
 
@@ -110,10 +110,10 @@ class ReportPayloadBuilder:
         self,
         symbol: str,
         synthesis_report: Any,
-        fundamental_data: Optional[Dict] = None,
-        technical_data: Optional[Dict] = None,
-        chart_paths: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        fundamental_data: dict | None = None,
+        technical_data: dict | None = None,
+        chart_paths: list[str] | None = None,
+    ) -> dict[str, Any]:
         """
         Build normalized PDF report payload from synthesis output.
 
@@ -225,7 +225,7 @@ class ReportPayloadBuilder:
 
         return payload
 
-    def _unwrap_response(self, synthesis_report: Any) -> Dict:
+    def _unwrap_response(self, synthesis_report: Any) -> dict:
         """Unwrap LLM response wrappers to get actual data."""
         data: Any = synthesis_report
 
@@ -279,7 +279,7 @@ class ReportPayloadBuilder:
 
         return data if isinstance(data, dict) else {}
 
-    def _parse_json_object(self, raw: str) -> Optional[Dict[str, Any]]:
+    def _parse_json_object(self, raw: str) -> dict[str, Any] | None:
         """Parse a JSON string and return dict payloads only."""
         try:
             parsed = json.loads(raw)
@@ -288,7 +288,7 @@ class ReportPayloadBuilder:
 
         return parsed if isinstance(parsed, dict) else None
 
-    def _extract_recommendation(self, data: Dict) -> Dict:
+    def _extract_recommendation(self, data: dict) -> dict:
         """Extract recommendation and confidence."""
         rec = data.get("recommendation", {})
         if not rec and isinstance(data.get("recommendation_and_action_plan"), dict):
@@ -323,7 +323,7 @@ class ReportPayloadBuilder:
             }
         return {"action": "hold", "confidence": 50}
 
-    def _extract_scores(self, data: Dict) -> Dict:
+    def _extract_scores(self, data: dict) -> dict:
         """
         Extract all scores from synthesis response.
 
@@ -358,10 +358,10 @@ class ReportPayloadBuilder:
 
     def _extract_financials(
         self,
-        data: Dict,
-        fundamental_data: Optional[Dict],
-        technical_data: Optional[Dict],
-    ) -> Dict:
+        data: dict,
+        fundamental_data: dict | None,
+        technical_data: dict | None,
+    ) -> dict:
         """
         Extract financial metrics with comprehensive fallback chain.
 
@@ -439,7 +439,7 @@ class ReportPayloadBuilder:
 
         return financials
 
-    def _extract_thesis(self, data: Dict) -> Dict:
+    def _extract_thesis(self, data: dict) -> dict:
         """
         Extract investment thesis and insights.
 
@@ -457,7 +457,7 @@ class ReportPayloadBuilder:
             # Current format: executive_summary contains thesis
             thesis = exec_summary.get("investment_thesis", "")
             insights = data.get("key_insights", [])
-            drivers: List[Any] = []  # Not always present in executive_summary
+            drivers: list[Any] = []  # Not always present in executive_summary
         elif isinstance(thesis_data, str):
             # Legacy format: thesis is a direct string
             thesis = thesis_data
@@ -485,7 +485,7 @@ class ReportPayloadBuilder:
             "drivers": drivers if isinstance(drivers, list) else [],
         }
 
-    def _extract_risks(self, data: Dict) -> Dict:
+    def _extract_risks(self, data: dict) -> dict:
         """Extract risk assessment."""
         risk_data = data.get("risk_assessment", {})
         if isinstance(risk_data, list):
@@ -503,7 +503,7 @@ class ReportPayloadBuilder:
             "tier": risk_data.get("risk_tier", risk_data.get("tier", "MEDIUM")),
         }
 
-    def _extract_scenarios(self, data: Dict) -> Dict:
+    def _extract_scenarios(self, data: dict) -> dict:
         """Extract price scenarios."""
         scenarios = data.get("scenarios", {})
         if not isinstance(scenarios, dict):
@@ -515,7 +515,7 @@ class ReportPayloadBuilder:
             "bear_case": (scenarios.get("bear_case") or scenarios.get("bear") or data.get("bear_case")),
         }
 
-    def _extract_action_plan(self, data: Dict) -> Dict:
+    def _extract_action_plan(self, data: dict) -> dict:
         """Extract action plan."""
         action_plan = data.get("action_plan", {})
         if not action_plan and isinstance(data.get("recommendation_and_action_plan"), dict):
@@ -535,7 +535,7 @@ class ReportPayloadBuilder:
             "monitoring": action_plan.get("monitoring", []),
         }
 
-    def _backfill_financials(self, financials: Dict, fundamental_data: Dict) -> Dict:
+    def _backfill_financials(self, financials: dict, fundamental_data: dict) -> dict:
         """Backfill missing financials from fundamental analysis."""
         if financials["current_price"] == 0:
             # Try ratios
@@ -557,7 +557,7 @@ class ReportPayloadBuilder:
 
         return financials
 
-    def _backfill_scores(self, scores: Dict, fundamental_data: Dict) -> Dict:
+    def _backfill_scores(self, scores: dict, fundamental_data: dict) -> dict:
         """Backfill scores from fundamental data."""
         # If composite is still default, try to calculate from fundamentals
         if scores["composite"] == 50:
@@ -568,7 +568,7 @@ class ReportPayloadBuilder:
 
         return scores
 
-    def _backfill_from_technical(self, financials: Dict, technical_data: Dict) -> Dict:
+    def _backfill_from_technical(self, financials: dict, technical_data: dict) -> dict:
         """
         Backfill missing financials from technical analysis.
 
@@ -592,7 +592,7 @@ class ReportPayloadBuilder:
 
         return financials
 
-    def _backfill_technical_indicators(self, payload: Dict, technical_data: Dict) -> Dict:
+    def _backfill_technical_indicators(self, payload: dict, technical_data: dict) -> dict:
         """
         Backfill technical indicator fields from technical analysis data.
 
@@ -703,7 +703,7 @@ class ReportPayloadBuilder:
             # Score is already on 0-10 scale
             return round(float(score), 1)
 
-    def _validate_payload(self, symbol: str, financials: Dict, scores: Dict):
+    def _validate_payload(self, symbol: str, financials: dict, scores: dict):
         """Validate critical fields and log warnings."""
         issues = []
 

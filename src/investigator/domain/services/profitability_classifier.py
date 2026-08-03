@@ -29,7 +29,7 @@ Usage:
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, ClassVar, Dict, List, Optional, Tuple
+from typing import Any, ClassVar
 
 logger = logging.getLogger(__name__)
 
@@ -49,9 +49,9 @@ class ProfitabilityIndicator:
     """Single profitability indicator result."""
 
     name: str
-    value: Optional[float]
+    value: float | None
     is_positive: bool
-    margin: Optional[float]  # As percentage
+    margin: float | None  # As percentage
     confidence: float  # 0-1, how reliable is this indicator
 
 
@@ -61,13 +61,13 @@ class ProfitabilityClassification:
 
     stage: ProfitabilityStage
     confidence: float  # 0-1
-    indicators_checked: List[ProfitabilityIndicator]
+    indicators_checked: list[ProfitabilityIndicator]
     indicators_positive: int
     indicators_total: int
-    primary_indicator: Optional[str]  # Which indicator drove the classification
-    applicable_models: List[str]  # Which valuation models are appropriate
-    model_adjustments: Dict[str, float]  # Suggested weight adjustments
-    notes: List[str] = field(default_factory=list)
+    primary_indicator: str | None  # Which indicator drove the classification
+    applicable_models: list[str]  # Which valuation models are appropriate
+    model_adjustments: dict[str, float]  # Suggested weight adjustments
+    notes: list[str] = field(default_factory=list)
 
     def is_profitable(self) -> bool:
         """Check if company is classified as profitable."""
@@ -164,7 +164,7 @@ class ProfitabilityClassifier:
         },
     }
 
-    def __init__(self, margin_thresholds: Optional[Dict[str, float]] = None):
+    def __init__(self, margin_thresholds: dict[str, float] | None = None):
         """
         Initialize classifier with optional custom thresholds.
 
@@ -173,9 +173,7 @@ class ProfitabilityClassifier:
         """
         self.margin_thresholds = margin_thresholds or self.MARGIN_THRESHOLDS
 
-    def classify(
-        self, financials: Dict[str, Any], ratios: Optional[Dict[str, Any]] = None
-    ) -> ProfitabilityClassification:
+    def classify(self, financials: dict[str, Any], ratios: dict[str, Any] | None = None) -> ProfitabilityClassification:
         """
         Classify company profitability using multiple indicators.
 
@@ -187,8 +185,8 @@ class ProfitabilityClassifier:
             ProfitabilityClassification with stage, confidence, and model guidance
         """
         ratios = ratios or {}
-        indicators_checked: List[ProfitabilityIndicator] = []
-        notes: List[str] = []
+        indicators_checked: list[ProfitabilityIndicator] = []
+        notes: list[str] = []
 
         # Check each indicator in priority order
         for value_key, margin_key, weight in self.INDICATORS_PRIORITY:
@@ -257,7 +255,7 @@ class ProfitabilityClassifier:
             notes=notes,
         )
 
-    def _get_value(self, data: Dict[str, Any], key: str) -> Optional[float]:
+    def _get_value(self, data: dict[str, Any], key: str) -> float | None:
         """Get a numeric value from a dict, handling None and invalid values."""
         if data is None:
             return None
@@ -277,10 +275,10 @@ class ProfitabilityClassifier:
 
     def _determine_stage(
         self,
-        indicators: List[ProfitabilityIndicator],
+        indicators: list[ProfitabilityIndicator],
         positive_count: int,
         total_count: int,
-    ) -> Tuple[ProfitabilityStage, Optional[str], float]:
+    ) -> tuple[ProfitabilityStage, str | None, float]:
         """
         Determine profitability stage from indicator results.
 
@@ -355,10 +353,10 @@ class ProfitabilityClassifier:
 
     def get_model_weight_adjustments(
         self,
-        financials: Dict[str, Any],
-        ratios: Optional[Dict[str, Any]] = None,
-        base_weights: Optional[Dict[str, float]] = None,
-    ) -> Tuple[Dict[str, float], ProfitabilityClassification]:
+        financials: dict[str, Any],
+        ratios: dict[str, Any] | None = None,
+        base_weights: dict[str, float] | None = None,
+    ) -> tuple[dict[str, float], ProfitabilityClassification]:
         """
         Get adjusted model weights based on profitability classification.
 
@@ -390,7 +388,7 @@ class ProfitabilityClassifier:
 
 
 # Singleton instance
-_classifier: Optional[ProfitabilityClassifier] = None
+_classifier: ProfitabilityClassifier | None = None
 
 
 def get_profitability_classifier() -> ProfitabilityClassifier:

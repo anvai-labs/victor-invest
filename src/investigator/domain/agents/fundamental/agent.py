@@ -7,7 +7,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import yaml
 
@@ -205,10 +205,10 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         self._sector_cache = {}
 
         # Sector multiples loader (lazy to allow missing reference file)
-        self._sector_multiples_loader: Optional[SectorMultiplesLoader] = None
+        self._sector_multiples_loader: SectorMultiplesLoader | None = None
 
         valuation_cfg = getattr(config, "valuation", None)
-        multiples_path: Optional[str] = None
+        multiples_path: str | None = None
         freshness_days = 7
         delta_threshold = 0.15
         if isinstance(valuation_cfg, dict):
@@ -310,9 +310,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
 
         self.logger.debug("📥 %s RESPONSE:\n%s", label, payload)
 
-    def _get_current_fiscal_period(
-        self, symbol: str, financials: Optional[Dict] = None, cik: Optional[str] = None
-    ) -> str:
+    def _get_current_fiscal_period(self, symbol: str, financials: dict | None = None, cik: str | None = None) -> str:
         """
         Determine current fiscal period using 2-tier strategy.
 
@@ -451,7 +449,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             self.logger.warning(f"Failed to determine fiscal period for {symbol}: {e}. Using 'unknown' as fallback.")
             return "unknown"
 
-    def _require_financials(self, company_data: Dict) -> Dict:
+    def _require_financials(self, company_data: dict) -> dict:
         """Ensure financial data exists and normalize field names, raising a clear error if not."""
         financials = company_data.get("financials") or {}
         if not financials:
@@ -472,7 +470,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
 
         return normalized_financials
 
-    def _build_company_profile(self, symbol: str, company_data: Dict, ratios: Dict) -> CompanyProfile:
+    def _build_company_profile(self, symbol: str, company_data: dict, ratios: dict) -> CompanyProfile:
         """
         Assemble a CompanyProfile snapshot from the data already loaded by the agent.
 
@@ -711,7 +709,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             self.logger.error(f"Error fetching public float for {symbol}: {e}")
             return 0
 
-    def register_capabilities(self) -> List:
+    def register_capabilities(self) -> list:
         """Register agent capabilities"""
         from investigator.domain.agents.base import AgentCapability, AnalysisType
 
@@ -966,7 +964,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                 error=str(e),
             )
 
-    async def recalculate_derived_metrics(self, task: AgentTask, cached_result: Dict) -> Dict:
+    async def recalculate_derived_metrics(self, task: AgentTask, cached_result: dict) -> dict:
         """
         HYBRID CACHING FIX (Phase 1):
         Recalculate deterministic metrics (CompanyProfile, ratios) from cached LLM responses.
@@ -1035,7 +1033,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             self.logger.warning(f"{symbol} - Failed to recalculate derived metrics: {e}", exc_info=True)
             return cached_result  # Fallback to original cached data on error
 
-    async def _fetch_company_data(self, symbol: str) -> Dict:
+    async def _fetch_company_data(self, symbol: str) -> dict:
         """Fetch comprehensive company financial data.
 
         Data flow reference:
@@ -1134,10 +1132,10 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             raise
         except Exception as e:
             self.logger.error(f"Failed to fetch company data for {symbol}: {e}", exc_info=True)
-            raise ValueError(f"Failed to fetch company data for {symbol}: {str(e)}")
+            raise ValueError(f"Failed to fetch company data for {symbol}: {e!s}")
 
     @staticmethod
-    def _derive_short_term_debt(metrics: Dict[str, Any]) -> Optional[float]:
+    def _derive_short_term_debt(metrics: dict[str, Any]) -> float | None:
         """Infer short-term debt when only total vs long-term components are available."""
         try:
             total = metrics.get("total_debt")
@@ -1149,7 +1147,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         except (TypeError, ValueError):
             return None
 
-    async def _fetch_historical_quarters(self, symbol: str, num_quarters: int = 12) -> List[QuarterlyData]:
+    async def _fetch_historical_quarters(self, symbol: str, num_quarters: int = 12) -> list[QuarterlyData]:
         """
         Fetch historical quarterly data using HYBRID 12-quarter strategy
 
@@ -1227,7 +1225,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             if not quarters_data:
                 return []
 
-            quarterly_data_list: List[QuarterlyData] = []
+            quarterly_data_list: list[QuarterlyData] = []
             from investigator.infrastructure.sec.data_strategy import (
                 get_fiscal_period_strategy,
             )
@@ -1269,9 +1267,9 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             raise
         except Exception as e:
             self.logger.error(f"Failed to fetch historical quarters for {symbol}: {e}")
-            raise ValueError(f"Failed to fetch historical quarters for {symbol}: {str(e)}")
+            raise ValueError(f"Failed to fetch historical quarters for {symbol}: {e!s}")
 
-    def _fetch_company_data_from_processed_table(self, symbol: str) -> Optional[Dict]:
+    def _fetch_company_data_from_processed_table(self, symbol: str) -> dict | None:
         """
         Fetch latest company-level data from sec_companyfacts_processed table (CLEAN ARCHITECTURE).
 
@@ -1306,9 +1304,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             self.logger.error(f"[CLEAN ARCH] Failed to fetch company data from processed table for {symbol}: {e}")
             return None
 
-    def _fetch_from_processed_table(
-        self, symbol: str, fiscal_year: int, fiscal_period: str, adsh: str
-    ) -> Optional[Dict]:
+    def _fetch_from_processed_table(self, symbol: str, fiscal_year: int, fiscal_period: str, adsh: str) -> dict | None:
         """
         Fetch pre-processed quarterly data from sec_companyfacts_processed table (3-table architecture)
 
@@ -1343,7 +1339,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             self.logger.warning(f"Error fetching from processed table for {symbol}: {e}")
             return None
 
-    def _calculate_quarterly_ratios(self, financial_data: Dict) -> Dict:
+    def _calculate_quarterly_ratios(self, financial_data: dict) -> dict:
         """
         Calculate financial ratios for a single quarter.
 
@@ -1400,7 +1396,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
 
         return ratios
 
-    def _assess_quarter_quality(self, financial_data: Dict) -> Dict:
+    def _assess_quarter_quality(self, financial_data: dict) -> dict:
         """Delegate single-quarter quality checks to DataQualityAssessor."""
         return self._get_data_quality_assessor().assess_quarter_quality(financial_data)
 
@@ -1431,34 +1427,34 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             self._deterministic_analyzer = analyzer
         return analyzer
 
-    def _analyze_revenue_trend(self, quarterly_data: List[QuarterlyData]) -> Dict:
+    def _analyze_revenue_trend(self, quarterly_data: list[QuarterlyData]) -> dict:
         """Delegate revenue trend analysis to dedicated TrendAnalyzer service."""
         return self._get_trend_analyzer().analyze_revenue_trend(quarterly_data)
 
-    def _analyze_margin_trend(self, quarterly_data: List[QuarterlyData]) -> Dict:
+    def _analyze_margin_trend(self, quarterly_data: list[QuarterlyData]) -> dict:
         """Delegate margin trend analysis to dedicated TrendAnalyzer service."""
         return self._get_trend_analyzer().analyze_margin_trend(quarterly_data)
 
-    def _analyze_cash_flow_trend(self, quarterly_data: List[QuarterlyData]) -> Dict:
+    def _analyze_cash_flow_trend(self, quarterly_data: list[QuarterlyData]) -> dict:
         """Delegate cash flow trend analysis to dedicated TrendAnalyzer service."""
         return self._get_trend_analyzer().analyze_cash_flow_trend(quarterly_data)
 
-    def _calculate_quarterly_comparisons(self, quarterly_data: List[QuarterlyData]) -> Dict:
+    def _calculate_quarterly_comparisons(self, quarterly_data: list[QuarterlyData]) -> dict:
         """Delegate quarterly comparisons to dedicated TrendAnalyzer service."""
         return self._get_trend_analyzer().calculate_quarterly_comparisons(quarterly_data)
 
-    def _detect_cyclical_patterns(self, quarterly_data: List[QuarterlyData]) -> Dict:
+    def _detect_cyclical_patterns(self, quarterly_data: list[QuarterlyData]) -> dict:
         """Delegate cyclical pattern detection to dedicated TrendAnalyzer service."""
         return self._get_trend_analyzer().detect_cyclical_patterns(quarterly_data)
 
-    async def _calculate_financial_ratios(self, company_data: Dict) -> Dict:
+    async def _calculate_financial_ratios(self, company_data: dict) -> dict:
         """Calculate comprehensive financial ratios"""
         financials = self._require_financials(company_data)
         market_data = company_data["market_data"]
 
         symbol = company_data.get("symbol", "UNKNOWN")
         cik = company_data.get("cik", "")
-        ratios: Dict[str, Any] = {}
+        ratios: dict[str, Any] = {}
         price = 0.0
         shares = 0.0
         market_cap = 0.0
@@ -1534,15 +1530,15 @@ class FundamentalAnalysisAgent(InvestmentAgent):
 
         return ratios
 
-    def _assess_data_quality(self, company_data: Dict, ratios: Dict) -> Dict:
+    def _assess_data_quality(self, company_data: dict, ratios: dict) -> dict:
         """Delegate comprehensive data quality scoring to DataQualityAssessor."""
         return self._get_data_quality_assessor().assess_data_quality(company_data, ratios)
 
-    def _calculate_confidence_level(self, data_quality: Dict) -> Dict:
+    def _calculate_confidence_level(self, data_quality: dict) -> dict:
         """Delegate confidence mapping to DataQualityAssessor."""
         return self._get_data_quality_assessor().calculate_confidence_level(data_quality)
 
-    def _sanitize_for_llm(self, company_data: Dict, ratios: Dict, symbol: str) -> tuple:
+    def _sanitize_for_llm(self, company_data: dict, ratios: dict, symbol: str) -> tuple:
         """
         Sanitize data before sending to LLM prompts.
 
@@ -1565,24 +1561,24 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             log_data_quality_issues=log_data_quality_issues,
         )
 
-    def _log_data_quality_issues(self, symbol: str, company_data: Dict, ratios: Dict):
+    def _log_data_quality_issues(self, symbol: str, company_data: dict, ratios: dict):
         """Compatibility shim that delegates to shared logging helpers."""
         log_data_quality_issues(self.logger, symbol, company_data, ratios)
 
-    def _format_trend_context(self, company_data: Dict) -> str:
+    def _format_trend_context(self, company_data: dict) -> str:
         return format_trend_context(company_data)
 
-    def _log_quarterly_snapshot(self, symbol: str, quarterly_data: List["QuarterlyData"]) -> None:
+    def _log_quarterly_snapshot(self, symbol: str, quarterly_data: list["QuarterlyData"]) -> None:
         """
         Backwards-compatible hook for legacy callers; prefer log_quarterly_snapshot helper.
         """
         log_quarterly_snapshot(self.logger, symbol, quarterly_data)
 
-    def _log_valuation_snapshot(self, symbol: str, valuation_results: Dict[str, Any]) -> None:
+    def _log_valuation_snapshot(self, symbol: str, valuation_results: dict[str, Any]) -> None:
         """Compatibility shim for legacy callers."""
         log_valuation_snapshot(self.logger, symbol, valuation_results)
 
-    def _build_deterministic_response(self, label: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _build_deterministic_response(self, label: str, payload: dict[str, Any]) -> dict[str, Any]:
         """Return a structure consistent with _wrap_llm_response for rule-based analyses."""
         return build_deterministic_response(self.agent_id, label, payload)
 
@@ -1591,8 +1587,8 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         *,
         symbol: str,
         label: str,
-        payload: Dict[str, Any],
-        period: Optional[str],
+        payload: dict[str, Any],
+        period: str | None,
     ) -> None:
         """Persist deterministic analyses in the LLM cache for downstream reuse."""
         if not self.cache or not isinstance(payload, dict):
@@ -1611,23 +1607,23 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         except Exception as exc:  # pragma: no cover - defensive
             self.logger.debug("Failed to store deterministic %s for %s: %s", label, symbol, exc)
 
-    async def _analyze_financial_health(self, company_data: Dict, ratios: Dict, symbol: str) -> Dict:
+    async def _analyze_financial_health(self, company_data: dict, ratios: dict, symbol: str) -> dict:
         """Delegate deterministic financial-health analysis to specialized analyzer."""
         return await self._get_deterministic_analyzer().analyze_financial_health(company_data, ratios, symbol)
 
-    async def _analyze_growth(self, company_data: Dict, symbol: str) -> Dict:
+    async def _analyze_growth(self, company_data: dict, symbol: str) -> dict:
         """Delegate deterministic growth analysis to specialized analyzer."""
         return await self._get_deterministic_analyzer().analyze_growth(company_data, symbol)
 
-    async def _analyze_profitability(self, company_data: Dict, ratios: Dict, symbol: str) -> Dict:
+    async def _analyze_profitability(self, company_data: dict, ratios: dict, symbol: str) -> dict:
         """Delegate deterministic profitability analysis to specialized analyzer."""
         return await self._get_deterministic_analyzer().analyze_profitability(company_data, ratios, symbol)
 
     def _hydrate_cost_of_capital_inputs(
         self,
         profile: CompanyProfile,
-        company_data: Dict[str, Any],
-        ratios: Dict[str, Any],
+        company_data: dict[str, Any],
+        ratios: dict[str, Any],
         symbol: str,
     ) -> None:
         """Populate missing beta/debt inputs with readily available data."""
@@ -1643,8 +1639,8 @@ class FundamentalAnalysisAgent(InvestmentAgent):
     def _evaluate_cost_of_capital_inputs(
         self,
         profile: CompanyProfile,
-        company_data: Dict[str, Any],
-    ) -> List[str]:
+        company_data: dict[str, Any],
+    ) -> list[str]:
         """Identify missing inputs that force the DCF to fall back to defaults."""
         return evaluate_cost_of_capital_inputs_helper(
             profile=profile,
@@ -1654,9 +1650,9 @@ class FundamentalAnalysisAgent(InvestmentAgent):
 
     def _apply_cost_of_capital_penalty(
         self,
-        valuation_dict: Dict[str, Any],
-        issues: List[str],
-    ) -> Dict[str, Any]:
+        valuation_dict: dict[str, Any],
+        issues: list[str],
+    ) -> dict[str, Any]:
         """Reduce confidence when DCF had to assume default WACC inputs."""
         return apply_cost_of_capital_penalty_helper(
             valuation_dict=valuation_dict,
@@ -1692,9 +1688,9 @@ class FundamentalAnalysisAgent(InvestmentAgent):
     async def _calculate_dcf_professional(
         self,
         symbol: str,
-        quarterly_data: List[Dict],
+        quarterly_data: list[dict],
         company_profile: CompanyProfile,
-    ) -> Dict:
+    ) -> dict:
         """
         Calculate DCF valuation using professional DCFValuation module with WACC
 
@@ -1745,9 +1741,9 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         self,
         symbol: str,
         cost_of_equity: float,
-        quarterly_data: List[Dict],
+        quarterly_data: list[dict],
         company_profile: CompanyProfile,
-    ) -> Dict:
+    ) -> dict:
         """
         Calculate Gordon Growth Model valuation for dividend-paying stocks
 
@@ -1791,20 +1787,20 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             self.logger.error(f"{symbol} - GGM calculation error: {e}", exc_info=True)
             return {
                 "applicable": False,
-                "reason": f"Error: {str(e)}",
+                "reason": f"Error: {e!s}",
                 "fair_value_per_share": 0,
             }
 
     async def _perform_valuation(
         self,
-        company_data: Dict,
-        ratios: Dict,
+        company_data: dict,
+        ratios: dict,
         symbol: str,
         *,
         valuation_basis: str = "ttm",
         forward_horizon: str = "1y",
-        guidance_context: Optional[Dict[str, Any]] = None,
-    ) -> Dict:
+        guidance_context: dict[str, Any] | None = None,
+    ) -> dict:
         """
         Perform comprehensive valuation analysis with DCF and GGM (Gordon Growth Model)
 
@@ -1992,7 +1988,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             logger=self.logger,
         )
 
-    async def _analyze_competitive_position(self, company_data: Dict, symbol: str) -> Dict:
+    async def _analyze_competitive_position(self, company_data: dict, symbol: str) -> dict:
         """Analyze company's competitive position"""
         # Check if deterministic competitive analysis is enabled (saves tokens, faster)
         if self.use_deterministic and self.deterministic_competitive_analysis:
@@ -2111,9 +2107,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             period=company_data.get("fiscal_period"),  # Period-based caching
         )
 
-    def _lookup_sector_multiple(
-        self, sector: Optional[str], multiple: str, industry: Optional[str] = None
-    ) -> Optional[float]:
+    def _lookup_sector_multiple(self, sector: str | None, multiple: str, industry: str | None = None) -> float | None:
         """Fetch sector-level reference multiples from configuration if available.
 
         Priority (aligned with victor-invest for consistency):
@@ -2137,16 +2131,16 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         )
 
     @staticmethod
-    def _calculate_enterprise_value(market_data: Dict, financials: Dict) -> Optional[float]:
+    def _calculate_enterprise_value(market_data: dict, financials: dict) -> float | None:
         return calculate_enterprise_value(market_data, financials)
 
     def _resolve_fallback_weights(
         self,
         company_profile: CompanyProfile,
-        models_for_blending: List[Dict[str, Any]],
-        financials: Optional[Dict[str, Any]] = None,
-        ratios: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[Optional[Dict[str, float]], str]:
+        models_for_blending: list[dict[str, Any]],
+        financials: dict[str, Any] | None = None,
+        ratios: dict[str, Any] | None = None,
+    ) -> tuple[dict[str, float] | None, str]:
         """Delegate dynamic/static fallback weighting logic to shared helper."""
         return resolve_fallback_weights(
             company_profile=company_profile,
@@ -2158,13 +2152,13 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             logger=self.logger,
         )
 
-    def _load_model_selection_rules(self) -> Dict[str, Any]:
+    def _load_model_selection_rules(self) -> dict[str, Any]:
         return load_model_selection_rules(Path("config/model_selection.yaml"), logger=self.logger)
 
-    def _select_models_for_company(self, profile: CompanyProfile) -> Optional[List[str]]:
+    def _select_models_for_company(self, profile: CompanyProfile) -> list[str] | None:
         return select_models_for_company(profile, self._model_selection_rules)
 
-    async def _generate_forecast(self, company_data: Dict, growth_analysis: Dict, symbol: str) -> Dict:
+    async def _generate_forecast(self, company_data: dict, growth_analysis: dict, symbol: str) -> dict:
         """Generate earnings and revenue forecast"""
         financials = self._require_financials(company_data)
         data_quality = company_data.get("data_quality", {})
@@ -2241,22 +2235,22 @@ class FundamentalAnalysisAgent(InvestmentAgent):
         return coerce_float(value, default)
 
     def _build_deterministic_forecast_payload(
-        self, financials: Dict[str, Any], growth_analysis: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, financials: dict[str, Any], growth_analysis: dict[str, Any]
+    ) -> dict[str, Any]:
         """Build deterministic 3-year forecast payload when LLM is bypassed/unavailable."""
         return build_deterministic_forecast_payload(financials, growth_analysis)
 
-    def _build_deterministic_fundamental_report_payload(self, analysis_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _build_deterministic_fundamental_report_payload(self, analysis_data: dict[str, Any]) -> dict[str, Any]:
         """Build deterministic fundamental report payload."""
         return build_deterministic_fundamental_report_payload(analysis_data)
 
     async def _calculate_quality_score(
-        self, health: Dict, growth: Dict, profitability: Dict, competitive: Dict
+        self, health: dict, growth: dict, profitability: dict, competitive: dict
     ) -> float:
         """Calculate overall company quality score"""
         return calculate_quality_score(health, growth, profitability, competitive)
 
-    async def _synthesize_fundamental_report(self, analysis_data: Dict) -> Dict:
+    async def _synthesize_fundamental_report(self, analysis_data: dict) -> dict:
         """Synthesize comprehensive fundamental analysis report"""
         # Extract symbol, data quality, confidence, and period for caching
         symbol = analysis_data.get("symbol", "UNKNOWN")
@@ -2365,13 +2359,13 @@ class FundamentalAnalysisAgent(InvestmentAgent):
 
         return wrapped_report
 
-    def _calculate_growth_rate(self, financials: Dict, metric: str) -> float:
+    def _calculate_growth_rate(self, financials: dict, metric: str) -> float:
         """Calculate compound annual growth rate for a metric"""
         # Simplified CAGR calculation (would use historical data in production)
         # This is a placeholder that would access historical data
         return 0.10  # 10% placeholder growth rate
 
-    def _calculate_ttm_net_income(self, quarterly_data: List, symbol: str) -> float:
+    def _calculate_ttm_net_income(self, quarterly_data: list, symbol: str) -> float:
         """
         Calculate Trailing Twelve Months (TTM) net income from quarterly data.
 
@@ -2403,14 +2397,14 @@ class FundamentalAnalysisAgent(InvestmentAgent):
 
         return ttm_net_income
 
-    def _get_historical_trend(self, financials: Dict) -> Dict:
+    def _get_historical_trend(self, financials: dict) -> dict:
         """Get historical financial trends"""
         return _get_historical_trend_helper(financials)
 
-    def _summarize_company_data(self, company_data: Dict) -> Dict:
+    def _summarize_company_data(self, company_data: dict) -> dict:
         """Create summary of company data for report"""
         return _summarize_company_data_helper(company_data)
 
-    def _extract_latest_financials(self, quarterly_data: List) -> Dict:
+    def _extract_latest_financials(self, quarterly_data: list) -> dict:
         """Extract latest financial statement from quarterly data (supports both Dict and QuarterlyData objects)"""
         return _extract_latest_financials_helper(quarterly_data)

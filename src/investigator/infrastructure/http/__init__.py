@@ -17,8 +17,8 @@ from .api_client import (
 
 __all__ = [
     "BaseAPIClient",
-    "SECAPIClient",
     "OllamaAPIClient",
+    "SECAPIClient",
     "rate_limit",
     "retry_on_failure",
 ]

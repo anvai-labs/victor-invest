@@ -25,7 +25,7 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from investigator.config.lookback_periods import (
     INSIDER_PERIODS,
@@ -47,33 +47,33 @@ class AnalysisData:
     symbol: str
     as_of_date: date
     # Core financial data (from existing pipelines)
-    financials: Dict[str, Any] = field(default_factory=dict)
-    ratios: Dict[str, Any] = field(default_factory=dict)
+    financials: dict[str, Any] = field(default_factory=dict)
+    ratios: dict[str, Any] = field(default_factory=dict)
     # Market context
-    market_context: Dict[str, Any] = field(default_factory=dict)
-    technical_indicators: Dict[str, Any] = field(default_factory=dict)
-    entry_exit_signals: Dict[str, Any] = field(default_factory=dict)
+    market_context: dict[str, Any] = field(default_factory=dict)
+    technical_indicators: dict[str, Any] = field(default_factory=dict)
+    entry_exit_signals: dict[str, Any] = field(default_factory=dict)
     # Sentiment and ownership
-    insider_data: Dict[str, Any] = field(default_factory=dict)
-    institutional_data: Dict[str, Any] = field(default_factory=dict)
-    short_interest: Dict[str, Any] = field(default_factory=dict)
+    insider_data: dict[str, Any] = field(default_factory=dict)
+    institutional_data: dict[str, Any] = field(default_factory=dict)
+    short_interest: dict[str, Any] = field(default_factory=dict)
     # Macro context
-    macro_indicators: Dict[str, Any] = field(default_factory=dict)
-    market_regime: Dict[str, Any] = field(default_factory=dict)
-    treasury_data: Dict[str, Any] = field(default_factory=dict)
+    macro_indicators: dict[str, Any] = field(default_factory=dict)
+    market_regime: dict[str, Any] = field(default_factory=dict)
+    treasury_data: dict[str, Any] = field(default_factory=dict)
     # Regional Fed economic indicators (GDPNow, CFNAI, etc.)
-    regional_fed_indicators: Dict[str, Any] = field(default_factory=dict)
+    regional_fed_indicators: dict[str, Any] = field(default_factory=dict)
     # CBOE volatility data (VIX, SKEW, term structure)
-    cboe_data: Dict[str, Any] = field(default_factory=dict)
+    cboe_data: dict[str, Any] = field(default_factory=dict)
     # Credit risk
-    credit_risk: Dict[str, Any] = field(default_factory=dict)
+    credit_risk: dict[str, Any] = field(default_factory=dict)
     # Data quality
-    data_quality: Dict[str, Any] = field(default_factory=dict)
+    data_quality: dict[str, Any] = field(default_factory=dict)
     # Price data
-    current_price: Optional[float] = None
-    price_history: List[Dict[str, Any]] = field(default_factory=list)
+    current_price: float | None = None
+    price_history: list[dict[str, Any]] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "symbol": self.symbol,
@@ -125,7 +125,7 @@ class DataSourceFacade:
             db_session: Optional SQLAlchemy session for database queries.
         """
         self._db_session = db_session
-        self._cache: Dict[str, Dict[date, AnalysisData]] = {}
+        self._cache: dict[str, dict[date, AnalysisData]] = {}
         self._cache_ttl = timedelta(minutes=15)
         self._last_cache_clean = datetime.now()
         self._stock_engine = None  # Lazy-initialized engine for stock database
@@ -133,7 +133,7 @@ class DataSourceFacade:
     async def get_analysis_data(
         self,
         symbol: str,
-        include_sources: Optional[Set[DataSourceType]] = None,
+        include_sources: set[DataSourceType] | None = None,
     ) -> AnalysisData:
         """Get comprehensive analysis data for a symbol.
 
@@ -155,7 +155,7 @@ class DataSourceFacade:
         self,
         symbol: str,
         as_of_date: date,
-        include_sources: Optional[Set[DataSourceType]] = None,
+        include_sources: set[DataSourceType] | None = None,
     ) -> AnalysisData:
         """Get analysis data as of a historical date (synchronous).
 
@@ -247,7 +247,7 @@ class DataSourceFacade:
         self,
         symbol: str,
         as_of_date: date,
-        include_sources: Optional[Set[DataSourceType]] = None,
+        include_sources: set[DataSourceType] | None = None,
     ) -> AnalysisData:
         """Get analysis data as of a historical date (async wrapper).
 
@@ -262,10 +262,10 @@ class DataSourceFacade:
 
     async def get_batch_data(
         self,
-        symbols: List[str],
-        as_of_date: Optional[date] = None,
-        include_sources: Optional[Set[DataSourceType]] = None,
-    ) -> Dict[str, AnalysisData]:
+        symbols: list[str],
+        as_of_date: date | None = None,
+        include_sources: set[DataSourceType] | None = None,
+    ) -> dict[str, AnalysisData]:
         """Get analysis data for multiple symbols efficiently.
 
         Args:
@@ -296,7 +296,7 @@ class DataSourceFacade:
 
     # Data source fetch methods
 
-    def _fetch_insider_data_sync(self, symbol: str, as_of_date: date) -> Dict[str, Any]:
+    def _fetch_insider_data_sync(self, symbol: str, as_of_date: date) -> dict[str, Any]:
         """Fetch insider sentiment data from database (synchronous)."""
         try:
             from sqlalchemy import text
@@ -341,7 +341,7 @@ class DataSourceFacade:
 
         return {"type": DataSourceType.INSIDER_SENTIMENT, "data": {}}
 
-    def _fetch_institutional_data_sync(self, symbol: str, as_of_date: date) -> Dict[str, Any]:
+    def _fetch_institutional_data_sync(self, symbol: str, as_of_date: date) -> dict[str, Any]:
         """Fetch institutional holdings data from database (synchronous)."""
         try:
             from sqlalchemy import text
@@ -381,7 +381,7 @@ class DataSourceFacade:
 
         return {"type": DataSourceType.INSTITUTIONAL_HOLDINGS, "data": {}}
 
-    def _fetch_short_interest_sync(self, symbol: str, as_of_date: date) -> Dict[str, Any]:
+    def _fetch_short_interest_sync(self, symbol: str, as_of_date: date) -> dict[str, Any]:
         """Fetch short interest data from database (synchronous)."""
         try:
             from sqlalchemy import text
@@ -419,7 +419,7 @@ class DataSourceFacade:
 
         return {"type": DataSourceType.SHORT_INTEREST, "data": {}}
 
-    def _fetch_treasury_data_sync(self, as_of_date: date) -> Dict[str, Any]:
+    def _fetch_treasury_data_sync(self, as_of_date: date) -> dict[str, Any]:
         """Fetch treasury yield data from database (synchronous)."""
         try:
             from sqlalchemy import text
@@ -464,7 +464,7 @@ class DataSourceFacade:
 
         return {"type": DataSourceType.TREASURY_YIELDS, "data": {}}
 
-    def _fetch_macro_data_sync(self, as_of_date: date) -> Dict[str, Any]:
+    def _fetch_macro_data_sync(self, as_of_date: date) -> dict[str, Any]:
         """Fetch macro indicator data from database (synchronous)."""
         try:
             from sqlalchemy import text
@@ -512,7 +512,7 @@ class DataSourceFacade:
 
         return {"type": DataSourceType.MACRO_INDICATORS, "data": {}}
 
-    def _fetch_market_regime_sync(self, as_of_date: date) -> Dict[str, Any]:
+    def _fetch_market_regime_sync(self, as_of_date: date) -> dict[str, Any]:
         """Fetch market regime classification from database (synchronous)."""
         try:
             from sqlalchemy import text
@@ -552,7 +552,7 @@ class DataSourceFacade:
 
         return {"type": DataSourceType.MARKET_REGIME, "data": {}}
 
-    def _fetch_credit_risk_sync(self, symbol: str, as_of_date: date) -> Dict[str, Any]:
+    def _fetch_credit_risk_sync(self, symbol: str, as_of_date: date) -> dict[str, Any]:
         """Fetch credit risk scores from database (synchronous)."""
         try:
             from sqlalchemy import text
@@ -590,7 +590,7 @@ class DataSourceFacade:
 
         return {"type": DataSourceType.CREDIT_RISK, "data": {}}
 
-    def _fetch_technical_data_sync(self, symbol: str, as_of_date: date) -> Dict[str, Any]:
+    def _fetch_technical_data_sync(self, symbol: str, as_of_date: date) -> dict[str, Any]:
         """Fetch technical indicator data (synchronous)."""
         # Technical data is typically calculated on-demand from price history
         # This would integrate with the technical analysis service
@@ -612,7 +612,7 @@ class DataSourceFacade:
             )
         return self._stock_engine
 
-    def _fetch_price_data_sync(self, symbol: str, as_of_date: date) -> Dict[str, Any]:
+    def _fetch_price_data_sync(self, symbol: str, as_of_date: date) -> dict[str, Any]:
         """Fetch price data from stock database (synchronous)."""
         try:
             from sqlalchemy import text
@@ -646,7 +646,7 @@ class DataSourceFacade:
 
         return {"type": DataSourceType.PRICE_DATA, "data": {}}
 
-    def _fetch_regional_fed_data_sync(self, as_of_date: date) -> Dict[str, Any]:
+    def _fetch_regional_fed_data_sync(self, as_of_date: date) -> dict[str, Any]:
         """Fetch regional Federal Reserve indicators from database (synchronous).
 
         Returns data from all Fed districts including:
@@ -741,10 +741,10 @@ class DataSourceFacade:
 
     def _extract_indicator_value(
         self,
-        indicators: Dict[str, Any],
+        indicators: dict[str, Any],
         district: str,
         indicator: str,
-    ) -> Optional[float]:
+    ) -> float | None:
         """Extract a single indicator value from the indicators dict."""
         try:
             if district in indicators and indicator in indicators[district]:
@@ -755,7 +755,7 @@ class DataSourceFacade:
             pass
         return None
 
-    def _fetch_cboe_data_sync(self, as_of_date: date) -> Dict[str, Any]:
+    def _fetch_cboe_data_sync(self, as_of_date: date) -> dict[str, Any]:
         """Fetch CBOE volatility data from stock database macro_indicator_values table.
 
         Returns:
@@ -854,7 +854,7 @@ class DataSourceFacade:
 
         return {"type": DataSourceType.CBOE_VOLATILITY, "data": {}}
 
-    def _classify_volatility_regime(self, vix: Optional[float]) -> str:
+    def _classify_volatility_regime(self, vix: float | None) -> str:
         """Classify volatility regime based on VIX level."""
         if vix is None:
             return "unknown"
@@ -871,7 +871,7 @@ class DataSourceFacade:
         else:
             return "extreme"
 
-    def _apply_result(self, analysis_data: AnalysisData, fetch_result: Dict[str, Any]):
+    def _apply_result(self, analysis_data: AnalysisData, fetch_result: dict[str, Any]):
         """Apply a fetch result to the AnalysisData object."""
         source_type = fetch_result.get("type")
         data = fetch_result.get("data", {})
@@ -914,7 +914,7 @@ class DataSourceFacade:
 
 
 # Singleton instance
-_facade_instance: Optional[DataSourceFacade] = None
+_facade_instance: DataSourceFacade | None = None
 
 
 def get_data_source_facade() -> DataSourceFacade:

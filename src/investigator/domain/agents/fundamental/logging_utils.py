@@ -6,7 +6,7 @@ import datetime
 import json
 import logging
 import math
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from investigator.domain.services.data_normalizer import round_for_prompt
 from investigator.infrastructure.formatters import ValuationTableFormatter
@@ -14,9 +14,9 @@ from investigator.infrastructure.formatters import ValuationTableFormatter
 from .models import QuarterlyData
 
 
-def log_data_quality_issues(logger: logging.Logger, symbol: str, company_data: Dict, ratios: Dict) -> None:
+def log_data_quality_issues(logger: logging.Logger, symbol: str, company_data: dict, ratios: dict) -> None:
     """Emit standardized data-quality warnings for downstream monitoring."""
-    issues: List[str] = []
+    issues: list[str] = []
 
     if company_data.get("market_cap", 0) == 0:
         issues.append("market_cap_zero")
@@ -34,7 +34,7 @@ def log_data_quality_issues(logger: logging.Logger, symbol: str, company_data: D
         logger.warning("📊 DATA QUALITY ISSUES for %s: %s", symbol, ", ".join(issues))
 
 
-def format_trend_context(company_data: Dict[str, Any]) -> str:
+def format_trend_context(company_data: dict[str, Any]) -> str:
     """Format multi-quarter trend analysis for prompts/logs."""
     trend_analysis = company_data.get("trend_analysis")
     if not trend_analysis:
@@ -78,7 +78,7 @@ def format_trend_context(company_data: Dict[str, Any]) -> str:
     )
 
 
-def format_shared_context(company_data: Dict[str, Any]) -> str:
+def format_shared_context(company_data: dict[str, Any]) -> str:
     """Compose shared data-quality and trend summaries."""
     data_quality = company_data.get("data_quality", {})
     quality_section = (
@@ -96,7 +96,7 @@ def format_shared_context(company_data: Dict[str, Any]) -> str:
 def log_quarterly_snapshot(
     logger: logging.Logger,
     symbol: str,
-    quarterly_data: List[QuarterlyData],
+    quarterly_data: list[QuarterlyData],
 ) -> None:
     """Render a compact quarterly snapshot table in the logs."""
     if not quarterly_data:
@@ -104,7 +104,7 @@ def log_quarterly_snapshot(
 
     limit = min(len(quarterly_data), 8)
     selected = quarterly_data[-limit:]
-    rows: List[List[str]] = []
+    rows: list[list[str]] = []
 
     for quarter in reversed(selected):
         if isinstance(quarter, QuarterlyData):
@@ -160,8 +160,8 @@ def log_quarterly_snapshot(
 def log_table(
     logger: logging.Logger,
     title: str,
-    headers: List[str],
-    rows: List[List[str]],
+    headers: list[str],
+    rows: list[list[str]],
     level: str = "info",
 ) -> None:
     if not rows:
@@ -176,7 +176,7 @@ def log_individual_model_result(
     logger: logging.Logger,
     symbol: str,
     model_name: str,
-    result: Dict[str, Any],
+    result: dict[str, Any],
 ) -> None:
     if not isinstance(result, dict):
         logger.warning("%s - %s result unavailable or invalid", symbol, model_name)
@@ -205,7 +205,7 @@ def log_individual_model_result(
 def log_valuation_snapshot(
     logger: logging.Logger,
     symbol: str,
-    valuation_results: Dict[str, Any],
+    valuation_results: dict[str, Any],
 ) -> None:
     """Render comprehensive valuation summary using ValuationTableFormatter."""
     logger.debug("METHOD ENTRY: log_valuation_snapshot for %s", symbol)
@@ -265,7 +265,7 @@ def log_valuation_snapshot(
                         break
         current_price = _to_numeric(current_price)
 
-        all_models_data: List[Dict[str, Any]] = []
+        all_models_data: list[dict[str, Any]] = []
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug("%s - Checking if multi_model has 'models' key", symbol)
             logger.debug(
@@ -360,9 +360,9 @@ def log_valuation_snapshot(
 
 
 def _append_model_entry(
-    collector: List[Dict[str, Any]],
-    model_dict: Dict[str, Any],
-    display_name: Optional[str] = None,
+    collector: list[dict[str, Any]],
+    model_dict: dict[str, Any],
+    display_name: str | None = None,
 ) -> None:
     resolved_name = display_name or model_dict.get("model") or model_dict.get("methodology") or "UNKNOWN"
     resolved_name = str(resolved_name).upper()
@@ -423,14 +423,14 @@ def _format_percent(value: Any) -> str:
     return f"{val:.1f}%"
 
 
-def _format_table(headers: List[str], rows: List[List[str]]) -> str:
+def _format_table(headers: list[str], rows: list[list[str]]) -> str:
     string_rows = [[str(cell) if cell not in (None, "") else "-" for cell in row] for row in rows]
     widths = [len(header) for header in headers]
     for row in string_rows:
         for idx, cell in enumerate(row):
             widths[idx] = max(widths[idx], len(cell))
 
-    def _format_row(row: List[str]) -> str:
+    def _format_row(row: list[str]) -> str:
         return " | ".join(cell.ljust(widths[idx]) for idx, cell in enumerate(row))
 
     header_line = _format_row(headers)
@@ -439,11 +439,11 @@ def _format_table(headers: List[str], rows: List[List[str]]) -> str:
     return "\n".join([header_line, divider, *data_lines])
 
 
-def _extract_model_notes(model: Dict[str, Any]) -> str:
+def _extract_model_notes(model: dict[str, Any]) -> str:
     model_id = (model.get("model") or "").lower()
     assumptions = model.get("assumptions") or {}
     metadata = model.get("metadata") or {}
-    extras: List[str] = []
+    extras: list[str] = []
 
     if model_id == "dcf":
         wacc = assumptions.get("wacc")

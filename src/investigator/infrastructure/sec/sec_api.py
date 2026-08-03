@@ -6,7 +6,7 @@ Handles interactions with SEC EDGAR API
 import asyncio
 import logging
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import requests
 
@@ -34,7 +34,7 @@ class SECApiClient:
     the new agentic orchestrator can reuse the proven filing retrieval logic.
     """
 
-    def __init__(self, user_agent: Optional[str] = None, config: Optional[Any] = None) -> None:
+    def __init__(self, user_agent: str | None = None, config: Any | None = None) -> None:
         self.config = config or get_config()
         sec_config = getattr(self.config, "sec", None)
         self.user_agent = user_agent or getattr(sec_config, "user_agent", "InvestiGator/1.0")
@@ -88,12 +88,12 @@ class SECApiClient:
         else:
             self.submission_processor = None
 
-    async def get_company_facts(self, cik: str) -> Dict[str, Any]:
+    async def get_company_facts(self, cik: str) -> dict[str, Any]:
         """Fetch company facts, delegating to the legacy SECAPIClient."""
         cik_padded = str(cik).zfill(10)
         return await asyncio.to_thread(self.legacy_client.get_company_facts, cik_padded)
 
-    async def get_submissions(self, cik: str) -> Dict[str, Any]:
+    async def get_submissions(self, cik: str) -> dict[str, Any]:
         """Fetch raw submissions JSON from EDGAR."""
         cik_padded = str(cik).zfill(10)
         return await asyncio.to_thread(self.legacy_client.get_submissions, cik_padded)
@@ -120,7 +120,7 @@ class SECApiClient:
         symbol: str,
         form_type: str = "10-K",
         period: str = "latest",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Resolve the latest SEC filing for a symbol and return structured content.
         """
@@ -164,7 +164,7 @@ class SECApiClient:
         symbol: str,
         form_type: str = "10-K",
         limit: int = 5,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Return recent filings metadata for a given symbol.
         """
@@ -176,7 +176,7 @@ class SECApiClient:
         parsed_submissions = self.submission_processor.parse_submissions(submissions_data)
         filings = self._filter_filings(parsed_submissions.get("filings", {}).get("all", []), form_type)
 
-        results: List[Dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
         for filing in filings[:limit]:
             results.append(
                 {
@@ -202,14 +202,14 @@ class SECApiClient:
     # Internal helpers
     # ------------------------------------------------------------------ #
 
-    def _resolve_cik(self, symbol: str) -> Optional[str]:
+    def _resolve_cik(self, symbol: str) -> str | None:
         cik = self.ticker_mapper.get_cik_padded(symbol)
         if cik:
             return cik
         logger.error("Ticker mapper could not resolve CIK for %s", symbol)
         return None
 
-    async def _load_submissions(self, symbol: str, cik: str) -> Dict[str, Any]:
+    async def _load_submissions(self, symbol: str, cik: str) -> dict[str, Any]:
         """
         Load submissions from cache or SEC API and persist them for reuse.
         """
@@ -232,7 +232,7 @@ class SECApiClient:
         return submissions
 
     @staticmethod
-    def _filter_filings(filings: List["Filing"], form_type: str) -> List["Filing"]:
+    def _filter_filings(filings: list["Filing"], form_type: str) -> list["Filing"]:
         try:
             from utils.submission_processor import Filing
         except ImportError:
@@ -243,7 +243,7 @@ class SECApiClient:
             return [f for f in filings if isinstance(f, dict)]
 
         base_type = (form_type or "").upper()
-        results: List[Filing] = []
+        results: list[Filing] = []
         for filing in filings:
             if isinstance(filing, Filing):
                 if filing.base_form_type.upper() == base_type:
@@ -257,7 +257,7 @@ class SECApiClient:
         return results
 
     @staticmethod
-    def _dict_to_filing(data: Dict[str, Any]) -> "Filing":
+    def _dict_to_filing(data: dict[str, Any]) -> "Filing":
         try:
             from utils.submission_processor import Filing
         except ImportError:
@@ -280,7 +280,7 @@ class SECApiClient:
         )
 
     @staticmethod
-    def _select_filing(filings: List["Filing"], period: str) -> Optional["Filing"]:
+    def _select_filing(filings: list["Filing"], period: str) -> Optional["Filing"]:
         if not filings:
             return None
 
@@ -308,9 +308,9 @@ class SECApiClient:
     def _build_xbrl_url(
         self,
         cik: str,
-        submissions: Dict[str, Any],
+        submissions: dict[str, Any],
         filing: "Filing",
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Attempt to build an XBRL URL if the submissions JSON lists a matching file.
         """

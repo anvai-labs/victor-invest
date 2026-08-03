@@ -28,7 +28,7 @@ import hashlib
 import logging
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy import text
 
@@ -47,8 +47,8 @@ class ABTestConfig:
     rl_traffic_pct: float = 0.20  # 20% RL, 80% baseline
     min_samples_per_group: int = 50
     confidence_level: float = 0.95
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
+    start_date: date | None = None
+    end_date: date | None = None
 
 
 class ABTestingFramework:
@@ -69,9 +69,9 @@ class ABTestingFramework:
 
     def __init__(
         self,
-        rl_policy: Optional[RLPolicy] = None,
-        baseline_service: Optional[Any] = None,
-        config: Optional[ABTestConfig] = None,
+        rl_policy: RLPolicy | None = None,
+        baseline_service: Any | None = None,
+        config: ABTestConfig | None = None,
     ):
         """
         Initialize A/B testing framework.
@@ -87,7 +87,7 @@ class ABTestingFramework:
         self.db = get_db_manager()
 
         # Track assignments for debugging
-        self._assignment_cache: Dict[str, ABTestGroup] = {}
+        self._assignment_cache: dict[str, ABTestGroup] = {}
         self._assignment_counts = {
             ABTestGroup.RL: 0,
             ABTestGroup.BASELINE: 0,
@@ -262,8 +262,8 @@ class ABTestingFramework:
 
     def _check_significance(
         self,
-        rl_metrics: Dict[str, float],
-        baseline_metrics: Dict[str, float],
+        rl_metrics: dict[str, float],
+        baseline_metrics: dict[str, float],
     ) -> bool:
         """
         Check if difference is statistically significant.
@@ -307,7 +307,7 @@ class ABTestingFramework:
     def get_group_breakdown(
         self,
         days: int = 90,
-    ) -> Dict[str, Dict[str, Any]]:
+    ) -> dict[str, dict[str, Any]]:
         """
         Get detailed breakdown by group.
 
@@ -336,7 +336,7 @@ class ABTestingFramework:
                     {"days": days},
                 ).fetchall()
 
-                breakdown: Dict[str, Dict[str, Dict[str, Any]]] = {"rl": {}, "baseline": {}}
+                breakdown: dict[str, dict[str, dict[str, Any]]] = {"rl": {}, "baseline": {}}
                 for row in result:
                     group = row[0]
                     sector = row[1] or "Unknown"
@@ -356,7 +356,7 @@ class ABTestingFramework:
         self,
         days: int = 90,
         bucket: str = "week",
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get performance trend comparison over time.
 
@@ -393,7 +393,7 @@ class ABTestingFramework:
                 ).fetchall()
 
                 # Pivot to compare periods
-                periods: Dict[str, Dict[str, Any]] = {}
+                periods: dict[str, dict[str, Any]] = {}
                 for row in result:
                     period_key = row[0].isoformat() if row[0] else "unknown"
                     group = row[1]
@@ -410,7 +410,7 @@ class ABTestingFramework:
             logger.error(f"Failed to get trend comparison: {e}")
             return []
 
-    def recommend_action(self) -> Dict[str, Any]:
+    def recommend_action(self) -> dict[str, Any]:
         """
         Recommend whether to expand RL rollout based on test results.
 
@@ -477,7 +477,7 @@ class ABTestingFramework:
                 "recommended_rl_pct": self.config.rl_traffic_pct * 100,
             }
 
-    def get_assignment_stats(self) -> Dict[str, Any]:
+    def get_assignment_stats(self) -> dict[str, Any]:
         """Get current assignment statistics."""
         total = sum(self._assignment_counts.values())
         return {

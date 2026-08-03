@@ -44,7 +44,7 @@ import logging
 import time
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from victor.workflows.definition import ComputeNode
@@ -100,8 +100,8 @@ class HandlerBase:
 
     def _get_input(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
+        node: ComputeNode,
+        context: WorkflowContext,
         key: str,
         default: Any = None,
     ) -> Any:
@@ -133,10 +133,10 @@ class ValuationComputeHandler(HandlerBase):
 
     async def __call__(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> "NodeResult":
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> NodeResult:
         from victor.workflows.executor import NodeResult, NodeStatus
 
         start_time = time.time()
@@ -252,10 +252,10 @@ class RLWeightDecisionHandler(HandlerBase):
 
     async def __call__(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> "NodeResult":
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> NodeResult:
         from victor.workflows.executor import NodeResult, NodeStatus
 
         start_time = time.time()
@@ -392,10 +392,10 @@ class SECDataExtractHandler(HandlerBase):
 
     async def __call__(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> "NodeResult":
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> NodeResult:
         from victor.workflows.executor import NodeResult, NodeStatus
 
         start_time = time.time()
@@ -499,10 +499,10 @@ class SectorValuationHandler(HandlerBase):
 
     async def __call__(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> "NodeResult":
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> NodeResult:
         from victor.workflows.executor import NodeResult, NodeStatus
 
         start_time = time.time()
@@ -623,10 +623,10 @@ class PriceDataFetchHandler(HandlerBase):
 
     async def __call__(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> "NodeResult":
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> NodeResult:
         from victor.workflows.executor import NodeResult, NodeStatus
 
         start_time = time.time()
@@ -723,10 +723,10 @@ class TechnicalAnalysisHandler(HandlerBase):
 
     async def __call__(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> "NodeResult":
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> NodeResult:
         from victor.workflows.executor import NodeResult, NodeStatus
 
         start_time = time.time()
@@ -827,10 +827,10 @@ class MetadataFetchHandler(HandlerBase):
 
     async def __call__(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> "NodeResult":
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> NodeResult:
         from victor.workflows.executor import NodeResult, NodeStatus
 
         start_time = time.time()
@@ -901,10 +901,10 @@ class OutcomeTrackingHandler(HandlerBase):
 
     async def __call__(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> "NodeResult":
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> NodeResult:
         from victor.workflows.executor import NodeResult, NodeStatus
 
         start_time = time.time()
@@ -982,10 +982,10 @@ class BlendedValuationHandler(HandlerBase):
 
     async def __call__(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> "NodeResult":
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> NodeResult:
         from victor.workflows.executor import NodeResult, NodeStatus
 
         start_time = time.time()
@@ -1086,7 +1086,7 @@ def get_handler(name: str) -> Any:
     return HANDLERS.get(name)
 
 
-def list_handlers() -> List[str]:
+def list_handlers() -> list[str]:
     """List all available handler names."""
     return list(HANDLERS.keys())
 

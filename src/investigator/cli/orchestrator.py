@@ -11,7 +11,6 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
 
 import click
 import yaml
@@ -21,17 +20,17 @@ src_dir = Path(__file__).parent / "src"
 if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
-from investigator.application import (  # noqa: E402
+from investigator.application import (
     AgentOrchestrator,
     AnalysisMode,
     OutputDetailLevel,
     format_analysis_output,
 )
-from investigator.domain.agents.sec import SECAnalysisAgent  # noqa: E402
-from investigator.infrastructure.cache import CacheManager  # noqa: E402
-from investigator.infrastructure.events import EventBus  # noqa: E402
-from investigator.infrastructure.llm import OllamaClient  # noqa: E402
-from investigator.infrastructure.monitoring import MetricsCollector  # noqa: E402
+from investigator.domain.agents.sec import SECAnalysisAgent
+from investigator.infrastructure.cache import CacheManager
+from investigator.infrastructure.events import EventBus
+from investigator.infrastructure.llm import OllamaClient
+from investigator.infrastructure.monitoring import MetricsCollector
 
 # from api.main import create_app  # Will fix this separately
 
@@ -41,12 +40,12 @@ except ImportError:
     uvicorn = None
 
 # PDF Report generation
-from investigator.application import InvestmentSynthesizer  # noqa: E402
-from investigator.domain.models import InvestmentRecommendation  # noqa: E402
+from investigator.application import InvestmentSynthesizer
+from investigator.domain.models import InvestmentRecommendation
 
 
 # Configure logging
-def setup_logging(log_level: str = "INFO", log_file: Optional[str] = None):
+def setup_logging(log_level: str = "INFO", log_file: str | None = None):
     """
     Configure application logging with production-friendly defaults.
 
@@ -537,7 +536,7 @@ def analyze(
                         click.echo(f"✅ PDF report generated: {report_path}")
 
                     except Exception as e:
-                        click.echo(f"❌ Failed to generate PDF report: {str(e)}", err=True)
+                        click.echo(f"❌ Failed to generate PDF report: {e!s}", err=True)
                         # Don't fail the entire command if PDF generation fails
 
             else:
@@ -744,7 +743,6 @@ def serve(ctx, host, port, workers, reload):
     # Temporarily disable API server until fixed
     click.echo("API server is temporarily disabled while being refactored.")
     click.echo("Please use the 'analyze' command for analysis.")
-    return
 
     # NOTE: API server is temporarily disabled during refactoring
     # To re-enable: Fix imports in api/main.py and update create_app() function
@@ -1495,7 +1493,7 @@ def cache_facts(symbols_file, symbol_list, parallel, process_raw, hydrate_from_d
         cache_manager=cache_manager,
     )
 
-    def _load_symbols() -> List[str]:
+    def _load_symbols() -> list[str]:
         if symbol_list:
             return sorted({sym.upper() for sym in symbol_list})
         path = Path(symbols_file)

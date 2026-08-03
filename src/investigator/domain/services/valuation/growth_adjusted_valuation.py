@@ -21,7 +21,7 @@ The framework adjusts P/E multiples based on:
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -237,10 +237,10 @@ GROWTH_PROFILE_PE_MULTIPLES = {
 class GrowthMetrics:
     """Container for growth-related metrics."""
 
-    revenue_growth: Optional[float] = None
-    earnings_growth: Optional[float] = None
-    fcf_margin: Optional[float] = None
-    rule_of_40: Optional[float] = None
+    revenue_growth: float | None = None
+    earnings_growth: float | None = None
+    fcf_margin: float | None = None
+    rule_of_40: float | None = None
     growth_profile: GrowthProfile = GrowthProfile.UNKNOWN
     quality_tier: QualityTier = QualityTier.UNKNOWN
 
@@ -270,15 +270,15 @@ class GrowthAdjustedResult:
     growth_profile: GrowthProfile
     quality_tier: QualityTier
     applied_pe: float
-    weights: Dict[str, float]
+    weights: dict[str, float]
 
     # Optional fields (with defaults) must come after required fields
-    forward_fair_value: Optional[float] = None  # Forward P/E based
-    rule_of_40_adjusted: Optional[float] = None  # Quality-adjusted
-    fair_value_range: Optional[ConfidenceInterval] = None  # Confidence interval
-    details: Dict[str, Any] = field(default_factory=dict)
-    market_premium_pct: Optional[float] = None  # Market price vs fundamental
-    market_premium_category: Optional[str] = None  # Category of premium
+    forward_fair_value: float | None = None  # Forward P/E based
+    rule_of_40_adjusted: float | None = None  # Quality-adjusted
+    fair_value_range: ConfidenceInterval | None = None  # Confidence interval
+    details: dict[str, Any] = field(default_factory=dict)
+    market_premium_pct: float | None = None  # Market price vs fundamental
+    market_premium_category: str | None = None  # Category of premium
 
 
 # ====================
@@ -299,7 +299,7 @@ GROWTH_PROFILE_UNCERTAINTY = {
 
 def calculate_confidence_interval(
     blended_fair_value: float,
-    component_values: List[float],
+    component_values: list[float],
     growth_profile: GrowthProfile,
     has_forward_eps: bool,
     confidence_level: int = 80,
@@ -365,8 +365,8 @@ def calculate_confidence_interval(
 
 
 def classify_growth_profile(
-    revenue_growth: Optional[float] = None,
-    earnings_growth: Optional[float] = None,
+    revenue_growth: float | None = None,
+    earnings_growth: float | None = None,
 ) -> GrowthProfile:
     """
     Classify company's growth profile.
@@ -399,10 +399,10 @@ def classify_growth_profile(
 
 
 def calculate_rule_of_40(
-    revenue_growth: Optional[float],
-    fcf_margin: Optional[float] = None,
-    operating_margin: Optional[float] = None,
-) -> Optional[float]:
+    revenue_growth: float | None,
+    fcf_margin: float | None = None,
+    operating_margin: float | None = None,
+) -> float | None:
     """
     Calculate Rule of 40 score.
 
@@ -432,7 +432,7 @@ def calculate_rule_of_40(
     return rule_of_40
 
 
-def classify_quality_tier(rule_of_40: Optional[float]) -> QualityTier:
+def classify_quality_tier(rule_of_40: float | None) -> QualityTier:
     """
     Classify quality tier based on Rule of 40.
 
@@ -464,8 +464,8 @@ def calculate_peg_fair_value(
     eps: float,
     growth_rate: float,
     growth_profile: GrowthProfile,
-    sector: Optional[str] = None,
-) -> Tuple[float, float, str]:
+    sector: str | None = None,
+) -> tuple[float, float, str]:
     """
     Calculate PEG-adjusted fair value with sustainability adjustments.
 
@@ -536,10 +536,10 @@ def calculate_peg_fair_value(
 def calculate_forward_pe_fair_value(
     forward_eps: float,
     growth_profile: GrowthProfile,
-    sector: Optional[str] = None,
-    trailing_eps: Optional[float] = None,
+    sector: str | None = None,
+    trailing_eps: float | None = None,
     years_forward: int = 1,
-) -> Tuple[float, float, str]:
+) -> tuple[float, float, str]:
     """
     Calculate fair value using forward P/E with trajectory adjustment.
 
@@ -633,10 +633,10 @@ def calculate_forward_pe_fair_value(
 
 def calculate_rule_of_40_adjustment(
     base_value: float,
-    rule_of_40: Optional[float],
+    rule_of_40: float | None,
     quality_tier: QualityTier,
     growth_profile: GrowthProfile = GrowthProfile.UNKNOWN,
-) -> Tuple[float, str]:
+) -> tuple[float, str]:
     """
     Adjust fair value based on Rule of 40 quality.
 
@@ -699,9 +699,9 @@ def calculate_rule_of_40_adjustment(
 
 def calculate_growth_adjusted_valuation(
     symbol: str,
-    financials: Dict[str, Any],
-    market_data: Dict[str, Any],
-    sector: Optional[str] = None,
+    financials: dict[str, Any],
+    market_data: dict[str, Any],
+    sector: str | None = None,
 ) -> GrowthAdjustedResult:
     """
     Calculate comprehensive growth-adjusted valuation.
@@ -960,7 +960,7 @@ def calculate_growth_adjusted_valuation(
 def _detect_eps_anomaly(
     trailing_eps: float,
     forward_eps: float,
-) -> Tuple[bool, float, str]:
+) -> tuple[bool, float, str]:
     """
     Detect if trailing EPS is abnormally low relative to forward EPS.
 
@@ -1011,9 +1011,9 @@ def _get_blending_weights(
     growth_profile: GrowthProfile,
     has_forward_eps: bool,
     supports_rule_of_40: bool,
-    sector: Optional[str] = None,
+    sector: str | None = None,
     eps_anomaly_boost: float = 0.0,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """
     Determine blending weights based on growth profile and data availability.
 
@@ -1190,10 +1190,10 @@ def _determine_confidence(
 
 
 def get_growth_metrics(
-    revenue_growth: Optional[float] = None,
-    earnings_growth: Optional[float] = None,
-    fcf_margin: Optional[float] = None,
-    operating_margin: Optional[float] = None,
+    revenue_growth: float | None = None,
+    earnings_growth: float | None = None,
+    fcf_margin: float | None = None,
+    operating_margin: float | None = None,
 ) -> GrowthMetrics:
     """
     Calculate all growth-related metrics from inputs.

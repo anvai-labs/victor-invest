@@ -7,7 +7,7 @@ Each district source follows the same pattern for consistency.
 
 import logging
 from datetime import date
-from typing import ClassVar, List, Optional
+from typing import ClassVar
 
 from ..base import (
     DataCategory,
@@ -30,7 +30,7 @@ class FedDistrictSource(MacroDataSource):
     """
 
     DISTRICT_NAME: str = ""
-    INDICATORS: ClassVar[List[str]] = []
+    INDICATORS: ClassVar[list[str]] = []
 
     def __init__(self):
         super().__init__(f"{self.DISTRICT_NAME.lower().replace(' ', '_')}_fed", DataFrequency.DAILY)
@@ -51,7 +51,7 @@ class FedDistrictSource(MacroDataSource):
             symbols_supported=False,
         )
 
-    def _fetch_impl(self, symbol: str, as_of_date: Optional[date] = None) -> DataResult:
+    def _fetch_impl(self, symbol: str, as_of_date: date | None = None) -> DataResult:
         """Fetch district-specific indicators"""
         try:
             from sqlalchemy import text
@@ -151,7 +151,7 @@ class KansasCityFedSource(FedDistrictSource):
     DISTRICT_NAME = "Kansas City"
     INDICATORS: ClassVar[list] = ["manufacturing_survey", "kcfsi", "lmci"]
 
-    def _fetch_impl(self, symbol: str, as_of_date: Optional[date] = None) -> DataResult:
+    def _fetch_impl(self, symbol: str, as_of_date: date | None = None) -> DataResult:
         result = super()._fetch_impl(symbol, as_of_date)
         if result.success and result.data:
             # Add KCFSI interpretation
@@ -179,7 +179,7 @@ class NewYorkFedSource(FedDistrictSource):
     DISTRICT_NAME = "New York"
     INDICATORS: ClassVar[list] = ["recession_probability", "gscpi", "empire_state_manufacturing"]
 
-    def _fetch_impl(self, symbol: str, as_of_date: Optional[date] = None) -> DataResult:
+    def _fetch_impl(self, symbol: str, as_of_date: date | None = None) -> DataResult:
         result = super()._fetch_impl(symbol, as_of_date)
         if result.success and result.data:
             indicators = result.data.get("indicators", {})
@@ -262,7 +262,7 @@ class AllFedDistrictsSource(MacroDataSource):
             symbols_supported=False,
         )
 
-    def _fetch_impl(self, symbol: str, as_of_date: Optional[date] = None) -> DataResult:
+    def _fetch_impl(self, symbol: str, as_of_date: date | None = None) -> DataResult:
         """Fetch and aggregate data from all districts"""
         by_district = {}
         summary = {}

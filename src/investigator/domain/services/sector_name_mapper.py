@@ -24,7 +24,7 @@ Usage:
 """
 
 import logging
-from typing import ClassVar, Dict, List, Optional
+from typing import ClassVar
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ class SectorIndustryMapper:
 
     # Standard sector name to database variants mapping
     # Key: Canonical sector name, Value: List of database variants
-    SECTOR_MAPPING: ClassVar[Dict[str, List[str]]] = {
+    SECTOR_MAPPING: ClassVar[dict[str, list[str]]] = {
         "Communication Services": ["Communication Services", "Telecommunications"],
         "Technology": ["Technology", "Information Technology"],
         "Financials": ["Financials", "Finance", "Financial Services"],
@@ -59,7 +59,7 @@ class SectorIndustryMapper:
 
     # Industry to sector mapping for granular lookups
     # Key: Industry name, Value: Parent sector
-    INDUSTRY_TO_SECTOR: ClassVar[Dict[str, str]] = {
+    INDUSTRY_TO_SECTOR: ClassVar[dict[str, str]] = {
         # Technology industries
         "Semiconductors": "Technology",
         "Semiconductor Equipment": "Technology",
@@ -148,13 +148,13 @@ class SectorIndustryMapper:
     }
 
     # Reverse mapping: database variant -> standard name (built lazily)
-    _DATABASE_TO_STANDARD: Optional[Dict[str, str]] = None
+    _DATABASE_TO_STANDARD: dict[str, str] | None = None
 
     # All valid sector names cache (built lazily)
-    _ALL_SECTOR_NAMES: Optional[List[str]] = None
+    _ALL_SECTOR_NAMES: list[str] | None = None
 
     @classmethod
-    def _build_reverse_mapping(cls) -> Dict[str, str]:
+    def _build_reverse_mapping(cls) -> dict[str, str]:
         """Build reverse mapping from database variants to standard names."""
         if cls._DATABASE_TO_STANDARD is None:
             cls._DATABASE_TO_STANDARD = {}
@@ -203,7 +203,7 @@ class SectorIndustryMapper:
         return name
 
     @classmethod
-    def to_database_variants(cls, standard_name: str) -> List[str]:
+    def to_database_variants(cls, standard_name: str) -> list[str]:
         """
         Get all database variants for a standard sector name.
 
@@ -289,7 +289,7 @@ class SectorIndustryMapper:
         return name in cls.SECTOR_MAPPING
 
     @classmethod
-    def get_all_sectors(cls) -> List[str]:
+    def get_all_sectors(cls) -> list[str]:
         """
         Get list of all valid standard sector names.
 
@@ -299,7 +299,7 @@ class SectorIndustryMapper:
         return sorted(cls.SECTOR_MAPPING.keys())
 
     @classmethod
-    def get_all_industries(cls) -> List[str]:
+    def get_all_industries(cls) -> list[str]:
         """
         Get list of all industries with sector mappings.
 
@@ -309,9 +309,7 @@ class SectorIndustryMapper:
         return sorted(cls.INDUSTRY_TO_SECTOR.keys())
 
     @classmethod
-    def normalize_metadata(
-        cls, sector: Optional[str] = None, industry: Optional[str] = None
-    ) -> Dict[str, Optional[str]]:
+    def normalize_metadata(cls, sector: str | None = None, industry: str | None = None) -> dict[str, str | None]:
         """
         Normalize sector and industry metadata to standard names.
 
@@ -347,7 +345,7 @@ class SectorIndustryMapper:
         return result
 
     @classmethod
-    def expand_sectors_for_query(cls, sectors: List[str]) -> List[str]:
+    def expand_sectors_for_query(cls, sectors: list[str]) -> list[str]:
         """
         Expand sector names to include all database variants for SQL queries.
 
@@ -378,7 +376,7 @@ def normalize_sector_name(name: str) -> str:
     return SectorIndustryMapper.to_standard(name)
 
 
-def get_sector_variants(standard_name: str) -> List[str]:
+def get_sector_variants(standard_name: str) -> list[str]:
     """Get database variants for a standard sector (convenience function)."""
     return SectorIndustryMapper.to_database_variants(standard_name)
 

@@ -31,8 +31,8 @@ if str(src_dir) not in sys.path:
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from .groups import analyze, backtest, cache, data, macro, sector_multiples, system  # noqa: E402
-from .utils import load_config, setup_logging  # noqa: E402
+from .groups import analyze, backtest, cache, data, macro, sector_multiples, system
+from .utils import load_config, setup_logging
 
 CONTEXT_SETTINGS = dict(
     help_option_names=["-h", "--help"],

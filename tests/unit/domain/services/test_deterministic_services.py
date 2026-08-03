@@ -9,7 +9,7 @@ Tests cover:
 - DeterministicCompetitiveAnalyzer
 """
 
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
@@ -57,7 +57,7 @@ from investigator.domain.services.template_thesis_generator import (
 
 
 @pytest.fixture
-def sample_model_contributions() -> List[ModelContribution]:
+def sample_model_contributions() -> list[ModelContribution]:
     """Sample model contributions for testing."""
     return [
         ModelContribution(
@@ -112,7 +112,7 @@ def sample_synthesis_context(sample_model_contributions) -> SynthesisContext:
 
 
 @pytest.fixture
-def sample_fundamental_analysis() -> Dict[str, Any]:
+def sample_fundamental_analysis() -> dict[str, Any]:
     """Sample fundamental analysis data."""
     return {
         "valuation": {
@@ -148,7 +148,7 @@ def sample_fundamental_analysis() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_technical_analysis() -> Dict[str, Any]:
+def sample_technical_analysis() -> dict[str, Any]:
     """Sample technical analysis data."""
     return {
         "signals": {
@@ -167,7 +167,7 @@ def sample_technical_analysis() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_sec_analysis() -> Dict[str, Any]:
+def sample_sec_analysis() -> dict[str, Any]:
     """Sample SEC analysis data."""
     return {
         "analysis": {

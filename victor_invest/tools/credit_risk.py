@@ -38,7 +38,7 @@ Example:
 
 import asyncio
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from victor_invest.tools.base import BaseTool, ToolResult
 
@@ -81,15 +81,15 @@ Parameters:
 Returns distress tier (1-5), valuation discount (0-50%), and detailed score breakdown.
 """
 
-    def __init__(self, config: Optional[Any] = None):
+    def __init__(self, config: Any | None = None):
         """Initialize Credit Risk Tool.
 
         Args:
             config: Optional investigator config object.
         """
         super().__init__(config)
-        self._service: Optional[Any] = None
-        self._sec_tool: Optional[Any] = None
+        self._service: Any | None = None
+        self._sec_tool: Any | None = None
 
     async def initialize(self) -> None:
         """Initialize credit risk service and dependencies."""
@@ -110,7 +110,7 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
 
     async def execute(
         self,
-        _exec_ctx: Optional[Dict[str, Any]] = None,
+        _exec_ctx: dict[str, Any] | None = None,
         symbol: str = "",
         action: str = "composite",
         **kwargs,
@@ -173,11 +173,11 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
         except Exception as e:
             logger.error(f"CreditRiskTool execute error for {symbol}: {e}")
             return ToolResult.create_failure(
-                f"Credit risk assessment failed: {str(e)}",
+                f"Credit risk assessment failed: {e!s}",
                 metadata={"symbol": symbol, "action": action},
             )
 
-    def _transform_sec_data(self, symbol: str, sec_data: Dict[str, Any]):
+    def _transform_sec_data(self, symbol: str, sec_data: dict[str, Any]):
         """Transform SEC tool data to FinancialData format."""
         from investigator.domain.services.credit_risk.protocols import FinancialData
 
@@ -301,7 +301,7 @@ Returns distress tier (1-5), valuation discount (0-50%), and detailed score brea
             },
         )
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """Get JSON schema for Credit Risk Tool parameters."""
         return {
             "type": "object",

@@ -39,7 +39,7 @@ from investigator.domain.services.data_sources.interfaces import (
 
 __all__ = [
     "DataSourceFacade",
-    "get_data_source_facade",
     "DataSourceInterface",
     "DataSourceResult",
+    "get_data_source_facade",
 ]

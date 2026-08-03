@@ -13,7 +13,6 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
 
 try:
     import markdown  # type: ignore[import-untyped]
@@ -450,7 +449,7 @@ class NumberedCanvas(canvas.Canvas):
 class PDFReportGenerator:
     """Generates PDF investment reports"""
 
-    def __init__(self, output_dir: Path, config: Optional[ReportConfig] = None):
+    def __init__(self, output_dir: Path, config: ReportConfig | None = None):
         """
         Initialize PDF report generator
 
@@ -608,9 +607,9 @@ class PDFReportGenerator:
 
     def generate_report(
         self,
-        recommendations: List[Dict],
+        recommendations: list[dict],
         report_type: str = "synthesis",
-        include_charts: Optional[List[str]] = None,
+        include_charts: list[str] | None = None,
     ) -> str:
         """
         Generate PDF report from recommendations
@@ -826,7 +825,7 @@ class PDFReportGenerator:
         logger.info(f"📄 Generated PDF report: {filepath}")
         return str(filepath)
 
-    def _create_title_page(self, report_type: str) -> List:
+    def _create_title_page(self, report_type: str) -> list:
         """Create title page with comprehensive legal disclaimer"""
         elements = []
 
@@ -904,7 +903,7 @@ class PDFReportGenerator:
 
         return elements
 
-    def _create_executive_summary(self, recommendations: List[Dict]) -> List:
+    def _create_executive_summary(self, recommendations: list[dict]) -> list:
         """Create enhanced executive summary with visual elements"""
         elements = []
 
@@ -1079,7 +1078,7 @@ class PDFReportGenerator:
         else:
             return "Poor"
 
-    def _create_symbol_analysis(self, recommendation: Dict, include_charts: Optional[List[str]] = None) -> List:
+    def _create_symbol_analysis(self, recommendation: dict, include_charts: list[str] | None = None) -> list:
         """Create detailed analysis for a single symbol"""
         elements = []
 
@@ -2357,7 +2356,7 @@ class PDFReportGenerator:
 
         return elements
 
-    def _create_portfolio_summary(self, recommendations: List[Dict]) -> List:
+    def _create_portfolio_summary(self, recommendations: list[dict]) -> list:
         """Create portfolio summary section"""
         elements = []
 
@@ -2418,7 +2417,7 @@ class PDFReportGenerator:
 
         return elements
 
-    def _create_charts_section(self, chart_paths: List[str]) -> List:
+    def _create_charts_section(self, chart_paths: list[str]) -> list:
         """Create section with additional charts"""
         elements = []
 
@@ -2604,7 +2603,7 @@ class PDFReportGenerator:
 
         return elements
 
-    def _create_disclaimer(self) -> List:
+    def _create_disclaimer(self) -> list:
         """Create disclaimer section"""
         elements = []
 
@@ -2646,7 +2645,7 @@ class PDFReportGenerator:
 
         return elements
 
-    def _create_tier2_interpretation_appendix(self) -> List:
+    def _create_tier2_interpretation_appendix(self) -> list:
         """Create Tier 2 enhancements interpretation appendix"""
         elements = []
 
@@ -3185,7 +3184,7 @@ class PDFReportGenerator:
 
         return elements
 
-    def _generate_filename(self, recommendations: List[Dict], report_type: str) -> str:
+    def _generate_filename(self, recommendations: list[dict], report_type: str) -> str:
         """
         Generate filename based on symbols in recommendations
 
@@ -3359,9 +3358,9 @@ class PDFReportGenerator:
             logger.error(f"Error fetching comprehensive investment thesis for {symbol}: {e}")
             return fallback_thesis or f"Investment analysis for {symbol} based on available data."
 
-    def _create_technical_summary(self, recommendation: Dict) -> List:
+    def _create_technical_summary(self, recommendation: dict) -> list:
         """Create visual technical analysis summary using structured data"""
-        elements: List = []
+        elements: list = []
 
         # Extract technical indicators from the recommendation (set by direct extraction)
         support_levels = recommendation.get("support_levels", [])
@@ -3492,7 +3491,7 @@ class PDFReportGenerator:
             return round(val / 10, 1)
         return round(val, 1)
 
-    def _create_entry_exit_section(self, recommendation: Dict) -> List:
+    def _create_entry_exit_section(self, recommendation: dict) -> list:
         """
         Create entry/exit signal section with visual components.
 
@@ -3502,7 +3501,7 @@ class PDFReportGenerator:
         Returns:
             List of ReportLab flowables
         """
-        elements: List = []
+        elements: list = []
 
         entry_signals = recommendation.get("entry_signals", [])
         exit_signals = recommendation.get("exit_signals", [])

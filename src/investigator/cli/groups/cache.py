@@ -21,7 +21,6 @@ def cache(ctx):
         investigator cache inspect --symbol AAPL
         investigator cache sizes
     """
-    pass
 
 
 @cache.command("clean")

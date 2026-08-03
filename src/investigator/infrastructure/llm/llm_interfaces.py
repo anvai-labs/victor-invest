@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # ============================================================================
 # LLM Data Models
@@ -25,16 +25,16 @@ class LLMRequest:
 
     model: str
     prompt: str
-    system_prompt: Optional[str] = None
+    system_prompt: str | None = None
     temperature: float = 0.3
     top_p: float = 0.9
-    num_ctx: Optional[int] = None
-    num_predict: Optional[int] = None
-    timeout: Optional[int] = None
-    metadata: Optional[Dict[str, Any]] = None
+    num_ctx: int | None = None
+    num_predict: int | None = None
+    timeout: int | None = None
+    metadata: dict[str, Any] | None = None
     priority: int = 5  # 1=highest, 10=lowest
-    request_id: Optional[str] = None
-    timestamp: Optional[datetime] = None
+    request_id: str | None = None
+    timestamp: datetime | None = None
 
 
 @dataclass
@@ -44,11 +44,11 @@ class LLMResponse:
     content: str
     model: str
     processing_time_ms: int
-    tokens_used: Optional[int] = None
-    metadata: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
-    request_id: Optional[str] = None
-    timestamp: Optional[datetime] = None
+    tokens_used: int | None = None
+    metadata: dict[str, Any] | None = None
+    error: str | None = None
+    request_id: str | None = None
+    timestamp: datetime | None = None
 
 
 class LLMTaskType(Enum):
@@ -83,22 +83,18 @@ class ILLMStrategy(ABC):
     @abstractmethod
     def get_strategy_name(self) -> str:
         """Get strategy identifier"""
-        pass
 
     @abstractmethod
-    def prepare_request(self, task_type: LLMTaskType, data: Dict[str, Any]) -> LLMRequest:
+    def prepare_request(self, task_type: LLMTaskType, data: dict[str, Any]) -> LLMRequest:
         """Prepare LLM request for specific task"""
-        pass
 
     @abstractmethod
-    def process_response(self, response: LLMResponse, task_type: LLMTaskType) -> Dict[str, Any]:
+    def process_response(self, response: LLMResponse, task_type: LLMTaskType) -> dict[str, Any]:
         """Process LLM response into structured data"""
-        pass
 
     @abstractmethod
     def get_model_for_task(self, task_type: LLMTaskType) -> str:
         """Get appropriate model for task type"""
-        pass
 
 
 class ILLMProcessor(ABC):
@@ -107,17 +103,14 @@ class ILLMProcessor(ABC):
     @abstractmethod
     def process_request(self, request: LLMRequest) -> LLMResponse:
         """Process a single LLM request"""
-        pass
 
     @abstractmethod
-    def process_batch(self, requests: List[LLMRequest]) -> List[LLMResponse]:
+    def process_batch(self, requests: list[LLMRequest]) -> list[LLMResponse]:
         """Process multiple LLM requests"""
-        pass
 
     @abstractmethod
     def get_queue_size(self) -> int:
         """Get current queue size"""
-        pass
 
 
 # ============================================================================
@@ -129,7 +122,7 @@ class ILLMHandler(ABC):
     """Handler interface for LLM processing chain"""
 
     def __init__(self):
-        self._next_handler: Optional[ILLMHandler] = None
+        self._next_handler: ILLMHandler | None = None
 
     def set_next(self, handler: "ILLMHandler") -> "ILLMHandler":
         """Set next handler in chain"""
@@ -137,11 +130,10 @@ class ILLMHandler(ABC):
         return handler
 
     @abstractmethod
-    def handle(self, request: LLMRequest) -> Optional[LLMResponse]:
+    def handle(self, request: LLMRequest) -> LLMResponse | None:
         """Handle LLM request or pass to next handler"""
-        pass
 
-    def _handle_next(self, request: LLMRequest) -> Optional[LLMResponse]:
+    def _handle_next(self, request: LLMRequest) -> LLMResponse | None:
         """Pass request to next handler if exists"""
         if self._next_handler:
             return self._next_handler.handle(request)
@@ -159,22 +151,18 @@ class ILLMObserver(ABC):
     @abstractmethod
     def on_request_queued(self, request: LLMRequest) -> None:
         """Called when request is added to queue"""
-        pass
 
     @abstractmethod
     def on_processing_started(self, request: LLMRequest) -> None:
         """Called when processing starts"""
-        pass
 
     @abstractmethod
     def on_processing_completed(self, request: LLMRequest, response: LLMResponse) -> None:
         """Called when processing completes"""
-        pass
 
     @abstractmethod
     def on_processing_error(self, request: LLMRequest, error: Exception) -> None:
         """Called when processing fails"""
-        pass
 
 
 class ILLMSubject(ABC):
@@ -183,32 +171,26 @@ class ILLMSubject(ABC):
     @abstractmethod
     def attach(self, observer: ILLMObserver) -> None:
         """Attach observer"""
-        pass
 
     @abstractmethod
     def detach(self, observer: ILLMObserver) -> None:
         """Detach observer"""
-        pass
 
     @abstractmethod
     def notify_queued(self, request: LLMRequest) -> None:
         """Notify observers of queued request"""
-        pass
 
     @abstractmethod
     def notify_started(self, request: LLMRequest) -> None:
         """Notify observers of started processing"""
-        pass
 
     @abstractmethod
     def notify_completed(self, request: LLMRequest, response: LLMResponse) -> None:
         """Notify observers of completed processing"""
-        pass
 
     @abstractmethod
     def notify_error(self, request: LLMRequest, error: Exception) -> None:
         """Notify observers of processing error"""
-        pass
 
 
 # ============================================================================
@@ -219,7 +201,7 @@ class ILLMSubject(ABC):
 class ILLMAnalysisTemplate(ABC):
     """Template method interface for standardized analysis workflows"""
 
-    def analyze(self, symbol: str, data: Dict[str, Any], task_type: LLMTaskType) -> Dict[str, Any]:
+    def analyze(self, symbol: str, data: dict[str, Any], task_type: LLMTaskType) -> dict[str, Any]:
         """Template method for analysis workflow"""
         # Validate input
         if not self.validate_input(symbol, data, task_type):
@@ -235,29 +217,24 @@ class ILLMAnalysisTemplate(ABC):
         return self.process_analysis_results(response, task_type)
 
     @abstractmethod
-    def validate_input(self, symbol: str, data: Dict[str, Any], task_type: LLMTaskType) -> bool:
+    def validate_input(self, symbol: str, data: dict[str, Any], task_type: LLMTaskType) -> bool:
         """Validate input parameters"""
-        pass
 
     @abstractmethod
-    def prepare_analysis_request(self, symbol: str, data: Dict[str, Any], task_type: LLMTaskType) -> LLMRequest:
+    def prepare_analysis_request(self, symbol: str, data: dict[str, Any], task_type: LLMTaskType) -> LLMRequest:
         """Prepare LLM request for analysis"""
-        pass
 
     @abstractmethod
     def execute_analysis(self, request: LLMRequest) -> LLMResponse:
         """Execute the analysis request"""
-        pass
 
     @abstractmethod
-    def process_analysis_results(self, response: LLMResponse, task_type: LLMTaskType) -> Dict[str, Any]:
+    def process_analysis_results(self, response: LLMResponse, task_type: LLMTaskType) -> dict[str, Any]:
         """Process and format analysis results"""
-        pass
 
     @abstractmethod
-    def create_error_result(self, error_message: str) -> Dict[str, Any]:
+    def create_error_result(self, error_message: str) -> dict[str, Any]:
         """Create standardized error result"""
-        pass
 
 
 # ============================================================================
@@ -271,22 +248,18 @@ class ILLMFactory(ABC):
     @abstractmethod
     def create_strategy(self, strategy_type: str, config: Any) -> ILLMStrategy:
         """Create LLM strategy instance"""
-        pass
 
     @abstractmethod
     def create_processor(self, processor_type: str, config: Any) -> ILLMProcessor:
         """Create LLM processor instance"""
-        pass
 
     @abstractmethod
     def create_handler_chain(self, config: Any) -> ILLMHandler:
         """Create handler chain for processing"""
-        pass
 
     @abstractmethod
     def create_observer(self, observer_type: str, config: Any) -> ILLMObserver:
         """Create LLM observer instance"""
-        pass
 
 
 # ============================================================================
@@ -300,19 +273,15 @@ class ILLMCacheStrategy(ABC):
     @abstractmethod
     def get_cache_key(self, request: LLMRequest) -> str:
         """Generate cache key for request"""
-        pass
 
     @abstractmethod
     def should_cache(self, request: LLMRequest, response: LLMResponse) -> bool:
         """Determine if response should be cached"""
-        pass
 
     @abstractmethod
     def get_ttl(self, task_type: LLMTaskType) -> int:
         """Get cache TTL for task type"""
-        pass
 
     @abstractmethod
     def is_cacheable_task(self, task_type: LLMTaskType) -> bool:
         """Check if task type is cacheable"""
-        pass

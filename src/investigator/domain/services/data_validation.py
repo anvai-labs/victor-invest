@@ -23,7 +23,7 @@ import logging
 import math
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, ClassVar, Dict, List, Optional, Tuple
+from typing import Any, ClassVar
 
 logger = logging.getLogger(__name__)
 
@@ -44,8 +44,8 @@ class ValidationIssue:
     field: str
     severity: ValidationSeverity
     message: str
-    suggestion: Optional[str] = None
-    value: Optional[Any] = None
+    suggestion: str | None = None
+    value: Any | None = None
 
     def __str__(self) -> str:
         s = f"[{self.severity.value.upper()}] {self.field}: {self.message}"
@@ -61,10 +61,10 @@ class ValidationResult:
     is_valid: bool
     completeness_score: float  # 0-100
     quality_score: float  # 0-100
-    issues: List[ValidationIssue] = field(default_factory=list)
-    outlier_flags: Dict[str, str] = field(default_factory=dict)
-    missing_fields: List[str] = field(default_factory=list)
-    valid_fields: List[str] = field(default_factory=list)
+    issues: list[ValidationIssue] = field(default_factory=list)
+    outlier_flags: dict[str, str] = field(default_factory=dict)
+    missing_fields: list[str] = field(default_factory=list)
+    valid_fields: list[str] = field(default_factory=list)
 
     def has_critical_issues(self) -> bool:
         """Check if any critical issues were found."""
@@ -74,7 +74,7 @@ class ValidationResult:
         """Check if any errors were found."""
         return any(i.severity in [ValidationSeverity.ERROR, ValidationSeverity.CRITICAL] for i in self.issues)
 
-    def get_issues_by_severity(self, severity: ValidationSeverity) -> List[ValidationIssue]:
+    def get_issues_by_severity(self, severity: ValidationSeverity) -> list[ValidationIssue]:
         """Get all issues of a specific severity."""
         return [i for i in self.issues if i.severity == severity]
 
@@ -170,7 +170,7 @@ class DataValidator:
         "payout_ratio": {"min": 0, "max": 200, "warn_min": 0, "warn_max": 100},
     }
 
-    def __init__(self, custom_thresholds: Optional[Dict] = None):
+    def __init__(self, custom_thresholds: dict | None = None):
         """
         Initialize the validator with optional custom thresholds.
 
@@ -195,9 +195,9 @@ class DataValidator:
 
     def validate_quarterly_data(
         self,
-        data: Dict[str, Any],
-        required_fields: Optional[List[str]] = None,
-        context: Optional[Dict[str, Any]] = None,
+        data: dict[str, Any],
+        required_fields: list[str] | None = None,
+        context: dict[str, Any] | None = None,
     ) -> ValidationResult:
         """
         Validate quarterly financial data.
@@ -210,10 +210,10 @@ class DataValidator:
         Returns:
             ValidationResult with completeness score, issues, and outlier flags
         """
-        issues: List[ValidationIssue] = []
-        missing_fields: List[str] = []
-        valid_fields: List[str] = []
-        outlier_flags: Dict[str, str] = {}
+        issues: list[ValidationIssue] = []
+        missing_fields: list[str] = []
+        valid_fields: list[str] = []
+        outlier_flags: dict[str, str] = {}
 
         if not data:
             return ValidationResult(
@@ -335,7 +335,7 @@ class DataValidator:
             valid_fields=valid_fields,
         )
 
-    def validate_for_model(self, data: Dict[str, Any], model_type: str) -> Tuple[bool, float, List[str]]:
+    def validate_for_model(self, data: dict[str, Any], model_type: str) -> tuple[bool, float, list[str]]:
         """
         Validate data for a specific valuation model.
 
@@ -398,7 +398,7 @@ class DataValidator:
 
         return max(0, base_score - outlier_penalty - issue_penalty)
 
-    def validate_consistency(self, data: Dict[str, Any]) -> List[ValidationIssue]:
+    def validate_consistency(self, data: dict[str, Any]) -> list[ValidationIssue]:
         """
         Check cross-metric consistency.
 
@@ -476,7 +476,7 @@ class DataValidator:
 
 
 # Singleton instance
-_validator: Optional[DataValidator] = None
+_validator: DataValidator | None = None
 
 
 def get_data_validator() -> DataValidator:

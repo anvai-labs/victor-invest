@@ -90,8 +90,9 @@ Example:
 
 import asyncio
 import logging
+from collections.abc import Callable
 from dataclasses import replace
-from typing import Any, Callable, Dict, Optional, cast
+from typing import Any, cast
 from weakref import WeakKeyDictionary
 
 from victor_contracts.graph_runtime import END, StateGraph
@@ -518,9 +519,9 @@ async def _run_llm_synthesis(
     market_context: dict,
     composite_score: float,
     rule_based_recommendation: str,
-    provider: Optional[str] = None,
-    model: Optional[str] = None,
-) -> Optional[dict]:
+    provider: str | None = None,
+    model: str | None = None,
+) -> dict | None:
     """Use LLM to generate intelligent investment synthesis.
 
     Args:
@@ -949,9 +950,9 @@ async def fetch_data_parallel(state_input) -> dict:
     # Merge results back into state
     for result in results:
         if isinstance(result, dict):
-            if "sec_data" in result and result["sec_data"]:
+            if result.get("sec_data"):
                 state.sec_data = result["sec_data"]
-            if "market_data" in result and result["market_data"]:
+            if result.get("market_data"):
                 state.market_data = result["market_data"]
             if result.get("errors"):
                 state.errors.extend(result["errors"])
@@ -981,9 +982,9 @@ async def run_analyses_parallel_standard(state_input) -> dict:
     # Merge results back into state
     for result in results:
         if isinstance(result, dict):
-            if "fundamental_analysis" in result and result["fundamental_analysis"]:
+            if result.get("fundamental_analysis"):
                 state.fundamental_analysis = result["fundamental_analysis"]
-            if "technical_analysis" in result and result["technical_analysis"]:
+            if result.get("technical_analysis"):
                 state.technical_analysis = result["technical_analysis"]
             if result.get("errors"):
                 state.errors.extend(result["errors"])
@@ -1014,11 +1015,11 @@ async def run_analyses_parallel_comprehensive(state_input) -> dict:
     # Merge results back into state
     for result in results:
         if isinstance(result, dict):
-            if "fundamental_analysis" in result and result["fundamental_analysis"]:
+            if result.get("fundamental_analysis"):
                 state.fundamental_analysis = result["fundamental_analysis"]
-            if "technical_analysis" in result and result["technical_analysis"]:
+            if result.get("technical_analysis"):
                 state.technical_analysis = result["technical_analysis"]
-            if "market_context" in result and result["market_context"]:
+            if result.get("market_context"):
                 state.market_context = result["market_context"]
             if result.get("errors"):
                 state.errors.extend(result["errors"])
@@ -1144,7 +1145,7 @@ def build_graph_for_mode(mode: AnalysisMode) -> StateGraph:
         compiled = graph.compile()
         result = await compiled.invoke(state)
     """
-    builders: Dict[AnalysisMode, Callable[[], StateGraph]] = {
+    builders: dict[AnalysisMode, Callable[[], StateGraph]] = {
         AnalysisMode.QUICK: build_quick_graph,
         AnalysisMode.STANDARD: build_standard_graph,
         AnalysisMode.COMPREHENSIVE: build_comprehensive_graph,
@@ -1225,7 +1226,7 @@ async def run_yaml_analysis(
     """
     from victor_invest.workflows import InvestmentWorkflowProvider
 
-    def _context_to_dict(ctx: Any) -> Dict[str, Any]:
+    def _context_to_dict(ctx: Any) -> dict[str, Any]:
         if ctx is None:
             return {}
         if isinstance(ctx, dict):

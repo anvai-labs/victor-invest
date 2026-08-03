@@ -15,7 +15,7 @@ Source: utils/valuation/framework/orchestrator.py (lines 36-86)
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Any, Dict
+from typing import Any
 
 from investigator.domain.services.valuation.models.base import (
     ModelNotApplicable,
@@ -29,7 +29,7 @@ from investigator.domain.services.valuation.models.company_profile import (
 
 def normalize_model_output(
     result: ValuationModelResult | ModelNotApplicable,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Convert valuation model results into a JSON-friendly dictionary.
 
@@ -77,7 +77,7 @@ def normalize_model_output(
     }
 
 
-def serialize_company_profile(profile: CompanyProfile) -> Dict[str, Any]:
+def serialize_company_profile(profile: CompanyProfile) -> dict[str, Any]:
     """
     Serialize CompanyProfile to a dictionary with human-readable archetype and data flags.
 

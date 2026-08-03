@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 
 def _count_fcf_quarters(company_profile: Any) -> int:
@@ -33,13 +33,13 @@ def _model_get(model_result: Any, key: str, default: Any = None) -> Any:
 def resolve_fallback_weights(
     *,
     company_profile: Any,
-    models_for_blending: List[Dict[str, Any]],
-    financials: Optional[Dict[str, Any]],
-    ratios: Optional[Dict[str, Any]],
+    models_for_blending: list[dict[str, Any]],
+    financials: dict[str, Any] | None,
+    ratios: dict[str, Any] | None,
     dynamic_weighting_service: Any,
     config: Any,
     logger: Any,
-) -> Tuple[Optional[Dict[str, float]], str]:
+) -> tuple[dict[str, float] | None, str]:
     """
     Determine dynamic model weights with static-fallback behavior.
 
@@ -231,7 +231,7 @@ def resolve_fallback_weights(
         if not isinstance(fallback_cfg, dict) or not fallback_cfg:
             return None, "fallback_error"
 
-        def _normalize_key(key: Optional[str]) -> Optional[str]:
+        def _normalize_key(key: str | None) -> str | None:
             return key.lower() if key else None
 
         primary_key = _normalize_key(

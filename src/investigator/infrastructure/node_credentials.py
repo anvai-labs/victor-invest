@@ -27,7 +27,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, ClassVar, Dict, List, Optional, Set
+from typing import Any, ClassVar
 
 from investigator.infrastructure.credentials import (
     DatabaseCredentials,
@@ -54,7 +54,7 @@ class CredentialRequirement:
     type: CredentialType
     name: str  # e.g., "sec", "stock", "anthropic"
     required: bool = True  # If False, node can proceed without it
-    scopes: List[str] = field(default_factory=list)  # Optional permission scopes
+    scopes: list[str] = field(default_factory=list)  # Optional permission scopes
 
 
 @dataclass
@@ -68,13 +68,13 @@ class CredentialAuditEntry:
     access_granted: bool
     source: str  # "victor_framework", "environment", "keyring"
     duration_ms: float = 0.0
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class CredentialAuditLogger:
     """Audit logger for credential access."""
 
-    _entries: ClassVar[List[CredentialAuditEntry]] = []
+    _entries: ClassVar[list[CredentialAuditEntry]] = []
     _max_entries: int = 10000
 
     @classmethod
@@ -86,7 +86,7 @@ class CredentialAuditLogger:
         access_granted: bool,
         source: str,
         duration_ms: float = 0.0,
-        error: Optional[str] = None,
+        error: str | None = None,
     ) -> None:
         """Log a credential access attempt."""
         entry = CredentialAuditEntry(
@@ -121,10 +121,10 @@ class CredentialAuditLogger:
     @classmethod
     def get_entries(
         cls,
-        node_id: Optional[str] = None,
-        credential_type: Optional[str] = None,
-        since: Optional[datetime] = None,
-    ) -> List[CredentialAuditEntry]:
+        node_id: str | None = None,
+        credential_type: str | None = None,
+        since: datetime | None = None,
+    ) -> list[CredentialAuditEntry]:
         """Query audit entries with optional filters."""
         entries = cls._entries
 
@@ -143,7 +143,7 @@ class CredentialAuditLogger:
         cls._entries = []
 
     @classmethod
-    def detect_misuse_patterns(cls) -> List[Dict[str, Any]]:
+    def detect_misuse_patterns(cls) -> list[dict[str, Any]]:
         """Detect potential credential misuse patterns.
 
         Patterns detected:
@@ -176,7 +176,7 @@ class CredentialAuditLogger:
             )
 
         # Pattern 2: High failure rate per credential
-        cred_stats: Dict[str, Dict[str, int]] = {}
+        cred_stats: dict[str, dict[str, int]] = {}
         for entry in hourly_entries:
             key = f"{entry.credential_type}:{entry.credential_name}"
             if key not in cred_stats:
@@ -215,7 +215,7 @@ class CredentialAuditLogger:
 
         # Pattern 4: Unusual node accessing sensitive credentials
         # Track which nodes typically access which credentials
-        node_cred_access: Dict[str, Set[str]] = {}
+        node_cred_access: dict[str, set[str]] = {}
         for entry in cls._entries:
             cred_key = f"{entry.credential_type}:{entry.credential_name}"
             if entry.node_id not in node_cred_access:
@@ -249,7 +249,7 @@ class CredentialAuditLogger:
         return violations
 
     @classmethod
-    def get_statistics(cls) -> Dict[str, Any]:
+    def get_statistics(cls) -> dict[str, Any]:
         """Get credential access statistics.
 
         Returns:
@@ -263,8 +263,8 @@ class CredentialAuditLogger:
         hourly_entries = [e for e in cls._entries if e.timestamp >= one_hour_ago]
 
         # Count by credential
-        by_credential: Dict[str, int] = {}
-        by_node: Dict[str, int] = {}
+        by_credential: dict[str, int] = {}
+        by_node: dict[str, int] = {}
         success_count = 0
         failure_count = 0
 
@@ -300,13 +300,13 @@ class NodeCredentialContext:
     def __init__(
         self,
         node_id: str,
-        requirements: List[CredentialRequirement] | None = None,
+        requirements: list[CredentialRequirement] | None = None,
         workflow_context: Any = None,
     ):
         self.node_id = node_id
         self.requirements = requirements or []
         self.workflow_context = workflow_context
-        self._cache: Dict[str, Any] = {}
+        self._cache: dict[str, Any] = {}
         self._victor_cred_mgr = None
 
         # Try to get Victor framework credential manager
@@ -357,7 +357,7 @@ class NodeCredentialContext:
             workflow_context=context,
         )
 
-    def get_database(self, alias: str) -> Optional[DatabaseCredentials]:
+    def get_database(self, alias: str) -> DatabaseCredentials | None:
         """Get database credentials with audit logging.
 
         Args:
@@ -398,7 +398,7 @@ class NodeCredentialContext:
 
             self._cache[cache_key] = creds
 
-        except EnvironmentError as e:
+        except OSError as e:
             error = str(e)
             creds = None
         except Exception as e:
@@ -419,7 +419,7 @@ class NodeCredentialContext:
 
         return creds
 
-    def get_api_key(self, name: str) -> Optional[str]:
+    def get_api_key(self, name: str) -> str | None:
         """Get API key with audit logging.
 
         Args:
@@ -477,7 +477,7 @@ class NodeCredentialContext:
 
         return api_key
 
-    def validate_requirements(self) -> List[str]:
+    def validate_requirements(self) -> list[str]:
         """Validate that all required credentials are available.
 
         Returns:
@@ -504,7 +504,7 @@ class CredentialValidator:
     """Pre-flight credential validation before node execution."""
 
     @staticmethod
-    def validate_node(node: Any, context: Any) -> List[str]:
+    def validate_node(node: Any, context: Any) -> list[str]:
         """Validate credentials before node execution.
 
         Args:
@@ -518,7 +518,7 @@ class CredentialValidator:
         return cred_ctx.validate_requirements()
 
     @staticmethod
-    def validate_workflow(workflow_def: Dict[str, Any]) -> Dict[str, List[str]]:
+    def validate_workflow(workflow_def: dict[str, Any]) -> dict[str, list[str]]:
         """Validate credentials for entire workflow definition.
 
         Args:
@@ -541,7 +541,7 @@ class CredentialValidator:
             @dataclass
             class MockNode:
                 id: str
-                credentials_required: List
+                credentials_required: list
 
             mock = MockNode(id=node_id, credentials_required=creds_required)
             cred_ctx = NodeCredentialContext.from_node(mock, None)
@@ -586,11 +586,11 @@ def inject_credentials_middleware(handler_func):
 
 
 __all__ = [
-    "CredentialType",
-    "CredentialRequirement",
     "CredentialAuditEntry",
     "CredentialAuditLogger",
-    "NodeCredentialContext",
+    "CredentialRequirement",
+    "CredentialType",
     "CredentialValidator",
+    "NodeCredentialContext",
     "inject_credentials_middleware",
 ]

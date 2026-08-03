@@ -9,7 +9,7 @@ Abstract base class for cache storage handlers
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any
 
 from .cache_types import CacheType
 
@@ -31,7 +31,7 @@ class CacheStorageHandler(ABC):
         self.priority = priority
 
     @abstractmethod
-    def get(self, key: Union[Tuple, Dict]) -> Optional[Dict[str, Any]]:
+    def get(self, key: tuple | dict) -> dict[str, Any] | None:
         """
         Retrieve data from cache
 
@@ -41,10 +41,9 @@ class CacheStorageHandler(ABC):
         Returns:
             Cached data if found, None otherwise
         """
-        pass
 
     @abstractmethod
-    def set(self, key: Union[Tuple, Dict], value: Dict[str, Any]) -> bool:
+    def set(self, key: tuple | dict, value: dict[str, Any]) -> bool:
         """
         Store data in cache
 
@@ -55,10 +54,9 @@ class CacheStorageHandler(ABC):
         Returns:
             True if successful, False otherwise
         """
-        pass
 
     @abstractmethod
-    def exists(self, key: Union[Tuple, Dict]) -> bool:
+    def exists(self, key: tuple | dict) -> bool:
         """
         Check if key exists in cache
 
@@ -68,10 +66,9 @@ class CacheStorageHandler(ABC):
         Returns:
             True if key exists, False otherwise
         """
-        pass
 
     @abstractmethod
-    def delete(self, key: Union[Tuple, Dict]) -> bool:
+    def delete(self, key: tuple | dict) -> bool:
         """
         Delete data from cache
 
@@ -81,7 +78,6 @@ class CacheStorageHandler(ABC):
         Returns:
             True if successful, False otherwise
         """
-        pass
 
     @abstractmethod
     def delete_by_pattern(self, pattern: str) -> int:
@@ -94,7 +90,6 @@ class CacheStorageHandler(ABC):
         Returns:
             Number of entries deleted
         """
-        pass
 
     @abstractmethod
     def clear_all(self) -> bool:
@@ -104,9 +99,8 @@ class CacheStorageHandler(ABC):
         Returns:
             True if successful, False otherwise
         """
-        pass
 
-    def _normalize_key(self, key: Union[Tuple, Dict]) -> Dict[str, str]:
+    def _normalize_key(self, key: tuple | dict) -> dict[str, str]:
         """
         Normalize key to dictionary format
 

@@ -14,6 +14,6 @@ if str(root_dir) not in sys.path:
     sys.path.insert(0, str(root_dir))
 
 # Re-export CLI from root cli_orchestrator.py
-from cli_orchestrator import cli  # noqa: E402
+from cli_orchestrator import cli
 
 __all__ = ["cli"]

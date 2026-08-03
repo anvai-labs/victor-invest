@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from investigator.domain.services.valuation.damodaran_dcf import DamodaranDCFModel
 from investigator.domain.services.valuation.models.saas_valuation import (
@@ -22,7 +23,7 @@ def _to_float(value: Any) -> float:
         return 0.0
 
 
-def _to_percent(value: Any) -> Optional[float]:
+def _to_percent(value: Any) -> float | None:
     """
     Normalize payout ratio to percentage points.
 
@@ -39,7 +40,7 @@ def _to_percent(value: Any) -> Optional[float]:
     return pct
 
 
-def _to_ratio(value: Any) -> Optional[float]:
+def _to_ratio(value: Any) -> float | None:
     """
     Normalize payout ratio to ratio format.
 
@@ -56,7 +57,7 @@ def _to_ratio(value: Any) -> Optional[float]:
     return ratio
 
 
-def _to_yield_decimal(value: Any) -> Optional[float]:
+def _to_yield_decimal(value: Any) -> float | None:
     """
     Normalize dividend yield to decimal.
 
@@ -76,23 +77,22 @@ def _to_yield_decimal(value: Any) -> Optional[float]:
 async def calculate_valuation_extensions(
     *,
     symbol: str,
-    valuation_results: Dict[str, Any],
-    financials: Dict[str, Any],
-    ratios: Dict[str, Any],
-    market_data: Dict[str, Any],
+    valuation_results: dict[str, Any],
+    financials: dict[str, Any],
+    ratios: dict[str, Any],
+    market_data: dict[str, Any],
     company_profile: Any,
-    quarterly_data: List[Any],
+    quarterly_data: list[Any],
     calculate_cost_of_equity: Callable[[str], float],
-    calculate_ggm: Callable[[str, float, List[Any], Any], Awaitable[Dict[str, Any]]],
-    normalize_model_output: Callable[[Any], Dict[str, Any]],
-    log_model_result: Callable[[Any, str, str, Dict[str, Any]], None],
+    calculate_ggm: Callable[[str, float, list[Any], Any], Awaitable[dict[str, Any]]],
+    normalize_model_output: Callable[[Any], dict[str, Any]],
+    log_model_result: Callable[[Any, str, str, dict[str, Any]], None],
     logger: Any,
 ) -> float:
     """Populate extension valuation models and return payout ratio used for synthesis context."""
     common_divs = abs(_to_float(financials.get("dividends_paid", 0) or 0))
     profile_common_divs = abs(_to_float(getattr(company_profile, "dividends_paid", None) or 0))
-    if profile_common_divs > common_divs:
-        common_divs = profile_common_divs
+    common_divs = max(common_divs, profile_common_divs)
     preferred_divs = abs(_to_float(financials.get("preferred_stock_dividends", 0) or 0))
     dividends_paid = common_divs + preferred_divs
 

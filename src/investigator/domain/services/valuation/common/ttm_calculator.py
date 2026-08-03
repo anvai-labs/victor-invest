@@ -25,7 +25,7 @@ object format (QuarterlyData objects).
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class TTMMetrics:
     """
 
     @staticmethod
-    def _extract_metric(entry: Any, keys: List[str]) -> Optional[float]:
+    def _extract_metric(entry: Any, keys: list[str]) -> float | None:
         """Extract a metric value from entry, trying multiple possible keys.
 
         Args:
@@ -166,7 +166,7 @@ class TTMMetrics:
         return None
 
     @staticmethod
-    def calculate_ttm_eps(*, quarterly_data: List[Any], shares_outstanding: Optional[float]) -> Optional[float]:
+    def calculate_ttm_eps(*, quarterly_data: list[Any], shares_outstanding: float | None) -> float | None:
         """Calculate TTM (Trailing Twelve Months) earnings per share.
 
         Args:
@@ -204,7 +204,7 @@ class TTMMetrics:
         return ttm_net_income / shares_outstanding
 
     @staticmethod
-    def calculate_ttm_revenue(*, quarterly_data: List[Any]) -> Optional[float]:
+    def calculate_ttm_revenue(*, quarterly_data: list[Any]) -> float | None:
         """Calculate TTM (Trailing Twelve Months) total revenue.
 
         Args:
@@ -236,7 +236,7 @@ class TTMMetrics:
         return ttm_revenue
 
     @staticmethod
-    def calculate_ttm_ebitda(*, quarterly_data: List[Any]) -> Optional[float]:
+    def calculate_ttm_ebitda(*, quarterly_data: list[Any]) -> float | None:
         """Calculate TTM (Trailing Twelve Months) EBITDA.
 
         First tries direct ebitda field, then calculates as:
@@ -287,7 +287,7 @@ class TTMMetrics:
         return ttm_ebitda
 
     @staticmethod
-    def calculate_ttm_fcf(*, quarterly_data: List[Any]) -> Optional[float]:
+    def calculate_ttm_fcf(*, quarterly_data: list[Any]) -> float | None:
         """Calculate TTM (Trailing Twelve Months) free cash flow.
 
         FCF = Operating Cash Flow - Capital Expenditures
@@ -332,8 +332,8 @@ class TTMMetrics:
 
     @staticmethod
     def calculate_all_ttm_metrics(
-        *, quarterly_data: List[Any], shares_outstanding: Optional[float]
-    ) -> Dict[str, Optional[float]]:
+        *, quarterly_data: list[Any], shares_outstanding: float | None
+    ) -> dict[str, float | None]:
         """Calculate all TTM metrics in a single call.
 
         Args:

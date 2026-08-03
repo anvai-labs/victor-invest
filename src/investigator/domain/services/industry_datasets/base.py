@@ -12,7 +12,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -48,12 +48,12 @@ class MetricDefinition:
     name: str
     display_name: str
     description: str
-    xbrl_tags: List[str]
+    xbrl_tags: list[str]
     unit: str = "value"
     is_required: bool = False
-    default_value: Optional[float] = None
-    min_value: Optional[float] = None
-    max_value: Optional[float] = None
+    default_value: float | None = None
+    min_value: float | None = None
+    max_value: float | None = None
     invert_for_quality: bool = False
 
 
@@ -74,11 +74,11 @@ class IndustryMetrics:
 
     industry: str
     symbol: str
-    metrics: Dict[str, Any] = field(default_factory=dict)
+    metrics: dict[str, Any] = field(default_factory=dict)
     quality: MetricQuality = MetricQuality.INSUFFICIENT
     coverage: float = 0.0
-    warnings: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    warnings: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def get(self, metric_name: str, default: Any = None) -> Any:
         """Get a metric value with optional default."""
@@ -106,7 +106,7 @@ class ValuationAdjustment:
     factor: float
     reason: str
     confidence: float = 1.0
-    affects_models: List[str] = field(default_factory=list)
+    affects_models: list[str] = field(default_factory=list)
 
 
 class BaseIndustryDataset(ABC):
@@ -133,13 +133,11 @@ class BaseIndustryDataset(ABC):
     @abstractmethod
     def name(self) -> str:
         """Unique name for this dataset (e.g., 'semiconductor')."""
-        pass
 
     @property
     @abstractmethod
     def display_name(self) -> str:
         """Human-readable name (e.g., 'Semiconductor Industry')."""
-        pass
 
     @property
     def version(self) -> str:
@@ -147,7 +145,7 @@ class BaseIndustryDataset(ABC):
         return "1.0.0"
 
     @abstractmethod
-    def get_industry_names(self) -> List[str]:
+    def get_industry_names(self) -> list[str]:
         """
         Return list of industry names this dataset handles.
 
@@ -157,19 +155,17 @@ class BaseIndustryDataset(ABC):
         Returns:
             List of industry name strings
         """
-        pass
 
     @abstractmethod
-    def get_metric_definitions(self) -> List[MetricDefinition]:
+    def get_metric_definitions(self) -> list[MetricDefinition]:
         """
         Return list of metric definitions for this industry.
 
         Returns:
             List of MetricDefinition objects describing available metrics
         """
-        pass
 
-    def get_known_symbols(self) -> Set[str]:
+    def get_known_symbols(self) -> set[str]:
         """
         Return set of known symbols for this industry.
 
@@ -181,7 +177,7 @@ class BaseIndustryDataset(ABC):
         """
         return set()
 
-    def matches_industry(self, industry: Optional[str]) -> bool:
+    def matches_industry(self, industry: str | None) -> bool:
         """
         Check if this dataset handles the given industry.
 
@@ -213,7 +209,7 @@ class BaseIndustryDataset(ABC):
         return symbol.upper() in self.get_known_symbols()
 
     @abstractmethod
-    def extract_metrics(self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs) -> IndustryMetrics:
+    def extract_metrics(self, symbol: str, xbrl_data: dict | None, financials: dict, **kwargs) -> IndustryMetrics:
         """
         Extract industry-specific metrics from XBRL data and financials.
 
@@ -226,10 +222,9 @@ class BaseIndustryDataset(ABC):
         Returns:
             IndustryMetrics object with extracted metrics
         """
-        pass
 
     @abstractmethod
-    def assess_quality(self, metrics: IndustryMetrics) -> Tuple[MetricQuality, str]:
+    def assess_quality(self, metrics: IndustryMetrics) -> tuple[MetricQuality, str]:
         """
         Assess the quality of extracted metrics.
 
@@ -239,12 +234,11 @@ class BaseIndustryDataset(ABC):
         Returns:
             Tuple of (MetricQuality, description)
         """
-        pass
 
     @abstractmethod
     def get_valuation_adjustments(
-        self, metrics: IndustryMetrics, financials: Dict, **kwargs
-    ) -> List[ValuationAdjustment]:
+        self, metrics: IndustryMetrics, financials: dict, **kwargs
+    ) -> list[ValuationAdjustment]:
         """
         Calculate valuation adjustments based on industry metrics.
 
@@ -256,9 +250,8 @@ class BaseIndustryDataset(ABC):
         Returns:
             List of ValuationAdjustment objects
         """
-        pass
 
-    def validate_metrics(self, metrics: IndustryMetrics) -> List[str]:
+    def validate_metrics(self, metrics: IndustryMetrics) -> list[str]:
         """
         Validate extracted metrics against expected ranges.
 
@@ -287,7 +280,7 @@ class BaseIndustryDataset(ABC):
 
         return warnings
 
-    def get_tier_weights(self) -> Optional[Dict[str, int]]:
+    def get_tier_weights(self) -> dict[str, int] | None:
         """
         Return recommended tier weights for this industry.
 
@@ -299,7 +292,7 @@ class BaseIndustryDataset(ABC):
         """
         return None
 
-    def get_xbrl_aliases(self) -> Dict[str, List[str]]:
+    def get_xbrl_aliases(self) -> dict[str, list[str]]:
         """
         Return XBRL tag aliases for this industry's metrics.
 
@@ -316,11 +309,11 @@ class BaseIndustryDataset(ABC):
 
     def _extract_from_xbrl(
         self,
-        xbrl_data: Optional[Dict],
+        xbrl_data: dict | None,
         metric_name: str,
-        xbrl_tags: List[str],
-        default: Optional[float] = None,
-    ) -> Optional[float]:
+        xbrl_tags: list[str],
+        default: float | None = None,
+    ) -> float | None:
         """
         Helper to extract a value from XBRL data.
 

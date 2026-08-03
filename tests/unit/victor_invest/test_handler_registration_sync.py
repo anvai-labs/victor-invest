@@ -1,4 +1,4 @@
-import victor_invest.workflows as workflows
+from victor_invest import workflows
 
 
 def test_ensure_handlers_registered_is_idempotent(monkeypatch):

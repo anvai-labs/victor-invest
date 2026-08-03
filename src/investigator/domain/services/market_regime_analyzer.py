@@ -23,7 +23,7 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 from investigator.domain.services.market_regime import (
     get_credit_cycle_analyzer,
@@ -50,18 +50,18 @@ class ComprehensiveRegime:
 
     # Risk signals
     risk_off_signal: bool
-    vix_level: Optional[float] = None
-    credit_spread: Optional[float] = None
+    vix_level: float | None = None
+    credit_spread: float | None = None
 
     # Metadata
     snapshot_date: datetime = None
-    recommendations: Optional[str] = None
+    recommendations: str | None = None
 
     def __post_init__(self):
         if self.snapshot_date is None:
             self.snapshot_date = datetime.now()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "regime": self.regime,
             "yield_curve_shape": self.yield_curve_shape,
@@ -104,7 +104,7 @@ class MarketRegimeAnalyzer:
             self._credit_cycle_analyzer = get_credit_cycle_analyzer()
         return self._credit_cycle_analyzer
 
-    def get_comprehensive_regime(self) -> Optional[ComprehensiveRegime]:
+    def get_comprehensive_regime(self) -> ComprehensiveRegime | None:
         """Get comprehensive market regime assessment.
 
         Combines:
@@ -300,7 +300,7 @@ class MarketRegimeAnalyzer:
 
 
 # Singleton instance
-_market_regime_analyzer: Optional[MarketRegimeAnalyzer] = None
+_market_regime_analyzer: MarketRegimeAnalyzer | None = None
 
 
 def get_market_regime_analyzer() -> MarketRegimeAnalyzer:

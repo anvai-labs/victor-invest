@@ -9,7 +9,6 @@ Date: 2025-11-07
 """
 
 import logging
-from typing import Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +38,7 @@ class WeightNormalizer:
 
         self.increment = rounding_increment
 
-    def normalize(self, weights: Dict[str, float], model_order: List[str] | None = None) -> Dict[str, float]:
+    def normalize(self, weights: dict[str, float], model_order: list[str] | None = None) -> dict[str, float]:
         """
         Normalize weights to sum to 100% and round to increment.
 
@@ -97,7 +96,7 @@ class WeightNormalizer:
                     base_weight = (100 // num_models // self.increment) * self.increment
                     remainder = 100 - (base_weight * num_models)
 
-                    rounded = {k: base_weight for k in rounded.keys()}
+                    rounded = {k: base_weight for k in rounded}
                     # Add remainder to first model
                     first_model = list(rounded.keys())[0]
                     rounded[first_model] += remainder
@@ -119,10 +118,10 @@ class WeightNormalizer:
 
     def normalize_with_fallback(
         self,
-        weights: Dict[str, float],
-        fallback_weights: Dict[str, float],
-        model_order: List[str] | None = None,
-    ) -> Dict[str, float]:
+        weights: dict[str, float],
+        fallback_weights: dict[str, float],
+        model_order: list[str] | None = None,
+    ) -> dict[str, float]:
         """
         Normalize weights with fallback to default weights if all zeros.
 
@@ -149,10 +148,10 @@ class WeightNormalizer:
 
     def apply_confidence_weighting(
         self,
-        base_weights: Dict[str, float],
-        confidences: Dict[str, float],
-        model_order: List[str] | None = None,
-    ) -> Dict[str, float]:
+        base_weights: dict[str, float],
+        confidences: dict[str, float],
+        model_order: list[str] | None = None,
+    ) -> dict[str, float]:
         """
         Adjust weights based on model confidence scores.
 
@@ -186,7 +185,7 @@ class WeightNormalizer:
         # Normalize
         return self.normalize(adjusted, model_order=model_order)
 
-    def validate_weights(self, weights: Dict[str, float], tolerance: float = 0.01) -> bool:
+    def validate_weights(self, weights: dict[str, float], tolerance: float = 0.01) -> bool:
         """
         Validate that weights are properly normalized.
 
@@ -206,7 +205,7 @@ class WeightNormalizer:
         return is_valid
 
     @staticmethod
-    def format_weights_string(weights: Dict[str, float]) -> str:
+    def format_weights_string(weights: dict[str, float]) -> str:
         """
         Format weights as human-readable string.
 

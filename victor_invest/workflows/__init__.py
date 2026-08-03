@@ -149,7 +149,7 @@ class InvestmentWorkflowProvider(BaseYAMLWorkflowProvider):
         """
         return Path(__file__).parent
 
-    def get_auto_workflows(self) -> List[Tuple[str, str]]:
+    def get_auto_workflows(self) -> list[tuple[str, str]]:
         """Get automatic workflow triggers based on query patterns.
 
         Returns:
@@ -171,7 +171,7 @@ class InvestmentWorkflowProvider(BaseYAMLWorkflowProvider):
             (r"relative\s+valuation", "peer_comparison"),
         ]
 
-    def get_workflow_for_task_type(self, task_type: str) -> Optional[str]:
+    def get_workflow_for_task_type(self, task_type: str) -> str | None:
         """Get appropriate workflow for task type.
 
         Args:
@@ -196,10 +196,10 @@ class InvestmentWorkflowProvider(BaseYAMLWorkflowProvider):
     async def run_agentic_workflow(
         self,
         workflow_name: str,
-        context: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
         provider: str = "ollama",
-        model: Optional[str] = None,
-        timeout: Optional[float] = None,
+        model: str | None = None,
+        timeout: float | None = None,
     ) -> "WorkflowResult":
         """Execute a YAML workflow with full agent node support.
 
@@ -269,8 +269,8 @@ class InvestmentWorkflowProvider(BaseYAMLWorkflowProvider):
     async def run_workflow_with_handlers(
         self,
         workflow_name: str,
-        context: Optional[Dict[str, Any]] = None,
-        timeout: Optional[float] = None,
+        context: dict[str, Any] | None = None,
+        timeout: float | None = None,
     ) -> "WorkflowResult":
         """Execute a YAML workflow using registered compute handlers.
 

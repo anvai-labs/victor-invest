@@ -7,7 +7,7 @@ and curve analysis (inversion detection, steepening, etc.)
 
 import logging
 from datetime import date
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ..base import (
     DataCategory,
@@ -66,7 +66,7 @@ class TreasuryYieldSource(DataSource):
             symbols_supported=False,
         )
 
-    def _fetch_impl(self, symbol: str, as_of_date: Optional[date] = None) -> DataResult:
+    def _fetch_impl(self, symbol: str, as_of_date: date | None = None) -> DataResult:
         """Fetch Treasury yields and calculate spreads"""
         try:
             from sqlalchemy import text
@@ -168,7 +168,7 @@ class TreasuryYieldSource(DataSource):
             logger.error(f"Treasury fetch error: {e}")
             return DataResult(success=False, error=str(e), source=self.name)
 
-    def _analyze_curve(self, yields: Dict[str, Dict]) -> Dict[str, Any]:
+    def _analyze_curve(self, yields: dict[str, dict]) -> dict[str, Any]:
         """Analyze yield curve shape and spreads"""
         analysis = {}
 

@@ -8,7 +8,7 @@ representative stock data for the sector analysis dashboard.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import APIRouter, Query
 from sqlalchemy import create_engine
@@ -33,9 +33,9 @@ def _get_engine() -> Engine:
 
 @router.get("/multiples")
 async def get_sector_multiples(
-    fiscal_year: Optional[int] = Query(None, description="Filter by fiscal year"),
-    sector: Optional[str] = Query(None, description="Filter by sector name"),
-) -> Dict[str, Any]:
+    fiscal_year: int | None = Query(None, description="Filter by fiscal year"),
+    sector: str | None = Query(None, description="Filter by sector name"),
+) -> dict[str, Any]:
     """Get sector multiples data.
 
     Args:
@@ -102,7 +102,7 @@ async def get_sector_history(
     sector: str = Query(..., description="Sector name"),
     start_year: int = Query(2016, description="Start year (inclusive)"),
     end_year: int = Query(2024, description="End year (inclusive)"),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get historical multiples data for a specific sector.
 
     Args:
@@ -153,8 +153,8 @@ async def get_sector_history(
 async def get_sector_timeline(
     start_year: int = Query(2016, description="Start year"),
     end_year: int = Query(2024, description="End year"),
-    sectors: Optional[str] = Query(None, description="Comma-separated sector list"),
-) -> Dict[str, Any]:
+    sectors: str | None = Query(None, description="Comma-separated sector list"),
+) -> dict[str, Any]:
     """Get sector multiples timeline data for multiple sectors.
 
     Args:
@@ -223,10 +223,10 @@ async def get_sector_timeline(
 
 @router.get("/stocks/representative")
 async def get_representative_stocks(
-    sector: Optional[str] = Query(None, description="Filter by sector"),
+    sector: str | None = Query(None, description="Filter by sector"),
     fiscal_year: int = Query(2024, description="Fiscal year for stock selection"),
     limit: int = Query(10, ge=1, le=50, description="Max stocks per sector"),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get representative stocks for sector(s).
 
     Args:
@@ -325,7 +325,7 @@ async def get_representative_stocks(
 
 
 @router.get("/overview")
-async def get_sector_overview() -> Dict[str, Any]:
+async def get_sector_overview() -> dict[str, Any]:
     """Get overview of all available sectors and their latest multiples.
 
     Returns:
@@ -382,7 +382,7 @@ async def get_sector_overview() -> Dict[str, Any]:
 async def compare_sectors(
     sectors: str = Query(..., description="Comma-separated sector list to compare"),
     metric: str = Query("pe", description="Metric to compare (pe, ps, pb, ev_ebitda)"),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Compare multiples across specified sectors.
 
     Args:

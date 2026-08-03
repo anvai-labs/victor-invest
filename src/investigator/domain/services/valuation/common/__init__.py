@@ -70,9 +70,9 @@ from investigator.domain.services.valuation.common.ttm_calculator import (
 )
 
 __all__ = [
-    "GrowthCalculator",
-    "TTMMetrics",
-    "SectorMultiples",
     "GrowthAdjustedMultiples",
+    "GrowthCalculator",
+    "SectorMultiples",
     "SymbolMetadata",
+    "TTMMetrics",
 ]

@@ -17,7 +17,7 @@ Model constraints:
 
 import logging
 from decimal import Decimal
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +35,8 @@ class GordonGrowthModel:
     def __init__(
         self,
         symbol: str,
-        quarterly_metrics: List[Dict],
-        multi_year_data: List[Dict],
+        quarterly_metrics: list[dict],
+        multi_year_data: list[dict],
         db_manager,
         company_profile: Optional["CompanyProfile"] = None,
     ):
@@ -56,7 +56,7 @@ class GordonGrowthModel:
         self.db_manager = db_manager
         self.company_profile = company_profile
 
-    def calculate_ggm_valuation(self, cost_of_equity: float, terminal_growth_rate: Optional[float] = None) -> Dict:
+    def calculate_ggm_valuation(self, cost_of_equity: float, terminal_growth_rate: float | None = None) -> dict:
         """
         Calculate Gordon Growth Model valuation
 
@@ -186,7 +186,7 @@ class GordonGrowthModel:
             logger.error(traceback.format_exc())
             return {
                 "applicable": False,
-                "reason": f"Calculation error: {str(e)}",
+                "reason": f"Calculation error: {e!s}",
                 "fair_value_per_share": 0,
             }
 
@@ -400,7 +400,7 @@ class GordonGrowthModel:
         # Sanity check: cap at 20%
         return max(0, min(sustainable_growth, 0.20))
 
-    def _validate_model_constraints(self, growth_rate: float, cost_of_equity: float) -> Dict:
+    def _validate_model_constraints(self, growth_rate: float, cost_of_equity: float) -> dict:
         """
         Validate GGM model constraints
 
@@ -530,7 +530,7 @@ class GordonGrowthModel:
             return float(value)
         return float(value)
 
-    def _normalize_share_count(self, value: Optional[float]) -> Optional[float]:
+    def _normalize_share_count(self, value: float | None) -> float | None:
         if value is None:
             return None
         shares = self._to_float(value)
@@ -546,7 +546,7 @@ class GordonGrowthModel:
             shares *= 1_000_000.0
         return shares
 
-    def _extract_dividends(self, period: Dict) -> Optional[float]:
+    def _extract_dividends(self, period: dict) -> float | None:
         """Extract dividends_paid from a quarterly period dict."""
         if not isinstance(period, dict):
             return None
@@ -569,7 +569,7 @@ class GordonGrowthModel:
 
         return None
 
-    def _extract_shares(self, period: Dict, prefer_diluted: bool = False) -> Optional[float]:
+    def _extract_shares(self, period: dict, prefer_diluted: bool = False) -> float | None:
         """Extract share count from a quarterly period dict."""
         if not isinstance(period, dict):
             return None

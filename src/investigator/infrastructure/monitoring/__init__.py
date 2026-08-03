@@ -19,7 +19,7 @@ from investigator.infrastructure.monitoring.monitoring import (
 __all__ = [
     "AlertManager",
     "MetricPoint",
-    "MetricsCollector",
     "MetricType",
+    "MetricsCollector",
     "PerformanceSnapshot",
 ]

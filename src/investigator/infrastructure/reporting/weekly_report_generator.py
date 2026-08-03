@@ -12,7 +12,6 @@ import logging
 from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
@@ -34,7 +33,7 @@ logger = logging.getLogger(__name__)
 class WeeklyReportGenerator(PDFReportGenerator):
     """Generates weekly portfolio summary reports"""
 
-    def __init__(self, output_dir: Path, config: Optional[ReportConfig] = None):
+    def __init__(self, output_dir: Path, config: ReportConfig | None = None):
         """Initialize weekly report generator"""
         # Update config for weekly reports
         if config is None:
@@ -46,9 +45,9 @@ class WeeklyReportGenerator(PDFReportGenerator):
 
     def generate_weekly_report(
         self,
-        portfolio_data: List[Dict],
-        market_summary: Optional[Dict] = None,
-        performance_data: Optional[Dict] = None,
+        portfolio_data: list[dict],
+        market_summary: dict | None = None,
+        performance_data: dict | None = None,
     ) -> str:
         """
         Generate weekly portfolio report
@@ -120,7 +119,7 @@ class WeeklyReportGenerator(PDFReportGenerator):
         logger.info(f"📊 Generated weekly report: {filepath}")
         return str(filepath)
 
-    def _create_weekly_title_page(self, week_start: datetime, week_end: datetime) -> List:
+    def _create_weekly_title_page(self, week_start: datetime, week_end: datetime) -> list:
         """Create weekly report title page"""
         elements = []
 
@@ -145,7 +144,7 @@ class WeeklyReportGenerator(PDFReportGenerator):
 
         return elements
 
-    def _create_market_overview(self, market_summary: Dict) -> List:
+    def _create_market_overview(self, market_summary: dict) -> list:
         """Create market overview section"""
         elements = []
 
@@ -201,7 +200,7 @@ class WeeklyReportGenerator(PDFReportGenerator):
 
         return elements
 
-    def _create_performance_summary(self, performance_data: Dict) -> List:
+    def _create_performance_summary(self, performance_data: dict) -> list:
         """Create portfolio performance summary"""
         elements = []
 
@@ -223,7 +222,7 @@ class WeeklyReportGenerator(PDFReportGenerator):
 
         return elements
 
-    def _create_top_movers(self, portfolio_data: List[Dict]) -> List:
+    def _create_top_movers(self, portfolio_data: list[dict]) -> list:
         """Create top movers section"""
         elements = []
 
@@ -299,7 +298,7 @@ class WeeklyReportGenerator(PDFReportGenerator):
 
         return elements
 
-    def _create_sector_analysis(self, portfolio_data: List[Dict]) -> List:
+    def _create_sector_analysis(self, portfolio_data: list[dict]) -> list:
         """Create sector analysis section"""
         elements = []
 
@@ -352,7 +351,7 @@ class WeeklyReportGenerator(PDFReportGenerator):
 
         return elements
 
-    def _create_stock_summaries(self, portfolio_data: List[Dict]) -> List:
+    def _create_stock_summaries(self, portfolio_data: list[dict]) -> list:
         """Create individual stock summaries"""
         elements = []
 
@@ -409,7 +408,7 @@ class WeeklyReportGenerator(PDFReportGenerator):
 
         return elements
 
-    def _create_recommendations_summary(self, portfolio_data: List[Dict]) -> List:
+    def _create_recommendations_summary(self, portfolio_data: list[dict]) -> list:
         """Create recommendations summary"""
         elements = []
 
@@ -477,7 +476,7 @@ class WeeklyReportGenerator(PDFReportGenerator):
 
         return elements
 
-    def _create_risk_assessment(self, portfolio_data: List[Dict]) -> List:
+    def _create_risk_assessment(self, portfolio_data: list[dict]) -> list:
         """Create portfolio risk assessment"""
         elements = []
 
@@ -501,7 +500,7 @@ class WeeklyReportGenerator(PDFReportGenerator):
 
         return elements
 
-    def _create_upcoming_events(self, portfolio_data: List[Dict]) -> List:
+    def _create_upcoming_events(self, portfolio_data: list[dict]) -> list:
         """Create upcoming events section"""
         elements = []
 

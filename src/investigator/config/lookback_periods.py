@@ -28,7 +28,6 @@ Rationale for default periods:
 """
 
 from dataclasses import dataclass
-from typing import Dict, List
 
 
 @dataclass(frozen=True)
@@ -120,11 +119,11 @@ class RLBacktestPeriods:
     """
 
     # Standard lookback months for analysis (quarterly snapshots)
-    standard_lookback_months: List[int] = (3, 6, 9, 12)
+    standard_lookback_months: list[int] = (3, 6, 9, 12)
     # Extended lookback for full cycle analysis
-    extended_lookback_months: List[int] = (3, 6, 9, 12, 18, 24, 36)
+    extended_lookback_months: list[int] = (3, 6, 9, 12, 18, 24, 36)
     # Holding periods for reward calculation (days)
-    holding_periods: Dict[str, int] = None
+    holding_periods: dict[str, int] = None
     # Minimum training examples per symbol
     min_training_examples: int = 8
     # Outcome evaluation lookback
@@ -158,7 +157,7 @@ TECHNICAL_PERIODS = TechnicalAnalysisPeriods()
 RL_BACKTEST_PERIODS = RLBacktestPeriods()
 
 
-def get_all_periods() -> Dict[str, object]:
+def get_all_periods() -> dict[str, object]:
     """Get all period configurations as a dictionary."""
     return {
         "insider": INSIDER_PERIODS,

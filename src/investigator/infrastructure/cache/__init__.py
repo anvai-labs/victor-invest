@@ -25,11 +25,11 @@ from investigator.infrastructure.cache.rdbms_cache_handler import (
 __all__ = [
     "CacheManager",
     "CacheType",
-    "get_cache_manager",
     "FileCacheStorageHandler",
-    "ParquetCacheStorageHandler",
-    "RdbmsCacheStorageHandler",
+    "IndustryBenchmarksCacheEntry",
     "IndustryMetricsCache",
     "IndustryMetricsCacheEntry",
-    "IndustryBenchmarksCacheEntry",
+    "ParquetCacheStorageHandler",
+    "RdbmsCacheStorageHandler",
+    "get_cache_manager",
 ]

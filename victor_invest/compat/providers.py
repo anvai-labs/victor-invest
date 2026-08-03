@@ -7,7 +7,7 @@ ProviderRegistry directly from victor.providers.registry.
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 def create_provider(
     provider_name: str,
     *,
-    model: Optional[str] = None,
+    model: str | None = None,
     temperature: float = 0.7,
     max_tokens: int = 4096,
     **kwargs: Any,

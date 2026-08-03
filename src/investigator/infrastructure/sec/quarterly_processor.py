@@ -9,7 +9,6 @@ Handles extraction and processing of quarterly financial data from SEC EDGAR API
 """
 
 import logging
-from typing import Dict, List, Optional
 
 from data.models import FinancialStatementData, QuarterlyData
 from investigator.application.processors import SubmissionProcessor
@@ -46,7 +45,7 @@ class SECQuarterlyProcessor:
         # Logging setup
         self.main_logger = self.config.get_main_logger("sec_quarterly_processor")
 
-    def get_recent_quarterly_data(self, ticker: str) -> List[QuarterlyData]:
+    def get_recent_quarterly_data(self, ticker: str) -> list[QuarterlyData]:
         """
         Get recent quarterly data for a ticker.
 
@@ -109,7 +108,7 @@ class SECQuarterlyProcessor:
             self.main_logger.error(f"Error fetching submissions for {ticker}: {e}")
             return False
 
-    def _extract_recent_periods(self, ticker: str, cik: str, max_periods: int) -> List[QuarterlyData]:
+    def _extract_recent_periods(self, ticker: str, cik: str, max_periods: int) -> list[QuarterlyData]:
         """Extract recent periods using cache manager interface"""
         try:
             # Use cache manager's get method to retrieve submission data
@@ -169,7 +168,7 @@ class SECQuarterlyProcessor:
             self.main_logger.error(f"Error extracting recent periods: {e}")
             return []
 
-    def _get_quarterly_data_from_facts(self, ticker: str, cik: str, max_periods: int) -> List[QuarterlyData]:
+    def _get_quarterly_data_from_facts(self, ticker: str, cik: str, max_periods: int) -> list[QuarterlyData]:
         """Extract quarterly data directly from company facts API"""
         try:
             # Get company facts
@@ -208,7 +207,7 @@ class SECQuarterlyProcessor:
             self.main_logger.error(f"Error getting quarterly data from facts: {e}")
             return []
 
-    def _get_company_facts(self, ticker: str, cik: str) -> Optional[Dict]:
+    def _get_company_facts(self, ticker: str, cik: str) -> dict | None:
         """Get company facts from cache or SEC API"""
         try:
             # Use existing company facts DAO
@@ -231,7 +230,7 @@ class SECQuarterlyProcessor:
             self.main_logger.error(f"Error getting company facts: {e}")
             return None
 
-    def _extract_periods_from_facts(self, facts: Dict, max_periods: int) -> List[Dict]:
+    def _extract_periods_from_facts(self, facts: dict, max_periods: int) -> list[dict]:
         """Extract recent periods from company facts data"""
         try:
             periods = []
@@ -278,7 +277,7 @@ class SECQuarterlyProcessor:
             self.main_logger.error(f"Error extracting periods from facts: {e}")
             return []
 
-    def populate_quarterly_data(self, quarterly_data: List[QuarterlyData]) -> List[QuarterlyData]:
+    def populate_quarterly_data(self, quarterly_data: list[QuarterlyData]) -> list[QuarterlyData]:
         """
         Populate quarterly data objects with detailed financial information.
 
@@ -307,7 +306,7 @@ class SECQuarterlyProcessor:
 
         return quarterly_data
 
-    def _fetch_period_financial_data(self, qd: QuarterlyData) -> Dict:
+    def _fetch_period_financial_data(self, qd: QuarterlyData) -> dict:
         """Fetch detailed financial data for a specific period"""
         try:
             # Get all financial categories from config
@@ -346,7 +345,7 @@ class SECQuarterlyProcessor:
             self.main_logger.error(f"Error fetching period financial data: {e}")
             return {}
 
-    def _get_cached_category_data(self, qd: QuarterlyData, category: str) -> Optional[Dict]:
+    def _get_cached_category_data(self, qd: QuarterlyData, category: str) -> dict | None:
         """Get cached data for a specific category and period"""
         try:
             cache_key = f"{category}_{qd.get_period_key()}"
@@ -355,7 +354,7 @@ class SECQuarterlyProcessor:
             self.main_logger.error(f"Error getting cached category data: {e}")
             return None
 
-    def _cache_category_data(self, qd: QuarterlyData, category: str, data: Dict):
+    def _cache_category_data(self, qd: QuarterlyData, category: str, data: dict):
         """Cache data for a specific category and period"""
         try:
             cache_key = f"{category}_{qd.get_period_key()}"
@@ -375,8 +374,8 @@ class SECQuarterlyProcessor:
             self.main_logger.error(f"Error caching category data: {e}")
 
     def _extract_category_from_facts(
-        self, facts: Dict, category: str, fiscal_year: int, fiscal_period: str
-    ) -> Optional[Dict]:
+        self, facts: dict, category: str, fiscal_year: int, fiscal_period: str
+    ) -> dict | None:
         """Extract specific category data from company facts"""
         try:
             # Get concepts for this category
@@ -429,12 +428,12 @@ class SECQuarterlyProcessor:
 
     def _extract_concept_data(
         self,
-        facts_data: Dict,
+        facts_data: dict,
         concept_name: str,
-        xbrl_tags: List[str],
+        xbrl_tags: list[str],
         fiscal_year: int,
         fiscal_period: str,
-    ) -> Dict:
+    ) -> dict:
         """Extract data for a specific concept from facts"""
         try:
             for tag in xbrl_tags:
@@ -467,8 +466,8 @@ class SECQuarterlyProcessor:
             return {"value": "", "missing": True, "error": str(e)}
 
     def _calculate_income_statement_metrics(
-        self, concepts: Dict, facts_data: Dict, fiscal_year: int, fiscal_period: str
-    ) -> Dict:
+        self, concepts: dict, facts_data: dict, fiscal_year: int, fiscal_period: str
+    ) -> dict:
         """Calculate comprehensive income statement metrics including EPS"""
         try:
             calculated = {}
@@ -549,8 +548,8 @@ class SECQuarterlyProcessor:
             return {}
 
     def _calculate_balance_sheet_metrics(
-        self, concepts: Dict, facts_data: Dict, fiscal_year: int, fiscal_period: str
-    ) -> Dict:
+        self, concepts: dict, facts_data: dict, fiscal_year: int, fiscal_period: str
+    ) -> dict:
         """Calculate comprehensive balance sheet metrics"""
         try:
             calculated = {}
@@ -610,7 +609,7 @@ class SECQuarterlyProcessor:
             self.main_logger.error(f"Error calculating balance sheet metrics: {e}")
             return {}
 
-    def _get_concept_value(self, concepts: Dict, concept_name: str) -> Optional[float]:
+    def _get_concept_value(self, concepts: dict, concept_name: str) -> float | None:
         """Get numeric value from concept data"""
         try:
             concept_data = concepts.get(concept_name, {})
@@ -623,8 +622,8 @@ class SECQuarterlyProcessor:
             return None
 
     def _extract_shares_data(
-        self, facts_data: Dict, share_type: str, fiscal_year: int, fiscal_period: str
-    ) -> Optional[float]:
+        self, facts_data: dict, share_type: str, fiscal_year: int, fiscal_period: str
+    ) -> float | None:
         """Extract shares outstanding data from facts"""
         try:
             # Define share concept tags based on type

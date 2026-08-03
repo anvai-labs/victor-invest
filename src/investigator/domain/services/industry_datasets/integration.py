@@ -12,7 +12,7 @@ Date: 2025-12-30
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from investigator.domain.services.industry_datasets.base import (
     IndustryMetrics,
@@ -29,11 +29,11 @@ logger = logging.getLogger(__name__)
 
 def extract_industry_metrics(
     symbol: str,
-    xbrl_data: Optional[Dict],
-    financials: Dict,
-    industry: Optional[str] = None,
-    sector: Optional[str] = None,
-) -> Optional[IndustryMetrics]:
+    xbrl_data: dict | None,
+    financials: dict,
+    industry: str | None = None,
+    sector: str | None = None,
+) -> IndustryMetrics | None:
     """
     Extract industry-specific metrics for a stock.
 
@@ -101,11 +101,11 @@ def extract_industry_metrics(
 
 def get_valuation_adjustments(
     symbol: str,
-    xbrl_data: Optional[Dict],
-    financials: Dict,
-    industry: Optional[str] = None,
-    sector: Optional[str] = None,
-) -> Tuple[List[ValuationAdjustment], Optional[IndustryMetrics]]:
+    xbrl_data: dict | None,
+    financials: dict,
+    industry: str | None = None,
+    sector: str | None = None,
+) -> tuple[list[ValuationAdjustment], IndustryMetrics | None]:
     """
     Get valuation adjustments based on industry-specific metrics.
 
@@ -169,9 +169,9 @@ def get_valuation_adjustments(
 
 def get_recommended_tier_weights(
     symbol: str,
-    industry: Optional[str] = None,
-    sector: Optional[str] = None,
-) -> Optional[Dict[str, int]]:
+    industry: str | None = None,
+    sector: str | None = None,
+) -> dict[str, int] | None:
     """
     Get recommended tier weights for a stock's industry.
 
@@ -197,8 +197,8 @@ def get_recommended_tier_weights(
 
 
 def get_xbrl_tag_aliases(
-    industry: Optional[str] = None,
-) -> Dict[str, List[str]]:
+    industry: str | None = None,
+) -> dict[str, list[str]]:
     """
     Get XBRL tag aliases for an industry or all industries.
 
@@ -238,9 +238,9 @@ def get_xbrl_tag_aliases(
 
 def apply_adjustments_to_fair_value(
     base_fair_value: float,
-    adjustments: List[ValuationAdjustment],
-    models_to_apply: Optional[List[str]] = None,
-) -> Tuple[float, List[str]]:
+    adjustments: list[ValuationAdjustment],
+    models_to_apply: list[str] | None = None,
+) -> tuple[float, list[str]]:
     """
     Apply valuation adjustments to a base fair value.
 
@@ -281,11 +281,11 @@ def apply_adjustments_to_fair_value(
 
 def get_industry_summary(
     symbol: str,
-    xbrl_data: Optional[Dict],
-    financials: Dict,
-    industry: Optional[str] = None,
-    sector: Optional[str] = None,
-) -> Optional[Dict[str, Any]]:
+    xbrl_data: dict | None,
+    financials: dict,
+    industry: str | None = None,
+    sector: str | None = None,
+) -> dict[str, Any] | None:
     """
     Get a comprehensive industry summary for a stock.
 
@@ -375,7 +375,7 @@ def get_industry_summary(
     }
 
 
-def list_available_industries() -> List[str]:
+def list_available_industries() -> list[str]:
     """
     List all industries covered by registered datasets.
 
@@ -389,7 +389,7 @@ def list_available_industries() -> List[str]:
     return list_registered_industries()
 
 
-def is_industry_covered(industry: Optional[str]) -> bool:
+def is_industry_covered(industry: str | None) -> bool:
     """
     Check if an industry has a specialized dataset.
 

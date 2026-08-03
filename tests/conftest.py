@@ -2,7 +2,7 @@
 
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 
@@ -21,7 +21,7 @@ def cache_root(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def sample_llm_response() -> Dict[str, Any]:
+def sample_llm_response() -> dict[str, Any]:
     return {
         "prompt": "Analyze TEST",
         "response": {
@@ -35,7 +35,7 @@ def sample_llm_response() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_technical_data() -> Dict[str, Any]:
+def sample_technical_data() -> dict[str, Any]:
     return {
         "symbol": "TEST",
         "analysis_date": "2025-01-01",
@@ -45,7 +45,7 @@ def sample_technical_data() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_company_facts() -> Dict[str, Any]:
+def sample_company_facts() -> dict[str, Any]:
     return {
         "symbol": "TEST",
         "cik": "0001234567",
@@ -54,7 +54,7 @@ def sample_company_facts() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_submission_data() -> Dict[str, Any]:
+def sample_submission_data() -> dict[str, Any]:
     return {
         "symbol": "TEST",
         "cik": "0001234567",
@@ -63,7 +63,7 @@ def sample_submission_data() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_quarterly_metrics() -> Dict[str, Any]:
+def sample_quarterly_metrics() -> dict[str, Any]:
     return {
         "symbol": "TEST",
         "fiscal_year": "2024",

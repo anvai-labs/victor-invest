@@ -10,7 +10,7 @@ Provides a clean API for all LLM processing needs
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 from .llm_interfaces import (
     ILLMObserver,
@@ -112,8 +112,8 @@ class LLMFacade:
     # ============================================================================
 
     def analyze_fundamental(
-        self, symbol: str, quarterly_data: List[Dict], filing_data: Dict | None = None
-    ) -> Dict[str, Any]:
+        self, symbol: str, quarterly_data: list[dict], filing_data: dict | None = None
+    ) -> dict[str, Any]:
         """
         Perform fundamental analysis using template method pattern
 
@@ -143,7 +143,7 @@ class LLMFacade:
                 "timestamp": datetime.utcnow().isoformat(),
             }
 
-    def analyze_technical(self, symbol: str, price_data: Dict, indicators: Dict | None = None) -> Dict[str, Any]:
+    def analyze_technical(self, symbol: str, price_data: dict, indicators: dict | None = None) -> dict[str, Any]:
         """
         Perform technical analysis using template method pattern
 
@@ -173,7 +173,7 @@ class LLMFacade:
                 "timestamp": datetime.utcnow().isoformat(),
             }
 
-    def synthesize_analysis(self, symbol: str, fundamental_result: Dict, technical_result: Dict) -> Dict[str, Any]:
+    def synthesize_analysis(self, symbol: str, fundamental_result: dict, technical_result: dict) -> dict[str, Any]:
         """
         Synthesize fundamental and technical analysis
 
@@ -203,7 +203,7 @@ class LLMFacade:
                 "timestamp": datetime.utcnow().isoformat(),
             }
 
-    def analyze_quarterly_summary(self, symbol: str, quarter_data: Dict) -> Dict[str, Any]:
+    def analyze_quarterly_summary(self, symbol: str, quarter_data: dict) -> dict[str, Any]:
         """
         Create quarterly performance summary
 
@@ -228,7 +228,7 @@ class LLMFacade:
                 "timestamp": datetime.utcnow().isoformat(),
             }
 
-    def assess_risks(self, symbol: str, all_data: Dict) -> Dict[str, Any]:
+    def assess_risks(self, symbol: str, all_data: dict) -> dict[str, Any]:
         """
         Perform comprehensive risk assessment
 
@@ -258,7 +258,7 @@ class LLMFacade:
     # Direct LLM Methods (Strategy Pattern)
     # ============================================================================
 
-    def generate_response(self, task_type: LLMTaskType, data: Dict[str, Any]) -> Dict[str, Any]:
+    def generate_response(self, task_type: LLMTaskType, data: dict[str, Any]) -> dict[str, Any]:
         """
         Generate LLM response using strategy pattern
 
@@ -287,7 +287,7 @@ class LLMFacade:
                 "timestamp": datetime.utcnow().isoformat(),
             }
 
-    def generate_batch_responses(self, requests: List[Dict]) -> List[Dict[str, Any]]:
+    def generate_batch_responses(self, requests: list[dict]) -> list[dict[str, Any]]:
         """
         Generate multiple LLM responses in batch
 
@@ -326,7 +326,7 @@ class LLMFacade:
     # Legacy Compatibility Methods
     # ============================================================================
 
-    def query_ollama(self, model: str, prompt: str, system_prompt: str | None = None, **kwargs) -> Dict[str, Any]:
+    def query_ollama(self, model: str, prompt: str, system_prompt: str | None = None, **kwargs) -> dict[str, Any]:
         """
         Legacy compatibility method for direct Ollama queries
         Maintains backward compatibility with existing code
@@ -410,7 +410,7 @@ class LLMFacade:
     # Utility Methods
     # ============================================================================
 
-    def get_queue_status(self) -> Dict[str, Any]:
+    def get_queue_status(self) -> dict[str, Any]:
         """Get current processing queue status"""
         return {
             "queue_size": self.processor.get_queue_size(),

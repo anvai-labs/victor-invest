@@ -22,7 +22,7 @@ Design Principles (SOLID):
 import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -73,10 +73,10 @@ class CompetitiveAnalysis:
     barriers_to_entry: ForceAssessment
     supplier_and_customer_power: ForceAssessment
     threat_of_substitutes: ForceAssessment
-    competitive_risks: List[str]
+    competitive_risks: list[str]
     strategic_positioning_score: int
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for API compatibility."""
         return {
             "market_position_and_share": {
@@ -114,13 +114,13 @@ class CompetitiveContext:
 
     symbol: str
     sector: str
-    industry: Optional[str]
-    market_cap: Optional[float]
-    revenue: Optional[float]
-    profit_margin: Optional[float]
-    revenue_growth: Optional[float]
-    roe: Optional[float]
-    debt_to_equity: Optional[float]
+    industry: str | None
+    market_cap: float | None
+    revenue: float | None
+    profit_margin: float | None
+    revenue_growth: float | None
+    roe: float | None
+    debt_to_equity: float | None
     data_quality_score: float = 50.0
 
 
@@ -141,19 +141,19 @@ class SectorProfile:
 
     sector: str
     typical_barriers: str
-    typical_moat_sources: List[str]
+    typical_moat_sources: list[str]
     supplier_power: str
     customer_power: str
     substitute_threat: str
     competitive_intensity: str
-    key_success_factors: List[str]
-    common_risks: List[str]
+    key_success_factors: list[str]
+    common_risks: list[str]
     industry_growth: str
     consolidation_trend: str
 
 
 # Sector profile registry
-SECTOR_PROFILES: Dict[str, SectorProfile] = {
+SECTOR_PROFILES: dict[str, SectorProfile] = {
     "Technology": SectorProfile(
         sector="Technology",
         typical_barriers="High",
@@ -604,7 +604,7 @@ class SubstituteThreatAnalyzer:
 class CompetitiveRiskGenerator:
     """Generates competitive risks based on context and sector."""
 
-    def generate(self, context: CompetitiveContext, sector_profile: SectorProfile) -> List[str]:
+    def generate(self, context: CompetitiveContext, sector_profile: SectorProfile) -> list[str]:
         """Generate relevant competitive risks."""
         risks = []
 
@@ -652,13 +652,13 @@ class DeterministicCompetitiveAnalyzer:
 
     def __init__(
         self,
-        market_position_analyzer: Optional[ForceAnalyzer] = None,
-        moat_analyzer: Optional[ForceAnalyzer] = None,
-        industry_dynamics_analyzer: Optional[ForceAnalyzer] = None,
-        barriers_analyzer: Optional[ForceAnalyzer] = None,
-        power_analyzer: Optional[ForceAnalyzer] = None,
-        substitute_analyzer: Optional[ForceAnalyzer] = None,
-        risk_generator: Optional[CompetitiveRiskGenerator] = None,
+        market_position_analyzer: ForceAnalyzer | None = None,
+        moat_analyzer: ForceAnalyzer | None = None,
+        industry_dynamics_analyzer: ForceAnalyzer | None = None,
+        barriers_analyzer: ForceAnalyzer | None = None,
+        power_analyzer: ForceAnalyzer | None = None,
+        substitute_analyzer: ForceAnalyzer | None = None,
+        risk_generator: CompetitiveRiskGenerator | None = None,
     ):
         self.market_position_analyzer = market_position_analyzer or MarketPositionAnalyzer()
         self.moat_analyzer = moat_analyzer or MoatAnalyzer()
@@ -719,7 +719,7 @@ class DeterministicCompetitiveAnalyzer:
         )
 
     @classmethod
-    def from_company_data(cls, symbol: str, company_data: Dict[str, Any]) -> CompetitiveAnalysis:
+    def from_company_data(cls, symbol: str, company_data: dict[str, Any]) -> CompetitiveAnalysis:
         """
         Factory method to create analysis from company_data dict.
 
@@ -764,7 +764,7 @@ class DeterministicCompetitiveAnalyzer:
 # ============================================================================
 
 
-def analyze_competitive_position(symbol: str, company_data: Dict[str, Any]) -> Dict[str, Any]:
+def analyze_competitive_position(symbol: str, company_data: dict[str, Any]) -> dict[str, Any]:
     """
     Drop-in replacement for LLM-based competitive position analysis.
 
@@ -785,21 +785,21 @@ def analyze_competitive_position(symbol: str, company_data: Dict[str, Any]) -> D
 
 
 __all__ = [
-    "DeterministicCompetitiveAnalyzer",
-    "CompetitiveAnalysis",
-    "CompetitiveContext",
-    "ForceAssessment",
-    "AssessmentLevel",
-    "MoatWidth",
-    "MarketPosition",
-    "SectorProfile",
     "SECTOR_PROFILES",
-    "MarketPositionAnalyzer",
-    "MoatAnalyzer",
-    "IndustryDynamicsAnalyzer",
+    "AssessmentLevel",
     "BarriersToEntryAnalyzer",
     "BuyerSupplierPowerAnalyzer",
-    "SubstituteThreatAnalyzer",
+    "CompetitiveAnalysis",
+    "CompetitiveContext",
     "CompetitiveRiskGenerator",
+    "DeterministicCompetitiveAnalyzer",
+    "ForceAssessment",
+    "IndustryDynamicsAnalyzer",
+    "MarketPosition",
+    "MarketPositionAnalyzer",
+    "MoatAnalyzer",
+    "MoatWidth",
+    "SectorProfile",
+    "SubstituteThreatAnalyzer",
     "analyze_competitive_position",
 ]

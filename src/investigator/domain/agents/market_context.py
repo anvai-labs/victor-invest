@@ -7,7 +7,7 @@ import json
 import logging
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -37,7 +37,7 @@ class SectorMapping:
 
     sector: str
     primary_etf: str
-    secondary_etfs: List[str]
+    secondary_etfs: list[str]
     description: str
 
 
@@ -213,7 +213,7 @@ class ETFMarketContextAgent(InvestmentAgent):
             },
         }
 
-    def register_capabilities(self) -> List:
+    def register_capabilities(self) -> list:
         """Register agent capabilities"""
         from investigator.domain.agents.base import AgentCapability
 
@@ -252,7 +252,7 @@ class ETFMarketContextAgent(InvestmentAgent):
             logger.error(f"Failed to fetch stock data for {symbol}: {e}")
             return pd.DataFrame()
 
-    def _get_macro_indicators_cached(self) -> Dict:
+    def _get_macro_indicators_cached(self) -> dict:
         """
         Get macro indicators with caching
 
@@ -427,7 +427,7 @@ class ETFMarketContextAgent(InvestmentAgent):
                 error=str(e),
             )
 
-    def _determine_symbol_sector(self, symbol: str, context: Dict) -> Optional[str]:
+    def _determine_symbol_sector(self, symbol: str, context: dict) -> str | None:
         """Determine the sector for a given symbol using database lookup"""
         # First check if sector is provided in context
         if "sector" in context:
@@ -456,7 +456,7 @@ class ETFMarketContextAgent(InvestmentAgent):
 
         return None
 
-    def _map_database_sector_to_etf_key(self, db_sector: str) -> Optional[str]:
+    def _map_database_sector_to_etf_key(self, db_sector: str) -> str | None:
         """Map database sector names to ETF sector keys"""
         # Mapping from database sector names to our ETF sector keys
         sector_map = {
@@ -481,7 +481,7 @@ class ETFMarketContextAgent(InvestmentAgent):
 
         return sector_map.get(db_sector)
 
-    async def _analyze_market_context(self, macro_indicators: Dict | None = None) -> Dict:
+    async def _analyze_market_context(self, macro_indicators: dict | None = None) -> dict:
         """Analyze overall market context using key ETFs and macro indicators (VIX)"""
         market_context = {}
 
@@ -533,7 +533,7 @@ class ETFMarketContextAgent(InvestmentAgent):
 
         return market_context
 
-    async def _analyze_sector_context(self, sector: str) -> Dict:
+    async def _analyze_sector_context(self, sector: str) -> dict:
         """Analyze sector context using sector ETFs"""
         if sector not in self.sector_etfs:
             return {}
@@ -586,7 +586,7 @@ class ETFMarketContextAgent(InvestmentAgent):
 
         return sector_context
 
-    async def _analyze_relative_performance(self, symbol: str, sector: Optional[str]) -> Dict:
+    async def _analyze_relative_performance(self, symbol: str, sector: str | None) -> dict:
         """Analyze symbol's performance relative to market and sector"""
         relative_performance = {"symbol": symbol}
 
@@ -655,11 +655,11 @@ class ETFMarketContextAgent(InvestmentAgent):
     async def _generate_market_sentiment_analysis(
         self,
         symbol: str,
-        market_context: Dict,
-        sector_context: Dict,
-        relative_performance: Dict,
-        macro_indicators: Dict | None = None,
-    ) -> Dict:
+        market_context: dict,
+        sector_context: dict,
+        relative_performance: dict,
+        macro_indicators: dict | None = None,
+    ) -> dict:
         """Generate LLM-powered market sentiment analysis with macro economic context"""
 
         # Defensive checks for None values
@@ -857,7 +857,7 @@ class ETFMarketContextAgent(InvestmentAgent):
             fallback["error"] = str(e)
             return fallback
 
-    def _parse_market_sentiment_response(self, response: Any) -> Dict[str, Any]:
+    def _parse_market_sentiment_response(self, response: Any) -> dict[str, Any]:
         """Parse market sentiment responses that may be wrapped, stringified, or mixed text."""
         candidate = response
         if isinstance(response, dict) and "response" in response:
@@ -884,8 +884,8 @@ class ETFMarketContextAgent(InvestmentAgent):
             return {}
 
     def _build_fallback_market_sentiment_analysis(
-        self, market_context: Dict, sector_context: Dict, relative_performance: Dict
-    ) -> Dict[str, Any]:
+        self, market_context: dict, sector_context: dict, relative_performance: dict
+    ) -> dict[str, Any]:
         """Build deterministic market sentiment payload when LLM output is unavailable."""
         timeframe_map = [
             ("leading", "leading_10d"),
@@ -893,9 +893,9 @@ class ETFMarketContextAgent(InvestmentAgent):
             ("medium_term", "medium_term_63d"),
             ("long_term", "long_term_252d"),
         ]
-        timeframe_analysis: Dict[str, Dict[str, Any]] = {}
-        timeframe_sentiments: List[str] = []
-        divergences: List[str] = []
+        timeframe_analysis: dict[str, dict[str, Any]] = {}
+        timeframe_sentiments: list[str] = []
+        divergences: list[str] = []
 
         def _sentiment_from_return(value: float) -> str:
             if value > 0.01:
@@ -994,7 +994,7 @@ class ETFMarketContextAgent(InvestmentAgent):
             "fallback_used": True,
         }
 
-    def _calculate_returns(self, data: pd.DataFrame, days: int) -> Dict:
+    def _calculate_returns(self, data: pd.DataFrame, days: int) -> dict:
         """Calculate returns for given period"""
         if len(data) < days:
             return {"total_return": 0, "annualized_return": 0}
@@ -1017,7 +1017,7 @@ class ETFMarketContextAgent(InvestmentAgent):
 
         return float(daily_returns.std() * np.sqrt(252))  # Annualized volatility
 
-    def _calculate_momentum_indicators(self, data: pd.DataFrame) -> Dict:
+    def _calculate_momentum_indicators(self, data: pd.DataFrame) -> dict:
         """Calculate momentum indicators"""
         if len(data) < 20:
             return {}
@@ -1073,7 +1073,7 @@ class ETFMarketContextAgent(InvestmentAgent):
 
         return covariance / market_variance if market_variance > 0 else 1.0
 
-    def _determine_market_regime(self, market_context: Dict, macro_indicators: Dict | None = None) -> str:
+    def _determine_market_regime(self, market_context: dict, macro_indicators: dict | None = None) -> str:
         """Determine current market regime using multi-factor analysis including commodities and VIX"""
         # Analyze medium-term performance
         medium_term = market_context.get("medium_term", {})
@@ -1164,7 +1164,7 @@ class ETFMarketContextAgent(InvestmentAgent):
         else:
             return "mixed"
 
-    def _calculate_sector_strength(self, sector_context: Dict) -> str:
+    def _calculate_sector_strength(self, sector_context: dict) -> str:
         """Calculate sector strength vs market"""
         medium_term = sector_context.get("medium_term", {})
 
@@ -1186,7 +1186,7 @@ class ETFMarketContextAgent(InvestmentAgent):
         else:
             return "very_weak"
 
-    def _get_analyzed_etfs(self, market_context: Dict, sector_context: Dict) -> List[str]:
+    def _get_analyzed_etfs(self, market_context: dict, sector_context: dict) -> list[str]:
         """Get list of all ETFs analyzed"""
         etfs = set()
 
@@ -1211,7 +1211,7 @@ class ETFMarketContextAgent(InvestmentAgent):
 
         return list(etfs)
 
-    def _extract_key_market_metrics(self, market_context: Dict) -> Dict:
+    def _extract_key_market_metrics(self, market_context: dict) -> dict:
         """Extract key metrics for LLM analysis including commodities"""
         medium_term = market_context.get("medium_term", {})
 
@@ -1227,7 +1227,7 @@ class ETFMarketContextAgent(InvestmentAgent):
             "market_regime": market_context.get("market_regime", "neutral"),
         }
 
-    def _extract_key_sector_metrics(self, sector_context: Dict) -> Dict:
+    def _extract_key_sector_metrics(self, sector_context: dict) -> dict:
         """Extract key sector metrics"""
         if not sector_context:
             return {}
@@ -1243,7 +1243,7 @@ class ETFMarketContextAgent(InvestmentAgent):
             "sector_strength": sector_context.get("sector_strength", "neutral"),
         }
 
-    def _summarize_relative_performance(self, relative_performance: Dict) -> Dict:
+    def _summarize_relative_performance(self, relative_performance: dict) -> dict:
         """Summarize relative performance data"""
         summary = {}
 
@@ -1266,7 +1266,7 @@ class ETFMarketContextAgent(InvestmentAgent):
 
         return summary
 
-    def _format_market_data_for_prompt(self, analysis_data: Dict) -> str:
+    def _format_market_data_for_prompt(self, analysis_data: dict) -> str:
         """Format market data for LLM prompt including commodities and macro indicators"""
         lines = []
 

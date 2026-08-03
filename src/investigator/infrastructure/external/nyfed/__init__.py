@@ -37,8 +37,8 @@ from investigator.infrastructure.external.nyfed.markets_data import (
 )
 
 __all__ = [
+    "GSCPIData",
     "NYFedDataClient",
     "RecessionProbability",
-    "GSCPIData",
     "get_nyfed_client",
 ]

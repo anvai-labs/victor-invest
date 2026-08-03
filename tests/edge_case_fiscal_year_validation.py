@@ -17,7 +17,6 @@ Date: 2025-11-17
 
 import sys
 from datetime import datetime
-from typing import Dict, List, Tuple
 
 from sqlalchemy import create_engine, text
 
@@ -44,7 +43,7 @@ class FiscalYearEdgeCaseValidator:
         )
         return create_engine(connection_string, pool_size=5, max_overflow=10)
 
-    def get_fiscal_year_end_distribution(self) -> List[Tuple[str, int, List[str]]]:
+    def get_fiscal_year_end_distribution(self) -> list[tuple[str, int, list[str]]]:
         """
         Get distribution of fiscal year ends across database.
 
@@ -81,7 +80,7 @@ class FiscalYearEdgeCaseValidator:
             result = conn.execute(query)
             return [(row.fye, row.count, row.sample_symbols.split(", ")) for row in result]
 
-    def get_company_fiscal_periods(self, cik: int, min_year: int = 2023) -> List[Dict]:
+    def get_company_fiscal_periods(self, cik: int, min_year: int = 2023) -> list[dict]:
         """
         Get fiscal periods for a company from bulk table.
 
@@ -158,7 +157,7 @@ class FiscalYearEdgeCaseValidator:
         fiscal_year_end_month: int,
         expected_fy: int,
         expected_fp: str,
-    ) -> Dict:
+    ) -> dict:
         """
         Test fiscal year calculation for a specific case.
 
@@ -203,7 +202,7 @@ class FiscalYearEdgeCaseValidator:
                 "status": "ERROR",
             }
 
-    def validate_oracle_edge_cases(self) -> List[Dict]:
+    def validate_oracle_edge_cases(self) -> list[dict]:
         """
         Validate Oracle (May fiscal year end) edge cases.
 
@@ -235,7 +234,7 @@ class FiscalYearEdgeCaseValidator:
 
         return results
 
-    def validate_walmart_edge_cases(self) -> List[Dict]:
+    def validate_walmart_edge_cases(self) -> list[dict]:
         """
         Validate Walmart (Jan fiscal year end) edge cases.
 
@@ -265,7 +264,7 @@ class FiscalYearEdgeCaseValidator:
 
         return results
 
-    def validate_leap_year_edge_cases(self) -> List[Dict]:
+    def validate_leap_year_edge_cases(self) -> list[dict]:
         """Validate leap year handling (Feb 29)"""
         test_cases = [
             # Leap year Feb 29
@@ -283,7 +282,7 @@ class FiscalYearEdgeCaseValidator:
 
         return results
 
-    def validate_q1_q4_boundary(self) -> List[Dict]:
+    def validate_q1_q4_boundary(self) -> list[dict]:
         """Validate Q1 vs Q4 boundary cases"""
         test_cases = [
             # Company with FY ending Jan 31
@@ -301,7 +300,7 @@ class FiscalYearEdgeCaseValidator:
 
         return results
 
-    def validate_same_date_different_fy(self) -> List[Dict]:
+    def validate_same_date_different_fy(self) -> list[dict]:
         """
         Validate same calendar date, different fiscal years.
 
@@ -327,7 +326,7 @@ class FiscalYearEdgeCaseValidator:
 
         return results
 
-    def print_results(self, test_name: str, results: List[Dict]):
+    def print_results(self, test_name: str, results: list[dict]):
         """Print test results in formatted table"""
         print(f"\n{'=' * 80}")
         print(f"{test_name}")

@@ -22,7 +22,6 @@ Example:
 import logging
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, List, Optional
 
 from sqlalchemy import create_engine, text
 
@@ -36,12 +35,12 @@ class SymbolMetadata:
     symbol: str
     sector: str
     industry: str
-    market_cap: Optional[float]
-    shares_outstanding: Optional[float]
-    beta: Optional[float]
+    market_cap: float | None
+    shares_outstanding: float | None
+    beta: float | None
     is_sp500: bool = False
     is_russell1000: bool = False
-    cik: Optional[str] = None
+    cik: str | None = None
 
     @property
     def size_category(self) -> str:
@@ -94,13 +93,13 @@ class SymbolMetadataService:
             pool_recycle=3600,
         )
         self.cache_ttl = cache_ttl_seconds
-        self._cache: Dict[str, tuple] = {}  # symbol -> (metadata, timestamp)
+        self._cache: dict[str, tuple] = {}  # symbol -> (metadata, timestamp)
 
     def get_metadata(
         self,
         symbol: str,
         use_cache: bool = True,
-    ) -> Optional[SymbolMetadata]:
+    ) -> SymbolMetadata | None:
         """
         Get metadata for a symbol.
 
@@ -161,9 +160,9 @@ class SymbolMetadataService:
 
     def get_metadata_batch(
         self,
-        symbols: List[str],
+        symbols: list[str],
         use_cache: bool = True,
-    ) -> Dict[str, SymbolMetadata]:
+    ) -> dict[str, SymbolMetadata]:
         """
         Get metadata for multiple symbols.
 
@@ -240,7 +239,7 @@ class SymbolMetadataService:
         metadata = self.get_metadata(symbol)
         return metadata.industry if metadata else "Unknown"
 
-    def get_market_cap(self, symbol: str) -> Optional[float]:
+    def get_market_cap(self, symbol: str) -> float | None:
         """Get market cap for a symbol."""
         metadata = self.get_metadata(symbol)
         return metadata.market_cap if metadata else None
@@ -254,7 +253,7 @@ class SymbolMetadataService:
         """Clear the metadata cache."""
         self._cache.clear()
 
-    def get_symbols_by_sector(self, sector: str, min_market_cap: float = 0) -> List[str]:
+    def get_symbols_by_sector(self, sector: str, min_market_cap: float = 0) -> list[str]:
         """
         Get all symbols in a sector.
 
@@ -280,7 +279,7 @@ class SymbolMetadataService:
             ).fetchall()
             return [row[0] for row in result]
 
-    def get_russell1000_symbols(self) -> List[str]:
+    def get_russell1000_symbols(self) -> list[str]:
         """Get Russell 1000 symbols."""
         with self.stock_engine.connect() as conn:
             result = conn.execute(
@@ -295,7 +294,7 @@ class SymbolMetadataService:
             ).fetchall()
             return [row[0] for row in result]
 
-    def get_sp500_symbols(self) -> List[str]:
+    def get_sp500_symbols(self) -> list[str]:
         """Get S&P 500 symbols."""
         with self.stock_engine.connect() as conn:
             result = conn.execute(

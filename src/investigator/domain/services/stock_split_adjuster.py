@@ -32,7 +32,6 @@ Usage:
 import logging
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Dict, List, Optional
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -49,7 +48,7 @@ class StockSplit:
     symbol: str
     split_date: date
     split_ratio: float  # e.g., 20.0 for 20:1 split, 0.5 for 1:2 reverse split
-    description: Optional[str] = None
+    description: str | None = None
 
     def __post_init__(self):
         """Validate split ratio"""
@@ -67,8 +66,8 @@ class SplitAdjustedEPS:
     raw_eps: float
     split_adjusted_eps: float
     adjustment_factor: float
-    splits_applied: List[StockSplit]
-    target_year: Optional[int] = None
+    splits_applied: list[StockSplit]
+    target_year: int | None = None
 
     def __str__(self) -> str:
         """Human-readable representation"""
@@ -93,7 +92,7 @@ class StockSplitAdjuster:
     to a common basis for accurate comparisons across time.
     """
 
-    def __init__(self, engine: Optional[Engine] = None):
+    def __init__(self, engine: Engine | None = None):
         """
         Initialize the stock split adjuster.
 
@@ -102,7 +101,7 @@ class StockSplitAdjuster:
         """
         self.engine = engine or get_database_engine()
 
-    def get_splits_for_symbol(self, symbol: str) -> List[StockSplit]:
+    def get_splits_for_symbol(self, symbol: str) -> list[StockSplit]:
         """
         Get all stock splits for a symbol, ordered by date.
 
@@ -141,7 +140,7 @@ class StockSplitAdjuster:
             logger.error(f"Error fetching splits for {symbol}: {e}")
             return []
 
-    def get_splits_between_years(self, symbol: str, from_year: int, to_year: int) -> List[StockSplit]:
+    def get_splits_between_years(self, symbol: str, from_year: int, to_year: int) -> list[StockSplit]:
         """
         Get all splits that occurred between two fiscal years.
 
@@ -159,9 +158,7 @@ class StockSplitAdjuster:
         # Note: This is a simplified check - fiscal years don't perfectly align with calendar dates
         return [s for s in splits if from_year <= s.split_date.year <= to_year]
 
-    def calculate_cumulative_split_ratio(
-        self, symbol: str, before_date: date, after_date: Optional[date] = None
-    ) -> float:
+    def calculate_cumulative_split_ratio(self, symbol: str, before_date: date, after_date: date | None = None) -> float:
         """
         Calculate the cumulative split ratio for a period.
 
@@ -194,8 +191,8 @@ class StockSplitAdjuster:
         fiscal_year: int,
         fiscal_period: str,
         raw_eps: float,
-        target_year: Optional[int] = None,
-        fiscal_year_end: Optional[date] = None,
+        target_year: int | None = None,
+        fiscal_year_end: date | None = None,
     ) -> SplitAdjustedEPS:
         """
         Calculate split-adjusted EPS for a given period.
@@ -263,9 +260,9 @@ class StockSplitAdjuster:
         self,
         symbol: str,
         start_year: int,
-        end_year: Optional[int] = None,
+        end_year: int | None = None,
         fiscal_period: str = "FY",
-    ) -> Dict[int, SplitAdjustedEPS]:
+    ) -> dict[int, SplitAdjustedEPS]:
         """
         Get historical EPS values all adjusted to the same (most recent) basis.
 
@@ -336,7 +333,7 @@ class StockSplitAdjuster:
         end_year: int,
         fiscal_period: str = "FY",
         use_split_adjusted: bool = True,
-    ) -> Optional[float]:
+    ) -> float | None:
         """
         Calculate EPS growth rate between two years.
 
@@ -419,7 +416,7 @@ class StockSplitAdjuster:
         symbol: str,
         split_date: date,
         split_ratio: float,
-        description: Optional[str] = None,
+        description: str | None = None,
     ) -> bool:
         """
         Add a new stock split to the database.
@@ -498,7 +495,7 @@ class StockSplitAdjuster:
         symbol: str,
         price: float,
         shares: float,
-        price_date: Optional[date] = None,
+        price_date: date | None = None,
     ) -> float:
         """
         Calculate market cap correctly accounting for stock splits.

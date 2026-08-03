@@ -41,7 +41,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import date
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -92,10 +92,10 @@ class RecessionAssessment:
     yield_curve_inverted: bool = False
     inversion_days: int = 0
     gscpi_stress: bool = False
-    gscpi_value: Optional[float] = None
-    leading_indicators: Dict[str, str] = field(default_factory=dict)
+    gscpi_value: float | None = None
+    leading_indicators: dict[str, str] = field(default_factory=dict)
     confidence: float = 0.0
-    warnings: List[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
     def __post_init__(self):
         """Calculate derived values."""
@@ -163,7 +163,7 @@ class RecessionAssessment:
 
         self.confidence = min(confidence, 1.0)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "date": str(self.date),
@@ -231,7 +231,7 @@ class RecessionAssessment:
         return ranges.get(self.phase, (40, 60))
 
     @property
-    def sector_recommendations(self) -> Dict[str, str]:
+    def sector_recommendations(self) -> dict[str, str]:
         """Sector allocation recommendations."""
         if self.phase in (EconomicPhase.PRE_RECESSION, EconomicPhase.RECESSION):
             return {
@@ -343,10 +343,10 @@ class RecessionIndicator:
 
         except Exception as e:
             logger.error(f"Error in recession assessment: {e}")
-            assessment.warnings.append(f"Assessment error: {str(e)}")
+            assessment.warnings.append(f"Assessment error: {e!s}")
             return assessment
 
-    def _build_leading_indicators(self, recession_prob, gscpi, curve_analysis) -> Dict[str, str]:
+    def _build_leading_indicators(self, recession_prob, gscpi, curve_analysis) -> dict[str, str]:
         """Build leading indicators summary."""
         indicators = {}
 
@@ -374,7 +374,7 @@ class RecessionIndicator:
 
         return indicators
 
-    async def get_history(self, months: int = 24) -> List[Dict[str, Any]]:
+    async def get_history(self, months: int = 24) -> list[dict[str, Any]]:
         """Get historical recession probability.
 
         Args:
@@ -391,7 +391,7 @@ class RecessionIndicator:
             logger.error(f"Error fetching recession history: {e}")
             return []
 
-    async def get_market_regime_summary(self) -> Dict[str, Any]:
+    async def get_market_regime_summary(self) -> dict[str, Any]:
         """Get comprehensive market regime summary.
 
         Combines yield curve, recession probability, and supply chain
@@ -423,7 +423,7 @@ class RecessionIndicator:
 
 
 # Singleton instance
-_recession_indicator: Optional[RecessionIndicator] = None
+_recession_indicator: RecessionIndicator | None = None
 
 
 def get_recession_indicator() -> RecessionIndicator:

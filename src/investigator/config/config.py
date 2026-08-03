@@ -15,7 +15,7 @@ import re
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import yaml
 
@@ -68,24 +68,24 @@ class OllamaConfig:
     """Ollama AI configuration"""
 
     base_url: str
-    models: Dict[str, str]
+    models: dict[str, str]
     timeout: int
     max_retries: int
     min_context_size: int
     num_llm_threads: int
-    num_predict: Dict[str, int]
-    model_specs: Dict[str, ModelSpec] = field(default_factory=dict)  # Model specifications (single source of truth)
-    context_sizes: Dict[str, int] = field(default_factory=dict)  # Model-specific context sizes (legacy)
-    model_info_cache: Dict[str, Dict[str, int]] = field(default_factory=dict)  # Cache for model info
+    num_predict: dict[str, int]
+    model_specs: dict[str, ModelSpec] = field(default_factory=dict)  # Model specifications (single source of truth)
+    context_sizes: dict[str, int] = field(default_factory=dict)  # Model-specific context sizes (legacy)
+    model_info_cache: dict[str, dict[str, int]] = field(default_factory=dict)  # Cache for model info
 
     # Multi-server pool configuration
     keep_alive: int = -1  # Keep models loaded (-1 = indefinitely)
-    servers: Optional[List[Any]] = None  # List of server configurations
+    servers: list[Any] | None = None  # List of server configurations
     pool_strategy: str = "most_capacity"  # Load balancing strategy
 
     # TOON format configuration (Token-Oriented Object Notation for token efficiency)
     use_toon_format: bool = False  # Enable TOON format for input prompts (30-87% token savings)
-    toon_agents: Dict[str, bool] = field(default_factory=dict)  # Per-agent TOON toggles
+    toon_agents: dict[str, bool] = field(default_factory=dict)  # Per-agent TOON toggles
 
     def get_context_size(self, model_name: str) -> int:
         """Get context size for specific model, fallback to min_context_size"""
@@ -123,7 +123,7 @@ class EmailConfig:
     username: str
     password: str
     from_address: str
-    recipients: List[str]
+    recipients: list[str]
     use_tls: bool
 
 
@@ -194,17 +194,17 @@ class CacheConfig:
     priority: int = 1  # Negative priority means write-only (no retrieval)
 
     # Disk cache settings
-    disk_path: Optional[str] = None
+    disk_path: str | None = None
     filename_pattern: str = "{symbol}_{data_type}.json"
 
     # RDBMS cache settings
-    table_name: Optional[str] = None
+    table_name: str | None = None
     key_column: str = "symbol"
     data_column: str = "data"
 
     # TTL and cleanup settings
-    ttl_hours: Optional[int] = None  # None means no expiration
-    max_entries: Optional[int] = None  # Max entries before cleanup
+    ttl_hours: int | None = None  # None means no expiration
+    max_entries: int | None = None  # Max entries before cleanup
 
     def __post_init__(self):
         """Validate cache configuration"""
@@ -223,7 +223,7 @@ class CacheHandlerConfig:
     priority: int = 10
 
     # Handler-specific settings
-    settings: Dict[str, Any] = field(default_factory=dict)
+    settings: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         # Ensure settings is a dict
@@ -282,10 +282,10 @@ class CacheControlConfig:
     read_from_cache: bool = True
     write_to_cache: bool = True
     force_refresh: bool = False
-    force_refresh_symbols: Optional[List[str]] = None
+    force_refresh_symbols: list[str] | None = None
 
     # Cache type configurations with natural key patterns
-    cache_types: Dict[str, CacheTypeConfig] = field(
+    cache_types: dict[str, CacheTypeConfig] = field(
         default_factory=lambda: {
             "sec_response": CacheTypeConfig(
                 ttl_hours=2160,  # 90 days - SEC API calls are rate-limited and expensive
@@ -465,7 +465,7 @@ class CacheControlConfig:
 
     # Backward compatibility properties
     @property
-    def storage(self) -> List[str]:
+    def storage(self) -> list[str]:
         """Get list of enabled storage backends"""
         storage = []
         for cache_type, config in self.cache_types.items():
@@ -476,7 +476,7 @@ class CacheControlConfig:
         return storage
 
     @property
-    def types(self) -> Optional[List[str]]:
+    def types(self) -> list[str] | None:
         """Get list of enabled cache types"""
         enabled_types = [cache_type for cache_type, config in self.cache_types.items() if config.enabled]
         return enabled_types if enabled_types else None
@@ -516,7 +516,7 @@ class CacheControlConfig:
         cache_config = self.cache_types.get(config_name)
         return cache_config is not None and cache_config.enabled
 
-    def get_cache_config(self, cache_type: str) -> Optional[CacheTypeConfig]:
+    def get_cache_config(self, cache_type: str) -> CacheTypeConfig | None:
         """Get configuration for a specific cache type"""
         type_map = {
             "sec_response": "sec_response",
@@ -561,7 +561,7 @@ class VectorDBConfig:
 
     # Event analysis - driven by submission router
     enable_event_analysis: bool = True
-    event_analysis_forms: List[str] = field(default_factory=lambda: ["8-K", "8-K/A", "DEF 14A", "4", "13D", "13G"])
+    event_analysis_forms: list[str] = field(default_factory=lambda: ["8-K", "8-K/A", "DEF 14A", "4", "13D", "13G"])
     event_storage_ttl_hours: int = 168  # 7 days for event data
 
     # Submission-driven processing
@@ -592,17 +592,17 @@ class ParquetConfig:
 
     engine: str = "fastparquet"  # Options: "fastparquet", "pyarrow"
     compression: str = "gzip"  # Uniform compression across all data
-    compression_level: Optional[int] = 9  # Maximum compression for gzip
+    compression_level: int | None = 9  # Maximum compression for gzip
 
     # PyArrow specific options (also use gzip for uniformity)
     pyarrow_compression: str = "gzip"  # Uniform gzip compression
-    pyarrow_compression_level: Optional[int] = 9  # Maximum compression for gzip
+    pyarrow_compression_level: int | None = 9  # Maximum compression for gzip
 
     # Common options
     use_dictionary: bool = True  # Dictionary encoding for string columns
-    row_group_size: Optional[int] = None  # Number of rows per row group
+    row_group_size: int | None = None  # Number of rows per row group
 
-    def get_write_kwargs(self) -> Dict[str, any]:
+    def get_write_kwargs(self) -> dict[str, any]:
         """Get kwargs for to_parquet based on engine"""
         if self.engine == "fastparquet":
             return {
@@ -757,7 +757,7 @@ class CachingConfig:
     )
 
     # Performance and behavior settings
-    cache_manager_settings: Dict[str, Union[str, int, float, bool]] = field(
+    cache_manager_settings: dict[str, str | int | float | bool] = field(
         default_factory=lambda: {
             "default_timeout_seconds": 30,
             "max_concurrent_operations": 10,
@@ -770,7 +770,7 @@ class CachingConfig:
         }
     )
 
-    def get_cache_config(self, data_type: str) -> Optional[CacheConfig]:
+    def get_cache_config(self, data_type: str) -> CacheConfig | None:
         """Get cache configuration for a specific data type"""
         return getattr(self, data_type, None)
 
@@ -908,7 +908,7 @@ class Config:
         ]:
             Path(directory).mkdir(parents=True, exist_ok=True)
 
-    def _override_with_env(self, config_data: Dict) -> Dict:
+    def _override_with_env(self, config_data: dict) -> dict:
         """Override configuration with environment variables
 
         Supports both SEC_DB_* and DB_* prefixes for database configuration.
@@ -974,12 +974,12 @@ class Config:
         if "database" in config_data:
             db_config = config_data["database"]
             if "username" not in db_config or not db_config["username"]:
-                if "database" in db_config and db_config["database"]:
+                if db_config.get("database"):
                     db_config["username"] = db_config["database"]
 
         return config_data
 
-    def _default_database(self) -> Dict:
+    def _default_database(self) -> dict:
         """Default database configuration"""
         return {
             "host": "localhost",
@@ -991,7 +991,7 @@ class Config:
             "max_overflow": 20,
         }
 
-    def _default_ollama(self) -> Dict:
+    def _default_ollama(self) -> dict:
         """Default Ollama configuration"""
         return {
             "base_url": "http://localhost:11434",
@@ -1023,7 +1023,7 @@ class Config:
             },
         }
 
-    def _default_sec(self) -> Dict:
+    def _default_sec(self) -> dict:
         """Default SEC configuration"""
         return {
             "user_agent": "InvestiGator/1.0 (user@example.com)",
@@ -1856,7 +1856,7 @@ class Config:
             "include_amended_filings": True,
         }
 
-    def _default_email(self) -> Dict:
+    def _default_email(self) -> dict:
         """Default email configuration"""
         return {
             "enabled": False,
@@ -1869,7 +1869,7 @@ class Config:
             "use_tls": True,
         }
 
-    def _default_analysis(self) -> Dict:
+    def _default_analysis(self) -> dict:
         """Default analysis configuration"""
         return {
             "fundamental_weight": 0.6,
@@ -1881,7 +1881,7 @@ class Config:
             "max_prompt_tokens": 32768,
         }
 
-    def _default_logging(self) -> Dict:
+    def _default_logging(self) -> dict:
         """Default logging configuration"""
         return {
             "symbol_log_max_bytes": 1024 * 1024,  # 1MB
@@ -1893,7 +1893,7 @@ class Config:
             "main_log_file": "investigator.log",
         }
 
-    def _default_stocks(self) -> List[str]:
+    def _default_stocks(self) -> list[str]:
         """Default stock list"""
         return [
             "AAPL",
@@ -1908,7 +1908,7 @@ class Config:
             "SNOW",
         ]
 
-    def _default_parquet(self) -> Dict:
+    def _default_parquet(self) -> dict:
         """Default parquet configuration - uniform gzip compression"""
         return {
             "engine": "fastparquet",
@@ -1920,7 +1920,7 @@ class Config:
             "row_group_size": None,
         }
 
-    def _default_vector_db(self) -> Dict:
+    def _default_vector_db(self) -> dict:
         """Default vector database configuration"""
         return {
             "enabled": False,  # Disabled by default - user must opt-in
@@ -1944,7 +1944,7 @@ class Config:
             "similarity_threshold": 0.5,
         }
 
-    def _default_cache_control(self) -> Dict:
+    def _default_cache_control(self) -> dict:
         """Default cache control configuration"""
         return {
             "storage": ["disk", "rdbms"],  # Both storage backends enabled by default
@@ -1956,7 +1956,7 @@ class Config:
             "cache_ttl_override": None,
         }
 
-    def _build_caching_config(self, caching_data: Dict) -> CachingConfig:
+    def _build_caching_config(self, caching_data: dict) -> CachingConfig:
         """Build caching configuration with user overrides"""
         caching_config = CachingConfig()
 
@@ -1986,7 +1986,7 @@ class Config:
             handlers=[logging.FileHandler(log_file), logging.StreamHandler()],
         )
 
-    def get_raw_section(self, section_name: str, default: Optional[Dict] = None) -> Dict:
+    def get_raw_section(self, section_name: str, default: dict | None = None) -> dict:
         """
         Get raw config section that hasn't been parsed into dataclasses.
 
@@ -2086,7 +2086,7 @@ class Config:
         cache_dir.mkdir(parents=True, exist_ok=True)
         return cache_dir
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         """Validate configuration and return list of errors"""
         errors = []
 
@@ -2315,7 +2315,7 @@ class Config:
 _config_instance = None
 
 
-def get_config(config_path: Optional[str] = None) -> Config:
+def get_config(config_path: str | None = None) -> Config:
     """
     Get global configuration instance.
 

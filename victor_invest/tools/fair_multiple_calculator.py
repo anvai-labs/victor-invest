@@ -33,7 +33,7 @@ Example:
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from victor_invest.tools.base import BaseTool, ToolResult
 
@@ -93,13 +93,13 @@ class FairMultipleCalculatorTool(BaseTool):
 
         except Exception as e:
             logger.exception(f"Error in FairMultipleCalculatorTool.execute: {e}")
-            return ToolResult.create_failure(f"Error calculating fair multiples: {str(e)}")
+            return ToolResult.create_failure(f"Error calculating fair multiples: {e!s}")
 
     async def _calculate(
         self,
         symbol: str,
         sector: str,
-        industry: Optional[str] = None,
+        industry: str | None = None,
         metric: str = "all",
         lookback_years: int = 5,
         conservative: bool = False,
@@ -206,11 +206,11 @@ class FairMultipleCalculatorTool(BaseTool):
         self,
         symbol: str,
         sector: str,
-        industry: Optional[str] = None,
-        current_price: Optional[float] = None,
-        eps: Optional[float] = None,
-        revenue_per_share: Optional[float] = None,
-        book_value_per_share: Optional[float] = None,
+        industry: str | None = None,
+        current_price: float | None = None,
+        eps: float | None = None,
+        revenue_per_share: float | None = None,
+        book_value_per_share: float | None = None,
         lookback_years: int = 5,
         conservative: bool = False,
         **kwargs,

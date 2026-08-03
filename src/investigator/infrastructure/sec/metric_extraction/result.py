@@ -11,7 +11,6 @@ SOLID Principle: Single Responsibility
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional
 
 
 class MatchMethod(Enum):
@@ -44,8 +43,8 @@ class ExtractionAttempt:
     tag_name: str
     matched: bool
     entries_found: int
-    selected_entry: Optional[Dict] = None
-    reason: Optional[str] = None
+    selected_entry: dict | None = None
+    reason: str | None = None
     duration_ms: float = 0.0
 
 
@@ -59,15 +58,15 @@ class ExtractionAudit:
     """
 
     canonical_key: str
-    target_period_end: Optional[str] = None
-    target_fiscal_year: Optional[int] = None
-    target_fiscal_period: Optional[str] = None
-    target_adsh: Optional[str] = None
+    target_period_end: str | None = None
+    target_fiscal_year: int | None = None
+    target_fiscal_period: str | None = None
+    target_adsh: str | None = None
 
-    attempts: List[ExtractionAttempt] = field(default_factory=list)
+    attempts: list[ExtractionAttempt] = field(default_factory=list)
     total_duration_ms: float = 0.0
-    started_at: Optional[str] = None
-    completed_at: Optional[str] = None
+    started_at: str | None = None
+    completed_at: str | None = None
 
     def add_attempt(self, attempt: ExtractionAttempt) -> None:
         """Add an extraction attempt to the audit trail."""
@@ -117,33 +116,33 @@ class ExtractionResult:
     """
 
     success: bool
-    value: Optional[float] = None
-    source_tag: Optional[str] = None
+    value: float | None = None
+    source_tag: str | None = None
     match_method: MatchMethod = MatchMethod.NOT_FOUND
     confidence: ExtractionConfidence = ExtractionConfidence.NONE
 
     # Metadata from matched entry
-    period_end: Optional[str] = None
-    period_start: Optional[str] = None
-    duration_days: Optional[int] = None
-    form: Optional[str] = None
-    filed_date: Optional[str] = None
-    accn: Optional[str] = None
+    period_end: str | None = None
+    period_start: str | None = None
+    duration_days: int | None = None
+    form: str | None = None
+    filed_date: str | None = None
+    accn: str | None = None
 
     # SEC fields (may be unreliable)
-    sec_fy: Optional[int] = None
-    sec_fp: Optional[str] = None
+    sec_fy: int | None = None
+    sec_fp: str | None = None
 
     # Full entry and audit
-    entry: Optional[Dict] = None
-    audit: Optional[ExtractionAudit] = None
-    error: Optional[str] = None
+    entry: dict | None = None
+    audit: ExtractionAudit | None = None
+    error: str | None = None
 
     @classmethod
     def not_found(
         cls,
         canonical_key: str,
-        audit: Optional[ExtractionAudit] = None,
+        audit: ExtractionAudit | None = None,
         reason: str = "No matching entry found",
     ) -> "ExtractionResult":
         """Factory for failed extraction."""
@@ -160,10 +159,10 @@ class ExtractionResult:
         cls,
         value: float,
         source_tag: str,
-        entry: Dict,
+        entry: dict,
         match_method: MatchMethod,
         confidence: ExtractionConfidence = ExtractionConfidence.HIGH,
-        audit: Optional[ExtractionAudit] = None,
+        audit: ExtractionAudit | None = None,
     ) -> "ExtractionResult":
         """Factory from SEC entry dict."""
         # Calculate duration
@@ -203,8 +202,8 @@ class ExtractionResult:
         cls,
         value: float,
         formula: str,
-        components: Dict[str, float],
-        audit: Optional[ExtractionAudit] = None,
+        components: dict[str, float],
+        audit: ExtractionAudit | None = None,
     ) -> "ExtractionResult":
         """Factory for derived/calculated values."""
         return cls(

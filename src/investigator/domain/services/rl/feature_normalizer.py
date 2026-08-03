@@ -29,7 +29,7 @@ import os
 import pickle
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -82,10 +82,10 @@ class NormalizerState:
     version: str = "1.0"
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
     updated_at: str = field(default_factory=lambda: datetime.now().isoformat())
-    feature_stats: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    feature_stats: dict[str, dict[str, Any]] = field(default_factory=dict)
     normalization_method: str = "z_score"
     include_categorical: bool = True
-    clip_range: Tuple[float, float] = (-3.0, 3.0)
+    clip_range: tuple[float, float] = (-3.0, 3.0)
 
 
 class FeatureNormalizer:
@@ -105,7 +105,7 @@ class FeatureNormalizer:
         self,
         normalization_method: str = "z_score",
         include_categorical: bool = True,
-        clip_range: Tuple[float, float] = (-3.0, 3.0),
+        clip_range: tuple[float, float] = (-3.0, 3.0),
     ):
         """
         Initialize normalizer.
@@ -121,7 +121,7 @@ class FeatureNormalizer:
         self.extractor = ValuationContextExtractor()
 
         # Statistics for each feature
-        self._stats: Dict[str, FeatureStatistics] = {}
+        self._stats: dict[str, FeatureStatistics] = {}
         self._fitted = False
         self._version = "1.0"
         self._created_at = datetime.now()
@@ -138,7 +138,7 @@ class FeatureNormalizer:
 
     def fit(
         self,
-        contexts: List[ValuationContext],
+        contexts: list[ValuationContext],
         reset: bool = True,
     ) -> "FeatureNormalizer":
         """
@@ -237,7 +237,7 @@ class FeatureNormalizer:
 
     def fit_transform(
         self,
-        contexts: List[ValuationContext],
+        contexts: list[ValuationContext],
     ) -> np.ndarray:
         """
         Fit normalizer and transform data in one step.
@@ -407,7 +407,7 @@ class FeatureNormalizer:
             logger.error(f"Failed to load normalizer: {e}")
             return False
 
-    def get_statistics(self) -> Dict[str, Dict[str, float]]:
+    def get_statistics(self) -> dict[str, dict[str, float]]:
         """Get current feature statistics."""
         return {
             name: {
@@ -431,7 +431,7 @@ class FeatureNormalizer:
         return len(self._feature_names)
 
     @property
-    def feature_names(self) -> List[str]:
+    def feature_names(self) -> list[str]:
         """Get feature names."""
         return self._feature_names.copy()
 

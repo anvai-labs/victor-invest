@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from sqlalchemy import text
 
@@ -14,7 +15,7 @@ def fetch_latest_company_data_from_processed_table(
     logger: Any,
     processed_additional_financial_keys: Sequence[str],
     processed_ratio_keys: Sequence[str],
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """
     Fetch latest company-level snapshot from `sec_companyfacts_processed`.
 
@@ -113,7 +114,7 @@ def fetch_latest_company_data_from_processed_table(
         )
 
         filed_date = row.get("filed_date").isoformat() if row.get("filed_date") else None
-        financial_metrics: Dict[str, Any] = {
+        financial_metrics: dict[str, Any] = {
             "revenues": safe_float("total_revenue"),
             "net_income": safe_float("net_income"),
             "gross_profit": safe_float("gross_profit"),
@@ -158,7 +159,7 @@ def fetch_latest_company_data_from_processed_table(
             )
             financial_metrics["shares_outstanding"] = shares_guess
 
-        financial_ratios: Dict[str, Any] = {
+        financial_ratios: dict[str, Any] = {
             "current_ratio": safe_float("current_ratio"),
             "quick_ratio": safe_float("quick_ratio"),
             "debt_to_equity": safe_float("debt_to_equity"),

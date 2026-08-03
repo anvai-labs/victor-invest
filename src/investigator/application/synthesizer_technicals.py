@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
-def extract_momentum_signals(content: Dict[str, Any]) -> List[str]:
+def extract_momentum_signals(content: dict[str, Any]) -> list[str]:
     """Extract momentum and volume signals from structured technical content."""
-    signals: List[str] = []
+    signals: list[str] = []
 
     momentum = content.get("momentum_analysis", {})
     if momentum:
@@ -33,9 +33,9 @@ def extract_momentum_signals(content: Dict[str, Any]) -> List[str]:
     return signals
 
 
-def extract_legacy_technical_indicators(content: str) -> Dict[str, Any]:
+def extract_legacy_technical_indicators(content: str) -> dict[str, Any]:
     """Extract technical indicators from a legacy text response."""
-    indicators: Dict[str, Any] = {}
+    indicators: dict[str, Any] = {}
 
     support_match = re.search(r"support_levels[:\s]*\[([^\]]+)\]", content, re.IGNORECASE)
     resistance_match = re.search(r"resistance_levels[:\s]*\[([^\]]+)\]", content, re.IGNORECASE)
@@ -59,7 +59,7 @@ def extract_legacy_technical_indicators(content: str) -> Dict[str, Any]:
     return indicators
 
 
-def _parse_json_from_response(content: str) -> Dict[str, Any]:
+def _parse_json_from_response(content: str) -> dict[str, Any]:
     """Extract the first JSON object from a potentially mixed text response."""
     json_content = content
     if "=== AI RESPONSE ===" in content:
@@ -87,7 +87,7 @@ def _parse_json_from_response(content: str) -> Dict[str, Any]:
     return json.loads(json_content)
 
 
-def extract_technical_indicators(llm_responses: Dict[str, Any], *, logger: Optional[Any] = None) -> Dict[str, Any]:
+def extract_technical_indicators(llm_responses: dict[str, Any], *, logger: Any | None = None) -> dict[str, Any]:
     """Extract normalized technical indicators from structured or legacy LLM responses."""
     technical_response = llm_responses.get("technical")
     if not technical_response:
@@ -99,7 +99,7 @@ def extract_technical_indicators(llm_responses: Dict[str, Any], *, logger: Optio
         if isinstance(content, str) and content:
             logger.debug(f"Technical content preview: {content[:100]}...")
 
-    indicators: Dict[str, Any] = {}
+    indicators: dict[str, Any] = {}
     if isinstance(content, dict):
         indicators = {
             "technical_score": content.get("technical_score", {}).get("score", 0.0),
@@ -158,10 +158,10 @@ def extract_technical_indicators(llm_responses: Dict[str, Any], *, logger: Optio
     return indicators
 
 
-def extract_technical_signals_from_text(technical_text: str, *, logger: Optional[Any] = None) -> Dict[str, Any]:
+def extract_technical_signals_from_text(technical_text: str, *, logger: Any | None = None) -> dict[str, Any]:
     """Extract a few canonical technical signals from narrative text."""
     try:
-        signals: Dict[str, Any] = {}
+        signals: dict[str, Any] = {}
 
         rsi_match = re.search(r"RSI[^:]*:\s*([\d.]+)", technical_text, re.IGNORECASE)
         if rsi_match:
@@ -214,7 +214,7 @@ def check_ma_cross(sma_50: float, sma_200: float) -> str:
     return "Neutral"
 
 
-def assess_trend_strength(tech_data: Dict[str, Any]) -> str:
+def assess_trend_strength(tech_data: dict[str, Any]) -> str:
     """Assess overall trend strength from RSI and recent price change."""
     try:
         rsi = tech_data.get("rsi", 50)
@@ -233,7 +233,7 @@ def assess_trend_strength(tech_data: Dict[str, Any]) -> str:
         return "N/A"
 
 
-def calculate_bb_position(tech_data: Dict[str, Any]) -> str:
+def calculate_bb_position(tech_data: dict[str, Any]) -> str:
     """Calculate the current Bollinger-band position."""
     try:
         current_price = tech_data.get("current_price", 0)
@@ -258,7 +258,7 @@ def calculate_bb_position(tech_data: Dict[str, Any]) -> str:
         return "N/A"
 
 
-def assess_volume_trend(tech_data: Dict[str, Any]) -> str:
+def assess_volume_trend(tech_data: dict[str, Any]) -> str:
     """Classify the relative volume level."""
     try:
         volume_ratio = tech_data.get("volume_ratio", 1)
@@ -275,7 +275,7 @@ def assess_volume_trend(tech_data: Dict[str, Any]) -> str:
         return "N/A"
 
 
-def assess_volume_price_relationship(tech_data: Dict[str, Any]) -> str:
+def assess_volume_price_relationship(tech_data: dict[str, Any]) -> str:
     """Assess whether volume confirms or contradicts recent price action."""
     try:
         price_change_1d = tech_data.get("price_change_1d", 0)

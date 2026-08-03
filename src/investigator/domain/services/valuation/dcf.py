@@ -11,7 +11,6 @@ Implements professional-grade DCF analysis with:
 """
 
 import logging
-from typing import Dict, List, Optional
 
 from investigator.config import get_config
 
@@ -39,8 +38,8 @@ class DCFValuation:
     def __init__(
         self,
         symbol: str,
-        quarterly_metrics: List[Dict],
-        multi_year_data: List[Dict],
+        quarterly_metrics: list[dict],
+        multi_year_data: list[dict],
         db_manager,
     ):
         """
@@ -68,22 +67,22 @@ class DCFValuation:
         # CRITICAL FIX: Cache for get_rolling_ttm_periods() results to avoid redundant Q4 computations
         # Key: (num_quarters, compute_missing) -> Value: List of periods
         # This prevents duplicate YTD conversion, Q4 computation, and fiscal year grouping
-        self._ttm_cache: Dict[tuple, List[Dict]] = {}
+        self._ttm_cache: dict[tuple, list[dict]] = {}
 
         # Cache for expensive lookups to avoid repeated queries/warnings
         # Initialized to None (not yet computed) vs 0 (computed but unavailable)
-        self._shares_outstanding_cache: Optional[float] = None
-        self._current_price_cache: Optional[float] = None
+        self._shares_outstanding_cache: float | None = None
+        self._current_price_cache: float | None = None
 
         # DCF metadata for RL context quality assessment
-        self._wacc_raw: Optional[float] = None
-        self._wacc_final: Optional[float] = None
+        self._wacc_raw: float | None = None
+        self._wacc_final: float | None = None
         self._wacc_was_clipped: bool = False
         self._terminal_growth: float = self.sector_params["terminal_growth_rate"]
         self._projection_years: int = self.sector_params["projection_years"]
         self._fcf_quarters_available: int = 0
         self._cost_of_debt_source: str = ""
-        self._beta_r_squared: Optional[float] = None
+        self._beta_r_squared: float | None = None
 
         logger.info(
             f"{self.symbol} - Using sector-based DCF parameters: "
@@ -91,7 +90,7 @@ class DCFValuation:
             f"Projection Years={self.sector_params['projection_years']}"
         )
 
-    def _get_cached_ttm_periods(self, num_quarters: int = 4, compute_missing: bool = True) -> List[Dict]:
+    def _get_cached_ttm_periods(self, num_quarters: int = 4, compute_missing: bool = True) -> list[dict]:
         """
         Get TTM periods with caching to avoid redundant Q4 computations
 
@@ -144,7 +143,7 @@ class DCFValuation:
             and first_item.get("fiscal_period") == "FY"
         )
 
-    def _get_sec_data(self) -> Dict:
+    def _get_sec_data(self) -> dict:
         """
         Get SEC format data from quarterly_metrics.
 
@@ -155,7 +154,7 @@ class DCFValuation:
             return self.quarterly_metrics[0]
         return {}
 
-    def _get_ttm_metrics(self) -> Dict:
+    def _get_ttm_metrics(self) -> dict:
         """
         Get TTM metrics for pre-profitable detection.
 
@@ -187,7 +186,7 @@ class DCFValuation:
             "industry": None,
         }
 
-    def _load_dcf_config(self) -> Dict:
+    def _load_dcf_config(self) -> dict:
         """Load DCF configuration from config.yaml via Config class."""
         try:
             config = get_config()
@@ -201,7 +200,7 @@ class DCFValuation:
             logger.warning(f"Could not load DCF config: {e}. Using defaults.")
             return self._get_default_dcf_config()
 
-    def _get_default_dcf_config(self) -> Dict:
+    def _get_default_dcf_config(self) -> dict:
         """Return default DCF configuration when config.yaml is unavailable."""
         return {"default_parameters": {"terminal_growth_rate": 0.030, "projection_years": 5}}
 
@@ -240,7 +239,7 @@ class DCFValuation:
             logger.warning(f"Could not fetch sector for {self.symbol}: {e}. Using Default.")
             return "Default"
 
-    def _get_sector_parameters(self) -> Dict:
+    def _get_sector_parameters(self) -> dict:
         """Get sector-specific DCF parameters"""
         sector_params = self.dcf_config.get("sector_based_parameters", {})
         default_params = self.dcf_config.get(
@@ -256,7 +255,7 @@ class DCFValuation:
             "rationale": params.get("rationale", "Default assumptions"),
         }
 
-    def calculate_dcf_valuation(self, terminal_growth_rate: Optional[float] = None) -> Dict:
+    def calculate_dcf_valuation(self, terminal_growth_rate: float | None = None) -> dict:
         """
         Calculate full DCF valuation with Rule of 40 integration
 
@@ -791,7 +790,7 @@ class DCFValuation:
 
         return fcf
 
-    def _project_fcf(self, latest_fcf: float, years: int = 10) -> List[float]:
+    def _project_fcf(self, latest_fcf: float, years: int = 10) -> list[float]:
         """
         Project FCF for next N years based on historical growth
 
@@ -1608,7 +1607,7 @@ class DCFValuation:
             logger.warning(f"{self.symbol} - Error fetching beta: {e}, using default 1.0")
             return 1.0
 
-    def _get_sector_median_betas(self) -> Dict[str, float]:
+    def _get_sector_median_betas(self) -> dict[str, float]:
         """
         Return sector median betas for fallback when individual beta is unreliable
 
@@ -1683,8 +1682,8 @@ class DCFValuation:
         equity: float,
         market_cap: float,
         sector: str,
-        net_income: Optional[float] = None,
-        total_revenue: Optional[float] = None,
+        net_income: float | None = None,
+        total_revenue: float | None = None,
     ) -> tuple:
         """
         Determine appropriate beta treatment based on company characteristics
@@ -1808,7 +1807,7 @@ class DCFValuation:
             f"β={beta_unlevered:.2f} × [1+(1-{tax_rate:.0%})×D/E={debt_to_equity:.2f}] = {beta_levered:.2f}",
         )
 
-    def _get_latest_sbc(self) -> Optional[float]:
+    def _get_latest_sbc(self) -> float | None:
         """
         Get latest Stock-Based Compensation from TTM periods
 
@@ -2050,7 +2049,7 @@ class DCFValuation:
             logger.warning(f"{self.symbol} - Error fetching Treasury rate: {e}, using default 4.5%")
             return 0.045
 
-    def _discount_cash_flows(self, fcf_projections: List[float], wacc: float, log_details: bool = True) -> float:
+    def _discount_cash_flows(self, fcf_projections: list[float], wacc: float, log_details: bool = True) -> float:
         """
         Discount future cash flows to present value
 
@@ -2108,7 +2107,7 @@ class DCFValuation:
 
         return equity_value
 
-    def _run_sensitivity_analysis(self, fcf_projections: List[float], base_wacc: float) -> Dict:
+    def _run_sensitivity_analysis(self, fcf_projections: list[float], base_wacc: float) -> dict:
         """
         Run sensitivity analysis varying terminal growth rate only
 
@@ -2410,7 +2409,7 @@ class DCFValuation:
             # Return a mid-cap fallback (no extreme constraints)
             return 50e9  # $50B fallback
 
-    def _calculate_rule_of_40(self) -> Dict:
+    def _calculate_rule_of_40(self) -> dict:
         """
         Calculate Rule of 40: Revenue Growth % + Profit Margin %
 
@@ -2507,10 +2506,10 @@ class DCFValuation:
 
     def _calculate_ps_valuation(
         self,
-        rule_of_40_result: Dict,
+        rule_of_40_result: dict,
         shares_outstanding: float,
         current_price: float,
-    ) -> Optional[Dict]:
+    ) -> dict | None:
         """
         Derive a P/S-based fair value when growth efficiency warrants multiple expansion.
         """
@@ -2857,7 +2856,7 @@ class DCFValuation:
         else:
             return "poor"
 
-    def _get_sector_growth_caps(self) -> Dict:
+    def _get_sector_growth_caps(self) -> dict:
         """
         Get sector-specific FCF growth rate caps
 

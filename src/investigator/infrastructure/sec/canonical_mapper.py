@@ -16,7 +16,6 @@ Date: 2025-11-03
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +41,8 @@ class CanonicalKeyMapper:
 
     def __init__(
         self,
-        mappings_path: Optional[str] = None,
-        sector_mappings_path: Optional[str] = None,
+        mappings_path: str | None = None,
+        sector_mappings_path: str | None = None,
     ):
         """
         Initialize mapper with tag mappings
@@ -58,7 +57,7 @@ class CanonicalKeyMapper:
         self.sector_mappings = self._load_sector_mappings(sector_mappings_path)
         self.stats = {"extractions": 0, "fallbacks_used": 0, "failures": 0}
 
-    def _load_mappings(self, mappings_path: Optional[str]) -> Dict:
+    def _load_mappings(self, mappings_path: str | None) -> dict:
         """Load canonical key mappings from file or use defaults"""
 
         if mappings_path and Path(mappings_path).exists():
@@ -97,7 +96,7 @@ class CanonicalKeyMapper:
         logger.error(error_msg)
         raise FileNotFoundError(error_msg)
 
-    def _load_sector_mappings(self, sector_mappings_path: Optional[str]) -> Dict:
+    def _load_sector_mappings(self, sector_mappings_path: str | None) -> dict:
         """
         Load sector-specific XBRL mappings with industry/sector-specific tags and exclusions
 
@@ -124,7 +123,7 @@ class CanonicalKeyMapper:
         logger.warning("Sector-specific mappings not found - sector/industry exclusions won't be applied")
         return {}
 
-    def _get_default_mappings(self) -> Dict:
+    def _get_default_mappings(self) -> dict:
         """
         Get default canonical key → tag mappings
 
@@ -249,9 +248,9 @@ class CanonicalKeyMapper:
     def get_tags(
         self,
         canonical_key: str,
-        sector: Optional[str] = None,
-        industry: Optional[str] = None,
-    ) -> List[str]:
+        sector: str | None = None,
+        industry: str | None = None,
+    ) -> list[str]:
         """
         Get priority-ordered list of XBRL tags for a canonical key
 
@@ -346,11 +345,11 @@ class CanonicalKeyMapper:
     def extract_from_json(
         self,
         canonical_key: str,
-        json_data: Dict,
-        sector: Optional[str] = None,
-        fiscal_year: Optional[int] = None,
-        fiscal_period: Optional[str] = None,
-    ) -> Tuple[Optional[float], Optional[str]]:
+        json_data: dict,
+        sector: str | None = None,
+        fiscal_year: int | None = None,
+        fiscal_period: str | None = None,
+    ) -> tuple[float | None, str | None]:
         """
         Extract value for canonical key from SEC CompanyFacts JSON
 
@@ -439,9 +438,9 @@ class CanonicalKeyMapper:
     def extract_from_bulk_table(
         self,
         canonical_key: str,
-        tag_values: Dict[str, float],
-        sector: Optional[str] = None,
-    ) -> Tuple[Optional[float], Optional[str]]:
+        tag_values: dict[str, float],
+        sector: str | None = None,
+    ) -> tuple[float | None, str | None]:
         """
         Extract value for canonical key from bulk table tag values
 
@@ -485,7 +484,7 @@ class CanonicalKeyMapper:
         )
         return (None, None)
 
-    def _parse_formula(self, formula: str, values_dict: Dict[str, float]) -> Optional[float]:
+    def _parse_formula(self, formula: str, values_dict: dict[str, float]) -> float | None:
         """
         Parse and evaluate a formula string using provided values
 
@@ -507,7 +506,7 @@ class CanonicalKeyMapper:
                     formula_eval = formula_eval.replace(key, str(value))
 
             # Check if all variables were replaced (no remaining canonical keys)
-            if any(key in formula_eval for key in values_dict.keys() if key in self.mappings):
+            if any(key in formula_eval for key in values_dict if key in self.mappings):
                 # Still has unresolved canonical keys
                 logger.debug(f"Cannot evaluate formula '{formula}' - missing required values")
                 return None
@@ -520,7 +519,7 @@ class CanonicalKeyMapper:
             logger.debug(f"Formula evaluation failed for '{formula}': {e}")
             return None
 
-    def calculate_derived_value(self, canonical_key: str, values_dict: Dict[str, float]) -> Optional[float]:
+    def calculate_derived_value(self, canonical_key: str, values_dict: dict[str, float]) -> float | None:
         """
         Calculate derived value using formula from mapping
 
@@ -548,7 +547,7 @@ class CanonicalKeyMapper:
                     '🧮 Attempting derivation for %s using formula "%s" with inputs: %s',
                     canonical_key,
                     formula,
-                    {k: values_dict.get(k) for k in values_dict.keys()},
+                    {k: values_dict.get(k) for k in values_dict},
                 )
             result = self._parse_formula(formula, values_dict)
             if result is not None:
@@ -563,7 +562,7 @@ class CanonicalKeyMapper:
                     '🧮 Attempting derivation for %s using alternate formula "%s" with inputs: %s',
                     canonical_key,
                     formula_alt,
-                    {k: values_dict.get(k) for k in values_dict.keys()},
+                    {k: values_dict.get(k) for k in values_dict},
                 )
             result = self._parse_formula(formula_alt, values_dict)
             if result is not None:
@@ -576,13 +575,13 @@ class CanonicalKeyMapper:
     def extract_with_derivation(
         self,
         canonical_key: str,
-        json_data: Optional[Dict] = None,
-        tag_values: Optional[Dict[str, float]] = None,
-        sector: Optional[str] = None,
-        fiscal_year: Optional[int] = None,
-        fiscal_period: Optional[str] = None,
-        existing_values: Optional[Dict[str, float]] = None,
-    ) -> Tuple[Optional[float], Optional[str]]:
+        json_data: dict | None = None,
+        tag_values: dict[str, float] | None = None,
+        sector: str | None = None,
+        fiscal_year: int | None = None,
+        fiscal_period: str | None = None,
+        existing_values: dict[str, float] | None = None,
+    ) -> tuple[float | None, str | None]:
         """
         Extract value with automatic derivation fallback
 
@@ -624,13 +623,13 @@ class CanonicalKeyMapper:
 
     def extract_multiple_with_derivation(
         self,
-        canonical_keys: List[str],
-        json_data: Optional[Dict] = None,
-        tag_values: Optional[Dict[str, float]] = None,
-        sector: Optional[str] = None,
-        fiscal_year: Optional[int] = None,
-        fiscal_period: Optional[str] = None,
-    ) -> Dict[str, Tuple[Optional[float], Optional[str]]]:
+        canonical_keys: list[str],
+        json_data: dict | None = None,
+        tag_values: dict[str, float] | None = None,
+        sector: str | None = None,
+        fiscal_year: int | None = None,
+        fiscal_period: str | None = None,
+    ) -> dict[str, tuple[float | None, str | None]]:
         """
         Extract multiple canonical keys with automatic derivation
 
@@ -679,7 +678,7 @@ class CanonicalKeyMapper:
 
         return results
 
-    def is_metric_excluded(self, canonical_key: str, sector: Optional[str] = None) -> bool:
+    def is_metric_excluded(self, canonical_key: str, sector: str | None = None) -> bool:
         """
         Check if a metric should be excluded for a given sector
 
@@ -699,8 +698,8 @@ class CanonicalKeyMapper:
         return canonical_key in excluded_metrics
 
     def is_ratio_excluded(
-        self, ratio_name: str, sector: Optional[str] = None
-    ) -> Tuple[bool, Optional[str], Optional[List[str]]]:
+        self, ratio_name: str, sector: str | None = None
+    ) -> tuple[bool, str | None, list[str] | None]:
         """
         Check if a ratio should be excluded for a given sector
 
@@ -729,7 +728,7 @@ class CanonicalKeyMapper:
 
         return (True, reason, alternatives)
 
-    def get_sector_specific_metrics(self, sector: Optional[str] = None, industry: Optional[str] = None) -> List[str]:
+    def get_sector_specific_metrics(self, sector: str | None = None, industry: str | None = None) -> list[str]:
         """
         Get sector/industry-specific metrics that should be included in analysis
 
@@ -753,7 +752,7 @@ class CanonicalKeyMapper:
         # Fall back to sector default
         return sector_metrics.get("_default", [])
 
-    def get_all_tags_for_extraction(self, canonical_keys: List[str], sector: Optional[str] = None) -> List[str]:
+    def get_all_tags_for_extraction(self, canonical_keys: list[str], sector: str | None = None) -> list[str]:
         """
         Get unique list of ALL tags needed for a set of canonical keys
 
@@ -774,7 +773,7 @@ class CanonicalKeyMapper:
 
         return list(all_tags)
 
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> dict:
         """Get extraction statistics"""
         total = self.stats["extractions"] + self.stats["failures"]
         success_rate = (self.stats["extractions"] / total * 100) if total > 0 else 0
@@ -797,7 +796,7 @@ _canonical_mapper = None
 
 
 def get_canonical_mapper(
-    mappings_path: Optional[str] = None, sector_mappings_path: Optional[str] = None
+    mappings_path: str | None = None, sector_mappings_path: str | None = None
 ) -> CanonicalKeyMapper:
     """
     Get singleton CanonicalKeyMapper instance

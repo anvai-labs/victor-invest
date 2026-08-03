@@ -23,7 +23,7 @@ Design Principles (SOLID):
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, ClassVar, Dict, List, Optional, Protocol
+from typing import Any, ClassVar, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -55,9 +55,9 @@ class Conflict:
 
     conflict_type: ConflictType
     severity: ConflictSeverity
-    sources: List[str]  # e.g., ["fundamental", "technical"]
+    sources: list[str]  # e.g., ["fundamental", "technical"]
     description: str
-    data: Dict[str, Any] = field(default_factory=dict)
+    data: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -67,10 +67,10 @@ class ConflictResolution:
     conflict_type: str
     explanation: str
     prioritization: str
-    weight_adjustments: Dict[str, float]
+    weight_adjustments: dict[str, float]
     rationale: str
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for API compatibility."""
         return {
             "conflict_type": self.conflict_type,
@@ -88,9 +88,9 @@ class ReconciliationResult:
     overall_coherence: str
     reconciled_recommendation: str
     confidence_impact: float  # Adjustment to overall confidence (-1 to 1)
-    resolutions: List[ConflictResolution]
+    resolutions: list[ConflictResolution]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for API compatibility."""
         return {
             "overall_coherence": self.overall_coherence,
@@ -105,11 +105,11 @@ class ConflictDetector(Protocol):
 
     def detect(
         self,
-        fundamental: Optional[Dict[str, Any]],
-        technical: Optional[Dict[str, Any]],
-        sec: Optional[Dict[str, Any]],
-        market_context: Optional[Dict[str, Any]],
-    ) -> List[Conflict]:
+        fundamental: dict[str, Any] | None,
+        technical: dict[str, Any] | None,
+        sec: dict[str, Any] | None,
+        market_context: dict[str, Any] | None,
+    ) -> list[Conflict]:
         """Detect conflicts between analyses."""
         ...
 
@@ -141,11 +141,11 @@ class RecommendationConflictDetector:
 
     def detect(
         self,
-        fundamental: Optional[Dict[str, Any]],
-        technical: Optional[Dict[str, Any]],
-        sec: Optional[Dict[str, Any]],
-        market_context: Optional[Dict[str, Any]],
-    ) -> List[Conflict]:
+        fundamental: dict[str, Any] | None,
+        technical: dict[str, Any] | None,
+        sec: dict[str, Any] | None,
+        market_context: dict[str, Any] | None,
+    ) -> list[Conflict]:
         """Detect recommendation conflicts between analyses."""
         conflicts = []
         signals = self._extract_signals(fundamental, technical, sec)
@@ -194,10 +194,10 @@ class RecommendationConflictDetector:
 
     def _extract_signals(
         self,
-        fundamental: Optional[Dict[str, Any]],
-        technical: Optional[Dict[str, Any]],
-        sec: Optional[Dict[str, Any]],
-    ) -> Dict[str, str]:
+        fundamental: dict[str, Any] | None,
+        technical: dict[str, Any] | None,
+        sec: dict[str, Any] | None,
+    ) -> dict[str, str]:
         """Extract recommendation signals from each analysis."""
         signals = {}
 
@@ -249,11 +249,11 @@ class TimeHorizonConflictDetector:
 
     def detect(
         self,
-        fundamental: Optional[Dict[str, Any]],
-        technical: Optional[Dict[str, Any]],
-        sec: Optional[Dict[str, Any]],
-        market_context: Optional[Dict[str, Any]],
-    ) -> List[Conflict]:
+        fundamental: dict[str, Any] | None,
+        technical: dict[str, Any] | None,
+        sec: dict[str, Any] | None,
+        market_context: dict[str, Any] | None,
+    ) -> list[Conflict]:
         """Detect time horizon conflicts."""
         conflicts = []
 
@@ -320,11 +320,11 @@ class DataQualityConflictDetector:
 
     def detect(
         self,
-        fundamental: Optional[Dict[str, Any]],
-        technical: Optional[Dict[str, Any]],
-        sec: Optional[Dict[str, Any]],
-        market_context: Optional[Dict[str, Any]],
-    ) -> List[Conflict]:
+        fundamental: dict[str, Any] | None,
+        technical: dict[str, Any] | None,
+        sec: dict[str, Any] | None,
+        market_context: dict[str, Any] | None,
+    ) -> list[Conflict]:
         """Detect data quality conflicts."""
         conflicts = []
 
@@ -567,8 +567,8 @@ class DeterministicConflictResolver:
     def __init__(
         self,
         time_horizon: str = "long_term",
-        detectors: Optional[List[ConflictDetector]] = None,
-        resolvers: Optional[List[ConflictResolver]] = None,
+        detectors: list[ConflictDetector] | None = None,
+        resolvers: list[ConflictResolver] | None = None,
     ):
         self.time_horizon = time_horizon
 
@@ -588,11 +588,11 @@ class DeterministicConflictResolver:
 
     def detect_conflicts(
         self,
-        fundamental: Optional[Dict[str, Any]] = None,
-        technical: Optional[Dict[str, Any]] = None,
-        sec: Optional[Dict[str, Any]] = None,
-        market_context: Optional[Dict[str, Any]] = None,
-    ) -> List[Conflict]:
+        fundamental: dict[str, Any] | None = None,
+        technical: dict[str, Any] | None = None,
+        sec: dict[str, Any] | None = None,
+        market_context: dict[str, Any] | None = None,
+    ) -> list[Conflict]:
         """
         Detect all conflicts between analyses.
 
@@ -618,11 +618,11 @@ class DeterministicConflictResolver:
 
     def reconcile(
         self,
-        conflicts: Optional[List[Dict[str, Any]]] = None,
-        fundamental: Optional[Dict[str, Any]] = None,
-        technical: Optional[Dict[str, Any]] = None,
-        sec: Optional[Dict[str, Any]] = None,
-        market_context: Optional[Dict[str, Any]] = None,
+        conflicts: list[dict[str, Any]] | None = None,
+        fundamental: dict[str, Any] | None = None,
+        technical: dict[str, Any] | None = None,
+        sec: dict[str, Any] | None = None,
+        market_context: dict[str, Any] | None = None,
     ) -> ReconciliationResult:
         """
         Detect and resolve all conflicts.
@@ -698,7 +698,7 @@ class DeterministicConflictResolver:
             resolutions=resolutions,
         )
 
-    def _blend_resolution_weights(self, resolutions: List[ConflictResolution]) -> Dict[str, float]:
+    def _blend_resolution_weights(self, resolutions: list[ConflictResolution]) -> dict[str, float]:
         """Blend weight adjustments from multiple resolutions."""
         if not resolutions:
             return {"fundamental": 0.5, "technical": 0.3, "sec": 0.2}
@@ -725,9 +725,9 @@ class DeterministicConflictResolver:
 
     def _determine_recommendation(
         self,
-        fundamental: Optional[Dict[str, Any]],
-        technical: Optional[Dict[str, Any]],
-        sec: Optional[Dict[str, Any]],
+        fundamental: dict[str, Any] | None,
+        technical: dict[str, Any] | None,
+        sec: dict[str, Any] | None,
     ) -> str:
         """Determine recommendation when no conflicts exist."""
         # Extract recommendations
@@ -747,10 +747,10 @@ class DeterministicConflictResolver:
 
     def _weighted_recommendation(
         self,
-        fundamental: Optional[Dict[str, Any]],
-        technical: Optional[Dict[str, Any]],
-        sec: Optional[Dict[str, Any]],
-        weights: Dict[str, float],
+        fundamental: dict[str, Any] | None,
+        technical: dict[str, Any] | None,
+        sec: dict[str, Any] | None,
+        weights: dict[str, float],
     ) -> str:
         """Generate weighted recommendation based on conflict resolution."""
         # Score each source (-1 bearish, 0 neutral, +1 bullish)
@@ -808,13 +808,13 @@ class DeterministicConflictResolver:
 
 
 def reconcile_conflicts(
-    conflicts: Optional[List[Dict[str, Any]]] = None,
-    fundamental: Optional[Dict[str, Any]] = None,
-    technical: Optional[Dict[str, Any]] = None,
-    sec: Optional[Dict[str, Any]] = None,
-    market_context: Optional[Dict[str, Any]] = None,
+    conflicts: list[dict[str, Any]] | None = None,
+    fundamental: dict[str, Any] | None = None,
+    technical: dict[str, Any] | None = None,
+    sec: dict[str, Any] | None = None,
+    market_context: dict[str, Any] | None = None,
     time_horizon: str = "long_term",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Drop-in replacement for LLM-based conflict reconciliation.
 
@@ -843,17 +843,17 @@ def reconcile_conflicts(
 
 
 __all__ = [
-    "DeterministicConflictResolver",
-    "ReconciliationResult",
-    "ConflictResolution",
     "Conflict",
-    "ConflictType",
+    "ConflictResolution",
     "ConflictSeverity",
-    "RecommendationConflictDetector",
-    "TimeHorizonConflictDetector",
+    "ConflictType",
     "DataQualityConflictDetector",
-    "RecommendationConflictResolver",
-    "TimeHorizonConflictResolver",
     "DataQualityConflictResolver",
+    "DeterministicConflictResolver",
+    "RecommendationConflictDetector",
+    "RecommendationConflictResolver",
+    "ReconciliationResult",
+    "TimeHorizonConflictDetector",
+    "TimeHorizonConflictResolver",
     "reconcile_conflicts",
 ]

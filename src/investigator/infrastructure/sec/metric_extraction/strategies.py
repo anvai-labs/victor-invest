@@ -20,7 +20,6 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
 
 from .result import MatchMethod
 
@@ -31,12 +30,12 @@ logger = logging.getLogger(__name__)
 class MatchContext:
     """Context for period matching operations."""
 
-    target_period_end: Optional[str] = None
-    target_period_start: Optional[str] = None
-    target_fiscal_year: Optional[int] = None
-    target_fiscal_period: Optional[str] = None
-    target_adsh: Optional[str] = None
-    fiscal_year_end: Optional[str] = None  # e.g., '-06-27' for June FYE
+    target_period_end: str | None = None
+    target_period_start: str | None = None
+    target_fiscal_year: int | None = None
+    target_fiscal_period: str | None = None
+    target_adsh: str | None = None
+    fiscal_year_end: str | None = None  # e.g., '-06-27' for June FYE
     tolerance_days: int = 7  # For fuzzy date matching
 
 
@@ -45,9 +44,9 @@ class MatchResult:
     """Result of a period matching attempt."""
 
     matched: bool
-    entries: List[Dict]
+    entries: list[dict]
     method: MatchMethod
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 class PeriodMatchStrategy(ABC):
@@ -62,16 +61,14 @@ class PeriodMatchStrategy(ABC):
     @abstractmethod
     def name(self) -> str:
         """Human-readable strategy name."""
-        pass
 
     @property
     @abstractmethod
     def match_method(self) -> MatchMethod:
         """MatchMethod enum value for this strategy."""
-        pass
 
     @abstractmethod
-    def match(self, entries: List[Dict], context: MatchContext) -> MatchResult:
+    def match(self, entries: list[dict], context: MatchContext) -> MatchResult:
         """
         Find entries matching the target period.
 
@@ -82,9 +79,8 @@ class PeriodMatchStrategy(ABC):
         Returns:
             MatchResult with matched entries
         """
-        pass
 
-    def _filter_valid_forms(self, entries: List[Dict]) -> List[Dict]:
+    def _filter_valid_forms(self, entries: list[dict]) -> list[dict]:
         """Filter to only 10-K and 10-Q forms."""
         return [e for e in entries if e.get("form") in ("10-K", "10-Q", "10-K/A", "10-Q/A")]
 
@@ -111,7 +107,7 @@ class ByPeriodEndMatcher(PeriodMatchStrategy):
     def match_method(self) -> MatchMethod:
         return MatchMethod.BY_PERIOD_END
 
-    def match(self, entries: List[Dict], context: MatchContext) -> MatchResult:
+    def match(self, entries: list[dict], context: MatchContext) -> MatchResult:
         if not context.target_period_end:
             return MatchResult(
                 matched=False,
@@ -163,7 +159,7 @@ class ByPeriodEndMatcher(PeriodMatchStrategy):
             reason=f"No entries with end={context.target_period_end}",
         )
 
-    def _matches_fiscal_period_by_duration(self, entry: Dict, target_fp: str) -> bool:
+    def _matches_fiscal_period_by_duration(self, entry: dict, target_fp: str) -> bool:
         """Check if entry duration matches target fiscal period."""
         start = entry.get("start")
         end = entry.get("end")
@@ -207,7 +203,7 @@ class ByDateRangeMatcher(PeriodMatchStrategy):
     def match_method(self) -> MatchMethod:
         return MatchMethod.BY_DATE_RANGE
 
-    def match(self, entries: List[Dict], context: MatchContext) -> MatchResult:
+    def match(self, entries: list[dict], context: MatchContext) -> MatchResult:
         if not context.target_period_end:
             return MatchResult(
                 matched=False,
@@ -272,7 +268,7 @@ class ByDateRangeMatcher(PeriodMatchStrategy):
             reason=f"No entries within ±{context.tolerance_days} days of {context.target_period_end}",
         )
 
-    def _matches_fiscal_period_by_duration(self, entry: Dict, target_fp: str) -> bool:
+    def _matches_fiscal_period_by_duration(self, entry: dict, target_fp: str) -> bool:
         """Check if entry duration matches target fiscal period."""
         start = entry.get("start")
         end = entry.get("end")
@@ -313,7 +309,7 @@ class ByFrameFieldMatcher(PeriodMatchStrategy):
     def match_method(self) -> MatchMethod:
         return MatchMethod.BY_FRAME_FIELD
 
-    def match(self, entries: List[Dict], context: MatchContext) -> MatchResult:
+    def match(self, entries: list[dict], context: MatchContext) -> MatchResult:
         if not context.target_period_end:
             return MatchResult(
                 matched=False,
@@ -394,7 +390,7 @@ class ByAdshFyFpMatcher(PeriodMatchStrategy):
     def match_method(self) -> MatchMethod:
         return MatchMethod.BY_ADSH_FY_FP
 
-    def match(self, entries: List[Dict], context: MatchContext) -> MatchResult:
+    def match(self, entries: list[dict], context: MatchContext) -> MatchResult:
         valid_entries = self._filter_valid_forms(entries)
         matches = []
 
@@ -447,7 +443,7 @@ class ByAdshOnlyMatcher(PeriodMatchStrategy):
     def match_method(self) -> MatchMethod:
         return MatchMethod.BY_ADSH_ONLY
 
-    def match(self, entries: List[Dict], context: MatchContext) -> MatchResult:
+    def match(self, entries: list[dict], context: MatchContext) -> MatchResult:
         if not context.target_adsh:
             return MatchResult(
                 matched=False,
@@ -479,9 +475,12 @@ class ByAdshOnlyMatcher(PeriodMatchStrategy):
                         end_date = datetime.strptime(end, "%Y-%m-%d")
                         days = (end_date - start_date).days
 
-                        if context.target_fiscal_period == "FY" and days >= 330:
-                            duration_matches.append(entry)
-                        elif context.target_fiscal_period in ("Q1", "Q2", "Q3", "Q4") and days < 120:
+                        if (
+                            context.target_fiscal_period == "FY"
+                            and days >= 330
+                            or context.target_fiscal_period in ("Q1", "Q2", "Q3", "Q4")
+                            and days < 120
+                        ):
                             duration_matches.append(entry)
                     except ValueError:
                         continue

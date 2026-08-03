@@ -19,7 +19,7 @@ import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 from investigator.domain.services.rl.feature_normalizer import FeatureNormalizer
 from investigator.domain.services.rl.models import (
@@ -74,12 +74,12 @@ class PipelineResult:
     """Result of training pipeline execution."""
 
     success: bool
-    training_metrics: Optional[TrainingMetrics]
-    evaluation_metrics: Optional[EvaluationMetrics]
-    baseline_comparison: Optional[Dict[str, float]]
-    policy_path: Optional[str]
-    normalizer_path: Optional[str]
-    error_message: Optional[str] = None
+    training_metrics: TrainingMetrics | None
+    evaluation_metrics: EvaluationMetrics | None
+    baseline_comparison: dict[str, float] | None
+    policy_path: str | None
+    normalizer_path: str | None
+    error_message: str | None = None
     execution_time_seconds: float = 0.0
 
 
@@ -99,8 +99,8 @@ class RLTrainingPipeline:
 
     def __init__(
         self,
-        config: Optional[PipelineConfig] = None,
-        base_weighting_service: Optional[Any] = None,
+        config: PipelineConfig | None = None,
+        base_weighting_service: Any | None = None,
     ):
         """
         Initialize pipeline.
@@ -115,8 +115,8 @@ class RLTrainingPipeline:
         # Initialize components
         self.collector = ExperienceCollector()
         self.normalizer = FeatureNormalizer()
-        self.policy: Optional[RLPolicy] = None
-        self.trainer: Optional[RLTrainer] = None
+        self.policy: RLPolicy | None = None
+        self.trainer: RLTrainer | None = None
 
     def run(self) -> PipelineResult:
         """
@@ -275,7 +275,7 @@ class RLTrainingPipeline:
     def incremental_update(
         self,
         new_experiences_limit: int = 100,
-    ) -> Optional[Dict[str, float]]:
+    ) -> dict[str, float] | None:
         """
         Perform incremental update with recent experiences.
 
@@ -322,7 +322,7 @@ class RLTrainingPipeline:
 
 # Factory function
 def get_training_pipeline(
-    config: Optional[PipelineConfig] = None,
+    config: PipelineConfig | None = None,
 ) -> RLTrainingPipeline:
     """Get RLTrainingPipeline instance."""
     return RLTrainingPipeline(config)

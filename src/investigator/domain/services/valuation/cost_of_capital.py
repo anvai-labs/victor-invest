@@ -23,7 +23,7 @@ Usage:
 
 import logging
 from dataclasses import dataclass
-from typing import ClassVar, Optional, Tuple
+from typing import ClassVar
 
 logger = logging.getLogger(__name__)
 
@@ -163,9 +163,9 @@ class IndustryCostOfCapital:
 
     def __init__(
         self,
-        risk_free_rate: Optional[float] = None,
-        equity_risk_premium: Optional[float] = None,
-        cost_of_debt: Optional[float] = None,
+        risk_free_rate: float | None = None,
+        equity_risk_premium: float | None = None,
+        cost_of_debt: float | None = None,
     ):
         """
         Initialize with optional market parameters.
@@ -179,7 +179,7 @@ class IndustryCostOfCapital:
         self.equity_risk_premium = equity_risk_premium or self.DEFAULT_EQUITY_RISK_PREMIUM
         self.cost_of_debt = cost_of_debt or self.DEFAULT_COST_OF_DEBT
 
-    def get_unlevered_beta(self, industry: str) -> Tuple[float, bool]:
+    def get_unlevered_beta(self, industry: str) -> tuple[float, bool]:
         """
         Get unlevered beta for an industry.
 
@@ -227,8 +227,8 @@ class IndustryCostOfCapital:
     def calculate_cost_of_equity(
         self,
         levered_beta: float,
-        risk_free_rate: Optional[float] = None,
-        equity_risk_premium: Optional[float] = None,
+        risk_free_rate: float | None = None,
+        equity_risk_premium: float | None = None,
     ) -> float:
         """
         Calculate cost of equity using CAPM.
@@ -253,9 +253,9 @@ class IndustryCostOfCapital:
         industry: str,
         debt_to_equity: float = 0.0,
         tax_rate: float = DEFAULT_TAX_RATE,
-        risk_free_rate: Optional[float] = None,
-        equity_risk_premium: Optional[float] = None,
-        cost_of_debt: Optional[float] = None,
+        risk_free_rate: float | None = None,
+        equity_risk_premium: float | None = None,
+        cost_of_debt: float | None = None,
     ) -> CostOfCapitalResult:
         """
         Calculate WACC for a company.
@@ -367,7 +367,7 @@ class IndustryCostOfCapital:
 
 
 # Singleton instance
-_coc: Optional[IndustryCostOfCapital] = None
+_coc: IndustryCostOfCapital | None = None
 
 
 def get_industry_cost_of_capital() -> IndustryCostOfCapital:

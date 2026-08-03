@@ -24,7 +24,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 import networkx as nx
 
@@ -68,14 +68,14 @@ class OrchestrationTask:
     id: str
     symbol: str
     mode: AnalysisMode
-    agents: List[str]
+    agents: list[str]
     priority: Priority = Priority.NORMAL
-    deadline: Optional[datetime] = None
-    dependencies: Set[str] = field(default_factory=set)
-    metadata: Dict = field(default_factory=dict)
+    deadline: datetime | None = None
+    dependencies: set[str] = field(default_factory=set)
+    metadata: dict = field(default_factory=dict)
     created_at: datetime = field(default_factory=datetime.now)
     status: str = "pending"
-    results: Dict = field(default_factory=dict)
+    results: dict = field(default_factory=dict)
 
     def __lt__(self, other):
         """Compare tasks by priority for queue ordering"""
@@ -122,7 +122,7 @@ class AgentOrchestrator:
         self._config = get_config()
         self.ollama_pool = None
         self.ollama_client = None  # Will be set to pool in start()
-        self.symbol_classification_cache: Dict[str, bool] = {}
+        self.symbol_classification_cache: dict[str, bool] = {}
         try:
             self.market_data_fetcher = get_market_data_fetcher(self._config)
         except Exception as e:
@@ -153,9 +153,9 @@ class AgentOrchestrator:
 
         # Task management
         self.task_queue = asyncio.PriorityQueue()
-        self.active_tasks: Dict[str, OrchestrationTask] = {}
-        self.completed_tasks: Dict[str, OrchestrationTask] = {}
-        self.completed_analyses: Dict[str, Dict] = {}  # For storing analysis results
+        self.active_tasks: dict[str, OrchestrationTask] = {}
+        self.completed_tasks: dict[str, OrchestrationTask] = {}
+        self.completed_analyses: dict[str, dict] = {}  # For storing analysis results
 
         # Execution control (already set in __init__ parameters)
         self.agent_semaphore = asyncio.Semaphore(self.max_concurrent_agents)
@@ -174,10 +174,10 @@ class AgentOrchestrator:
 
         # Start background workers
         self.workers = []
-        self._background_tasks: List[asyncio.Task] = []
+        self._background_tasks: list[asyncio.Task] = []
         self.running = False
 
-    def _initialize_agents(self) -> Dict[str, Any]:
+    def _initialize_agents(self) -> dict[str, Any]:
         """Initialize all available agents"""
         agents = {
             "sec": SECAnalysisAgent("sec_agent_1", self.ollama_client, self.event_bus, self.cache_manager),
@@ -420,10 +420,10 @@ class AgentOrchestrator:
 
     async def analyze_batch(
         self,
-        symbols: List[str],
+        symbols: list[str],
         mode: AnalysisMode = AnalysisMode.STANDARD,
         priority: Priority = Priority.NORMAL,
-    ) -> List[str]:
+    ) -> list[str]:
         """Submit multiple symbols for analysis"""
         task_ids = []
 
@@ -436,7 +436,7 @@ class AgentOrchestrator:
     async def analyze_peer_group(
         self,
         target: str,
-        peers: List[str],
+        peers: list[str],
         mode: AnalysisMode = AnalysisMode.COMPREHENSIVE,
     ) -> str:
         """Analyze a target company and its peers"""
@@ -466,7 +466,7 @@ class AgentOrchestrator:
 
         return comparison_task_id
 
-    async def get_status(self, task_id: str) -> Dict:
+    async def get_status(self, task_id: str) -> dict:
         """Get status of an analysis task"""
         if task_id in self.completed_tasks:
             task = self.completed_tasks[task_id]
@@ -509,7 +509,7 @@ class AgentOrchestrator:
 
             return {"status": "not_found", "task_id": task_id}
 
-    async def get_results(self, task_id: str, wait: bool = False, timeout: int = 300) -> Optional[Dict]:
+    async def get_results(self, task_id: str, wait: bool = False, timeout: int = 300) -> dict | None:
         """
         Get results of an analysis task
 
@@ -616,7 +616,7 @@ class AgentOrchestrator:
                 finally:
                     self.performance_stats["total_analyses"] += 1
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 continue
             except Exception as e:
                 self.logger.error(
@@ -624,7 +624,7 @@ class AgentOrchestrator:
                     exc_info=True,
                 )
 
-    async def _process_task(self, task: OrchestrationTask) -> Dict:
+    async def _process_task(self, task: OrchestrationTask) -> dict:
         """Process a single orchestration task"""
         start_time = datetime.now()
         is_etf = bool(task.metadata.get("is_etf", False))
@@ -649,8 +649,8 @@ class AgentOrchestrator:
         execution_order = self._get_execution_order(task.agents)
 
         # Execute agents in parallel where possible
-        agent_results: Dict[str, Any] = {}
-        execution_trace: List[Dict[str, Any]] = []
+        agent_results: dict[str, Any] = {}
+        execution_trace: list[dict[str, Any]] = []
 
         # Pre-fetch consolidated data via DataSourceManager (Phase 1 integration)
         consolidated_data = None
@@ -771,7 +771,7 @@ class AgentOrchestrator:
             level_results = await asyncio.gather(*level_tasks, return_exceptions=True)
 
             for agent_name, agent_outcome in zip(executed_agents, level_results):
-                trace_entry: Dict[str, Any] = {
+                trace_entry: dict[str, Any] = {
                     "step": step_index,
                     "step_name": step_name,
                     "agent": agent_name,
@@ -857,7 +857,7 @@ class AgentOrchestrator:
 
         return results
 
-    async def _process_peer_comparison(self, task: OrchestrationTask) -> Dict:
+    async def _process_peer_comparison(self, task: OrchestrationTask) -> dict:
         """Process peer comparison task"""
         target = task.metadata["target"]
         peers = task.metadata["peers"]
@@ -912,9 +912,9 @@ class AgentOrchestrator:
         self,
         symbol: str = "",
         mode: AnalysisMode = AnalysisMode.STANDARD,
-        custom_agents: Optional[List[str]] = None,
+        custom_agents: list[str] | None = None,
         is_etf: bool = False,
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Get list of agents to run based on analysis mode
 
@@ -924,16 +924,7 @@ class AgentOrchestrator:
         """
         if mode == AnalysisMode.QUICK:
             agents = ["technical", "market_context"]
-        elif mode == AnalysisMode.STANDARD:
-            agents = [
-                "sec",
-                "technical",
-                "fundamental",
-                "symbol_update",
-                "market_context",
-                "synthesis",
-            ]
-        elif mode == AnalysisMode.COMPREHENSIVE:
+        elif mode == AnalysisMode.STANDARD or mode == AnalysisMode.COMPREHENSIVE:
             agents = [
                 "sec",
                 "technical",
@@ -977,7 +968,7 @@ class AgentOrchestrator:
 
         return agents
 
-    def _get_execution_order(self, agents: List[str]) -> List[List[str]]:
+    def _get_execution_order(self, agents: list[str]) -> list[list[str]]:
         """
         Determine execution order using proper topological sort
 
@@ -1053,7 +1044,7 @@ class AgentOrchestrator:
         event_dict = {"type": event.type, "data": event.data, "source": event.source}
         asyncio.create_task(self._process_event(event_dict))
 
-    async def _process_event(self, event: Dict):
+    async def _process_event(self, event: dict):
         """Process events from agents"""
         event_type = event.get("type")
         event_data = event.get("data", {}) if isinstance(event, dict) else {}

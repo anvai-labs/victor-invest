@@ -18,7 +18,8 @@ from __future__ import annotations
 import copy
 import logging
 import math
-from typing import Any, Dict, Iterable, List, Optional, Sequence
+from collections.abc import Iterable, Sequence
+from typing import Any
 
 from investigator.domain.services.model_agreement_scorer import (
     AgreementConfig,
@@ -49,8 +50,8 @@ class MultiModelValuationOrchestrator:
     def __init__(
         self,
         divergence_threshold: float = 0.35,
-        agreement_config: Optional[Dict[str, Any]] = None,
-        bounds_config: Optional[Dict[str, Any]] = None,
+        agreement_config: dict[str, Any] | None = None,
+        bounds_config: dict[str, Any] | None = None,
     ) -> None:
         self.divergence_threshold = divergence_threshold
         self.weight_normalizer = WeightNormalizer(rounding_increment=5)
@@ -76,11 +77,11 @@ class MultiModelValuationOrchestrator:
     def combine(
         self,
         company_profile: CompanyProfile,
-        model_outputs: Sequence[Dict[str, Any]],
+        model_outputs: Sequence[dict[str, Any]],
         *,
-        fallback_weights: Optional[Dict[str, float]] = None,
-        tier_classification: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        fallback_weights: dict[str, float] | None = None,
+        tier_classification: str | None = None,
+    ) -> dict[str, Any]:
         """
         Blend applicable model outputs and return a consolidated summary.
 
@@ -124,7 +125,7 @@ class MultiModelValuationOrchestrator:
                 "notes": ["No applicable valuation models produced fair values."],
             }
 
-        confidences: List[float] = []
+        confidences: list[float] = []
         for model in applicable:
             confidence = model.get("confidence_score") or 0.0
             confidences.append(max(float(confidence), 0.0))
@@ -134,9 +135,9 @@ class MultiModelValuationOrchestrator:
         # Build weights dict for normalization
         weights_dict = {}
         fallback_applied = False
-        applied_weights: Dict[str, float] = {}
+        applied_weights: dict[str, float] = {}
 
-        missing_weight_targets: List[str] = []
+        missing_weight_targets: list[str] = []
         if fallback_weights:
             desired_models = {name: weight for name, weight in fallback_weights.items() if (weight or 0) > 0}
             for model_name, weight in desired_models.items():
@@ -303,7 +304,7 @@ class MultiModelValuationOrchestrator:
         divergence_flag = agreement_result.divergence_flag
         agreement_level = agreement_result.agreement_level
 
-        notes: List[str] = []
+        notes: list[str] = []
         if missing_weight_targets:
             notes.append("Tier targets ignored for missing fair values → " + ", ".join(missing_weight_targets))
         if divergence_flag:

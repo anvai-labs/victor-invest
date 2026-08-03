@@ -10,7 +10,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from investigator.config import get_config
 from investigator.domain.agents.base import InvestmentAgent
@@ -39,10 +39,10 @@ class SECFilingData:
     filing_date: datetime
     period_end: datetime
     form_url: str
-    xbrl_url: Optional[str]
+    xbrl_url: str | None
     raw_text: str
-    extracted_sections: Dict[str, str]
-    financial_data: Dict[str, Any]
+    extracted_sections: dict[str, str]
+    financial_data: dict[str, Any]
 
 
 class SECAnalysisAgent(InvestmentAgent):
@@ -78,7 +78,7 @@ class SECAnalysisAgent(InvestmentAgent):
             "controls": r"Item\s+9A[.\s]+Controls.*Procedures",
         }
 
-    def register_capabilities(self) -> List:
+    def register_capabilities(self) -> list:
         """Register agent capabilities"""
         from investigator.domain.agents.base import AgentCapability, AnalysisType
 
@@ -92,7 +92,7 @@ class SECAnalysisAgent(InvestmentAgent):
             )
         ]
 
-    async def pre_process(self, task: AgentTask) -> Optional[str]:
+    async def pre_process(self, task: AgentTask) -> str | None:
         """
         Validate database consistency before accepting file cache.
 
@@ -268,7 +268,7 @@ class SECAnalysisAgent(InvestmentAgent):
             return True
         return bool(task.context.get("extract_guidance", False))
 
-    async def _extract_forward_guidance(self, symbol: str, *, force_refresh: bool = False) -> Dict[str, Any]:
+    async def _extract_forward_guidance(self, symbol: str, *, force_refresh: bool = False) -> dict[str, Any]:
         """
         Fetch latest filings and deterministically extract guidance signals.
 
@@ -289,7 +289,7 @@ class SECAnalysisAgent(InvestmentAgent):
             if isinstance(cached, dict) and cached:
                 return cached
 
-        candidates: List[Dict[str, Any]] = []
+        candidates: list[dict[str, Any]] = []
         for form_type in ("8-K", "10-Q", "10-K"):
             try:
                 filing = await self.sec_client.get_filing_by_symbol(
@@ -355,7 +355,7 @@ class SECAnalysisAgent(InvestmentAgent):
         return selected
 
     @staticmethod
-    def _is_weak_guidance_payload(payload: Dict[str, Any]) -> bool:
+    def _is_weak_guidance_payload(payload: dict[str, Any]) -> bool:
         """
         Determine whether deterministic guidance output is too weak to trust on its own.
 
@@ -376,7 +376,7 @@ class SECAnalysisAgent(InvestmentAgent):
         except (TypeError, ValueError):
             confidence = 0.0
 
-        growth_values: List[float] = []
+        growth_values: list[float] = []
         for key in ("revenue_growth_guidance", "earnings_growth_guidance"):
             value = payload.get(key)
             if value is None:
@@ -397,10 +397,10 @@ class SECAnalysisAgent(InvestmentAgent):
         *,
         symbol: str,
         form_type: str,
-        filing_date: Optional[str],
-        filing_url: Optional[str],
+        filing_date: str | None,
+        filing_url: str | None,
         filing_text: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         LLM fallback for extracting forward guidance from filing text.
 
@@ -522,7 +522,7 @@ TEXT:
                     return tail
 
         # Generic fallback: windows around guidance-related keywords.
-        windows: List[str] = []
+        windows: list[str] = []
         for m in re.finditer(
             r"(guidance|outlook|forecast|expects|expectation|raise[d]?|reaffirm|provided?)",
             normalized,
@@ -539,7 +539,7 @@ TEXT:
         return normalized[:25000]
 
     @staticmethod
-    def _to_float_or_none(value: Any) -> Optional[float]:
+    def _to_float_or_none(value: Any) -> float | None:
         if value is None:
             return None
         try:
@@ -551,7 +551,7 @@ TEXT:
             return None
 
     @staticmethod
-    def _normalize_horizon(value: Any) -> Optional[str]:
+    def _normalize_horizon(value: Any) -> str | None:
         if value is None:
             return None
         raw = str(value).strip().lower()
@@ -563,7 +563,7 @@ TEXT:
             return "1y"
         return None
 
-    def _normalize_guidance_range(self, payload: Any) -> Optional[Dict[str, Any]]:
+    def _normalize_guidance_range(self, payload: Any) -> dict[str, Any] | None:
         if not isinstance(payload, dict):
             return None
 
@@ -578,7 +578,7 @@ TEXT:
         if low is None and high is None and mid is None:
             return None
 
-        normalized: Dict[str, Any] = {
+        normalized: dict[str, Any] = {
             "low": low,
             "high": high,
             "mid": mid,
@@ -594,9 +594,9 @@ TEXT:
         *,
         response: Any,
         form_type: str,
-        filing_date: Optional[str],
-        filing_url: Optional[str],
-    ) -> Dict[str, Any]:
+        filing_date: str | None,
+        filing_url: str | None,
+    ) -> dict[str, Any]:
         """
         Normalize LLM JSON output to canonical guidance payload.
         """
@@ -641,7 +641,7 @@ TEXT:
         if earnings_growth is not None:
             confidence += 0.10
 
-        normalized: Dict[str, Any] = {
+        normalized: dict[str, Any] = {
             "source": "sec_filing_llm",
             "source_form": str(form_type or "").upper(),
             "filing_date": filing_date,
@@ -663,7 +663,7 @@ TEXT:
 
         return normalized
 
-    def _resolve_force_refresh(self, symbol: Optional[str], task: AgentTask) -> bool:
+    def _resolve_force_refresh(self, symbol: str | None, task: AgentTask) -> bool:
         """Resolve whether this SEC task should bypass raw cache reuse."""
         # Task-level override (used by tests/legacy task submitters)
         if bool(task.context.get("force_refresh", False)):
@@ -706,7 +706,7 @@ TEXT:
 
     async def _fetch_and_cache_companyfacts(
         self, symbol: str, *, process_raw: bool = True, force_refresh: bool = False
-    ) -> Dict:
+    ) -> dict:
         """
         Fetch RAW SEC CompanyFacts API data and cache in sec_companyfacts_raw table (3-table architecture)
 
@@ -736,7 +736,7 @@ TEXT:
 
         # Step 1: Check if we have fresh cached data in sec_companyfacts_raw
         db_manager = get_db_manager()
-        current_price: Optional[float] = None
+        current_price: float | None = None
         if process_raw:
             current_price = await self._fetch_current_price(symbol)
 
@@ -952,7 +952,7 @@ TEXT:
         self,
         symbol: str,
         cik: str,
-        payload: Dict[str, Any],
+        payload: dict[str, Any],
         hash_suffix: str,
     ) -> Path:
         """Persist raw SEC payloads under data/sec_cache/facts/raw/{symbol}."""
@@ -971,7 +971,7 @@ TEXT:
             self.logger.warning("Failed to persist raw SEC payload for %s: %s", symbol, exc)
         return file_path
 
-    async def _fetch_current_price(self, symbol: str) -> Optional[float]:
+    async def _fetch_current_price(self, symbol: str) -> float | None:
         """Fetch the latest market price from the market data service (best-effort)."""
         if not hasattr(self, "market_data") or self.market_data is None:
             return None
@@ -985,7 +985,7 @@ TEXT:
             self.logger.warning("⚠️  Unable to fetch current price for %s: %s", symbol, exc)
         return None
 
-    async def _extract_from_filing(self, filing: Dict, symbol: str) -> Dict:
+    async def _extract_from_filing(self, filing: dict, symbol: str) -> dict:
         """
         Extract financial data directly from filing text using XBRL parser.
         This provides the most timely data (latest filed information).
@@ -1083,7 +1083,7 @@ TEXT:
             self.logger.warning(f"Filing extraction failed for {symbol}: {e}")
             raise
 
-    async def _extract_from_text(self, filing: Dict, symbol: str) -> Dict:
+    async def _extract_from_text(self, filing: dict, symbol: str) -> dict:
         """
         Extract financial data from filing text using regex patterns.
         This is a fallback when XBRL is not available.
@@ -1128,7 +1128,7 @@ TEXT:
 
         return financial_data
 
-    def _calculate_ratios(self, financial_data: Dict) -> None:
+    def _calculate_ratios(self, financial_data: dict) -> None:
         """
         Calculate financial ratios from metrics in place.
         """
@@ -1226,7 +1226,7 @@ TEXT:
 
         return filing_data
 
-    async def _extract_sections(self, filing_data: SECFilingData) -> Dict[str, str]:
+    async def _extract_sections(self, filing_data: SECFilingData) -> dict[str, str]:
         """Extract specific sections from filing text"""
         sections = {}
         text = filing_data.raw_text
@@ -1251,7 +1251,7 @@ TEXT:
 
         return sections
 
-    async def _analyze_financials(self, filing_data: SECFilingData, sections: Dict[str, str]) -> Dict:
+    async def _analyze_financials(self, filing_data: SECFilingData, sections: dict[str, str]) -> dict:
         """Analyze financial statements and data"""
         prompt = f"""
         Analyze the following financial data and provide insights:
@@ -1341,7 +1341,7 @@ TEXT:
             format="json",
         )
 
-    async def _extract_key_metrics(self, filing_data: SECFilingData) -> Dict:
+    async def _extract_key_metrics(self, filing_data: SECFilingData) -> dict:
         """Extract key financial metrics from XBRL data"""
         metrics = {}
         xbrl = filing_data.financial_data
@@ -1404,7 +1404,7 @@ TEXT:
 
         return metrics
 
-    async def _analyze_risks(self, risk_section: str, symbol: str) -> List[Dict]:
+    async def _analyze_risks(self, risk_section: str, symbol: str) -> list[dict]:
         """Analyze risk factors from filing"""
         if not risk_section:
             return []
@@ -1483,7 +1483,7 @@ TEXT:
             format="json",
         )
 
-    async def _analyze_mda(self, mda_section: str, symbol: str) -> Dict:
+    async def _analyze_mda(self, mda_section: str, symbol: str) -> dict:
         """Analyze Management Discussion & Analysis"""
         if not mda_section:
             return {}
@@ -1567,7 +1567,7 @@ TEXT:
             format="json",
         )
 
-    async def _synthesize_report(self, analysis_data: Dict) -> Dict:
+    async def _synthesize_report(self, analysis_data: dict) -> dict:
         """Synthesize comprehensive SEC analysis report"""
         symbol = analysis_data.get("symbol", "UNKNOWN")
 
@@ -1641,7 +1641,7 @@ TEXT:
             format="json",
         )
 
-    async def analyze_peer_comparison(self, symbol: str, peers: List[str], filing_type: str = "10-K") -> Dict:
+    async def analyze_peer_comparison(self, symbol: str, peers: list[str], filing_type: str = "10-K") -> dict:
         """Compare SEC filings across peer companies"""
         analyses = {}
 
@@ -1675,7 +1675,7 @@ TEXT:
             "comparison": comparison,
         }
 
-    async def _generate_peer_comparison(self, analyses: Dict) -> Dict:
+    async def _generate_peer_comparison(self, analyses: dict) -> dict:
         """Generate comparative analysis across peers"""
         # Extract symbol list for cache key (use first symbol as primary)
         symbols = list(analyses.keys())

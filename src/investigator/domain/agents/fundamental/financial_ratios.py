@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 _QUARTER_ORDER = {"Q1": 1, "Q2": 2, "Q3": 3, "Q4": 4}
 
@@ -33,9 +34,9 @@ def _extract_fiscal_year_period(entry: Any) -> tuple[int, str]:
     return fiscal_year, fiscal_period
 
 
-def _extract_quarter_metric(entry: Any, metric_candidates: List[str]) -> float:
+def _extract_quarter_metric(entry: Any, metric_candidates: list[str]) -> float:
     """Extract a metric value from a quarter payload across common nesting patterns."""
-    candidate_dicts: List[Dict[str, Any]] = []
+    candidate_dicts: list[dict[str, Any]] = []
 
     if isinstance(entry, dict):
         candidate_dicts.append(entry)
@@ -63,10 +64,10 @@ def _extract_quarter_metric(entry: Any, metric_candidates: List[str]) -> float:
 
 def calculate_ttm_metrics(
     *,
-    quarterly_data: List[Any],
+    quarterly_data: list[Any],
     symbol: str,
     logger: Any,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """
     Compute TTM metrics from the 4 most recent actual quarters (Q1-Q4 only).
 
@@ -76,7 +77,7 @@ def calculate_ttm_metrics(
     if not quarterly_data:
         return {}
 
-    actual_quarters: List[Any] = []
+    actual_quarters: list[Any] = []
     for quarter in quarterly_data:
         _, fiscal_period = _extract_fiscal_year_period(quarter)
         if fiscal_period in _QUARTER_ORDER:
@@ -159,7 +160,7 @@ def calculate_ttm_metrics(
     return ttm_metrics
 
 
-def log_ratio_calc_debug(*, logger: Any, symbol: str, company_data: Dict[str, Any]) -> None:
+def log_ratio_calc_debug(*, logger: Any, symbol: str, company_data: dict[str, Any]) -> None:
     """Emit ratio-calculation debug context."""
     logger.info("RATIOS_CALC_DEBUG - _calculate_financial_ratios() called for %s", symbol)
     logger.info("RATIOS_CALC_DEBUG - company_data keys: %s", list(company_data.keys()))
@@ -175,13 +176,13 @@ def resolve_market_inputs(
     *,
     symbol: str,
     cik: str,
-    financials: Dict[str, Any],
-    market_data: Dict[str, Any],
+    financials: dict[str, Any],
+    market_data: dict[str, Any],
     get_shares_outstanding: Callable[[str, str], float],
     get_public_float: Callable[[str, str], float],
     logger: Any,
-    ratios: Dict[str, Any],
-) -> Dict[str, float]:
+    ratios: dict[str, Any],
+) -> dict[str, float]:
     """Resolve price/shares/market-cap inputs and update market-dependent ratio seeds."""
     price = market_data.get("current_price", market_data.get("price", 0))
     shares = get_shares_outstanding(symbol, cik)
@@ -228,14 +229,14 @@ def resolve_market_inputs(
 def apply_valuation_ratios(
     *,
     symbol: str,
-    financials: Dict[str, Any],
-    quarterly_data: List[Any],
-    ttm_metrics: Optional[Dict[str, float]],
-    ratios: Dict[str, Any],
+    financials: dict[str, Any],
+    quarterly_data: list[Any],
+    ttm_metrics: dict[str, float] | None,
+    ratios: dict[str, Any],
     market_cap: float,
     shares: float,
-    calculate_ttm_net_income: Callable[[List[Any], str], float],
-    calculate_growth_rate: Callable[[Dict[str, Any], str], float],
+    calculate_ttm_net_income: Callable[[list[Any], str], float],
+    calculate_growth_rate: Callable[[dict[str, Any], str], float],
     logger: Any,
 ) -> None:
     """Populate valuation metrics that depend on market-cap and earnings growth."""
@@ -349,8 +350,8 @@ def apply_valuation_ratios(
 
 def apply_balance_sheet_and_cashflow_ratios(
     *,
-    financials: Dict[str, Any],
-    ratios: Dict[str, Any],
+    financials: dict[str, Any],
+    ratios: dict[str, Any],
     market_cap: float,
     price: float,
 ) -> None:
@@ -401,9 +402,9 @@ def apply_balance_sheet_and_cashflow_ratios(
 
 def add_market_context_ratios(
     *,
-    ratios: Dict[str, Any],
-    market_data: Dict[str, Any],
-    financials: Dict[str, Any],
+    ratios: dict[str, Any],
+    market_data: dict[str, Any],
+    financials: dict[str, Any],
     market_cap: float,
     shares: float,
     price: float,
@@ -417,9 +418,9 @@ def add_market_context_ratios(
 
 def calculate_revenue_growth_yoy(
     *,
-    quarterly_data: List[Any],
+    quarterly_data: list[Any],
     logger: Any,
-) -> Optional[float]:
+) -> float | None:
     """Calculate revenue growth using TTM (Trailing Twelve Months) comparison.
 
     Primary method: TTM Revenue Growth

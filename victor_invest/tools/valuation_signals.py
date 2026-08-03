@@ -46,7 +46,7 @@ Example:
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from victor_invest.tools.base import BaseTool, ToolResult
 
@@ -102,18 +102,18 @@ Signal Integration:
 4. Market Regime → WACC adjustment, valuation factor
 """
 
-    def __init__(self, config: Optional[Any] = None):
+    def __init__(self, config: Any | None = None):
         """Initialize Valuation Signals Tool.
 
         Args:
             config: Optional investigator config object.
         """
         super().__init__(config)
-        self._signal_integrator: Optional[Any] = None
-        self._credit_risk_tool: Optional[Any] = None
-        self._insider_tool: Optional[Any] = None
-        self._short_interest_tool: Optional[Any] = None
-        self._market_regime_tool: Optional[Any] = None
+        self._signal_integrator: Any | None = None
+        self._credit_risk_tool: Any | None = None
+        self._insider_tool: Any | None = None
+        self._short_interest_tool: Any | None = None
+        self._market_regime_tool: Any | None = None
 
     async def initialize(self) -> None:
         """Initialize valuation signal services."""
@@ -132,11 +132,11 @@ Signal Integration:
 
     async def execute(
         self,
-        _exec_ctx: Optional[Dict[str, Any]] = None,
+        _exec_ctx: dict[str, Any] | None = None,
         action: str = "integrate",
-        symbol: Optional[str] = None,
-        base_fair_value: Optional[float] = None,
-        current_price: Optional[float] = None,
+        symbol: str | None = None,
+        base_fair_value: float | None = None,
+        current_price: float | None = None,
         **kwargs,
     ) -> ToolResult:
         """Execute valuation signal query.
@@ -185,15 +185,15 @@ Signal Integration:
         except Exception as e:
             logger.error(f"ValuationSignalsTool execute error: {e}")
             return ToolResult.create_failure(
-                f"Valuation signal query failed: {str(e)}",
+                f"Valuation signal query failed: {e!s}",
                 metadata={"action": action, "symbol": symbol},
             )
 
     async def _integrate_signals(
         self,
-        symbol: Optional[str],
-        base_fair_value: Optional[float],
-        current_price: Optional[float],
+        symbol: str | None,
+        base_fair_value: float | None,
+        current_price: float | None,
         **kwargs,
     ) -> ToolResult:
         """Integrate all signals for adjusted fair value."""
@@ -234,7 +234,7 @@ Signal Integration:
             },
         )
 
-    async def _get_credit_risk_signal(self, symbol: Optional[str], **kwargs) -> ToolResult:
+    async def _get_credit_risk_signal(self, symbol: str | None, **kwargs) -> ToolResult:
         """Get credit risk signal only."""
         if not symbol:
             return ToolResult.create_failure("Symbol is required for credit risk signal")
@@ -277,7 +277,7 @@ Signal Integration:
             },
         )
 
-    async def _get_insider_signal(self, symbol: Optional[str], **kwargs) -> ToolResult:
+    async def _get_insider_signal(self, symbol: str | None, **kwargs) -> ToolResult:
         """Get insider sentiment signal only."""
         if not symbol:
             return ToolResult.create_failure("Symbol is required for insider signal")
@@ -316,7 +316,7 @@ Signal Integration:
             },
         )
 
-    async def _get_short_interest_signal(self, symbol: Optional[str], **kwargs) -> ToolResult:
+    async def _get_short_interest_signal(self, symbol: str | None, **kwargs) -> ToolResult:
         """Get short interest signal only."""
         if not symbol:
             return ToolResult.create_failure("Symbol is required for short interest signal")
@@ -397,7 +397,7 @@ Signal Integration:
             },
         )
 
-    async def _fetch_credit_risk_data(self, symbol: str) -> Optional[Dict[str, Any]]:
+    async def _fetch_credit_risk_data(self, symbol: str) -> dict[str, Any] | None:
         """Fetch credit risk data from CreditRiskTool."""
         try:
             from victor_invest.tools.credit_risk import CreditRiskTool
@@ -416,7 +416,7 @@ Signal Integration:
             logger.debug(f"Could not fetch credit risk data for {symbol}: {e}")
         return None
 
-    async def _fetch_insider_data(self, symbol: str) -> Optional[Dict[str, Any]]:
+    async def _fetch_insider_data(self, symbol: str) -> dict[str, Any] | None:
         """Fetch insider sentiment data from InsiderTradingTool."""
         try:
             from victor_invest.tools.insider_trading import InsiderTradingTool
@@ -437,7 +437,7 @@ Signal Integration:
             logger.debug(f"Could not fetch insider data for {symbol}: {e}")
         return None
 
-    async def _fetch_short_interest_data(self, symbol: str) -> Optional[Dict[str, Any]]:
+    async def _fetch_short_interest_data(self, symbol: str) -> dict[str, Any] | None:
         """Fetch short interest data from ShortInterestTool."""
         try:
             from victor_invest.tools.short_interest import ShortInterestTool
@@ -456,7 +456,7 @@ Signal Integration:
             logger.debug(f"Could not fetch short interest data for {symbol}: {e}")
         return None
 
-    async def _fetch_market_regime_data(self) -> Optional[Dict[str, Any]]:
+    async def _fetch_market_regime_data(self) -> dict[str, Any] | None:
         """Fetch market regime data from MarketRegimeTool."""
         try:
             from victor_invest.tools.market_regime import MarketRegimeTool
@@ -479,7 +479,7 @@ Signal Integration:
             logger.debug(f"Could not fetch market regime data: {e}")
         return None
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """Get JSON schema for Valuation Signals Tool parameters."""
         return {
             "type": "object",

@@ -25,7 +25,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, ClassVar, Dict, List, Optional, Protocol, Tuple
+from typing import Any, ClassVar, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ class FieldExtractor(Protocol):
         """Name of the field this extractor handles."""
         ...
 
-    def extract(self, data: Dict[str, Any]) -> ExtractionResult:
+    def extract(self, data: dict[str, Any]) -> ExtractionResult:
         """Extract the field value from data."""
         ...
 
@@ -94,17 +94,15 @@ class BaseFieldExtractor(ABC):
     @abstractmethod
     def field_name(self) -> str:
         """Name of the field this extractor handles."""
-        pass
 
     @abstractmethod
-    def _get_paths(self) -> List[Tuple[str, ...]]:
+    def _get_paths(self) -> list[tuple[str, ...]]:
         """
         Return ordered list of paths to try.
 
         Each path is a tuple of keys to traverse.
         Paths are tried in order until one succeeds.
         """
-        pass
 
     def _transform_value(self, value: Any) -> Any:
         """Optional transformation after extraction. Override in subclasses."""
@@ -121,7 +119,7 @@ class BaseFieldExtractor(ABC):
             return True
         return True
 
-    def extract(self, data: Dict[str, Any]) -> ExtractionResult:
+    def extract(self, data: dict[str, Any]) -> ExtractionResult:
         """
         Extract value using fallback chain (Template Method).
 
@@ -148,7 +146,7 @@ class BaseFieldExtractor(ABC):
 
         return ExtractionResult.not_found(", ".join(attempted_paths))
 
-    def _traverse_path(self, data: Dict[str, Any], path: Tuple[str, ...]) -> Any:
+    def _traverse_path(self, data: dict[str, Any], path: tuple[str, ...]) -> Any:
         """Navigate nested dictionary using path tuple."""
         current = data
 
@@ -183,7 +181,7 @@ class PriceTargetExtractor(BaseFieldExtractor):
     def field_name(self) -> str:
         return "price_target_12m"
 
-    def _get_paths(self) -> List[Tuple[str, ...]]:
+    def _get_paths(self) -> list[tuple[str, ...]]:
         return [
             # Direct valuation paths
             ("agents", "fundamental", "valuation", "price_target_12_month"),
@@ -225,7 +223,7 @@ class InvestmentGradeExtractor(BaseFieldExtractor):
     def field_name(self) -> str:
         return "investment_grade"
 
-    def _get_paths(self) -> List[Tuple[str, ...]]:
+    def _get_paths(self) -> list[tuple[str, ...]]:
         return [
             ("agents", "fundamental", "valuation", "investment_grade"),
             ("agents", "fundamental", "valuation", "response", "investment_grade"),
@@ -238,7 +236,7 @@ class InvestmentGradeExtractor(BaseFieldExtractor):
             return False
         return value.upper() in self.VALID_GRADES or len(value) <= 2
 
-    def extract(self, data: Dict[str, Any]) -> ExtractionResult:
+    def extract(self, data: dict[str, Any]) -> ExtractionResult:
         """Override to add calculated grade fallback."""
         # Try standard extraction first
         result = super().extract(data)
@@ -249,7 +247,7 @@ class InvestmentGradeExtractor(BaseFieldExtractor):
         # Fallback: Calculate from upside percentage
         return self._calculate_from_upside(data)
 
-    def _calculate_from_upside(self, data: Dict[str, Any]) -> ExtractionResult:
+    def _calculate_from_upside(self, data: dict[str, Any]) -> ExtractionResult:
         """Calculate grade from upside/downside percentage."""
         # Try to find upside percentage
         upside_paths = [
@@ -311,7 +309,7 @@ class CurrentPriceExtractor(BaseFieldExtractor):
     def field_name(self) -> str:
         return "current_price"
 
-    def _get_paths(self) -> List[Tuple[str, ...]]:
+    def _get_paths(self) -> list[tuple[str, ...]]:
         return [
             ("agents", "fundamental", "ratios", "current_price"),
             ("agents", "fundamental", "company_data", "current_price"),
@@ -343,7 +341,7 @@ class KeyStrengthsExtractor(BaseFieldExtractor):
     def field_name(self) -> str:
         return "key_strengths"
 
-    def _get_paths(self) -> List[Tuple[str, ...]]:
+    def _get_paths(self) -> list[tuple[str, ...]]:
         return [
             # Current synthesis result shape (post-wrapper normalization)
             ("agents", "synthesis", "analysis", "key_insights"),
@@ -404,7 +402,7 @@ class KeyStrengthsExtractor(BaseFieldExtractor):
             ("fundamental", "analysis", "response", "strengths"),
         ]
 
-    def _transform_value(self, value: Any) -> List[str]:
+    def _transform_value(self, value: Any) -> list[str]:
         """Transform various formats to list of strings."""
         if value is None:
             return []
@@ -476,7 +474,7 @@ class KeyRisksExtractor(BaseFieldExtractor):
     def field_name(self) -> str:
         return "key_risks"
 
-    def _get_paths(self) -> List[Tuple[str, ...]]:
+    def _get_paths(self) -> list[tuple[str, ...]]:
         return [
             # Current synthesis result shape (post-wrapper normalization)
             ("agents", "synthesis", "analysis", "risk_assessment", "primary_risks"),
@@ -527,7 +525,7 @@ class KeyRisksExtractor(BaseFieldExtractor):
             ("synthesis", "synthesis", "response", "risk_analysis", "primary_risks"),
         ]
 
-    def _transform_value(self, value: Any) -> List[str]:
+    def _transform_value(self, value: Any) -> list[str]:
         """Transform to list of risk strings."""
         if value is None:
             return []
@@ -567,7 +565,7 @@ class InvestmentThesisExtractor(BaseFieldExtractor):
     def field_name(self) -> str:
         return "investment_thesis"
 
-    def _get_paths(self) -> List[Tuple[str, ...]]:
+    def _get_paths(self) -> list[tuple[str, ...]]:
         return [
             # Current synthesis result shape (post-wrapper normalization)
             ("agents", "synthesis", "analysis", "investment_thesis", "core_thesis"),
@@ -637,7 +635,7 @@ class RecommendationExtractor(BaseFieldExtractor):
     def field_name(self) -> str:
         return "recommendation"
 
-    def _get_paths(self) -> List[Tuple[str, ...]]:
+    def _get_paths(self) -> list[tuple[str, ...]]:
         return [
             # Current synthesis result shape (post-wrapper normalization)
             ("agents", "synthesis", "recommendation", "final_recommendation"),
@@ -686,7 +684,7 @@ class ConfidenceExtractor(BaseFieldExtractor):
     def field_name(self) -> str:
         return "confidence"
 
-    def _get_paths(self) -> List[Tuple[str, ...]]:
+    def _get_paths(self) -> list[tuple[str, ...]]:
         return [
             ("agents", "fundamental", "confidence", "confidence_level"),
             ("agents", "fundamental", "confidence", "overall"),
@@ -702,7 +700,7 @@ class DataQualityScoreExtractor(BaseFieldExtractor):
     def field_name(self) -> str:
         return "data_quality_score"
 
-    def _get_paths(self) -> List[Tuple[str, ...]]:
+    def _get_paths(self) -> list[tuple[str, ...]]:
         return [
             ("agents", "fundamental", "data_quality", "data_quality_score"),
             ("agents", "fundamental", "data_quality", "overall_score"),
@@ -723,7 +721,7 @@ class TimeHorizonExtractor(BaseFieldExtractor):
     def field_name(self) -> str:
         return "time_horizon"
 
-    def _get_paths(self) -> List[Tuple[str, ...]]:
+    def _get_paths(self) -> list[tuple[str, ...]]:
         return [
             # Current synthesis result shape (post-wrapper normalization)
             ("agents", "synthesis", "recommendation", "time_horizon"),
@@ -762,12 +760,12 @@ class TimeHorizonExtractor(BaseFieldExtractor):
 class SummaryExtractionAudit:
     """Audit trail for extraction process."""
 
-    extractions: Dict[str, ExtractionResult] = field(default_factory=dict)
+    extractions: dict[str, ExtractionResult] = field(default_factory=dict)
 
     def add(self, field_name: str, result: ExtractionResult):
         self.extractions[field_name] = result
 
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         """Get extraction summary for debugging."""
         return {
             name: {
@@ -797,7 +795,7 @@ class SummaryDataExtractor:
     Follows Dependency Inversion: depends on FieldExtractor protocol, not concrete classes.
     """
 
-    def __init__(self, analysis_results: Dict[str, Any], enable_audit: bool = True):
+    def __init__(self, analysis_results: dict[str, Any], enable_audit: bool = True):
         """
         Initialize extractor with analysis results.
 
@@ -810,7 +808,7 @@ class SummaryDataExtractor:
         self.audit = SummaryExtractionAudit() if enable_audit else None
 
         # Register default extractors (Open/Closed: add more without modifying)
-        self._extractors: List[FieldExtractor] = [
+        self._extractors: list[FieldExtractor] = [
             PriceTargetExtractor(),
             InvestmentGradeExtractor(),
             CurrentPriceExtractor(),
@@ -838,7 +836,7 @@ class SummaryDataExtractor:
 
         return ExtractionResult.not_found(f"no_extractor_for:{field_name}")
 
-    def extract_all(self) -> Dict[str, Any]:
+    def extract_all(self) -> dict[str, Any]:
         """
         Extract all summary fields.
 
@@ -857,7 +855,7 @@ class SummaryDataExtractor:
 
         return results
 
-    def extract_minimal_summary(self) -> Dict[str, Any]:
+    def extract_minimal_summary(self) -> dict[str, Any]:
         """
         Extract fields specifically for minimal summary format.
 
@@ -911,7 +909,7 @@ class SummaryDataExtractor:
             "_extraction_audit": self.audit.get_summary() if self.audit else None,
         }
 
-    def get_audit(self) -> Optional[SummaryExtractionAudit]:
+    def get_audit(self) -> SummaryExtractionAudit | None:
         """Get extraction audit trail."""
         return self.audit
 

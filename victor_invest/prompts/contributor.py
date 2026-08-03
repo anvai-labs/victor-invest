@@ -4,11 +4,9 @@ Registers investment-specific task type hints and system prompt sections
 with the framework via the victor.prompt_contributors entry point.
 """
 
-from typing import Dict, List, Optional
-
 from victor_contracts.verticals import PromptContributorProtocol, TaskTypeHint
 
-INVESTMENT_TASK_TYPE_HINTS: Dict[str, TaskTypeHint] = {
+INVESTMENT_TASK_TYPE_HINTS: dict[str, TaskTypeHint] = {
     "equity_analysis": TaskTypeHint(
         task_type="equity_analysis",
         hint="""[EQUITY ANALYSIS] Institutional-grade stock analysis:
@@ -57,11 +55,11 @@ INVESTMENT_TASK_TYPE_HINTS: Dict[str, TaskTypeHint] = {
 class InvestmentPromptContributor(PromptContributorProtocol):
     """Contributes investment-specific task hints to the system prompt."""
 
-    def get_task_type_hints(self) -> Dict[str, TaskTypeHint]:
+    def get_task_type_hints(self) -> dict[str, TaskTypeHint]:
         """Return investment task type hints for tool budget guidance."""
         return INVESTMENT_TASK_TYPE_HINTS
 
-    def get_system_prompt_sections(self) -> List[str]:
+    def get_system_prompt_sections(self) -> list[str]:
         """Return additional system prompt sections for investment context."""
         return [
             "When analyzing investments, always cite specific financial metrics "
@@ -69,7 +67,7 @@ class InvestmentPromptContributor(PromptContributorProtocol):
             "and clearly separate factual analysis from forward-looking projections.",
         ]
 
-    def get_grounding_addendum(self) -> Optional[str]:
+    def get_grounding_addendum(self) -> str | None:
         """Return investment-specific grounding rules."""
         return (
             "INVESTMENT GROUNDING: All financial data must come from SEC filings "

@@ -9,7 +9,7 @@ Date: 2025-01-05
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
 import pytest
 
@@ -25,8 +25,8 @@ class MockQuarterlyData:
 
     fiscal_year: int
     fiscal_period: str
-    financial_data: Dict[str, Any]
-    ratios: Optional[Dict[str, Any]] = None
+    financial_data: dict[str, Any]
+    ratios: dict[str, Any] | None = None
 
 
 class TestAnalyzeRevenueTrend:

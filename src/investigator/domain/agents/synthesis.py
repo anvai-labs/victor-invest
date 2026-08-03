@@ -8,7 +8,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 
@@ -50,13 +50,13 @@ class SynthesisInput:
     """Input data from various analysis agents"""
 
     symbol: str
-    sec_analysis: Optional[Dict] = None
-    fundamental_analysis: Optional[Dict] = None
-    technical_analysis: Optional[Dict] = None
-    sentiment_analysis: Optional[Dict] = None
-    peer_comparison: Optional[Dict] = None
-    market_context: Optional[Dict] = None
-    context: Optional[Dict] = None
+    sec_analysis: dict | None = None
+    fundamental_analysis: dict | None = None
+    technical_analysis: dict | None = None
+    sentiment_analysis: dict | None = None
+    peer_comparison: dict | None = None
+    market_context: dict | None = None
+    context: dict | None = None
     timestamp: datetime = None
 
 
@@ -120,7 +120,7 @@ class SynthesisAgent(InvestmentAgent):
         self.deterministic_action_plan_generation = deterministic_config.get("action_plan_generation", True)
         self.deterministic_report_generation = deterministic_config.get("report_generation", True)
 
-    def _build_deterministic_response(self, label: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _build_deterministic_response(self, label: str, payload: dict[str, Any]) -> dict[str, Any]:
         """Return a structure consistent with _wrap_llm_response for rule-based analyses."""
         return {
             "response": payload,
@@ -153,7 +153,7 @@ class SynthesisAgent(InvestmentAgent):
         if default is None:
             default = {}
 
-        def _parse_json_payload(payload: str, wrapped: bool = False) -> Dict[str, Any]:
+        def _parse_json_payload(payload: str, wrapped: bool = False) -> dict[str, Any]:
             """Parse JSON payloads that may include <think> blocks or markdown wrappers."""
             payload = payload.strip()
             if not payload:
@@ -239,7 +239,7 @@ class SynthesisAgent(InvestmentAgent):
         return value
 
     @staticmethod
-    def _first_non_empty(mapping: Dict[str, Any], keys: List[str]) -> Any:
+    def _first_non_empty(mapping: dict[str, Any], keys: list[str]) -> Any:
         """Return first non-empty value among candidate keys."""
         for key in keys:
             value = mapping.get(key)
@@ -247,7 +247,7 @@ class SynthesisAgent(InvestmentAgent):
                 return value
         return None
 
-    def _normalize_scenarios_response(self, payload: Any) -> Dict[str, Any]:
+    def _normalize_scenarios_response(self, payload: Any) -> dict[str, Any]:
         """Normalize scenario payloads from alternative model output schemas."""
         if not isinstance(payload, dict):
             return {}
@@ -257,7 +257,7 @@ class SynthesisAgent(InvestmentAgent):
         if isinstance(nested, dict) and not any(payload.get(name) for name in ("bull_case", "base_case", "bear_case")):
             candidate = nested
 
-        def _coerce_case(case_payload: Any, default_probability: int) -> Dict[str, Any]:
+        def _coerce_case(case_payload: Any, default_probability: int) -> dict[str, Any]:
             if isinstance(case_payload, dict):
                 return case_payload
             if isinstance(case_payload, list):
@@ -303,7 +303,7 @@ class SynthesisAgent(InvestmentAgent):
 
         return normalized
 
-    def _normalize_recommendation_response(self, payload: Any) -> Dict[str, Any]:
+    def _normalize_recommendation_response(self, payload: Any) -> dict[str, Any]:
         """Normalize recommendation payloads into canonical synthesis keys."""
         if not isinstance(payload, dict):
             return {}
@@ -348,7 +348,7 @@ class SynthesisAgent(InvestmentAgent):
 
         return normalized
 
-    def _normalize_action_plan_response(self, payload: Any) -> Dict[str, Any]:
+    def _normalize_action_plan_response(self, payload: Any) -> dict[str, Any]:
         """Normalize action-plan payloads into canonical section keys."""
         if not isinstance(payload, dict):
             return {}
@@ -394,7 +394,7 @@ class SynthesisAgent(InvestmentAgent):
         if value is None:
             return 0.0
 
-        parsed: Optional[float] = None
+        parsed: float | None = None
         if isinstance(value, (int, float)):
             parsed = float(value)
         elif isinstance(value, str):
@@ -414,14 +414,14 @@ class SynthesisAgent(InvestmentAgent):
 
     def _build_deterministic_risk_assessment_payload(
         self,
-        all_risks: List[Dict[str, Any]],
-        conflicts: Optional[List[Dict[str, Any]]] = None,
-    ) -> Dict[str, Any]:
+        all_risks: list[dict[str, Any]],
+        conflicts: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
         """Build deterministic risk assessment payload when LLM output is unavailable."""
         conflicts = conflicts or []
 
         severity_to_weight = {"high": 20, "medium": 10, "low": 5}
-        category_counts: Dict[str, int] = {}
+        category_counts: dict[str, int] = {}
         weighted_risk = 0.0
 
         for risk in all_risks:
@@ -436,7 +436,7 @@ class SynthesisAgent(InvestmentAgent):
 
         priority_map = {"high": "High", "medium": "Medium", "low": "Low"}
         categorized = []
-        matrix: Dict[str, Dict[str, str]] = {}
+        matrix: dict[str, dict[str, str]] = {}
         for risk in all_risks:
             severity = str(risk.get("severity", "medium")).lower()
             description = str(risk.get("description", "Unspecified risk"))
@@ -484,8 +484,8 @@ class SynthesisAgent(InvestmentAgent):
         synthesis_input: SynthesisInput,
         *,
         methodology: str,
-        error: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        error: str | None = None,
+    ) -> dict[str, Any]:
         """Build deterministic scenario payload used for fallback and deterministic mode."""
         current_price = synthesis_input.fundamental_analysis.get("valuation", {}).get("current_price", 100)
         fair_value = synthesis_input.fundamental_analysis.get("valuation", {}).get("fair_value", current_price)
@@ -496,7 +496,7 @@ class SynthesisAgent(InvestmentAgent):
         bear_return = -0.20
         expected_return = (0.3 * bull_return) + (0.5 * base_return) + (0.2 * bear_return)
 
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "bull_case": {
                 "price_target": round(current_price * 1.25, 2),
                 "probability": 30,
@@ -555,7 +555,7 @@ class SynthesisAgent(InvestmentAgent):
         risk_adjusted_score: float,
         confidence: float,
         expected_return: float,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Build deterministic recommendation payload."""
         conviction_level = "high" if confidence >= 75 else "medium" if confidence >= 55 else "low"
         return {
@@ -580,7 +580,7 @@ class SynthesisAgent(InvestmentAgent):
             "fallback_used": True,
         }
 
-    def _build_deterministic_action_plan_payload(self, synthesis_input: SynthesisInput) -> Dict[str, Any]:
+    def _build_deterministic_action_plan_payload(self, synthesis_input: SynthesisInput) -> dict[str, Any]:
         """Build deterministic action-plan payload."""
         technical_levels = (
             synthesis_input.technical_analysis.get("levels", {}) if synthesis_input.technical_analysis else {}
@@ -625,7 +625,7 @@ class SynthesisAgent(InvestmentAgent):
             "fallback_used": True,
         }
 
-    def register_capabilities(self) -> List:
+    def register_capabilities(self) -> list:
         """Register agent capabilities"""
         from investigator.domain.agents.base import AgentCapability, AnalysisType
 
@@ -802,7 +802,7 @@ class SynthesisAgent(InvestmentAgent):
                 error=str(e),
             )
 
-    async def _score_analyses(self, synthesis_input: SynthesisInput) -> Dict:
+    async def _score_analyses(self, synthesis_input: SynthesisInput) -> dict:
         """Score the quality and completeness of each analysis"""
         scores = {}
 
@@ -840,7 +840,7 @@ class SynthesisAgent(InvestmentAgent):
 
         return scores
 
-    async def _extract_key_insights(self, synthesis_input: SynthesisInput) -> Dict:
+    async def _extract_key_insights(self, synthesis_input: SynthesisInput) -> dict:
         """Extract key insights from each analysis using LLM"""
         # Check if deterministic insight extraction is enabled (saves tokens, faster)
         if self.use_deterministic and self.deterministic_insight_extraction:
@@ -940,9 +940,9 @@ class SynthesisAgent(InvestmentAgent):
     def _calculate_smart_price_targets(
         self,
         synthesis_input: SynthesisInput,
-        composite_scores: Dict,
-        risk_assessment: Dict,
-    ) -> Dict:
+        composite_scores: dict,
+        risk_assessment: dict,
+    ) -> dict:
         """Calculate smart price targets with both upward and downward adjustments"""
         from utils.valuation.valuation_adjustments import (
             SmartValuationAdjuster,
@@ -1037,7 +1037,7 @@ class SynthesisAgent(InvestmentAgent):
         else:
             return "very_low"
 
-    def _extract_technical_trend(self, technical_analysis: Optional[Dict]) -> str:
+    def _extract_technical_trend(self, technical_analysis: dict | None) -> str:
         """Extract technical trend from analysis"""
         if not technical_analysis:
             return "sideways"
@@ -1056,7 +1056,7 @@ class SynthesisAgent(InvestmentAgent):
         else:
             return "sideways"
 
-    def _assess_market_sentiment(self, synthesis_input: SynthesisInput, market_context: Optional[Dict] = None) -> str:
+    def _assess_market_sentiment(self, synthesis_input: SynthesisInput, market_context: dict | None = None) -> str:
         """Assess overall market sentiment using ETF context data"""
         # If we have ETF market context, use it for better sentiment assessment
         if market_context:
@@ -1107,7 +1107,7 @@ class SynthesisAgent(InvestmentAgent):
         else:
             return "very_bearish"
 
-    def _extract_quality_factors(self, fundamental_analysis: Optional[Dict]) -> Dict:
+    def _extract_quality_factors(self, fundamental_analysis: dict | None) -> dict:
         """Extract quality factors from fundamental analysis"""
         if not fundamental_analysis:
             return {}
@@ -1119,7 +1119,7 @@ class SynthesisAgent(InvestmentAgent):
             "financial_strength": fundamental_analysis.get("financial_strength", "average"),
         }
 
-    def _aggregate_to_fiscal_years(self, quarterly_data: List[Dict], metric_name: str) -> List[Dict]:
+    def _aggregate_to_fiscal_years(self, quarterly_data: list[dict], metric_name: str) -> list[dict]:
         """
         Aggregate quarterly financial data into fiscal years
 
@@ -1216,7 +1216,7 @@ class SynthesisAgent(InvestmentAgent):
         else:  # Negative CAGR
             return "declining"  # Negative growth = AVOID
 
-    def _detect_trend_direction(self, annual_data: List[Dict]) -> str:
+    def _detect_trend_direction(self, annual_data: list[dict]) -> str:
         """
         Detect trend direction using linear regression on annual data
 
@@ -1265,7 +1265,7 @@ class SynthesisAgent(InvestmentAgent):
         else:
             return "STABLE"
 
-    def _calculate_multi_year_metrics(self, synthesis_input: SynthesisInput) -> Dict:
+    def _calculate_multi_year_metrics(self, synthesis_input: SynthesisInput) -> dict:
         """
         Calculate multi-year CAGR, volatility, and trend metrics
 
@@ -1388,7 +1388,7 @@ class SynthesisAgent(InvestmentAgent):
 
         return metrics
 
-    def _generate_charts(self, symbol: str, synthesis_input: SynthesisInput, multi_year_metrics: Dict) -> Dict:
+    def _generate_charts(self, symbol: str, synthesis_input: SynthesisInput, multi_year_metrics: dict) -> dict:
         """
         Generate charts for quarterly revenue trends and multi-year historical analysis
 
@@ -1504,7 +1504,7 @@ class SynthesisAgent(InvestmentAgent):
 
         return charts
 
-    def _classify_revenue_trend(self, growth_rates: List[float]) -> str:
+    def _classify_revenue_trend(self, growth_rates: list[float]) -> str:
         """
         Classify revenue trend based on growth rate progression
 
@@ -1547,7 +1547,7 @@ class SynthesisAgent(InvestmentAgent):
         else:
             return "stable_growth"
 
-    def _classify_margin_trend(self, margins: List[float]) -> str:
+    def _classify_margin_trend(self, margins: list[float]) -> str:
         """
         Classify margin trend based on margin progression
 
@@ -1592,7 +1592,7 @@ class SynthesisAgent(InvestmentAgent):
         else:
             return "stable"
 
-    def _classify_cash_flow_trend(self, cash_flows: List[float]) -> str:
+    def _classify_cash_flow_trend(self, cash_flows: list[float]) -> str:
         """
         Classify cash flow trend based on cash flow progression
 
@@ -1635,7 +1635,7 @@ class SynthesisAgent(InvestmentAgent):
         else:
             return "stable"
 
-    def _analyze_comprehensive_trends(self, synthesis_input: SynthesisInput) -> Dict:
+    def _analyze_comprehensive_trends(self, synthesis_input: SynthesisInput) -> dict:
         """
         Analyze comprehensive trends across revenue, margins, and cash flow
 
@@ -1794,10 +1794,10 @@ class SynthesisAgent(InvestmentAgent):
     def _generate_pdf_report(
         self,
         symbol: str,
-        synthesis_report: Dict,
-        chart_paths: Dict,
+        synthesis_report: dict,
+        chart_paths: dict,
         synthesis_input: "SynthesisInput",
-    ) -> Dict:
+    ) -> dict:
         """
         Generate professional PDF report with embedded charts
 
@@ -1899,14 +1899,14 @@ class SynthesisAgent(InvestmentAgent):
 
         except ImportError as e:
             self.logger.warning(f"PDF generation dependencies not available: {e}")
-            result["error"] = f"import_error: {str(e)}"
+            result["error"] = f"import_error: {e!s}"
         except Exception as e:
             self.logger.error(f"Failed to generate PDF report for {symbol}: {e}")
-            result["error"] = f"generation_error: {str(e)}"
+            result["error"] = f"generation_error: {e!s}"
 
         return result
 
-    async def _detect_conflicts(self, synthesis_input: SynthesisInput) -> List[Dict]:
+    async def _detect_conflicts(self, synthesis_input: SynthesisInput) -> list[dict]:
         """Detect conflicts between different analyses"""
         conflicts = []
 
@@ -1971,7 +1971,7 @@ class SynthesisAgent(InvestmentAgent):
 
         return conflicts
 
-    async def _reconcile_conflicts(self, conflicts: List[Dict], synthesis_input: SynthesisInput) -> Dict:
+    async def _reconcile_conflicts(self, conflicts: list[dict], synthesis_input: SynthesisInput) -> dict:
         """Reconcile conflicts between analyses using reasoning"""
         symbol = synthesis_input.symbol
 
@@ -2060,7 +2060,7 @@ class SynthesisAgent(InvestmentAgent):
             format="json",
         )
 
-    async def _calculate_composite_scores(self, synthesis_input: SynthesisInput, analysis_scores: Dict) -> Dict:
+    async def _calculate_composite_scores(self, synthesis_input: SynthesisInput, analysis_scores: dict) -> dict:
         """Calculate composite scores from all analyses"""
         composite = {}
 
@@ -2096,11 +2096,9 @@ class SynthesisAgent(InvestmentAgent):
             "sentiment": 0.15,
         }
 
-        total_weight = sum(weights[k] for k in weighted_scores.keys())
+        total_weight = sum(weights[k] for k in weighted_scores)
         composite["overall_score"] = (
-            sum(weighted_scores[k] * weights[k] for k in weighted_scores.keys()) / total_weight
-            if total_weight > 0
-            else 50
+            sum(weighted_scores[k] * weights[k] for k in weighted_scores) / total_weight if total_weight > 0 else 50
         )
 
         # Calculate confidence based on analysis completeness and agreement
@@ -2115,9 +2113,9 @@ class SynthesisAgent(InvestmentAgent):
     async def _generate_investment_thesis(
         self,
         synthesis_input: SynthesisInput,
-        key_insights: Dict,
-        composite_scores: Dict,
-    ) -> Dict:
+        key_insights: dict,
+        composite_scores: dict,
+    ) -> dict:
         """Generate comprehensive investment thesis"""
         # Check if deterministic thesis generation is enabled (saves tokens, faster)
         if self.use_deterministic and self.deterministic_thesis_generation:
@@ -2201,7 +2199,7 @@ class SynthesisAgent(InvestmentAgent):
             format="json",
         )
 
-    async def _comprehensive_risk_assessment(self, synthesis_input: SynthesisInput, conflicts: List[Dict]) -> Dict:
+    async def _comprehensive_risk_assessment(self, synthesis_input: SynthesisInput, conflicts: list[dict]) -> dict:
         """Perform comprehensive risk assessment across all dimensions"""
         risks = {"categories": {}, "overall_risk": 50, "risk_reward_ratio": 1.0}
 
@@ -2342,9 +2340,9 @@ class SynthesisAgent(InvestmentAgent):
     async def _generate_scenarios(
         self,
         synthesis_input: SynthesisInput,
-        composite_scores: Dict,
-        risk_assessment: Dict,
-    ) -> Dict:
+        composite_scores: dict,
+        risk_assessment: dict,
+    ) -> dict:
         """Generate bull, base, and bear case scenarios with smart valuation adjustments"""
 
         # FIX #5: Validate assessment values before scenario generation
@@ -2492,11 +2490,11 @@ class SynthesisAgent(InvestmentAgent):
 
     async def _make_recommendation(
         self,
-        composite_scores: Dict,
-        risk_assessment: Dict,
-        scenarios: Dict,
+        composite_scores: dict,
+        risk_assessment: dict,
+        scenarios: dict,
         symbol: str,
-    ) -> Dict:
+    ) -> dict:
         """Make final investment recommendation"""
         # Unwrap scenarios if it's a wrapped LLM response
         if "response" in scenarios and isinstance(scenarios.get("response"), dict):
@@ -2647,8 +2645,8 @@ class SynthesisAgent(InvestmentAgent):
         )
 
     async def _generate_action_plan(
-        self, recommendation: Dict, synthesis_input: SynthesisInput, scenarios: Dict
-    ) -> Dict:
+        self, recommendation: dict, synthesis_input: SynthesisInput, scenarios: dict
+    ) -> dict:
         """Generate specific action plan based on recommendation"""
         if self.use_deterministic and self.deterministic_action_plan_generation:
             self.logger.debug(
@@ -2772,7 +2770,7 @@ class SynthesisAgent(InvestmentAgent):
             format="json",
         )
 
-    async def _create_synthesis_report(self, report_data: Dict) -> Dict:
+    async def _create_synthesis_report(self, report_data: dict) -> dict:
         """Create final comprehensive synthesis report"""
         # Round numeric values to reduce token usage
         from investigator.domain.services.data_normalizer import DataNormalizer
@@ -2962,7 +2960,7 @@ class SynthesisAgent(InvestmentAgent):
             format="json",
         )
 
-    def _evaluate_analysis_quality(self, analysis: Dict, required_fields: List[str]) -> float:
+    def _evaluate_analysis_quality(self, analysis: dict, required_fields: list[str]) -> float:
         """Evaluate the quality and completeness of an analysis"""
         if not analysis:
             return 0.0
@@ -2982,7 +2980,7 @@ class SynthesisAgent(InvestmentAgent):
 
         return quality_score
 
-    def _prepare_analysis_summary(self, synthesis_input: SynthesisInput) -> Dict:
+    def _prepare_analysis_summary(self, synthesis_input: SynthesisInput) -> dict:
         """Prepare summary of all analyses for LLM processing"""
         summary = {}
 
@@ -3012,7 +3010,7 @@ class SynthesisAgent(InvestmentAgent):
 
         return summary
 
-    def _extract_quantitative_insights(self, synthesis_input: SynthesisInput) -> Dict:
+    def _extract_quantitative_insights(self, synthesis_input: SynthesisInput) -> dict:
         """Extract quantitative insights from analyses"""
         insights = {}
 
@@ -3053,8 +3051,8 @@ class SynthesisAgent(InvestmentAgent):
     def _calculate_confidence(
         self,
         synthesis_input: SynthesisInput,
-        analysis_scores: Dict,
-        weighted_scores: Dict,
+        analysis_scores: dict,
+        weighted_scores: dict,
     ) -> float:
         """Calculate overall confidence in the analysis"""
         confidence_factors = []
@@ -3088,7 +3086,7 @@ class SynthesisAgent(InvestmentAgent):
 
         return min(max(confidence, 0), 100)  # Clamp between 0 and 100
 
-    async def generate_peer_synthesis(self, target: str, peers: List[str], analyses: Dict[str, Dict]) -> Dict:
+    async def generate_peer_synthesis(self, target: str, peers: list[str], analyses: dict[str, dict]) -> dict:
         """Generate synthesis comparing target to peers"""
         # Round numeric values to reduce token usage
         from investigator.domain.services.data_normalizer import DataNormalizer

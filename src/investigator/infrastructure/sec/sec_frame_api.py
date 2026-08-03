@@ -12,7 +12,7 @@ import logging
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import requests
 
@@ -30,7 +30,7 @@ class FrameAPIRequest:
     concept: str
     unit: str
     year: int
-    period: Optional[str] = None  # None for annual, Q1/Q2/Q3/Q4 for quarterly
+    period: str | None = None  # None for annual, Q1/Q2/Q3/Q4 for quarterly
 
     def get_url_path(self) -> str:
         """Get URL path for this request"""
@@ -73,9 +73,9 @@ class SECFrameAPI:
         concept: str,
         unit: str,
         year: int,
-        period: Optional[str] = None,
+        period: str | None = None,
         use_cache: bool = True,
-    ) -> Optional[Dict]:
+    ) -> dict | None:
         """
         Get frame data for a specific concept/unit/period.
 
@@ -112,8 +112,8 @@ class SECFrameAPI:
             return None
 
     def get_company_frame_data(
-        self, cik: str, concept: str, unit: str, year: int, period: Optional[str] = None
-    ) -> Optional[Dict]:
+        self, cik: str, concept: str, unit: str, year: int, period: str | None = None
+    ) -> dict | None:
         """
         Get frame data for a specific company.
 
@@ -149,8 +149,8 @@ class SECFrameAPI:
             return None
 
     def get_multiple_concepts(
-        self, concepts: List[str], unit: str, year: int, period: Optional[str] = None
-    ) -> Dict[str, Dict]:
+        self, concepts: list[str], unit: str, year: int, period: str | None = None
+    ) -> dict[str, dict]:
         """
         Get frame data for multiple concepts efficiently.
 
@@ -183,11 +183,11 @@ class SECFrameAPI:
     def search_company_concepts(
         self,
         cik: str,
-        concepts: List[str],
+        concepts: list[str],
         unit: str,
         year: int,
-        period: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        period: str | None = None,
+    ) -> dict[str, Any]:
         """
         Search for multiple concepts for a specific company.
 
@@ -217,7 +217,7 @@ class SECFrameAPI:
 
         return found_data
 
-    def _fetch_frame_data(self, request: FrameAPIRequest) -> Optional[Dict]:
+    def _fetch_frame_data(self, request: FrameAPIRequest) -> dict | None:
         """Fetch frame data from SEC API"""
         try:
             self._rate_limit()
@@ -244,7 +244,7 @@ class SECFrameAPI:
             self.main_logger.error(f"Unexpected error fetching frame data: {e}")
             return None
 
-    def _get_cached_frame_data(self, request: FrameAPIRequest) -> Optional[Dict]:
+    def _get_cached_frame_data(self, request: FrameAPIRequest) -> dict | None:
         """Get cached frame data"""
         try:
             cache_key = f"frame_{request.concept}_{request.unit}_{request.year}"
@@ -257,7 +257,7 @@ class SECFrameAPI:
             self.main_logger.error(f"Error getting cached frame data: {e}")
             return None
 
-    def _cache_frame_data(self, request: FrameAPIRequest, data: Dict):
+    def _cache_frame_data(self, request: FrameAPIRequest, data: dict):
         """Cache frame data"""
         try:
             cache_key = f"frame_{request.concept}_{request.unit}_{request.year}"
@@ -291,7 +291,7 @@ class SECFrameAPI:
 
         self.last_request_time = time.time()
 
-    def get_available_periods(self, concept: str, unit: str, year: int) -> List[str]:
+    def get_available_periods(self, concept: str, unit: str, year: int) -> list[str]:
         """
         Get available periods for a concept/unit/year.
 
@@ -318,7 +318,7 @@ class SECFrameAPI:
 
         return available_periods
 
-    def get_concept_taxonomy(self, concept: str) -> Optional[Dict]:
+    def get_concept_taxonomy(self, concept: str) -> dict | None:
         """
         Get taxonomy information for a concept.
 

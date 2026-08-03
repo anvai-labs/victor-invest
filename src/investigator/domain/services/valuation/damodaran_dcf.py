@@ -28,7 +28,7 @@ Usage:
 import logging
 import random
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from investigator.domain.services.valuation.cost_of_capital import (
     IndustryCostOfCapital,
@@ -111,7 +111,7 @@ class DamodaranDCFModel(BaseValuationModel):
     def __init__(
         self,
         company_profile: CompanyProfile,
-        cost_of_capital: Optional[IndustryCostOfCapital] = None,
+        cost_of_capital: IndustryCostOfCapital | None = None,
     ):
         """
         Initialize DCF model.
@@ -125,19 +125,19 @@ class DamodaranDCFModel(BaseValuationModel):
 
     def calculate(
         self,
-        current_fcf: Optional[float] = None,
-        revenue_growth: Optional[float] = None,
-        fcf_margin: Optional[float] = None,
-        current_revenue: Optional[float] = None,
-        shares_outstanding: Optional[float] = None,
+        current_fcf: float | None = None,
+        revenue_growth: float | None = None,
+        fcf_margin: float | None = None,
+        current_revenue: float | None = None,
+        shares_outstanding: float | None = None,
         debt_to_equity: float = 0.0,
         tax_rate: float = 0.21,
         high_growth_years: int = DEFAULT_HIGH_GROWTH_YEARS,
         transition_years: int = DEFAULT_TRANSITION_YEARS,
-        terminal_growth: Optional[float] = None,
+        terminal_growth: float | None = None,
         run_monte_carlo: bool = False,
         monte_carlo_iterations: int = 1000,
-        current_price: Optional[float] = None,
+        current_price: float | None = None,
         **kwargs: Any,
     ) -> ValuationOutput:
         """
@@ -325,7 +325,7 @@ class DamodaranDCFModel(BaseValuationModel):
             metadata=metadata,
         )
 
-    def estimate_confidence(self, raw_output: Dict[str, Any]) -> float:
+    def estimate_confidence(self, raw_output: dict[str, Any]) -> float:
         """Estimate confidence for DCF model."""
         return self._calculate_confidence(
             use_revenue_bridge=raw_output.get("use_revenue_bridge", False),
@@ -344,7 +344,7 @@ class DamodaranDCFModel(BaseValuationModel):
         high_growth_years: int,
         transition_years: int,
         shares_outstanding: float,
-    ) -> Optional[Tuple[float, List[DCFProjection], float, float]]:
+    ) -> tuple[float, list[DCFProjection], float, float] | None:
         """Calculate DCF using FCF projections."""
         projections = []
         pv_sum = 0
@@ -420,7 +420,7 @@ class DamodaranDCFModel(BaseValuationModel):
         high_growth_years: int,
         transition_years: int,
         shares_outstanding: float,
-    ) -> Optional[Tuple[float, List[DCFProjection], float, float]]:
+    ) -> tuple[float, list[DCFProjection], float, float] | None:
         """
         Calculate DCF using revenue bridge for negative FCF companies.
 
@@ -508,8 +508,8 @@ class DamodaranDCFModel(BaseValuationModel):
         growth_rate: float,
         fcf_margin: float,
         wacc: float,
-        current_fcf: Optional[float],
-        current_revenue: Optional[float],
+        current_fcf: float | None,
+        current_revenue: float | None,
         shares_outstanding: float,
         high_growth_years: int,
         transition_years: int,
@@ -587,7 +587,7 @@ class DamodaranDCFModel(BaseValuationModel):
             iterations=n,
         )
 
-    def _summarize_projections(self, projections: List[DCFProjection]) -> Dict[str, Any]:
+    def _summarize_projections(self, projections: list[DCFProjection]) -> dict[str, Any]:
         """Summarize projections for metadata."""
         if not projections:
             return {}
@@ -608,7 +608,7 @@ class DamodaranDCFModel(BaseValuationModel):
         use_revenue_bridge: bool,
         growth_rate: float,
         fcf_margin: float,
-        monte_carlo: Optional[MonteCarloResult],
+        monte_carlo: MonteCarloResult | None,
     ) -> float:
         """Calculate confidence score for DCF."""
         base = 0.70

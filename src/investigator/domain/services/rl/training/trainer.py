@@ -23,7 +23,6 @@ Usage:
 import logging
 import os
 from datetime import datetime
-from typing import Dict, List, Optional
 
 import numpy as np
 
@@ -58,7 +57,7 @@ class RLTrainer:
     def __init__(
         self,
         policy: RLPolicy,
-        normalizer: Optional[FeatureNormalizer] = None,
+        normalizer: FeatureNormalizer | None = None,
         checkpoint_dir: str = "data/rl_models/checkpoints",
     ):
         """
@@ -75,15 +74,15 @@ class RLTrainer:
         self.extractor = ValuationContextExtractor()
 
         # Training history
-        self._train_history: List[Dict[str, float]] = []
-        self._val_history: List[Dict[str, float]] = []
+        self._train_history: list[dict[str, float]] = []
+        self._val_history: list[dict[str, float]] = []
         self._best_val_reward = float("-inf")
         self._best_epoch = 0
         self._training_batch_id = 0
 
     def train_batch(
         self,
-        experiences: List[Experience],
+        experiences: list[Experience],
         epochs: int = 10,
         batch_size: int = 32,
         validation_split: float = 0.1,
@@ -207,7 +206,7 @@ class RLTrainer:
 
     def evaluate(
         self,
-        experiences: List[Experience],
+        experiences: list[Experience],
     ) -> EvaluationMetrics:
         """
         Evaluate policy on test experiences.
@@ -303,9 +302,9 @@ class RLTrainer:
 
     def compare_to_baseline(
         self,
-        experiences: List[Experience],
+        experiences: list[Experience],
         baseline_policy: RLPolicy,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Compare policy performance to baseline.
 
@@ -352,9 +351,9 @@ class RLTrainer:
 
     def _train_epoch(
         self,
-        experiences: List[Experience],
+        experiences: list[Experience],
         batch_size: int,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Run single training epoch."""
         np.random.shuffle(experiences)
 
@@ -382,8 +381,8 @@ class RLTrainer:
 
     def _evaluate_internal(
         self,
-        experiences: List[Experience],
-    ) -> Dict[str, float]:
+        experiences: list[Experience],
+    ) -> dict[str, float]:
         """Internal evaluation for validation."""
         rewards = [exp.reward.primary_reward for exp in experiences if exp.reward.primary_reward is not None]
 
@@ -413,8 +412,8 @@ class RLTrainer:
 
     def _create_training_metrics(
         self,
-        train_experiences: List[Experience],
-        val_experiences: List[Experience],
+        train_experiences: list[Experience],
+        val_experiences: list[Experience],
         epochs_completed: int,
         early_stopped: bool,
         start_time: datetime,
@@ -469,7 +468,7 @@ class RLTrainer:
             std_reward=0.0,
         )
 
-    def get_training_history(self) -> Dict[str, List[float]]:
+    def get_training_history(self) -> dict[str, list[float]]:
         """Get training history."""
         return {
             "train_rewards": [h["mean_reward"] for h in self._train_history],

@@ -29,7 +29,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ class WeightAdjustment:
     model: str
     source: str  # e.g., 'market_context', 'data_quality', 'sector'
     multiplier: float
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 @dataclass
@@ -51,12 +51,12 @@ class AuditStep:
     step_number: int
     step_name: str
     timestamp: str
-    weights_before: Dict[str, float]
-    weights_after: Dict[str, float]
-    adjustments: List[WeightAdjustment]
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    weights_before: dict[str, float]
+    weights_after: dict[str, float]
+    adjustments: list[WeightAdjustment]
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def get_changes(self) -> Dict[str, Dict[str, float]]:
+    def get_changes(self) -> dict[str, dict[str, float]]:
         """Get changes between before and after weights."""
         changes = {}
         for model in set(self.weights_before) | set(self.weights_after):
@@ -78,12 +78,12 @@ class AuditSummary:
 
     symbol: str
     total_steps: int
-    initial_weights: Dict[str, float]
-    final_weights: Dict[str, float]
+    initial_weights: dict[str, float]
+    final_weights: dict[str, float]
     total_adjustments: int
     bounds_applied: bool
-    largest_change: Optional[Dict[str, Any]] = None
-    warnings: List[str] = field(default_factory=list)
+    largest_change: dict[str, Any] | None = None
+    warnings: list[str] = field(default_factory=list)
 
 
 class WeightAuditTrail:
@@ -128,7 +128,7 @@ class WeightAuditTrail:
             symbol: Stock symbol being analyzed
         """
         self.symbol = symbol
-        self.steps: List[AuditStep] = []
+        self.steps: list[AuditStep] = []
         self.bounds_applied = False
         self.started_at = datetime.now().isoformat()
 
@@ -136,10 +136,10 @@ class WeightAuditTrail:
         self,
         step_number: int,
         step_name: str,
-        weights_before: Dict[str, float],
-        weights_after: Dict[str, float],
-        adjustments: List[WeightAdjustment],
-        metadata: Optional[Dict[str, Any]] = None,
+        weights_before: dict[str, float],
+        weights_after: dict[str, float],
+        adjustments: list[WeightAdjustment],
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """
         Capture a snapshot of weights at a step.
@@ -277,7 +277,7 @@ class WeightAuditTrail:
 
         logger.info("╚══════════════════════════════════════════════════════════╝")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Export audit trail as dictionary for JSON serialization.
 
@@ -333,7 +333,7 @@ class WeightAuditTrail:
         """
         return json.dumps(self.to_dict(), indent=indent)
 
-    def get_step(self, step_number: int) -> Optional[AuditStep]:
+    def get_step(self, step_number: int) -> AuditStep | None:
         """
         Get a specific step by number.
 
@@ -348,7 +348,7 @@ class WeightAuditTrail:
                 return step
         return None
 
-    def get_steps_for_model(self, model: str) -> List[AuditStep]:
+    def get_steps_for_model(self, model: str) -> list[AuditStep]:
         """
         Get all steps that affected a specific model.
 

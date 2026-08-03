@@ -41,11 +41,7 @@ def __getattr__(name):
         )
 
         return SECCompanyFactsExtractor
-    elif name == "SECApiClient":
-        from investigator.infrastructure.sec.sec_api import SECApiClient
-
-        return SECApiClient
-    elif name == "SECAPIClient":  # Backwards compatibility alias
+    elif name == "SECApiClient" or name == "SECAPIClient":
         from investigator.infrastructure.sec.sec_api import SECApiClient
 
         return SECApiClient
@@ -53,17 +49,16 @@ def __getattr__(name):
 
 
 # These imports are safe and don't trigger circular dependencies
-from investigator.infrastructure.sec.canonical_mapper import (  # noqa: E402
+from investigator.infrastructure.sec.canonical_mapper import (
     CanonicalKeyMapper,
     get_canonical_mapper,
 )
-from investigator.infrastructure.sec.data_strategy import SECDataStrategy  # noqa: E402
-from investigator.infrastructure.sec.sec_frame_api import SECFrameAPI, get_frame_api  # noqa: E402
-from investigator.infrastructure.sec.xbrl_parser import XBRLParser  # noqa: E402
+from investigator.infrastructure.sec.data_strategy import SECDataStrategy
+from investigator.infrastructure.sec.sec_frame_api import SECFrameAPI, get_frame_api
+from investigator.infrastructure.sec.xbrl_parser import XBRLParser
 
 __all__ = [
     "CanonicalKeyMapper",
-    "get_canonical_mapper",
     "SECApiClient",
     "SECCompanyFactsExtractor",
     "SECDataProcessor",
@@ -71,5 +66,6 @@ __all__ = [
     "SECFrameAPI",
     "SECQuarterlyProcessor",
     "XBRLParser",
+    "get_canonical_mapper",
     "get_frame_api",
 ]

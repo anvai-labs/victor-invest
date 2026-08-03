@@ -8,7 +8,7 @@ import hashlib
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 # Import domain models
 from investigator.domain.models.analysis import (
@@ -76,17 +76,15 @@ class InvestmentAgent(ABC):
         self.capabilities = self.register_capabilities()
         self.metrics = AgentMetrics(agent_id=agent_id)
         self._shutdown = False
-        self.processing_tasks: Set[str] = set()
+        self.processing_tasks: set[str] = set()
 
     @abstractmethod
-    def register_capabilities(self) -> List[AgentCapability]:
+    def register_capabilities(self) -> list[AgentCapability]:
         """Register what this agent can do"""
-        pass
 
     @abstractmethod
     async def process(self, task: AgentTask) -> AgentResult:
         """Process an analysis task"""
-        pass
 
     async def can_handle_task(self, task: AgentTask) -> bool:
         """Check if agent can handle a specific task"""
@@ -119,7 +117,7 @@ class InvestmentAgent(ABC):
         return True
 
     @staticmethod
-    def parse_llm_response(response: Any, default: Any = None) -> Dict:
+    def parse_llm_response(response: Any, default: Any = None) -> dict:
         """
         Consolidated LLM response parser (shared across all agents)
 
@@ -202,7 +200,7 @@ class InvestmentAgent(ABC):
         try:
             result = await asyncio.wait_for(self.process(task), timeout=timeout)
             return result
-        except asyncio.TimeoutError:
+        except TimeoutError:
             self.logger.error(f"Task {task.task_id} timed out after {timeout}s")
             return AgentResult(
                 task_id=task.task_id,
@@ -429,7 +427,7 @@ class InvestmentAgent(ABC):
         top_p: float = 0.9,
         format: str = "json",
         **extra_params,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Wrap LLM response with proper metadata structure for caching.
 
@@ -543,7 +541,7 @@ class InvestmentAgent(ABC):
 
         return wrapped
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Check agent health status"""
         return {
             "agent_id": self.agent_id,
@@ -586,15 +584,15 @@ class AgentPool:
     """Manages a pool of agents for load balancing"""
 
     def __init__(self):
-        self.agents: Dict[str, InvestmentAgent] = {}
-        self.agent_loads: Dict[str, int] = {}
+        self.agents: dict[str, InvestmentAgent] = {}
+        self.agent_loads: dict[str, int] = {}
 
     def register(self, agent: InvestmentAgent):
         """Register an agent in the pool"""
         self.agents[agent.agent_id] = agent
         self.agent_loads[agent.agent_id] = 0
 
-    async def get_best_agent_for_task(self, task: AgentTask) -> Optional[InvestmentAgent]:
+    async def get_best_agent_for_task(self, task: AgentTask) -> InvestmentAgent | None:
         """Get the best available agent for a task"""
         capable_agents = []
 
@@ -615,7 +613,7 @@ class AgentPool:
             self.agent_loads[agent_id] += delta
             self.agent_loads[agent_id] = max(0, self.agent_loads[agent_id])
 
-    async def health_check_all(self) -> Dict[str, Any]:
+    async def health_check_all(self) -> dict[str, Any]:
         """Health check all agents"""
         results = {}
         for agent_id, agent in self.agents.items():

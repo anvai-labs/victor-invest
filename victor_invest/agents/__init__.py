@@ -20,9 +20,9 @@ from victor_invest.agents.specs import (
 )
 
 __all__ = [
-    "SEC_AGENT_SPEC",
     "FUNDAMENTAL_AGENT_SPEC",
-    "TECHNICAL_AGENT_SPEC",
     "MARKET_AGENT_SPEC",
+    "SEC_AGENT_SPEC",
     "SYNTHESIS_AGENT_SPEC",
+    "TECHNICAL_AGENT_SPEC",
 ]

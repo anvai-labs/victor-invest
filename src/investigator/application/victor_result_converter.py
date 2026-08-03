@@ -11,10 +11,10 @@ and avoids code duplication.
 """
 
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 
-def convert_victor_state_to_agent_format(state: Any) -> Dict[str, Any]:
+def convert_victor_state_to_agent_format(state: Any) -> dict[str, Any]:
     """Convert Victor AnalysisWorkflowState to agent orchestrator format.
 
     This function transforms the Victor workflow state into the format expected
@@ -86,7 +86,7 @@ def convert_victor_state_to_agent_format(state: Any) -> Dict[str, Any]:
     return agent_format
 
 
-def _get_state_attr(state: Any, attr_name: str, sub_attr: Optional[str] = None) -> Any:
+def _get_state_attr(state: Any, attr_name: str, sub_attr: str | None = None) -> Any:
     """Safely get attribute from state object.
 
     Handles both dataclass and dict-like objects.
@@ -117,8 +117,8 @@ def _get_state_attr(state: Any, attr_name: str, sub_attr: Optional[str] = None) 
 
 
 def _extract_fundamental_data(
-    fundamental_analysis: Dict[str, Any],
-) -> Optional[Dict[str, Any]]:
+    fundamental_analysis: dict[str, Any],
+) -> dict[str, Any] | None:
     """Extract fundamental analysis data in agent orchestrator format.
 
     Transforms victor-invest fundamental data structure to match
@@ -224,8 +224,8 @@ def _extract_fundamental_data(
 
 
 def _extract_technical_data(
-    technical_analysis: Dict[str, Any],
-) -> Optional[Dict[str, Any]]:
+    technical_analysis: dict[str, Any],
+) -> dict[str, Any] | None:
     """Extract technical analysis data in agent orchestrator format.
 
     Handles both old structure (indicators/trend/support_resistance) and

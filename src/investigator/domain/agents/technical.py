@@ -6,7 +6,7 @@ Specialized agent for technical analysis and market data processing using Ollama
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -158,7 +158,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         self.logger.warning(f"Unexpected LLM response type: {type(response)}")
         return default
 
-    def register_capabilities(self) -> List:
+    def register_capabilities(self) -> list:
         """Register agent capabilities"""
         from investigator.domain.agents.base import AgentCapability, AnalysisType
 
@@ -330,7 +330,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
         return data
 
-    async def _calculate_indicators(self, price_data: pd.DataFrame, symbol: str = "unknown") -> Dict:
+    async def _calculate_indicators(self, price_data: pd.DataFrame, symbol: str = "unknown") -> dict:
         """Calculate comprehensive technical indicators"""
         # Standardize column names to match expected format (lowercase)
         price_data_standardized = price_data.copy()
@@ -387,7 +387,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
         return indicators
 
-    async def _detect_patterns(self, price_data: pd.DataFrame, symbol: str) -> List[Dict]:
+    async def _detect_patterns(self, price_data: pd.DataFrame, symbol: str) -> list[dict]:
         """Detect chart patterns using pattern recognition"""
         detected_patterns = []
 
@@ -500,7 +500,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         # The wrapping is already handled by _cache_llm_response above
         return detected_patterns
 
-    async def _analyze_volume(self, price_data: pd.DataFrame) -> Dict:
+    async def _analyze_volume(self, price_data: pd.DataFrame) -> dict:
         """Analyze volume patterns and anomalies"""
         volume_analysis = {}
 
@@ -541,7 +541,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
         return volume_analysis
 
-    async def _identify_key_levels(self, price_data: pd.DataFrame) -> Dict:
+    async def _identify_key_levels(self, price_data: pd.DataFrame) -> dict:
         """Identify support and resistance levels"""
         levels = {}
 
@@ -575,7 +575,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
         return levels
 
-    async def _analyze_momentum(self, indicators: Dict) -> Dict:
+    async def _analyze_momentum(self, indicators: dict) -> dict:
         """Analyze momentum indicators for trend strength"""
         momentum = {}
 
@@ -607,11 +607,11 @@ class TechnicalAnalysisAgent(InvestmentAgent):
     async def _generate_signals(
         self,
         price_data: pd.DataFrame,
-        indicators: Dict,
-        patterns: List[Dict],
-        momentum: Dict,
+        indicators: dict,
+        patterns: list[dict],
+        momentum: dict,
         symbol: str,
-    ) -> Dict:
+    ) -> dict:
         """Generate trading signals based on technical analysis"""
         # Handle both uppercase and lowercase columns
         close_col = "close" if "close" in price_data.columns else "Close"
@@ -713,7 +713,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
         return parsed_response
 
-    async def _analyze_market_sentiment(self, price_data: pd.DataFrame, volume_analysis: Dict) -> Dict:
+    async def _analyze_market_sentiment(self, price_data: pd.DataFrame, volume_analysis: dict) -> dict:
         """Analyze overall market sentiment"""
         sentiment = {}
 
@@ -741,7 +741,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
         return sentiment
 
-    async def _synthesize_technical_report(self, analysis_data: Dict) -> Dict:
+    async def _synthesize_technical_report(self, analysis_data: dict) -> dict:
         """Synthesize comprehensive technical analysis report"""
         # Round all numeric values to reduce token usage and improve readability
         from investigator.domain.services.data_normalizer import DataNormalizer
@@ -895,7 +895,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
         return parsed_report
 
-    def _build_fallback_patterns(self, price_data: pd.DataFrame) -> List[Dict[str, Any]]:
+    def _build_fallback_patterns(self, price_data: pd.DataFrame) -> list[dict[str, Any]]:
         """Create deterministic chart-pattern signals when LLM output is empty."""
         close_col = "close" if "close" in price_data.columns else "Close"
         high_col = "high" if "high" in price_data.columns else "High"
@@ -925,7 +925,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
         range_width = (recent_high - recent_low) / recent_low if recent_low and recent_low > 0 else 0.0
 
-        patterns: List[Dict[str, Any]] = []
+        patterns: list[dict[str, Any]] = []
         end_index = max(len(price_data) - 1, 0)
         start_index = max(end_index - short_window, 0)
 
@@ -991,7 +991,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
     def _build_fallback_signals(
         self, current_price: float, momentum_score: float, pattern_count: int
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create deterministic trading signals when LLM output is empty."""
         if momentum_score > 20:
             entry_signal = "buy"
@@ -1024,7 +1024,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
             "fallback_used": True,
         }
 
-    def _build_fallback_technical_report(self, analysis_data: Dict) -> Dict[str, Any]:
+    def _build_fallback_technical_report(self, analysis_data: dict) -> dict[str, Any]:
         """Create deterministic technical report when LLM synthesis output is empty."""
         signals = analysis_data.get("signals", {}) if isinstance(analysis_data, dict) else {}
         sentiment = analysis_data.get("sentiment", {}) if isinstance(analysis_data, dict) else {}
@@ -1063,12 +1063,12 @@ class TechnicalAnalysisAgent(InvestmentAgent):
             "fallback_used": True,
         }
 
-    def _validate_pattern(self, pattern: Dict, price_data: pd.DataFrame) -> bool:
+    def _validate_pattern(self, pattern: dict, price_data: pd.DataFrame) -> bool:
         """Validate detected pattern with price data"""
         # Implement pattern validation logic
         return pattern.get("confidence", 0) > 60
 
-    def _calculate_price_change(self, price_data: pd.DataFrame) -> Dict:
+    def _calculate_price_change(self, price_data: pd.DataFrame) -> dict:
         """Calculate price changes over multiple periods
 
         Periods aligned with market context analysis:
@@ -1099,7 +1099,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
         return changes
 
-    def _calculate_volume_profile(self, price_data: pd.DataFrame) -> Dict:
+    def _calculate_volume_profile(self, price_data: pd.DataFrame) -> dict:
         """Calculate volume profile (volume at price levels)"""
         # Handle both uppercase and lowercase columns
         close_col = "close" if "close" in price_data.columns else "Close"
@@ -1130,7 +1130,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         ad = (mfm * price_data[volume_col]).cumsum()
         return float(ad.iloc[-1])
 
-    def _find_historical_levels(self, price_data: pd.DataFrame) -> Dict:
+    def _find_historical_levels(self, price_data: pd.DataFrame) -> dict:
         """Find historical support and resistance levels"""
         # Handle both uppercase and lowercase columns
         high_col = "high" if "high" in price_data.columns else "High"
@@ -1152,7 +1152,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
             "support": [round(float(x), 2) for x in support_levels[:3]] if support_levels else [],
         }
 
-    def _calculate_fibonacci_levels(self, price_data: pd.DataFrame) -> Dict:
+    def _calculate_fibonacci_levels(self, price_data: pd.DataFrame) -> dict:
         """Calculate Fibonacci retracement levels"""
         # Handle both uppercase and lowercase columns
         high_col = "high" if "high" in price_data.columns else "High"
@@ -1173,7 +1173,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
         return {k: round(float(v), 2) for k, v in levels.items()}
 
-    def _calculate_momentum_score(self, indicators: Dict) -> float:
+    def _calculate_momentum_score(self, indicators: dict) -> float:
         """Calculate overall momentum score from -100 to 100"""
         score = 0
         weight_sum = 0
@@ -1229,7 +1229,7 @@ class TechnicalAnalysisAgent(InvestmentAgent):
 
         return float(np.clip(trend_strength.iloc[-1] * 25, 0, 100))
 
-    def _calculate_sentiment_score(self, price_data: pd.DataFrame, volume_analysis: Dict) -> float:
+    def _calculate_sentiment_score(self, price_data: pd.DataFrame, volume_analysis: dict) -> float:
         """Calculate overall sentiment score (-100 to 100)"""
         score = 0
 

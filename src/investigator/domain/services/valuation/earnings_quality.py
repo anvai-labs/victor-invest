@@ -19,7 +19,7 @@ Date: 2025-12-30
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -55,10 +55,10 @@ class EarningsQualityResult:
     adjustment_amount: float
     adjustment_pct: float
 
-    non_recurring_items: List[NonRecurringItem] = field(default_factory=list)
+    non_recurring_items: list[NonRecurringItem] = field(default_factory=list)
     quality_score: float = 0.0  # 0-100 score
-    warnings: List[str] = field(default_factory=list)
-    recommendations: List[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    recommendations: list[str] = field(default_factory=list)
 
     # For valuation weight adjustment
     pe_reliability: float = 1.0  # 0-1, how much to trust P/E valuation
@@ -116,9 +116,9 @@ MATERIALITY_THRESHOLDS = {
 
 
 def extract_non_recurring_items(
-    xbrl_data: Dict[str, Any],
+    xbrl_data: dict[str, Any],
     net_income: float,
-) -> List[NonRecurringItem]:
+) -> list[NonRecurringItem]:
     """
     Extract non-recurring items from XBRL data.
 
@@ -176,7 +176,7 @@ def detect_accrual_quality(
     net_income: float,
     operating_cash_flow: float,
     revenue: float,
-) -> Tuple[float, str]:
+) -> tuple[float, str]:
     """
     Detect earnings quality based on accruals vs cash flow.
 
@@ -236,7 +236,7 @@ def detect_revenue_quality(
     prior_revenue: float,
     receivables_current: float,
     receivables_prior: float,
-) -> Tuple[float, str]:
+) -> tuple[float, str]:
     """
     Detect revenue quality based on receivables growth vs revenue growth.
 
@@ -290,8 +290,8 @@ def detect_revenue_quality(
 
 
 def assess_earnings_quality(
-    financials: Dict[str, Any],
-    xbrl_data: Optional[Dict[str, Any]] = None,
+    financials: dict[str, Any],
+    xbrl_data: dict[str, Any] | None = None,
 ) -> EarningsQualityResult:
     """
     Comprehensive earnings quality assessment.
@@ -420,7 +420,7 @@ def get_quality_adjusted_eps(
     reported_eps: float,
     quality_result: EarningsQualityResult,
     shares_outstanding: float,
-) -> Tuple[float, str]:
+) -> tuple[float, str]:
     """
     Get the appropriate EPS to use based on earnings quality.
 

@@ -14,7 +14,6 @@ Structure:
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List
 
 
 class IndustryCategory(Enum):
@@ -134,7 +133,7 @@ class IndustryProfile:
     pb_weight: float
     ggm_weight: float
     # Key metrics for this industry
-    key_metrics: List[str]
+    key_metrics: list[str]
     # Preferred holding period
     holding_period: str
     # Volatility profile (affects confidence)
@@ -146,7 +145,7 @@ class IndustryProfile:
 
 
 # Industry weight profiles - comprehensive coverage
-INDUSTRY_PROFILES: Dict[IndustryCategory, IndustryProfile] = {
+INDUSTRY_PROFILES: dict[IndustryCategory, IndustryProfile] = {
     # ========== TECHNOLOGY ==========
     # ADJUSTED: Tech sector underperforms (-0.05 reward) - reduce PS (worst model), boost PE
     IndustryCategory.SOFTWARE_SAAS: IndustryProfile(
@@ -1273,7 +1272,7 @@ INDUSTRY_PROFILES: Dict[IndustryCategory, IndustryProfile] = {
 
 
 # Mapping from sector/industry strings to IndustryCategory
-INDUSTRY_CLASSIFICATION: Dict[str, Dict[str, IndustryCategory]] = {
+INDUSTRY_CLASSIFICATION: dict[str, dict[str, IndustryCategory]] = {
     # Handle variations of sector names
     "Information Technology": {
         "default": IndustryCategory.SOFTWARE_ENTERPRISE,
@@ -1500,7 +1499,7 @@ def get_industry_profile(sector: str, industry: str) -> IndustryProfile:
     return INDUSTRY_PROFILES.get(category, INDUSTRY_PROFILES[IndustryCategory.UNKNOWN])
 
 
-def get_industry_weights(sector: str, industry: str) -> Dict[str, float]:
+def get_industry_weights(sector: str, industry: str) -> dict[str, float]:
     """
     Get model weights for a specific industry.
 

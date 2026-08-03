@@ -26,7 +26,7 @@ Date: 2025-01-05
 
 import logging
 from enum import Enum
-from typing import Any, ClassVar, Dict, List, Optional, Type
+from typing import Any, ClassVar
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ class DCFFactory:
     """
 
     # Registry of model types to their classes (lazy loaded)
-    _model_registry: ClassVar[Dict[DCFModelType, Type]] = {}
+    _model_registry: ClassVar[dict[DCFModelType, type]] = {}
     _initialized = False
 
     @classmethod
@@ -78,7 +78,7 @@ class DCFFactory:
     def create(
         cls,
         model_type: str,
-        company_profile: Optional[Any] = None,
+        company_profile: Any | None = None,
         **kwargs: Any,
     ) -> Any:
         """
@@ -132,8 +132,8 @@ class DCFFactory:
     def create_legacy(
         cls,
         symbol: str,
-        quarterly_metrics: List[Dict],
-        multi_year_data: List[Dict],
+        quarterly_metrics: list[dict],
+        multi_year_data: list[dict],
         db_manager: Any,
     ) -> Any:
         """
@@ -168,13 +168,13 @@ class DCFFactory:
     @classmethod
     def auto_select(
         cls,
-        company_profile: Optional[Any] = None,
+        company_profile: Any | None = None,
         has_positive_fcf: bool = True,
         prefer_monte_carlo: bool = False,
-        symbol: Optional[str] = None,
-        quarterly_metrics: Optional[List[Dict]] = None,
-        multi_year_data: Optional[List[Dict]] = None,
-        db_manager: Optional[Any] = None,
+        symbol: str | None = None,
+        quarterly_metrics: list[dict] | None = None,
+        multi_year_data: list[dict] | None = None,
+        db_manager: Any | None = None,
     ) -> Any:
         """
         Automatically select and create the most appropriate DCF model.
@@ -248,7 +248,7 @@ class DCFFactory:
         )
 
     @classmethod
-    def get_available_models(cls) -> List[str]:
+    def get_available_models(cls) -> list[str]:
         """
         Get list of available DCF model types.
 
@@ -262,7 +262,7 @@ class DCFFactory:
         return [t.value for t in DCFModelType]
 
     @classmethod
-    def get_model_description(cls, model_type: str) -> Dict[str, str]:
+    def get_model_description(cls, model_type: str) -> dict[str, str]:
         """
         Get description of a DCF model type.
 
@@ -309,7 +309,7 @@ class DCFFactory:
 # Convenience functions for common use cases
 def create_dcf_model(
     model_type: str = "damodaran",
-    company_profile: Optional[Any] = None,
+    company_profile: Any | None = None,
     **kwargs: Any,
 ) -> Any:
     """
@@ -331,7 +331,7 @@ def create_dcf_model(
 
 
 def auto_select_dcf(
-    company_profile: Optional[Any] = None,
+    company_profile: Any | None = None,
     has_positive_fcf: bool = True,
     **kwargs: Any,
 ) -> Any:

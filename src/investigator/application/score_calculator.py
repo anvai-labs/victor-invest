@@ -19,7 +19,6 @@ import json
 import logging
 import re
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +39,7 @@ class ScoreCalculator:
     All score calculation logic is centralized here.
     """
 
-    def __init__(self, weights: Optional[ScoreWeights] = None):
+    def __init__(self, weights: ScoreWeights | None = None):
         """
         Initialize score calculator.
 
@@ -50,7 +49,7 @@ class ScoreCalculator:
         self.weights = weights or ScoreWeights()
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-    def calculate_fundamental_score(self, llm_responses: Dict) -> float:
+    def calculate_fundamental_score(self, llm_responses: dict) -> float:
         """
         Calculate fundamental score from LLM responses.
 
@@ -119,7 +118,7 @@ class ScoreCalculator:
 
         return sum(scores) / len(scores) if scores else 0.0
 
-    def calculate_technical_score(self, llm_responses: Dict) -> float:
+    def calculate_technical_score(self, llm_responses: dict) -> float:
         """
         Calculate technical score from structured JSON LLM response.
 
@@ -221,7 +220,7 @@ class ScoreCalculator:
 
         return round(overall_score, 1)
 
-    def extract_technical_indicators(self, llm_responses: Dict) -> Dict:
+    def extract_technical_indicators(self, llm_responses: dict) -> dict:
         """
         Extract technical indicators from structured technical analysis JSON response.
 
@@ -247,7 +246,7 @@ class ScoreCalculator:
 
         return indicators
 
-    def _extract_indicators_from_dict(self, content: Dict) -> Dict:
+    def _extract_indicators_from_dict(self, content: dict) -> dict:
         """Extract indicators from structured dict response."""
         return {
             "technical_score": content.get("technical_score", {}).get("score", 0.0),
@@ -276,7 +275,7 @@ class ScoreCalculator:
             "sector_relative_strength": content.get("sector_relative_strength", {}),
         }
 
-    def _extract_indicators_from_string(self, content: str) -> Dict:
+    def _extract_indicators_from_string(self, content: str) -> dict:
         """Extract indicators from JSON string response."""
         try:
             # Handle file format with headers
@@ -335,7 +334,7 @@ class ScoreCalculator:
             self.logger.debug("Failed to parse technical indicators from string")
             return {}
 
-    def extract_momentum_signals(self, content: Dict) -> List[str]:
+    def extract_momentum_signals(self, content: dict) -> list[str]:
         """
         Extract momentum signals from technical analysis response.
 
@@ -375,7 +374,7 @@ class ScoreCalculator:
     def calculate_stop_loss(
         self,
         current_price: float,
-        recommendation: Dict,
+        recommendation: dict,
         overall_score: float,
     ) -> float:
         """
@@ -419,10 +418,10 @@ class ScoreCalculator:
 
 
 # Singleton instance
-_calculator_instance: Optional[ScoreCalculator] = None
+_calculator_instance: ScoreCalculator | None = None
 
 
-def get_score_calculator(weights: Optional[ScoreWeights] = None) -> ScoreCalculator:
+def get_score_calculator(weights: ScoreWeights | None = None) -> ScoreCalculator:
     """
     Get singleton ScoreCalculator instance.
 

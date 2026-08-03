@@ -32,8 +32,8 @@ def test_unified_executor_renormalizes_applied_model_weights():
     executor.metadata_service = Metadata()
     executor.weighting_service = Weighting()
     executor._run_all_models = run_models
-    executor._build_financials_dict = lambda: {}
-    executor._build_ratios_dict = lambda: {}
+    executor._build_financials_dict = dict
+    executor._build_ratios_dict = dict
 
     result = asyncio.run(executor.run_comprehensive_valuation())
 
@@ -125,8 +125,8 @@ def test_unified_executor_uses_simple_average_when_weights_filter_models():
     executor.metadata_service = Metadata()
     executor.weighting_service = Weighting()
     executor._run_all_models = run_models
-    executor._build_financials_dict = lambda: {}
-    executor._build_ratios_dict = lambda: {}
+    executor._build_financials_dict = dict
+    executor._build_ratios_dict = dict
 
     result = asyncio.run(executor.run_comprehensive_valuation())
 

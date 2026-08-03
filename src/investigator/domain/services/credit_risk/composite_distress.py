@@ -42,7 +42,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import date
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from investigator.domain.services.credit_risk.altman_zscore import (
     AltmanZone,
@@ -119,17 +119,17 @@ class CompositeCreditRiskResult(CreditScoreResult):
         positive_factors: List of positive indicators
     """
 
-    distress_tier: Optional[DistressTier] = None
-    distress_probability: Optional[float] = None
+    distress_tier: DistressTier | None = None
+    distress_probability: float | None = None
     valuation_discount: float = 0.0
-    altman_result: Optional[AltmanZScoreResult] = None
-    beneish_result: Optional[BeneishMScoreResult] = None
-    piotroski_result: Optional[PiotroskiFScoreResult] = None
-    risk_factors: List[str] = field(default_factory=list)
-    positive_factors: List[str] = field(default_factory=list)
+    altman_result: AltmanZScoreResult | None = None
+    beneish_result: BeneishMScoreResult | None = None
+    piotroski_result: PiotroskiFScoreResult | None = None
+    risk_factors: list[str] = field(default_factory=list)
+    positive_factors: list[str] = field(default_factory=list)
     score_name: str = "Composite Credit Risk"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary."""
         result = super().to_dict()
         result.update(
@@ -166,9 +166,9 @@ class CompositeDistressCalculator:
 
     def __init__(
         self,
-        altman_calculator: Optional[AltmanZScoreCalculator] = None,
-        beneish_calculator: Optional[BeneishMScoreCalculator] = None,
-        piotroski_calculator: Optional[PiotroskiFScoreCalculator] = None,
+        altman_calculator: AltmanZScoreCalculator | None = None,
+        beneish_calculator: BeneishMScoreCalculator | None = None,
+        piotroski_calculator: PiotroskiFScoreCalculator | None = None,
     ):
         """Initialize composite calculator with optional custom calculators.
 
@@ -197,7 +197,7 @@ class CompositeDistressCalculator:
         """Return calculator description."""
         return self._description
 
-    def validate_data(self, data: FinancialData) -> List[str]:
+    def validate_data(self, data: FinancialData) -> list[str]:
         """Validate data for all underlying calculators."""
         missing = set()
         missing.update(self._altman.validate_data(data))
@@ -273,7 +273,7 @@ class CompositeDistressCalculator:
 
         except Exception as e:
             logger.error(f"Error calculating composite distress for {data.symbol}: {e}")
-            result.warnings.append(f"Calculation error: {str(e)}")
+            result.warnings.append(f"Calculation error: {e!s}")
             result.interpretation = "Calculation failed"
 
         return result
@@ -283,7 +283,7 @@ class CompositeDistressCalculator:
         altman: AltmanZScoreResult,
         beneish: BeneishMScoreResult,
         piotroski: PiotroskiFScoreResult,
-    ) -> tuple[List[str], List[str]]:
+    ) -> tuple[list[str], list[str]]:
         """Analyze individual results for risk and positive factors."""
         risk_factors = []
         positive_factors = []
@@ -393,7 +393,7 @@ class CompositeDistressCalculator:
         altman: AltmanZScoreResult,
         beneish: BeneishMScoreResult,
         piotroski: PiotroskiFScoreResult,
-    ) -> Optional[float]:
+    ) -> float | None:
         """Calculate composite distress probability.
 
         Weighted average of individual probabilities:

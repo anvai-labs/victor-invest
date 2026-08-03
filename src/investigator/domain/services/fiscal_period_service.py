@@ -15,7 +15,7 @@ import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, ClassVar, Dict, Optional, Tuple
+from typing import Any, ClassVar
 
 logger = logging.getLogger(__name__)
 
@@ -214,7 +214,7 @@ class FiscalPeriodService:
 
         return qtrs >= 2
 
-    def detect_fiscal_year_end(self, company_facts: Dict[str, Any]) -> str:
+    def detect_fiscal_year_end(self, company_facts: dict[str, Any]) -> str:
         """
         Detect fiscal year end from CompanyFacts API data.
 
@@ -390,7 +390,7 @@ class FiscalPeriodService:
         period_end_date: str,
         fiscal_year_end_month: int,
         fiscal_year_end_day: int = 31,
-        fiscal_period: Optional[str] = None,
+        fiscal_period: str | None = None,
     ) -> int:
         """
         Calculate fiscal year from period end date and fiscal year end.
@@ -476,8 +476,8 @@ class FiscalPeriodService:
         assigned_fiscal_year: int,
         fiscal_year_end_month: int,
         fiscal_year_end_day: int = 31,
-        fiscal_period: Optional[str] = None,
-    ) -> Tuple[bool, Optional[str], Optional[int]]:
+        fiscal_period: str | None = None,
+    ) -> tuple[bool, str | None, int | None]:
         """
         Validate that a fiscal year assignment is correct.
 
@@ -513,7 +513,7 @@ class FiscalPeriodService:
 
         return (True, None, None)
 
-    def get_fiscal_year_end_from_month(self, month: int) -> Tuple[int, int]:
+    def get_fiscal_year_end_from_month(self, month: int) -> tuple[int, int]:
         """
         Get typical fiscal year end day for a given month.
 

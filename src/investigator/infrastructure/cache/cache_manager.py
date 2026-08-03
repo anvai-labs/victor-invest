@@ -12,10 +12,10 @@ import logging
 import time
 from collections import defaultdict, deque
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from threading import Lock
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 from .cache_base import CacheStorageHandler
 from .cache_types import CacheType
@@ -49,7 +49,7 @@ class CacheManager:
     """Manager for coordinating multiple cache handlers with comprehensive performance tracking"""
 
     def __init__(self, config=None):
-        self.handlers: Dict[CacheType, List[CacheStorageHandler]] = {}
+        self.handlers: dict[CacheType, list[CacheStorageHandler]] = {}
         self.config = config
 
         # Performance tracking
@@ -115,7 +115,7 @@ class CacheManager:
             await self._cleanup_service.stop()
             logger.info("Cache cleanup service stopped")
 
-    def get_cleanup_stats(self) -> Dict:
+    def get_cleanup_stats(self) -> dict:
         """Get cache cleanup statistics"""
         if self._cleanup_service:
             return self._cleanup_service.get_stats()
@@ -203,7 +203,7 @@ class CacheManager:
         # Sort by priority (highest first)
         self.handlers[cache_type].sort(key=lambda h: h.priority, reverse=True)
 
-    def get(self, cache_type: CacheType, key: Union[Tuple, Dict]) -> Optional[Dict[str, Any]]:
+    def get(self, cache_type: CacheType, key: tuple | dict) -> dict[str, Any] | None:
         """
         Get data from cache, trying handlers in priority order (highest priority first)
         This ensures disk cache (higher priority) is checked before database (lower priority)
@@ -343,7 +343,7 @@ class CacheManager:
 
         return None
 
-    def set(self, cache_type: CacheType, key: Union[Tuple, Dict], value: Dict[str, Any]) -> bool:
+    def set(self, cache_type: CacheType, key: tuple | dict, value: dict[str, Any]) -> bool:
         """
         Set data in cache handlers based on priority.
 
@@ -491,7 +491,7 @@ class CacheManager:
     # FIX Issue #3: Async Wrappers for Non-Blocking Cache Operations
     # ========================================================================
 
-    async def get_async(self, cache_type: CacheType, key: Union[Tuple, Dict]) -> Optional[Dict[str, Any]]:
+    async def get_async(self, cache_type: CacheType, key: tuple | dict) -> dict[str, Any] | None:
         """
         Async wrapper for get() - offloads blocking I/O to thread pool.
 
@@ -512,7 +512,7 @@ class CacheManager:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(self._executor, self.get, cache_type, key)  # Existing sync implementation
 
-    async def set_async(self, cache_type: CacheType, key: Union[Tuple, Dict], value: Dict[str, Any]) -> bool:
+    async def set_async(self, cache_type: CacheType, key: tuple | dict, value: dict[str, Any]) -> bool:
         """
         Async wrapper for set() - offloads blocking I/O to thread pool.
 
@@ -571,7 +571,7 @@ class CacheManager:
     # FIX Issue #5: Cache Override Methods
     # ========================================================================
 
-    def set_force_refresh(self, force_refresh: bool, symbols: Optional[List[str]] = None):
+    def set_force_refresh(self, force_refresh: bool, symbols: list[str] | None = None):
         """
         Set per-instance force refresh override (Issue #5 fix).
 
@@ -613,7 +613,7 @@ class CacheManager:
         self._force_refresh_symbols_override = None
         logger.debug("Cleared cache overrides")
 
-    def _should_force_refresh(self, symbol: Optional[str] = None) -> bool:
+    def _should_force_refresh(self, symbol: str | None = None) -> bool:
         """
         Check if cache should be bypassed (force refresh).
 
@@ -654,8 +654,8 @@ class CacheManager:
     def _promote_to_higher_priority(
         self,
         cache_type: CacheType,
-        key: Union[Tuple, Dict],
-        value: Dict[str, Any],
+        key: tuple | dict,
+        value: dict[str, Any],
         found_priority: int,
     ):
         """
@@ -682,7 +682,7 @@ class CacheManager:
                 except Exception as e:
                     logger.warning(f"Cache promotion error [{handler.__class__.__name__}]: {e}")
 
-    def exists(self, cache_type: CacheType, key: Union[Tuple, Dict]) -> bool:
+    def exists(self, cache_type: CacheType, key: tuple | dict) -> bool:
         """Check if key exists in any handler"""
         operation_start = time.time()
         key_str = self._format_key_for_logging(key)
@@ -752,7 +752,7 @@ class CacheManager:
 
         return False
 
-    def delete(self, cache_type: CacheType, key: Union[Tuple, Dict]) -> bool:
+    def delete(self, cache_type: CacheType, key: tuple | dict) -> bool:
         """Delete from all handlers"""
         handlers = self.handlers.get(cache_type, [])
         any_deleted = False
@@ -766,7 +766,7 @@ class CacheManager:
 
         return any_deleted
 
-    def delete_by_symbol(self, symbol: str, cache_types: Optional[List[CacheType]] = None) -> Dict[str, int]:
+    def delete_by_symbol(self, symbol: str, cache_types: list[CacheType] | None = None) -> dict[str, int]:
         """
         Delete all cache entries for a specific symbol across specified cache types.
         Optimized for symbol-based cleanup using targeted deletion methods.
@@ -914,7 +914,7 @@ class CacheManager:
         logger.info(f"Cleared all caches: {'success' if all_success else 'partial/failed'}")
         return all_success
 
-    def _format_key_for_logging(self, key: Union[Tuple, Dict]) -> str:
+    def _format_key_for_logging(self, key: tuple | dict) -> str:
         """Format cache key for logging purposes"""
         if isinstance(key, dict):
             if "symbol" in key:
@@ -927,7 +927,7 @@ class CacheManager:
         else:
             return str(key)[:50]
 
-    def _extract_symbol_from_key(self, key: Union[Tuple, Dict]) -> Optional[str]:
+    def _extract_symbol_from_key(self, key: tuple | dict) -> str | None:
         """Extract symbol from cache key for logging and filtering"""
         if isinstance(key, tuple) and len(key) > 0:
             return key[0]
@@ -1006,7 +1006,7 @@ class CacheManager:
         with self._stats_lock:
             self._recent_operations[cache_type.value].append(operation_info)
 
-    def get_performance_stats(self) -> Dict[str, Any]:
+    def get_performance_stats(self) -> dict[str, Any]:
         """Get comprehensive performance statistics"""
         with self._stats_lock:
             stats = {}
@@ -1051,7 +1051,7 @@ class CacheManager:
 
             return stats
 
-    def get_recent_operations(self, cache_type: CacheType = None, limit: int = 20) -> Dict[str, Any]:
+    def get_recent_operations(self, cache_type: CacheType = None, limit: int = 20) -> dict[str, Any]:
         """Get recent cache operations for debugging"""
         with self._stats_lock:
             if cache_type:
@@ -1063,7 +1063,7 @@ class CacheManager:
                     result[ct] = list(ops)[-limit:]
                 return result
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get comprehensive cache statistics"""
         stats = {"cache_types": {}, "total_handlers": 0, "handler_summary": {}}
 
@@ -1129,7 +1129,7 @@ class CacheManager:
             logger.error(f"Cache ping failed: {e}")
             return False
 
-    def _calculate_ttl_remaining(self, cached_data: Any, cache_type: CacheType) -> Optional[str]:
+    def _calculate_ttl_remaining(self, cached_data: Any, cache_type: CacheType) -> str | None:
         """
         Calculate TTL remaining for cached data based on cache type and metadata.
 
@@ -1226,9 +1226,7 @@ class CacheManager:
 
                 # If timezone-naive, assume UTC
                 if cached_at.tzinfo is None:
-                    from datetime import timezone
-
-                    cached_at = cached_at.replace(tzinfo=timezone.utc)
+                    cached_at = cached_at.replace(tzinfo=UTC)
 
                 # Calculate age and remaining TTL
                 now = datetime.now(cached_at.tzinfo)
@@ -1349,9 +1347,9 @@ class CacheManager:
     def create_cache_metadata(
         self,
         cache_type: CacheType,
-        key: Union[Tuple, Dict],
-        additional_metadata: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        key: tuple | dict,
+        additional_metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Create standardized cache metadata with version tagging.
 
@@ -1397,7 +1395,7 @@ class CacheManager:
 
         return metadata
 
-    def _normalize_key_for_metadata(self, key: Union[Tuple, Dict]) -> Dict[str, Any]:
+    def _normalize_key_for_metadata(self, key: tuple | dict) -> dict[str, Any]:
         """Convert cache key to dict format for metadata storage."""
         if isinstance(key, dict):
             return key.copy()
@@ -1415,8 +1413,8 @@ class CacheManager:
             return {"raw_key": str(key)}
 
     def validate_cache_entry(
-        self, entry: Dict[str, Any], cache_type: CacheType, strict: bool = False
-    ) -> Tuple[bool, List[str]]:
+        self, entry: dict[str, Any], cache_type: CacheType, strict: bool = False
+    ) -> tuple[bool, list[str]]:
         """
         Validate a cache entry for integrity and compatibility.
 
@@ -1500,7 +1498,7 @@ class CacheManager:
         """
         try:
 
-            def parse_version(v: str) -> Tuple[int, int, int]:
+            def parse_version(v: str) -> tuple[int, int, int]:
                 parts = v.split(".")
                 major = int(parts[0]) if len(parts) > 0 else 0
                 minor = int(parts[1]) if len(parts) > 1 else 0
@@ -1516,7 +1514,7 @@ class CacheManager:
             # If parsing fails, assume incompatible
             return False
 
-    def _check_data_quality(self, entry: Dict[str, Any]) -> List[str]:
+    def _check_data_quality(self, entry: dict[str, Any]) -> list[str]:
         """
         Check data quality issues in cache entry.
 
@@ -1547,7 +1545,7 @@ class CacheManager:
     # M8: Auto-Invalidation on SEC Updates
     # ========================================================================
 
-    def invalidate_on_sec_update(self, symbol: str, new_filing_date: str, dry_run: bool = False) -> Dict[str, Any]:
+    def invalidate_on_sec_update(self, symbol: str, new_filing_date: str, dry_run: bool = False) -> dict[str, Any]:
         """
         Invalidate cache entries when new SEC filing is detected.
 
@@ -1675,7 +1673,7 @@ class CacheManager:
 
         return result
 
-    def _extract_cached_at(self, metadata: Any) -> Optional[datetime]:
+    def _extract_cached_at(self, metadata: Any) -> datetime | None:
         """Extract cached_at datetime from metadata."""
         if not isinstance(metadata, dict):
             return None
@@ -1701,7 +1699,7 @@ class CacheManager:
     # M8: Corruption Detection and Purge
     # ========================================================================
 
-    def detect_and_purge_corrupted(self, symbol: Optional[str] = None, dry_run: bool = True) -> Dict[str, Any]:
+    def detect_and_purge_corrupted(self, symbol: str | None = None, dry_run: bool = True) -> dict[str, Any]:
         """
         Detect and optionally purge corrupted cache entries.
 

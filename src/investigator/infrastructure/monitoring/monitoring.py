@@ -6,11 +6,11 @@ Comprehensive monitoring for the InvestiGator system
 import asyncio
 import json
 import logging
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Callable, Dict, List
 
 import psutil
 from prometheus_client import Counter, Gauge, Histogram, Summary
@@ -32,7 +32,7 @@ class MetricPoint:
     name: str
     value: float
     timestamp: datetime = field(default_factory=datetime.now)
-    labels: Dict[str, str] = field(default_factory=dict)
+    labels: dict[str, str] = field(default_factory=dict)
     metric_type: MetricType = MetricType.GAUGE
 
 
@@ -44,7 +44,7 @@ class PerformanceSnapshot:
     cpu_percent: float
     memory_percent: float
     disk_usage: float
-    network_io: Dict[str, int]
+    network_io: dict[str, int]
     active_agents: int
     queue_size: int
     cache_hit_rate: float
@@ -64,11 +64,11 @@ class MetricsCollector:
         self._init_prometheus_metrics()
 
         # Internal metrics storage
-        self.metrics_buffer: List[MetricPoint] = []
+        self.metrics_buffer: list[MetricPoint] = []
         self.max_buffer_size = 10000
 
         # Performance tracking
-        self.performance_history: List[PerformanceSnapshot] = []
+        self.performance_history: list[PerformanceSnapshot] = []
         self.max_history_size = 1440  # 24 hours at 1-minute intervals
 
         # Agent metrics
@@ -283,7 +283,7 @@ class MetricsCollector:
         """Update queue size"""
         self.queue_size_gauge.set(size)
 
-    def record_orchestrator_stats(self, stats: Dict):
+    def record_orchestrator_stats(self, stats: dict):
         """Record orchestrator statistics"""
         for key, value in stats.items():
             if isinstance(value, (int, float)):
@@ -418,7 +418,7 @@ class MetricsCollector:
 
         return total_duration / total_count if total_count > 0 else 0
 
-    def _serialize_agent_metrics(self) -> Dict:
+    def _serialize_agent_metrics(self) -> dict:
         """Serialize agent metrics for export"""
         serialized = {}
 
@@ -440,7 +440,7 @@ class MetricsCollector:
 
         return serialized
 
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> dict:
         """Get current statistics"""
         uptime = (datetime.now() - self.system_metrics["start_time"]).total_seconds()
 
@@ -465,7 +465,7 @@ class MetricsCollector:
             "current_performance": asdict(self.performance_history[-1]) if self.performance_history else None,
         }
 
-    def get_agent_performance(self, agent_type: str) -> Dict:
+    def get_agent_performance(self, agent_type: str) -> dict:
         """Get performance metrics for specific agent"""
         if agent_type not in self.agent_metrics["executions"]:
             return {"status": "no_data"}
@@ -489,7 +489,7 @@ class MetricsCollector:
             "recent_durations": durations[-10:] if durations else [],
         }
 
-    def get_system_health(self) -> Dict:
+    def get_system_health(self) -> dict:
         """Get system health status"""
         if not self.performance_history:
             return {"status": "unknown", "message": "No performance data available"}
@@ -559,8 +559,8 @@ class AlertManager:
         }
 
         # Alert history
-        self.active_alerts: Dict[str, Dict] = {}
-        self.alert_history: List[Dict] = []
+        self.active_alerts: dict[str, dict] = {}
+        self.alert_history: list[dict] = []
 
         # Alert channels
         self.alert_channels = []

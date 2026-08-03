@@ -13,7 +13,7 @@ Author: Claude Code
 
 import logging
 from dataclasses import dataclass
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import Any, ClassVar
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class FrameworkConfig:
     type: str  # Framework type (e.g., 'dcf_growth', 'pe_ratio', 'ev_ebitda')
     priority: int  # Execution priority (1 = highest)
     weight: float  # Weight in blended valuation (0.0-1.0)
-    params: Dict[str, Any]  # Framework-specific parameters
+    params: dict[str, Any]  # Framework-specific parameters
     reason: str  # Why this framework was selected
 
 
@@ -201,8 +201,8 @@ class ValuationFrameworkPlanner:
         self.industry = industry
         self.market_cap_billions = market_cap_billions
         self.base_terminal_growth = base_terminal_growth
-        self.last_plan: Optional[List[FrameworkConfig]] = None
-        self.company_stage: Optional[str] = None  # Classify on first use
+        self.last_plan: list[FrameworkConfig] | None = None
+        self.company_stage: str | None = None  # Classify on first use
 
     def plan_frameworks(
         self,
@@ -213,7 +213,7 @@ class ValuationFrameworkPlanner:
         revenue_growth_pct: float = 0.0,
         payout_ratio: float = 0.0,
         is_declining: bool = False,
-    ) -> List[FrameworkConfig]:
+    ) -> list[FrameworkConfig]:
         """
         Plan which valuation frameworks to execute
 
@@ -369,7 +369,7 @@ class ValuationFrameworkPlanner:
 
         return frameworks
 
-    def get_last_plan(self) -> Optional[List[FrameworkConfig]]:
+    def get_last_plan(self) -> list[FrameworkConfig] | None:
         """
         Get the most recent framework plan
 
@@ -402,8 +402,8 @@ class ValuationFrameworkPlanner:
         self,
         historical_fcf_growth: float,
         company_stage: str,
-        projection_years: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        projection_years: int | None = None,
+    ) -> dict[str, Any]:
         """
         Calculate fading growth rates using historical growth + YAML guardrails
 

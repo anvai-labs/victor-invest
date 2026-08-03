@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 
 def build_forecast_prompt(
     *,
-    data_quality: Dict[str, Any],
+    data_quality: dict[str, Any],
     trend_context: str,
-    historical_financials: Dict[str, Any],
-    growth_analysis: Dict[str, Any],
+    historical_financials: dict[str, Any],
+    growth_analysis: dict[str, Any],
     safe_fmt_pct: Callable[[Any], str],
 ) -> str:
     """Build the LLM prompt for forward revenue/earnings/cash-flow forecasting."""
@@ -90,11 +91,11 @@ def build_forecast_prompt(
 
 def build_fundamental_report_data_section(
     *,
-    analysis_data: Dict[str, Any],
+    analysis_data: dict[str, Any],
     symbol: str,
     use_toon: bool,
-    to_toon_quarterly: Callable[[List[Dict[str, Any]]], str],
-    logger: Optional[Any] = None,
+    to_toon_quarterly: Callable[[list[dict[str, Any]]], str],
+    logger: Any | None = None,
 ) -> str:
     """Build the data section for the fundamental report prompt, optionally using TOON format."""
     if not use_toon:
@@ -125,8 +126,8 @@ def build_fundamental_report_data_section(
 
 def build_fundamental_report_prompt(
     *,
-    data_quality: Dict[str, Any],
-    confidence: Dict[str, Any],
+    data_quality: dict[str, Any],
+    confidence: dict[str, Any],
     data_section: str,
     safe_fmt_pct: Callable[[Any], str],
     safe_fmt_float: Callable[[Any, int], str],

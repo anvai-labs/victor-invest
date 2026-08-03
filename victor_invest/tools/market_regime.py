@@ -43,7 +43,7 @@ Example:
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from victor_invest.tools.base import BaseTool, ToolResult
 
@@ -98,16 +98,16 @@ Investment Signals by Regime:
 - Credit Crisis: Maximum defensive, treasuries, capital preservation
 """
 
-    def __init__(self, config: Optional[Any] = None):
+    def __init__(self, config: Any | None = None):
         """Initialize Market Regime Tool.
 
         Args:
             config: Optional investigator config object.
         """
         super().__init__(config)
-        self._yield_curve_analyzer: Optional[Any] = None
-        self._credit_cycle_analyzer: Optional[Any] = None
-        self._recession_indicator: Optional[Any] = None
+        self._yield_curve_analyzer: Any | None = None
+        self._credit_cycle_analyzer: Any | None = None
+        self._recession_indicator: Any | None = None
 
     async def initialize(self) -> None:
         """Initialize market regime analyzers."""
@@ -131,7 +131,7 @@ Investment Signals by Regime:
 
     async def execute(
         self,
-        _exec_ctx: Optional[Dict[str, Any]] = None,
+        _exec_ctx: dict[str, Any] | None = None,
         action: str = "summary",
         **kwargs,
     ) -> ToolResult:
@@ -181,7 +181,7 @@ Investment Signals by Regime:
 
         except Exception as e:
             logger.error(f"MarketRegimeTool execute error: {e}")
-            return ToolResult.create_failure(f"Market regime query failed: {str(e)}", metadata={"action": action})
+            return ToolResult.create_failure(f"Market regime query failed: {e!s}", metadata={"action": action})
 
     async def _get_summary(self) -> ToolResult:
         """Get comprehensive market regime summary."""
@@ -340,7 +340,7 @@ Investment Signals by Regime:
             },
         )
 
-    def _derive_overall_signal(self, yc_analysis, cc_analysis) -> Dict[str, Any]:
+    def _derive_overall_signal(self, yc_analysis, cc_analysis) -> dict[str, Any]:
         """Derive overall investment signal from all analyses."""
         from investigator.domain.models.market_context import CreditCyclePhase
 
@@ -414,7 +414,7 @@ Investment Signals by Regime:
         }
         return guidance.get(shape, "Neutral duration")
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """Get JSON schema for Market Regime Tool parameters."""
         return {
             "type": "object",

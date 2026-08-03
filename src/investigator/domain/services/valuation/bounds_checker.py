@@ -40,7 +40,7 @@ Usage:
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, ClassVar, Dict, List, Optional, Tuple
+from typing import Any, ClassVar
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ class ValidationIssue:
     value: Any
     severity: ValidationSeverity
     message: str
-    suggested_action: Optional[str] = None
+    suggested_action: str | None = None
 
 
 @dataclass
@@ -69,8 +69,8 @@ class BoundsValidationResult:
     """Result of bounds validation."""
 
     is_valid: bool
-    issues: List[ValidationIssue] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
+    issues: list[ValidationIssue] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
     @property
     def has_errors(self) -> bool:
@@ -173,8 +173,8 @@ class BoundsChecker:
 
     def __init__(
         self,
-        input_bounds: Optional[Dict[str, Dict[str, Tuple[float, float]]]] = None,
-        fair_value_ratio_bounds: Optional[Dict[str, Tuple[float, float]]] = None,
+        input_bounds: dict[str, dict[str, tuple[float, float]]] | None = None,
+        fair_value_ratio_bounds: dict[str, tuple[float, float]] | None = None,
         strict_mode: bool = False,
     ):
         """
@@ -200,7 +200,7 @@ class BoundsChecker:
             self.fair_value_ratio_bounds.update(fair_value_ratio_bounds)
 
     def validate_inputs(
-        self, model_type: str, inputs: Dict[str, Any], symbol: Optional[str] = None
+        self, model_type: str, inputs: dict[str, Any], symbol: str | None = None
     ) -> BoundsValidationResult:
         """
         Validate inputs for a valuation model.
@@ -213,7 +213,7 @@ class BoundsChecker:
         Returns:
             BoundsValidationResult with validation status and issues
         """
-        issues: List[ValidationIssue] = []
+        issues: list[ValidationIssue] = []
         model_bounds = self.input_bounds.get(model_type, {})
 
         for field_name, value in inputs.items():
@@ -279,7 +279,7 @@ class BoundsChecker:
 
         return BoundsValidationResult(is_valid=is_valid, issues=issues)
 
-    def _check_required_fields(self, model_type: str, inputs: Dict[str, Any], issues: List[ValidationIssue]) -> None:
+    def _check_required_fields(self, model_type: str, inputs: dict[str, Any], issues: list[ValidationIssue]) -> None:
         """Check for required fields by model type."""
         required_fields = {
             "dcf": ["discount_rate", "shares_outstanding"],
@@ -308,7 +308,7 @@ class BoundsChecker:
         fair_value: float,
         current_price: float,
         model_type: str = "default",
-        symbol: Optional[str] = None,
+        symbol: str | None = None,
     ) -> BoundsValidationResult:
         """
         Validate output fair value against reasonable bounds.
@@ -322,7 +322,7 @@ class BoundsChecker:
         Returns:
             BoundsValidationResult with validation status
         """
-        issues: List[ValidationIssue] = []
+        issues: list[ValidationIssue] = []
 
         # Check for invalid values
         if fair_value is None or current_price is None:
@@ -404,7 +404,7 @@ class BoundsChecker:
 
         return BoundsValidationResult(is_valid=is_valid, issues=issues)
 
-    def clamp_to_bounds(self, model_type: str, field: str, value: float) -> Tuple[float, bool]:
+    def clamp_to_bounds(self, model_type: str, field: str, value: float) -> tuple[float, bool]:
         """
         Clamp a value to its defined bounds.
 
@@ -432,7 +432,7 @@ class BoundsChecker:
 
         return (value, False)
 
-    def get_bounds(self, model_type: str, field: str) -> Optional[Tuple[float, float]]:
+    def get_bounds(self, model_type: str, field: str) -> tuple[float, float] | None:
         """
         Get bounds for a specific model/field combination.
 
@@ -448,7 +448,7 @@ class BoundsChecker:
 
 
 # Singleton instance
-_bounds_checker: Optional[BoundsChecker] = None
+_bounds_checker: BoundsChecker | None = None
 
 
 def get_bounds_checker() -> BoundsChecker:

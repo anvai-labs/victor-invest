@@ -34,7 +34,7 @@ Multi-period data stored in per_model_rewards JSONB:
 
 import logging
 from datetime import date, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from dateutil.relativedelta import relativedelta
 
@@ -91,19 +91,19 @@ class RLBacktestTool(BaseTool):
     - Dual position recording (LONG and SHORT) for balanced RL training
     - Unified context feature extraction via DataSourceManager"""
 
-    def __init__(self, config: Optional[Any] = None):
+    def __init__(self, config: Any | None = None):
         """Initialize the RL backtest tool."""
         super().__init__(config)
-        self._shares_service: Optional[Any] = None
-        self._price_service: Optional[Any] = None
-        self._technical_service: Optional[Any] = None
-        self._metadata_service: Optional[Any] = None
-        self._valuation_config: Optional[Any] = None
-        self._sector_multiples: Optional[Any] = None
-        self._outcome_tracker: Optional[Any] = None
-        self._reward_calculator: Optional[Any] = None
-        self._data_source_manager: Optional[Any] = None
-        self._db: Optional[Any] = None
+        self._shares_service: Any | None = None
+        self._price_service: Any | None = None
+        self._technical_service: Any | None = None
+        self._metadata_service: Any | None = None
+        self._valuation_config: Any | None = None
+        self._sector_multiples: Any | None = None
+        self._outcome_tracker: Any | None = None
+        self._reward_calculator: Any | None = None
+        self._data_source_manager: Any | None = None
+        self._db: Any | None = None
 
     async def initialize(self) -> None:
         """Initialize shared services."""
@@ -155,17 +155,17 @@ class RLBacktestTool(BaseTool):
 
     async def execute(
         self,
-        _exec_ctx: Optional[Dict[str, Any]] = None,
+        _exec_ctx: dict[str, Any] | None = None,
         action: str = "run_backtest",
         symbol: str = "",
-        lookback_months: Optional[List[int]] = None,
-        analysis_date: Optional[date] = None,
+        lookback_months: list[int] | None = None,
+        analysis_date: date | None = None,
         current_price: float = 0.0,
         fair_value: float = 0.0,
-        fair_values: Optional[Dict[str, float]] = None,
-        weights: Optional[Dict[str, float]] = None,
+        fair_values: dict[str, float] | None = None,
+        weights: dict[str, float] | None = None,
         tier_classification: str = "",
-        context_features: Optional[Dict] = None,
+        context_features: dict | None = None,
         **kwargs,
     ) -> ToolResult:
         """Execute RL backtest action.
@@ -238,14 +238,14 @@ class RLBacktestTool(BaseTool):
     async def _run_backtest(
         self,
         symbol: str,
-        lookback_months: List[int],
+        lookback_months: list[int],
     ) -> ToolResult:
         """Run backtest for a symbol at multiple lookback periods."""
         if self._price_service is None:
             return ToolResult.create_failure("Price service not initialized")
 
         errors: list[str] = []
-        results: Dict[str, Any] = {
+        results: dict[str, Any] = {
             "symbol": symbol,
             "predictions": [],
             "errors": errors,
@@ -279,7 +279,7 @@ class RLBacktestTool(BaseTool):
                 )
 
             except Exception as e:
-                results["errors"].append(f"{months_back}m: {str(e)}")
+                results["errors"].append(f"{months_back}m: {e!s}")
 
         return ToolResult.create_success(
             output=results,
@@ -322,10 +322,10 @@ class RLBacktestTool(BaseTool):
         analysis_date: date,
         current_price: float,
         fair_value: float,
-        fair_values: Dict[str, float],
-        weights: Dict[str, float],
+        fair_values: dict[str, float],
+        weights: dict[str, float],
         tier_classification: str,
-        context_features: Dict,
+        context_features: dict,
     ) -> ToolResult:
         """Record prediction to database.
 
@@ -458,12 +458,12 @@ class RLBacktestTool(BaseTool):
         analysis_date: date,
         current_price: float,
         beta: float,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get multi-period prices, exit dates, and rewards."""
-        prices: Dict[str, Any] = {}
-        exit_dates: Dict[str, Any] = {}
-        long_rewards: Dict[str, Any] = {}
-        short_rewards: Dict[str, Any] = {}
+        prices: dict[str, Any] = {}
+        exit_dates: dict[str, Any] = {}
+        long_rewards: dict[str, Any] = {}
+        short_rewards: dict[str, Any] = {}
 
         for period, days in HOLDING_PERIODS.items():
             target_date = analysis_date + timedelta(days=days)
@@ -513,7 +513,7 @@ class RLBacktestTool(BaseTool):
             "short_rewards": short_rewards,
         }
 
-    async def _get_metadata(self, symbol: str) -> Dict[str, Any]:
+    async def _get_metadata(self, symbol: str) -> dict[str, Any]:
         """Get symbol metadata from shared service."""
         if self._metadata_service:
             metadata = self._metadata_service.get_metadata(symbol)
@@ -533,7 +533,7 @@ class RLBacktestTool(BaseTool):
                 }
         return {}
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """Get JSON schema for tool parameters."""
         return {
             "type": "object",

@@ -61,7 +61,7 @@ import importlib
 import logging
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from victor_contracts.graph_runtime import END, StateGraph
 
@@ -98,17 +98,17 @@ class RLBacktestWorkflowState:
     """
 
     symbol: str
-    lookback_months_list: List[int] = field(default_factory=list)
+    lookback_months_list: list[int] = field(default_factory=list)
     interval: str = "quarterly"
-    predictions: List[Dict[str, Any]] = field(default_factory=list)
-    errors: List[str] = field(default_factory=list)
-    completed_steps: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    predictions: list[dict[str, Any]] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    completed_steps: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     # Intermediate state
-    historical_data: Dict[Any, Any] = field(default_factory=dict)
-    valuation_results: Dict[Any, Any] = field(default_factory=dict)
-    reward_data: Dict[Any, Any] = field(default_factory=dict)
+    historical_data: dict[Any, Any] = field(default_factory=dict)
+    valuation_results: dict[Any, Any] = field(default_factory=dict)
+    reward_data: dict[Any, Any] = field(default_factory=dict)
 
     def mark_step_completed(self, step: str) -> None:
         """Mark a workflow step as completed."""
@@ -119,11 +119,11 @@ class RLBacktestWorkflowState:
         """Add an error message."""
         self.errors.append(error)
 
-    def add_prediction(self, prediction: Dict[str, Any]) -> None:
+    def add_prediction(self, prediction: dict[str, Any]) -> None:
         """Add a prediction result."""
         self.predictions.append(prediction)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert state to dictionary."""
         return {
             "symbol": self.symbol,
@@ -139,7 +139,7 @@ class RLBacktestWorkflowState:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "RLBacktestWorkflowState":
+    def from_dict(cls, data: dict[str, Any]) -> "RLBacktestWorkflowState":
         """Create state from dictionary."""
         return cls(
             symbol=data.get("symbol", ""),
@@ -169,8 +169,8 @@ def _state_to_dict(state: RLBacktestWorkflowState) -> dict:
 
 
 # Tool instances (lazy-initialized)
-_rl_backtest_tool: Optional[RLBacktestTool] = None
-_valuation_tool: Optional[ValuationTool] = None
+_rl_backtest_tool: RLBacktestTool | None = None
+_valuation_tool: ValuationTool | None = None
 
 
 async def _get_rl_backtest_tool() -> RLBacktestTool:
@@ -533,7 +533,7 @@ def build_rl_backtest_graph() -> StateGraph:
 def generate_lookback_list(
     max_months: int,
     interval: str = "quarterly",
-) -> List[int]:
+) -> list[int]:
     """Generate list of lookback periods.
 
     Args:
@@ -549,7 +549,7 @@ def generate_lookback_list(
 
 async def run_rl_backtest(
     symbol: str,
-    lookback_months_list: Optional[List[int]] = None,
+    lookback_months_list: list[int] | None = None,
     max_lookback_months: int = 120,
     interval: str = "quarterly",
     use_yaml_workflow: bool = True,
@@ -639,7 +639,7 @@ async def run_rl_backtest(
 
 def _convert_yaml_result_to_state(
     symbol: str,
-    lookback_months_list: List[int],
+    lookback_months_list: list[int],
     interval: str,
     workflow_result: Any,
 ) -> RLBacktestWorkflowState:
@@ -682,11 +682,11 @@ def _convert_yaml_result_to_state(
 
 
 async def run_rl_backtest_batch(
-    symbols: List[str],
+    symbols: list[str],
     max_lookback_months: int = 120,
     interval: str = "quarterly",
     parallel_limit: int = 5,
-) -> List[RLBacktestWorkflowState]:
+) -> list[RLBacktestWorkflowState]:
     """Run RL backtest for multiple symbols with parallelism control.
 
     Args:

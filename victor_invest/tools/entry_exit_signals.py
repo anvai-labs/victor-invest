@@ -23,7 +23,7 @@ Uses the EntryExitEngine from investigator.domain.services.signals.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -69,11 +69,11 @@ class EntryExitSignalTool(BaseTool):
     - Optimal entry zone with timing and scaling recommendations
     - Position sizing guidance based on conviction and volatility"""
 
-    def __init__(self, config: Optional[Any] = None):
+    def __init__(self, config: Any | None = None):
         """Initialize the entry/exit signal tool."""
         super().__init__(config)
-        self._engine: Optional[Any] = None
-        self._integrator: Optional[Any] = None
+        self._engine: Any | None = None
+        self._integrator: Any | None = None
 
     async def initialize(self) -> None:
         """Initialize the signal engine and integrator."""
@@ -93,18 +93,18 @@ class EntryExitSignalTool(BaseTool):
 
     async def execute(
         self,
-        _exec_ctx: Optional[Dict[str, Any]] = None,
+        _exec_ctx: dict[str, Any] | None = None,
         action: str = "generate_signals",
         symbol: str = "",
         current_price: float = 0.0,
-        fair_value: Optional[float] = None,
-        price_data: Optional[Dict] = None,
-        indicators: Optional[Dict] = None,
-        support_levels: Optional[List[float]] = None,
-        resistance_levels: Optional[List[float]] = None,
+        fair_value: float | None = None,
+        price_data: dict | None = None,
+        indicators: dict | None = None,
+        support_levels: list[float] | None = None,
+        resistance_levels: list[float] | None = None,
         volatility: float = 0.25,
-        atr: Optional[float] = None,
-        llm_analysis: Optional[Dict] = None,
+        atr: float | None = None,
+        llm_analysis: dict | None = None,
         **kwargs,
     ) -> ToolResult:
         """Execute entry/exit signal analysis.
@@ -189,13 +189,13 @@ class EntryExitSignalTool(BaseTool):
         self,
         symbol: str,
         current_price: float,
-        fair_value: Optional[float],
-        price_data: Optional[Dict],
-        indicators: Dict,
-        support_levels: List[float],
-        resistance_levels: List[float],
+        fair_value: float | None,
+        price_data: dict | None,
+        indicators: dict,
+        support_levels: list[float],
+        resistance_levels: list[float],
         volatility: float,
-        atr: Optional[float],
+        atr: float | None,
     ) -> ToolResult:
         """Generate all entry/exit signals."""
         if not self._engine:
@@ -263,11 +263,11 @@ class EntryExitSignalTool(BaseTool):
     async def _get_entry_signals(
         self,
         current_price: float,
-        fair_value: Optional[float],
-        price_data: Optional[Dict],
-        indicators: Dict,
-        support_levels: List[float],
-        resistance_levels: List[float],
+        fair_value: float | None,
+        price_data: dict | None,
+        indicators: dict,
+        support_levels: list[float],
+        resistance_levels: list[float],
     ) -> ToolResult:
         """Get entry signals only."""
         if not self._engine:
@@ -298,8 +298,8 @@ class EntryExitSignalTool(BaseTool):
     async def _get_exit_signals(
         self,
         current_price: float,
-        price_data: Optional[Dict],
-        indicators: Dict,
+        price_data: dict | None,
+        indicators: dict,
     ) -> ToolResult:
         """Get exit signals only."""
         if not self._engine:
@@ -323,11 +323,11 @@ class EntryExitSignalTool(BaseTool):
     async def _get_entry_zone(
         self,
         current_price: float,
-        fair_value: Optional[float],
-        support_levels: List[float],
-        resistance_levels: List[float],
+        fair_value: float | None,
+        support_levels: list[float],
+        resistance_levels: list[float],
         volatility: float,
-        atr: Optional[float],
+        atr: float | None,
     ) -> ToolResult:
         """Calculate optimal entry zone."""
         if not self._engine:
@@ -359,10 +359,10 @@ class EntryExitSignalTool(BaseTool):
 
     async def _integrate_signals(
         self,
-        price_data: Optional[Dict],
-        indicators: Dict,
-        valuation: Dict,
-        llm_analysis: Optional[Dict],
+        price_data: dict | None,
+        indicators: dict,
+        valuation: dict,
+        llm_analysis: dict | None,
     ) -> ToolResult:
         """Integrate programmatic and LLM signals."""
         if not self._integrator:
@@ -385,7 +385,7 @@ class EntryExitSignalTool(BaseTool):
 
         return ToolResult.create_success(output=report_data)
 
-    def _to_dataframe(self, price_data: Optional[Any], current_price: float) -> pd.DataFrame:
+    def _to_dataframe(self, price_data: Any | None, current_price: float) -> pd.DataFrame:
         """Convert price data to DataFrame."""
         if price_data is None:
             # Create minimal DataFrame with current price
@@ -399,7 +399,7 @@ class EntryExitSignalTool(BaseTool):
 
         return pd.DataFrame({"close": [current_price], "Close": [current_price]})
 
-    def _signal_to_dict(self, signal) -> Dict[str, Any]:
+    def _signal_to_dict(self, signal) -> dict[str, Any]:
         """Convert EntrySignal to dict."""
         return {
             "signal_type": (
@@ -418,7 +418,7 @@ class EntryExitSignalTool(BaseTool):
             "trend_alignment": signal.trend_alignment,
         }
 
-    def _exit_signal_to_dict(self, signal) -> Dict[str, Any]:
+    def _exit_signal_to_dict(self, signal) -> dict[str, Any]:
         """Convert ExitSignal to dict."""
         return {
             "signal_type": (
@@ -431,7 +431,7 @@ class EntryExitSignalTool(BaseTool):
             "partial_exit_pct": round(signal.partial_exit_pct, 1),
         }
 
-    def _entry_zone_to_dict(self, zone) -> Dict[str, Any]:
+    def _entry_zone_to_dict(self, zone) -> dict[str, Any]:
         """Convert OptimalEntryZone to dict."""
         return {
             "lower_bound": round(zone.lower_bound, 2),
@@ -450,9 +450,9 @@ class EntryExitSignalTool(BaseTool):
     def _fallback_signals(
         self,
         current_price: float,
-        fair_value: Optional[float],
-        support_levels: List[float],
-        resistance_levels: List[float],
+        fair_value: float | None,
+        support_levels: list[float],
+        resistance_levels: list[float],
     ) -> ToolResult:
         """Provide fallback signals when engine not available."""
         fv = fair_value or current_price
@@ -498,7 +498,7 @@ class EntryExitSignalTool(BaseTool):
             metadata={"warnings": ["Using fallback signal generation - full engine not available"]},
         )
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """Get JSON schema for tool parameters."""
         return {
             "type": "object",

@@ -8,7 +8,7 @@ Licensed under the Apache License 2.0
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ class TOONFormatter:
     """
 
     @staticmethod
-    def format_array(data: List[Dict[str, Any]], name: str = "data", precision: int = 2) -> str:
+    def format_array(data: list[dict[str, Any]], name: str = "data", precision: int = 2) -> str:
         """
         Convert uniform JSON array to TOON format.
 
@@ -91,7 +91,7 @@ class TOONFormatter:
             return json.dumps(val)
 
     @staticmethod
-    def format_quarterly_data(quarters: List[Dict[str, Any]], metric_keys: List[str] | None = None) -> str:
+    def format_quarterly_data(quarters: list[dict[str, Any]], metric_keys: list[str] | None = None) -> str:
         """
         Format quarterly financial data with smart metric selection.
 
@@ -134,7 +134,7 @@ class TOONFormatter:
         return TOONFormatter.format_array(filtered_quarters, name="quarterly_data", precision=2)
 
     @staticmethod
-    def format_peer_comparison(peers: List[Dict[str, Any]], metric_keys: List[str] | None = None) -> str:
+    def format_peer_comparison(peers: list[dict[str, Any]], metric_keys: list[str] | None = None) -> str:
         """
         Format peer comparison data.
 
@@ -185,16 +185,16 @@ quarterly_data[4]{fiscal_year,fiscal_period,revenue,net_income}:
 
 
 # Convenience functions
-def to_toon_quarterly(quarters: List[Dict[str, Any]], metrics: List[str] | None = None) -> str:
+def to_toon_quarterly(quarters: list[dict[str, Any]], metrics: list[str] | None = None) -> str:
     """Convert quarterly data to TOON format."""
     return TOONFormatter.format_quarterly_data(quarters, metrics)
 
 
-def to_toon_peers(peers: List[Dict[str, Any]], metrics: List[str] | None = None) -> str:
+def to_toon_peers(peers: list[dict[str, Any]], metrics: list[str] | None = None) -> str:
     """Convert peer comparison data to TOON format."""
     return TOONFormatter.format_peer_comparison(peers, metrics)
 
 
-def to_toon_array(data: List[Dict[str, Any]], name: str = "data") -> str:
+def to_toon_array(data: list[dict[str, Any]], name: str = "data") -> str:
     """Convert any uniform array to TOON format."""
     return TOONFormatter.format_array(data, name)

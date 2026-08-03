@@ -21,7 +21,6 @@ def macro(ctx):
         investigator macro fed --district atlanta
         investigator macro treasury curve
     """
-    pass
 
 
 @macro.command("summary")

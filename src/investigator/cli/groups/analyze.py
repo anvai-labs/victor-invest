@@ -25,7 +25,6 @@ def analyze(ctx):
         investigator analyze batch AAPL MSFT GOOGL --output-dir results/
         investigator analyze compare AAPL MSFT GOOGL
     """
-    pass
 
 
 @analyze.command("single")

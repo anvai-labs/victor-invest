@@ -15,7 +15,7 @@ Date: 2025-01-05
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +25,8 @@ class QuarterlyDataProtocol(Protocol):
 
     fiscal_year: int
     fiscal_period: str
-    financial_data: Dict[str, Any]
-    ratios: Optional[Dict[str, Any]]
+    financial_data: dict[str, Any]
+    ratios: dict[str, Any] | None
 
 
 class TrendAnalyzer:
@@ -43,7 +43,7 @@ class TrendAnalyzer:
     - Cyclical patterns: seasonal business patterns
     """
 
-    def __init__(self, logger: Optional[logging.Logger] = None):
+    def __init__(self, logger: logging.Logger | None = None):
         """
         Initialize trend analyzer.
 
@@ -52,7 +52,7 @@ class TrendAnalyzer:
         """
         self.logger = logger or logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-    def analyze_revenue_trend(self, quarterly_data: List[QuarterlyDataProtocol]) -> Dict:
+    def analyze_revenue_trend(self, quarterly_data: list[QuarterlyDataProtocol]) -> dict:
         """
         Analyze revenue trend: accelerating, stable, or decelerating.
 
@@ -139,7 +139,7 @@ class TrendAnalyzer:
             "consistency_score": round(consistency_score, 1),
         }
 
-    def analyze_margin_trend(self, quarterly_data: List[QuarterlyDataProtocol]) -> Dict:
+    def analyze_margin_trend(self, quarterly_data: list[QuarterlyDataProtocol]) -> dict:
         """
         Analyze margin trends: expanding, stable, or contracting.
 
@@ -214,7 +214,7 @@ class TrendAnalyzer:
             "net_margins": [round(m, 2) for m in net_margins],
         }
 
-    def analyze_cash_flow_trend(self, quarterly_data: List[QuarterlyDataProtocol]) -> Dict:
+    def analyze_cash_flow_trend(self, quarterly_data: list[QuarterlyDataProtocol]) -> dict:
         """
         Analyze cash flow quality and trend.
 
@@ -289,7 +289,7 @@ class TrendAnalyzer:
             "quality_of_earnings": round(quality_score, 1),
         }
 
-    def calculate_quarterly_comparisons(self, quarterly_data: List[QuarterlyDataProtocol]) -> Dict:
+    def calculate_quarterly_comparisons(self, quarterly_data: list[QuarterlyDataProtocol]) -> dict:
         """
         Calculate quarter-over-quarter and year-over-year comparisons.
 
@@ -355,7 +355,7 @@ class TrendAnalyzer:
             },
         }
 
-    def detect_cyclical_patterns(self, quarterly_data: List[QuarterlyDataProtocol]) -> Dict:
+    def detect_cyclical_patterns(self, quarterly_data: list[QuarterlyDataProtocol]) -> dict:
         """
         Detect seasonal/cyclical business patterns.
 
@@ -374,7 +374,7 @@ class TrendAnalyzer:
             }
 
         # Group revenues by quarter (Q1, Q2, Q3, Q4)
-        quarter_revenues: Dict[str, List[float]] = {
+        quarter_revenues: dict[str, list[float]] = {
             "Q1": [],
             "Q2": [],
             "Q3": [],
@@ -438,10 +438,10 @@ class TrendAnalyzer:
 
 
 # Singleton instance
-_analyzer_instance: Optional[TrendAnalyzer] = None
+_analyzer_instance: TrendAnalyzer | None = None
 
 
-def get_trend_analyzer(logger: Optional[logging.Logger] = None) -> TrendAnalyzer:
+def get_trend_analyzer(logger: logging.Logger | None = None) -> TrendAnalyzer:
     """
     Get singleton TrendAnalyzer instance.
 

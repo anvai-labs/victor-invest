@@ -12,7 +12,7 @@ import logging
 import os
 import threading
 from decimal import Decimal
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
@@ -57,7 +57,7 @@ class DatabaseMarketDataFetcher:
         self.config = config
         self.min_volume = getattr(config.analysis, "min_volume", 10000)
         self.default_days = getattr(config.analysis, "technical_lookback_days", 365)
-        self._symbol_metadata_cache: Dict[str, Dict[str, Any]] = {}
+        self._symbol_metadata_cache: dict[str, dict[str, Any]] = {}
 
         # Warning tuning – prevent false alarms on intentionally short lookbacks.
         self.history_warning_days = getattr(config.analysis, "history_warning_days", 50)
@@ -343,7 +343,7 @@ class DatabaseMarketDataFetcher:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self.get_stock_data, symbol, days)
 
-    def get_stock_info(self, symbol: str) -> Dict:
+    def get_stock_info(self, symbol: str) -> dict:
         """
         Get additional stock information from database including symbol table data
         """
@@ -479,7 +479,7 @@ class DatabaseMarketDataFetcher:
             logger.error(f"Error fetching stock info for {symbol} from database: {e}")
             return {}
 
-    async def get_quote(self, symbol: str) -> Dict:
+    async def get_quote(self, symbol: str) -> dict:
         """
         Async method to get current quote data for fundamental analysis
 
@@ -525,7 +525,7 @@ class DatabaseMarketDataFetcher:
             logger.error(f"Error fetching available symbols: {e}")
             return []
 
-    def _get_symbol_metadata(self, symbol: str) -> Dict[str, Any]:
+    def _get_symbol_metadata(self, symbol: str) -> dict[str, Any]:
         """Fetch raw symbol table metadata with caching."""
         symbol_key = symbol.upper()
         if symbol_key in self._symbol_metadata_cache:
@@ -544,7 +544,7 @@ class DatabaseMarketDataFetcher:
         return metadata
 
     @staticmethod
-    def _extract_float(value: Any) -> Optional[float]:
+    def _extract_float(value: Any) -> float | None:
         if value is None:
             return None
         try:
@@ -572,9 +572,7 @@ class DatabaseMarketDataFetcher:
         horizon = max(1, horizon)
         return source, horizon
 
-    def _get_beta_from_models_table(
-        self, symbol: str, beta_source: str, horizon_months: int
-    ) -> Optional[Dict[str, Any]]:
+    def _get_beta_from_models_table(self, symbol: str, beta_source: str, horizon_months: int) -> dict[str, Any] | None:
         model_preference = {
             "auto": ["blended", "ff6", "market", "fundamental"],
             "market": ["market"],
@@ -623,7 +621,7 @@ class DatabaseMarketDataFetcher:
         return None
 
     @staticmethod
-    def _extract_int(value: Any) -> Optional[int]:
+    def _extract_int(value: Any) -> int | None:
         if value is None:
             return None
         try:
@@ -634,7 +632,7 @@ class DatabaseMarketDataFetcher:
             return None
 
     @staticmethod
-    def _format_cik(value: Any) -> Optional[str]:
+    def _format_cik(value: Any) -> str | None:
         if value is None:
             return None
         try:
@@ -643,18 +641,18 @@ class DatabaseMarketDataFetcher:
             return str(value)
 
     @staticmethod
-    def _extract_first_nonempty(metadata: Dict[str, Any], keys: list) -> Optional[Any]:
+    def _extract_first_nonempty(metadata: dict[str, Any], keys: list) -> Any | None:
         for key in keys:
-            if key in metadata and metadata[key]:
+            if metadata.get(key):
                 return metadata[key]
         return None
 
     @classmethod
-    def _infer_is_etf(cls, symbol: str, metadata: Dict[str, Any]) -> bool:
+    def _infer_is_etf(cls, symbol: str, metadata: dict[str, Any]) -> bool:
         if not metadata:
             return False
 
-        def coerce_bool(value: Any) -> Optional[bool]:
+        def coerce_bool(value: Any) -> bool | None:
             if value is None:
                 return None
             if isinstance(value, bool):

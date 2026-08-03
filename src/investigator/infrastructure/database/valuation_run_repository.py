@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -15,9 +15,9 @@ from sqlalchemy.engine import Engine
 class ValuationModelOutputRecord:
     model_name: str
     applicable: bool
-    fair_value_per_share: Optional[float] = None
-    weight: Optional[float] = None
-    confidence: Optional[float] = None
+    fair_value_per_share: float | None = None
+    weight: float | None = None
+    confidence: float | None = None
     assumptions: dict[str, Any] = field(default_factory=dict)
     notes: list[Any] = field(default_factory=list)
 
@@ -26,20 +26,20 @@ class ValuationModelOutputRecord:
 class ValuationRunRecord:
     symbol: str
     analysis_mode: str
-    run_started_at: Optional[datetime] = None
-    run_completed_at: Optional[datetime] = None
-    valuation_basis: Optional[str] = None
-    forward_horizon: Optional[str] = None
-    current_price: Optional[float] = None
-    blended_fair_value: Optional[float] = None
-    expected_return_pct: Optional[float] = None
-    data_quality_score: Optional[float] = None
-    model_agreement_score: Optional[float] = None
-    dispersion_ratio: Optional[float] = None
-    applicable_models: Optional[int] = None
-    decision_action: Optional[str] = None
-    decision_confidence: Optional[str] = None
-    decision_score: Optional[float] = None
+    run_started_at: datetime | None = None
+    run_completed_at: datetime | None = None
+    valuation_basis: str | None = None
+    forward_horizon: str | None = None
+    current_price: float | None = None
+    blended_fair_value: float | None = None
+    expected_return_pct: float | None = None
+    data_quality_score: float | None = None
+    model_agreement_score: float | None = None
+    dispersion_ratio: float | None = None
+    applicable_models: int | None = None
+    decision_action: str | None = None
+    decision_confidence: str | None = None
+    decision_score: float | None = None
     guardrails_triggered: list[str] = field(default_factory=list)
     source_freshness: dict[str, Any] = field(default_factory=dict)
     input_snapshot: dict[str, Any] = field(default_factory=dict)

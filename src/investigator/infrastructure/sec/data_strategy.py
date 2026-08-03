@@ -10,7 +10,7 @@ Date: 2025-11-02
 
 import logging
 from datetime import datetime
-from typing import ClassVar, Dict, List, Optional, Tuple
+from typing import ClassVar
 
 from sqlalchemy import text
 
@@ -71,7 +71,7 @@ class SECDataStrategy:
     def __init__(self, engine):
         self.engine = engine
 
-    def get_latest_fiscal_period(self, symbol: str, cik: str) -> Tuple[Optional[int], Optional[str], Optional[str]]:
+    def get_latest_fiscal_period(self, symbol: str, cik: str) -> tuple[int | None, str | None, str | None]:
         """
         Get latest fiscal period using 2-tier strategy
 
@@ -114,7 +114,7 @@ class SECDataStrategy:
         # Return None to signal caller to use API
         return (None, None, None)
 
-    def _get_from_bulk_tables(self, cik: str) -> Tuple[Optional[int], Optional[str], Optional[str]]:
+    def _get_from_bulk_tables(self, cik: str) -> tuple[int | None, str | None, str | None]:
         """
         Query sec_sub_data for latest filed quarter
 
@@ -154,7 +154,7 @@ class SECDataStrategy:
             logger.warning(f"Error querying bulk tables for CIK {cik}: {e}")
             return (None, None, None)
 
-    def _check_bulk_data_age(self, cik: str) -> Optional[float]:
+    def _check_bulk_data_age(self, cik: str) -> float | None:
         """
         Check age of most recent filing in bulk tables
 
@@ -190,7 +190,7 @@ class SECDataStrategy:
             logger.debug(f"Error checking bulk data age for CIK {cik}: {e}")
             return None
 
-    def get_8_quarters_hybrid(self, symbol: str, cik: str, max_bulk_age_days: int = 180) -> List[Dict]:
+    def get_8_quarters_hybrid(self, symbol: str, cik: str, max_bulk_age_days: int = 180) -> list[dict]:
         """
         ALWAYS return 8 quarters using hybrid strategy
 
@@ -398,7 +398,7 @@ class SECDataStrategy:
 
     def get_multiple_quarters(
         self, symbol: str, cik: str, num_quarters: int = 8, include_fy: bool = True
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         Get data for last N quarters from bulk tables
 
@@ -526,7 +526,7 @@ class SECDataStrategy:
             logger.error(f"Error retrieving multi-quarter data for {symbol}: {e}")
             return []
 
-    def get_complete_fiscal_year(self, symbol: str, cik: str, fiscal_year: int) -> List[Dict]:
+    def get_complete_fiscal_year(self, symbol: str, cik: str, fiscal_year: int) -> list[dict]:
         """
         Get all filings for a complete fiscal year (Q1, Q2, Q3, Q4, FY)
 
@@ -626,7 +626,7 @@ class SECDataStrategy:
             logger.error(f"Error retrieving FY{fiscal_year} data for {symbol}: {e}")
             return []
 
-    def get_num_data_for_adsh(self, adsh: str, tags: List[str]) -> Dict[str, float]:
+    def get_num_data_for_adsh(self, adsh: str, tags: list[str]) -> dict[str, float]:
         """
         Get specific tag values for a filing (ADSH)
 

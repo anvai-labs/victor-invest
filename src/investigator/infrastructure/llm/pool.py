@@ -30,7 +30,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import aiohttp
 
@@ -71,7 +71,7 @@ class RunningModel:
     size: int
     size_vram: int  # ACTUAL VRAM usage (includes KV cache!)
     digest: str
-    expires_at: Optional[str] = None
+    expires_at: str | None = None
 
 
 @dataclass
@@ -85,11 +85,11 @@ class ServerStatus:
     active_requests: int = 0
     total_requests: int = 0
     failures: int = 0
-    last_used: Optional[datetime] = None
+    last_used: datetime | None = None
     available: bool = True
 
     # Real-time state from /api/ps
-    running_models: List[RunningModel] = field(default_factory=list)
+    running_models: list[RunningModel] = field(default_factory=list)
     total_vram_used_gb: float = 0.0
 
     # Pessimistic reservation (for requests in flight)
@@ -128,8 +128,8 @@ class ResourceAwareOllamaPool:
 
     def __init__(
         self,
-        servers: List[ServerCapacity],
-        model_specs: Dict[str, Any] | None = None,
+        servers: list[ServerCapacity],
+        model_specs: dict[str, Any] | None = None,
         strategy: PoolStrategy = PoolStrategy.MOST_CAPACITY,
         max_failures: int = 3,
         timeout: int = 300,
@@ -152,7 +152,7 @@ class ResourceAwareOllamaPool:
         self.capacity_available = asyncio.Condition(self.lock)  # Wait/notify for capacity changes
 
         # HTTP session
-        self._session: Optional[aiohttp.ClientSession] = None
+        self._session: aiohttp.ClientSession | None = None
 
         logger.info(
             "🏁 POOL_INIT servers=%d strategy=%s max_prompt_tokens=%d",
@@ -174,7 +174,7 @@ class ResourceAwareOllamaPool:
                 server.metal,
             )
 
-    def _get_model_spec(self, model_name: str) -> Optional[Any]:
+    def _get_model_spec(self, model_name: str) -> Any | None:
         return self.model_specs.get(model_name)
 
     def _spec_value(self, spec: Any, attr: str, default: Any) -> Any:
@@ -186,7 +186,7 @@ class ResourceAwareOllamaPool:
             return spec.get(attr, default)
         return default
 
-    def _estimate_tokens(self, text: Optional[str]) -> int:
+    def _estimate_tokens(self, text: str | None) -> int:
         if not text:
             return 0
         length = len(text)
@@ -229,7 +229,7 @@ class ResourceAwareOllamaPool:
             return_exceptions=True,
         )
 
-        removed: List[str] = []
+        removed: list[str] = []
         async with self.lock:
             for url in list(self.server_list):
                 server = self.servers.get(url)
@@ -246,7 +246,7 @@ class ResourceAwareOllamaPool:
                 ", ".join(removed),
             )
 
-    async def get_server_status(self, server_url: str) -> Dict[str, Any]:
+    async def get_server_status(self, server_url: str) -> dict[str, Any]:
         """Query server for current resource usage via /api/ps"""
         await self._ensure_session()
         try:
@@ -353,7 +353,7 @@ class ResourceAwareOllamaPool:
 
     async def select_server_for_model(
         self, model_name: str, context_tokens: int, spec: Any = None
-    ) -> Optional[tuple[str, float, bool]]:
+    ) -> tuple[str, float, bool] | None:
         """
         Select server with sufficient capacity for model
 
@@ -392,7 +392,7 @@ class ResourceAwareOllamaPool:
                         else:
                             new_candidates.append((server, required))
 
-                candidate_pool: List[tuple[ServerStatus, float, bool]]  # (server, vram, is_reuse)
+                candidate_pool: list[tuple[ServerStatus, float, bool]]  # (server, vram, is_reuse)
 
                 # For ROUND_ROBIN, RANDOM, MOST_CAPACITY, and PREFER_REMOTE: combine pools for distribution
                 # MOST_CAPACITY will naturally prefer servers with more free RAM
@@ -491,7 +491,7 @@ class ResourceAwareOllamaPool:
                         self.capacity_available.wait(),
                         timeout=max(1.0, max_wait_seconds - elapsed),
                     )
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     # Continue loop to check timeout
                     pass
 
@@ -554,7 +554,7 @@ class ResourceAwareOllamaPool:
         async with self.capacity_available:
             self.capacity_available.notify_all()
 
-    async def generate(self, model: str, prompt: str, **kwargs) -> Dict[str, Any]:
+    async def generate(self, model: str, prompt: str, **kwargs) -> dict[str, Any]:
         """
         Generate completion using server with sufficient capacity
 
@@ -630,7 +630,7 @@ class ResourceAwareOllamaPool:
             )
         return "; ".join(summaries)
 
-    async def get_pool_status(self) -> Dict[str, Any]:
+    async def get_pool_status(self) -> dict[str, Any]:
         """Get detailed status of all servers"""
         await asyncio.gather(*[self.update_server_status(url) for url in self.servers.keys()])
 

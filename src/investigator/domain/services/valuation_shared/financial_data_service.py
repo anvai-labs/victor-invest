@@ -33,7 +33,7 @@ Example:
 import logging
 from datetime import date
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
@@ -65,9 +65,9 @@ class FinancialDataService:
     def get_quarterly_metrics(
         self,
         symbol: str,
-        as_of_date: Optional[date] = None,
+        as_of_date: date | None = None,
         num_quarters: int = 12,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get quarterly metrics in the structured format expected by valuation models.
 
@@ -176,9 +176,9 @@ class FinancialDataService:
     def get_annual_metrics(
         self,
         symbol: str,
-        as_of_date: Optional[date] = None,
+        as_of_date: date | None = None,
         num_years: int = 5,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get multi-year annual (FY) data for growth calculations.
 
@@ -243,8 +243,8 @@ class FinancialDataService:
     def get_ttm_metrics(
         self,
         symbol: str,
-        as_of_date: Optional[date] = None,
-    ) -> Dict[str, Any]:
+        as_of_date: date | None = None,
+    ) -> dict[str, Any]:
         """
         Get trailing twelve months (TTM) metrics.
 
@@ -298,8 +298,8 @@ class FinancialDataService:
     def get_latest_metrics(
         self,
         symbol: str,
-        as_of_date: Optional[date] = None,
-    ) -> Optional[Dict[str, Any]]:
+        as_of_date: date | None = None,
+    ) -> dict[str, Any] | None:
         """
         Get the most recent quarterly metrics.
 
@@ -313,7 +313,7 @@ class FinancialDataService:
         quarterly = self.get_quarterly_metrics(symbol, as_of_date, num_quarters=1)
         return quarterly[0] if quarterly else None
 
-    def normalize_to_nested_format(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def normalize_to_nested_format(self, data: dict[str, Any]) -> dict[str, Any]:
         """
         Normalize flat data to the nested structure expected by valuation models.
 
@@ -392,7 +392,7 @@ class FinancialDataService:
 
         return "unknown"
 
-    def _to_float(self, value: Any) -> Optional[float]:
+    def _to_float(self, value: Any) -> float | None:
         """Convert value to float, handling None and Decimal."""
         if value is None:
             return None

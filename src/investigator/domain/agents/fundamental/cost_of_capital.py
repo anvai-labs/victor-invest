@@ -2,21 +2,22 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List
+from collections.abc import Callable
+from typing import Any
 
 
 def hydrate_cost_of_capital_inputs(
     *,
     profile: Any,
-    company_data: Dict[str, Any],
-    ratios: Dict[str, Any],
+    company_data: dict[str, Any],
+    ratios: dict[str, Any],
     symbol: str,
-    get_stock_info: Callable[[str], Dict[str, Any]],
-    require_financials: Callable[[Dict[str, Any]], Dict[str, Any]],
+    get_stock_info: Callable[[str], dict[str, Any]],
+    require_financials: Callable[[dict[str, Any]], dict[str, Any]],
 ) -> None:
     """Populate missing beta/debt/coverage inputs from available company data."""
     market_data = company_data.get("market_data", {})
-    stock_info: Dict[str, Any] = {}
+    stock_info: dict[str, Any] = {}
     try:
         stock_info = get_stock_info(symbol) or {}
     except Exception:
@@ -57,11 +58,11 @@ def hydrate_cost_of_capital_inputs(
 def evaluate_cost_of_capital_inputs(
     *,
     profile: Any,
-    company_data: Dict[str, Any],
-    require_financials: Callable[[Dict[str, Any]], Dict[str, Any]],
-) -> List[str]:
+    company_data: dict[str, Any],
+    require_financials: Callable[[dict[str, Any]], dict[str, Any]],
+) -> list[str]:
     """Identify missing inputs that force DCF/WACC fallback assumptions."""
-    issues: List[str] = []
+    issues: list[str] = []
     if getattr(profile, "beta", None) is None:
         issues.append("missing_beta")
 
@@ -81,9 +82,9 @@ def evaluate_cost_of_capital_inputs(
 
 def apply_cost_of_capital_penalty(
     *,
-    valuation_dict: Dict[str, Any],
-    issues: List[str],
-) -> Dict[str, Any]:
+    valuation_dict: dict[str, Any],
+    issues: list[str],
+) -> dict[str, Any]:
     """Reduce valuation confidence when cost-of-capital inputs were missing."""
     if not issues or not isinstance(valuation_dict, dict):
         return valuation_dict

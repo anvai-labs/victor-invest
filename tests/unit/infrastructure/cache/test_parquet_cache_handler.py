@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Dict, List
 
 import pandas as pd
 
@@ -17,7 +16,7 @@ def _make_handler(tmp_path: Path) -> ParquetCacheStorageHandler:
     )
 
 
-def _make_dataframe(records: List[Dict]) -> pd.DataFrame:
+def _make_dataframe(records: list[dict]) -> pd.DataFrame:
     df = pd.DataFrame(records)
     # ensure deterministic column order
     return df[[column for column in sorted(df.columns)]]

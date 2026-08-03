@@ -49,7 +49,7 @@ import logging
 import os
 import pickle
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from investigator.domain.services.rl.feature_normalizer import FeatureNormalizer
 from investigator.domain.services.rl.models import ValuationContext
@@ -99,12 +99,12 @@ class HybridPolicy(RLPolicy):
 
     def __init__(
         self,
-        base_weighting_service: Optional[Any] = None,
-        adjustment_policy: Optional[RLPolicy] = None,
+        base_weighting_service: Any | None = None,
+        adjustment_policy: RLPolicy | None = None,
         max_adjustment: float = 1.0,
         min_weight: float = 0.0,
-        model_names: Optional[List[str]] = None,
-        normalizer: Optional[FeatureNormalizer] = None,
+        model_names: list[str] | None = None,
+        normalizer: FeatureNormalizer | None = None,
         learn_adjustments: bool = True,
     ):
         """
@@ -135,8 +135,8 @@ class HybridPolicy(RLPolicy):
         self.learn_adjustments = learn_adjustments
 
         # Track adjustment statistics
-        self._adjustment_history: List[Dict[str, float]] = []
-        self._reward_history: List[float] = []
+        self._adjustment_history: list[dict[str, float]] = []
+        self._reward_history: list[float] = []
 
         # Per-model adjustment accumulators (for learning model-specific adjustments)
         self._model_adjustment_sum = {m: 0.0 for m in self.model_names}
@@ -144,14 +144,14 @@ class HybridPolicy(RLPolicy):
         self._model_reward_correlation = {m: 0.0 for m in self.model_names}
 
         # Holding period learning (per-sector optimal holding periods)
-        self._sector_period_rewards: Dict[str, Dict[str, List[float]]] = {}
-        self._sector_optimal_periods: Dict[str, str] = {}
-        self._symbol_optimal_periods: Dict[str, str] = {}
+        self._sector_period_rewards: dict[str, dict[str, list[float]]] = {}
+        self._sector_optimal_periods: dict[str, str] = {}
+        self._symbol_optimal_periods: dict[str, str] = {}
 
         # Ready if we have at least the base service
         self._ready = base_weighting_service is not None
 
-    def predict(self, context: ValuationContext) -> Dict[str, float]:
+    def predict(self, context: ValuationContext) -> dict[str, float]:
         """
         Predict weights combining base service and RL adjustments.
 
@@ -178,7 +178,7 @@ class HybridPolicy(RLPolicy):
     def predict_with_confidence(
         self,
         context: ValuationContext,
-    ) -> Tuple[Dict[str, float], float]:
+    ) -> tuple[dict[str, float], float]:
         """
         Predict with confidence based on RL policy uncertainty.
         """
@@ -197,7 +197,7 @@ class HybridPolicy(RLPolicy):
     def predict_with_holding_period(
         self,
         context: ValuationContext,
-    ) -> Tuple[Dict[str, float], str]:
+    ) -> tuple[dict[str, float], str]:
         """
         Predict weights and optimal holding period.
 
@@ -254,7 +254,7 @@ class HybridPolicy(RLPolicy):
     def update_holding_period_learning(
         self,
         context: ValuationContext,
-        multi_period_rewards: Dict[str, float],
+        multi_period_rewards: dict[str, float],
     ) -> None:
         """
         Update holding period learning from observed rewards.
@@ -310,7 +310,7 @@ class HybridPolicy(RLPolicy):
     def update(
         self,
         context: ValuationContext,
-        action: Dict[str, float],
+        action: dict[str, float],
         reward: float,
     ) -> None:
         """
@@ -364,7 +364,7 @@ class HybridPolicy(RLPolicy):
     def _get_base_weights(
         self,
         context: ValuationContext,
-    ) -> Tuple[Dict[str, float], str, Any]:
+    ) -> tuple[dict[str, float], str, Any]:
         """Get base weights from the tier-based service."""
         if self.base_service is None:
             # Fallback to equal weights
@@ -398,7 +398,7 @@ class HybridPolicy(RLPolicy):
     def _get_adjustments(
         self,
         context: ValuationContext,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Get adjustment multipliers from RL policy."""
         # Default: no adjustment (multiplier = 1.0)
         default_adjustments = {m: 1.0 for m in self.model_names}
@@ -438,9 +438,9 @@ class HybridPolicy(RLPolicy):
 
     def _apply_adjustments(
         self,
-        base_weights: Dict[str, float],
-        adjustments: Dict[str, float],
-    ) -> Dict[str, float]:
+        base_weights: dict[str, float],
+        adjustments: dict[str, float],
+    ) -> dict[str, float]:
         """
         Apply adjustment multipliers to base weights.
 
@@ -463,7 +463,7 @@ class HybridPolicy(RLPolicy):
 
         return self.normalize_weights(adjusted)
 
-    def _context_to_financials(self, context: ValuationContext) -> Dict[str, Any]:
+    def _context_to_financials(self, context: ValuationContext) -> dict[str, Any]:
         """Convert context back to financials dict for base service."""
         # Handle both ValuationContext objects and dicts
         if isinstance(context, dict):
@@ -486,7 +486,7 @@ class HybridPolicy(RLPolicy):
             "ebitda": None,
         }
 
-    def _context_to_ratios(self, context: ValuationContext) -> Dict[str, Any]:
+    def _context_to_ratios(self, context: ValuationContext) -> dict[str, Any]:
         """Convert context back to ratios dict for base service."""
         # Handle both ValuationContext objects and dicts
         if isinstance(context, dict):
@@ -509,7 +509,7 @@ class HybridPolicy(RLPolicy):
             "pe_ratio": None,  # We have pe_level but not raw PE
         }
 
-    def _context_to_market_context(self, context: ValuationContext) -> Optional[Dict[str, Any]]:
+    def _context_to_market_context(self, context: ValuationContext) -> dict[str, Any] | None:
         """Convert context to market context dict."""
         # Handle both ValuationContext objects and dicts
         logger.debug(
@@ -529,7 +529,7 @@ class HybridPolicy(RLPolicy):
             "volatility": context.volatility,
         }
 
-    def get_adjustment_stats(self) -> Dict[str, Dict[str, float]]:
+    def get_adjustment_stats(self) -> dict[str, dict[str, float]]:
         """Get statistics on model adjustments."""
         stats = {}
         for model in self.model_names:
@@ -549,7 +549,7 @@ class HybridPolicy(RLPolicy):
                 }
         return stats
 
-    def get_learned_adjustments(self) -> Dict[str, float]:
+    def get_learned_adjustments(self) -> dict[str, float]:
         """
         Get learned adjustment multipliers based on historical performance.
 
@@ -653,7 +653,7 @@ class HybridPolicy(RLPolicy):
             logger.error(f"Failed to load hybrid policy: {e}")
             return False
 
-    def get_state(self) -> Dict[str, Any]:
+    def get_state(self) -> dict[str, Any]:
         """Get policy state for inspection."""
         state = super().get_state()
         state.update(
@@ -668,7 +668,7 @@ class HybridPolicy(RLPolicy):
         )
         return state
 
-    def get_holding_period_stats(self) -> Dict[str, Any]:
+    def get_holding_period_stats(self) -> dict[str, Any]:
         """Get holding period learning statistics."""
         sector_stats = {}
         for sector, period_data in self._sector_period_rewards.items():

@@ -7,7 +7,7 @@ Free data from CBOE and FRED.
 
 import logging
 from datetime import date
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ..base import (
     DataCategory,
@@ -51,7 +51,7 @@ class CBOEVolatilitySource(DataSource):
             symbols_supported=False,
         )
 
-    def _fetch_impl(self, symbol: str, as_of_date: Optional[date] = None) -> DataResult:
+    def _fetch_impl(self, symbol: str, as_of_date: date | None = None) -> DataResult:
         """Fetch CBOE volatility data"""
         try:
             from sqlalchemy import text
@@ -125,7 +125,7 @@ class CBOEVolatilitySource(DataSource):
             logger.error(f"CBOE fetch error: {e}")
             return DataResult(success=False, error=str(e), source=self.name)
 
-    def _analyze_volatility(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def _analyze_volatility(self, data: dict[str, Any]) -> dict[str, Any]:
         """Analyze volatility metrics"""
         analysis = {}
         vix = data.get("vix", 0)

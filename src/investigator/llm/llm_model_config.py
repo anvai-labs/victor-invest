@@ -6,7 +6,6 @@ Handles dynamic model context and parameter configuration
 
 import logging
 from dataclasses import dataclass
-from typing import Dict
 
 logger = logging.getLogger(__name__)
 
@@ -253,7 +252,7 @@ class ModelConfigManager:
 
     def get_optimal_context_size(
         self, model_name: str, prompt_length: int, desired_output: int, task_type: str
-    ) -> Dict[str, int]:
+    ) -> dict[str, int]:
         """Calculate optimal context parameters for a request"""
         config = self.get_model_config(model_name)
 

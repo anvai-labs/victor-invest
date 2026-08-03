@@ -24,8 +24,8 @@ based on historical context and trend momentum.
 """
 
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import UTC, datetime
+from typing import Any
 
 from investigator.infrastructure.database.db import get_db_manager
 
@@ -63,7 +63,7 @@ class SectorMultiplesTrendAdjusted:
         *,
         sec_db_manager: Any = None,
         min_samples: int = 5,
-        percentile_exclude: Tuple[float, float] = (0.05, 0.95),
+        percentile_exclude: tuple[float, float] = (0.05, 0.95),
         lookback_years: int = 5,
         adjustment_sensitivity: str = "medium",  # low, medium, high
     ):
@@ -98,10 +98,10 @@ class SectorMultiplesTrendAdjusted:
     def calculate_trend_adjusted_multiples(
         self,
         *,
-        current_multiples: Dict[str, Dict[str, Any]],
-        sectors: Optional[List[str]] = None,
-        industries: Optional[List[str]] = None,
-    ) -> Dict[str, Dict[str, Any]]:
+        current_multiples: dict[str, dict[str, Any]],
+        sectors: list[str] | None = None,
+        industries: list[str] | None = None,
+    ) -> dict[str, dict[str, Any]]:
         """Calculate trend-adjusted sector multiples.
 
         Args:
@@ -178,9 +178,7 @@ class SectorMultiplesTrendAdjusted:
 
             # Add metadata
             adjusted_multiples["sample_size"] = current_data.get("sample_size")
-            adjusted_multiples["last_updated"] = current_data.get(
-                "last_updated", datetime.now(timezone.utc).isoformat()
-            )
+            adjusted_multiples["last_updated"] = current_data.get("last_updated", datetime.now(UTC).isoformat())
             adjusted_multiples["trend_analysis"] = {
                 "regime": regime,
                 "lookback_years": self.lookback_years,
@@ -202,8 +200,8 @@ class SectorMultiplesTrendAdjusted:
     def _should_process_group(
         self,
         group_name: str,
-        sectors: Optional[List[str]],
-        industries: Optional[List[str]],
+        sectors: list[str] | None,
+        industries: list[str] | None,
     ) -> bool:
         """Determine if a group should be processed based on filters."""
         if sectors is None and industries is None:
@@ -219,7 +217,7 @@ class SectorMultiplesTrendAdjusted:
 
         return False
 
-    def _get_historical_trend(self, group_name: str, lookback_years: int) -> List[Dict[str, Any]]:
+    def _get_historical_trend(self, group_name: str, lookback_years: int) -> list[dict[str, Any]]:
         """Fetch historical trend data for a group.
 
         Args:
@@ -267,7 +265,7 @@ class SectorMultiplesTrendAdjusted:
 
             return trend_data
 
-    def _calculate_trend_metrics(self, trend_data: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    def _calculate_trend_metrics(self, trend_data: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
         """Calculate trend metrics from historical data.
 
         Args:
@@ -354,7 +352,7 @@ class SectorMultiplesTrendAdjusted:
 
         return metrics
 
-    def _detect_market_regime(self, trend_data: List[Dict[str, Any]]) -> str:
+    def _detect_market_regime(self, trend_data: list[dict[str, Any]]) -> str:
         """Detect market regime from historical sector multiples.
 
         Uses average P/E trend across all sectors to detect bull/bear market.
@@ -392,9 +390,9 @@ class SectorMultiplesTrendAdjusted:
         self,
         current_value: float,
         metric: str,
-        trend_metrics: Dict[str, Dict[str, Any]],
+        trend_metrics: dict[str, dict[str, Any]],
         regime: str,
-    ) -> Tuple[float, Dict[str, Any]]:
+    ) -> tuple[float, dict[str, Any]]:
         """Apply trend adjustment to current multiple.
 
         Args:
@@ -486,11 +484,11 @@ class SectorMultiplesTrendAdjusted:
 
         return round(adjusted_value, 2), adjustment_info
 
-    def _create_unadjusted_result(self, current_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _create_unadjusted_result(self, current_data: dict[str, Any]) -> dict[str, Any]:
         """Create result object for groups without sufficient historical data."""
         result = {
             "sample_size": current_data.get("sample_size"),
-            "last_updated": current_data.get("last_updated", datetime.now(timezone.utc).isoformat()),
+            "last_updated": current_data.get("last_updated", datetime.now(UTC).isoformat()),
             "trend_analysis": {
                 "status": "insufficient_historical_data",
                 "message": "Current multiples used (no trend adjustment applied)",

@@ -12,7 +12,7 @@ import json
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 
 from investigator.application.processors import get_llm_response_processor
 
@@ -58,7 +58,7 @@ class ComprehensiveLLMStrategy(ILLMStrategy):
 
         return model_mapping.get(task_type, "deepseek-r1:32b")
 
-    def prepare_request(self, task_type: LLMTaskType, data: Dict[str, Any]) -> LLMRequest:
+    def prepare_request(self, task_type: LLMTaskType, data: dict[str, Any]) -> LLMRequest:
         """Prepare detailed LLM request based on task type"""
         symbol = data.get("symbol", "UNKNOWN")
         model = self.get_model_for_task(task_type)
@@ -82,7 +82,7 @@ class ComprehensiveLLMStrategy(ILLMStrategy):
             raise ValueError(f"Unsupported task type: {task_type}")
 
     def _prepare_fundamental_request(
-        self, symbol: str, data: Dict[str, Any], model: str, request_id: str
+        self, symbol: str, data: dict[str, Any], model: str, request_id: str
     ) -> LLMRequest:
         """Prepare fundamental analysis request"""
         quarterly_data = data.get("quarterly_data", [])
@@ -138,7 +138,7 @@ class ComprehensiveLLMStrategy(ILLMStrategy):
             },
         )
 
-    def _prepare_technical_request(self, symbol: str, data: Dict[str, Any], model: str, request_id: str) -> LLMRequest:
+    def _prepare_technical_request(self, symbol: str, data: dict[str, Any], model: str, request_id: str) -> LLMRequest:
         """Prepare technical analysis request"""
         price_data = data.get("price_data", {})
         indicators = data.get("indicators", {})
@@ -196,7 +196,7 @@ class ComprehensiveLLMStrategy(ILLMStrategy):
             },
         )
 
-    def _prepare_synthesis_request(self, symbol: str, data: Dict[str, Any], model: str, request_id: str) -> LLMRequest:
+    def _prepare_synthesis_request(self, symbol: str, data: dict[str, Any], model: str, request_id: str) -> LLMRequest:
         """Prepare synthesis request combining multiple analyses"""
         fundamental_result = data.get("fundamental_analysis", {})
         technical_result = data.get("technical_analysis", {})
@@ -254,7 +254,7 @@ class ComprehensiveLLMStrategy(ILLMStrategy):
             },
         )
 
-    def _prepare_quarterly_request(self, symbol: str, data: Dict[str, Any], model: str, request_id: str) -> LLMRequest:
+    def _prepare_quarterly_request(self, symbol: str, data: dict[str, Any], model: str, request_id: str) -> LLMRequest:
         """Prepare quarterly summary request"""
         quarter_data = data.get("quarter_data", {})
 
@@ -323,7 +323,7 @@ class ComprehensiveLLMStrategy(ILLMStrategy):
         )
 
     def _prepare_comprehensive_request(
-        self, symbol: str, data: Dict[str, Any], model: str, request_id: str
+        self, symbol: str, data: dict[str, Any], model: str, request_id: str
     ) -> LLMRequest:
         """Prepare comprehensive analysis request"""
         quarterly_analyses = data.get("quarterly_analyses", [])
@@ -386,7 +386,7 @@ class ComprehensiveLLMStrategy(ILLMStrategy):
             },
         )
 
-    def _prepare_risk_request(self, symbol: str, data: Dict[str, Any], model: str, request_id: str) -> LLMRequest:
+    def _prepare_risk_request(self, symbol: str, data: dict[str, Any], model: str, request_id: str) -> LLMRequest:
         """Prepare risk assessment request using J2 template"""
         # Import prompt manager locally to avoid circular imports
         from investigator.application.prompts import get_prompt_manager
@@ -465,7 +465,7 @@ class ComprehensiveLLMStrategy(ILLMStrategy):
             },
         )
 
-    def process_response(self, response: LLMResponse, task_type: LLMTaskType) -> Dict[str, Any]:
+    def process_response(self, response: LLMResponse, task_type: LLMTaskType) -> dict[str, Any]:
         """Process LLM response into structured data using common processor"""
         try:
             # Handle error responses
@@ -545,7 +545,7 @@ class ComprehensiveLLMStrategy(ILLMStrategy):
 
         except Exception as e:
             self.logger.error(f"Error processing LLM response: {e}")
-            return {"error": f"Response processing failed: {str(e)}"}
+            return {"error": f"Response processing failed: {e!s}"}
 
     def _clean_detail_content(self, detail_text: str) -> str:
         """
@@ -664,7 +664,7 @@ class QuickLLMStrategy(ILLMStrategy):
         """Use faster, smaller models for quick analysis"""
         return self.config.ollama.models.get("quick_analysis", "deepseek-r1:32b")
 
-    def prepare_request(self, task_type: LLMTaskType, data: Dict[str, Any]) -> LLMRequest:
+    def prepare_request(self, task_type: LLMTaskType, data: dict[str, Any]) -> LLMRequest:
         """Prepare simplified request for quick analysis"""
         symbol = data.get("symbol", "UNKNOWN")
         model = self.get_model_for_task(task_type)
@@ -697,7 +697,7 @@ class QuickLLMStrategy(ILLMStrategy):
             },
         )
 
-    def process_response(self, response: LLMResponse, task_type: LLMTaskType) -> Dict[str, Any]:
+    def process_response(self, response: LLMResponse, task_type: LLMTaskType) -> dict[str, Any]:
         """Process quick analysis response"""
         if response.error:
             return {"error": response.error}
