@@ -71,16 +71,21 @@ class TestLayer1Data:
     def test_get_layer1_data_success(self, valuation_service):
         """Test successful Layer 1 data retrieval."""
         sector = "Technology"
+        current = {"pe": 30.0, "ps": 6.0, "pb": 8.0, "sample_size": 25}
+        adjusted = {"Technology": {"pe": 27.0, "ps": 5.7, "pb": 7.6}}
 
-        result = valuation_service._get_layer1_data(sector)
+        with (
+            patch.object(valuation_service, "_get_current_sector_multiples", return_value=current),
+            patch.object(valuation_service.layer1, "calculate_trend_adjusted_multiples", return_value=adjusted),
+        ):
+            result = valuation_service._get_layer1_data(sector)
 
         assert result is not None
-        assert "pe" in result
-        assert "ps" in result
-        assert "pb" in result
-        assert result["pe"] == 55.0
-        assert result["ps"] == 7.6
-        assert result["pb"] == 8.0
+        assert result == {"pe": 27.0, "ps": 5.7, "pb": 7.6}
+
+    def test_get_layer1_data_returns_none_without_stored_multiples(self, valuation_service):
+        with patch.object(valuation_service, "_get_current_sector_multiples", return_value=None):
+            assert valuation_service._get_layer1_data("Technology") is None
 
 
 class TestLayer2Data:
@@ -561,6 +566,61 @@ class TestSynthesis:
         assert len(synthesis["valuation_methods"]) == 3
         assert synthesis["fair_value_estimate"] > 0
         assert synthesis["fair_value_range"][0] <= synthesis["fair_value_estimate"] <= synthesis["fair_value_range"][1]
+
+    def test_synthesize_layers_normalizes_only_methods_with_per_share_values(self, valuation_service):
+        """Missing P/S per-share data should not dilute the P/E valuation."""
+        symbol = "AAPL"
+        layer2_data = {
+            "pe": FairMultipleResult(
+                symbol=symbol,
+                metric="pe",
+                sector_baseline=20.0,
+                company_historical_premium=0.0,
+                base_fair_multiple=20.0,
+                mean_reversion_adjustment=0.0,
+                safety_margin=0.0,
+                final_fair_multiple=20.0,
+                confidence="HIGH",
+                current_premium=0.0,
+                premium_z_score=0.0,
+                confidence_factors=[],
+                mean_reversion_signal="none",
+                upside_downside_pct=0.0,
+                calculated_at=datetime.now(timezone.utc).isoformat(),
+            ),
+            "ps": FairMultipleResult(
+                symbol=symbol,
+                metric="ps",
+                sector_baseline=5.0,
+                company_historical_premium=0.0,
+                base_fair_multiple=5.0,
+                mean_reversion_adjustment=0.0,
+                safety_margin=0.0,
+                final_fair_multiple=5.0,
+                confidence="HIGH",
+                current_premium=0.0,
+                premium_z_score=0.0,
+                confidence_factors=[],
+                mean_reversion_signal="none",
+                upside_downside_pct=0.0,
+                calculated_at=datetime.now(timezone.utc).isoformat(),
+            ),
+        }
+
+        synthesis = valuation_service._synthesize_layers(
+            symbol=symbol,
+            layer1_data={"pe": 20.0, "ps": 5.0},
+            layer2_data=layer2_data,
+            layer3_data={},
+            current_price=100.0,
+            eps=10.0,
+            revenue_per_share=None,
+            book_value_per_share=None,
+        )
+
+        assert synthesis["valuation_methods"] == {"pe_based": 200.0}
+        assert synthesis["fair_value_estimate"] == 200.0
+        assert synthesis["method_weights"] == {"pe_weight": 1.0}
 
     def test_synthesize_layers_insufficient_data(self, valuation_service):
         """Test synthesis with insufficient data."""

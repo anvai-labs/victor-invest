@@ -39,9 +39,9 @@ from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 from victor_invest.compat.handlers import BaseHandler, handler_decorator
 
 if TYPE_CHECKING:
-    from victor_sdk.verticals.protocols.tools import ToolRegistryProtocol as ToolRegistry
-    from victor_sdk.workflows import ComputeNodeProtocol as ComputeNode
-    from victor_sdk.workflows import WorkflowContextProtocol as WorkflowContext
+    from victor_contracts.verticals.protocols.tools import ToolRegistryProtocol as ToolRegistry
+    from victor_contracts.workflows import ComputeNodeProtocol as ComputeNode
+    from victor_contracts.workflows import WorkflowContextProtocol as WorkflowContext
 
 logger = logging.getLogger(__name__)
 
@@ -1129,7 +1129,7 @@ Provide your response as a JSON object with this exact structure:
             max_retries = 3
             for attempt in range(max_retries):
                 try:
-                    from victor_sdk.provider_runtime import Message
+                    from victor_contracts.provider_runtime import Message
 
                     # Create message list
                     messages = [Message(role="user", content=prompt)]

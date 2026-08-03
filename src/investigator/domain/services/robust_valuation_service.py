@@ -244,18 +244,69 @@ class RobustValuationService:
         Returns:
             Dict of trend-adjusted sector multiples
         """
-        # This would typically fetch from cached/stored trend-adjusted values
-        # For now, return placeholder - in production would query from database
-        # where trend-adjusted values are stored
         logger.debug(f"Layer 1: Getting trend-adjusted sector multiples for {sector}")
 
-        # Placeholder - return sample data for Technology sector
-        # In production, this would query actual stored values
-        return {
-            "pe": 55.0,
-            "ps": 7.6,
-            "pb": 8.0,
+        current = self._get_current_sector_multiples(sector)
+        if not current:
+            return None
+
+        try:
+            adjusted = self.layer1.calculate_trend_adjusted_multiples(
+                current_multiples={sector: current},
+                sectors=[sector],
+            )
+            sector_adjusted = adjusted.get(sector) if isinstance(adjusted, dict) else None
+            if isinstance(sector_adjusted, dict):
+                return {
+                    metric: float(sector_adjusted[metric])
+                    for metric in ("pe", "ps", "pb")
+                    if sector_adjusted.get(metric) is not None
+                }
+        except Exception as exc:
+            logger.warning("%s: Trend adjustment failed, using latest stored multiples: %s", sector, exc)
+
+        return {metric: float(current[metric]) for metric in ("pe", "ps", "pb") if current.get(metric) is not None}
+
+    def _get_current_sector_multiples(self, sector: str) -> Optional[Dict[str, Any]]:
+        """Fetch the latest stored sector multiples from sector_multiples_history."""
+        from sqlalchemy import text
+
+        try:
+            with self.sec_db_manager.engine.connect() as conn:
+                row = (
+                    conn.execute(
+                        text("""
+                        SELECT pe_multiple, ps_multiple, pb_multiple, sample_size, calculated_at
+                        FROM sector_multiples_history
+                        WHERE group_name = :sector
+                          AND group_type = 'sector'
+                        ORDER BY fiscal_year DESC, calculated_at DESC NULLS LAST
+                        LIMIT 1
+                    """),
+                        {"sector": sector},
+                    )
+                    .mappings()
+                    .first()
+                )
+        except Exception as exc:
+            logger.warning("%s: Could not fetch sector multiples: %s", sector, exc)
+            return None
+
+        if not row:
+            return None
+
+        result = {
+            "pe": float(row["pe_multiple"]) if row.get("pe_multiple") is not None else None,
+            "ps": float(row["ps_multiple"]) if row.get("ps_multiple") is not None else None,
+            "pb": float(row["pb_multiple"]) if row.get("pb_multiple") is not None else None,
+            "sample_size": row.get("sample_size"),
+            "last_updated": (
+                row["calculated_at"].isoformat() if hasattr(row.get("calculated_at"), "isoformat") else None
+            ),
         }
+        if not any(result.get(metric) is not None for metric in ("pe", "ps", "pb")):
+            return None
+        return result
 
     def _get_layer2_data(
         self, symbol: str, sector: str, industry: Optional[str]
@@ -359,7 +410,8 @@ class RobustValuationService:
             fair_multiple = layer2_data[metric].final_fair_multiple
             confidence = layer2_data[metric].confidence
 
-            # Weight based on confidence
+            # Weight based on confidence. Only add a method weight if that method
+            # produced a fair-value estimate from valid per-share inputs.
             if confidence == "HIGH":
                 weight = 1.0
             elif confidence == "MEDIUM":
@@ -367,15 +419,16 @@ class RobustValuationService:
             else:  # LOW
                 weight = 0.25
 
-            method_weights[f"{metric}_weight"] = weight
-
             # Calculate fair value if per-share data available
             if metric == "pe" and eps:
                 valuation_methods["pe_based"] = fair_multiple * eps
+                method_weights["pe_weight"] = weight
             elif metric == "ps" and revenue_per_share:
                 valuation_methods["ps_based"] = fair_multiple * revenue_per_share
+                method_weights["ps_weight"] = weight
             elif metric == "pb" and book_value_per_share:
                 valuation_methods["pb_based"] = fair_multiple * book_value_per_share
+                method_weights["pb_weight"] = weight
 
         if not valuation_methods:
             # No fair values could be calculated

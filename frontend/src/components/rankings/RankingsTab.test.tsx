@@ -80,6 +80,7 @@ describe("RankingsTab", () => {
 
     renderWithProviders(<RankingsTab />);
     expect(screen.getByText("100 symbols ranked")).toBeInTheDocument();
+    expect(screen.getByText("2 valuation outliers filtered")).toBeInTheDocument();
   });
 
   it("renders pair trades section", () => {

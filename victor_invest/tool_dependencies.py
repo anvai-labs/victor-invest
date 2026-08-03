@@ -7,7 +7,7 @@ for the framework's intelligent tool selection.
 
 from pathlib import Path
 
-from victor_sdk.verticals.tool_dependencies import YAMLToolDependencyProvider
+from victor_contracts.verticals.tool_dependencies import YAMLToolDependencyProvider
 
 _YAML_PATH = Path(__file__).parent / "tool_dependencies.yaml"
 

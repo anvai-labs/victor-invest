@@ -72,7 +72,9 @@ def _convert_numpy_types(obj: Any) -> Any:
     Returns:
         Object with NumPy types converted to native Python types
     """
-    if isinstance(obj, np.integer):
+    if isinstance(obj, np.bool_):
+        return bool(obj)
+    elif isinstance(obj, np.integer):
         return int(obj)
     elif isinstance(obj, np.floating):
         return float(obj)
@@ -83,7 +85,6 @@ def _convert_numpy_types(obj: Any) -> Any:
     elif isinstance(obj, (list, tuple)):
         return type(obj)(_convert_numpy_types(v) for v in obj)
     elif isinstance(obj, bool):
-        # Handle np.bool_ (inherits from bool but check before bool)
         return bool(obj)
     return obj
 
@@ -566,7 +567,7 @@ class ValuationOutcomesDAO:
                     {"ids": record_ids, "batch_id": training_batch_id},
                 )
                 session.commit()
-                return result.rowcount
+                return int(result.rowcount or 0)
 
         except SQLAlchemyError as e:
             logger.error(f"Failed to mark records as used for training: {e}")

@@ -87,6 +87,16 @@ INDICATOR_CATEGORIES = {
         "M2SL",  # M2 Money Supply
         "WALCL",  # Fed Balance Sheet
     ],
+    "debt": [
+        "GFDEGDQ188S",  # Federal Debt to GDP
+        "GFDGDPA188S",  # Gross Federal Debt to GDP
+        "HDTGPDUSQ163N",  # Household Debt to GDP
+        "CMDEBT",  # Household Credit Market Debt
+        "NCBDBIQ027S",  # Corporate Debt Securities
+        "TBSDODNS",  # Total Business Debt
+        "TDSP",  # Household Debt Service Ratio
+        "FODSP",  # Financial Obligations Ratio
+    ],
     "housing": [
         "MORTGAGE30US",  # 30-Year Mortgage Rate
         "CSUSHPINSA",  # Case-Shiller Home Price Index
@@ -110,6 +120,12 @@ class MacroIndicatorCollector(BaseCollector):
         super().__init__("refresh_macro_indicators")
         self.categories = categories or list(INDICATOR_CATEGORIES.keys())
         self.lookback_days = lookback_days
+
+    @staticmethod
+    def _truncate(value, max_len: int):
+        if value is None:
+            return None
+        return str(value)[:max_len]
 
     def collect(self) -> CollectionMetrics:
         """Collect FRED macro indicators with incremental fetching."""
@@ -198,10 +214,11 @@ class MacroIndicatorCollector(BaseCollector):
                     cursor.execute(
                         """
                         INSERT INTO macro_indicators
-                            (series_id, name, category, frequency, units, source_hash, source_fetch_timestamp)
-                        VALUES (%s, %s, %s, %s, %s, %s, NOW())
+                            (id, series_id, name, category, frequency, units, source_hash, source_fetch_timestamp)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
                         ON CONFLICT (series_id) DO UPDATE SET
                             name = COALESCE(EXCLUDED.name, macro_indicators.name),
+                            id = EXCLUDED.id,
                             source_hash = EXCLUDED.source_hash,
                             source_fetch_timestamp = NOW(),
                             updated_at = NOW()
@@ -209,10 +226,11 @@ class MacroIndicatorCollector(BaseCollector):
                     """,
                         (
                             indicator,
-                            data.get("name", indicator),
-                            data.get("category", "unknown"),
-                            data.get("frequency", "daily"),
-                            data.get("units", ""),
+                            indicator,
+                            self._truncate(data.get("name", indicator), 200),
+                            self._truncate(data.get("category", "unknown"), 50),
+                            self._truncate(data.get("frequency", "daily"), 20),
+                            self._truncate(data.get("units", ""), 100),
                             indicator_hash,
                         ),
                     )
@@ -293,6 +311,7 @@ class MacroIndicatorCollector(BaseCollector):
 
                 except Exception as e:
                     self.logger.warning(f"Failed to fetch {indicator}: {e}")
+                    conn.rollback()
                     self.metrics.records_failed += 1
                     self.metrics.warnings.append(f"{indicator}: {e}")
 

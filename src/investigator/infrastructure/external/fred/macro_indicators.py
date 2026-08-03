@@ -27,7 +27,7 @@ from contextlib import contextmanager
 
 import aiohttp
 import pandas as pd
-from sqlalchemy import create_engine, text
+from sqlalchemy import bindparam, create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from investigator.config import get_config
@@ -57,7 +57,7 @@ def _get_fred_api_key() -> Optional[str]:
 
         key = get_service_key("fred")
         if key:
-            return key
+            return str(key)
     except ImportError:
         pass  # victor framework not available
 
@@ -66,20 +66,21 @@ def _get_fred_api_key() -> Optional[str]:
 
 def get_stock_db_manager():
     """
-    Get database manager configured for stock database
+    Get database manager configured for the consolidated application database.
 
-    Returns a database session maker for the stock database where macro indicators
-    and ticker price data are stored (separate from sec_database).
+    Macro indicators are stored in sec_database alongside the rest of the
+    consolidated analysis data. The function name is kept for compatibility with
+    existing callers.
     """
     config = get_config()
 
-    # Build connection URL for stock database
     db_config = config.database
-    stock_db_url = f"postgresql://{db_config.username}:{db_config.password}@{db_config.host}:{db_config.port}/stock"
+    db_url = (
+        f"postgresql://{db_config.username}:{db_config.password}@{db_config.host}:{db_config.port}/{db_config.database}"
+    )
 
-    # Create engine for stock database
     engine = create_engine(
-        stock_db_url,
+        db_url,
         pool_size=db_config.pool_size,
         max_overflow=db_config.max_overflow,
         echo=False,
@@ -159,7 +160,8 @@ class MacroIndicatorsFetcher:
 
     async def _get_session(self) -> aiohttp.ClientSession:
         """Get or create aiohttp session."""
-        if self._session is None or self._session.closed:
+        session_loop = getattr(self._session, "_loop", None) if self._session is not None else None
+        if self._session is None or self._session.closed or (session_loop is not None and session_loop.is_closed()):
             connector = aiohttp.TCPConnector(ssl=SSL_CONTEXT)
             self._session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30), connector=connector)
         return self._session
@@ -200,53 +202,57 @@ class MacroIndicatorsFetcher:
         }
 
         try:
-            session = await self._get_session()
+            connector = aiohttp.TCPConnector(ssl=SSL_CONTEXT)
 
-            # Fetch series metadata
-            meta_url = f"{FRED_API_BASE}/series"
-            meta_params = {
-                "series_id": series_id,
-                "api_key": self._api_key,
-                "file_type": "json",
-            }
+            async with aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=30),
+                connector=connector,
+            ) as session:
+                # Fetch series metadata
+                meta_url = f"{FRED_API_BASE}/series"
+                meta_params = {
+                    "series_id": series_id,
+                    "api_key": self._api_key,
+                    "file_type": "json",
+                }
 
-            async with session.get(meta_url, params=meta_params) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    if "seriess" in data and data["seriess"]:
-                        series_info = data["seriess"][0]
-                        result["name"] = series_info.get("title", result["name"])
-                        result["frequency"] = series_info.get("frequency", "daily")
-                        result["units"] = series_info.get("units", "")
+                async with session.get(meta_url, params=meta_params) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        if "seriess" in data and data["seriess"]:
+                            series_info = data["seriess"][0]
+                            result["name"] = series_info.get("title", result["name"])
+                            result["frequency"] = series_info.get("frequency", "daily")
+                            result["units"] = series_info.get("units", "")
 
-            # Fetch observations
-            obs_url = f"{FRED_API_BASE}/series/observations"
-            obs_params = {
-                "series_id": series_id,
-                "api_key": self._api_key,
-                "file_type": "json",
-                "observation_start": start_date,
-                "observation_end": end_date,
-                "sort_order": "desc",
-            }
+                # Fetch observations
+                obs_url = f"{FRED_API_BASE}/series/observations"
+                obs_params = {
+                    "series_id": series_id,
+                    "api_key": self._api_key,
+                    "file_type": "json",
+                    "observation_start": start_date,
+                    "observation_end": end_date,
+                    "sort_order": "desc",
+                }
 
-            async with session.get(obs_url, params=obs_params) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    observations = data.get("observations", [])
+                async with session.get(obs_url, params=obs_params) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        observations = data.get("observations", [])
 
-                    for obs in observations:
-                        value = obs.get("value")
-                        if value and value != ".":
-                            try:
-                                result["values"].append(
-                                    {
-                                        "date": obs.get("date"),
-                                        "value": float(value),
-                                    }
-                                )
-                            except ValueError:
-                                pass
+                        for obs in observations:
+                            value = obs.get("value")
+                            if value and value != ".":
+                                try:
+                                    result["values"].append(
+                                        {
+                                            "date": obs.get("date"),
+                                            "value": float(value),
+                                        }
+                                    )
+                                except ValueError:
+                                    pass
 
             self.logger.debug(f"Fetched {len(result['values'])} values for {series_id}")
 
@@ -292,53 +298,93 @@ class MacroIndicatorsFetcher:
 
         try:
             with self.get_session() as session:
+                mi_cols = {
+                    row[0]
+                    for row in session.execute(
+                        text("""
+                            SELECT column_name
+                            FROM information_schema.columns
+                            WHERE table_schema = 'public'
+                              AND table_name = 'macro_indicators'
+                        """)
+                    )
+                }
+                mv_cols = {
+                    row[0]
+                    for row in session.execute(
+                        text("""
+                            SELECT column_name
+                            FROM information_schema.columns
+                            WHERE table_schema = 'public'
+                              AND table_name = 'macro_indicator_values'
+                        """)
+                    )
+                }
+                if "series_id" in mi_cols:
+                    series_expr = "mi.series_id"
+                    join_expr = "mv.indicator_id = mi.id"
+                elif "indicator_id" in mi_cols:
+                    series_expr = "COALESCE(NULLIF(mi.indicator_id, 'legacy'), mi.id)"
+                    join_expr = "(mv.indicator_id = mi.id OR mv.indicator_id = mi.indicator_id)"
+                else:
+                    series_expr = "mi.id"
+                    join_expr = "mv.indicator_id = mi.id"
+                name_expr = "COALESCE(mi.name, mi.label)" if "label" in mi_cols else "mi.name"
+                units_expr = "COALESCE(mi.units, mi.unit)" if "unit" in mi_cols else "mi.units"
+                current_filter = "AND mv.is_current = true" if "is_current" in mv_cols else ""
+
                 # Get latest value for each indicator
                 # Build the query with dynamic interval
                 lookback_interval = f"{lookback_days} days"
                 query = text(f"""
                     WITH latest_values AS (
-                        SELECT DISTINCT ON (indicator_id)
-                            indicator_id,
-                            date,
-                            value
-                        FROM macro_indicator_values
-                        WHERE indicator_id = ANY(:indicators)
-                          AND is_current = true
-                          AND date >= CURRENT_DATE - INTERVAL '{lookback_interval}'
-                        ORDER BY indicator_id, date DESC
+                        SELECT DISTINCT ON (mv.indicator_id)
+                            mv.indicator_id,
+                            {series_expr} AS series_id,
+                            mv.date,
+                            mv.value
+                        FROM macro_indicator_values mv
+                        INNER JOIN macro_indicators mi ON {join_expr}
+                        WHERE {series_expr} IN :indicators
+                          {current_filter}
+                          AND mv.date >= CURRENT_DATE - INTERVAL '{lookback_interval}'
+                        ORDER BY mv.indicator_id, mv.date DESC
                     ),
                     previous_values AS (
-                        SELECT DISTINCT ON (indicator_id)
-                            indicator_id,
-                            date AS prev_date,
-                            value AS prev_value
-                        FROM macro_indicator_values
-                        WHERE indicator_id = ANY(:indicators)
-                          AND is_current = true
-                          AND date < (SELECT date FROM latest_values lv WHERE lv.indicator_id = macro_indicator_values.indicator_id)
-                          AND date >= CURRENT_DATE - INTERVAL '{lookback_interval}'
-                        ORDER BY indicator_id, date DESC
+                        SELECT DISTINCT ON (mv.indicator_id)
+                            mv.indicator_id,
+                            mv.date AS prev_date,
+                            mv.value AS prev_value
+                        FROM macro_indicator_values mv
+                        WHERE mv.indicator_id IN (SELECT indicator_id FROM latest_values)
+                          {current_filter}
+                          AND mv.date < (SELECT date FROM latest_values lv WHERE lv.indicator_id = mv.indicator_id)
+                          AND mv.date >= CURRENT_DATE - INTERVAL '{lookback_interval}'
+                        ORDER BY mv.indicator_id, mv.date DESC
                     )
                     SELECT
-                        lv.indicator_id,
+                        lv.series_id,
                         lv.date,
                         lv.value,
                         pv.prev_date,
                         pv.prev_value,
-                        mi.name,
+                        {name_expr} AS name,
                         mi.frequency,
-                        mi.units
+                        {units_expr} AS units
                     FROM latest_values lv
                     LEFT JOIN previous_values pv ON lv.indicator_id = pv.indicator_id
-                    INNER JOIN macro_indicators mi ON lv.indicator_id = mi.id
-                    ORDER BY lv.indicator_id
-                """)
+                    INNER JOIN macro_indicators mi ON (
+                        lv.indicator_id = mi.id
+                        {"OR lv.indicator_id = mi.indicator_id" if "indicator_id" in mi_cols else ""}
+                    )
+                    ORDER BY lv.series_id
+                """).bindparams(bindparam("indicators", expanding=True))
 
                 result = session.execute(query, {"indicators": indicator_ids})
 
                 indicators_data = {}
                 for row in result:
-                    indicator_id = row.indicator_id
+                    indicator_id = row.series_id
                     value = float(row.value) if row.value else None
                     prev_value = float(row.prev_value) if row.prev_value else None
 
@@ -404,14 +450,48 @@ class MacroIndicatorsFetcher:
         """
         try:
             with self.get_session() as session:
-                query = text("""
-                    SELECT date, value
-                    FROM macro_indicator_values
-                    WHERE indicator_id = :indicator_id
-                      AND is_current = true
-                      AND (:start_date IS NULL OR date >= :start_date)
-                      AND (:end_date IS NULL OR date <= :end_date)
-                    ORDER BY date DESC
+                mi_cols = {
+                    row[0]
+                    for row in session.execute(
+                        text("""
+                            SELECT column_name
+                            FROM information_schema.columns
+                            WHERE table_schema = 'public'
+                              AND table_name = 'macro_indicators'
+                        """)
+                    )
+                }
+                mv_cols = {
+                    row[0]
+                    for row in session.execute(
+                        text("""
+                            SELECT column_name
+                            FROM information_schema.columns
+                            WHERE table_schema = 'public'
+                              AND table_name = 'macro_indicator_values'
+                        """)
+                    )
+                }
+                if "series_id" in mi_cols:
+                    series_expr = "mi.series_id"
+                    join_expr = "mv.indicator_id = mi.id"
+                elif "indicator_id" in mi_cols:
+                    series_expr = "COALESCE(NULLIF(mi.indicator_id, 'legacy'), mi.id)"
+                    join_expr = "(mv.indicator_id = mi.id OR mv.indicator_id = mi.indicator_id)"
+                else:
+                    series_expr = "mi.id"
+                    join_expr = "mv.indicator_id = mi.id"
+                current_filter = "AND mv.is_current = true" if "is_current" in mv_cols else ""
+
+                query = text(f"""
+                    SELECT mv.date, mv.value
+                    FROM macro_indicator_values mv
+                    INNER JOIN macro_indicators mi ON {join_expr}
+                    WHERE {series_expr} = :indicator_id
+                      {current_filter}
+                      AND (:start_date IS NULL OR mv.date >= :start_date)
+                      AND (:end_date IS NULL OR mv.date <= :end_date)
+                    ORDER BY mv.date DESC
                     LIMIT :limit
                 """)
 
@@ -436,7 +516,7 @@ class MacroIndicatorsFetcher:
             self.logger.error(f"Error fetching time series for {indicator_id}: {e}")
             return pd.DataFrame(columns=["date", "value"])
 
-    def get_vti_price(self) -> Optional[float]:
+    def get_vti_price(self) -> Optional[Dict[str, Any]]:
         """
         Get latest VTI (Total Stock Market ETF) price from tickerdata table
 
@@ -558,7 +638,7 @@ class MacroIndicatorsFetcher:
         """
         indicators = self.get_latest_values()
 
-        summary = {
+        summary: Dict[str, Any] = {
             "timestamp": datetime.now().isoformat(),
             "indicators": indicators,
             "categories": {},

@@ -110,6 +110,11 @@ export function RankingsTab() {
           <span className="text-xs text-slate-400">
             {data.total_symbols} symbols ranked
           </span>
+          {data.split_suspect_symbols > 0 && (
+            <span className="text-xs text-slate-400">
+              {data.split_suspect_symbols} valuation outliers filtered
+            </span>
+          )}
         </div>
         <a href={exportRankingsCsvUrl()} download>
           <Button variant="outline" size="sm">

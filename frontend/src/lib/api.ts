@@ -286,13 +286,21 @@ export async function getChart(symbol: string, days = 180): Promise<ChartPayload
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function mapRankedSymbol(raw: any, index: number): RankedSymbol {
+  const decisionPolicy = raw.decision_policy ?? null;
+  const decisionAction = raw.decision_action ?? decisionPolicy?.action ?? raw.action ?? "";
+  const displayAction = raw.decision_policy?.display_action ?? decisionAction;
   return {
     rank: index + 1,
     symbol: raw.symbol ?? "",
     company_name: raw.company_name ?? raw.symbol ?? "",
     sector: raw.sector ?? "",
-    composite_score: raw.confidence_score ?? raw.composite_score ?? 0,
-    action: (raw.action ?? "").replace(/_/g, " "),
+    composite_score: raw.decision_score ?? raw.confidence_score ?? raw.composite_score ?? 0,
+    action: String(displayAction).replace(/_/g, " "),
+    decision_action: decisionAction,
+    decision_confidence: raw.decision_confidence ?? decisionPolicy?.confidence ?? "",
+    decision_score: raw.decision_score ?? decisionPolicy?.score ?? 0,
+    guardrails_triggered: raw.guardrails_triggered ?? decisionPolicy?.guardrails_triggered ?? [],
+    decision_policy: decisionPolicy,
     target_return_pct: raw.expected_return_pct ?? raw.target_return_pct ?? null,
     valuation_basis: raw.valuation_basis ?? "",
   };
@@ -305,6 +313,7 @@ function transformRankingsResponse(raw: any): RankingsResponse {
   return {
     generated_at: raw.generated_at ?? "",
     total_symbols: raw.universe?.eligible_symbols ?? raw.total_symbols ?? 0,
+    split_suspect_symbols: raw.universe?.split_suspect_symbols ?? raw.split_suspect_symbols ?? 0,
     longs,
     shorts,
     sector_neutral: sectors.map((s: any) => ({

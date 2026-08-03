@@ -9,7 +9,7 @@ from datetime import date
 import numpy as np
 import pytest
 
-from investigator.domain.services.rl.feature_normalizer import FeatureNormalizer
+from investigator.domain.services.rl.feature_normalizer import FeatureNormalizer, get_feature_normalizer
 from investigator.domain.services.rl.models import ValuationContext
 
 
@@ -112,6 +112,61 @@ class TestFeatureNormalizer:
         normalized = normalizer.transform(ctx)
         assert isinstance(normalized, np.ndarray)
 
+    def test_fit_transform_statistics_and_properties(self, normalizer, sample_contexts):
+        """Test combined fit/transform and reporting helpers."""
+        matrix = normalizer.fit_transform(sample_contexts)
+        stats = normalizer.get_statistics()
+
+        assert matrix.shape[0] == len(sample_contexts)
+        assert matrix.shape[1] == normalizer.n_features
+        assert len(normalizer.feature_names) == normalizer.n_features
+        assert stats["profitability_score"]["count"] == len(sample_contexts)
+        assert stats["profitability_score"]["min"] is not None
+        assert stats["profitability_score"]["max"] is not None
+
+    def test_partial_fit_updates_running_statistics(self, normalizer, sample_contexts):
+        """Test online statistics updates."""
+        normalizer.partial_fit(sample_contexts[0])
+        normalizer.partial_fit(sample_contexts[1])
+
+        transformed = normalizer.transform(sample_contexts[2])
+        stats = normalizer.get_statistics()
+
+        assert normalizer.is_fitted is True
+        assert stats["profitability_score"]["count"] == 2
+        assert isinstance(transformed, np.ndarray)
+
+    def test_min_max_inverse_transform_round_trips_fitted_features(self, sample_contexts):
+        """Test min-max normalization and inverse transform."""
+        normalizer = FeatureNormalizer(normalization_method="min_max")
+        normalizer.fit(sample_contexts)
+
+        transformed = normalizer.transform(sample_contexts[0])
+        restored = normalizer.inverse_transform(transformed)
+        raw = normalizer.extractor.to_tensor(sample_contexts[0], normalizer.include_categorical)
+
+        assert transformed.min() >= 0.0
+        assert transformed.max() <= 1.0
+        assert np.allclose(restored[:10], raw[:10], atol=1e-5)
+
+    def test_unknown_normalization_method_uses_z_score_fallback(self, sample_contexts):
+        """Test robust/unknown method fallback path."""
+        normalizer = FeatureNormalizer(normalization_method="robust")
+        normalizer.fit(sample_contexts)
+
+        transformed = normalizer.transform(sample_contexts[0])
+        restored = normalizer.inverse_transform(transformed)
+
+        assert isinstance(transformed, np.ndarray)
+        assert isinstance(restored, np.ndarray)
+
+    def test_factory_creates_requested_normalizer(self):
+        """Test normalizer factory."""
+        normalizer = get_feature_normalizer("min_max")
+
+        assert isinstance(normalizer, FeatureNormalizer)
+        assert normalizer.normalization_method == "min_max"
+
 
 class TestNormalizerEdgeCases:
     """Edge case tests for FeatureNormalizer."""
@@ -169,3 +224,10 @@ class TestNormalizerEdgeCases:
         normalizer = FeatureNormalizer()
         loaded = normalizer.load("/nonexistent/path.pkl")
         assert loaded is False
+
+    def test_inverse_transform_unfitted_returns_input(self):
+        """Test inverse transform before fit."""
+        normalizer = FeatureNormalizer()
+        values = np.array([1.0, 2.0, 3.0])
+
+        assert np.array_equal(normalizer.inverse_transform(values), values)

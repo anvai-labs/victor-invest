@@ -12,8 +12,8 @@ env:
   PYTHON_VERSION: '3.11'
   # Install victor-ai from source (develop branch) until framework.extensions
   # is available in a released PyPI version.
-  VICTOR_AI_SOURCE: 'git+https://github.com/vjsingh1984/victor.git@develop'
-  VICTOR_SDK_SOURCE: 'git+https://github.com/vjsingh1984/victor.git@develop#subdirectory=victor-sdk'
+  VICTOR_AI_SOURCE: 'git+https://github.com/anvai-labs/victor.git@develop'
+  VICTOR_CONTRACTS_SOURCE: 'git+https://github.com/anvai-labs/victor.git@develop#subdirectory=victor-contracts'
 
 jobs:
   # Code Quality Checks
@@ -39,7 +39,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install "${{ env.VICTOR_SDK_SOURCE }}"
+          pip install "${{ env.VICTOR_CONTRACTS_SOURCE }}"
           pip install "${{ env.VICTOR_AI_SOURCE }}"
           pip install -e ".[dev]"
 
@@ -100,7 +100,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install "${{ env.VICTOR_SDK_SOURCE }}"
+          pip install "${{ env.VICTOR_CONTRACTS_SOURCE }}"
           pip install "${{ env.VICTOR_AI_SOURCE }}"
           pip install -e ".[dev]"
 
@@ -136,8 +136,8 @@ jobs:
         python-version: ['3.11']
         victor-source:
           - name: 'develop (latest)'
-            install: 'git+https://github.com/vjsingh1984/victor.git@develop'
-            sdk_install: 'git+https://github.com/vjsingh1984/victor.git@develop#subdirectory=victor-sdk'
+            install: 'git+https://github.com/anvai-labs/victor.git@develop'
+            contracts_install: 'git+https://github.com/anvai-labs/victor.git@develop#subdirectory=victor-contracts'
 
     steps:
       - uses: actions/checkout@v6
@@ -150,7 +150,7 @@ jobs:
       - name: Install dependencies and Victor version
         run: |
           python -m pip install --upgrade pip
-          pip install "${{ matrix.victor-source.sdk_install }}"
+          pip install "${{ matrix.victor-source.contracts_install }}"
           pip install "${{ matrix.victor-source.install }}"
           pip install -e ".[dev]"
 
@@ -182,7 +182,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install "${{ env.VICTOR_SDK_SOURCE }}"
+          pip install "${{ env.VICTOR_CONTRACTS_SOURCE }}"
           pip install "${{ env.VICTOR_AI_SOURCE }}"
           pip install -e ".[dev]"
 
@@ -197,7 +197,7 @@ jobs:
             --output-json artifacts/benchmarks/workflow_benchmark_ci.json
 
       - name: Upload benchmark artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: workflow-benchmark
           path: artifacts/benchmarks/workflow_benchmark_ci.json
@@ -212,7 +212,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: 'npm'
@@ -239,7 +239,7 @@ jobs:
         run: npm run build
 
       - name: Upload frontend build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-dist
           path: frontend/dist/
@@ -271,7 +271,7 @@ jobs:
         run: twine check dist/*
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
@@ -321,7 +321,7 @@ jobs:
           path: dist/
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: dist/*
           generate_release_notes: true

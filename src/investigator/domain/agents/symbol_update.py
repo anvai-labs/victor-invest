@@ -63,6 +63,41 @@ class SymbolUpdateAgent(InvestmentAgent):
         self.stock_engine: Optional[Engine] = None
         self.logger = logging.getLogger(f"agent.{agent_id}")
 
+    @staticmethod
+    def _safe_float(value: Any) -> Optional[float]:
+        """Best-effort numeric conversion for optional analysis payload values."""
+        try:
+            if value is None:
+                return None
+            numeric = float(value)
+            if numeric != numeric:
+                return None
+            return numeric
+        except (TypeError, ValueError):
+            return None
+
+    def _is_suspicious_fair_value(
+        self,
+        *,
+        current_price: Optional[float],
+        fair_value: Optional[float],
+        model_agreement: Optional[float],
+    ) -> bool:
+        """
+        Return whether a per-share fair value is too far from current price to persist.
+
+        High model agreement can still reflect all models sharing stale split-adjusted
+        inputs. Keep the guard conservative and only block values that match the same
+        outlier thresholds used by the ranking UI.
+        """
+        if current_price is None or fair_value is None or current_price <= 0 or fair_value <= 0:
+            return False
+        if model_agreement is None or model_agreement < 0.7:
+            return False
+
+        target_multiple = fair_value / current_price
+        return target_multiple >= 4.0 or target_multiple <= 0.25
+
     def _create_dummy_client(self):
         """Create a dummy ollama client since SymbolUpdate doesn't use LLMs."""
 
@@ -175,7 +210,7 @@ class SymbolUpdateAgent(InvestmentAgent):
         else:
             self.logger.info(f"✅ SEC data validated: {len(sec_data)} keys")
 
-        return True  # Signal success to base agent
+        return None
 
     async def process(self, task: AgentTask) -> AgentResult:
         """
@@ -270,28 +305,60 @@ class SymbolUpdateAgent(InvestmentAgent):
         Returns:
             Dict of column_name: value pairs for UPDATE statement
         """
-        update_data = {}
+        update_data: Dict[str, Any] = {}
 
         # Extract valuation data
         valuation = fundamental.get("valuation", {})
+        current_price = self._safe_float(valuation.get("current_price") or fundamental.get("current_price"))
 
         # Market cap and shares
         if "market_cap" in valuation:
             update_data["mktcap"] = int(valuation["market_cap"])
 
         # === FAIR VALUE ESTIMATES ===
+        multi_model_summary = fundamental.get("multi_model_summary", {})
+        model_agreement = self._safe_float(multi_model_summary.get("model_agreement_score"))
+
         # Extract blended fair value (primary)
-        fair_value_blended = fundamental.get("fair_value")
+        fair_value_blended = self._safe_float(fundamental.get("fair_value"))
+        skip_fair_values_for_price_mismatch = False
         if fair_value_blended and fair_value_blended > 0:
-            update_data["fair_value_blended"] = round(float(fair_value_blended), 2)
+            if self._is_suspicious_fair_value(
+                current_price=current_price,
+                fair_value=fair_value_blended,
+                model_agreement=model_agreement,
+            ):
+                skip_fair_values_for_price_mismatch = True
+                update_data["divergence_flag"] = True
+                self.logger.warning(
+                    "%s: skipping suspicious fair_value %.2f versus current_price %.2f",
+                    symbol,
+                    fair_value_blended,
+                    current_price,
+                )
+            else:
+                update_data["fair_value_blended"] = round(float(fair_value_blended), 2)
 
         # Extract multi-model summary
-        multi_model_summary = fundamental.get("multi_model_summary", {})
         if multi_model_summary:
             # Blended fair value (from multi-model orchestrator)
-            blended_fv = multi_model_summary.get("blended_fair_value")
+            blended_fv = self._safe_float(multi_model_summary.get("blended_fair_value"))
             if blended_fv and blended_fv > 0:
-                update_data["fair_value_blended"] = round(float(blended_fv), 2)
+                if self._is_suspicious_fair_value(
+                    current_price=current_price,
+                    fair_value=blended_fv,
+                    model_agreement=model_agreement,
+                ):
+                    skip_fair_values_for_price_mismatch = True
+                    update_data["divergence_flag"] = True
+                    self.logger.warning(
+                        "%s: skipping suspicious blended_fair_value %.2f versus current_price %.2f",
+                        symbol,
+                        blended_fv,
+                        current_price,
+                    )
+                else:
+                    update_data["fair_value_blended"] = round(float(blended_fv), 2)
 
             # Model quality metrics
             agreement = multi_model_summary.get("model_agreement_score")
@@ -317,7 +384,12 @@ class SymbolUpdateAgent(InvestmentAgent):
                     continue
                 model_name = model.get("model", "").lower()
                 fair_value = model.get("fair_value_per_share")
-                if fair_value and fair_value > 0 and model.get("applicable"):
+                if (
+                    fair_value
+                    and fair_value > 0
+                    and model.get("applicable")
+                    and not skip_fair_values_for_price_mismatch
+                ):
                     if model_name == "dcf":
                         update_data["fair_value_dcf"] = round(float(fair_value), 2)
                         # DCF-specific metrics
@@ -348,6 +420,10 @@ class SymbolUpdateAgent(InvestmentAgent):
                         update_data["fair_value_pb"] = round(float(fair_value), 2)
                     elif model_name == "ev_ebitda":
                         update_data["fair_value_ev_ebitda"] = round(float(fair_value), 2)
+
+            if skip_fair_values_for_price_mismatch:
+                multi_model_summary = dict(multi_model_summary)
+                multi_model_summary["valuation_quality_flag"] = "split_or_stale_price_mismatch"
 
             # Store full JSONB for detailed analysis
             update_data["valuation_models_json"] = multi_model_summary

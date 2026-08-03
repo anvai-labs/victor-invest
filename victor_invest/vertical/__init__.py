@@ -19,7 +19,7 @@ Exports:
 - InvestmentPlugin: VictorPlugin implementation for plugin discovery
 - plugin: Module-level plugin instance for entry point resolution
 
-Plugin paradigm (consolidated, SDK >= 0.7.0):
+Plugin paradigm (consolidated, contract >= 0.7.0):
   The single `victor.plugins` entry point at `investment = "victor_invest.vertical:plugin"`
   replaces sidecar entry points. register(context) wires up tools, dependencies,
   and safety rules in one call. Sidecar entry points are kept for backward compat
@@ -29,7 +29,7 @@ Plugin paradigm (consolidated, SDK >= 0.7.0):
 import logging
 from typing import Any, Dict, Optional
 
-from victor_sdk import PluginContext, VictorPlugin
+from victor_contracts import PluginContext, VictorPlugin
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class InvestmentPlugin(VictorPlugin):
     """Victor Plugin for Investment vertical.
 
     Discovered via the 'victor.plugins' entry point. Consolidates all
-    registration into register(context) per SDK >= 0.7.0 paradigm:
+    registration into register(context) per contract >= 0.7.0 paradigm:
     tools, vertical, tool dependencies, and safety rules are all wired
     here instead of across separate sidecar entry points.
     """
@@ -53,7 +53,7 @@ class InvestmentPlugin(VictorPlugin):
         Consolidates what was previously spread across four sidecar entry points
         (victor.tool_dependencies, victor.safety_rules, victor.prompt_contributors,
         victor.workflow_providers) into a single register() call. Hosts running
-        SDK < 0.7.0 that don't expose the new PluginContext methods still get the
+        Hosts with contract < 0.7.0 that do not expose the new PluginContext methods still get the
         vertical and tools; the rest is silently skipped with hasattr guards.
         """
         from victor_invest.vertical.investment_vertical import InvestmentVertical
@@ -65,7 +65,7 @@ class InvestmentPlugin(VictorPlugin):
         #    Without this, the framework knows the tool names from get_tools() but has no
         #    instances to invoke when running as a plugin (no standalone bootstrap).
         try:
-            from victor_sdk.verticals.protocols import ToolPluginHelper
+            from victor_contracts.verticals.protocols import ToolPluginHelper
 
             from victor_invest.tools import get_all_tools
 

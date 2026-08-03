@@ -209,9 +209,27 @@ describe("getRankings", () => {
   it("transforms API response to frontend shape", async () => {
     mockFetch.mockResolvedValue(jsonResponse({
       generated_at: "2025-01-01",
-      universe: { eligible_symbols: 100 },
+      universe: { eligible_symbols: 100, split_suspect_symbols: 3 },
       overall: {
-        longs: [{ symbol: "AAPL", sector: "tech", action: "strong_buy", confidence_score: 80, expected_return_pct: 15 }],
+        longs: [{
+          symbol: "AAPL",
+          sector: "tech",
+          action: "hold",
+          decision_action: "STRONG_BUY",
+          decision_confidence: "HIGH",
+          decision_score: 82,
+          guardrails_triggered: [],
+          decision_policy: {
+            action: "STRONG_BUY",
+            display_action: "STRONG BUY",
+            confidence: "HIGH",
+            score: 82,
+            expected_return_pct: 15,
+            guardrails_triggered: [],
+          },
+          confidence_score: 80,
+          expected_return_pct: 15,
+        }],
         shorts: [],
       },
       sectors: [],
@@ -219,9 +237,13 @@ describe("getRankings", () => {
     }));
     const result = await getRankings();
     expect(result.total_symbols).toBe(100);
+    expect(result.split_suspect_symbols).toBe(3);
     expect(result.longs[0]!.symbol).toBe("AAPL");
-    expect(result.longs[0]!.composite_score).toBe(80);
-    expect(result.longs[0]!.action).toBe("strong buy");
+    expect(result.longs[0]!.composite_score).toBe(82);
+    expect(result.longs[0]!.action).toBe("STRONG BUY");
+    expect(result.longs[0]!.decision_action).toBe("STRONG_BUY");
+    expect(result.longs[0]!.decision_confidence).toBe("HIGH");
+    expect(result.longs[0]!.guardrails_triggered).toEqual([]);
     expect(result.longs[0]!.target_return_pct).toBe(15);
   });
 });

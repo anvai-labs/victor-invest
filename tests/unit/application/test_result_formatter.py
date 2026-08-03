@@ -241,6 +241,72 @@ class TestFormatAnalysisOutput:
         assert "multi_model_summary" not in result["agents"]["fundamental"]
         assert "llm_fair_value_estimate" not in result["agents"]["fundamental"]
 
+    def test_minimal_uses_decision_policy_for_headline_recommendation(self):
+        """Minimal output should not let LLM recommendation contradict clean FV upside."""
+        data = {
+            "symbol": "NVDA",
+            "agents": {
+                "fundamental": {
+                    "valuation": {"current_price": 200.0},
+                    "multi_model_summary": {
+                        "blended_fair_value": 245.0,
+                        "model_agreement_score": 0.62,
+                        "applicable_models": 4,
+                    },
+                    "data_quality": {"data_quality_score": 85.0},
+                },
+                "technical": {
+                    "technical_score": 72.0,
+                    "trend": {"overall_signal": "bullish"},
+                },
+                "synthesis": {
+                    "recommendation": {"recommendation": "STRONG SELL", "confidence": "HIGH"},
+                },
+            },
+        }
+
+        result = format_analysis_output(data, OutputDetailLevel.MINIMAL)
+
+        assert result["recommendation"]["action"] == "BUY"
+        assert result["decision_policy"]["action"] == "BUY"
+        assert "llm_dissent" in result["decision_policy"]["guardrails_triggered"]
+
+    def test_compact_includes_decision_policy_without_replacing_legacy_action(self):
+        data = {
+            "symbol": "PYPL",
+            "mode": "standard",
+            "completed_at": "2026-05-20T00:00:00",
+            "agents": {
+                "fundamental": {
+                    "status": "success",
+                    "recommendation": "sell",
+                    "valuation": {
+                        "fair_value_estimate": 90.0,
+                        "current_price": 70.0,
+                    },
+                    "data_quality": {"data_quality_score": 82.0},
+                    "multi_model_summary": {
+                        "blended_fair_value": 90.0,
+                        "model_agreement_score": 0.58,
+                        "applicable_models": 3,
+                    },
+                },
+                "technical": {
+                    "status": "success",
+                    "technical_score": 66.0,
+                    "trend": {"overall_signal": "bullish"},
+                },
+                "synthesis": {"recommendation": {"final_recommendation": "sell"}},
+            },
+        }
+
+        result = format_analysis_output(data, OutputDetailLevel.COMPACT)
+
+        assert result["recommendation"]["action"] == "buy"
+        assert result["decision_policy"]["action"] == "STRONG_BUY"
+        assert result["decision_policy"]["confidence"] == "MEDIUM"
+        assert "llm_dissent" in result["decision_policy"]["guardrails_triggered"]
+
     def test_compact_produces_machine_readable_consolidated_schema(self):
         """Compact mode should emit consolidated schema without nested duplication."""
         data = {

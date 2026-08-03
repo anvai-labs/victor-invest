@@ -63,7 +63,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, Dict, List, Optional
 
-from victor_sdk.graph_runtime import END, StateGraph
+from victor_contracts.graph_runtime import END, StateGraph
 
 from victor_invest.tools import RLBacktestTool, ValuationTool
 

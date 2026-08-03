@@ -79,27 +79,33 @@ DROP VIEW IF EXISTS potential_stock_splits CASCADE;
 CREATE VIEW potential_stock_splits AS
 SELECT
     s.ticker AS symbol,
-    description,
+    s.description,
     ROUND(td.close::numeric, 2) AS current_price,
-    ROUND(s.current_price::numeric, 2) AS symbol_price,
     ROUND(fair_value_blended::numeric, 2) AS fair_value,
     model_agreement_score,
-    -- Calculate expected split ratio based on price mismatch
+    s.valuation_updated_at::date AS valuation_date,
+    ROUND((fair_value_blended / td.close)::numeric, 2) AS target_multiple,
+    CASE
+        WHEN fair_value_blended > td.close THEN 'fair_value_above_price'
+        WHEN fair_value_blended < td.close THEN 'fair_value_below_price'
+        ELSE 'in_line'
+    END AS mismatch_direction,
+    -- Calculate expected split ratio based on price mismatch in either direction
     CASE
         WHEN td.close > 0 AND fair_value_blended > 0
-        THEN ROUND(fair_value_blended / td.close::numeric)
+        THEN ROUND(GREATEST(fair_value_blended / td.close::numeric, td.close::numeric / fair_value_blended))
         ELSE NULL
     END AS implied_split_ratio,
     -- Common split ratios
     CASE
         WHEN td.close > 0 AND fair_value_blended > 0
-             AND ROUND(fair_value_blended / td.close::numeric) BETWEEN 2 AND 3 THEN '2:1 or 3:1 split likely'
+             AND ROUND(GREATEST(fair_value_blended / td.close::numeric, td.close::numeric / fair_value_blended)) BETWEEN 2 AND 3 THEN '2:1 or 3:1 split/reverse split likely'
         WHEN td.close > 0 AND fair_value_blended > 0
-             AND ROUND(fair_value_blended / td.close::numeric) BETWEEN 4 AND 6 THEN '5:1 split likely'
+             AND ROUND(GREATEST(fair_value_blended / td.close::numeric, td.close::numeric / fair_value_blended)) BETWEEN 4 AND 6 THEN '5:1 split/reverse split likely'
         WHEN td.close > 0 AND fair_value_blended > 0
-             AND ROUND(fair_value_blended / td.close::numeric) BETWEEN 9 AND 11 THEN '10:1 split likely'
+             AND ROUND(GREATEST(fair_value_blended / td.close::numeric, td.close::numeric / fair_value_blended)) BETWEEN 9 AND 11 THEN '10:1 split/reverse split likely'
         WHEN td.close > 0 AND fair_value_blended > 0
-             AND ROUND(fair_value_blended / td.close::numeric) >= 15 THEN '15:1+ split likely'
+             AND ROUND(GREATEST(fair_value_blended / td.close::numeric, td.close::numeric / fair_value_blended)) >= 15 THEN '15:1+ split/reverse split likely'
         ELSE 'Unknown or no split'
     END AS likely_split
 FROM symbol s
@@ -114,12 +120,17 @@ WHERE s.islisted = true
   AND (s.isetf IS NULL OR s.isetf = false)
   AND s.fair_value_blended IS NOT NULL
   AND s.model_agreement_score >= 0.7  -- High agreement, so price mismatch = split
-  AND td.close < s.fair_value_blended * 0.5  -- Trading at less than half of fair value
+  AND (
+      s.fair_value_blended / td.close >= 4.0
+      OR s.fair_value_blended / td.close <= 0.25
+  )
 ORDER BY implied_split_ratio DESC;
 
 COMMENT ON VIEW potential_stock_splits IS '
 Symbols that may have undergone stock splits but fair values werent adjusted.
-High model agreement (70%+) suggests models are correct, but prices are way off.
+High model agreement (70%+) suggests models agree with each other, but fair value and current
+price are far enough apart to require split/stale-data review. Includes fair-value-above-price
+and fair-value-below-price cases.
 
 Example: NFLX trading at $96 with $509 fair value = likely 5:1 split (was ~$480)
 ';
