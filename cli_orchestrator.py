@@ -737,6 +737,20 @@ def analyze(
                         "assessment": compact_quality.get("quality_grade", dq.get("assessment")),
                     }
 
+                decision_policy = (
+                    formatted_results.get("decision_policy")
+                    if isinstance(formatted_results.get("decision_policy"), dict)
+                    else exec_summary.get("decision_policy")
+                )
+                if isinstance(decision_policy, dict):
+                    rec = {
+                        **rec,
+                        "action": decision_policy.get(
+                            "display_action", decision_policy.get("action", rec.get("action"))
+                        ),
+                        "confidence": decision_policy.get("confidence", rec.get("confidence")),
+                    }
+
                 click.echo("\n" + "=" * 60)
                 click.echo("EXECUTIVE SUMMARY")
                 click.echo("=" * 60)

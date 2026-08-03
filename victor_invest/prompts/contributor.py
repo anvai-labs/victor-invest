@@ -6,7 +6,7 @@ with the framework via the victor.prompt_contributors entry point.
 
 from typing import Dict, List, Optional
 
-from victor_sdk.verticals import PromptContributorProtocol, TaskTypeHint
+from victor_contracts.verticals import PromptContributorProtocol, TaskTypeHint
 
 INVESTMENT_TASK_TYPE_HINTS: Dict[str, TaskTypeHint] = {
     "equity_analysis": TaskTypeHint(

@@ -9,7 +9,7 @@
 ## Installation
 
 ```bash
-git clone https://github.com/vjsingh1984/victor-invest.git
+git clone https://github.com/anvai-labs/victor-invest.git
 cd victor-invest
 python -m venv venv && source venv/bin/activate
 pip install -e ".[dev,viz]"

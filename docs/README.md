@@ -45,6 +45,8 @@ uvicorn victor_invest.api.app:app --reload
 ### User Documentation
 - [Getting Started](user/getting-started.md) - Installation guide
 - [CLI Commands](user/cli-commands.md) - Command reference
+- [Module Guide](user/module-guide.md) - Package map and test ownership
+- [Test Coverage](user/test-coverage.md) - Coverage commands and module reports
 - [Troubleshooting](user/troubleshooting.md) - Common issues
 
 ### Developer Documentation

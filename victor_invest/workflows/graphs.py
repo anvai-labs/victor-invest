@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -90,11 +90,14 @@ Example:
 
 import asyncio
 import logging
+from dataclasses import replace
 from typing import Any, Callable, Dict, Optional, cast
 from weakref import WeakKeyDictionary
 
-from victor_sdk.graph_runtime import END, StateGraph
+from victor_contracts.graph_runtime import END, StateGraph
 
+from investigator.application.decision_input_extractor import from_victor_workflow_state
+from investigator.domain.services.investment_decision_policy import InvestmentDecisionPolicy
 from victor_invest.agents import (
     FUNDAMENTAL_AGENT_SPEC,
     MARKET_AGENT_SPEC,
@@ -124,6 +127,19 @@ def _ensure_state(state_input) -> AnalysisWorkflowState:
 def _state_to_dict(state: AnalysisWorkflowState) -> dict:
     """Convert AnalysisWorkflowState to dict."""
     return state.to_dict()
+
+
+def _decision_policy_payload(output) -> dict[str, Any]:
+    """Serialize decision-policy output into workflow state payloads."""
+    return {
+        "action": output.action,
+        "display_action": str(output.action).replace("_", " "),
+        "confidence": output.confidence,
+        "score": output.score,
+        "expected_return_pct": output.expected_return_pct,
+        "guardrails_triggered": list(output.guardrails_triggered),
+        "evidence": output.evidence,
+    }
 
 
 # Task-scoped tool instances (lazy-initialized)
@@ -808,22 +824,21 @@ async def run_synthesis(state_input) -> dict:
 
         composite_score = weighted_sum / total_weight if total_weight > 0 else 50
 
-        # Determine recommendation based on thresholds
-        if composite_score >= thresholds["strong_buy"]:
-            recommendation_action = "STRONG BUY"
-            confidence = "high"
-        elif composite_score >= thresholds["buy"]:
-            recommendation_action = "BUY"
-            confidence = "medium-high"
-        elif composite_score >= thresholds["hold_lower"]:
-            recommendation_action = "HOLD"
-            confidence = "medium"
-        elif composite_score >= thresholds["strong_sell"]:
-            recommendation_action = "SELL"
-            confidence = "medium-high"
-        else:
-            recommendation_action = "STRONG SELL"
-            confidence = "high"
+        policy_inputs = from_victor_workflow_state(state.to_dict())
+        policy = InvestmentDecisionPolicy()
+        policy_output = policy.evaluate(
+            replace(
+                policy_inputs,
+                extra_evidence={
+                    **dict(policy_inputs.extra_evidence or {}),
+                    "workflow_composite_score": round(composite_score, 2),
+                    "workflow_scores": scores,
+                    "workflow_thresholds": thresholds,
+                },
+            )
+        )
+        recommendation_action = policy_output.action
+        confidence = policy_output.confidence
 
         # Try LLM synthesis for enhanced narrative
         llm_synthesis = None
@@ -841,12 +856,31 @@ async def run_synthesis(state_input) -> dict:
         except Exception as e:
             logger.warning(f"LLM synthesis failed, using rule-based: {e}")
 
+        if llm_synthesis and llm_synthesis.get("recommendation"):
+            policy_output = policy.evaluate(
+                replace(
+                    policy_inputs,
+                    llm_recommendation=str(llm_synthesis.get("recommendation")),
+                    extra_evidence={
+                        **dict(policy_inputs.extra_evidence or {}),
+                        "workflow_composite_score": round(composite_score, 2),
+                        "workflow_scores": scores,
+                        "workflow_thresholds": thresholds,
+                    },
+                )
+            )
+            recommendation_action = policy_output.action
+            confidence = policy_output.confidence
+
+        decision_policy_payload = _decision_policy_payload(policy_output)
+
         state.synthesis = {
             "symbol": state.symbol,
             "analyses_included": available_analyses,
             "individual_scores": scores,
             "weights_applied": {k: v for k, v in weights.items() if k in scores},
             "composite_score": round(composite_score, 2),
+            "decision_policy": decision_policy_payload,
             "agent_spec": SYNTHESIS_AGENT_SPEC.name,
             "mode": state.mode.value,
             "status": "success",
@@ -860,11 +894,12 @@ async def run_synthesis(state_input) -> dict:
 
         state.recommendation = {
             "symbol": state.symbol,
-            "action": (
-                llm_synthesis.get("recommendation", recommendation_action) if llm_synthesis else recommendation_action
-            ),
+            "action": recommendation_action,
             "composite_score": round(composite_score, 2),
-            "confidence": llm_synthesis.get("confidence", confidence) if llm_synthesis else confidence,
+            "confidence": confidence,
+            "decision_policy": decision_policy_payload,
+            "llm_recommendation": llm_synthesis.get("recommendation") if llm_synthesis else None,
+            "llm_confidence": llm_synthesis.get("confidence") if llm_synthesis else None,
             "analyses_included": available_analyses,
             "thresholds_used": thresholds,
             "errors_during_analysis": state.errors,

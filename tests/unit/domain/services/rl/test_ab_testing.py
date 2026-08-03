@@ -2,7 +2,8 @@
 Unit tests for ABTestingFramework.
 """
 
-from datetime import date
+from datetime import date, datetime
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -10,6 +11,7 @@ from investigator.domain.services.rl.models import ABTestGroup
 from investigator.domain.services.rl.monitoring.ab_testing import (
     ABTestConfig,
     ABTestingFramework,
+    get_ab_testing_framework,
 )
 
 
@@ -155,8 +157,6 @@ class TestABTestRecommendations:
 
     def test_recommend_action_insufficient_data(self):
         """Test recommendation with insufficient data."""
-        from unittest.mock import MagicMock, patch
-
         # Create a mock db manager that returns empty results
         mock_db = MagicMock()
         mock_session = MagicMock()
@@ -180,6 +180,115 @@ class TestABTestRecommendations:
         assert "reason" in recommendation
         # With no data, should recommend continuing test
         assert recommendation["action"] == "continue_test"
+
+    def test_get_test_results_maps_metrics_and_significance(self):
+        """Test DB result aggregation into ABTestResults."""
+        framework = _framework_with_db_rows(
+            [
+                ("rl", 100, 0.40, 0.10, 8.0, 0.70),
+                ("baseline", 100, 0.20, 0.10, 10.0, 0.55),
+            ],
+            min_samples=10,
+        )
+
+        results = framework.get_test_results(days=30)
+
+        assert results.num_rl_samples == 100
+        assert results.num_baseline_samples == 100
+        assert results.rl_mean_reward == 0.40
+        assert results.baseline_mean_reward == 0.20
+        assert results.reward_p_value == 0.01
+        assert results.reward_effect_size == 2.0
+        assert results.is_significant is True
+
+    def test_get_test_results_returns_empty_result_on_database_error(self):
+        """Test DB errors return neutral results."""
+        framework = _framework_with_db_exception(RuntimeError("db down"))
+
+        results = framework.get_test_results(days=45)
+
+        assert results.num_rl_samples == 0
+        assert results.num_baseline_samples == 0
+        assert results.reward_p_value == 1.0
+
+    def test_group_breakdown_and_trend_comparison_map_rows(self):
+        """Test detailed group and trend reporting."""
+        period = datetime(2026, 5, 18)
+        framework = _framework_with_db_results(
+            [
+                _Result(rows=[("rl", "Technology", 7, 0.3), ("baseline", None, 5, None)]),
+                _Result(rows=[(period, "rl", 3, 0.4), (period, "baseline", 4, 0.2), (None, "rl", 1, None)]),
+            ]
+        )
+
+        breakdown = framework.get_group_breakdown(days=90)
+        trend = framework.get_trend_comparison(days=90, bucket="month")
+
+        assert breakdown == {
+            "rl": {"Technology": {"count": 7, "avg_reward": 0.3}},
+            "baseline": {"Unknown": {"count": 5, "avg_reward": 0}},
+        }
+        assert trend == [
+            {
+                "period": "2026-05-18T00:00:00",
+                "rl_count": 3,
+                "rl_reward": 0.4,
+                "baseline_count": 4,
+                "baseline_reward": 0.2,
+            },
+            {"period": "unknown", "rl_count": 1, "rl_reward": 0},
+        ]
+
+    def test_recommend_action_expand_reduce_neutral_and_not_significant(self):
+        """Test rollout recommendation branches."""
+        framework = ABTestingFramework(config=ABTestConfig(rl_traffic_pct=0.4, min_samples_per_group=10))
+
+        framework.get_test_results = MagicMock(
+            return_value=_results(rl=0.40, baseline=0.20, p_value=0.01, effect_size=0.8)
+        )
+        assert framework.recommend_action()["action"] == "expand_rl"
+
+        framework.get_test_results = MagicMock(
+            return_value=_results(rl=-0.10, baseline=0.20, p_value=0.01, effect_size=-0.8)
+        )
+        assert framework.recommend_action()["action"] == "reduce_rl"
+
+        framework.get_test_results = MagicMock(
+            return_value=_results(rl=0.21, baseline=0.20, p_value=0.01, effect_size=0.8)
+        )
+        assert framework.recommend_action()["reason"] == "Marginal difference (5.0%), need more data"
+
+        framework.get_test_results = MagicMock(
+            return_value=_results(rl=0.40, baseline=0.20, p_value=0.10, effect_size=0.8)
+        )
+        assert framework.recommend_action()["reason"] == "Results not yet statistically significant"
+
+    def test_recommend_action_checks_baseline_sample_floor(self):
+        """Test baseline minimum-sample branch."""
+        framework = ABTestingFramework(config=ABTestConfig(min_samples_per_group=10))
+        framework.get_test_results = MagicMock(
+            return_value=_results(rl=0.3, baseline=0.2, rl_samples=12, baseline_samples=3)
+        )
+
+        recommendation = framework.recommend_action()
+
+        assert recommendation["action"] == "continue_test"
+        assert "Insufficient baseline samples" in recommendation["reason"]
+
+    def test_group_breakdown_and_trend_return_defaults_on_error(self):
+        """Test reporting methods tolerate database exceptions."""
+        framework = _framework_with_db_exception(RuntimeError("db down"))
+
+        assert framework.get_group_breakdown() == {"rl": {}, "baseline": {}}
+        assert framework.get_trend_comparison() == []
+
+    def test_factory_creates_framework_with_traffic_config(self):
+        """Test factory wiring."""
+        with patch("investigator.domain.services.rl.monitoring.ab_testing.get_db_manager", return_value=MagicMock()):
+            framework = get_ab_testing_framework(rl_traffic_pct=0.35)
+
+        assert isinstance(framework, ABTestingFramework)
+        assert framework.config.rl_traffic_pct == 0.35
 
 
 class TestHashDistribution:
@@ -215,3 +324,79 @@ class TestHashDistribution:
         for i in range(100):
             symbol = f"CONSISTENCY_{i}"
             assert fw1.get_assignment(symbol) == fw2.get_assignment(symbol)
+
+
+class _Result:
+    def __init__(self, rows):
+        self.rows = rows
+
+    def fetchall(self):
+        return self.rows
+
+
+class _Session:
+    def __init__(self, results):
+        self.results = list(results)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def execute(self, statement, params=None):
+        result = self.results.pop(0)
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+
+class _DB:
+    def __init__(self, results):
+        self.session = _Session(results)
+
+    def get_session(self):
+        return self.session
+
+
+def _framework_with_db_results(results, min_samples=10):
+    db = _DB(results)
+    with patch("investigator.domain.services.rl.monitoring.ab_testing.get_db_manager", return_value=db):
+        return ABTestingFramework(config=ABTestConfig(min_samples_per_group=min_samples))
+
+
+def _framework_with_db_rows(rows, min_samples=10):
+    return _framework_with_db_results([_Result(rows)], min_samples=min_samples)
+
+
+def _framework_with_db_exception(exception):
+    return _framework_with_db_results([exception, exception])
+
+
+def _results(
+    rl,
+    baseline,
+    p_value=0.01,
+    effect_size=0.8,
+    rl_samples=100,
+    baseline_samples=100,
+):
+    from investigator.domain.services.rl.models import ABTestResults
+
+    return ABTestResults(
+        test_start_date=date(2026, 1, 1),
+        test_end_date=date(2026, 5, 20),
+        num_rl_samples=rl_samples,
+        num_baseline_samples=baseline_samples,
+        rl_mean_reward=rl,
+        rl_mape=8.0,
+        rl_direction_accuracy=0.7,
+        baseline_mean_reward=baseline,
+        baseline_mape=10.0,
+        baseline_direction_accuracy=0.6,
+        reward_p_value=p_value,
+        mape_p_value=p_value,
+        direction_p_value=p_value,
+        reward_effect_size=effect_size,
+        mape_effect_size=effect_size,
+    )

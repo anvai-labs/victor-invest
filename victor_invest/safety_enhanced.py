@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,9 +31,9 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
-from victor_sdk.safety import SafetyAction, SafetyCategory, SafetyCoordinator, SafetyRule
-from victor_sdk.verticals.protocols import SafetyExtensionProtocol
-from victor_sdk.verticals.protocols.promoted_types import SafetyPatternData as SafetyPattern
+from victor_contracts.safety import SafetyAction, SafetyCategory, SafetyCoordinator, SafetyRule
+from victor_contracts.verticals.protocols import SafetyExtensionProtocol
+from victor_contracts.verticals.protocols.promoted_types import SafetyPatternData as SafetyPattern
 
 logger = logging.getLogger(__name__)
 

@@ -36,7 +36,7 @@ def test_version_is_consistent_across_package_and_vertical_metadata():
 def test_pyproject_pins_supported_victor_version_range():
     pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
     # Aligned with codingagent (victor framework) at 0.7.x; allow >=0.7.0 range.
-    assert "victor-sdk>=0.7.0,<1.0" in pyproject
+    assert "victor-contracts>=0.7.0,<1.0" in pyproject
     assert "victor-ai>=0.7.0,<1.0" in pyproject
 
 
@@ -47,7 +47,7 @@ def test_pyproject_registers_investment_plugin_entrypoint():
 
 
 def test_investment_plugin_implements_victor_plugin_protocol():
-    from victor_sdk import VerticalBase, VictorPlugin
+    from victor_contracts import VerticalBase, VictorPlugin
 
     from victor_invest.vertical import InvestmentPlugin, plugin
     from victor_invest.vertical.investment_vertical import InvestmentVertical

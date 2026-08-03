@@ -34,7 +34,7 @@ Example:
 """
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from victor_invest.tools.base import BaseTool, ToolResult
 
@@ -196,6 +196,8 @@ class RobustValuationTool(BaseTool):
         )
 
         service = CrossSectionalValuation()
+
+        result_data: dict[str, Any]
 
         if metric == "all":
             # Compare all metrics

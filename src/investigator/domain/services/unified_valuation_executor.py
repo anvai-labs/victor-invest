@@ -165,7 +165,7 @@ class UnifiedValuationExecutor:
                     # Convert percentage to decimal (e.g., 30 -> 0.30)
                     weight_decimal = weight / 100.0
                     weighted_sum += fair_value * weight_decimal
-                    total_weight += weight
+                    total_weight += weight_decimal
                     applied_weights[model_name] = weight
 
         # Calculate final blended value
@@ -178,11 +178,13 @@ class UnifiedValuationExecutor:
             ]
             consensus = sum(fair_values) / len(fair_values) if fair_values else None
         else:
-            consensus = weighted_sum
+            consensus = weighted_sum / total_weight
 
-        logger.info(
-            f"{self.symbol}: Using sector-weighted blend (tier={tier}) → ${consensus:.2f} | Weights: {applied_weights}"
-        )
+        if consensus is not None:
+            logger.info(
+                f"{self.symbol}: Using sector-weighted blend (tier={tier}) → ${consensus:.2f} | "
+                f"Applied weights: {applied_weights}"
+            )
 
         return {
             "symbol": self.symbol,
@@ -382,7 +384,7 @@ class UnifiedValuationExecutor:
 
     def _build_financials_dict(self) -> Dict[str, Any]:
         """Build financials dict for weight calculation."""
-        financials = {
+        financials: Dict[str, Any] = {
             "net_income": None,
             "revenue": None,
             "shareholders_equity": None,
@@ -458,5 +460,5 @@ class UnifiedValuationExecutor:
         cash = market_data.get("cash_and_equivalents", 0)
 
         if market_cap:
-            return market_cap + total_debt - cash
+            return float(market_cap) + float(total_debt or 0) - float(cash or 0)
         return None

@@ -1,10 +1,14 @@
-.PHONY: help install dev-install test test-cov lint format type-check clean run analyze status cache-clean benchmark-workflows frontend-install frontend-dev frontend-build frontend-lint frontend-type-check
+.PHONY: help install dev-install test test-cov coverage-report coverage-modules coverage-critical coverage-rl coverage-gate lint format type-check clean run analyze status cache-clean benchmark-workflows frontend-install frontend-dev frontend-build frontend-lint frontend-type-check
 
 .DEFAULT_GOAL := help
 
-# Python >=3.11 required. Prefer python3.11 if available, else fall back to python3.
-PYTHON := $(shell command -v python3.11 2>/dev/null || echo python3)
+# Python >=3.11 required. Prefer the workspace venv used by local automation,
+# then python3.11 if available, else fall back to python3.
+PYTHON := $(shell if [ -x ../.venv/bin/python ]; then echo ../.venv/bin/python; elif command -v python3.11 >/dev/null 2>&1; then command -v python3.11; else echo python3; fi)
 PIP := $(PYTHON) -m pip
+PYTEST := $(PYTHON) -m pytest
+COVERAGE_MIN ?= 66.67
+COVERAGE_PATHS := investigator victor_invest
 
 # Colors for output
 CYAN := \033[0;36m
@@ -24,29 +28,44 @@ dev-install: ## Install package with development dependencies
 	$(PIP) install -e ".[dev,viz,jupyter]"
 
 test: ## Run tests
-	pytest tests/ -v
+	$(PYTEST) tests/ -v
 
-test-cov: ## Run tests with coverage report
-	pytest tests/ -v --cov=src/investigator --cov=victor_invest --cov-report=html --cov-report=term-missing
+test-cov: coverage-report ## Run unit tests with repo-wide coverage report
+
+coverage-report: ## Generate repo-wide module coverage reports without enforcing a threshold
+	$(PYTEST) tests/unit/ -v --cov=investigator --cov=victor_invest --cov-report=term-missing --cov-report=html --cov-report=xml --cov-report=json
+
+coverage-modules: coverage-report ## Generate repo-wide coverage and print grouped package/module summary
+	$(PYTHON) scripts/report_module_coverage.py coverage.json
+
+coverage-critical: coverage-report ## Enforce 67% coverage for critical valuation and macro modules
+	$(PYTHON) scripts/assert_critical_coverage.py coverage.json
+
+coverage-rl: ## Enforce 67% coverage for deterministic RL core and training modules
+	$(PYTEST) tests/unit/domain/services/rl -q --cov=investigator --cov-report=term-missing --cov-report=json:rl-coverage.json
+	$(PYTHON) scripts/assert_rl_coverage.py rl-coverage.json
+
+coverage-gate: ## Enforce repo-wide coverage threshold (default COVERAGE_MIN=66.67)
+	$(PYTEST) tests/unit/ -v --cov=investigator --cov=victor_invest --cov-report=term-missing --cov-report=html --cov-report=xml --cov-report=json --cov-fail-under=$(COVERAGE_MIN)
 
 test-unit: ## Run unit tests only
-	pytest tests/ -v -m unit
+	$(PYTEST) tests/ -v -m unit
 
 test-integration: ## Run integration tests only
-	pytest tests/ -v -m integration
+	$(PYTEST) tests/ -v -m integration
 
 test-fast: ## Run tests excluding slow tests
-	pytest tests/ -v -m "not slow"
+	$(PYTEST) tests/ -v -m "not slow"
 
-lint: ## Run linters (flake8)
-	flake8 src/investigator/ --max-line-length=120 --exclude=__pycache__
+lint: ## Run blocking Flake8 checks
+	flake8 src/ victor_invest/ --count --select=E9,F63,F7,F82 --show-source --statistics
 
-format: ## Format code with black and isort
-	black src/investigator/ tests/
+format: ## Format code with ruff and isort
+	ruff format src/ victor_invest/ tests/
 	isort src/investigator/ tests/
 
 format-check: ## Check code formatting without making changes
-	black --check src/investigator/ tests/
+	ruff format --check src/ victor_invest/ tests/
 	isort --check src/investigator/ tests/
 
 type-check: ## Run type checking with mypy
@@ -110,7 +129,7 @@ docker-run: ## Run Docker container
 
 pre-commit: format lint type-check test ## Run all pre-commit checks
 
-ci: format-check lint type-check test-cov ## Run CI pipeline checks
+ci: format-check lint test-cov ## Run CI pipeline checks
 
 build: clean ## Build distribution packages
 	$(PYTHON) -m build

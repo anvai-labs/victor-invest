@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 # SPDX-License-Identifier: Apache-2.0
 
 """Victor-based CLI for investment analysis.
@@ -105,7 +105,7 @@ def _display_provider_info(provider: Optional[str], model: Optional[str]) -> tup
 
 
 async def _create_workflow_executor(provider: Optional[str], model: Optional[str], timeout: float):
-    from victor_sdk.workflow_executor_runtime import WorkflowExecutor
+    from victor_contracts.workflow_executor_runtime import WorkflowExecutor
 
     from victor_invest.workflows import ensure_handlers_registered
 

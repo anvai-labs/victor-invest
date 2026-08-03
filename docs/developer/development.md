@@ -8,7 +8,7 @@
 
 ```bash
 # 1. Clone and install
-git clone https://github.com/vjsingh1984/victor-invest.git
+git clone https://github.com/anvai-labs/victor-invest.git
 cd victor-invest
 pip install -e ".[dev]"
 
@@ -270,6 +270,6 @@ twine upload dist/*
 
 ## 📞 Getting Help
 
-- **Issues**: https://github.com/vjsingh1984/victor-invest/issues
-- **Discussions**: https://github.com/vjsingh1984/victor-invest/discussions
+- **Issues**: https://github.com/anvai-labs/victor-invest/issues
+- **Discussions**: https://github.com/anvai-labs/victor-invest/discussions
 - **CLAUDE.md**: In repo root (dev guidelines)

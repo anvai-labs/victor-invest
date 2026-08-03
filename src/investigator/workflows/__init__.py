@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ Example:
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, List, Optional, Tuple, cast
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ if TYPE_CHECKING:
 
 try:
     from victor.workflows.definition import WorkflowDefinition
-    from victor_sdk.verticals.protocols import WorkflowProviderProtocol
+    from victor_contracts.verticals.protocols import WorkflowProviderProtocol
 
     class InvestmentWorkflowProvider(WorkflowProviderProtocol):
         """Provides investment-specific workflows.
@@ -93,7 +93,7 @@ try:
 
                 # Load from the workflows directory (same as this file)
                 workflows_dir = Path(__file__).parent
-                yaml_workflows = load_workflows_from_directory(workflows_dir)
+                yaml_workflows = cast(Dict[str, WorkflowDefinition], load_workflows_from_directory(workflows_dir))
                 logger.debug(f"Loaded {len(yaml_workflows)} YAML workflows from {workflows_dir}")
                 return yaml_workflows
             except Exception as e:

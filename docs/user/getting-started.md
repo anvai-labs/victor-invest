@@ -50,6 +50,12 @@ victor-invest --help
 
 # Quick test
 victor-invest analyze AAPL --mode quick
+
+# Unit tests
+pytest tests/unit -q
+
+# Repo-wide module coverage report
+make coverage-report
 ```
 
 ---
@@ -96,5 +102,7 @@ python scripts/sweep_ui_cache.py --parallel 8
 ## 🔗 Next Steps
 
 - [CLI Commands](cli-commands.md) - Full reference
+- [Module Guide](module-guide.md) - Package map and test ownership
+- [Test Coverage](test-coverage.md) - Coverage commands and reports
 - [Troubleshooting](troubleshooting.md) - Common issues
 - [Development](../developer/development.md) - Dev setup

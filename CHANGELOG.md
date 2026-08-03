@@ -30,4 +30,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Q1 quarterly calculation regression for companies with January fiscal year end
 - Negative revenue edge cases in DCF valuation bounds checker
 
-[0.5.0]: https://github.com/vjsingh1984/victor-invest/releases/tag/v0.5.0
+[0.5.0]: https://github.com/anvai-labs/victor-invest/releases/tag/v0.5.0

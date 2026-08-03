@@ -1,9 +1,9 @@
-"""SDK Boundary Contract Tests for victor-invest.
+"""Contract Boundary Tests for victor-invest.
 
-Validates that the investment vertical adheres to SDK boundary rules:
-1. Plugin.py and vertical definition use SDK imports only (module-level)
-2. pyproject.toml keeps victor-sdk in base deps, victor-ai in optional
-3. Vertical class inherits from SDK VerticalBase
+Validates that the investment vertical adheres to contract boundary rules:
+1. Plugin.py and vertical definition use contract imports only (module-level)
+2. pyproject.toml keeps victor-contracts in base deps, victor-ai in optional
+3. Vertical class inherits from contracts VerticalBase
 4. Core imports are banned from production modules
 """
 
@@ -31,10 +31,10 @@ _BANNED_IMPORTS = (
 )
 
 
-class TestSDKBoundaryContract:
-    """Ensure invest production code respects SDK boundary."""
+class TestContractBoundaryContract:
+    """Ensure invest production code respects contract boundary."""
 
-    def test_sdk_boundary_modules_avoid_core_imports(self):
+    def test_contract_boundary_modules_avoid_core_imports(self):
         """Key modules must not have module-level core imports."""
         for module in _MODULES:
             filepath = _REPO_ROOT / module
@@ -42,14 +42,37 @@ class TestSDKBoundaryContract:
                 continue
             source = filepath.read_text(encoding="utf-8")
             for banned in _BANNED_IMPORTS:
-                assert banned not in source, f"{module} imports from banned path '{banned}'. Use victor_sdk instead."
+                assert banned not in source, (
+                    f"{module} imports from banned path '{banned}'. Use victor_contracts instead."
+                )
 
-    def test_pyproject_sdk_in_base_deps(self):
-        """victor-sdk must be in base dependencies, not optional."""
+    def test_public_contract_modules_use_contract_namespace(self):
+        """Public plugin and vertical modules must import definitions from victor_contracts."""
+        modules = [
+            "victor_invest/plugin.py",
+            "victor_invest/prompts/contributor.py",
+            "victor_invest/safety_enhanced.py",
+            "victor_invest/tool_dependencies.py",
+            "victor_invest/vertical/__init__.py",
+            "victor_invest/vertical/investment_vertical.py",
+        ]
+        banned_imports = (
+            "from victor_sdk import",
+            "from victor_sdk.verticals import",
+            "from victor_sdk.verticals.protocols import",
+        )
+
+        for module in modules:
+            source = (_REPO_ROOT / module).read_text(encoding="utf-8")
+            for banned in banned_imports:
+                assert banned not in source, f"{module} still imports {banned}"
+
+    def test_pyproject_contracts_in_base_deps(self):
+        """victor-contracts must be in base dependencies, not optional."""
         pyproject = _REPO_ROOT / "pyproject.toml"
         data = tomllib.loads(pyproject.read_text())
         deps = data["project"]["dependencies"]
-        assert any(d.startswith("victor-sdk") for d in deps), "victor-sdk must be in [project.dependencies]"
+        assert any(d.startswith("victor-contracts") for d in deps), "victor-contracts must be in [project.dependencies]"
 
     def test_pyproject_framework_is_optional(self):
         """victor-ai must NOT be in base dependencies."""
@@ -68,14 +91,14 @@ class TestSDKBoundaryContract:
         groups = [k for k in entry_points if k.startswith("victor.")]
         assert len(groups) >= 3, f"Expected >= 3 victor.* entry point groups, found {len(groups)}: {groups}"
 
-    def test_vertical_inherits_sdk_base(self):
-        """InvestmentVertical must inherit from SDK VerticalBase."""
-        from victor_sdk.verticals.protocols.base import VerticalBase
+    def test_vertical_inherits_contract_base(self):
+        """InvestmentVertical must inherit from contracts VerticalBase."""
+        from victor_contracts.verticals.protocols.base import VerticalBase
 
         from victor_invest.vertical.investment_vertical import InvestmentVertical
 
         assert issubclass(InvestmentVertical, VerticalBase), (
-            "InvestmentVertical must inherit from victor_sdk VerticalBase"
+            "InvestmentVertical must inherit from victor_contracts VerticalBase"
         )
 
     def test_plugin_implements_victor_plugin(self):

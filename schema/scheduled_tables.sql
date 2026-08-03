@@ -27,7 +27,7 @@ CREATE INDEX IF NOT EXISTS idx_treasury_yields_date ON treasury_yields(date DESC
 
 -- Macro Indicators (refresh_macro_indicators.py)
 CREATE TABLE IF NOT EXISTS macro_indicators (
-    id SERIAL PRIMARY KEY,
+    id VARCHAR(50) PRIMARY KEY,
     series_id VARCHAR(50) UNIQUE NOT NULL,
     name VARCHAR(200),
     category VARCHAR(50),
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS macro_indicators (
 );
 
 CREATE TABLE IF NOT EXISTS macro_indicator_values (
-    indicator_id INTEGER REFERENCES macro_indicators(id),
+    indicator_id VARCHAR(50) REFERENCES macro_indicators(id),
     date DATE NOT NULL,
     value DECIMAL(20, 6),
     created_at TIMESTAMP DEFAULT NOW(),

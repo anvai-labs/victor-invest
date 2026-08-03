@@ -26,7 +26,7 @@ def create_provider(
     Returns None if victor-ai is not installed.
     """
     try:
-        from victor_sdk.provider_runtime import ProviderRegistry
+        from victor_contracts.provider_runtime import ProviderRegistry
 
         return ProviderRegistry.create(
             provider_name,

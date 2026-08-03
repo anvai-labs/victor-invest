@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -64,8 +64,8 @@ See: docs/ARCHITECTURE_DECISION_DATA_ACCESS.md for full rationale.
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from victor_sdk import StageDefinition, ToolSet, VerticalBase
-from victor_sdk.verticals import register_vertical
+from victor_contracts import StageDefinition, ToolSet, VerticalBase
+from victor_contracts.verticals import register_vertical
 
 DEFAULT_INVESTMENT_TOOL_NAMES = [
     "sec_filing",
@@ -253,7 +253,7 @@ class InvestmentVertical(VerticalBase):
 
         if isinstance(getattr(config, "tools", None), list):
             try:
-                from victor_sdk.tool_runtime import RuntimeToolSet
+                from victor_contracts.tool_runtime import RuntimeToolSet
             except Exception:
                 config.tools = ToolSet(names=list(config.tools))
             else:

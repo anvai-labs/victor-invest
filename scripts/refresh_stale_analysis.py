@@ -23,6 +23,7 @@ from datetime import datetime  # noqa: E402
 from typing import List, Optional, Set  # noqa: E402
 
 from sqlalchemy import create_engine, text  # noqa: E402
+from sqlalchemy.exc import SQLAlchemyError  # noqa: E402
 
 from victor_invest.workflows.graphs import run_analysis  # noqa: E402
 
@@ -219,8 +220,7 @@ class StaleAnalysisDetector:
         issues = []
 
         with self.engine.connect() as conn:
-            # Query potential stock splits
-            query = text("""
+            view_query = text("""
                 SELECT
                     symbol,
                     description,
@@ -233,7 +233,57 @@ class StaleAnalysisDetector:
                 LIMIT :max_symbols
             """)
 
-            result = conn.execute(query, {"max_symbols": max_symbols})
+            fallback_query = text("""
+                SELECT
+                    s.ticker AS symbol,
+                    s.description,
+                    ROUND(td.close::numeric, 2) AS current_price,
+                    ROUND(s.fair_value_blended::numeric, 2) AS fair_value,
+                    ROUND(
+                        GREATEST(
+                            s.fair_value_blended / td.close::numeric,
+                            td.close::numeric / s.fair_value_blended
+                        )
+                    ) AS implied_split_ratio,
+                    CASE
+                        WHEN ROUND(GREATEST(s.fair_value_blended / td.close::numeric, td.close::numeric / s.fair_value_blended)) BETWEEN 2 AND 3
+                            THEN '2:1 or 3:1 split/reverse split likely'
+                        WHEN ROUND(GREATEST(s.fair_value_blended / td.close::numeric, td.close::numeric / s.fair_value_blended)) BETWEEN 4 AND 6
+                            THEN '5:1 split/reverse split likely'
+                        WHEN ROUND(GREATEST(s.fair_value_blended / td.close::numeric, td.close::numeric / s.fair_value_blended)) BETWEEN 9 AND 11
+                            THEN '10:1 split/reverse split likely'
+                        WHEN ROUND(GREATEST(s.fair_value_blended / td.close::numeric, td.close::numeric / s.fair_value_blended)) >= 15
+                            THEN '15:1+ split/reverse split likely'
+                        ELSE 'Unknown or no split'
+                    END AS likely_split
+                FROM symbol s
+                JOIN LATERAL (
+                    SELECT close
+                    FROM tickerdata
+                    WHERE tickerdata.ticker = s.ticker
+                    ORDER BY tickerdata.date DESC
+                    LIMIT 1
+                ) td ON true
+                WHERE s.islisted = true
+                  AND s.isstock = true
+                  AND (s.isetf IS NULL OR s.isetf = false)
+                  AND td.close > 0
+                  AND s.fair_value_blended IS NOT NULL
+                  AND s.model_agreement_score >= 0.7
+                  AND (
+                      s.fair_value_blended / td.close >= 4.0
+                      OR s.fair_value_blended / td.close <= 0.25
+                  )
+                ORDER BY implied_split_ratio DESC
+                LIMIT :max_symbols
+            """)
+
+            try:
+                result = conn.execute(view_query, {"max_symbols": max_symbols})
+            except SQLAlchemyError as exc:
+                logger.warning("potential_stock_splits view unavailable; using inline fallback query: %s", exc)
+                conn.rollback()
+                result = conn.execute(fallback_query, {"max_symbols": max_symbols})
 
             for row in result:
                 issues.append(

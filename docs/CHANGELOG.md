@@ -73,7 +73,7 @@ docs/
 
 ## [Previous Releases]
 
-See [git log](https://github.com/vjsingh1984/victor-invest/commits/main) for full history.
+See [git log](https://github.com/anvai-labs/victor-invest/commits/main) for full history.
 
 ---
 
@@ -87,5 +87,5 @@ See [git log](https://github.com/vjsingh1984/victor-invest/commits/main) for ful
 
 ## 📞 Support
 
-- **Issues**: https://github.com/vjsingh1984/victor-invest/issues
-- **Discussions**: https://github.com/vjsingh1984/victor-invest/discussions
+- **Issues**: https://github.com/anvai-labs/victor-invest/issues
+- **Discussions**: https://github.com/anvai-labs/victor-invest/discussions

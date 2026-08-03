@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -49,7 +49,7 @@ from typing import TYPE_CHECKING, Any, List
 if TYPE_CHECKING:
     from victor.workflows.definition import ComputeNode
     from victor.workflows.executor import NodeResult, WorkflowContext
-    from victor_sdk.verticals.protocols.tools import ToolRegistryProtocol as ToolRegistry
+    from victor_contracts.verticals.protocols.tools import ToolRegistryProtocol as ToolRegistry
 
 logger = logging.getLogger(__name__)
 

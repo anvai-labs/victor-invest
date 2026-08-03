@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ Defines the agent responsible for interpreting
 price action and market structure.
 """
 
-from victor_sdk.agent_spec_runtime import (
+from victor_contracts.agent_spec_runtime import (
     AgentCapabilities,
     AgentConstraints,
     AgentSpec,

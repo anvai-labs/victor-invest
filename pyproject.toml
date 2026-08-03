@@ -10,10 +10,10 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "Apache-2.0"}
 authors = [
-    {name = "Vijaykumar Singh", email = "singhvjd@gmail.com"}
+    {name = "Vijaykumar Singh", email = "vijay@anvaiops.com"}
 ]
 maintainers = [
-    {name = "Vijaykumar Singh", email = "singhvjd@gmail.com"}
+    {name = "Vijaykumar Singh", email = "vijay@anvaiops.com"}
 ]
 keywords = [
     "investment",
@@ -43,12 +43,12 @@ classifiers = [
 
 dependencies = [
     # Victor SDK definition contract
-    "victor-sdk>=0.7.0,<1.0",
+    "victor-contracts>=0.7.0,<1.0",
 
     # Core dependencies
-    "requests>=2.31.0",
+    "requests>=2.32.0,<2.34",
     "pandas>=2.0.0",
-    "numpy>=1.24.0",
+    "numpy>=1.24.0,<2.3",
     "scipy>=1.11.0",
     "networkx>=3.0",
     "sqlalchemy>=2.0.0",
@@ -63,6 +63,7 @@ dependencies = [
 
     # Yahoo Finance API
     "yfinance>=0.2.0",
+    "peewee>=3.14,<4",  # yfinance dependency; keep semgrep-compatible in shared env
 
     # XML parsing
     "lxml>=4.9.0",
@@ -84,7 +85,7 @@ dependencies = [
 
     # Progress bars and CLI
     "tqdm>=4.66.0",
-    "click>=8.1.0",
+    "click>=8.3.2",
     "rich>=13.6.0",
 
     # Date/time handling
@@ -92,8 +93,8 @@ dependencies = [
     "pendulum>=2.1.0",
 
     # Caching
-    "diskcache>=5.6.0",
-    "redis[hiredis]>=5.0.0",
+    "diskcache>=5.6.3",
+    "redis[hiredis]>=7.4.0",
     "aiocache>=0.12.0",
 
     # Configuration
@@ -102,17 +103,17 @@ dependencies = [
 
     # Database
     "alembic>=1.12.0",
-    "asyncpg>=0.29.0",
+    "asyncpg>=0.31.0",
 
     # Message Queue
     "celery>=5.3.0",
-    "kombu>=5.3.0",
+    "kombu>=5.6.2",
 
     # Monitoring
     "prometheus-client>=0.18.0",
-    "opentelemetry-api>=1.20.0",
-    "opentelemetry-sdk>=1.20.0",
-    "opentelemetry-instrumentation-fastapi>=0.41b0",
+    "opentelemetry-api>=1.39.1,<1.42",
+    "opentelemetry-sdk>=1.39.1,<1.42",
+    "opentelemetry-instrumentation-fastapi>=0.62b0,<0.63b0",
     "psutil>=5.9.0",
 
     # Vector Database
@@ -129,7 +130,7 @@ dependencies = [
 
     # Data Validation
     "marshmallow>=3.20.0",
-    "cerberus>=1.3.0",
+    "cerberus>=1.3.8",
 
     # Logging
     "structlog>=23.2.0",
@@ -144,16 +145,15 @@ dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
     "pytest-asyncio>=0.21.0",
-    "coverage>=7.3.0",
-    "black>=23.0.0",
-    "isort>=5.12.0",
+    "coverage>=7.13.5",
+    "isort>=8.0.1,<9",
     "mypy>=1.5.0",
     "flake8>=6.1.0",
     "ruff>=0.4.0",
 ]
 viz = [
     "matplotlib>=3.7.0",
-    "plotly>=5.15.0",
+    "plotly>=6.7.0",
 ]
 jupyter = [
     "jupyter>=1.0.0",
@@ -176,7 +176,6 @@ investigator-legacy = "cli_orchestrator:cli"
 [project.entry-points."victor.plugins"]
 investment = "victor_invest.vertical:plugin"
 
-<<<<<<< HEAD
 # Sidecar entry points kept for backward compatibility with SDK < 0.7.0 hosts
 # that scan these groups directly instead of calling plugin.register(context).
 [project.entry-points."victor.tool_dependencies"]
@@ -191,14 +190,12 @@ invest = "victor_invest.prompts.contributor:InvestmentPromptContributor"
 [project.entry-points."victor.workflow_providers"]
 invest = "victor_invest.workflows:InvestmentWorkflowProvider"
 
-=======
->>>>>>> main
 [project.urls]
-Homepage = "https://github.com/vjsingh1984/victor-invest"
-Documentation = "https://github.com/vjsingh1984/victor-invest#readme"
-Repository = "https://github.com/vjsingh1984/victor-invest"
-Issues = "https://github.com/vjsingh1984/victor-invest/issues"
-Changelog = "https://github.com/vjsingh1984/victor-invest/releases"
+Homepage = "https://github.com/anvai-labs/victor-invest"
+Documentation = "https://github.com/anvai-labs/victor-invest#readme"
+Repository = "https://github.com/anvai-labs/victor-invest"
+Issues = "https://github.com/anvai-labs/victor-invest/issues"
+Changelog = "https://github.com/anvai-labs/victor-invest/releases"
 
 [tool.setuptools]
 package-dir = {"" = "src", "victor_invest" = "victor_invest"}
@@ -267,6 +264,14 @@ extend-exclude = [
     "data",
     "artifacts",
 ]
+
+[tool.ruff.lint]
+# Pin the rule set explicitly rather than inheriting Ruff's built-in defaults.
+# Ruff 0.16 widened those defaults, so an unpinned `ruff>=0.4.0` in the dev
+# extras silently changed what CI enforced and broke the lint gate. These are
+# the rules this repo has always been linted against (Ruff's pre-0.16 default).
+# Adopting additional rule families is a deliberate, separate change.
+select = ["E4", "E7", "E9", "F"]
 
 [tool.ruff.format]
 # Use double quotes (Black default)
@@ -342,14 +347,20 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["src/investigator", "victor_invest"]
+branch = true
+source = ["investigator", "victor_invest"]
 omit = [
-    "*/tests/*",
-    "*/test_*",
-    "*/__pycache__/*",
+    "tests/*",
+    "artifacts/*",
+    "data/*",
+    "docs/*",
+    "frontend/*",
 ]
 
 [tool.coverage.report]
+precision = 2
+show_missing = true
+skip_empty = true
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
@@ -359,3 +370,12 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "@abstractmethod",
 ]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.coverage.xml]
+output = "coverage.xml"
+
+[tool.coverage.json]
+output = "coverage.json"

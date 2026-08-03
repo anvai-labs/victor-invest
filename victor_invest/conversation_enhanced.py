@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from victor_sdk.conversation import ConversationCoordinator, ConversationStats, TurnType
+from victor_contracts.conversation import ConversationCoordinator, ConversationStats, TurnType
 
 logger = logging.getLogger(__name__)
 

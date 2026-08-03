@@ -64,6 +64,10 @@ Victor Invest should behave like a deterministic research platform first and an 
 - Issue #19: Technical-debt reduction and legacy-surface shrinkage
 - Issue #21: Reliability, persistence, and observability improvements
 
+## Detailed Design Follow-Up
+
+The low-level design for the next fair-value, decision-policy, persistence, and Victor/codingagent alignment work is maintained in [Fair Value and Agentic Workflow LLD](fair-value-agentic-lld.md). Treat that document as the implementation spec for surgical TDD slices rather than expanding this roadmap with file-level details.
+
 ## Recommended Execution Order
 
 ### Phase 1: Foundation and Safety

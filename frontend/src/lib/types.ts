@@ -166,10 +166,21 @@ export interface SymbolSearchResult {
 export interface RankingsResponse {
   generated_at: string;
   total_symbols: number;
+  split_suspect_symbols: number;
   longs: RankedSymbol[];
   shorts: RankedSymbol[];
   sector_neutral: SectorGroup[];
   pairs: PairTrade[];
+}
+
+export interface DecisionPolicyPayload {
+  action: string;
+  display_action?: string;
+  confidence: string;
+  score: number;
+  expected_return_pct: number | null;
+  guardrails_triggered: string[];
+  evidence?: Record<string, unknown>;
 }
 
 export interface RankedSymbol {
@@ -179,6 +190,11 @@ export interface RankedSymbol {
   sector: string;
   composite_score: number;
   action: string;
+  decision_action: string;
+  decision_confidence: string;
+  decision_score: number;
+  guardrails_triggered: string[];
+  decision_policy: DecisionPolicyPayload | null;
   target_return_pct: number | null;
   valuation_basis: string;
 }

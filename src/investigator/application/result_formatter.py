@@ -17,11 +17,13 @@ Usage:
 import copy
 import logging
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import numpy as np
 
+from investigator.application.decision_input_extractor import from_legacy_analysis_result, from_ui_cache_summary
 from investigator.application.summary_data_extractor import SummaryDataExtractor
+from investigator.domain.services.investment_decision_policy import InvestmentDecisionPolicy
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +65,7 @@ def _is_empty_value(value: Any) -> bool:
         try:
             # Try to check size attribute for array-like objects
             if hasattr(value, "size"):
-                return value.size == 0
+                return bool(value.size == 0)
             # Convert to numpy array and check
             arr = np.asarray(value)
             return arr.size == 0
@@ -158,7 +160,7 @@ def _format_minimal(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
     """
     # Use SOLID-based extractor with fallback chains
     extractor = SummaryDataExtractor(analysis_results, enable_audit=True)
-    summary = extractor.extract_minimal_summary()
+    summary: Dict[str, Any] = extractor.extract_minimal_summary()
 
     # Log extraction audit for debugging if issues occur
     audit = extractor.get_audit()
@@ -182,6 +184,13 @@ def _format_minimal(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
             summary["data_quality"]["assessment"] = "Fair"
         else:
             summary["data_quality"]["assessment"] = "Limited"
+
+    decision_policy = _evaluate_decision_policy_from_legacy(analysis_results)
+    if decision_policy:
+        summary["decision_policy"] = decision_policy
+        summary.setdefault("recommendation", {})
+        summary["recommendation"]["action"] = _display_action(decision_policy["action"])
+        summary["recommendation"]["confidence"] = decision_policy["confidence"]
 
     return summary
 
@@ -226,7 +235,7 @@ def _format_standard(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
     _consolidate_duplicates(result)
 
     # Remove empty/null values
-    result = _remove_empty_values(result)
+    result = cast(Dict[str, Any], _remove_empty_values(result))
 
     # Add detail level indicator
     result["detail_level"] = "standard"
@@ -243,26 +252,35 @@ def _format_compact(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
     - Single source of truth for valuation model outputs
     - Keep only actionable fields (drop heavy nested narrative duplicates)
     """
-    src = copy.deepcopy(analysis_results or {})
-    agents = src.get("agents", {}) if isinstance(src.get("agents"), dict) else {}
+    src: Dict[str, Any] = copy.deepcopy(analysis_results or {})
+    agents: Dict[str, Any] = src.get("agents", {}) if isinstance(src.get("agents"), dict) else {}
 
-    fundamental = agents.get("fundamental", {}) if isinstance(agents.get("fundamental"), dict) else {}
-    technical = agents.get("technical", {}) if isinstance(agents.get("technical"), dict) else {}
-    synthesis = agents.get("synthesis", {}) if isinstance(agents.get("synthesis"), dict) else {}
-    market_context = agents.get("market_context", {}) if isinstance(agents.get("market_context"), dict) else {}
-    sec = agents.get("sec", {}) if isinstance(agents.get("sec"), dict) else {}
-
-    valuation = fundamental.get("valuation", {}) if isinstance(fundamental.get("valuation"), dict) else {}
-    methods = valuation.get("valuation_methods", {}) if isinstance(valuation.get("valuation_methods"), dict) else {}
-    multi_model = (
-        methods.get("multi_model")
-        if isinstance(methods.get("multi_model"), dict)
-        else (
-            fundamental.get("multi_model_summary") if isinstance(fundamental.get("multi_model_summary"), dict) else {}
-        )
+    fundamental: Dict[str, Any] = agents.get("fundamental", {}) if isinstance(agents.get("fundamental"), dict) else {}
+    technical: Dict[str, Any] = agents.get("technical", {}) if isinstance(agents.get("technical"), dict) else {}
+    synthesis: Dict[str, Any] = agents.get("synthesis", {}) if isinstance(agents.get("synthesis"), dict) else {}
+    market_context: Dict[str, Any] = (
+        agents.get("market_context", {}) if isinstance(agents.get("market_context"), dict) else {}
     )
-    ratios = fundamental.get("ratios", {}) if isinstance(fundamental.get("ratios"), dict) else {}
-    data_quality = fundamental.get("data_quality", {}) if isinstance(fundamental.get("data_quality"), dict) else {}
+    sec: Dict[str, Any] = agents.get("sec", {}) if isinstance(agents.get("sec"), dict) else {}
+
+    valuation: Dict[str, Any] = (
+        fundamental.get("valuation", {}) if isinstance(fundamental.get("valuation"), dict) else {}
+    )
+    methods: Dict[str, Any] = (
+        valuation.get("valuation_methods", {}) if isinstance(valuation.get("valuation_methods"), dict) else {}
+    )
+    methods_multi_model = methods.get("multi_model")
+    fundamental_multi_model = fundamental.get("multi_model_summary")
+    if isinstance(methods_multi_model, dict):
+        multi_model: Dict[str, Any] = methods_multi_model
+    elif isinstance(fundamental_multi_model, dict):
+        multi_model = fundamental_multi_model
+    else:
+        multi_model = {}
+    ratios: Dict[str, Any] = fundamental.get("ratios", {}) if isinstance(fundamental.get("ratios"), dict) else {}
+    data_quality: Dict[str, Any] = (
+        fundamental.get("data_quality", {}) if isinstance(fundamental.get("data_quality"), dict) else {}
+    )
 
     basis, horizon = _extract_basis_and_horizon(methods)
     current_price = valuation.get("current_price") or ratios.get("current_price") or technical.get("current_price")
@@ -284,7 +302,7 @@ def _format_compact(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
         final_recommendation, expected_return_pct
     )
 
-    output = {
+    output: Dict[str, Any] = {
         "schema_version": "analysis.compact.v1",
         "symbol": src.get("symbol"),
         "mode": src.get("mode"),
@@ -401,7 +419,11 @@ def _format_compact(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
         },
     }
 
-    return _remove_empty_values(output)
+    decision_policy = _evaluate_decision_policy_from_legacy(src)
+    if decision_policy:
+        output["decision_policy"] = decision_policy
+
+    return cast(Dict[str, Any], _remove_empty_values(output))
 
 
 def _clean_agent_section(agent_data: Dict[str, Any]) -> None:
@@ -578,7 +600,7 @@ def _compact_valuation_models(methods: Dict[str, Any]) -> Dict[str, Any]:
             "assumptions": _pick_assumptions(model.get("assumptions")),
             "diagnostics": _pick_diagnostics(model.get("diagnostics")),
         }
-    return _remove_empty_values(compact)
+    return cast(Dict[str, Any], _remove_empty_values(compact))
 
 
 def _pick_assumptions(assumptions: Any) -> Dict[str, Any]:
@@ -690,7 +712,7 @@ def _compact_cache_status(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
     """
     from pathlib import Path
 
-    cache_info = {}
+    cache_info: Dict[str, Any] = {}
 
     # Get symbol from results
     symbol = analysis_results.get("symbol", "").upper()
@@ -840,7 +862,7 @@ def _action_score(action: Optional[str]) -> Optional[int]:
         "sell": -1,
         "strong_sell": -2,
     }
-    return mapping.get(action)
+    return mapping.get(action or "")
 
 
 def _align_recommendation_with_expected_return(
@@ -881,6 +903,46 @@ def _align_recommendation_with_expected_return(
         return implied, True
 
     return normalized, False
+
+
+def _evaluate_decision_policy_from_legacy(analysis_results: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Evaluate deterministic decision policy for raw legacy analysis payloads."""
+    try:
+        inputs = from_legacy_analysis_result(analysis_results or {})
+        output = InvestmentDecisionPolicy().evaluate(inputs)
+        return _decision_output_to_dict(output)
+    except Exception as exc:
+        logger.debug("Decision policy evaluation skipped for legacy payload: %s", exc)
+        return None
+
+
+def _evaluate_decision_policy_from_ui_summary(summary: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Evaluate deterministic decision policy for compact/UI-shaped payloads."""
+    try:
+        inputs = from_ui_cache_summary(summary or {})
+        output = InvestmentDecisionPolicy().evaluate(inputs)
+        return _decision_output_to_dict(output)
+    except Exception as exc:
+        logger.debug("Decision policy evaluation skipped for compact payload: %s", exc)
+        return None
+
+
+def _decision_output_to_dict(output) -> Dict[str, Any]:
+    return {
+        "action": output.action,
+        "display_action": _display_action(output.action),
+        "confidence": output.confidence,
+        "score": output.score,
+        "expected_return_pct": output.expected_return_pct,
+        "guardrails_triggered": list(output.guardrails_triggered),
+        "evidence": output.evidence,
+    }
+
+
+def _display_action(action: Optional[str]) -> str:
+    if not action:
+        return "N/A"
+    return str(action).replace("_", " ")
 
 
 def _extract_list(data: Dict[str, Any], key: str, max_items: int = 3) -> List[str]:

@@ -4,7 +4,9 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, text
 
 import victor_invest.workflows as workflows_pkg
 from victor_invest.workflows.state import AnalysisMode, AnalysisWorkflowState
@@ -17,7 +19,7 @@ def test_api_runner_alias_targets_yaml_workflow_path():
 
 
 def test_api_contract_alias_routes_present():
-    route_paths = {route.path for route in api_module.app.routes}
+    route_paths = {route.path for route in api_module.app.routes if hasattr(route, "path")}
     assert "/dashboard" in route_paths
     assert "/ui/api/health" in route_paths
     assert "/api/health" in route_paths
@@ -382,6 +384,65 @@ def test_extract_ui_view_from_compact_derives_guidance_from_model_assumptions():
     assert guidance["revenue_growth_guidance"] == 0.08
 
 
+def test_latest_orchestrator_payload_uses_newest_valid_type():
+    engine = create_engine("sqlite:///:memory:")
+    with engine.begin() as conn:
+        conn.execute(
+            text("""
+                CREATE TABLE llm_responses (
+                    symbol TEXT,
+                    form_type TEXT,
+                    period TEXT,
+                    prompt TEXT,
+                    model_info TEXT,
+                    response TEXT,
+                    metadata TEXT,
+                    llm_type TEXT,
+                    ts TIMESTAMP
+                )
+            """)
+        )
+        old_payload = json.dumps({"schema_version": "analysis.compact.v1", "symbol": "AAPL", "price": {"target": 100}})
+        new_payload = json.dumps({"schema_version": "analysis.compact.v1", "symbol": "AAPL", "price": {"target": 200}})
+        conn.execute(
+            text("""
+                INSERT INTO llm_responses VALUES
+                ('AAPL', 'analysis', 'latest', '', '{}', :old_payload, '{}', 'orchestrator_comprehensive', '2026-01-01 00:00:00'),
+                ('AAPL', 'analysis', 'latest', '', '{}', :new_payload, '{}', 'orchestrator_standard', '2026-02-01 00:00:00')
+            """),
+            {"old_payload": old_payload, "new_payload": new_payload},
+        )
+
+    api_module.app.state.db_engine = engine
+
+    result = api_module._get_latest_orchestrator_payload("AAPL")
+
+    assert result is not None
+    assert result["payload"]["price"]["target"] == 200
+    assert result["source"] == "db:orchestrator_standard"
+
+
+def test_ui_view_matches_requested_basis_and_horizon():
+    forward_view = {"summary": {"valuation_basis": "forward", "forward_horizon": "1y"}}
+    ttm_view = {"summary": {"valuation_basis": "ttm", "forward_horizon": None}}
+
+    assert api_module._ui_view_matches_valuation_request(
+        forward_view,
+        valuation_basis="forward",
+        forward_horizon="1y",
+    )
+    assert not api_module._ui_view_matches_valuation_request(
+        forward_view,
+        valuation_basis="forward",
+        forward_horizon="2q",
+    )
+    assert api_module._ui_view_matches_valuation_request(
+        ttm_view,
+        valuation_basis="ttm",
+        forward_horizon="1y",
+    )
+
+
 def test_build_rankings_payload_returns_overall_and_sector_views():
     now_epoch = datetime.utcnow().timestamp()
     entries = [
@@ -436,6 +497,8 @@ def test_build_rankings_payload_returns_overall_and_sector_views():
     assert payload["universe"]["cached_symbols"] == 3
     assert payload["universe"]["eligible_symbols"] == 3
     assert payload["overall"]["longs"][0]["symbol"] == "AAA"
+    assert payload["overall"]["longs"][0]["decision_action"] == "REVIEW"
+    assert "decision_policy" in payload["overall"]["longs"][0]
     assert payload["overall"]["shorts"][0]["symbol"] == "BBB"
     assert any(sector_row["sector"] == "Technology" for sector_row in payload["sectors"])
     assert payload["pairs"][0]["long"]["symbol"] == "AAA"
@@ -498,6 +561,121 @@ def test_build_rankings_payload_filters_concentrated_and_low_confidence_names():
     assert payload["universe"]["eligible_symbols"] == 1
     assert payload["overall"]["shorts"][0]["symbol"] == "ROBUST"
     assert payload["overall"]["longs"] == []
+
+
+def test_build_rankings_payload_excludes_split_like_fair_values_by_default():
+    now_epoch = datetime.utcnow().timestamp()
+    base_entry = {
+        "sector": "Communication Services",
+        "confidence_score": 80.0,
+        "data_quality_score": 85.0,
+        "model_agreement_score": 0.92,
+        "dispersion_ratio": 0.08,
+        "weighted_model_count": 3,
+        "max_model_weight": 0.4,
+        "valuation_basis": "ttm",
+        "cached_at_epoch": now_epoch,
+    }
+    entries = [
+        {
+            **base_entry,
+            "symbol": "SPLIT",
+            "expected_return_pct": 485.0,
+            "current_price": 87.02,
+            "target_price": 509.31,
+        },
+        {
+            **base_entry,
+            "symbol": "CLEAN",
+            "expected_return_pct": 28.0,
+            "current_price": 100.0,
+            "target_price": 128.0,
+        },
+    ]
+
+    payload = api_module._build_rankings_payload(
+        entries,
+        limit=5,
+        per_sector=2,
+        min_quality=50.0,
+        max_age_hours=1000.0,
+        min_model_agreement=0.25,
+        max_dispersion=0.8,
+        basis=None,
+        forward_horizon=None,
+    )
+
+    assert payload["universe"]["eligible_symbols"] == 1
+    assert payload["universe"]["split_suspect_symbols"] == 1
+    assert payload["overall"]["longs"][0]["symbol"] == "CLEAN"
+    assert payload["overall"]["longs"][0]["decision_action"] == "STRONG_BUY"
+    assert payload["overall"]["longs"][0]["decision_confidence"] == "HIGH"
+
+    raw_payload = api_module._build_rankings_payload(
+        entries,
+        limit=5,
+        per_sector=2,
+        min_quality=50.0,
+        max_age_hours=1000.0,
+        min_model_agreement=0.25,
+        max_dispersion=0.8,
+        basis=None,
+        forward_horizon=None,
+        exclude_split_suspects=False,
+    )
+    assert raw_payload["universe"]["eligible_symbols"] == 2
+    assert raw_payload["overall"]["longs"][0]["symbol"] == "SPLIT"
+
+
+def test_compute_rankings_prefers_db_entries_over_cache(monkeypatch):
+    now_epoch = datetime.utcnow().timestamp()
+    db_entries = [
+        {
+            "symbol": "DBWIN",
+            "sector": "Technology",
+            "expected_return_pct": 12.0,
+            "confidence_score": 80.0,
+            "data_quality_score": 80.0,
+            "model_agreement_score": 0.6,
+            "dispersion_ratio": 0.3,
+            "valuation_basis": "ttm",
+            "cached_at_epoch": now_epoch,
+            "current_price": 100.0,
+            "target_price": 112.0,
+            "weighted_model_count": 2,
+            "max_model_weight": 0.5,
+        }
+    ]
+
+    monkeypatch.setattr(api_module, "_load_rankable_db_entries", lambda: db_entries)
+    monkeypatch.setattr(api_module, "_load_rankable_cache_entries", lambda: pytest.fail("cache should not be used"))
+
+    payload = api_module._compute_rankings(
+        limit=5,
+        per_sector=2,
+        min_quality=0.0,
+        max_age_hours=1000.0,
+        min_model_agreement=0.0,
+        max_dispersion=1.0,
+        basis=None,
+        forward_horizon=None,
+        pair_limit=0,
+        pair_per_sector=0,
+        min_pair_spread=0.0,
+        portfolio_legs=1,
+        min_confidence=0.0,
+        require_model_agreement=False,
+        require_dispersion=False,
+        max_single_model_weight=1.0,
+        require_multi_model=False,
+        min_target_multiple=0.1,
+        max_target_multiple=10.0,
+        require_positive_target=True,
+        exclude_split_suspects=True,
+    )
+
+    assert payload["universe"]["cached_symbols"] == 1
+    assert payload["overall"]["longs"][0]["symbol"] == "DBWIN"
 
 
 def test_ui_rankings_endpoint_reads_cache_files(monkeypatch, tmp_path: Path):
@@ -613,5 +791,5 @@ def test_ui_rankings_export_csv(monkeypatch, tmp_path: Path):
 
     assert response.status_code == 200
     assert "text/csv" in (response.headers.get("content-type") or "")
-    assert "side,rank,symbol,sector" in response.text
+    assert "side,rank,symbol,sector,decision_action,decision_confidence,decision_score" in response.text
     assert "AAPL" in response.text

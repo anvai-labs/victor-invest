@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ following Victor's RoleToolProvider protocol for OCP compliance.
 
 Usage:
     from victor_invest.role_provider import InvestmentRoleProvider
-    from victor_sdk.subagent_runtime import set_role_tool_provider
+    from victor_contracts.subagent_runtime import set_role_tool_provider
 
     # Register globally
     set_role_tool_provider(InvestmentRoleProvider())
@@ -150,7 +150,7 @@ def register_investment_role_provider() -> None:
         from victor_invest.role_provider import register_investment_role_provider
         register_investment_role_provider()
     """
-    from victor_sdk.subagent_runtime import set_role_tool_provider
+    from victor_contracts.subagent_runtime import set_role_tool_provider
 
     set_role_tool_provider(InvestmentRoleProvider())
 
