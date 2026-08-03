@@ -265,6 +265,14 @@ extend-exclude = [
     "artifacts",
 ]
 
+[tool.ruff.lint]
+# Pin the rule set explicitly rather than inheriting Ruff's built-in defaults.
+# Ruff 0.16 widened those defaults, so an unpinned `ruff>=0.4.0` in the dev
+# extras silently changed what CI enforced and broke the lint gate. These are
+# the rules this repo has always been linted against (Ruff's pre-0.16 default).
+# Adopting additional rule families is a deliberate, separate change.
+select = ["E4", "E7", "E9", "F"]
+
 [tool.ruff.format]
 # Use double quotes (Black default)
 quote-style = "double"
