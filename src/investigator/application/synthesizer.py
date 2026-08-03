@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - Analysis Synthesis Module (Refactored)
 Copyright (c) 2025 Vijaykumar Singh

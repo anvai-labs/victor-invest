@@ -396,19 +396,16 @@ class ByAdshFyFpMatcher(PeriodMatchStrategy):
 
         for entry in valid_entries:
             # Check ADSH if provided
-            if context.target_adsh:
-                if entry.get("accn") != context.target_adsh:
-                    continue
+            if context.target_adsh and entry.get("accn") != context.target_adsh:
+                continue
 
             # Check fiscal year if provided
-            if context.target_fiscal_year:
-                if entry.get("fy") != context.target_fiscal_year:
-                    continue
+            if context.target_fiscal_year and entry.get("fy") != context.target_fiscal_year:
+                continue
 
             # Check fiscal period if provided
-            if context.target_fiscal_period:
-                if entry.get("fp") != context.target_fiscal_period:
-                    continue
+            if context.target_fiscal_period and entry.get("fp") != context.target_fiscal_period:
+                continue
 
             matches.append(entry)
 

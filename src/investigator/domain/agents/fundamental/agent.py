@@ -954,7 +954,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             )
 
         except Exception as e:
-            self.logger.error(f"Fundamental analysis failed for {symbol}: {e}", exc_info=True)
+            self.logger.exception(f"Fundamental analysis failed for {symbol}")
             return AgentResult(
                 task_id=task.task_id,
                 agent_id=self.agent_id,
@@ -1093,11 +1093,9 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                     f"SEC Agent cache miss for {symbol}: {cache_error}. Ensure SEC Agent runs before Fundamental Agent."
                 )
             except Exception as api_error:
-                self.logger.error(
-                    "Failed to hydrate company data for %s from SEC cache pipeline: %s",
+                self.logger.exception(
+                    "Failed to hydrate company data for %s from SEC cache pipeline",
                     symbol,
-                    api_error,
-                    exc_info=True,
                 )
                 # Explicitly surface migration guidance instead of silently falling back
                 raise RuntimeError(
@@ -1131,7 +1129,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
             # Re-raise ValueError for missing data (already has good error message)
             raise
         except Exception as e:
-            self.logger.error(f"Failed to fetch company data for {symbol}: {e}", exc_info=True)
+            self.logger.exception(f"Failed to fetch company data for {symbol}")
             raise ValueError(f"Failed to fetch company data for {symbol}: {e!s}")
 
     @staticmethod
@@ -1734,7 +1732,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                 )
             return result
         except Exception as e:
-            self.logger.error(f"{symbol} - DCF calculation error: {e}", exc_info=True)
+            self.logger.exception(f"{symbol} - DCF calculation error")
             return {"fair_value_per_share": 0, "applicable": False, "error": str(e)}
 
     async def _calculate_ggm(
@@ -1784,7 +1782,7 @@ class FundamentalAnalysisAgent(InvestmentAgent):
                 self.logger.info(f"{symbol} - GGM not applicable: {result.get('reason', 'Unknown')}")
             return result
         except Exception as e:
-            self.logger.error(f"{symbol} - GGM calculation error: {e}", exc_info=True)
+            self.logger.exception(f"{symbol} - GGM calculation error")
             return {
                 "applicable": False,
                 "reason": f"Error: {e!s}",

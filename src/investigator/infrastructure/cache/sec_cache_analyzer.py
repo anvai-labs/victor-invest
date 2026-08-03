@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Analyze cache hit/miss patterns for SEC data types
 """

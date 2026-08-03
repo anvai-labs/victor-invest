@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - SEC Pattern Implementations Initialization
 Copyright (c) 2025 Vijaykumar Singh
@@ -7,6 +6,9 @@ Licensed under the Apache License 2.0
 SEC Pattern Implementations
 SEC data fetching and analysis patterns
 """
+
+# Barrel module: re-exports via star imports.
+# ruff: noqa: F403, F405
 
 from .sec_adapters import *
 from .sec_facade import *

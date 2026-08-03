@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Technical Indicators Calculation Module
 Centralized calculation of all technical analysis indicators

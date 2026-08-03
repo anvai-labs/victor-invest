@@ -245,9 +245,8 @@ class DataQualityAssessor:
         # Check for impossible values (with None-safe comparisons)
         net_income = financials.get("net_income") or 0
         total_revenue = financials.get("revenues") or 0
-        if net_income < 0 and total_revenue > 0:
-            if abs(net_income) > total_revenue:
-                consistency_issues.append("Net loss exceeds revenue (possible data error)")
+        if net_income < 0 and total_revenue > 0 and abs(net_income) > total_revenue:
+            consistency_issues.append("Net loss exceeds revenue (possible data error)")
 
         current_liabilities = financials.get("current_liabilities") or 0
         total_assets = financials.get("total_assets") or 0

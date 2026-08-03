@@ -52,10 +52,9 @@ def clean(ctx, clean_all, clean_db, clean_disk, symbol, cache_type, force):
     cache_manager = get_cache_manager()
 
     # Confirmation for all
-    if clean_all and not force:
-        if not click.confirm("This will delete ALL cached data. Continue?"):
-            click.echo("Cancelled")
-            return
+    if clean_all and not force and not click.confirm("This will delete ALL cached data. Continue?"):
+        click.echo("Cancelled")
+        return
 
     try:
         if clean_all:

@@ -219,7 +219,7 @@ class ValuationComputeHandler(HandlerBase):
                 duration_seconds=time.time() - start_time,
             )
         except Exception as e:
-            logger.error(f"Valuation failed for {symbol}: {e}", exc_info=True)
+            logger.exception(f"Valuation failed for {symbol}")
             return NodeResult(
                 node_id=node.id,
                 status=NodeStatus.FAILED,
@@ -363,7 +363,7 @@ class RLWeightDecisionHandler(HandlerBase):
                 duration_seconds=time.time() - start_time,
             )
         except Exception as e:
-            logger.error(f"RL weight decision failed: {e}", exc_info=True)
+            logger.exception("RL weight decision failed")
             return NodeResult(
                 node_id=node.id,
                 status=NodeStatus.FAILED,
@@ -470,7 +470,7 @@ class SECDataExtractHandler(HandlerBase):
                 duration_seconds=time.time() - start_time,
             )
         except Exception as e:
-            logger.error(f"SEC data extraction failed for {symbol}: {e}", exc_info=True)
+            logger.exception(f"SEC data extraction failed for {symbol}")
             return NodeResult(
                 node_id=node.id,
                 status=NodeStatus.FAILED,
@@ -594,7 +594,7 @@ class SectorValuationHandler(HandlerBase):
                 duration_seconds=time.time() - start_time,
             )
         except Exception as e:
-            logger.error(f"Sector valuation failed for {symbol}: {e}", exc_info=True)
+            logger.exception(f"Sector valuation failed for {symbol}")
             return NodeResult(
                 node_id=node.id,
                 status=NodeStatus.FAILED,
@@ -694,7 +694,7 @@ class PriceDataFetchHandler(HandlerBase):
                 duration_seconds=time.time() - start_time,
             )
         except Exception as e:
-            logger.error(f"Price data fetch failed for {symbol}: {e}", exc_info=True)
+            logger.exception(f"Price data fetch failed for {symbol}")
             return NodeResult(
                 node_id=node.id,
                 status=NodeStatus.FAILED,
@@ -801,7 +801,7 @@ class TechnicalAnalysisHandler(HandlerBase):
                 duration_seconds=time.time() - start_time,
             )
         except Exception as e:
-            logger.error(f"Technical analysis failed for {symbol}: {e}", exc_info=True)
+            logger.exception(f"Technical analysis failed for {symbol}")
             return NodeResult(
                 node_id=node.id,
                 status=NodeStatus.FAILED,
@@ -871,7 +871,7 @@ class MetadataFetchHandler(HandlerBase):
                 duration_seconds=time.time() - start_time,
             )
         except Exception as e:
-            logger.error(f"Metadata fetch failed for {symbol}: {e}", exc_info=True)
+            logger.exception(f"Metadata fetch failed for {symbol}")
             return NodeResult(
                 node_id=node.id,
                 status=NodeStatus.FAILED,
@@ -955,7 +955,7 @@ class OutcomeTrackingHandler(HandlerBase):
                 duration_seconds=time.time() - start_time,
             )
         except Exception as e:
-            logger.error(f"Outcome tracking failed for {symbol}: {e}", exc_info=True)
+            logger.exception(f"Outcome tracking failed for {symbol}")
             return NodeResult(
                 node_id=node.id,
                 status=NodeStatus.FAILED,
@@ -1032,7 +1032,7 @@ class BlendedValuationHandler(HandlerBase):
                 duration_seconds=time.time() - start_time,
             )
         except Exception as e:
-            logger.error(f"Blended valuation failed: {e}", exc_info=True)
+            logger.exception("Blended valuation failed")
             return NodeResult(
                 node_id=node.id,
                 status=NodeStatus.FAILED,

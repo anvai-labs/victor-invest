@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Regression Tests for Q1 Fiscal Year Mislabeling Fix
 

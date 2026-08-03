@@ -439,15 +439,12 @@ class ShortInterestSource(DataSource):
 
             # Calculate trend
             trend = "stable"
-            if len(history) >= 2:
-                if history[0].get("short_interest") and history[1].get("short_interest"):
-                    change = (history[0]["short_interest"] - history[1]["short_interest"]) / history[1][
-                        "short_interest"
-                    ]
-                    if change > 0.1:
-                        trend = "increasing"
-                    elif change < -0.1:
-                        trend = "decreasing"
+            if len(history) >= 2 and history[0].get("short_interest") and history[1].get("short_interest"):
+                change = (history[0]["short_interest"] - history[1]["short_interest"]) / history[1]["short_interest"]
+                if change > 0.1:
+                    trend = "increasing"
+                elif change < -0.1:
+                    trend = "decreasing"
 
             return DataResult(
                 success=True,

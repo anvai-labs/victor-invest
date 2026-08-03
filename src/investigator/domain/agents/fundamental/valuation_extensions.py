@@ -158,18 +158,17 @@ async def calculate_valuation_extensions(
             )
 
     # Secondary recovery: infer annual dividends from dividend yield and market cap.
-    if common_divs <= 0:
-        if dividend_yield and market_cap > 0:
-            inferred_common_divs = market_cap * dividend_yield
-            if inferred_common_divs > 0:
-                common_divs = inferred_common_divs
-                dividends_paid = common_divs + preferred_divs
-                logger.info(
-                    "%s - Inferred dividends_paid from dividend yield %.2f%% and market cap: $%s",
-                    symbol,
-                    dividend_yield * 100.0,
-                    format(dividends_paid, ",.0f"),
-                )
+    if common_divs <= 0 and dividend_yield and market_cap > 0:
+        inferred_common_divs = market_cap * dividend_yield
+        if inferred_common_divs > 0:
+            common_divs = inferred_common_divs
+            dividends_paid = common_divs + preferred_divs
+            logger.info(
+                "%s - Inferred dividends_paid from dividend yield %.2f%% and market cap: $%s",
+                symbol,
+                dividend_yield * 100.0,
+                format(dividends_paid, ",.0f"),
+            )
 
     payout_ratio_from_yield = (
         (market_cap * dividend_yield / net_income * 100.0)

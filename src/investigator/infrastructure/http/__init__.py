@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - Infrastructure Layer HTTP
 Copyright (c) 2025 Vijaykumar Singh

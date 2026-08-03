@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - Weekly Report Generation Module
 Copyright (c) 2025 Vijaykumar Singh

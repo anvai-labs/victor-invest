@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 ASCII Art Banners for InvestiGator
 Copyright (c) 2025 Vijaykumar Singh

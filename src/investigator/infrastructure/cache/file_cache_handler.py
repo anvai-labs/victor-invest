@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - File Cache Handler
 Copyright (c) 2025 Vijaykumar Singh

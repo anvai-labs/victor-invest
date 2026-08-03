@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Comprehensive Cache Inspection Report
 Analyzes cache system issues and provides detailed diagnostics

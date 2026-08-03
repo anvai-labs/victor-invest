@@ -676,9 +676,8 @@ def calculate_rule_of_40_adjustment(
         # Minimal adjustment - growth already reflected in PEG
         if multiplier > 1.0:
             multiplier = 1.0 + (multiplier - 1.0) * 0.25  # 25% of premium
-    elif growth_profile == GrowthProfile.HIGH_GROWTH:
-        if multiplier > 1.0:
-            multiplier = 1.0 + (multiplier - 1.0) * 0.50  # 50% of premium
+    elif growth_profile == GrowthProfile.HIGH_GROWTH and multiplier > 1.0:
+        multiplier = 1.0 + (multiplier - 1.0) * 0.50  # 50% of premium
 
     adjusted_value = base_value * multiplier
 

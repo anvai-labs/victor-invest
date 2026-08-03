@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - SEC Data Adapter Patterns
 Copyright (c) 2025 Vijaykumar Singh

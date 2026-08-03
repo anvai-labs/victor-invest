@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - Configuration Management Module
 Copyright (c) 2025 Vijaykumar Singh
@@ -973,9 +972,8 @@ class Config:
         # Fallback: if username not set, use database name as username
         if "database" in config_data:
             db_config = config_data["database"]
-            if "username" not in db_config or not db_config["username"]:
-                if db_config.get("database"):
-                    db_config["username"] = db_config["database"]
+            if ("username" not in db_config or not db_config["username"]) and db_config.get("database"):
+                db_config["username"] = db_config["database"]
 
         return config_data
 

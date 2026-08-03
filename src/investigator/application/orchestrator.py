@@ -618,11 +618,8 @@ class AgentOrchestrator:
 
             except TimeoutError:
                 continue
-            except Exception as e:
-                self.logger.error(
-                    f"Worker {worker_id} encountered unexpected error: {e}",
-                    exc_info=True,
-                )
+            except Exception:
+                self.logger.exception(f"Worker {worker_id} encountered unexpected error")
 
     async def _process_task(self, task: OrchestrationTask) -> dict:
         """Process a single orchestration task"""
@@ -1031,8 +1028,8 @@ class AgentOrchestrator:
             try:
                 # Process events from the queue
                 await asyncio.sleep(0.1)  # Small delay to prevent busy waiting
-            except Exception as e:
-                self.logger.error(f"Event handler encountered unexpected error: {e}", exc_info=True)
+            except Exception:
+                self.logger.exception("Event handler encountered unexpected error")
                 await asyncio.sleep(1)
 
     def _process_event_sync(self, event):
@@ -1092,12 +1089,8 @@ class AgentOrchestrator:
                 self.metrics.record_orchestrator_stats(self.performance_stats)
             except asyncio.CancelledError:
                 break
-            except Exception as e:
-                self.logger.error(
-                    "Metrics reporter encountered unexpected error: %s",
-                    e,
-                    exc_info=True,
-                )
+            except Exception:
+                self.logger.exception("Metrics reporter encountered unexpected error")
                 await asyncio.sleep(1)
 
     async def optimize_agent_allocation(self):

@@ -279,7 +279,7 @@ class SymbolUpdateAgent(InvestmentAgent):
             )
 
         except Exception as e:
-            self.logger.error(f"Failed to update symbol table for {symbol}: {e}", exc_info=True)
+            self.logger.exception(f"Failed to update symbol table for {symbol}")
             return AgentResult(
                 task_id=task.task_id,
                 agent_id=self.agent_id,
@@ -614,10 +614,9 @@ class SymbolUpdateAgent(InvestmentAgent):
         # PostgreSQL JSONB columns require JSON-encoded strings, not Python dicts
         jsonb_columns = ["valuation_models_json"]
         for col in jsonb_columns:
-            if col in update_data and update_data[col] is not None:
-                if isinstance(update_data[col], dict):
-                    update_data[col] = json.dumps(update_data[col])
-                    self.logger.debug(f"Serialized {col} to JSON string ({len(update_data[col])} chars)")
+            if col in update_data and update_data[col] is not None and isinstance(update_data[col], dict):
+                update_data[col] = json.dumps(update_data[col])
+                self.logger.debug(f"Serialized {col} to JSON string ({len(update_data[col])} chars)")
 
         # Build SET clause
         set_clause = ", ".join([f"{col} = :{col}" for col in update_data])

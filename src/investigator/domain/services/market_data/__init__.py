@@ -90,23 +90,23 @@ def get_sec_db_url() -> str:
     return f"postgresql://{user}:{password}@{host}:{port}/{database}"
 
 
-from investigator.domain.services.market_data.metadata_service import (
+from investigator.domain.services.market_data.metadata_service import (  # noqa: E402
     SymbolMetadata,
     SymbolMetadataService,
 )
-from investigator.domain.services.market_data.price_service import (
+from investigator.domain.services.market_data.price_service import (  # noqa: E402
     PriceService,
 )
-from investigator.domain.services.market_data.shares_service import (
+from investigator.domain.services.market_data.shares_service import (  # noqa: E402
     SharesHistory,
     SharesService,
 )
-from investigator.domain.services.market_data.technical_analysis_service import (
+from investigator.domain.services.market_data.technical_analysis_service import (  # noqa: E402
     TechnicalAnalysisService,
     TechnicalFeatures,
     get_technical_analysis_service,
 )
-from investigator.domain.services.market_data.validation_service import (
+from investigator.domain.services.market_data.validation_service import (  # noqa: E402
     DataQualityWarning,
     DataValidationService,
 )

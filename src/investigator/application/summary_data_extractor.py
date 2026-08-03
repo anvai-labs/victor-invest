@@ -55,9 +55,7 @@ class ExtractionResult:
             return False
         if isinstance(self.value, str) and self.value in ["", "N/A", "None"]:
             return False
-        if isinstance(self.value, (list, dict)) and len(self.value) == 0:
-            return False
-        return True
+        return not (isinstance(self.value, (list, dict)) and len(self.value) == 0)
 
     @classmethod
     def not_found(cls, attempted_paths: str = "") -> "ExtractionResult":
@@ -875,12 +873,11 @@ class SummaryDataExtractor:
 
         # Calculate expected return
         expected_return = None
-        if price_target.has_value and current_price.has_value:
-            if current_price.value > 0:
-                expected_return = round(
-                    (price_target.value - current_price.value) / current_price.value * 100,
-                    2,
-                )
+        if price_target.has_value and current_price.has_value and current_price.value > 0:
+            expected_return = round(
+                (price_target.value - current_price.value) / current_price.value * 100,
+                2,
+            )
 
         return {
             "symbol": self.data.get("symbol"),

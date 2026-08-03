@@ -27,7 +27,7 @@ Plugin paradigm (consolidated, contract >= 0.7.0):
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from victor_contracts import PluginContext, VictorPlugin
 

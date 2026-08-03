@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Peer Group Comparison Module for InvestiGator
 Calculates financial ratios and performs peer group analysis

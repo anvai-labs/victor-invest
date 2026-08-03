@@ -92,7 +92,7 @@ class FairMultipleCalculatorTool(BaseTool):
                 return ToolResult.create_failure(f"Unknown action: {action}. Valid actions: calculate, report")
 
         except Exception as e:
-            logger.exception(f"Error in FairMultipleCalculatorTool.execute: {e}")
+            logger.exception("Error in FairMultipleCalculatorTool.execute")
             return ToolResult.create_failure(f"Error calculating fair multiples: {e!s}")
 
     async def _calculate(

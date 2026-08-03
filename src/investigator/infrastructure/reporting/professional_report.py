@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Professional Investment Report Generator
 Clean, concise, institutional-grade reports

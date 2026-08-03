@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 TOON (Token-Oriented Object Notation) Formatter
 Optimizes token usage for LLM prompts by converting tabular JSON to TOON format.

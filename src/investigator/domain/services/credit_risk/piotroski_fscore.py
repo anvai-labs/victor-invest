@@ -341,20 +341,19 @@ class PiotroskiFScoreCalculator:
 
         # 6. Current ratio improving
         current_ratio_improving = False
-        if data.current_assets is not None and data.current_liabilities:
-            if data.current_liabilities > 0:
-                current_ratio = data.current_assets / data.current_liabilities
-                components["current_ratio"] = current_ratio
+        if data.current_assets is not None and data.current_liabilities and data.current_liabilities > 0:
+            current_ratio = data.current_assets / data.current_liabilities
+            components["current_ratio"] = current_ratio
 
-                if data.prior_period:
-                    if data.prior_period.current_assets is not None and data.prior_period.current_liabilities:
-                        if data.prior_period.current_liabilities > 0:
-                            prior_ratio = data.prior_period.current_assets / data.prior_period.current_liabilities
-                            components["prior_current_ratio"] = prior_ratio
-                            current_ratio_improving = current_ratio > prior_ratio
-                            components["current_ratio_change"] = current_ratio - prior_ratio
-                            if current_ratio_improving:
-                                score += 1
+            if data.prior_period:
+                if data.prior_period.current_assets is not None and data.prior_period.current_liabilities:
+                    if data.prior_period.current_liabilities > 0:
+                        prior_ratio = data.prior_period.current_assets / data.prior_period.current_liabilities
+                        components["prior_current_ratio"] = prior_ratio
+                        current_ratio_improving = current_ratio > prior_ratio
+                        components["current_ratio_change"] = current_ratio - prior_ratio
+                        if current_ratio_improving:
+                            score += 1
         criteria["F6_current_ratio_improving"] = current_ratio_improving
 
         # 7. No equity dilution (shares not increased)

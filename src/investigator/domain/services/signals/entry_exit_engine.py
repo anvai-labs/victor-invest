@@ -957,18 +957,17 @@ class EntryExitEngine:
                     )
 
         # 5. Bollinger Upper Band Touch (potential reversal)
-        if bb_upper is not None:
-            if current_price > bb_upper:
-                signals.append(
-                    ExitSignal(
-                        signal_type=SignalType.OVERBOUGHT,
-                        price_level=current_price,
-                        confidence=SignalConfidence.MEDIUM,
-                        rationale=f"Price above Bollinger upper band (${bb_upper:.2f})",
-                        urgency="staged",
-                        partial_exit_pct=30.0,
-                    )
+        if bb_upper is not None and current_price > bb_upper:
+            signals.append(
+                ExitSignal(
+                    signal_type=SignalType.OVERBOUGHT,
+                    price_level=current_price,
+                    confidence=SignalConfidence.MEDIUM,
+                    rationale=f"Price above Bollinger upper band (${bb_upper:.2f})",
+                    urgency="staged",
+                    partial_exit_pct=30.0,
                 )
+            )
 
         # 6. Stop Loss Hit
         if stop_loss is not None and current_price <= stop_loss:

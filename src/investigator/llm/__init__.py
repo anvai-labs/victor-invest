@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - LLM Pattern Implementations Initialization
 Copyright (c) 2025 Vijaykumar Singh
@@ -7,6 +6,9 @@ Licensed under the Apache License 2.0
 LLM Pattern Implementations
 LLM processing and interaction patterns
 """
+
+# Barrel module: re-exports via star imports.
+# ruff: noqa: F403, F405
 
 from .llm_facade import *
 from .llm_interfaces import *

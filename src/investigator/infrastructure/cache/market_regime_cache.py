@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Market Regime Cache Component
 Caches market-wide and sector-wide ETF analysis with daily TTL

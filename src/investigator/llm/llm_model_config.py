@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 LLM Model Configuration and Capability Management
 Handles dynamic model context and parameter configuration

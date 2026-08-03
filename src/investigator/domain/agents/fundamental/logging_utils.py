@@ -353,8 +353,8 @@ def log_valuation_snapshot(
         else:
             logger.warning("%s - No valuation models available for table formatting", symbol)
 
-    except Exception as exc:  # pragma: no cover - defensive
-        logger.exception("%s - ❌ Failed to format valuation summary table: %s", symbol, exc)
+    except Exception:  # pragma: no cover - defensive
+        logger.exception("%s - ❌ Failed to format valuation summary table", symbol)
         if valuation_results.get("multi_model"):
             logger.info("%s - Multi-model summary: %s", symbol, valuation_results["multi_model"])
 

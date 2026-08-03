@@ -212,10 +212,7 @@ class SectorMultiplesTrendAdjusted:
             return True
 
         # Check if group name matches any industry
-        if industries and any(i.lower() in group_name.lower() for i in industries):
-            return True
-
-        return False
+        return bool(industries and any(i.lower() in group_name.lower() for i in industries))
 
     def _get_historical_trend(self, group_name: str, lookback_years: int) -> list[dict[str, Any]]:
         """Fetch historical trend data for a group.

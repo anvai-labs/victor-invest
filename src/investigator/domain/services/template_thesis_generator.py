@@ -342,10 +342,9 @@ class CompetitiveAdvantagesGenerator:
 
         # Add from positive factors
         for factor in context.positive_factors:
-            if "moat" in factor.lower() or "advantage" in factor.lower():
-                if factor not in advantages:
-                    advantages.append(factor)
-                    break
+            if ("moat" in factor.lower() or "advantage" in factor.lower()) and factor not in advantages:
+                advantages.append(factor)
+                break
 
         return advantages[:3]
 

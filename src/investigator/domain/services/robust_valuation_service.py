@@ -760,9 +760,8 @@ class RobustValuationService:
                 )
 
         # Financials validation
-        elif "financial" in sector_lower or "bank" in industry_lower:
-            if ps_ratio > 50:
-                warnings.append(f"High P/S ratio {ps_ratio:.1f} for financial. Consider using P/B or P/E instead.")
+        elif ("financial" in sector_lower or "bank" in industry_lower) and ps_ratio > 50:
+            warnings.append(f"High P/S ratio {ps_ratio:.1f} for financial. Consider using P/B or P/E instead.")
 
         # General sanity check for all industries
         if ps_ratio > 1000:

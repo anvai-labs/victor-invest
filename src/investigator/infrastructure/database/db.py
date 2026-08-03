@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - Database Utilities Module
 Copyright (c) 2025 Vijaykumar Singh

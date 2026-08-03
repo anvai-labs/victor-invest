@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - LLM Facade Pattern Implementation
 Copyright (c) 2025 Vijaykumar Singh

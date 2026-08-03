@@ -288,10 +288,9 @@ class RLTrainingPipeline:
         Returns:
             Dict with update statistics, or None if failed.
         """
-        if not self.policy:
-            if not self.load_existing():
-                logger.warning("No existing policy to update")
-                return None
+        if not self.policy and not self.load_existing():
+            logger.warning("No existing policy to update")
+            return None
 
         # Get recent unused experiences
         experiences = self.collector.collect_recent(

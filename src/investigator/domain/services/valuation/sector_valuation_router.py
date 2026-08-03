@@ -1048,7 +1048,7 @@ class SectorValuationRouter:
 
             if entry:
                 # Check if cache is expired (based on cached_at and ttl)
-                from datetime import datetime, timezone
+                from datetime import datetime
 
                 cached_at = datetime.fromisoformat(entry.cached_at)
                 now = datetime.now(UTC)

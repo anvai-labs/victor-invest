@@ -277,9 +277,8 @@ class TechnicalAnalysisAgent(InvestmentAgent):
         cache_key = {"symbol": symbol, "timeframe": timeframe}
         cached = self.cache.get(CacheType.TECHNICAL_DATA, cache_key) if self.cache else None
         if cached is not None:
-            if isinstance(cached, pd.DataFrame):
-                if not cached.empty:
-                    return cached
+            if isinstance(cached, pd.DataFrame) and not cached.empty:
+                return cached
             if isinstance(cached, dict):
                 cached_df = None
                 if isinstance(cached.get("dataframe"), pd.DataFrame):

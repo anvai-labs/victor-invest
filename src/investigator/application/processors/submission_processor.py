@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - Submission Processor Module
 Copyright (c) 2025 Vijaykumar Singh
@@ -179,9 +178,8 @@ class SubmissionProcessor:
             earnings_filings = []
             for filing in all_filings:
                 base_type = filing.base_form_type
-                if base_type in ["10-K", "10-Q"]:
-                    if include_amendments or not filing.is_amended:
-                        earnings_filings.append(filing)
+                if base_type in ["10-K", "10-Q"] and (include_amendments or not filing.is_amended):
+                    earnings_filings.append(filing)
             self.logger.debug(f"Found {len(earnings_filings)} earnings filings")
 
             self.logger.debug("Grouping filings by period and resolving amendments")

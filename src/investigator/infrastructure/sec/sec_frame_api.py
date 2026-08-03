@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - SEC Frame API Module
 Copyright (c) 2025 Vijaykumar Singh

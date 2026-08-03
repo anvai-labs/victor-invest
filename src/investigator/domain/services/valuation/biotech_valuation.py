@@ -451,9 +451,8 @@ def calculate_comparables_benchmark(
         ]
         for drug in pipeline:
             phase = drug.get("phase", "preclinical").lower().replace(" ", "_")
-            if phase in phase_order:
-                if phase_order.index(phase) > phase_order.index(most_advanced_phase):
-                    most_advanced_phase = phase
+            if phase in phase_order and phase_order.index(phase) > phase_order.index(most_advanced_phase):
+                most_advanced_phase = phase
 
     # Get EV range based on phase
     if most_advanced_phase in ["phase_3", "filed_nda", "approved"]:

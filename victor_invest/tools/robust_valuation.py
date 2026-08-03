@@ -92,7 +92,7 @@ class RobustValuationTool(BaseTool):
                 )
 
         except Exception as e:
-            logger.exception(f"Error in RobustValuationTool.execute: {e}")
+            logger.exception("Error in RobustValuationTool.execute")
             return ToolResult.create_failure(f"Error in robust valuation: {e!s}")
 
     async def _analyze(

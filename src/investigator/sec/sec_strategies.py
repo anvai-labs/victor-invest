@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - SEC Data Fetching Strategies
 Copyright (c) 2025 Vijaykumar Singh

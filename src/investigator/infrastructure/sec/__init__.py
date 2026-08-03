@@ -49,13 +49,13 @@ def __getattr__(name):
 
 
 # These imports are safe and don't trigger circular dependencies
-from investigator.infrastructure.sec.canonical_mapper import (
+from investigator.infrastructure.sec.canonical_mapper import (  # noqa: E402
     CanonicalKeyMapper,
     get_canonical_mapper,
 )
-from investigator.infrastructure.sec.data_strategy import SECDataStrategy
-from investigator.infrastructure.sec.sec_frame_api import SECFrameAPI, get_frame_api
-from investigator.infrastructure.sec.xbrl_parser import XBRLParser
+from investigator.infrastructure.sec.data_strategy import SECDataStrategy  # noqa: E402
+from investigator.infrastructure.sec.sec_frame_api import SECFrameAPI, get_frame_api  # noqa: E402
+from investigator.infrastructure.sec.xbrl_parser import XBRLParser  # noqa: E402
 
 __all__ = [
     "CanonicalKeyMapper",

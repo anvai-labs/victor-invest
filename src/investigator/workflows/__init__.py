@@ -42,7 +42,7 @@ Example:
 import logging
 from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, cast
 
 logger = logging.getLogger(__name__)
 
@@ -226,7 +226,7 @@ except ImportError:
 
 
 # Register investment domain handlers when this module is loaded
-from investigator.domain.handlers import register_handlers as _register_handlers
+from investigator.domain.handlers import register_handlers as _register_handlers  # noqa: E402
 
 _register_handlers()
 

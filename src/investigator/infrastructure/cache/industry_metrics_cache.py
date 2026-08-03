@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - Industry Metrics Cache (Hybrid Architecture)
 Copyright (c) 2025 Vijaykumar Singh

@@ -326,13 +326,12 @@ def run_multi_model_blending(
                 format(ratios["market_cap"], ",.0f"),
             )
 
-        if financials.get("revenue"):
-            if not (financials.get("revenues") or financials.get("total_revenue")):
-                logger.info(
-                    "%s - Added missing 'revenue' key to financials: $%s",
-                    symbol,
-                    format(financials.get("revenue", 0), ",.0f"),
-                )
+        if financials.get("revenue") and not (financials.get("revenues") or financials.get("total_revenue")):
+            logger.info(
+                "%s - Added missing 'revenue' key to financials: $%s",
+                symbol,
+                format(financials.get("revenue", 0), ",.0f"),
+            )
 
         if hydration["fcf_quarters_count"] == 4 and (
             not getattr(company_profile, "quarterly_metrics", None)

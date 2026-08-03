@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Quarterly Metrics Calculator - Clean Architecture Migration
 
@@ -560,12 +559,11 @@ def extract_nested_value(data_dict: dict[str, Any], key: str, debug: bool = Fals
                 return float(val) if val is not None else None
 
         # Try balance_sheet
-        if "balance_sheet" in fd and isinstance(fd["balance_sheet"], dict):
-            if key in fd["balance_sheet"]:
-                val = fd["balance_sheet"][key]
-                if debug:
-                    logger.info(f"🔍 extract: FOUND in BALANCE key='{key}', val={val}")
-                return float(val) if val is not None else None
+        if "balance_sheet" in fd and isinstance(fd["balance_sheet"], dict) and key in fd["balance_sheet"]:
+            val = fd["balance_sheet"][key]
+            if debug:
+                logger.info(f"🔍 extract: FOUND in BALANCE key='{key}', val={val}")
+            return float(val) if val is not None else None
 
     if debug:
         logger.warning(f"🔍 extract: NOT FOUND key='{key}'")
@@ -849,9 +847,7 @@ def _find_consecutive_quarters(periods: list[dict[str, Any]], target_count: int,
         # e.g., Q1-2025 → Q4-2024 (year boundary)
         if prev_fy == curr_fy and prev_q == curr_q + 1:
             return True
-        if prev_fy == curr_fy + 1 and prev_q == 1 and curr_q == 4:
-            return True
-        return False
+        return bool(prev_fy == curr_fy + 1 and prev_q == 1 and curr_q == 4)
 
     # Start with the most recent period as the first candidate sequence
     best_sequence = []

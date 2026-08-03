@@ -144,16 +144,15 @@ class CacheKeyBuilder:
         # TD2 FIX: Check if fiscal_period is required for this cache type
         is_fiscal_required = cache_type in CacheKeyBuilder.FISCAL_PERIOD_REQUIRED_TYPES
 
-        if is_fiscal_required and enforce_fiscal_period:
-            if not effective_fiscal_period:
-                # Log warning and use "latest" as default to maintain backward compatibility
-                logger.warning(
-                    f"TD2 WARNING: fiscal_period missing for {cache_type.value} cache key "
-                    f"(symbol={symbol}). Using 'latest' as default. "
-                    f"This may cause cache collisions between different periods. "
-                    f"Please provide fiscal_period for accurate caching."
-                )
-                effective_fiscal_period = "latest"
+        if is_fiscal_required and enforce_fiscal_period and not effective_fiscal_period:
+            # Log warning and use "latest" as default to maintain backward compatibility
+            logger.warning(
+                f"TD2 WARNING: fiscal_period missing for {cache_type.value} cache key "
+                f"(symbol={symbol}). Using 'latest' as default. "
+                f"This may cause cache collisions between different periods. "
+                f"Please provide fiscal_period for accurate caching."
+            )
+            effective_fiscal_period = "latest"
 
         # Cache-type-specific fields
         if cache_type == CacheType.LLM_RESPONSE:

@@ -20,17 +20,17 @@ src_dir = Path(__file__).parent / "src"
 if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
-from investigator.application import (
+from investigator.application import (  # noqa: E402
     AgentOrchestrator,
     AnalysisMode,
     OutputDetailLevel,
     format_analysis_output,
 )
-from investigator.domain.agents.sec import SECAnalysisAgent
-from investigator.infrastructure.cache import CacheManager
-from investigator.infrastructure.events import EventBus
-from investigator.infrastructure.llm import OllamaClient
-from investigator.infrastructure.monitoring import MetricsCollector
+from investigator.domain.agents.sec import SECAnalysisAgent  # noqa: E402
+from investigator.infrastructure.cache import CacheManager  # noqa: E402
+from investigator.infrastructure.events import EventBus  # noqa: E402
+from investigator.infrastructure.llm import OllamaClient  # noqa: E402
+from investigator.infrastructure.monitoring import MetricsCollector  # noqa: E402
 
 # from api.main import create_app  # Will fix this separately
 
@@ -40,8 +40,8 @@ except ImportError:
     uvicorn = None
 
 # PDF Report generation
-from investigator.application import InvestmentSynthesizer
-from investigator.domain.models import InvestmentRecommendation
+from investigator.application import InvestmentSynthesizer  # noqa: E402
+from investigator.domain.models import InvestmentRecommendation  # noqa: E402
 
 
 # Configure logging

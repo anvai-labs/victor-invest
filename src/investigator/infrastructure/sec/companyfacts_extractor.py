@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - SEC Company Facts Extractor
 Copyright (c) 2025 Vijaykumar Singh

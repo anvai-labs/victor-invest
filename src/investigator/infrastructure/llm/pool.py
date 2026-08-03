@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Resource-Aware Ollama Client Pool v3
 - Uses Ollama REST API (/api/ps) for actual VRAM usage

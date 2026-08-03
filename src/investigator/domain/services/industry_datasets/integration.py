@@ -268,9 +268,8 @@ def apply_adjustments_to_fair_value(
 
     for adj in adjustments:
         # Check if this adjustment applies to the requested models
-        if models_to_apply:
-            if not any(m in adj.affects_models for m in models_to_apply):
-                continue
+        if models_to_apply and not any(m in adj.affects_models for m in models_to_apply):
+            continue
 
         # Apply the adjustment
         adjusted_value *= adj.factor

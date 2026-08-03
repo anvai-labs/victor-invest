@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - Common LLM Response Processor
 Copyright (c) 2025 Vijaykumar Singh

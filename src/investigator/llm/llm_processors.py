@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - LLM Processor Pattern Implementations
 Copyright (c) 2025 Vijaykumar Singh
@@ -872,10 +871,7 @@ class StandardLLMAnalysisTemplate(ILLMAnalysisTemplate):
         if not data:
             return False
 
-        if not isinstance(task_type, LLMTaskType):
-            return False
-
-        return True
+        return isinstance(task_type, LLMTaskType)
 
     def prepare_analysis_request(self, symbol: str, data: dict[str, Any], task_type: LLMTaskType) -> LLMRequest:
         """Prepare analysis request using strategy"""

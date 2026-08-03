@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - RDBMS Cache Handler
 Copyright (c) 2025 Vijaykumar Singh

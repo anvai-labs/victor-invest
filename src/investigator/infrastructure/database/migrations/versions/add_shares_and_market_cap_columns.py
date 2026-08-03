@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Add missing columns to sec_companyfacts_processed table.
 
 These columns are needed for sector multiples historical calculation:

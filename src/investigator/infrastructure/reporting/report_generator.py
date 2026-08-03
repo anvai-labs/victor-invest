@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - PDF Report Generation Module
 Copyright (c) 2025 Vijaykumar Singh
@@ -1764,17 +1763,16 @@ class PDFReportGenerator:
                         elements.append(Spacer(1, 0.05 * inch))
 
                 # Unusual patterns
-                if unusual_patterns := insider_trading.get("unusual_patterns"):
-                    if unusual_patterns:
-                        elements.append(
-                            Paragraph(
-                                "<b>Unusual Patterns Detected:</b>",
-                                self.styles["AnalysisText"],
-                            )
+                if (unusual_patterns := insider_trading.get("unusual_patterns")) and unusual_patterns:
+                    elements.append(
+                        Paragraph(
+                            "<b>Unusual Patterns Detected:</b>",
+                            self.styles["AnalysisText"],
                         )
-                        for pattern in unusual_patterns[:5]:  # Limit to 5 patterns
-                            elements.append(Paragraph(f"  • {pattern}", self.styles["AnalysisText"]))
-                        elements.append(Spacer(1, 0.05 * inch))
+                    )
+                    for pattern in unusual_patterns[:5]:  # Limit to 5 patterns
+                        elements.append(Paragraph(f"  • {pattern}", self.styles["AnalysisText"]))
+                    elements.append(Spacer(1, 0.05 * inch))
 
                 # Interpretation
                 elements.append(Paragraph("<b>Interpretation:</b>", self.styles["AnalysisText"]))

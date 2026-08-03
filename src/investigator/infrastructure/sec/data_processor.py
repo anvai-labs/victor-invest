@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 SEC Data Processor - Extract quarterly data from raw SEC API responses
 
@@ -387,10 +386,9 @@ class SECDataProcessor:
         day = int(day_str)
 
         # LEAP YEAR HANDLING: Adjust Feb 29 to Feb 28 for non-leap years
-        if month == 2 and day == 29:
-            if not isleap(fiscal_year):
-                logger.warning(f"[Fiscal Year Start] Adjusted Feb 29 to Feb 28 for non-leap year {fiscal_year}")
-                day = 28
+        if month == 2 and day == 29 and not isleap(fiscal_year):
+            logger.warning(f"[Fiscal Year Start] Adjusted Feb 29 to Feb 28 for non-leap year {fiscal_year}")
+            day = 28
 
         try:
             # Construct fiscal year end date

@@ -340,7 +340,7 @@ class ParallelValuationOrchestrator:
             )
 
         except Exception as e:
-            logger.error(f"{self.symbol} - {framework.type} execution failed: {e}", exc_info=True)
+            logger.exception(f"{self.symbol} - {framework.type} execution failed")
             return FrameworkResult(
                 framework_type=framework.type,
                 fair_value=None,

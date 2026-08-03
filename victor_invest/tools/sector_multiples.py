@@ -104,7 +104,7 @@ class SectorMultiplesTool(BaseTool):
                 )
 
         except Exception as e:
-            logger.exception(f"Error in SectorMultiplesTool.execute: {e}")
+            logger.exception("Error in SectorMultiplesTool.execute")
             return ToolResult.create_failure(f"Error executing sector multiples: {e!s}")
 
     async def _refresh(

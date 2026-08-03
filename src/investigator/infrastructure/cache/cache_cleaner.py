@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Cache Cleanup Utility - Background TTL Enforcement
 

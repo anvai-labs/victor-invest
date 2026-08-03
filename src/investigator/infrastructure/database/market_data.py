@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - Market Data Database Fetcher
 Copyright (c) 2025 Vijaykumar Singh

@@ -469,10 +469,7 @@ class MetricExtractionOrchestrator:
             if month_diff <= 1:
                 return True
             # Handle year wraparound (Dec vs Jan)
-            if month_diff >= 11:
-                return True
-
-            return False
+            return month_diff >= 11
         except ValueError:
             return False
 

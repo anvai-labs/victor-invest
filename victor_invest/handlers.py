@@ -1982,21 +1982,19 @@ class GenerateReportHandler(BaseHandler):
 
         # Get growth metrics
         growth = fund_data.get("growth") or {}
-        if growth:
-            if "revenue_growth" in growth:
-                metrics["revenue_growth"] = {
-                    "company": growth.get("revenue_growth"),
-                    "sector": growth.get("sector_revenue_growth_median"),
-                }
+        if growth and "revenue_growth" in growth:
+            metrics["revenue_growth"] = {
+                "company": growth.get("revenue_growth"),
+                "sector": growth.get("sector_revenue_growth_median"),
+            }
 
         # Get leverage metrics
         leverage = fund_data.get("leverage") or fund_data.get("balance_sheet") or {}
-        if leverage:
-            if "debt_to_equity" in leverage:
-                metrics["debt_to_equity"] = {
-                    "company": leverage.get("debt_to_equity"),
-                    "sector": leverage.get("sector_debt_to_equity_median"),
-                }
+        if leverage and "debt_to_equity" in leverage:
+            metrics["debt_to_equity"] = {
+                "company": leverage.get("debt_to_equity"),
+                "sector": leverage.get("sector_debt_to_equity_median"),
+            }
 
         # Try to get from SEC filing data as fallback
         sec_data = context.get("sec_data") if context else None

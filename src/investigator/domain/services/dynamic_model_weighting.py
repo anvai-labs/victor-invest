@@ -281,30 +281,29 @@ class DynamicModelWeightingService:
         # and update financials dict so applicability filters can use it
         # Note: Managed care companies are in Health Care sector, not Financials!
         is_insurance_like = self._is_insurance_or_managed_care(sector, industry, symbol)
-        if is_insurance_like:
-            if stockholders_equity <= 0:
-                try:
-                    from investigator.domain.services.valuation.insurance_valuation import (
-                        _fetch_from_database,
-                    )
+        if is_insurance_like and stockholders_equity <= 0:
+            try:
+                from investigator.domain.services.valuation.insurance_valuation import (
+                    _fetch_from_database,
+                )
 
-                    db_equity, db_shares, _ = _fetch_from_database(symbol, None)
-                    if db_equity:
-                        stockholders_equity = db_equity
-                        financials["stockholders_equity"] = stockholders_equity
+                db_equity, db_shares, _ = _fetch_from_database(symbol, None)
+                if db_equity:
+                    stockholders_equity = db_equity
+                    financials["stockholders_equity"] = stockholders_equity
+                    logger.info(
+                        f"{symbol} - Insurance: Updated financials with DB equity: ${stockholders_equity / 1e9:.2f}B"
+                    )
+                if db_shares and not financials.get("shares_outstanding"):
+                    financials["shares_outstanding"] = db_shares
+                    # Also calculate book_value_per_share for P/B applicability
+                    if stockholders_equity and db_shares:
+                        financials["book_value_per_share"] = stockholders_equity / db_shares
                         logger.info(
-                            f"{symbol} - Insurance: Updated financials with DB equity: ${stockholders_equity / 1e9:.2f}B"
+                            f"{symbol} - Insurance: Calculated BV/share: ${financials['book_value_per_share']:.2f}"
                         )
-                    if db_shares and not financials.get("shares_outstanding"):
-                        financials["shares_outstanding"] = db_shares
-                        # Also calculate book_value_per_share for P/B applicability
-                        if stockholders_equity and db_shares:
-                            financials["book_value_per_share"] = stockholders_equity / db_shares
-                            logger.info(
-                                f"{symbol} - Insurance: Calculated BV/share: ${financials['book_value_per_share']:.2f}"
-                            )
-                except Exception as e:
-                    logger.warning(f"{symbol} - Insurance: Could not fetch from database: {e}")
+            except Exception as e:
+                logger.warning(f"{symbol} - Insurance: Could not fetch from database: {e}")
 
         # 4. Classify tier
         tier, sub_tier = self._classify_tier(
