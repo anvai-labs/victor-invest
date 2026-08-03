@@ -129,7 +129,7 @@ class ResourceAwareOllamaPool:
     def __init__(
         self,
         servers: List[ServerCapacity],
-        model_specs: Dict[str, Any] = None,
+        model_specs: Dict[str, Any] | None = None,
         strategy: PoolStrategy = PoolStrategy.MOST_CAPACITY,
         max_failures: int = 3,
         timeout: int = 300,

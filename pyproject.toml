@@ -276,7 +276,17 @@ extend-exclude = [
 # extras silently changed what CI enforced and broke the lint gate. These are
 # the rules this repo has always been linted against (Ruff's pre-0.16 default).
 # Adopting additional rule families is a deliberate, separate change.
-select = ["E4", "E7", "E9", "F"]
+select = [
+    # Ruff's pre-0.16 default set.
+    "E4",
+    "E7",
+    "E9",
+    "F",
+    # Correctness rules adopted deliberately, each with its findings resolved.
+    "B023",   # closure over a loop variable
+    "RUF012", # mutable class attribute not marked ClassVar
+    "RUF013", # implicit Optional (`x: int = None`)
+]
 
 [tool.ruff.format]
 # Use double quotes (Black default)

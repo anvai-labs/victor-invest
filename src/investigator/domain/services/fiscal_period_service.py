@@ -15,7 +15,7 @@ import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, ClassVar, Dict, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ class FiscalPeriodService:
     """
 
     # Period normalization mapping table (deterministic)
-    PERIOD_MAPPINGS = {
+    PERIOD_MAPPINGS: ClassVar[dict] = {
         # Standard formats
         "Q1": "Q1",
         "Q2": "Q2",
@@ -81,7 +81,7 @@ class FiscalPeriodService:
     }
 
     # Fiscal period sorting order (for chronological ordering)
-    PERIOD_SORT_ORDER = {
+    PERIOD_SORT_ORDER: ClassVar[dict] = {
         "FY": 5,  # Full year comes first conceptually
         "Q4": 4,
         "Q3": 3,

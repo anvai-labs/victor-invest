@@ -25,7 +25,7 @@ Usage:
 import logging
 import os
 from datetime import date
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, ClassVar, Dict, Optional, Tuple
 
 from investigator.domain.services.rl.feature_extractor import ValuationContextExtractor
 from investigator.domain.services.rl.feature_normalizer import FeatureNormalizer
@@ -59,13 +59,13 @@ class RLModelWeightingService:
     """
 
     # Horizon-specific policy mapping
-    HORIZON_POLICY_MAP = {
+    HORIZON_POLICY_MAP: ClassVar[dict] = {
         "90d": "data/rl_models/policy.pkl",
         "365d": "data/rl_models/policy_365d.pkl",
         "730d": "data/rl_models/policy_730d.pkl",
     }
 
-    HORIZON_NORMALIZER_MAP = {
+    HORIZON_NORMALIZER_MAP: ClassVar[dict] = {
         "90d": "data/rl_models/normalizer.pkl",
         "365d": "data/rl_models/normalizer_365d.pkl",
         "730d": "data/rl_models/normalizer_730d.pkl",

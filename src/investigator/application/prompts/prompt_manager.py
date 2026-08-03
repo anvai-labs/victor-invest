@@ -412,7 +412,7 @@ Please provide your synthesis in JSON format with the following structure:
 
 Respond with valid JSON only."""
 
-    def validate_json_response(self, response: Dict, metadata: Dict[str, Any] = None) -> Dict[str, Any]:
+    def validate_json_response(self, response: Dict, metadata: Dict[str, Any] | None = None) -> Dict[str, Any]:
         """
         Enhanced JSON response validation with standardized response format
 

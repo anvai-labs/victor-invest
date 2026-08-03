@@ -99,7 +99,7 @@ class DatabaseMarketDataFetcher:
             echo=False,
         )
 
-    def get_stock_data(self, symbol: str, days: int = None) -> pd.DataFrame:
+    def get_stock_data(self, symbol: str, days: int | None = None) -> pd.DataFrame:
         """
         Fetch comprehensive stock data from database
 

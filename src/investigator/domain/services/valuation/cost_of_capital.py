@@ -23,7 +23,7 @@ Usage:
 
 import logging
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import ClassVar, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ class IndustryCostOfCapital:
 
     # Unlevered betas by industry (Damodaran Jan 2024)
     # Source: https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/Betas.html
-    INDUSTRY_BETAS = {
+    INDUSTRY_BETAS: ClassVar[dict] = {
         # Technology
         "Software (System & Application)": 1.08,
         "Software - Application": 1.08,

@@ -58,7 +58,7 @@ class MockComputeNode:
 
 
 class MockWorkflowContext:
-    def __init__(self, data: Dict[str, Any] = None):
+    def __init__(self, data: Dict[str, Any] | None = None):
         self._data = data or {}
 
     def get(self, key: str) -> Any:

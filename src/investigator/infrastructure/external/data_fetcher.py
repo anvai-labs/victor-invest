@@ -189,7 +189,7 @@ class ResilientParser:
     @staticmethod
     def parse_excel(
         content: bytes,
-        hints: Dict[str, Any] = None,
+        hints: Dict[str, Any] | None = None,
     ) -> Optional[Dict[str, Any]]:
         """Parse Excel file with resilient column detection."""
         hints = hints or {}
@@ -264,7 +264,7 @@ class ResilientParser:
     @staticmethod
     def parse_csv(
         content: bytes,
-        hints: Dict[str, Any] = None,
+        hints: Dict[str, Any] | None = None,
     ) -> Optional[Dict[str, Any]]:
         """Parse CSV file with resilient column detection."""
         hints = hints or {}
@@ -295,7 +295,7 @@ class ResilientParser:
     @staticmethod
     def parse_json(
         content: bytes,
-        hints: Dict[str, Any] = None,
+        hints: Dict[str, Any] | None = None,
     ) -> Optional[Dict[str, Any]]:
         """Parse JSON response."""
         hints = hints or {}
@@ -381,7 +381,7 @@ class ResilientParser:
     @staticmethod
     def parse_html(
         content: str,
-        hints: Dict[str, Any] = None,
+        hints: Dict[str, Any] | None = None,
     ) -> Optional[Dict[str, Any]]:
         """Parse HTML page for data using patterns."""
         hints = hints or {}

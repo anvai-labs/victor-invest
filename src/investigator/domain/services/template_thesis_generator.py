@@ -23,7 +23,7 @@ Design Principles (SOLID):
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, ClassVar, Dict, List, Optional, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +123,7 @@ class CoreNarrativeGenerator:
     """Generates the core investment narrative based on analysis context."""
 
     # Templates by stance
-    TEMPLATES = {
+    TEMPLATES: ClassVar[dict] = {
         InvestmentStance.STRONG_BUY: (
             "{symbol} presents a compelling investment opportunity in the {sector} sector. "
             "Trading at ${current_price:.2f}, the stock offers {upside_pct:.0%} upside to our "
@@ -235,7 +235,7 @@ class ValueDriversGenerator:
     """Generates key value drivers based on financial metrics."""
 
     # Sector-specific value drivers
-    SECTOR_DRIVERS = {
+    SECTOR_DRIVERS: ClassVar[dict] = {
         "Technology": [
             "Innovation pipeline and R&D productivity",
             "Recurring revenue and subscription growth",
@@ -268,7 +268,7 @@ class ValueDriversGenerator:
         ],
     }
 
-    DEFAULT_DRIVERS = [
+    DEFAULT_DRIVERS: ClassVar[list] = [
         "Revenue growth sustainability",
         "Margin expansion opportunity",
         "Competitive positioning",
@@ -312,7 +312,7 @@ class CompetitiveAdvantagesGenerator:
     """Generates competitive advantages based on moat analysis."""
 
     # Common competitive advantages by type
-    MOAT_TEMPLATES = {
+    MOAT_TEMPLATES: ClassVar[dict] = {
         "brand": "Strong brand recognition and customer loyalty",
         "network_effects": "Network effects create switching costs and barriers to entry",
         "cost_advantage": "Cost leadership through scale and operational efficiency",
@@ -321,7 +321,7 @@ class CompetitiveAdvantagesGenerator:
         "regulatory": "Regulatory barriers limit competitive threats",
     }
 
-    SECTOR_MOATS = {
+    SECTOR_MOATS: ClassVar[dict] = {
         "Technology": ["intangibles", "network_effects", "switching_costs"],
         "Healthcare": ["intangibles", "regulatory", "brand"],
         "Financials": ["switching_costs", "regulatory", "brand"],
@@ -353,7 +353,7 @@ class CompetitiveAdvantagesGenerator:
 class GrowthCatalystsGenerator:
     """Generates growth catalysts based on sector and metrics."""
 
-    SECTOR_CATALYSTS = {
+    SECTOR_CATALYSTS: ClassVar[dict] = {
         "Technology": [
             "AI and machine learning integration driving new revenue streams",
             "Cloud adoption acceleration across enterprise customers",
@@ -386,7 +386,7 @@ class GrowthCatalystsGenerator:
         ],
     }
 
-    DEFAULT_CATALYSTS = [
+    DEFAULT_CATALYSTS: ClassVar[list] = [
         "Market share expansion opportunities",
         "Operational efficiency improvements",
         "Strategic capital deployment",
@@ -407,7 +407,7 @@ class GrowthCatalystsGenerator:
 class BearCaseGenerator:
     """Generates bear case considerations based on risks."""
 
-    SECTOR_RISKS = {
+    SECTOR_RISKS: ClassVar[dict] = {
         "Technology": [
             "Increased competition from well-funded rivals",
             "Technology obsolescence or disruption risk",
@@ -440,7 +440,7 @@ class BearCaseGenerator:
         ],
     }
 
-    DEFAULT_RISKS = [
+    DEFAULT_RISKS: ClassVar[list] = [
         "Macroeconomic uncertainty affecting demand",
         "Competitive pressure on margins",
         "Execution risk in growth initiatives",
@@ -473,7 +473,7 @@ class BearCaseGenerator:
 class KeyMetricsGenerator:
     """Generates key metrics to monitor based on sector and analysis."""
 
-    SECTOR_METRICS = {
+    SECTOR_METRICS: ClassVar[dict] = {
         "Technology": [
             "Revenue growth and ARR/MRR trends",
             "Operating margin and R&D efficiency",
@@ -506,7 +506,7 @@ class KeyMetricsGenerator:
         ],
     }
 
-    DEFAULT_METRICS = [
+    DEFAULT_METRICS: ClassVar[list] = [
         "Revenue growth trajectory",
         "Operating margin trends",
         "Free cash flow generation",
@@ -527,7 +527,7 @@ class KeyMetricsGenerator:
 class InvalidationTriggersGenerator:
     """Generates thesis invalidation triggers."""
 
-    BASE_TRIGGERS = [
+    BASE_TRIGGERS: ClassVar[list] = [
         "Revenue growth decelerates below {growth_threshold}%",
         "Operating margin contracts more than {margin_threshold} basis points",
         "Debt-to-equity ratio exceeds {leverage_threshold}x",

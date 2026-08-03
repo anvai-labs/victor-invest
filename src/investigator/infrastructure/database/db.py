@@ -281,9 +281,9 @@ class LLMResponseStoreDAO:
     def get_llm_response(
         self,
         symbol: str,
-        form_type: str = None,
-        period: str = None,
-        llm_type: str = None,
+        form_type: str | None = None,
+        period: str | None = None,
+        llm_type: str | None = None,
     ) -> Optional[Dict]:
         """Get LLM response from database"""
         try:
@@ -322,7 +322,7 @@ class LLMResponseStoreDAO:
             logger.error(f"Failed to get LLM response: {e}")
             return None
 
-    def get_llm_responses_by_symbol(self, symbol: str, llm_type: str = None) -> List[Dict]:
+    def get_llm_responses_by_symbol(self, symbol: str, llm_type: str | None = None) -> List[Dict]:
         """Get all LLM responses for a symbol"""
         try:
             with self.db.get_session() as session:
@@ -363,9 +363,9 @@ class LLMResponseStoreDAO:
     def delete_llm_responses(
         self,
         symbol: str,
-        form_type: str = None,
-        period: str = None,
-        llm_type: str = None,
+        form_type: str | None = None,
+        period: str | None = None,
+        llm_type: str | None = None,
     ) -> int:
         """Delete LLM responses matching criteria"""
         try:
@@ -393,7 +393,9 @@ class LLMResponseStoreDAO:
             logger.error(f"Failed to delete LLM responses: {e}")
             return 0
 
-    def delete_llm_responses_by_pattern(self, symbol_pattern: str = None, form_type_pattern: str = None) -> int:
+    def delete_llm_responses_by_pattern(
+        self, symbol_pattern: str | None = None, form_type_pattern: str | None = None
+    ) -> int:
         """Delete LLM responses matching patterns"""
         try:
             with self.db.get_session() as session:
@@ -424,7 +426,7 @@ class TickerCIKMappingDAO:
     def __init__(self, db_manager: DatabaseManager):
         self.db = db_manager
 
-    def save_mapping(self, ticker: str, cik: str, company_name: str, exchange: str = None) -> bool:
+    def save_mapping(self, ticker: str, cik: str, company_name: str, exchange: str | None = None) -> bool:
         """Save ticker-CIK mapping"""
         try:
             with self.db.get_session() as session:
@@ -663,7 +665,7 @@ class AllSubmissionStoreDAO:
             logger.error(f"Failed to save submission data: {e}")
             return False
 
-    def get_submission(self, symbol: str, cik: str = None, max_age_days: int = 7) -> Optional[Dict]:
+    def get_submission(self, symbol: str, cik: str | None = None, max_age_days: int = 7) -> Optional[Dict]:
         """Get submission data by symbol (primary key) - CIK is optional for compatibility"""
         try:
             with self.db.get_session() as session:
@@ -739,7 +741,7 @@ class QuarterlyMetricsDAO:
         cik: str,
         form_type: str,
         metrics_data: Dict,
-        company_name: str = None,
+        company_name: str | None = None,
         **kwargs,
     ) -> bool:
         """Save quarterly metrics using composite primary key (symbol, fiscal_year, fiscal_period)"""
@@ -787,8 +789,8 @@ class QuarterlyMetricsDAO:
     def get_metrics(
         self,
         symbol: str,
-        fiscal_year: str = None,
-        fiscal_period: str = None,
+        fiscal_year: str | None = None,
+        fiscal_period: str | None = None,
         max_age_days: int = 90,
     ) -> Optional[Dict]:
         """Get quarterly metrics by composite key"""

@@ -26,7 +26,7 @@ Date: 2025-01-05
 
 import logging
 from enum import Enum
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, ClassVar, Dict, List, Optional, Type
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ class DCFFactory:
     """
 
     # Registry of model types to their classes (lazy loaded)
-    _model_registry: Dict[DCFModelType, Type] = {}
+    _model_registry: ClassVar[Dict[DCFModelType, Type]] = {}
     _initialized = False
 
     @classmethod

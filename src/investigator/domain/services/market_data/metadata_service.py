@@ -70,7 +70,7 @@ class SymbolMetadataService:
 
     def __init__(
         self,
-        stock_db_url: str = None,
+        stock_db_url: str | None = None,
         cache_ttl_seconds: int = 3600,
     ):
         """

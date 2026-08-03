@@ -24,7 +24,7 @@ Usage:
 """
 
 import logging
-from typing import Dict, List, Optional
+from typing import ClassVar, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ class SectorIndustryMapper:
 
     # Standard sector name to database variants mapping
     # Key: Canonical sector name, Value: List of database variants
-    SECTOR_MAPPING: Dict[str, List[str]] = {
+    SECTOR_MAPPING: ClassVar[Dict[str, List[str]]] = {
         "Communication Services": ["Communication Services", "Telecommunications"],
         "Technology": ["Technology", "Information Technology"],
         "Financials": ["Financials", "Finance", "Financial Services"],
@@ -59,7 +59,7 @@ class SectorIndustryMapper:
 
     # Industry to sector mapping for granular lookups
     # Key: Industry name, Value: Parent sector
-    INDUSTRY_TO_SECTOR: Dict[str, str] = {
+    INDUSTRY_TO_SECTOR: ClassVar[Dict[str, str]] = {
         # Technology industries
         "Semiconductors": "Technology",
         "Semiconductor Equipment": "Technology",

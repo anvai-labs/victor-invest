@@ -21,7 +21,7 @@ to produce company-specific fair value multiples with safety margins.
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
 from investigator.domain.services.company_premium_history import (
     CompanyPremiumHistory,
@@ -80,14 +80,14 @@ class CompanyFairMultipleCalculator:
     """
 
     # Safety margins by confidence level
-    SAFETY_MARGINS = {
+    SAFETY_MARGINS: ClassVar[dict] = {
         "HIGH": 0.05,  # 5% discount for high confidence
         "MEDIUM": 0.10,  # 10% discount for medium confidence
         "LOW": 0.15,  # 15% discount for low confidence
     }
 
     # Mean reversion adjustments
-    MEAN_REVERSION_ADJUSTMENTS = {
+    MEAN_REVERSION_ADJUSTMENTS: ClassVar[dict] = {
         "strong_buy": 1.10,  # 10% upside for strong buy signals
         "buy": 1.05,  # 5% upside for buy signals
         "none": 1.00,  # No adjustment

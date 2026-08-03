@@ -19,7 +19,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
 import pandas as pd
 
@@ -196,7 +196,7 @@ class EntryExitEngine:
     """
 
     # Signal scoring weights
-    WEIGHTS = {
+    WEIGHTS: ClassVar[dict] = {
         "rsi": 0.12,
         "macd": 0.12,
         "moving_average": 0.12,

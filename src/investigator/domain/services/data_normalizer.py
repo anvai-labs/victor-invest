@@ -11,7 +11,7 @@ Date: 2025-11-02
 
 import logging
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class DataNormalizer:
     """
 
     # Field mapping: snake_case → camelCase (SEC CompanyFacts uses camelCase)
-    FIELD_MAPPINGS = {
+    FIELD_MAPPINGS: ClassVar[dict] = {
         # Income Statement
         "total_revenue": "totalRevenue",
         "revenues": "totalRevenue",  # Alias
@@ -103,10 +103,10 @@ class DataNormalizer:
     }
 
     # Reverse mapping: camelCase → snake_case
-    REVERSE_MAPPINGS = {v: k for k, v in FIELD_MAPPINGS.items()}
+    REVERSE_MAPPINGS: ClassVar[dict] = {v: k for k, v in FIELD_MAPPINGS.items()}
 
     # Core metrics that MUST be present for quality assessment
-    CORE_METRICS = [
+    CORE_METRICS: ClassVar[list] = [
         "totalRevenue",
         "netIncome",
         "totalAssets",
@@ -117,7 +117,7 @@ class DataNormalizer:
     ]
 
     # Debt metrics for enhanced completeness scoring (snake_case - canonical format)
-    DEBT_METRICS = [
+    DEBT_METRICS: ClassVar[list] = [
         "total_debt",
         "long_term_debt",
         "short_term_debt",
@@ -125,7 +125,7 @@ class DataNormalizer:
     ]
 
     # Ratios that should warn if zeroed due to missing data
-    CRITICAL_RATIOS = [
+    CRITICAL_RATIOS: ClassVar[list] = [
         "current_ratio",
         "quick_ratio",
         "debt_to_equity",

@@ -34,7 +34,7 @@ class SECCompanyFactsExtractor:
     while maintaining data freshness aligned with filing frequency.
     """
 
-    def __init__(self, db_config: Dict = None):
+    def __init__(self, db_config: Dict | None = None):
         """
         Initialize with database configuration
 
@@ -76,8 +76,8 @@ class SECCompanyFactsExtractor:
     def get_company_facts(
         self,
         symbol: str,
-        cik: str = None,
-        max_age_days: int = None,
+        cik: str | None = None,
+        max_age_days: int | None = None,
         force_refresh: bool = False,
     ) -> Optional[Dict]:
         """
@@ -729,7 +729,7 @@ class SECCompanyFactsExtractor:
             return (None, None)
 
     def _determine_latest_fiscal_period(
-        self, symbol: str, us_gaap: Dict[str, Any], cik: str = None
+        self, symbol: str, us_gaap: Dict[str, Any], cik: str | None = None
     ) -> Tuple[Optional[int], Optional[str], Optional[str]]:
         """
         CRITICAL: Determine the latest fiscal period (FY, FP) FIRST by collecting ALL
@@ -921,8 +921,8 @@ class SECCompanyFactsExtractor:
         symbol: str,
         cik: str,
         metric_tag: str,
-        fiscal_year: int = None,
-        fiscal_period: str = None,
+        fiscal_year: int | None = None,
+        fiscal_period: str | None = None,
         max_bulk_age_days: int = 180,
     ) -> Tuple[Optional[float], Optional[int], Optional[str]]:
         """
@@ -1215,7 +1215,9 @@ class SECCompanyFactsExtractor:
 
             # Helper function to get metric value with HYBRID STRATEGY (bulk + API)
             # NOW PERIOD-SCOPED: Will extract for the determined fiscal period
-            def get_metric(concept_names, prefer_annual: bool = True, canonical_name: str = None) -> Optional[float]:
+            def get_metric(
+                concept_names, prefer_annual: bool = True, canonical_name: str | None = None
+            ) -> Optional[float]:
                 """
                 Get metric value with HYBRID STRATEGY (tries bulk tables first, then JSON API).
 

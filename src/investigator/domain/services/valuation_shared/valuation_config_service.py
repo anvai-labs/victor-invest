@@ -29,7 +29,7 @@ Example:
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, ClassVar, Dict, Optional
 
 import yaml
 
@@ -45,7 +45,7 @@ class ValuationConfigService:
     """
 
     # Default values matching previously hardcoded values in rl_backtest.py
-    DEFAULT_SECTOR_MULTIPLES = {
+    DEFAULT_SECTOR_MULTIPLES: ClassVar[dict] = {
         "pe": {
             "Technology": 28,
             "Healthcare": 22,
@@ -112,22 +112,22 @@ class ValuationConfigService:
         },
     }
 
-    DEFAULT_CAPM = {
+    DEFAULT_CAPM: ClassVar[dict] = {
         "risk_free_rate": 0.04,
         "market_equity_premium": 0.05,
     }
 
-    DEFAULT_GGM = {
+    DEFAULT_GGM: ClassVar[dict] = {
         "growth_rate": 0.03,
         "cost_of_equity": 0.08,
         "min_payout_ratio": 0.20,
     }
 
-    DEFAULT_GROWTH_ASSUMPTIONS = {
+    DEFAULT_GROWTH_ASSUMPTIONS: ClassVar[dict] = {
         "forward_eps_growth_pct": 0.10,
     }
 
-    DEFAULT_FALLBACKS = {
+    DEFAULT_FALLBACKS: ClassVar[dict] = {
         "dcf_simple_multiplier": 12,
         "ebitda_da_approximation_pct": 0.05,
     }

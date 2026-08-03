@@ -1596,8 +1596,8 @@ Your responses must be precise, quantitative, and suitable for institutional inv
     def _track_report_generation(
         self,
         recommendation: "InvestmentRecommendation",
-        report_filename: str = None,
-        processing_time: int = None,
+        report_filename: str | None = None,
+        processing_time: int | None = None,
     ):
         """Track report generation in database for historical analysis"""
         try:
@@ -3684,7 +3684,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         self,
         llm_responses: Dict,
         ai_recommendation: Dict,
-        additional_risks: List[str] = None,
+        additional_risks: List[str] | None = None,
     ) -> List[str]:
         """Extract and prioritize comprehensive risk factors"""
         return extract_comprehensive_risks(llm_responses, ai_recommendation, additional_risks)
@@ -3693,7 +3693,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
         self,
         llm_responses: Dict,
         ai_recommendation: Dict,
-        additional_insights: List[str] = None,
+        additional_insights: List[str] | None = None,
     ) -> List[str]:
         """Extract and prioritize comprehensive insights"""
         return extract_comprehensive_insights(llm_responses, ai_recommendation, additional_insights)

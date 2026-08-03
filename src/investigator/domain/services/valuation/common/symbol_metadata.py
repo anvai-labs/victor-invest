@@ -24,7 +24,7 @@ This eliminates duplicate metadata lookup logic between legacy CLI and victor_in
 
 import logging
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import ClassVar, Dict, Optional, Tuple
 
 import yaml
 
@@ -50,8 +50,8 @@ class SymbolMetadata:
 
     _config: Optional[Dict] = None
     _config_path: Optional[Path] = None
-    _sector_overrides: Dict[str, str] = {}
-    _industry_overrides: Dict[str, str] = {}
+    _sector_overrides: ClassVar[Dict[str, str]] = {}
+    _industry_overrides: ClassVar[Dict[str, str]] = {}
 
     @classmethod
     def load_config(cls, config_path: Optional[str] = None) -> Dict:

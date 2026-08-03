@@ -8,13 +8,14 @@ Beautiful ASCII art banners for the InvestiGator system
 """
 
 import os
+from typing import ClassVar
 
 
 class ASCIIArt:
     """Beautiful ASCII art banners for InvestiGator components"""
 
     # Color codes for terminal output
-    COLORS = {
+    COLORS: ClassVar[dict] = {
         "CYAN": "\033[0;36m",
         "GREEN": "\033[0;32m",
         "YELLOW": "\033[1;33m",

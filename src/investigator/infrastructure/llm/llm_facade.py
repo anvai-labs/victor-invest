@@ -111,7 +111,9 @@ class LLMFacade:
     # High-Level Analysis Methods (Template Method Pattern)
     # ============================================================================
 
-    def analyze_fundamental(self, symbol: str, quarterly_data: List[Dict], filing_data: Dict = None) -> Dict[str, Any]:
+    def analyze_fundamental(
+        self, symbol: str, quarterly_data: List[Dict], filing_data: Dict | None = None
+    ) -> Dict[str, Any]:
         """
         Perform fundamental analysis using template method pattern
 
@@ -141,7 +143,7 @@ class LLMFacade:
                 "timestamp": datetime.utcnow().isoformat(),
             }
 
-    def analyze_technical(self, symbol: str, price_data: Dict, indicators: Dict = None) -> Dict[str, Any]:
+    def analyze_technical(self, symbol: str, price_data: Dict, indicators: Dict | None = None) -> Dict[str, Any]:
         """
         Perform technical analysis using template method pattern
 
@@ -324,7 +326,7 @@ class LLMFacade:
     # Legacy Compatibility Methods
     # ============================================================================
 
-    def query_ollama(self, model: str, prompt: str, system_prompt: str = None, **kwargs) -> Dict[str, Any]:
+    def query_ollama(self, model: str, prompt: str, system_prompt: str | None = None, **kwargs) -> Dict[str, Any]:
         """
         Legacy compatibility method for direct Ollama queries
         Maintains backward compatibility with existing code
@@ -382,7 +384,7 @@ class LLMFacade:
                 },
             }
 
-    def generate(self, model: str, prompt: str, system_prompt: str = None, **kwargs) -> str:
+    def generate(self, model: str, prompt: str, system_prompt: str | None = None, **kwargs) -> str:
         """
         Legacy compatibility method that returns just the response content
         Maintains backward compatibility with existing code that expects a string response

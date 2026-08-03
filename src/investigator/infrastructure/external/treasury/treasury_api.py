@@ -41,7 +41,7 @@ import logging
 import ssl
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
 import aiohttp
 
@@ -208,7 +208,7 @@ class TreasuryApiClient:
     """
 
     # Maturity mappings for parsing
-    MATURITY_MAP = {
+    MATURITY_MAP: ClassVar[dict] = {
         "1 Mo": "1m",
         "2 Mo": "2m",
         "3 Mo": "3m",
@@ -448,7 +448,7 @@ class TreasuryApiClient:
                 try:
                     # Get latest value from FRED service
                     value = await asyncio.get_event_loop().run_in_executor(
-                        None, lambda: service.get_latest_value(series_id)
+                        None, lambda sid=series_id: service.get_latest_value(sid)
                     )
                     if value is not None:
                         yields[maturity] = value

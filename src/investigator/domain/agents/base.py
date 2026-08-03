@@ -359,7 +359,7 @@ class InvestmentAgent(ABC):
         temperature: float = 0.3,
         top_p: float = 0.9,
         format: str = "json",
-        period: str = None,
+        period: str | None = None,
         **extra_params,
     ) -> None:
         """

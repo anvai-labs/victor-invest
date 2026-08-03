@@ -26,7 +26,7 @@ This enables tracking:
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, ClassVar, Dict, List, Optional, Tuple
 
 import yaml
 from sqlalchemy import create_engine, text
@@ -49,7 +49,7 @@ class SectorMultiplesHistory:
     """
 
     # Key SEC tags for valuation metrics
-    TAGS = {
+    TAGS: ClassVar[dict] = {
         "total_revenue": ["us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax"],
         "net_income": ["us-gaap:NetIncomeLoss", "us-gaap:ProfitLoss"],
         "ebitda": [],  # Calculated from operating income + D&A
@@ -59,7 +59,7 @@ class SectorMultiplesHistory:
     }
 
     # Quarter end dates (approximate) for announcement proxy (+1 month)
-    QUARTER_ENDS = {
+    QUARTER_ENDS: ClassVar[dict] = {
         "Q1": (3, 31),  # March 31 -> April 30 announcement
         "Q2": (6, 30),  # June 30 -> July 31 announcement
         "Q3": (9, 30),  # Sept 30 -> Oct 31 announcement

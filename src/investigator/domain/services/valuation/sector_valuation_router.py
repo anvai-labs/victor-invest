@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional
 
 if TYPE_CHECKING:
     from investigator.domain.services.valuation.insurance_valuation import InsuranceType
@@ -53,7 +53,7 @@ class SectorValuationRouter:
     """Routes to appropriate valuation method based on sector/industry"""
 
     # Sector/industry routing map
-    VALUATION_METHODS = {
+    VALUATION_METHODS: ClassVar[dict] = {
         # Insurance companies - use P/BV and DDM
         ("Financials", "Insurance"): "insurance",
         # Banks - use ROE multiples

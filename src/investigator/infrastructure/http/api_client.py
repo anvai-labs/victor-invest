@@ -13,7 +13,7 @@ import time
 from abc import ABC
 from datetime import datetime
 from functools import wraps
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, ClassVar, Dict, Optional
 from urllib.parse import urlparse
 
 import requests
@@ -86,7 +86,7 @@ class BaseAPIClient(ABC):
     """
 
     # Class-level rate limiting tracker for different hosts
-    _rate_limit_tracker: Dict[str, Dict[str, Any]] = {}
+    _rate_limit_tracker: ClassVar[Dict[str, Dict[str, Any]]] = {}
 
     def __init__(
         self,

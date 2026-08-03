@@ -23,7 +23,7 @@ import logging
 import math
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, ClassVar, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +115,7 @@ class DataValidator:
     """
 
     # Required metrics for different valuation models
-    MODEL_REQUIREMENTS = {
+    MODEL_REQUIREMENTS: ClassVar[dict] = {
         "dcf": {
             "required": ["free_cash_flow", "revenue", "operating_cash_flow"],
             "optional": ["net_income", "ebitda", "capital_expenditures"],
@@ -149,7 +149,7 @@ class DataValidator:
     }
 
     # Outlier thresholds for common metrics
-    OUTLIER_THRESHOLDS = {
+    OUTLIER_THRESHOLDS: ClassVar[dict] = {
         # Ratios
         "pe_ratio": {"min": 0, "max": 500, "warn_min": 5, "warn_max": 100},
         "ps_ratio": {"min": 0, "max": 100, "warn_min": 0.5, "warn_max": 30},

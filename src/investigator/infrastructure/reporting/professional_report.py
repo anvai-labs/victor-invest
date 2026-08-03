@@ -1065,7 +1065,7 @@ class ProfessionalReportGenerator:
     - Brief risk/catalyst summary
     """
 
-    def __init__(self, output_dir: Path = None, config: ReportConfig = None):
+    def __init__(self, output_dir: Path | None = None, config: ReportConfig = None):
         self.output_dir = Path(output_dir) if output_dir else Path("reports/professional")
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.config = config or ReportConfig()
@@ -1982,7 +1982,7 @@ class ProfessionalReportGenerator:
         return story
 
 
-def generate_professional_report(data: Dict[str, Any], output_dir: Path = None) -> str:
+def generate_professional_report(data: Dict[str, Any], output_dir: Path | None = None) -> str:
     """Convenience function to generate a professional report"""
     generator = ProfessionalReportGenerator(output_dir=output_dir)
     return generator.generate_report(data)

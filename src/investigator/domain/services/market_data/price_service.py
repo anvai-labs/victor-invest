@@ -61,7 +61,7 @@ class PriceService:
 
     def __init__(
         self,
-        stock_db_url: str = None,
+        stock_db_url: str | None = None,
     ):
         """
         Initialize PriceService with database connection.

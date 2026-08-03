@@ -19,7 +19,7 @@ import copy
 import logging
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, ClassVar, Dict, List, Optional, Tuple
 
 try:
     from line_profiler import profile  # type: ignore
@@ -509,7 +509,7 @@ class SECDataProcessor:
             return None
 
     # Canonical keys to extract (replaces hardcoded FIELD_MAPPINGS)
-    CANONICAL_KEYS_TO_EXTRACT = [
+    CANONICAL_KEYS_TO_EXTRACT: ClassVar[list] = [
         # Income Statement
         "total_revenue",
         "net_income",
@@ -2216,22 +2216,24 @@ class SECDataProcessor:
                     ratios = filing["ratios"]
                     quality = filing["quality"]
 
-                    def prefer_value(key: str):
-                        value = data.get(key)
+                    # _data/_ratios are bound as defaults so the closure captures this
+                    # iteration's filing rather than the loop variable.
+                    def prefer_value(key: str, _data=data, _ratios=ratios):
+                        value = _data.get(key)
                         if value is not None:
                             return value
-                        if ratios:
-                            ratio_val = ratios.get(key)
+                        if _ratios:
+                            ratio_val = _ratios.get(key)
                             if ratio_val is not None:
                                 return ratio_val
 
                             synonym = self._ratio_synonyms.get(key)
                             if synonym:
                                 # Prefer data values first so we preserve PIT adjustments
-                                syn_data_val = data.get(synonym)
+                                syn_data_val = _data.get(synonym)
                                 if syn_data_val is not None:
                                     return syn_data_val
-                                syn_ratio_val = ratios.get(synonym)
+                                syn_ratio_val = _ratios.get(synonym)
                                 if syn_ratio_val is not None:
                                     return syn_ratio_val
                         return None

@@ -940,8 +940,8 @@ class CacheManager:
         cache_type: CacheType,
         operation: str,
         total_time: float,
-        handler_name: str = None,
-        handler_time: float = None,
+        handler_name: str | None = None,
+        handler_time: float | None = None,
     ):
         """Update performance statistics"""
         with self._stats_lock:

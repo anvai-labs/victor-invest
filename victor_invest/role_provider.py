@@ -29,7 +29,7 @@ Usage:
     tools = provider.get_tools_for_role("researcher", vertical="investment")
 """
 
-from typing import Dict, List, Optional
+from typing import ClassVar, Dict, List, Optional
 
 
 class InvestmentRoleProvider:
@@ -43,10 +43,10 @@ class InvestmentRoleProvider:
     """
 
     # Core tools available to all investment roles
-    CORE_TOOLS = ["read"]
+    CORE_TOOLS: ClassVar[list] = ["read"]
 
     # Investment-specific tools by role
-    ROLE_TOOLS: Dict[str, List[str]] = {
+    ROLE_TOOLS: ClassVar[Dict[str, List[str]]] = {
         # Researcher: Read-only analysis, no data modification
         "researcher": [
             "read",  # Generic file reading
@@ -73,7 +73,7 @@ class InvestmentRoleProvider:
     }
 
     # Tool budgets (lower for investment since synthesis is context-based)
-    ROLE_BUDGETS: Dict[str, int] = {
+    ROLE_BUDGETS: ClassVar[Dict[str, int]] = {
         "researcher": 5,  # Minimal - synthesis is via context, not tools
         "planner": 5,
         "executor": 10,
@@ -82,7 +82,7 @@ class InvestmentRoleProvider:
     }
 
     # Context limits (higher for investment to include analysis data)
-    ROLE_CONTEXT_LIMITS: Dict[str, int] = {
+    ROLE_CONTEXT_LIMITS: ClassVar[Dict[str, int]] = {
         "researcher": 100000,  # Large - needs full analysis context
         "planner": 50000,
         "executor": 80000,

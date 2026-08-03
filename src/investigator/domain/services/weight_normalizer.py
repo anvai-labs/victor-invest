@@ -39,7 +39,7 @@ class WeightNormalizer:
 
         self.increment = rounding_increment
 
-    def normalize(self, weights: Dict[str, float], model_order: List[str] = None) -> Dict[str, float]:
+    def normalize(self, weights: Dict[str, float], model_order: List[str] | None = None) -> Dict[str, float]:
         """
         Normalize weights to sum to 100% and round to increment.
 
@@ -121,7 +121,7 @@ class WeightNormalizer:
         self,
         weights: Dict[str, float],
         fallback_weights: Dict[str, float],
-        model_order: List[str] = None,
+        model_order: List[str] | None = None,
     ) -> Dict[str, float]:
         """
         Normalize weights with fallback to default weights if all zeros.
@@ -151,7 +151,7 @@ class WeightNormalizer:
         self,
         base_weights: Dict[str, float],
         confidences: Dict[str, float],
-        model_order: List[str] = None,
+        model_order: List[str] | None = None,
     ) -> Dict[str, float]:
         """
         Adjust weights based on model confidence scores.

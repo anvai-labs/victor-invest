@@ -25,7 +25,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Protocol, Tuple
+from typing import Any, ClassVar, Dict, List, Optional, Protocol, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -219,7 +219,7 @@ class InvestmentGradeExtractor(BaseFieldExtractor):
     2. Calculate from upside_pct (A=20%+, B=10-20%, C=0-10%, D=-10-0%, F=-10%+)
     """
 
-    VALID_GRADES = {"A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "F", "N/A"}
+    VALID_GRADES: ClassVar[set] = {"A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "F", "N/A"}
 
     @property
     def field_name(self) -> str:
@@ -621,7 +621,7 @@ class InvestmentThesisExtractor(BaseFieldExtractor):
 class RecommendationExtractor(BaseFieldExtractor):
     """Extracts investment recommendation (BUY/HOLD/SELL)."""
 
-    VALID_RECOMMENDATIONS = {
+    VALID_RECOMMENDATIONS: ClassVar[set] = {
         "STRONG BUY",
         "BUY",
         "ACCUMULATE",

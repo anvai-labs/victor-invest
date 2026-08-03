@@ -13,7 +13,7 @@ Author: Claude Code
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +84,7 @@ class ValuationFrameworkPlanner:
     # Below $300M = micro-cap
 
     # Projection years by company type
-    PROJECTION_YEARS = {
+    PROJECTION_YEARS: ClassVar[dict] = {
         "tech_light_asset": 5,  # SaaS, software (standard)
         "tech_heavy_asset": 7,  # Semiconductors, hardware
         "mature_stable": 10,  # Utilities, consumer staples
@@ -96,7 +96,7 @@ class ValuationFrameworkPlanner:
     # IMPORTANT: fcf_growth_ceiling is a MAXIMUM CAP, not a fixed value
     # Actual initial growth = min(historical_fcf_growth, ceiling)
     # This prevents deflating high-growth stocks with arbitrary fixed values
-    GROWTH_ASSUMPTIONS = {
+    GROWTH_ASSUMPTIONS: ClassVar[dict] = {
         "early_stage_saas": {
             "fcf_growth_ceiling": 0.30,  # 30% CEILING (cap historical growth)
             "fcf_growth_fade_to": 0.10,  # 10% by year 5 (fade target)
@@ -135,7 +135,7 @@ class ValuationFrameworkPlanner:
     }
 
     # Sector-specific weights
-    SECTOR_WEIGHTS = {
+    SECTOR_WEIGHTS: ClassVar[dict] = {
         "Technology": {
             FRAMEWORK_DCF_GROWTH: 0.35,
             FRAMEWORK_PE_RATIO: 0.25,

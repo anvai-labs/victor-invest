@@ -23,7 +23,7 @@ Design Principles (SOLID):
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, ClassVar, Dict, List, Optional, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -135,9 +135,9 @@ class RecommendationConflictDetector:
     """Detects conflicts between recommendation signals."""
 
     # Signal interpretation
-    BULLISH_SIGNALS = {"buy", "strong_buy", "outperform", "overweight", "bullish"}
-    BEARISH_SIGNALS = {"sell", "strong_sell", "underperform", "underweight", "bearish"}
-    NEUTRAL_SIGNALS = {"hold", "neutral", "market_perform", "equal_weight"}
+    BULLISH_SIGNALS: ClassVar[set] = {"buy", "strong_buy", "outperform", "overweight", "bullish"}
+    BEARISH_SIGNALS: ClassVar[set] = {"sell", "strong_sell", "underperform", "underweight", "bearish"}
+    NEUTRAL_SIGNALS: ClassVar[set] = {"hold", "neutral", "market_perform", "equal_weight"}
 
     def detect(
         self,
@@ -381,7 +381,7 @@ class RecommendationConflictResolver:
     """Resolves recommendation conflicts between analyses."""
 
     # Default weight adjustments based on conflict direction
-    WEIGHT_ADJUSTMENTS = {
+    WEIGHT_ADJUSTMENTS: ClassVar[dict] = {
         "fundamental_bullish_technical_bearish": {
             "short_term": {"fundamental": 0.4, "technical": 0.6},
             "long_term": {"fundamental": 0.7, "technical": 0.3},

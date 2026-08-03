@@ -481,7 +481,7 @@ class ETFMarketContextAgent(InvestmentAgent):
 
         return sector_map.get(db_sector)
 
-    async def _analyze_market_context(self, macro_indicators: Dict = None) -> Dict:
+    async def _analyze_market_context(self, macro_indicators: Dict | None = None) -> Dict:
         """Analyze overall market context using key ETFs and macro indicators (VIX)"""
         market_context = {}
 
@@ -658,7 +658,7 @@ class ETFMarketContextAgent(InvestmentAgent):
         market_context: Dict,
         sector_context: Dict,
         relative_performance: Dict,
-        macro_indicators: Dict = None,
+        macro_indicators: Dict | None = None,
     ) -> Dict:
         """Generate LLM-powered market sentiment analysis with macro economic context"""
 
@@ -1073,7 +1073,7 @@ class ETFMarketContextAgent(InvestmentAgent):
 
         return covariance / market_variance if market_variance > 0 else 1.0
 
-    def _determine_market_regime(self, market_context: Dict, macro_indicators: Dict = None) -> str:
+    def _determine_market_regime(self, market_context: Dict, macro_indicators: Dict | None = None) -> str:
         """Determine current market regime using multi-factor analysis including commodities and VIX"""
         # Analyze medium-term performance
         medium_term = market_context.get("medium_term", {})

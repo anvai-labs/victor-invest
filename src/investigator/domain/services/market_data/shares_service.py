@@ -68,8 +68,8 @@ class SharesService:
 
     def __init__(
         self,
-        sec_db_url: str = None,
-        stock_db_url: str = None,
+        sec_db_url: str | None = None,
+        stock_db_url: str | None = None,
     ):
         """
         Initialize SharesService with database connections.

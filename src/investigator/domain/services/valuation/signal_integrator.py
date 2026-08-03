@@ -31,7 +31,7 @@ Date: 2025-01-02
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -238,7 +238,7 @@ class ValuationSignalIntegrator:
     """
 
     # Credit risk discount tiers
-    DISTRESS_DISCOUNTS = {
+    DISTRESS_DISCOUNTS: ClassVar[dict] = {
         DistressTier.HEALTHY: 0.0,
         DistressTier.WATCH: 0.05,
         DistressTier.CONCERN: 0.15,
@@ -247,7 +247,7 @@ class ValuationSignalIntegrator:
     }
 
     # Insider sentiment confidence adjustments
-    INSIDER_CONFIDENCE_ADJUSTMENTS = {
+    INSIDER_CONFIDENCE_ADJUSTMENTS: ClassVar[dict] = {
         InsiderSignal.STRONG_BUY: 0.10,
         InsiderSignal.BUY: 0.05,
         InsiderSignal.NEUTRAL: 0.0,

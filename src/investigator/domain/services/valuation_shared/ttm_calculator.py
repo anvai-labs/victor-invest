@@ -24,7 +24,7 @@ Example:
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, ClassVar, Dict, List, Optional, Union
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class TTMCalculator:
     """
 
     # Flow metrics that should be summed for TTM
-    FLOW_METRICS = {
+    FLOW_METRICS: ClassVar[dict] = {
         "income_statement": [
             "total_revenue",
             "net_income",
@@ -57,7 +57,7 @@ class TTMCalculator:
     }
 
     # Stock metrics that use most recent value (not summed)
-    STOCK_METRICS = {
+    STOCK_METRICS: ClassVar[dict] = {
         "balance_sheet": [
             "total_assets",
             "total_liabilities",

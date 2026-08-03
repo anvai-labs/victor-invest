@@ -14,7 +14,7 @@ import logging
 import os
 import ssl
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
 try:
     import certifi
@@ -97,7 +97,7 @@ class MacroIndicatorsFetcher:
     """Fetches and processes macro indicators from FRED database"""
 
     # Key indicators for investment analysis
-    KEY_INDICATORS = {
+    KEY_INDICATORS: ClassVar[dict] = {
         # Economic Growth
         "GDP": "Gross Domestic Product",
         "GDPC1": "Real GDP",

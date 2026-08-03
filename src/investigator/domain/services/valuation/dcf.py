@@ -1962,7 +1962,7 @@ class DCFValuation:
         beta_unlevered: float,
         total_debt: float,
         equity: float,
-        market_cap: float = None,
+        market_cap: float | None = None,
     ) -> float:
         """
         Calculate levered beta using improved beta selection logic

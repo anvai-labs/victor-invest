@@ -173,7 +173,7 @@ class TickerCIKMapper:
             return f"{int(cik):010d}"
         return None
 
-    def resolve_cik(self, symbol: str, provided_cik: str = None) -> Optional[str]:
+    def resolve_cik(self, symbol: str, provided_cik: str | None = None) -> Optional[str]:
         """
         Resolve CIK for a symbol, ensuring it's in proper zero-padded format
 

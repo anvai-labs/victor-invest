@@ -49,7 +49,7 @@ Example:
 import logging
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
 from investigator.domain.models.market_context import (
     CreditCyclePhase,
@@ -133,7 +133,7 @@ class CreditCycleAnalyzer:
 
     # Historical thresholds for BAA-10Y spread
     # Normal: ~200 bps, Stressed: >300 bps, Crisis: >500 bps
-    SPREAD_THRESHOLDS = {
+    SPREAD_THRESHOLDS: ClassVar[dict] = {
         "tight": 150,  # Early expansion
         "normal": 200,  # Mid cycle
         "wide": 300,  # Late cycle
@@ -142,7 +142,7 @@ class CreditCycleAnalyzer:
     }
 
     # VIX thresholds
-    VIX_THRESHOLDS = {
+    VIX_THRESHOLDS: ClassVar[dict] = {
         "very_low": 12,
         "low": 16,
         "normal": 20,

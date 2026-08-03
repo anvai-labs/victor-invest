@@ -23,7 +23,7 @@ Date: 2025-12-29
 import logging
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Dict, List, Optional, Tuple
+from typing import ClassVar, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +93,7 @@ class FiscalPeriodNormalizer:
     """
 
     # Common fiscal year end patterns (month, day)
-    COMMON_FISCAL_YEAR_ENDS = {
+    COMMON_FISCAL_YEAR_ENDS: ClassVar[dict] = {
         "calendar": (12, 31),  # Most common: Dec 31
         "q1_fiscal": (3, 31),  # March fiscal year (some retailers)
         "q2_fiscal": (6, 30),  # June fiscal year (many tech)

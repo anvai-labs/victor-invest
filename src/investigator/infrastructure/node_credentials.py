@@ -27,7 +27,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, ClassVar, Dict, List, Optional, Set
 
 from investigator.infrastructure.credentials import (
     DatabaseCredentials,
@@ -74,7 +74,7 @@ class CredentialAuditEntry:
 class CredentialAuditLogger:
     """Audit logger for credential access."""
 
-    _entries: List[CredentialAuditEntry] = []
+    _entries: ClassVar[List[CredentialAuditEntry]] = []
     _max_entries: int = 10000
 
     @classmethod
@@ -300,7 +300,7 @@ class NodeCredentialContext:
     def __init__(
         self,
         node_id: str,
-        requirements: List[CredentialRequirement] = None,
+        requirements: List[CredentialRequirement] | None = None,
         workflow_context: Any = None,
     ):
         self.node_id = node_id

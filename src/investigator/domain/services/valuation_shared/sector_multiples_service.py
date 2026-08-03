@@ -27,7 +27,7 @@ Example:
 """
 
 import logging
-from typing import Dict, Optional
+from typing import ClassVar, Dict, Optional
 
 from .valuation_config_service import ValuationConfigService
 
@@ -43,7 +43,7 @@ class SectorMultiplesService:
     """
 
     # Sector normalization mapping - handles variant names
-    SECTOR_ALIASES = {
+    SECTOR_ALIASES: ClassVar[dict] = {
         # Technology variants
         "technology": "Technology",
         "tech": "Technology",
@@ -86,7 +86,7 @@ class SectorMultiplesService:
     }
 
     # Industry-specific P/E overrides (from pe_multiples.industry_overrides)
-    INDUSTRY_PE_OVERRIDES = {
+    INDUSTRY_PE_OVERRIDES: ClassVar[dict] = {
         "Software - Application": 35.0,
         "Software - Infrastructure": 32.0,
         "Semiconductors": 18.0,

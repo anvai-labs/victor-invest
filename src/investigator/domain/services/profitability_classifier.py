@@ -29,7 +29,7 @@ Usage:
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, ClassVar, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +119,7 @@ class ProfitabilityClassifier:
     """
 
     # Priority order for checking profitability
-    INDICATORS_PRIORITY = [
+    INDICATORS_PRIORITY: ClassVar[list] = [
         ("net_income", "net_margin", 1.0),  # Highest priority
         ("operating_income", "operating_margin", 0.9),
         ("ebitda", None, 0.8),  # EBITDA often doesn't have margin
@@ -127,14 +127,14 @@ class ProfitabilityClassifier:
     ]
 
     # Margin thresholds for classification
-    MARGIN_THRESHOLDS = {
+    MARGIN_THRESHOLDS: ClassVar[dict] = {
         "profitable": 5.0,  # >= 5% margin is clearly profitable
         "marginal": 0.0,  # > 0% but < 5% is marginally profitable
         "transitioning": -5.0,  # > -5% may be transitioning
     }
 
     # Model applicability by stage
-    MODEL_APPLICABILITY = {
+    MODEL_APPLICABILITY: ClassVar[dict] = {
         ProfitabilityStage.PROFITABLE: {
             "models": ["dcf", "pe", "ps", "pb", "ev_ebitda", "ggm"],
             "adjustments": {

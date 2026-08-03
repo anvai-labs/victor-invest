@@ -22,7 +22,7 @@ Design Principles (SOLID):
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, ClassVar, Dict, List, Optional, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -156,7 +156,7 @@ class ThresholdBasedStanceDeterminer:
     2. Confidence level (adjusts thresholds for edge cases)
     """
 
-    DEFAULT_THRESHOLDS = {
+    DEFAULT_THRESHOLDS: ClassVar[dict] = {
         "significantly_undervalued": 0.30,  # >30% upside
         "undervalued": 0.15,  # >15% upside
         "slightly_undervalued": 0.05,  # >5% upside
@@ -217,7 +217,7 @@ class RiskBasedMarginOfSafetyCalculator:
     """
 
     # Base margin of safety targets by risk level
-    BASE_MARGINS = {
+    BASE_MARGINS: ClassVar[dict] = {
         "low_risk": 0.10,  # 10% for high-quality, high-agreement
         "medium_risk": 0.20,  # 20% default
         "high_risk": 0.30,  # 30% for divergence or quality issues

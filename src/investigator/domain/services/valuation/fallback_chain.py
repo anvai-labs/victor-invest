@@ -33,7 +33,7 @@ Usage:
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, ClassVar, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +120,7 @@ class FallbackChain:
 
     # Default fallback chains
     # Format: model -> [fallback1, fallback2, ...]
-    DEFAULT_CHAINS = {
+    DEFAULT_CHAINS: ClassVar[dict] = {
         "dcf": ["pe", "ps", "ev_ebitda"],
         "damodaran_dcf": ["dcf", "pe", "ps"],
         "pe": ["ps", "ev_ebitda", "pb"],
@@ -134,7 +134,7 @@ class FallbackChain:
     }
 
     # Default penalties by fallback level
-    DEFAULT_PENALTIES = [0.90, 0.80, 0.70, 0.60]
+    DEFAULT_PENALTIES: ClassVar[list] = [0.90, 0.80, 0.70, 0.60]
 
     def __init__(
         self,

@@ -14,7 +14,7 @@ Date: 2025-01-05
 """
 
 import logging
-from typing import Dict, List, Optional
+from typing import ClassVar, Dict, List, Optional
 
 from investigator.domain.services.data_normalizer import DataNormalizer
 
@@ -36,7 +36,7 @@ class DataQualityAssessor:
     """
 
     # Required fields for quarter quality assessment
-    QUARTER_REQUIRED_FIELDS = [
+    QUARTER_REQUIRED_FIELDS: ClassVar[list] = [
         "revenues",
         "net_income",
         "total_assets",
@@ -47,7 +47,7 @@ class DataQualityAssessor:
     ]
 
     # Ratio metrics checked for completeness
-    RATIO_METRICS = [
+    RATIO_METRICS: ClassVar[list] = [
         "pe_ratio",
         "price_to_book",
         "current_ratio",

@@ -50,7 +50,7 @@ Example:
 
 import asyncio
 import logging
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, ClassVar, Dict, Optional, Tuple, Union
 
 from victor_invest.tools.base import BaseTool, ToolResult
 
@@ -107,7 +107,7 @@ Returns cache data, operation status, or statistics.
 """
 
     # Map string cache type names to enum values
-    CACHE_TYPE_MAP = {
+    CACHE_TYPE_MAP: ClassVar[dict] = {
         "llm_response": "LLM_RESPONSE",
         "sec_response": "SEC_RESPONSE",
         "company_facts": "COMPANY_FACTS",

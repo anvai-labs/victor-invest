@@ -14,7 +14,7 @@ Updated: 2025-12-29 (TD2 fiscal_period fix)
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
 from investigator.infrastructure.cache.cache_types import CacheType
 
@@ -41,7 +41,7 @@ class CacheKeyBuilder:
     # Cache types that REQUIRE fiscal_period for financial accuracy
     # These are financial data types where the same symbol has different
     # values for different periods - caching without period causes collisions
-    FISCAL_PERIOD_REQUIRED_TYPES: List[CacheType] = [
+    FISCAL_PERIOD_REQUIRED_TYPES: ClassVar[List[CacheType]] = [
         CacheType.LLM_RESPONSE,
         CacheType.COMPANY_FACTS,
         CacheType.SEC_RESPONSE,
@@ -49,7 +49,7 @@ class CacheKeyBuilder:
     ]
 
     # Cache types where fiscal_period is optional (non-period-specific data)
-    FISCAL_PERIOD_OPTIONAL_TYPES: List[CacheType] = [
+    FISCAL_PERIOD_OPTIONAL_TYPES: ClassVar[List[CacheType]] = [
         CacheType.TECHNICAL_DATA,  # Technical indicators are time-based, not period-based
         CacheType.MARKET_CONTEXT,  # Market context uses date/timeframe instead
     ]

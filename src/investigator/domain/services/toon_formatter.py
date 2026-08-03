@@ -91,7 +91,7 @@ class TOONFormatter:
             return json.dumps(val)
 
     @staticmethod
-    def format_quarterly_data(quarters: List[Dict[str, Any]], metric_keys: List[str] = None) -> str:
+    def format_quarterly_data(quarters: List[Dict[str, Any]], metric_keys: List[str] | None = None) -> str:
         """
         Format quarterly financial data with smart metric selection.
 
@@ -134,7 +134,7 @@ class TOONFormatter:
         return TOONFormatter.format_array(filtered_quarters, name="quarterly_data", precision=2)
 
     @staticmethod
-    def format_peer_comparison(peers: List[Dict[str, Any]], metric_keys: List[str] = None) -> str:
+    def format_peer_comparison(peers: List[Dict[str, Any]], metric_keys: List[str] | None = None) -> str:
         """
         Format peer comparison data.
 
@@ -185,12 +185,12 @@ quarterly_data[4]{fiscal_year,fiscal_period,revenue,net_income}:
 
 
 # Convenience functions
-def to_toon_quarterly(quarters: List[Dict[str, Any]], metrics: List[str] = None) -> str:
+def to_toon_quarterly(quarters: List[Dict[str, Any]], metrics: List[str] | None = None) -> str:
     """Convert quarterly data to TOON format."""
     return TOONFormatter.format_quarterly_data(quarters, metrics)
 
 
-def to_toon_peers(peers: List[Dict[str, Any]], metrics: List[str] = None) -> str:
+def to_toon_peers(peers: List[Dict[str, Any]], metrics: List[str] | None = None) -> str:
     """Convert peer comparison data to TOON format."""
     return TOONFormatter.format_peer_comparison(peers, metrics)
 

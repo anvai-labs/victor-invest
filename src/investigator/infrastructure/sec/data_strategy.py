@@ -10,7 +10,7 @@ Date: 2025-11-02
 
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import ClassVar, Dict, List, Optional, Tuple
 
 from sqlalchemy import text
 
@@ -66,7 +66,7 @@ class SECDataStrategy:
     """
 
     # Prevent duplicate stale warnings for the same symbol within a process run.
-    _stale_warning_symbols = set()
+    _stale_warning_symbols: ClassVar[set] = set()
 
     def __init__(self, engine):
         self.engine = engine

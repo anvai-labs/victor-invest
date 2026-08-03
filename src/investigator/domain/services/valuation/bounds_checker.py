@@ -40,7 +40,7 @@ Usage:
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, ClassVar, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +118,7 @@ class BoundsChecker:
     """
 
     # Default bounds for model inputs
-    INPUT_BOUNDS = {
+    INPUT_BOUNDS: ClassVar[dict] = {
         "dcf": {
             "growth_rate": (-0.50, 1.00),  # -50% to +100%
             "discount_rate": (0.05, 0.25),  # 5% to 25%
@@ -155,7 +155,7 @@ class BoundsChecker:
     }
 
     # Warning thresholds (unusual but allowed)
-    WARNING_THRESHOLDS = {
+    WARNING_THRESHOLDS: ClassVar[dict] = {
         "growth_rate": (0.50, "Growth rate > 50% is unusual"),
         "discount_rate": (0.20, "Discount rate > 20% is very high"),
         "pe_ratio": (100, "P/E > 100x is extreme"),
@@ -163,7 +163,7 @@ class BoundsChecker:
     }
 
     # Fair value ratio bounds (fair value / current price)
-    FAIR_VALUE_RATIO_BOUNDS = {
+    FAIR_VALUE_RATIO_BOUNDS: ClassVar[dict] = {
         "default": (0.10, 10.0),  # 0.1x to 10x current price
         "dcf": (0.20, 5.0),  # DCF typically more conservative
         "pe": (0.25, 4.0),

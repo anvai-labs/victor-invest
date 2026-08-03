@@ -21,7 +21,7 @@ Usage:
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
 from investigator.domain.services.data_validation import (
     DataValidator,
@@ -106,7 +106,7 @@ class DataQualityScorer:
     """
 
     # Metric categories with their constituent fields
-    METRIC_CATEGORIES = {
+    METRIC_CATEGORIES: ClassVar[dict] = {
         "income": [
             "revenue",
             "gross_profit",
@@ -161,7 +161,7 @@ class DataQualityScorer:
     }
 
     # Quality level thresholds
-    QUALITY_THRESHOLDS = {
+    QUALITY_THRESHOLDS: ClassVar[dict] = {
         DataQualityLevel.EXCELLENT: 90,
         DataQualityLevel.GOOD: 75,
         DataQualityLevel.FAIR: 60,
@@ -170,7 +170,7 @@ class DataQualityScorer:
     }
 
     # Model to category weights
-    MODEL_CATEGORY_WEIGHTS = {
+    MODEL_CATEGORY_WEIGHTS: ClassVar[dict] = {
         "dcf": {
             "cash_flow": 0.40,
             "income": 0.25,

@@ -15,7 +15,7 @@ SOLID Principles:
 import logging
 import time
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import ClassVar, Dict, List, Optional
 
 from .result import (
     ExtractionAttempt,
@@ -71,7 +71,7 @@ class MetricExtractionOrchestrator:
     """
 
     # Default matcher chain (ordered by reliability)
-    DEFAULT_MATCHERS = [
+    DEFAULT_MATCHERS: ClassVar[list] = [
         ByPeriodEndMatcher(),
         ByDateRangeMatcher(),
         ByFrameFieldMatcher(),
@@ -80,7 +80,7 @@ class MetricExtractionOrchestrator:
     ]
 
     # Metrics that are frequently absent in valid filings and should not flood WARNING logs.
-    LOW_SIGNAL_MISSING_KEYS = {
+    LOW_SIGNAL_MISSING_KEYS: ClassVar[set] = {
         "operating_expenses",
         "interest_expense",
         "earnings_per_share_diluted",
@@ -94,7 +94,7 @@ class MetricExtractionOrchestrator:
         "financial_fhlb_borrowings",
         "financial_other_short_term_borrowings",
     }
-    HISTORICAL_OPTIONAL_WARNING_KEYS = {
+    HISTORICAL_OPTIONAL_WARNING_KEYS: ClassVar[set] = {
         "short_term_debt",
         "goodwill",
         "dividends_paid",

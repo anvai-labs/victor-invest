@@ -25,7 +25,7 @@ Produces comprehensive fair value analysis with consensus recommendations.
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 
 from investigator.domain.services.company_fair_multiple_calculator import (
     CompanyFairMultipleCalculator,
@@ -102,7 +102,7 @@ class RobustValuationService:
     """
 
     # Default weights for each layer
-    DEFAULT_WEIGHTS = {
+    DEFAULT_WEIGHTS: ClassVar[dict] = {
         "layer1_sector": 0.40,
         "layer2_company": 0.40,
         "layer3_peers": 0.20,
