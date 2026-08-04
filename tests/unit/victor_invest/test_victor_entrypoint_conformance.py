@@ -34,10 +34,33 @@ def test_version_is_consistent_across_package_and_vertical_metadata():
 
 
 def test_pyproject_pins_supported_victor_version_range():
-    pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
-    # Aligned with codingagent (victor framework) at 0.7.x; allow >=0.7.0 range.
-    assert "victor-contracts>=0.7.0,<1.0" in pyproject
-    assert "victor-ai>=0.7.0,<1.0" in pyproject
+    """Both Victor packages must carry a floor and an upper bound.
+
+    Asserted by meaning rather than by exact string: the previous version compared
+    literal pins, so correcting the victor-contracts upper bound to exclude the
+    0.10.0 removal release failed here for no substantive reason. See
+    test_contracts_deprecation_debt for why that bound is 0.10 and not 1.0.
+    """
+    import tomllib
+
+    from packaging.requirements import Requirement
+
+    data = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+    declared = list(data["project"]["dependencies"])
+    for extra in data["project"].get("optional-dependencies", {}).values():
+        declared.extend(extra)
+
+    pins = {
+        req.name: req.specifier
+        for req in (Requirement(d) for d in declared)
+        if req.name in {"victor-contracts", "victor-ai"}
+    }
+
+    for name in ("victor-contracts", "victor-ai"):
+        assert name in pins, f"{name} must be declared in pyproject.toml"
+        spec = str(pins[name])
+        assert ">=0.7.0" in spec, f"{name} must keep a >=0.7.0 floor, got {spec!r}"
+        assert "<" in spec, f"{name} must carry an upper bound so a major release cannot land silently, got {spec!r}"
 
 
 def test_pyproject_registers_investment_plugin_entrypoint():
