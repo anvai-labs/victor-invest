@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock
 
 from investigator.domain.agents.fundamental.financial_ratios import (
+    _extract_quarter_metric_with_presence,
     add_market_context_ratios,
     apply_balance_sheet_and_cashflow_ratios,
     apply_valuation_ratios,
@@ -211,3 +212,84 @@ def test_calculate_revenue_growth_yoy_ignores_fy_rows():
     ]
     yoy = calculate_revenue_growth_yoy(quarterly_data=quarterly_data, logger=MagicMock())
     assert yoy == 0.4
+
+
+def _quarter(year, period, **metrics):
+    return {"fiscal_year": year, "fiscal_period": period, "financial_data": dict(metrics)}
+
+
+def test_extract_quarter_metric_separates_explicit_zero_from_missing():
+    """A reported zero and an absent key both yield 0.0 but mean opposite things."""
+    reported_zero = _quarter(2025, "Q1", revenues=0)
+    absent = _quarter(2025, "Q1", net_income=5)
+
+    value, present = _extract_quarter_metric_with_presence(reported_zero, ["revenues"])
+    assert (value, present) == (0.0, True)
+
+    value, present = _extract_quarter_metric_with_presence(absent, ["revenues"])
+    assert (value, present) == (0.0, False)
+
+
+def test_extract_quarter_metric_keeps_searching_past_an_explicit_zero():
+    """A zero at one nesting level must not mask a real figure at another."""
+    entry = {
+        "fiscal_year": 2025,
+        "fiscal_period": "Q1",
+        "revenues": 0,
+        "income_statement": {"revenues": 900},
+    }
+    assert _extract_quarter_metric_with_presence(entry, ["revenues"]) == (900.0, True)
+
+
+def test_ttm_reports_per_metric_coverage_when_a_quarter_omits_a_metric():
+    """Revenue missing from one quarter must be visible, not silently summed as zero."""
+    quarterly_data = [
+        _quarter(2025, "Q1", net_income=10, revenues=100),
+        _quarter(2025, "Q2", net_income=20, revenues=200),
+        _quarter(2025, "Q3", net_income=30, revenues=300),
+        _quarter(2025, "Q4", net_income=40),  # revenues absent entirely
+    ]
+    logger = MagicMock()
+
+    ttm = calculate_ttm_metrics(quarterly_data=quarterly_data, symbol="AAPL", logger=logger)
+
+    # The total is unchanged -- the gap still contributes 0.0 ...
+    assert ttm["revenues"] == 600.0
+    assert ttm["net_income"] == 100.0
+    # ... but the shortfall is now discoverable.
+    assert ttm["revenues_quarters_present"] == 3.0
+    assert ttm["net_income_quarters_present"] == 4.0
+    assert ttm["quarters_used"] == 4.0
+    logger.warning.assert_called_once()
+    assert "revenues" in str(logger.warning.call_args)
+
+
+def test_ttm_treats_a_reported_zero_as_full_coverage():
+    """A genuine zero is data: coverage stays complete and nothing is warned about."""
+    quarterly_data = [
+        _quarter(2025, "Q1", net_income=10, revenues=100),
+        _quarter(2025, "Q2", net_income=20, revenues=200),
+        _quarter(2025, "Q3", net_income=30, revenues=300),
+        _quarter(2025, "Q4", net_income=40, revenues=0),
+    ]
+    logger = MagicMock()
+
+    ttm = calculate_ttm_metrics(quarterly_data=quarterly_data, symbol="AAPL", logger=logger)
+
+    assert ttm["revenues"] == 600.0
+    assert ttm["revenues_quarters_present"] == 4.0
+    for call in logger.warning.call_args_list:
+        assert "revenues" not in str(call)
+
+
+def test_ttm_counts_ebitda_as_present_when_derivable_from_operating_income():
+    """EBITDA is derived from operating income, so that path is coverage too."""
+    quarterly_data = [
+        _quarter(2025, q, net_income=10, revenues=100, operating_income=50, depreciation_amortization=5)
+        for q in ("Q1", "Q2", "Q3", "Q4")
+    ]
+
+    ttm = calculate_ttm_metrics(quarterly_data=quarterly_data, symbol="AAPL", logger=MagicMock())
+
+    assert ttm["ebitda"] == 4 * 55.0
+    assert ttm["ebitda_quarters_present"] == 4.0
