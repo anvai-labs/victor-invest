@@ -62,8 +62,15 @@ import logging
 from abc import abstractmethod
 from typing import Any
 
-from victor.tools.base import BaseTool as VictorBaseTool
-from victor.tools.base import ToolResult as VictorToolResult
+from victor_invest._host import MissingVictorHostError, is_missing_host
+
+try:
+    from victor.tools.base import BaseTool as VictorBaseTool
+    from victor.tools.base import ToolResult as VictorToolResult
+except ModuleNotFoundError as exc:  # the host supplies these base classes
+    if not is_missing_host(exc):
+        raise  # a fault inside victor-ai keeps its own traceback
+    raise MissingVictorHostError("victor_invest.tools", "victor.tools.base") from exc
 
 logger = logging.getLogger(__name__)
 

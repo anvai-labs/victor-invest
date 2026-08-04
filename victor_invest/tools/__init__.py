@@ -72,7 +72,14 @@ Example usage:
     tools = get_all_tools()
 """
 
-from victor.tools.base import BaseTool as VictorBaseTool
+from victor_invest._host import MissingVictorHostError, is_missing_host
+
+try:
+    from victor.tools.base import BaseTool as VictorBaseTool
+except ModuleNotFoundError as exc:  # the host supplies this base class
+    if not is_missing_host(exc):
+        raise  # a fault inside victor-ai keeps its own traceback
+    raise MissingVictorHostError("victor_invest.tools", "victor.tools.base") from exc
 
 from victor_invest.tools.base import BaseTool, ToolResult
 from victor_invest.tools.cache import CacheTool
