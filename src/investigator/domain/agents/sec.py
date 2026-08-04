@@ -1022,55 +1022,57 @@ TEXT:
                 }
 
                 connector = aiohttp.TCPConnector(ssl=ssl_context)
-                async with aiohttp.ClientSession(connector=connector, headers=headers) as session:
-                    async with session.get(filing["xbrl_url"], timeout=30) as response:
-                        if response.status == 200:
-                            xbrl_content = await response.text()
+                async with (
+                    aiohttp.ClientSession(connector=connector, headers=headers) as session,
+                    session.get(filing["xbrl_url"], timeout=30) as response,
+                ):
+                    if response.status == 200:
+                        xbrl_content = await response.text()
 
-                            # Parse XBRL
-                            parsed_xbrl = await self.xbrl_parser.parse_filing(xbrl_content)
+                        # Parse XBRL
+                        parsed_xbrl = await self.xbrl_parser.parse_filing(xbrl_content)
 
-                            if parsed_xbrl and parsed_xbrl.get("financial_data"):
-                                # Extract metrics from parsed XBRL
-                                metrics = await self.xbrl_parser.extract_metrics(parsed_xbrl)
+                        if parsed_xbrl and parsed_xbrl.get("financial_data"):
+                            # Extract metrics from parsed XBRL
+                            metrics = await self.xbrl_parser.extract_metrics(parsed_xbrl)
 
-                                if metrics:
-                                    # Convert XBRL metrics to our standard format
-                                    financial_data = {
-                                        "metrics": {
-                                            "assets": metrics.get("Assets", 0),
-                                            "current_assets": metrics.get("AssetsCurrent", 0),
-                                            "liabilities": metrics.get("Liabilities", 0),
-                                            "current_liabilities": metrics.get("LiabilitiesCurrent", 0),
-                                            "equity": metrics.get("StockholdersEquity") or metrics.get("Equity", 0),
-                                            "revenues": metrics.get("Revenues", 0),
-                                            "net_income": metrics.get("NetIncomeLoss", 0),
-                                            "cash": metrics.get(
-                                                "CashAndCashEquivalentsAtCarryingValue",
-                                                0,
-                                            ),
-                                        },
-                                        "ratios": {
-                                            "current_ratio": metrics.get("CurrentRatio", 0),
-                                            "quick_ratio": 0,  # Need to calculate
-                                            "debt_to_equity": 0,  # Need to calculate
-                                            "debt_to_assets": 0,  # Need to calculate
-                                            "roe": 0,  # Need to calculate
-                                            "roa": 0,  # Need to calculate
-                                            "gross_margin": 0.0,
-                                            "operating_margin": 0.0,
-                                            "net_margin": 0.0,
-                                            "price_to_sales": 0.0,
-                                        },
-                                        "source": "xbrl_filing",
-                                        "data_date": filing.get("filing_date"),
-                                    }
+                            if metrics:
+                                # Convert XBRL metrics to our standard format
+                                financial_data = {
+                                    "metrics": {
+                                        "assets": metrics.get("Assets", 0),
+                                        "current_assets": metrics.get("AssetsCurrent", 0),
+                                        "liabilities": metrics.get("Liabilities", 0),
+                                        "current_liabilities": metrics.get("LiabilitiesCurrent", 0),
+                                        "equity": metrics.get("StockholdersEquity") or metrics.get("Equity", 0),
+                                        "revenues": metrics.get("Revenues", 0),
+                                        "net_income": metrics.get("NetIncomeLoss", 0),
+                                        "cash": metrics.get(
+                                            "CashAndCashEquivalentsAtCarryingValue",
+                                            0,
+                                        ),
+                                    },
+                                    "ratios": {
+                                        "current_ratio": metrics.get("CurrentRatio", 0),
+                                        "quick_ratio": 0,  # Need to calculate
+                                        "debt_to_equity": 0,  # Need to calculate
+                                        "debt_to_assets": 0,  # Need to calculate
+                                        "roe": 0,  # Need to calculate
+                                        "roa": 0,  # Need to calculate
+                                        "gross_margin": 0.0,
+                                        "operating_margin": 0.0,
+                                        "net_margin": 0.0,
+                                        "price_to_sales": 0.0,
+                                    },
+                                    "source": "xbrl_filing",
+                                    "data_date": filing.get("filing_date"),
+                                }
 
-                                    # Calculate additional ratios
-                                    self._calculate_ratios(financial_data)
+                                # Calculate additional ratios
+                                self._calculate_ratios(financial_data)
 
-                                    self.logger.info(f"Successfully extracted financial data from XBRL for {symbol}")
-                                    return financial_data
+                                self.logger.info(f"Successfully extracted financial data from XBRL for {symbol}")
+                                return financial_data
 
             # Fallback: Try to extract from filing text using regex patterns
             self.logger.info(f"XBRL not available or failed, attempting text-based extraction for {symbol}")

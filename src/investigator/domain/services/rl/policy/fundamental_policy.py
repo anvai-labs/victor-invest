@@ -370,8 +370,8 @@ class FundamentalRLPolicy(RLPolicy):
         # Normalize to 100%
         total = sum(adjusted_weights.values())
         if total > 0:
-            for model in adjusted_weights:
-                adjusted_weights[model] = adjusted_weights[model] * 100.0 / total
+            for model, weight in adjusted_weights.items():
+                adjusted_weights[model] = weight * 100.0 / total
 
         return adjusted_weights
 

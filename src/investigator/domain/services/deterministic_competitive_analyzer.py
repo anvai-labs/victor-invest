@@ -609,8 +609,7 @@ class CompetitiveRiskGenerator:
         risks = []
 
         # Add sector-specific risks
-        for risk in sector_profile.common_risks[:2]:
-            risks.append(risk)
+        risks.extend(sector_profile.common_risks[:2])
 
         # Add context-specific risks
         if context.profit_margin and context.profit_margin < 0.10:

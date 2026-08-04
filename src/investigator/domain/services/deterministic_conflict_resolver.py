@@ -713,8 +713,8 @@ class DeterministicConflictResolver:
                 weight_counts[source] = weight_counts.get(source, 0) + 1
 
         blended = {}
-        for source in weight_sums:
-            blended[source] = weight_sums[source] / weight_counts[source]
+        for source, total_weight in weight_sums.items():
+            blended[source] = total_weight / weight_counts[source]
 
         # Normalize to sum to 1
         total = sum(blended.values())

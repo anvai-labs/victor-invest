@@ -895,16 +895,18 @@ class TestCalculateRobustValuation:
         # Mock Layer 3
         layer3_data = {}
 
-        with patch.object(valuation_service, "_get_layer1_data", return_value=layer1_data):
-            with patch.object(valuation_service, "_get_layer2_data", return_value=layer2_data):
-                with patch.object(valuation_service, "_get_layer3_data", return_value=layer3_data):
-                    result = valuation_service.calculate_robust_valuation(
-                        symbol=symbol,
-                        sector=sector,
-                        industry=industry,
-                        current_price=current_price,
-                        eps=eps,
-                    )
+        with (
+            patch.object(valuation_service, "_get_layer1_data", return_value=layer1_data),
+            patch.object(valuation_service, "_get_layer2_data", return_value=layer2_data),
+            patch.object(valuation_service, "_get_layer3_data", return_value=layer3_data),
+        ):
+            result = valuation_service.calculate_robust_valuation(
+                symbol=symbol,
+                sector=sector,
+                industry=industry,
+                current_price=current_price,
+                eps=eps,
+            )
 
         assert result is not None
         assert isinstance(result, RobustValuationResult)
@@ -943,12 +945,14 @@ class TestCalculateRobustValuation:
         # Mock Layer 1
         layer1_data = {"pe": 55.0}
 
-        with patch.object(valuation_service, "_get_layer1_data", return_value=layer1_data):
-            with patch.object(valuation_service, "_get_layer2_data", return_value=None):
-                result = valuation_service.calculate_robust_valuation(
-                    symbol=symbol,
-                    sector=sector,
-                )
+        with (
+            patch.object(valuation_service, "_get_layer1_data", return_value=layer1_data),
+            patch.object(valuation_service, "_get_layer2_data", return_value=None),
+        ):
+            result = valuation_service.calculate_robust_valuation(
+                symbol=symbol,
+                sector=sector,
+            )
 
         assert result is None
 

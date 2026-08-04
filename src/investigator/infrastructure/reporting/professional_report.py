@@ -1832,8 +1832,7 @@ class ProfessionalReportGenerator:
                         )
                     )
 
-            for p in tech_content:
-                story.append(p)
+            story.extend(tech_content)
             story.append(Spacer(1, 12))
 
         # Market Regime section with visual indicator

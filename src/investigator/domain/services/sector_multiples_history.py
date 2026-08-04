@@ -128,8 +128,6 @@ class SectorMultiplesHistory:
             from sqlalchemy.orm import sessionmaker
 
             sec_db_manager.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sec_db_manager.engine)
-        else:
-            sec_db_manager = sec_db_manager
 
         self.sec_db_manager = sec_db_manager
         self.min_samples = min_samples

@@ -451,8 +451,7 @@ class BearCaseGenerator:
         risks = []
 
         # Add from negative factors first
-        for factor in context.negative_factors[:2]:
-            risks.append(factor)
+        risks.extend(context.negative_factors[:2])
 
         # Add sector-specific risks
         sector_risks = self.SECTOR_RISKS.get(context.sector, self.DEFAULT_RISKS)

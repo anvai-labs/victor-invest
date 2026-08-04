@@ -206,9 +206,7 @@ class Form4Filing:
             return True
         if abs(self.net_value) > 500000:  # $500K threshold
             return True
-        if self.total_purchase_value > 1000000:  # $1M purchase
-            return True
-        return False
+        return self.total_purchase_value > 1000000  # $1M purchase
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
