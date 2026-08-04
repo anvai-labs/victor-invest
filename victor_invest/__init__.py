@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -40,16 +40,16 @@ Example:
 
 __version__ = "0.7.0"
 __author__ = "Vijaykumar Singh"
-__email__ = "singhvjd@gmail.com"
+__email__ = "vijay@anvaiops.com"
 __license__ = "Apache-2.0"
 
-from victor_invest.conversation_enhanced import (  # noqa: F401
+from victor_invest.conversation_enhanced import (
     EnhancedInvestConversationManager,
     InvestmentContext,
 )
 
 # Enhanced features with new coordinators (imported here, added to __all__ below)
-from victor_invest.safety_enhanced import (  # noqa: F401
+from victor_invest.safety_enhanced import (
     EnhancedInvestSafetyExtension,
     InvestmentSafetyRules,
 )
@@ -114,39 +114,39 @@ def __getattr__(name):
 
 
 __all__ = [
-    # Version info
-    "__version__",
-    # Vertical
-    "InvestmentVertical",
-    "InvestmentAssistant",  # Backward compatibility
+    "FUNDAMENTAL_AGENT_SPEC",
+    "MARKET_AGENT_SPEC",
+    # Agent specifications
+    "SEC_AGENT_SPEC",
+    "SYNTHESIS_AGENT_SPEC",
+    "TECHNICAL_AGENT_SPEC",
     # Workflows
     "AnalysisMode",
     "AnalysisWorkflowState",
+    # Tools
+    "BaseTool",
+    "CacheTool",
+    "EnhancedInvestConversationManager",
+    "EnhancedInvestSafetyExtension",
+    "InvestmentAssistant",  # Backward compatibility
+    "InvestmentContext",
+    # Enhanced features
+    "InvestmentSafetyRules",
+    # Vertical
+    "InvestmentVertical",
+    "MarketDataTool",
+    "SECFilingTool",
+    "TechnicalIndicatorsTool",
+    "ToolResult",
+    "ValuationTool",
+    # Version info
+    "__version__",
+    "build_comprehensive_graph",
     "build_graph_for_mode",
     "build_quick_graph",
     "build_standard_graph",
-    "build_comprehensive_graph",
-    "run_analysis",
-    # Agent specifications
-    "SEC_AGENT_SPEC",
-    "FUNDAMENTAL_AGENT_SPEC",
-    "TECHNICAL_AGENT_SPEC",
-    "MARKET_AGENT_SPEC",
-    "SYNTHESIS_AGENT_SPEC",
-    # Tools
-    "BaseTool",
-    "ToolResult",
-    "SECFilingTool",
-    "ValuationTool",
-    "TechnicalIndicatorsTool",
-    "MarketDataTool",
-    "CacheTool",
-    "get_tool",
     "get_all_tools",
+    "get_tool",
     "get_tool_names",
-    # Enhanced features
-    "InvestmentSafetyRules",
-    "EnhancedInvestSafetyExtension",
-    "InvestmentContext",
-    "EnhancedInvestConversationManager",
+    "run_analysis",
 ]

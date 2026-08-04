@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - Prompt Manager
 Copyright (c) 2025 Vijaykumar Singh
@@ -14,7 +13,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from utils.prompt_manager_enhanced import EnhancedPromptManager
@@ -35,7 +34,7 @@ logger = logging.getLogger(__name__)
 class PromptManager:
     """Manages Jinja2 prompt templates for LLM requests"""
 
-    def __init__(self, templates_dir: Optional[Path] = None):
+    def __init__(self, templates_dir: Path | None = None):
         """
         Initialize prompt manager
 
@@ -412,7 +411,7 @@ Please provide your synthesis in JSON format with the following structure:
 
 Respond with valid JSON only."""
 
-    def validate_json_response(self, response: Dict, metadata: Dict[str, Any] = None) -> Dict[str, Any]:
+    def validate_json_response(self, response: dict, metadata: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Enhanced JSON response validation with standardized response format
 
@@ -496,10 +495,10 @@ Respond with valid JSON only."""
                 "type": "text",
                 "value": response,
                 "metadata": response_metadata,
-                "error": f"Response validation failed: {str(e)}",
+                "error": f"Response validation failed: {e!s}",
             }
 
-    def _robust_json_parse(self, content: str) -> Optional[Dict]:
+    def _robust_json_parse(self, content: str) -> dict | None:
         """
         Attempt to parse JSON with various preprocessing strategies
 
@@ -628,7 +627,7 @@ Respond with valid JSON only."""
 
         return content
 
-    def _extract_partial_json_data(self, content: str) -> Optional[Dict]:
+    def _extract_partial_json_data(self, content: str) -> dict | None:
         """
         Extract key data even if JSON is malformed
 
@@ -692,7 +691,7 @@ def get_prompt_manager() -> PromptManager:
     return _prompt_manager
 
 
-def get_enhanced_prompt_manager(config=None) -> "EnhancedPromptManager":
+def get_enhanced_prompt_manager(config=None) -> EnhancedPromptManager:
     """Get enhanced prompt manager with context optimization"""
     global _enhanced_prompt_manager
     if _enhanced_prompt_manager is None:

@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ import re
 from dataclasses import dataclass
 from datetime import date
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import aiohttp
 
@@ -84,12 +84,12 @@ class GDPNowData:
     date: date
     quarter: str
     gdp_estimate: float
-    previous_estimate: Optional[float] = None
-    change_from_previous: Optional[float] = None
-    blue_chip_consensus: Optional[float] = None
-    components: Optional[Dict[str, float]] = None
-    outlook: Optional[GDPOutlook] = None
-    data_releases_incorporated: Optional[List[str]] = None
+    previous_estimate: float | None = None
+    change_from_previous: float | None = None
+    blue_chip_consensus: float | None = None
+    components: dict[str, float] | None = None
+    outlook: GDPOutlook | None = None
+    data_releases_incorporated: list[str] | None = None
 
     def __post_init__(self):
         if self.outlook is None:
@@ -110,14 +110,14 @@ class GDPNowData:
             return GDPOutlook.VERY_STRONG
 
     @property
-    def vs_consensus(self) -> Optional[float]:
+    def vs_consensus(self) -> float | None:
         """Difference from Blue Chip consensus (positive = above consensus)."""
         if self.blue_chip_consensus is not None:
             return self.gdp_estimate - self.blue_chip_consensus
         return None
 
     @property
-    def is_accelerating(self) -> Optional[bool]:
+    def is_accelerating(self) -> bool | None:
         """Whether growth estimate is increasing."""
         if self.change_from_previous is not None:
             return self.change_from_previous > 0
@@ -145,15 +145,15 @@ class WageGrowthData:
 
     date: date
     overall: float
-    job_stayers: Optional[float] = None
-    job_switchers: Optional[float] = None
-    full_time: Optional[float] = None
-    part_time: Optional[float] = None
-    hourly: Optional[float] = None
-    non_hourly: Optional[float] = None
+    job_stayers: float | None = None
+    job_switchers: float | None = None
+    full_time: float | None = None
+    part_time: float | None = None
+    hourly: float | None = None
+    non_hourly: float | None = None
 
     @property
-    def switcher_premium(self) -> Optional[float]:
+    def switcher_premium(self) -> float | None:
         """Premium for switching jobs vs staying."""
         if self.job_stayers and self.job_switchers:
             return self.job_switchers - self.job_stayers
@@ -176,9 +176,9 @@ class BusinessInflationExpectations:
 
     date: date
     year_ahead: float
-    year_ahead_uncertainty: Optional[float] = None
-    unit_cost_growth: Optional[float] = None
-    sales_growth: Optional[float] = None
+    year_ahead_uncertainty: float | None = None
+    unit_cost_growth: float | None = None
+    sales_growth: float | None = None
 
 
 class AtlantaFedClient:
@@ -199,7 +199,7 @@ class AtlantaFedClient:
         print(f"Wage growth: {wages.overall}%")
     """
 
-    def __init__(self, session: Optional[aiohttp.ClientSession] = None):
+    def __init__(self, session: aiohttp.ClientSession | None = None):
         self._session = session
         self._owns_session = session is None
 
@@ -220,7 +220,7 @@ class AtlantaFedClient:
             await self._session.close()
             self._session = None
 
-    async def get_gdpnow(self) -> Optional[GDPNowData]:
+    async def get_gdpnow(self) -> GDPNowData | None:
         """Get the latest GDPNow GDP estimate.
 
         Returns:
@@ -251,7 +251,7 @@ class AtlantaFedClient:
             logger.warning(f"Failed to fetch GDPNow: {e}")
             return None
 
-    def _parse_gdpnow_excel(self, content: bytes) -> Optional[GDPNowData]:
+    def _parse_gdpnow_excel(self, content: bytes) -> GDPNowData | None:
         """Parse GDPNow data from Excel file."""
         try:
             import io
@@ -293,7 +293,7 @@ class AtlantaFedClient:
             logger.debug(f"Could not parse GDPNow Excel: {e}")
             return None
 
-    def _parse_gdpnow_html(self, html: str) -> Optional[GDPNowData]:
+    def _parse_gdpnow_html(self, html: str) -> GDPNowData | None:
         """Parse GDPNow data from HTML page."""
         try:
             # Look for GDP growth patterns - try multiple approaches
@@ -328,7 +328,7 @@ class AtlantaFedClient:
             logger.debug(f"Could not parse GDPNow HTML: {e}")
             return None
 
-    async def get_wage_growth(self) -> Optional[WageGrowthData]:
+    async def get_wage_growth(self) -> WageGrowthData | None:
         """Get the latest Wage Growth Tracker data.
 
         Returns:
@@ -347,7 +347,7 @@ class AtlantaFedClient:
             logger.warning(f"Failed to fetch wage growth data: {e}")
             return None
 
-    def _parse_wage_growth_excel(self, content: bytes) -> Optional[WageGrowthData]:
+    def _parse_wage_growth_excel(self, content: bytes) -> WageGrowthData | None:
         """Parse wage growth data from Excel file."""
         try:
             import io
@@ -381,7 +381,7 @@ class AtlantaFedClient:
 
     async def get_business_inflation_expectations(
         self,
-    ) -> Optional[BusinessInflationExpectations]:
+    ) -> BusinessInflationExpectations | None:
         """Get the latest Business Inflation Expectations survey.
 
         Returns:
@@ -400,7 +400,7 @@ class AtlantaFedClient:
             logger.warning(f"Failed to fetch BIE data: {e}")
             return None
 
-    def _parse_bie_excel(self, content: bytes) -> Optional[BusinessInflationExpectations]:
+    def _parse_bie_excel(self, content: bytes) -> BusinessInflationExpectations | None:
         """Parse Business Inflation Expectations from Excel."""
         try:
             import io
@@ -431,7 +431,7 @@ class AtlantaFedClient:
             logger.debug(f"Could not parse BIE Excel: {e}")
             return None
 
-    async def get_all_indicators(self) -> Dict[str, Any]:
+    async def get_all_indicators(self) -> dict[str, Any]:
         """Get all Atlanta Fed indicators.
 
         Returns:
@@ -454,7 +454,7 @@ class AtlantaFedClient:
 
 
 # Singleton instance
-_client: Optional[AtlantaFedClient] = None
+_client: AtlantaFedClient | None = None
 
 
 def get_atlanta_fed_client() -> AtlantaFedClient:

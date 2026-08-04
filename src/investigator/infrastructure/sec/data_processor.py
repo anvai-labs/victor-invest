@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 SEC Data Processor - Extract quarterly data from raw SEC API responses
 
@@ -19,7 +18,7 @@ import copy
 import logging
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, ClassVar
 
 try:
     from line_profiler import profile  # type: ignore
@@ -98,7 +97,7 @@ class SECDataProcessor:
     # Old filing periods can lack reliable fy metadata; keep them as lower-noise diagnostics.
     ADSH_INVALID_FY_WARNING_YEARS = 8
 
-    def _build_adsh_fiscal_lookup(self, cik: str, engine) -> Dict[str, Dict]:
+    def _build_adsh_fiscal_lookup(self, cik: str, engine) -> dict[str, dict]:
         """
         Build authoritative ADSH→fiscal period lookup from sec_sub_data bulk table.
 
@@ -154,7 +153,7 @@ class SECDataProcessor:
             logger.warning(f"Failed to build ADSH lookup from bulk table: {e}")
             return {}
 
-    def _correct_period_end_dates(self, filings: Dict, us_gaap: Dict, cik: str):
+    def _correct_period_end_dates(self, filings: dict, us_gaap: dict, cik: str):
         """
         Correct period_end dates for each filing using multiple strategies:
         1. Scan actual extracted data to find most common period_end for this ADSH+fy+fp
@@ -174,7 +173,7 @@ class SECDataProcessor:
         # Build bulk table lookup as fallback
         bulk_lookup = self._build_adsh_fiscal_lookup(cik, self.engine) if self.engine else {}
 
-        for filing_key, filing in filings.items():
+        for filing in filings.values():
             adsh = filing["adsh"]
             fy = filing["fiscal_year"]
             fp = filing["fiscal_period"]
@@ -182,9 +181,9 @@ class SECDataProcessor:
 
             # Strategy 1: Collect all period_end dates for this ADSH+fy+fp from actual data
             period_ends = []
-            for tag_name, tag_data in us_gaap.items():
+            for tag_data in us_gaap.values():
                 units = tag_data.get("units", {})
-                for unit_type, unit_data in units.items():
+                for unit_data in units.values():
                     for entry in unit_data:
                         if entry.get("accn") == adsh and entry.get("fy") == fy and entry.get("fp") == fp:
                             end_date = entry.get("end")
@@ -256,7 +255,7 @@ class SECDataProcessor:
                             )
                             filing["period_end_date"] = derived_period_end
 
-    def _compute_quarter_end_dates(self, filings: Dict, symbol: str):
+    def _compute_quarter_end_dates(self, filings: dict, symbol: str):
         """
         Compute correct period_end_date for quarterly periods based on fiscal year-end pattern.
 
@@ -291,7 +290,7 @@ class SECDataProcessor:
 
         # Use the most recent FY to detect the fiscal year-end month/day
         fy_periods.sort(key=lambda x: x[0], reverse=True)
-        latest_fy_year, latest_fy_end = fy_periods[0]
+        _latest_fy_year, latest_fy_end = fy_periods[0]
 
         try:
             fy_end_date = datetime.strptime(latest_fy_end, "%Y-%m-%d")
@@ -345,7 +344,7 @@ class SECDataProcessor:
         if corrections_made > 0:
             logger.info(f"{symbol}: Corrected period_end_date for {corrections_made} periods (including FY)")
 
-    def _detect_fiscal_year_end(self, company_facts_data: Dict, symbol: str) -> Optional[str]:
+    def _detect_fiscal_year_end(self, company_facts_data: dict, symbol: str) -> str | None:
         """
         Detect company's fiscal year end from FY periods only.
 
@@ -387,10 +386,9 @@ class SECDataProcessor:
         day = int(day_str)
 
         # LEAP YEAR HANDLING: Adjust Feb 29 to Feb 28 for non-leap years
-        if month == 2 and day == 29:
-            if not isleap(fiscal_year):
-                logger.warning(f"[Fiscal Year Start] Adjusted Feb 29 to Feb 28 for non-leap year {fiscal_year}")
-                day = 28
+        if month == 2 and day == 29 and not isleap(fiscal_year):
+            logger.warning(f"[Fiscal Year Start] Adjusted Feb 29 to Feb 28 for non-leap year {fiscal_year}")
+            day = 28
 
         try:
             # Construct fiscal year end date
@@ -408,7 +406,7 @@ class SECDataProcessor:
 
         return fy_start.strftime("%Y-%m-%d")
 
-    def _score_period_for_selection(self, entry: Dict, fiscal_year_start: Optional[str], symbol: str) -> int:
+    def _score_period_for_selection(self, entry: dict, fiscal_year_start: str | None, symbol: str) -> int:
         """
         Score a period entry to prefer quarterly over YTD versions.
 
@@ -482,7 +480,7 @@ class SECDataProcessor:
         return score
 
     @staticmethod
-    def _determine_fiscal_year_from_end_date(period_end_date: str, fiscal_period: str) -> Optional[int]:
+    def _determine_fiscal_year_from_end_date(period_end_date: str, fiscal_period: str) -> int | None:
         """
         DEPRECATED: Use bulk table lookup instead (_build_adsh_fiscal_lookup).
 
@@ -509,7 +507,7 @@ class SECDataProcessor:
             return None
 
     # Canonical keys to extract (replaces hardcoded FIELD_MAPPINGS)
-    CANONICAL_KEYS_TO_EXTRACT = [
+    CANONICAL_KEYS_TO_EXTRACT: ClassVar[list] = [
         # Income Statement
         "total_revenue",
         "net_income",
@@ -584,8 +582,8 @@ class SECDataProcessor:
     def __init__(
         self,
         db_engine=None,
-        sector: Optional[str] = None,
-        industry: Optional[str] = None,
+        sector: str | None = None,
+        industry: str | None = None,
     ):
         """
         Initialize processor with database connection and canonical key mapper
@@ -624,7 +622,7 @@ class SECDataProcessor:
         self._ratio_synonyms = {}
 
     @staticmethod
-    def _mapping_has_direct_tags(mapping: Optional[Dict[str, Any]]) -> bool:
+    def _mapping_has_direct_tags(mapping: dict[str, Any] | None) -> bool:
         """Return True when a canonical mapping exposes real XBRL tags (not purely derived)."""
         if not mapping:
             return False
@@ -636,7 +634,7 @@ class SECDataProcessor:
         sector_specific = mapping.get("sector_specific") or {}
         return any(tags for tags in sector_specific.values())
 
-    def _detect_statement_qtrs(self, us_gaap: Dict, adsh: str, fiscal_year: int, fiscal_period: str) -> Tuple[int, int]:
+    def _detect_statement_qtrs(self, us_gaap: dict, adsh: str, fiscal_year: int, fiscal_period: str) -> tuple[int, int]:
         """
         Detect optimal qtrs values for income statement and cash flow statement.
 
@@ -686,7 +684,7 @@ class SECDataProcessor:
 
         return (income_statement_qtrs, cash_flow_statement_qtrs)
 
-    def _enrich_share_counts(self, filing: Dict) -> None:
+    def _enrich_share_counts(self, filing: dict) -> None:
         """
         Ensure shares_outstanding is populated using diluted share counts when necessary.
         """
@@ -697,7 +695,7 @@ class SECDataProcessor:
             if diluted:
                 data["shares_outstanding"] = diluted
 
-    def _enrich_book_value_per_share(self, filing: Dict) -> None:
+    def _enrich_book_value_per_share(self, filing: dict) -> None:
         """
         Derive book_value_per_share when equity and share counts exist but the metric is absent.
         """
@@ -712,7 +710,7 @@ class SECDataProcessor:
 
         data["book_value_per_share"] = equity / shares
 
-    def _enrich_gross_and_cost_fields(self, filing: Dict) -> None:
+    def _enrich_gross_and_cost_fields(self, filing: dict) -> None:
         """
         Fill missing gross_profit or cost_of_revenue using available totals/operating metrics.
         """
@@ -744,8 +742,8 @@ class SECDataProcessor:
 
     def _find_optimal_qtrs(
         self,
-        us_gaap: Dict,
-        tags: List[str],
+        us_gaap: dict,
+        tags: list[str],
         adsh: str,
         fiscal_year: int,
         fiscal_period: str,
@@ -803,7 +801,7 @@ class SECDataProcessor:
             # Safe fallback
             return {"Q2": 2, "Q3": 3}.get(fiscal_period, 1)
 
-    def _discover_all_period_entries(self, us_gaap: Dict, symbol: str) -> List[Dict]:
+    def _discover_all_period_entries(self, us_gaap: dict, symbol: str) -> list[dict]:
         """
         Discover ALL period entries from representative XBRL tags.
 
@@ -872,8 +870,8 @@ class SECDataProcessor:
         return all_entries
 
     def _select_best_entries_per_period(
-        self, all_entries: List[Dict], symbol: str, company_facts_data: Dict
-    ) -> List[Dict]:
+        self, all_entries: list[dict], symbol: str, company_facts_data: dict
+    ) -> list[dict]:
         """
         Select best entry for each unique period using comprehensive scoring strategy.
 
@@ -1053,7 +1051,7 @@ class SECDataProcessor:
         return best_entries
 
     @staticmethod
-    def _is_historical_period(period_end: Optional[str], years: int) -> bool:
+    def _is_historical_period(period_end: str | None, years: int) -> bool:
         """Return True when period_end is older than the requested year threshold."""
         if not period_end:
             return False
@@ -1065,7 +1063,7 @@ class SECDataProcessor:
 
         return period_year <= datetime.now().year - years
 
-    def _enrich_debt_fields(self, filing: Dict) -> None:
+    def _enrich_debt_fields(self, filing: dict) -> None:
         """
         Derive missing short-term debt, total debt, and net debt fields when underlying components exist.
 
@@ -1134,12 +1132,12 @@ class SECDataProcessor:
     def _extract_from_json_for_filing(
         self,
         canonical_key: str,
-        us_gaap: Dict,
+        us_gaap: dict,
         adsh: str,
-        fiscal_year: Optional[int] = None,
-        fiscal_period: Optional[str] = None,
-        period_end: Optional[str] = None,
-    ) -> Tuple[Optional[float], Optional[str]]:
+        fiscal_year: int | None = None,
+        fiscal_period: str | None = None,
+        period_end: str | None = None,
+    ) -> tuple[float | None, str | None]:
         """
         Extract a canonical key for a specific filing using SOLID-based MetricExtractionOrchestrator.
 
@@ -1295,12 +1293,12 @@ class SECDataProcessor:
 
     def _derive_other_comprehensive_income(
         self,
-        us_gaap: Dict,
+        us_gaap: dict,
         adsh: str,
-        fiscal_year: Optional[int],
-        fiscal_period: Optional[str],
+        fiscal_year: int | None,
+        fiscal_period: str | None,
         period_end: str,
-    ) -> Optional[float]:
+    ) -> float | None:
         """
         Derive OCI from Comprehensive Income - Net Income for periods lacking direct OCI tags.
         """
@@ -1343,11 +1341,11 @@ class SECDataProcessor:
 
     def _select_best_entry(
         self,
-        entries: List[Dict],
-        fiscal_period: Optional[str] = None,
-        period_end: Optional[str] = None,
-        fiscal_year: Optional[int] = None,
-    ) -> Optional[Dict]:
+        entries: list[dict],
+        fiscal_period: str | None = None,
+        period_end: str | None = None,
+        fiscal_year: int | None = None,
+    ) -> dict | None:
         """
         Select the best entry from multiple matches based on duration.
 
@@ -1365,7 +1363,7 @@ class SECDataProcessor:
             Best entry to use, or None if no valid entry
         """
 
-        def choose(candidates: List[Dict]) -> Optional[Dict]:
+        def choose(candidates: list[dict]) -> dict | None:
             if not candidates:
                 return None
 
@@ -1461,12 +1459,12 @@ class SECDataProcessor:
     def process_raw_data(
         self,
         symbol: str,
-        raw_data: Dict,
+        raw_data: dict,
         raw_data_id: int,
         extraction_version: str = "1.0.0",
         persist: bool = True,
-        current_price: Optional[float] = None,
-    ) -> List[Dict]:
+        current_price: float | None = None,
+    ) -> list[dict]:
         """
         Extract all quarterly/annual filings from raw us-gaap structure
 
@@ -1680,7 +1678,7 @@ class SECDataProcessor:
             # Use sector-aware extraction with automatic fallback chains
             extracted_fields = set()
 
-            for period_key, filing in filings.items():
+            for filing in filings.values():
                 adsh = filing["adsh"]  # Extract adsh from filing dict
                 for canonical_key in self.CANONICAL_KEYS_TO_EXTRACT:
                     mapping = self.canonical_mapper.mappings.get(canonical_key)
@@ -1734,7 +1732,7 @@ class SECDataProcessor:
             # PHASE 3: Calculate derived metrics using CanonicalKeyMapper
             # Derived metrics include free_cash_flow, total_debt, and other calculated values
             processed_filings = []
-            for period_key, filing in filings.items():
+            for filing in filings.values():
                 adsh = filing["adsh"]  # Extract adsh from filing dict
                 # Use CanonicalKeyMapper to calculate derived values
                 for canonical_key in self.CANONICAL_KEYS_TO_EXTRACT:
@@ -1844,7 +1842,7 @@ class SECDataProcessor:
                 return 0
         return 0
 
-    def _calculate_ratios(self, data: Dict) -> Dict[str, Optional[float]]:
+    def _calculate_ratios(self, data: dict) -> dict[str, float | None]:
         """
         Calculate financial ratios from extracted data
 
@@ -1909,14 +1907,14 @@ class SECDataProcessor:
 
     def _normalize_ytd_to_pit(
         self,
-        data: Dict,
+        data: dict,
         income_qtrs: int,
         cashflow_qtrs: int,
         fiscal_period: str,
         fiscal_year: int,
-        all_filings: List[Dict],
+        all_filings: list[dict],
         symbol: str,
-    ) -> Tuple[Dict, bool, bool]:
+    ) -> tuple[dict, bool, bool]:
         """
         Convert YTD values to point-in-time for income/cash flow statements
 
@@ -2070,7 +2068,7 @@ class SECDataProcessor:
 
         return normalized, income_normalized, cashflow_normalized
 
-    def _assess_quality(self, data: Dict, ratios: Dict) -> Dict[str, Any]:
+    def _assess_quality(self, data: dict, ratios: dict) -> dict[str, Any]:
         """
         Assess data completeness and quality
 
@@ -2130,7 +2128,7 @@ class SECDataProcessor:
             "grade": grade,
         }
 
-    def save_processed_data(self, processed_filings: List[Dict]) -> int:
+    def save_processed_data(self, processed_filings: list[dict]) -> int:
         """Save processed filings to sec_companyfacts_processed table."""
         if not processed_filings:
             logger.warning("No processed filings to save")
@@ -2216,22 +2214,24 @@ class SECDataProcessor:
                     ratios = filing["ratios"]
                     quality = filing["quality"]
 
-                    def prefer_value(key: str):
-                        value = data.get(key)
+                    # _data/_ratios are bound as defaults so the closure captures this
+                    # iteration's filing rather than the loop variable.
+                    def prefer_value(key: str, _data=data, _ratios=ratios):
+                        value = _data.get(key)
                         if value is not None:
                             return value
-                        if ratios:
-                            ratio_val = ratios.get(key)
+                        if _ratios:
+                            ratio_val = _ratios.get(key)
                             if ratio_val is not None:
                                 return ratio_val
 
                             synonym = self._ratio_synonyms.get(key)
                             if synonym:
                                 # Prefer data values first so we preserve PIT adjustments
-                                syn_data_val = data.get(synonym)
+                                syn_data_val = _data.get(synonym)
                                 if syn_data_val is not None:
                                     return syn_data_val
-                                syn_ratio_val = ratios.get(synonym)
+                                syn_ratio_val = _ratios.get(synonym)
                                 if syn_ratio_val is not None:
                                     return syn_ratio_val
                         return None
@@ -2360,7 +2360,7 @@ class SECDataProcessor:
             logger.error(traceback.format_exc())
             return 0
 
-    def _update_metadata(self, symbol: str, cik: str, entity_name: str, processed_filings: List[Dict]):
+    def _update_metadata(self, symbol: str, cik: str, entity_name: str, processed_filings: list[dict]):
         """
         Update sec_companyfacts_metadata table with cache control and quality stats
 

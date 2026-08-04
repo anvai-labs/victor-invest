@@ -41,10 +41,10 @@ from .ttm_calculator import TTMCalculator
 from .valuation_config_service import ValuationConfigService
 
 __all__ = [
-    "ValuationConfigService",
-    "SectorMultiplesService",
-    "FinancialDataService",
-    "TTMCalculator",
-    "RatioCalculator",
     "FairValueService",
+    "FinancialDataService",
+    "RatioCalculator",
+    "SectorMultiplesService",
+    "TTMCalculator",
+    "ValuationConfigService",
 ]

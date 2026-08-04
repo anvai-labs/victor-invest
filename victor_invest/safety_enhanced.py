@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ Integration Point:
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from victor_contracts.safety import SafetyAction, SafetyCategory, SafetyCoordinator, SafetyRule
 from victor_contracts.verticals.protocols import SafetyExtensionProtocol
@@ -49,7 +49,7 @@ class InvestmentSafetyRules:
     """
 
     @staticmethod
-    def get_trading_rules() -> List[SafetyRule]:
+    def get_trading_rules() -> list[SafetyRule]:
         """Get trading safety rules.
 
         Returns:
@@ -91,7 +91,7 @@ class InvestmentSafetyRules:
         ]
 
     @staticmethod
-    def get_portfolio_rules() -> List[SafetyRule]:
+    def get_portfolio_rules() -> list[SafetyRule]:
         """Get portfolio management safety rules.
 
         Returns:
@@ -133,7 +133,7 @@ class InvestmentSafetyRules:
         ]
 
     @staticmethod
-    def get_data_privacy_rules() -> List[SafetyRule]:
+    def get_data_privacy_rules() -> list[SafetyRule]:
         """Get financial data privacy safety rules.
 
         Returns:
@@ -164,7 +164,7 @@ class InvestmentSafetyRules:
         ]
 
     @staticmethod
-    def get_api_rules() -> List[SafetyRule]:
+    def get_api_rules() -> list[SafetyRule]:
         """Get API access safety rules.
 
         Returns:
@@ -195,7 +195,7 @@ class InvestmentSafetyRules:
         ]
 
     @staticmethod
-    def get_all_rules() -> List[SafetyRule]:
+    def get_all_rules() -> list[SafetyRule]:
         """Get all investment-specific safety rules.
 
         Returns:
@@ -257,8 +257,8 @@ class EnhancedInvestSafetyExtension(SafetyExtensionProtocol):
     def check_operation(
         self,
         tool_name: str,
-        args: List[str],
-        context: Optional[Dict[str, Any]] = None,
+        args: list[str],
+        context: dict[str, Any] | None = None,
     ) -> Any:
         """Check if an operation is safe.
 
@@ -275,8 +275,8 @@ class EnhancedInvestSafetyExtension(SafetyExtensionProtocol):
     def is_operation_safe(
         self,
         tool_name: str,
-        args: List[str],
-        context: Optional[Dict[str, Any]] = None,
+        args: list[str],
+        context: dict[str, Any] | None = None,
     ) -> bool:
         """Quick check if an operation is safe.
 
@@ -290,7 +290,7 @@ class EnhancedInvestSafetyExtension(SafetyExtensionProtocol):
         """
         return self._coordinator.is_operation_safe(tool_name, args, context)  # type: ignore[no-any-return]
 
-    def get_bash_patterns(self) -> List[SafetyPattern]:
+    def get_bash_patterns(self) -> list[SafetyPattern]:
         """Get investment-specific bash command patterns.
 
         Returns:
@@ -298,7 +298,7 @@ class EnhancedInvestSafetyExtension(SafetyExtensionProtocol):
         """
         return []
 
-    def get_file_patterns(self) -> List[SafetyPattern]:
+    def get_file_patterns(self) -> list[SafetyPattern]:
         """Get investment-specific file operation patterns.
 
         Returns:
@@ -306,7 +306,7 @@ class EnhancedInvestSafetyExtension(SafetyExtensionProtocol):
         """
         return []
 
-    def get_tool_restrictions(self) -> Dict[str, List[str]]:
+    def get_tool_restrictions(self) -> dict[str, list[str]]:
         """Get tool-specific argument restrictions.
 
         Returns:
@@ -345,7 +345,7 @@ class EnhancedInvestSafetyExtension(SafetyExtensionProtocol):
         """
         return self._coordinator.unregister_rule(rule_id)  # type: ignore[no-any-return]
 
-    def get_safety_stats(self) -> Dict[str, Any]:
+    def get_safety_stats(self) -> dict[str, Any]:
         """Get safety statistics.
 
         Returns:
@@ -354,13 +354,13 @@ class EnhancedInvestSafetyExtension(SafetyExtensionProtocol):
         return self._coordinator.get_stats_dict()  # type: ignore[no-any-return]
 
 
-def create_investment_safety_rules() -> "EnhancedInvestSafetyExtension":
+def create_investment_safety_rules() -> EnhancedInvestSafetyExtension:
     """Entry point factory for victor.safety_rules."""
     return EnhancedInvestSafetyExtension()
 
 
 __all__ = [
-    "InvestmentSafetyRules",
     "EnhancedInvestSafetyExtension",
+    "InvestmentSafetyRules",
     "create_investment_safety_rules",
 ]

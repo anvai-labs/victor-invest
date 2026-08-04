@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from collections.abc import Sequence
+from typing import Any
 
 
 def _to_float(value: Any) -> float:
@@ -14,7 +15,7 @@ def _to_float(value: Any) -> float:
         return 0.0
 
 
-def _to_ratio(value: Any) -> Optional[float]:
+def _to_ratio(value: Any) -> float | None:
     numeric = _to_float(value)
     if numeric <= 0:
         return None
@@ -24,7 +25,7 @@ def _to_ratio(value: Any) -> Optional[float]:
     return ratio
 
 
-def _to_yield_ratio(value: Any) -> Optional[float]:
+def _to_yield_ratio(value: Any) -> float | None:
     numeric = _to_float(value)
     if numeric <= 0:
         return None
@@ -36,12 +37,12 @@ def _to_yield_ratio(value: Any) -> Optional[float]:
 
 def _resolve_payout_ratio_ratio(
     *,
-    financials: Dict[str, Any],
-    ratios: Optional[Dict[str, Any]],
+    financials: dict[str, Any],
+    ratios: dict[str, Any] | None,
     profile_payout_ratio: Any,
     profile_dividend_yield: Any,
 ) -> float:
-    candidates: List[float] = []
+    candidates: list[float] = []
 
     for value in (
         financials.get("payout_ratio"),
@@ -85,16 +86,16 @@ def _resolve_payout_ratio_ratio(
 
 def collect_models_for_blending(
     *,
-    dcf_professional: Optional[Dict[str, Any]],
-    valuation_results: Dict[str, Any],
-    normalized_pe: Optional[Dict[str, Any]],
-    normalized_ev_ebitda: Optional[Dict[str, Any]],
-    normalized_ps: Optional[Dict[str, Any]],
-    normalized_pb: Optional[Dict[str, Any]],
-) -> Tuple[List[Dict[str, Any]], List[str]]:
+    dcf_professional: dict[str, Any] | None,
+    valuation_results: dict[str, Any],
+    normalized_pe: dict[str, Any] | None,
+    normalized_ev_ebitda: dict[str, Any] | None,
+    normalized_ps: dict[str, Any] | None,
+    normalized_pb: dict[str, Any] | None,
+) -> tuple[list[dict[str, Any]], list[str]]:
     """Collect applicable valuation model payloads for orchestrator blending."""
-    models_for_blending: List[Dict[str, Any]] = []
-    info_messages: List[str] = []
+    models_for_blending: list[dict[str, Any]] = []
+    info_messages: list[str] = []
 
     if isinstance(dcf_professional, dict):
         models_for_blending.append(dcf_professional)
@@ -135,10 +136,10 @@ def collect_models_for_blending(
 
 def filter_models_for_company(
     *,
-    models_for_blending: Sequence[Dict[str, Any]],
-    allowed_models: Optional[Sequence[str]],
-    industry: Optional[str],
-) -> Tuple[List[Dict[str, Any]], Optional[List[str]], bool]:
+    models_for_blending: Sequence[dict[str, Any]],
+    allowed_models: Sequence[str] | None,
+    industry: str | None,
+) -> tuple[list[dict[str, Any]], list[str] | None, bool]:
     """
     Apply allowed-model filtering and insurance P/B override rule.
 
@@ -192,11 +193,11 @@ def _count_fcf_quarters(quarterly_metrics: Any) -> int:
 
 def hydrate_financials_for_blending(
     *,
-    financials: Dict[str, Any],
-    company_data: Dict[str, Any],
+    financials: dict[str, Any],
+    company_data: dict[str, Any],
     company_profile: Any,
-    ratios: Optional[Dict[str, Any]],
-) -> Dict[str, Any]:
+    ratios: dict[str, Any] | None,
+) -> dict[str, Any]:
     """Add required fields used by model applicability and dynamic weighting checks."""
     if ratios:
         if "market_cap" in ratios and "market_cap" not in financials:
@@ -308,13 +309,13 @@ def hydrate_financials_for_blending(
 
 def apply_weight_lookup(
     *,
-    multi_model_summary: Dict[str, Any],
-    dcf_professional: Optional[Dict[str, Any]],
-    valuation_results: Dict[str, Any],
-    normalized_pe: Optional[Dict[str, Any]],
-    normalized_ev_ebitda: Optional[Dict[str, Any]],
-    normalized_ps: Optional[Dict[str, Any]],
-    normalized_pb: Optional[Dict[str, Any]],
+    multi_model_summary: dict[str, Any],
+    dcf_professional: dict[str, Any] | None,
+    valuation_results: dict[str, Any],
+    normalized_pe: dict[str, Any] | None,
+    normalized_ev_ebitda: dict[str, Any] | None,
+    normalized_ps: dict[str, Any] | None,
+    normalized_pb: dict[str, Any] | None,
 ) -> None:
     """Propagate orchestrator-assigned weights back into individual model records."""
     weight_lookup = {

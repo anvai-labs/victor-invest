@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 
-def build_deterministic_response(agent_id: str, label: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+def build_deterministic_response(agent_id: str, label: str, payload: dict[str, Any]) -> dict[str, Any]:
     """Build a deterministic analysis response compatible with LLM-shaped contracts."""
     return {
         "response": payload,
@@ -31,11 +31,11 @@ def build_deterministic_cache_record(
     symbol: str,
     agent_id: str,
     label: str,
-    payload: Dict[str, Any],
-    period: Optional[str],
-) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    payload: dict[str, Any],
+    period: str | None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
     """Build cache key/value pair for persisted deterministic analyses."""
-    cache_key: Dict[str, Any] = {"symbol": symbol, "llm_type": label}
+    cache_key: dict[str, Any] = {"symbol": symbol, "llm_type": label}
     if period:
         cache_key["period"] = period
 
@@ -61,11 +61,11 @@ def coerce_float(value: Any, default: float = 0.0) -> float:
 
 
 def build_deterministic_forecast_payload(
-    financials: Dict[str, Any],
-    growth_analysis: Dict[str, Any],
+    financials: dict[str, Any],
+    growth_analysis: dict[str, Any],
     *,
-    current_year: Optional[int] = None,
-) -> Dict[str, Any]:
+    current_year: int | None = None,
+) -> dict[str, Any]:
     """Build a deterministic 3-year forecast payload when LLM synthesis is bypassed."""
     year = current_year or datetime.now().year
     revenue = max(coerce_float(financials.get("revenue"), 0.0), 0.0)
@@ -83,9 +83,9 @@ def build_deterministic_forecast_payload(
         growth = growth / 100.0
     growth = min(max(growth, -0.20), 0.30)
 
-    rev_forecast: List[Dict[str, Any]] = []
-    eps_forecast: List[Dict[str, Any]] = []
-    fcf_forecast: List[Dict[str, Any]] = []
+    rev_forecast: list[dict[str, Any]] = []
+    eps_forecast: list[dict[str, Any]] = []
+    fcf_forecast: list[dict[str, Any]] = []
 
     revenue_run = revenue
     eps_run = eps
@@ -150,7 +150,7 @@ def build_deterministic_forecast_payload(
     }
 
 
-def build_deterministic_fundamental_report_payload(analysis_data: Dict[str, Any]) -> Dict[str, Any]:
+def build_deterministic_fundamental_report_payload(analysis_data: dict[str, Any]) -> dict[str, Any]:
     """Build a deterministic fallback fundamental report payload."""
     valuation_data = analysis_data.get("valuation", {})
     if isinstance(valuation_data, dict) and isinstance(valuation_data.get("response"), dict):
@@ -209,10 +209,10 @@ def build_deterministic_fundamental_report_payload(analysis_data: Dict[str, Any]
 
 
 def calculate_quality_score(
-    health: Dict[str, Any],
-    growth: Dict[str, Any],
-    profitability: Dict[str, Any],
-    competitive: Dict[str, Any],
+    health: dict[str, Any],
+    growth: dict[str, Any],
+    profitability: dict[str, Any],
+    competitive: dict[str, Any],
 ) -> float:
     """Calculate the weighted overall company quality score from deterministic sub-analyses."""
     scores = []

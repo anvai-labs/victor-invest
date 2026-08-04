@@ -25,7 +25,7 @@ Usage:
 import logging
 import os
 from datetime import date
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, ClassVar
 
 from investigator.domain.services.rl.feature_extractor import ValuationContextExtractor
 from investigator.domain.services.rl.feature_normalizer import FeatureNormalizer
@@ -59,13 +59,13 @@ class RLModelWeightingService:
     """
 
     # Horizon-specific policy mapping
-    HORIZON_POLICY_MAP = {
+    HORIZON_POLICY_MAP: ClassVar[dict] = {
         "90d": "data/rl_models/policy.pkl",
         "365d": "data/rl_models/policy_365d.pkl",
         "730d": "data/rl_models/policy_730d.pkl",
     }
 
-    HORIZON_NORMALIZER_MAP = {
+    HORIZON_NORMALIZER_MAP: ClassVar[dict] = {
         "90d": "data/rl_models/normalizer.pkl",
         "365d": "data/rl_models/normalizer_365d.pkl",
         "730d": "data/rl_models/normalizer_730d.pkl",
@@ -74,11 +74,11 @@ class RLModelWeightingService:
     def __init__(
         self,
         rl_enabled: bool = True,
-        fallback_service: Optional[Any] = None,
-        policy: Optional[RLPolicy] = None,
+        fallback_service: Any | None = None,
+        policy: RLPolicy | None = None,
         policy_path: str = "data/rl_models/policy.pkl",
         normalizer_path: str = "data/rl_models/normalizer.pkl",
-        outcome_tracker: Optional[OutcomeTracker] = None,
+        outcome_tracker: OutcomeTracker | None = None,
         ab_test_enabled: bool = False,
         ab_test_rl_fraction: float = 0.20,
         # Dual policy support
@@ -122,7 +122,7 @@ class RLModelWeightingService:
         self.use_dual_policy = use_dual_policy
         self.technical_policy_path = technical_policy_path
         self.fundamental_policy_path = fundamental_policy_path
-        self.dual_policy: Optional[DualRLPolicy] = None
+        self.dual_policy: DualRLPolicy | None = None
 
         # Feature extraction
         self.extractor = ValuationContextExtractor()
@@ -227,11 +227,11 @@ class RLModelWeightingService:
     def determine_weights(
         self,
         symbol: str,
-        financials: Dict[str, Any],
-        ratios: Dict[str, Any],
-        data_quality: Optional[Dict[str, Any]] = None,
-        market_context: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[Dict[str, float], str, Optional[WeightAuditTrail]]:
+        financials: dict[str, Any],
+        ratios: dict[str, Any],
+        data_quality: dict[str, Any] | None = None,
+        market_context: dict[str, Any] | None = None,
+    ) -> tuple[dict[str, float], str, WeightAuditTrail | None]:
         """
         Determine model weights using RL or fallback.
 
@@ -282,11 +282,11 @@ class RLModelWeightingService:
     def _predict_with_rl(
         self,
         symbol: str,
-        financials: Dict[str, Any],
-        ratios: Dict[str, Any],
-        data_quality: Optional[Dict[str, Any]],
-        market_context: Optional[Dict[str, Any]],
-    ) -> Tuple[Dict[str, float], str, Optional[WeightAuditTrail]]:
+        financials: dict[str, Any],
+        ratios: dict[str, Any],
+        data_quality: dict[str, Any] | None,
+        market_context: dict[str, Any] | None,
+    ) -> tuple[dict[str, float], str, WeightAuditTrail | None]:
         """Make prediction using RL policy (dual or single)."""
         try:
             # Extract context
@@ -335,11 +335,11 @@ class RLModelWeightingService:
     def _predict_with_fallback(
         self,
         symbol: str,
-        financials: Dict[str, Any],
-        ratios: Dict[str, Any],
-        data_quality: Optional[Dict[str, Any]],
-        market_context: Optional[Dict[str, Any]],
-    ) -> Tuple[Dict[str, float], str, Optional[WeightAuditTrail]]:
+        financials: dict[str, Any],
+        ratios: dict[str, Any],
+        data_quality: dict[str, Any] | None,
+        market_context: dict[str, Any] | None,
+    ) -> tuple[dict[str, float], str, WeightAuditTrail | None]:
         """Make prediction using fallback service."""
         if self.fallback_service is None:
             # Return default equal weights
@@ -404,13 +404,13 @@ class RLModelWeightingService:
     def _record_prediction(
         self,
         symbol: str,
-        weights: Dict[str, float],
+        weights: dict[str, float],
         tier: str,
-        financials: Dict[str, Any],
-        ratios: Dict[str, Any],
-        data_quality: Optional[Dict[str, Any]],
-        market_context: Optional[Dict[str, Any]],
-        ab_group: Optional[ABTestGroup],
+        financials: dict[str, Any],
+        ratios: dict[str, Any],
+        data_quality: dict[str, Any] | None,
+        market_context: dict[str, Any] | None,
+        ab_group: ABTestGroup | None,
         used_rl: bool,
     ) -> None:
         """Record prediction for outcome tracking."""
@@ -455,7 +455,7 @@ class RLModelWeightingService:
         symbol: str,
         analysis_date: date,
         blended_fair_value: float,
-        model_fair_values: Dict[str, float],
+        model_fair_values: dict[str, float],
     ) -> None:
         """
         Update recorded prediction with blended fair value.
@@ -470,13 +470,12 @@ class RLModelWeightingService:
         """
         # This would update the existing record with the actual values
         # For now, we record at prediction time with placeholders
-        pass
 
     def update_from_outcome(
         self,
         symbol: str,
         analysis_date: date,
-        weights_used: Dict[str, float],
+        weights_used: dict[str, float],
         reward: float,
     ) -> None:
         """
@@ -499,7 +498,7 @@ class RLModelWeightingService:
             except Exception as e:
                 logger.warning(f"Failed to update policy: {e}")
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get usage statistics."""
         total = self._rl_predictions + self._fallback_predictions
         return {
@@ -527,7 +526,7 @@ class RLModelWeightingService:
 # Factory function
 def get_rl_model_weighting_service(
     rl_enabled: bool = True,
-    fallback_service: Optional[Any] = None,
+    fallback_service: Any | None = None,
 ) -> RLModelWeightingService:
     """Get RLModelWeightingService instance."""
     return RLModelWeightingService(

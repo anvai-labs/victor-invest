@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Professional Investment Report Generator
 Clean, concise, institutional-grade reports
@@ -9,7 +8,9 @@ import math
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
+
+logger = logging.getLogger(__name__)
 
 try:
     from reportlab.graphics import renderPDF  # noqa: F401
@@ -21,9 +22,9 @@ try:
     from reportlab.lib.pagesizes import letter
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import inch
-    from reportlab.platypus import HRFlowable  # noqa: F401
-    from reportlab.platypus import KeepTogether  # noqa: F401
     from reportlab.platypus import (
+        HRFlowable,
+        KeepTogether,
         Paragraph,
         SimpleDocTemplate,
         Spacer,
@@ -35,9 +36,7 @@ try:
     REPORTLAB_AVAILABLE = True
 except ImportError:
     REPORTLAB_AVAILABLE = False
-    logging.warning("reportlab not available")
-
-logger = logging.getLogger(__name__)
+    logger.warning("reportlab not available")
 
 
 class GaugeChart(Flowable):
@@ -677,7 +676,7 @@ class PriceTargetChart(Flowable):
 class FinancialMetricsTable(Flowable):
     """Financial metrics comparison table: Company vs Sector vs Peers"""
 
-    def __init__(self, width, height, metrics: Dict):
+    def __init__(self, width, height, metrics: dict):
         Flowable.__init__(self)
         self.width = width
         self.height = height
@@ -797,7 +796,7 @@ class TrendChart(Flowable):
         self,
         width,
         height,
-        data_points: List,
+        data_points: list,
         label: str,
         format_type: str = "currency",
     ):
@@ -896,7 +895,7 @@ class TrendChart(Flowable):
 class InvestmentActionBox(Flowable):
     """Investment action plan visual box with entry/exit levels"""
 
-    def __init__(self, width, height, action_data: Dict):
+    def __init__(self, width, height, action_data: dict):
         Flowable.__init__(self)
         self.width = width
         self.height = height
@@ -995,7 +994,7 @@ class InvestmentActionBox(Flowable):
 class ValuationMethodologyBox(Flowable):
     """Callout box explaining valuation methodology and assumptions"""
 
-    def __init__(self, width, height, methodology: Dict):
+    def __init__(self, width, height, methodology: dict):
         Flowable.__init__(self)
         self.width = width
         self.height = height
@@ -1065,7 +1064,7 @@ class ProfessionalReportGenerator:
     - Brief risk/catalyst summary
     """
 
-    def __init__(self, output_dir: Path = None, config: ReportConfig = None):
+    def __init__(self, output_dir: Path | None = None, config: ReportConfig = None):
         self.output_dir = Path(output_dir) if output_dir else Path("reports/professional")
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.config = config or ReportConfig()
@@ -1202,7 +1201,7 @@ class ProfessionalReportGenerator:
 
         return text.strip()
 
-    def _format_synthesis_text(self, text: str) -> List[Dict[str, Any]]:
+    def _format_synthesis_text(self, text: str) -> list[dict[str, Any]]:
         """Format LLM synthesis text with proper section breaks and structure.
 
         Parses the synthesis text to identify ALL CAPS section headers and
@@ -1323,7 +1322,7 @@ class ProfessionalReportGenerator:
 
         return final_sections
 
-    def generate_report(self, data: Dict[str, Any]) -> str:
+    def generate_report(self, data: dict[str, Any]) -> str:
         """
         Generate professional investment report.
 
@@ -1368,7 +1367,7 @@ class ProfessionalReportGenerator:
         logger.info(f"Generated professional report: {filepath}")
         return str(filepath)
 
-    def _build_story(self, data: Dict) -> List:
+    def _build_story(self, data: dict) -> list:
         """Build the report content"""
         story = []
         symbol = data.get("symbol", "UNKNOWN")
@@ -1588,9 +1587,7 @@ class ProfessionalReportGenerator:
         if financial_metrics:
             story.append(Paragraph("Financial Metrics: Company vs Sector", self.styles["SectionHeader"]))
             # Calculate table height based on number of metrics
-            num_metrics = len(
-                [k for k in financial_metrics.keys() if financial_metrics.get(k, {}).get("company") is not None]
-            )
+            num_metrics = len([k for k in financial_metrics if financial_metrics.get(k, {}).get("company") is not None])
             table_height = 30 + min(num_metrics, 6) * 20
             story.append(FinancialMetricsTable(400, table_height, financial_metrics))
             story.append(Spacer(1, 16))
@@ -1835,8 +1832,7 @@ class ProfessionalReportGenerator:
                         )
                     )
 
-            for p in tech_content:
-                story.append(p)
+            story.extend(tech_content)
             story.append(Spacer(1, 12))
 
         # Market Regime section with visual indicator
@@ -1982,7 +1978,7 @@ class ProfessionalReportGenerator:
         return story
 
 
-def generate_professional_report(data: Dict[str, Any], output_dir: Path = None) -> str:
+def generate_professional_report(data: dict[str, Any], output_dir: Path | None = None) -> str:
     """Convenience function to generate a professional report"""
     generator = ProfessionalReportGenerator(output_dir=output_dir)
     return generator.generate_report(data)

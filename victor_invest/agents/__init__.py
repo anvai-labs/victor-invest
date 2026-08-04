@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 # SPDX-License-Identifier: Apache-2.0
 
 """Agent specifications for Victor Investment analysis.
@@ -20,9 +20,9 @@ from victor_invest.agents.specs import (
 )
 
 __all__ = [
-    "SEC_AGENT_SPEC",
     "FUNDAMENTAL_AGENT_SPEC",
-    "TECHNICAL_AGENT_SPEC",
     "MARKET_AGENT_SPEC",
+    "SEC_AGENT_SPEC",
     "SYNTHESIS_AGENT_SPEC",
+    "TECHNICAL_AGENT_SPEC",
 ]

@@ -29,6 +29,6 @@ from investigator.domain.services.rl.monitoring.ab_testing import ABTestingFrame
 from investigator.domain.services.rl.monitoring.metrics import RLMetrics
 
 __all__ = [
-    "RLMetrics",
     "ABTestingFramework",
+    "RLMetrics",
 ]

@@ -30,7 +30,7 @@ Example:
 import logging
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Any, Dict, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -70,7 +70,7 @@ class TechnicalFeatures:
     # Volatility
     volatility: float = 0.5  # Normalized ATR
 
-    def to_dict(self) -> Dict[str, float]:
+    def to_dict(self) -> dict[str, float]:
         """Convert to dictionary for RL context."""
         return {
             "rsi_14": self.rsi_14,
@@ -101,8 +101,8 @@ class TechnicalAnalysisService:
 
     def __init__(
         self,
-        price_service: Optional[PriceService] = None,
-        indicator_calculator: Optional[TechnicalIndicatorCalculator] = None,
+        price_service: PriceService | None = None,
+        indicator_calculator: TechnicalIndicatorCalculator | None = None,
     ):
         """
         Initialize TechnicalAnalysisService.
@@ -131,7 +131,7 @@ class TechnicalAnalysisService:
         symbol: str,
         analysis_date: date,
         lookback_days: int = 365,
-        fair_value: Optional[float] = None,
+        fair_value: float | None = None,
     ) -> TechnicalFeatures:
         """
         Get technical features for RL state representation.
@@ -192,7 +192,7 @@ class TechnicalAnalysisService:
         analysis_date: date,
         fair_value: float,
         lookback_days: int = 365,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get entry/exit signals for a symbol.
 
@@ -283,9 +283,9 @@ class TechnicalAnalysisService:
         self,
         symbol: str,
         analysis_date: date,
-        fair_value: Optional[float] = None,
+        fair_value: float | None = None,
         lookback_days: int = 365,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get full market context dictionary for RL feature extraction.
 
@@ -358,7 +358,7 @@ class TechnicalAnalysisService:
     def _extract_features(
         self,
         df: pd.DataFrame,
-        fair_value: Optional[float] = None,
+        fair_value: float | None = None,
     ) -> TechnicalFeatures:
         """Extract TechnicalFeatures from enhanced DataFrame."""
         try:
@@ -477,7 +477,7 @@ class TechnicalAnalysisService:
             logger.error(f"Error extracting features: {e}")
             return TechnicalFeatures()
 
-    def _build_indicators_dict(self, df: pd.DataFrame) -> Dict[str, float]:
+    def _build_indicators_dict(self, df: pd.DataFrame) -> dict[str, float]:
         """Build indicators dictionary for entry/exit engine."""
         latest = df.iloc[-1]
         current_price = float(latest["Close"])
@@ -521,7 +521,7 @@ class TechnicalAnalysisService:
             "EMA_200": float(latest.get("EMA_200", current_price)),
         }
 
-    def _get_support_resistance(self, df: pd.DataFrame, current_price: float) -> Dict[str, float]:
+    def _get_support_resistance(self, df: pd.DataFrame, current_price: float) -> dict[str, float]:
         """Get support/resistance levels from DataFrame."""
         latest = df.iloc[-1]
 
@@ -545,7 +545,7 @@ class TechnicalAnalysisService:
 
 
 # Singleton instance for shared use
-_technical_analysis_service: Optional[TechnicalAnalysisService] = None
+_technical_analysis_service: TechnicalAnalysisService | None = None
 
 
 def get_technical_analysis_service() -> TechnicalAnalysisService:

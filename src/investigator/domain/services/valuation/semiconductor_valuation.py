@@ -27,7 +27,6 @@ Phase: P2-C (Semiconductor Valuation Module)
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +86,7 @@ SEMICONDUCTOR_INDUSTRIES = [
 
 
 # Known semiconductor symbols for explicit chip type mapping
-KNOWN_SEMICONDUCTOR_COMPANIES: Dict[str, ChipType] = {
+KNOWN_SEMICONDUCTOR_COMPANIES: dict[str, ChipType] = {
     # Logic/Processors
     "NVDA": ChipType.LOGIC,  # NVIDIA - GPUs
     "AMD": ChipType.LOGIC,  # AMD - CPUs, GPUs
@@ -215,10 +214,10 @@ CHIP_TYPE_GROWTH_PREMIUM = {
 class SemiconductorMetrics:
     """Container for semiconductor-specific metrics."""
 
-    inventory_days: Optional[float] = None
-    book_to_bill: Optional[float] = None
-    inventory_to_sales: Optional[float] = None
-    asp_trend: Optional[float] = None  # Average selling price trend (YoY % change)
+    inventory_days: float | None = None
+    book_to_bill: float | None = None
+    inventory_to_sales: float | None = None
+    asp_trend: float | None = None  # Average selling price trend (YoY % change)
     cycle_position: CyclePosition = CyclePosition.UNKNOWN
     chip_type: ChipType = ChipType.UNKNOWN
 
@@ -233,8 +232,8 @@ class SemiconductorValuationResult:
     normalized_margin: float
     cycle_adjustment: float  # Multiplier applied for cycle position
     confidence: str  # "high", "medium", "low"
-    warnings: List[str] = field(default_factory=list)
-    details: Dict = field(default_factory=dict)
+    warnings: list[str] = field(default_factory=list)
+    details: dict = field(default_factory=dict)
 
 
 # ====================
@@ -244,8 +243,8 @@ class SemiconductorValuationResult:
 
 def extract_semiconductor_metrics_from_xbrl(
     symbol: str,
-    xbrl_data: Dict,
-    financials: Dict,
+    xbrl_data: dict,
+    financials: dict,
 ) -> SemiconductorMetrics:
     """
     Extract semiconductor-specific metrics from XBRL data.
@@ -416,7 +415,7 @@ def _detect_cycle_position(metrics: SemiconductorMetrics) -> CyclePosition:
         return CyclePosition.NORMAL
 
 
-def _detect_chip_type(symbol: str, xbrl_data: Dict) -> ChipType:
+def _detect_chip_type(symbol: str, xbrl_data: dict) -> ChipType:
     """
     Classify chip type from company symbol or industry data.
 
@@ -463,7 +462,7 @@ def _detect_chip_type(symbol: str, xbrl_data: Dict) -> ChipType:
 def calculate_cycle_adjustment(
     cycle_position: CyclePosition,
     current_margin: float,
-) -> Tuple[float, str]:
+) -> tuple[float, str]:
     """
     Calculate valuation adjustment based on semiconductor cycle position.
 
@@ -580,7 +579,7 @@ def calculate_normalized_margin(
 # ====================
 
 
-def is_semiconductor_industry(industry: Optional[str]) -> bool:
+def is_semiconductor_industry(industry: str | None) -> bool:
     """
     Check if an industry string matches semiconductor industry patterns.
 
@@ -611,8 +610,8 @@ def is_semiconductor_industry(industry: Optional[str]) -> bool:
 
 def classify_semiconductor_company(
     symbol: str,
-    industry: Optional[str] = None,
-) -> Tuple[bool, ChipType, str]:
+    industry: str | None = None,
+) -> tuple[bool, ChipType, str]:
     """
     Classify whether a company is a semiconductor company and determine chip type.
 
@@ -644,10 +643,10 @@ def classify_semiconductor_company(
 
 def value_semiconductor(
     symbol: str,
-    financials: Dict,
+    financials: dict,
     current_price: float,
-    xbrl_data: Optional[Dict] = None,
-    industry: Optional[str] = None,
+    xbrl_data: dict | None = None,
+    industry: str | None = None,
 ) -> SemiconductorValuationResult:
     """
     Value semiconductor company with cycle-adjusted methodology.
@@ -809,7 +808,7 @@ def value_semiconductor(
 # ====================
 
 
-def get_semiconductor_tier_weights() -> Dict[str, float]:
+def get_semiconductor_tier_weights() -> dict[str, float]:
     """
     Get the valuation model weights for semiconductor tier.
 
@@ -819,7 +818,7 @@ def get_semiconductor_tier_weights() -> Dict[str, float]:
     return SEMICONDUCTOR_TIER["weights"].copy()
 
 
-def get_semiconductor_tier_parameters() -> Dict[str, float]:
+def get_semiconductor_tier_parameters() -> dict[str, float]:
     """
     Get the valuation parameters for semiconductor tier.
 
@@ -835,8 +834,8 @@ def get_semiconductor_tier_parameters() -> Dict[str, float]:
 
 
 def classify_growth_profile(
-    revenue_growth: Optional[float] = None,
-    earnings_growth: Optional[float] = None,
+    revenue_growth: float | None = None,
+    earnings_growth: float | None = None,
 ) -> GrowthProfile:
     """
     Classify company's growth profile for valuation purposes.
@@ -880,7 +879,7 @@ class GrowthAdjustedValuation:
     # Individual fair value estimates
     cycle_normalized_fv: float  # Traditional cycle-normalized P/E
     peg_adjusted_fv: float  # PEG-based fair value
-    forward_pe_fv: Optional[float]  # Forward P/E based (if available)
+    forward_pe_fv: float | None  # Forward P/E based (if available)
     ev_ebitda_fv: float  # EV/EBITDA based
 
     # Blended result
@@ -890,17 +889,17 @@ class GrowthAdjustedValuation:
     # Metadata
     growth_profile: GrowthProfile
     applied_pe_multiple: float
-    weights_used: Dict[str, float]
-    details: Dict = field(default_factory=dict)
+    weights_used: dict[str, float]
+    details: dict = field(default_factory=dict)
 
 
 def calculate_peg_adjusted_fair_value(
     eps: float,
     revenue_growth: float,
-    earnings_growth: Optional[float],
+    earnings_growth: float | None,
     growth_profile: GrowthProfile,
     chip_type: ChipType,
-) -> Tuple[float, float, str]:
+) -> tuple[float, float, str]:
     """
     Calculate PEG-adjusted fair value.
 
@@ -968,7 +967,7 @@ def calculate_forward_pe_fair_value(
     forward_eps: float,
     growth_profile: GrowthProfile,
     chip_type: ChipType,
-) -> Tuple[float, float, str]:
+) -> tuple[float, float, str]:
     """
     Calculate fair value using forward P/E.
 
@@ -1010,8 +1009,8 @@ def calculate_forward_pe_fair_value(
 
 def calculate_growth_adjusted_valuation(
     symbol: str,
-    financials: Dict,
-    market_data: Dict,
+    financials: dict,
+    market_data: dict,
     growth_profile: GrowthProfile,
     chip_type: ChipType,
     cycle_position: CyclePosition,
@@ -1178,7 +1177,7 @@ def calculate_growth_adjusted_valuation(
     )
 
 
-def _get_blended_weights(growth_profile: GrowthProfile, has_forward_eps: bool) -> Dict[str, float]:
+def _get_blended_weights(growth_profile: GrowthProfile, has_forward_eps: bool) -> dict[str, float]:
     """
     Get blending weights for different valuation methods based on growth profile.
 

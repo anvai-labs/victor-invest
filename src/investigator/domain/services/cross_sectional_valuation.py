@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@ and percentile rankings. Implements Layer 3 of the robust valuation strategy.
 import logging
 import statistics
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import text
 
@@ -40,7 +40,7 @@ class PeerComparisonResult:
     industry: str
 
     # Peer universe
-    peers: List[str]
+    peers: list[str]
     peer_count: int
 
     # Company metrics
@@ -118,11 +118,11 @@ class CrossSectionalValuation:
     def get_peers(
         self,
         symbol: str,
-        industry: Optional[str] = None,
+        industry: str | None = None,
         market_cap_tolerance: float = 0.5,
         min_peers: int = 3,
         max_peers: int = 20,
-    ) -> List[str]:
+    ) -> list[str]:
         """Get peer companies in the same industry.
 
         Args:
@@ -191,7 +191,7 @@ class CrossSectionalValuation:
 
         return peers[:max_peers]
 
-    def calculate_percentile_rank(self, value: float, comparison_values: List[float]) -> float:
+    def calculate_percentile_rank(self, value: float, comparison_values: list[float]) -> float:
         """Calculate percentile rank of a value among comparison values.
 
         Args:
@@ -217,10 +217,10 @@ class CrossSectionalValuation:
         self,
         symbol: str,
         metric: str = "pe",
-        industry: Optional[str] = None,
+        industry: str | None = None,
         market_cap_tolerance: float = 0.5,
         min_peers: int = 3,
-    ) -> Optional[PeerComparisonResult]:
+    ) -> PeerComparisonResult | None:
         """Compare company's multiple to industry peers.
 
         Args:
@@ -335,10 +335,10 @@ class CrossSectionalValuation:
             premium_to_peers_pct=round(premium_to_peers_pct, 1),
             outperforming_peers=outperforming_peers,
             underperforming_peers=underperforming_peers,
-            calculated_at=datetime.now(timezone.utc).isoformat(),
+            calculated_at=datetime.now(UTC).isoformat(),
         )
 
-    def get_industry_multiples(self, industry: str, metric: str = "pe") -> Dict[str, float]:
+    def get_industry_multiples(self, industry: str, metric: str = "pe") -> dict[str, float]:
         """Get all multiples for companies in an industry.
 
         Args:
@@ -371,7 +371,7 @@ class CrossSectionalValuation:
 
         return multiples
 
-    def _get_company_info(self, symbol: str) -> Optional[Dict[str, Any]]:
+    def _get_company_info(self, symbol: str) -> dict[str, Any] | None:
         """Get company information from database.
 
         Args:
@@ -407,7 +407,7 @@ class CrossSectionalValuation:
 
         return None
 
-    def _get_market_cap(self, symbol: str) -> Optional[float]:
+    def _get_market_cap(self, symbol: str) -> float | None:
         """Get company's market cap.
 
         Args:
@@ -419,7 +419,7 @@ class CrossSectionalValuation:
         company_info = self._get_company_info(symbol)
         return company_info.get("market_cap") if company_info else None
 
-    def _get_company_multiple(self, symbol: str, metric: str) -> Optional[float]:
+    def _get_company_multiple(self, symbol: str, metric: str) -> float | None:
         """Get company's valuation multiple.
 
         Args:
@@ -471,9 +471,9 @@ class CrossSectionalValuation:
     def compare_all_metrics(
         self,
         symbol: str,
-        industry: Optional[str] = None,
-        metrics: Optional[List[str]] = None,
-    ) -> Dict[str, Optional[PeerComparisonResult]]:
+        industry: str | None = None,
+        metrics: list[str] | None = None,
+    ) -> dict[str, PeerComparisonResult | None]:
         """Compare company to peers across all metrics.
 
         Args:
@@ -499,7 +499,7 @@ class CrossSectionalValuation:
 
         return results
 
-    def generate_peer_summary(self, symbol: str, industry: Optional[str] = None) -> Dict[str, Any]:
+    def generate_peer_summary(self, symbol: str, industry: str | None = None) -> dict[str, Any]:
         """Generate comprehensive peer comparison summary.
 
         Args:
@@ -528,7 +528,7 @@ class CrossSectionalValuation:
             "sector": company_info.get("sector"),
             "industry": industry,
             "market_cap": company_info.get("market_cap"),
-            "calculated_at": datetime.now(timezone.utc).isoformat(),
+            "calculated_at": datetime.now(UTC).isoformat(),
             "comparisons": {},
             "overall_assessment": None,
         }

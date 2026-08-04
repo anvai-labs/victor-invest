@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -178,7 +178,7 @@ def upgrade():
             )
         except Exception:
             # Index might already exist
-            pass
+            logger.debug("upgrade: suppressed error", exc_info=True)
 
     logger.info("Indexes created successfully")
 

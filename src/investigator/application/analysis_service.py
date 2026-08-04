@@ -6,7 +6,7 @@ Provides simplified interface to the orchestrator.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from investigator.application.orchestrator import (
     AgentOrchestrator,
@@ -66,7 +66,7 @@ class AnalysisService:
 
     async def analyze_stock(
         self, symbol: str, mode: str = "standard", priority: str = "normal", **kwargs
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Analyze a single stock
 
@@ -104,8 +104,8 @@ class AnalysisService:
         return results
 
     async def batch_analyze(
-        self, symbols: List[str], mode: str = "standard", priority: str = "normal"
-    ) -> List[Dict[str, Any]]:
+        self, symbols: list[str], mode: str = "standard", priority: str = "normal"
+    ) -> list[dict[str, Any]]:
         """
         Analyze multiple stocks in batch
 
@@ -142,7 +142,7 @@ class AnalysisService:
 
         return results
 
-    async def peer_comparison(self, target: str, peers: List[str], mode: str = "comprehensive") -> Dict[str, Any]:
+    async def peer_comparison(self, target: str, peers: list[str], mode: str = "comprehensive") -> dict[str, Any]:
         """
         Analyze a target company and its peers for comparison
 
@@ -177,7 +177,7 @@ class AnalysisService:
 
         return results
 
-    async def get_status(self, task_id: str) -> Dict:
+    async def get_status(self, task_id: str) -> dict:
         """
         Get status of an analysis task
 
@@ -189,7 +189,7 @@ class AnalysisService:
         """
         return await self.orchestrator.get_status(task_id)
 
-    async def get_results(self, task_id: str, wait: bool = False, timeout: int = 300) -> Optional[Dict]:
+    async def get_results(self, task_id: str, wait: bool = False, timeout: int = 300) -> dict | None:
         """
         Get results of an analysis task
 

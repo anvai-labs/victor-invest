@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@ import logging
 import re
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import aiohttp
 
@@ -73,8 +73,8 @@ class InstitutionalHolder:
 
     cik: str
     name: str
-    filing_date: Optional[date] = None
-    report_date: Optional[date] = None
+    filing_date: date | None = None
+    report_date: date | None = None
     form_type: str = "13F-HR"
     total_value: float = 0.0
     num_holdings: int = 0
@@ -98,7 +98,7 @@ class Holding:
     """
 
     cusip: str
-    symbol: Optional[str] = None
+    symbol: str | None = None
     issuer_name: str = ""
     class_title: str = ""
     shares: int = 0
@@ -107,7 +107,7 @@ class Holding:
     voting_authority_sole: int = 0
     voting_authority_shared: int = 0
     voting_authority_none: int = 0
-    put_call: Optional[str] = None  # PUT, CALL, or None
+    put_call: str | None = None  # PUT, CALL, or None
 
     @property
     def value_dollars(self) -> float:
@@ -135,12 +135,12 @@ class InstitutionalOwnership:
     total_shares: int = 0
     total_value: float = 0.0
     num_institutions: int = 0
-    top_holders: List[Dict[str, Any]] = field(default_factory=list)
-    ownership_pct: Optional[float] = None
-    qoq_change_pct: Optional[float] = None
-    qoq_change_shares: Optional[int] = None
+    top_holders: list[dict[str, Any]] = field(default_factory=list)
+    ownership_pct: float | None = None
+    qoq_change_pct: float | None = None
+    qoq_change_shares: int | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "symbol": self.symbol,
@@ -169,10 +169,10 @@ class CUSIPMapper:
 
     def __init__(self):
         """Initialize CUSIP mapper."""
-        self._cache: Dict[str, str] = {}
-        self._reverse_cache: Dict[str, str] = {}  # Symbol -> CUSIP
+        self._cache: dict[str, str] = {}
+        self._reverse_cache: dict[str, str] = {}  # Symbol -> CUSIP
 
-    async def get_symbol(self, cusip: str) -> Optional[str]:
+    async def get_symbol(self, cusip: str) -> str | None:
         """Get ticker symbol for a CUSIP.
 
         Args:
@@ -193,7 +193,7 @@ class CUSIPMapper:
 
         return None
 
-    async def get_cusip(self, symbol: str) -> Optional[str]:
+    async def get_cusip(self, symbol: str) -> str | None:
         """Get CUSIP for a ticker symbol.
 
         Args:
@@ -217,7 +217,7 @@ class CUSIPMapper:
 
         return None
 
-    async def _lookup_from_database(self, cusip: str) -> Optional[str]:
+    async def _lookup_from_database(self, cusip: str) -> str | None:
         """Look up CUSIP in local database."""
         try:
             from sqlalchemy import create_engine, text
@@ -240,7 +240,7 @@ class CUSIPMapper:
 
         return None
 
-    async def _lookup_cusip_from_database(self, symbol: str) -> Optional[str]:
+    async def _lookup_cusip_from_database(self, symbol: str) -> str | None:
         """Look up ticker in local database to get CUSIP."""
         try:
             from sqlalchemy import create_engine, text
@@ -283,7 +283,7 @@ class InstitutionalHoldingsFetcher:
             timeout: Request timeout in seconds
         """
         self.timeout = aiohttp.ClientTimeout(total=timeout)
-        self._session: Optional[aiohttp.ClientSession] = None
+        self._session: aiohttp.ClientSession | None = None
         self._cusip_mapper = CUSIPMapper()
 
     async def _get_session(self) -> aiohttp.ClientSession:
@@ -301,7 +301,7 @@ class InstitutionalHoldingsFetcher:
         if self._session and not self._session.closed:
             await self._session.close()
 
-    async def get_holdings_by_symbol(self, symbol: str, quarter: Optional[str] = None) -> InstitutionalOwnership:
+    async def get_holdings_by_symbol(self, symbol: str, quarter: str | None = None) -> InstitutionalOwnership:
         """Get institutional holdings for a symbol.
 
         Args:
@@ -328,8 +328,8 @@ class InstitutionalHoldingsFetcher:
         )
 
     async def _get_holdings_from_database(
-        self, symbol: str, cusip: Optional[str], quarter: Optional[str]
-    ) -> Optional[InstitutionalOwnership]:
+        self, symbol: str, cusip: str | None, quarter: str | None
+    ) -> InstitutionalOwnership | None:
         """Get holdings from local database."""
         try:
             from sqlalchemy import create_engine, text
@@ -407,7 +407,7 @@ class InstitutionalHoldingsFetcher:
             logger.debug(f"Database holdings lookup failed: {e}")
             return None
 
-    async def get_top_holders(self, symbol: str, limit: int = 20) -> List[Dict[str, Any]]:
+    async def get_top_holders(self, symbol: str, limit: int = 20) -> list[dict[str, Any]]:
         """Get top institutional holders for a symbol.
 
         Args:
@@ -420,7 +420,7 @@ class InstitutionalHoldingsFetcher:
         ownership = await self.get_holdings_by_symbol(symbol)
         return ownership.top_holders[:limit]
 
-    async def get_ownership_changes(self, symbol: str, quarters: int = 4) -> List[Dict[str, Any]]:
+    async def get_ownership_changes(self, symbol: str, quarters: int = 4) -> list[dict[str, Any]]:
         """Get ownership changes over multiple quarters.
 
         Args:
@@ -480,7 +480,7 @@ class InstitutionalHoldingsFetcher:
             logger.error(f"Error getting ownership changes: {e}")
             return []
 
-    async def get_institution_holdings(self, institution_cik: str, quarter: Optional[str] = None) -> List[Holding]:
+    async def get_institution_holdings(self, institution_cik: str, quarter: str | None = None) -> list[Holding]:
         """Get all holdings for an institution.
 
         Args:
@@ -538,7 +538,7 @@ class InstitutionalHoldingsFetcher:
             logger.error(f"Error getting institution holdings: {e}")
             return []
 
-    async def search_institutions(self, query: str, limit: int = 20) -> List[InstitutionalHolder]:
+    async def search_institutions(self, query: str, limit: int = 20) -> list[InstitutionalHolder]:
         """Search for institutions by name.
 
         Args:
@@ -581,7 +581,7 @@ class InstitutionalHoldingsFetcher:
             logger.error(f"Error searching institutions: {e}")
             return []
 
-    def _get_quarter_date(self, quarter: Optional[str] = None) -> date:
+    def _get_quarter_date(self, quarter: str | None = None) -> date:
         """Get quarter end date from quarter string.
 
         Args:
@@ -618,7 +618,7 @@ class InstitutionalHoldingsFetcher:
 
 
 # Singleton instance
-_holdings_fetcher: Optional[InstitutionalHoldingsFetcher] = None
+_holdings_fetcher: InstitutionalHoldingsFetcher | None = None
 
 
 def get_institutional_holdings_fetcher() -> InstitutionalHoldingsFetcher:

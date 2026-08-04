@@ -27,7 +27,6 @@ Updated: 2025-12-29 - Added actual combined ratio extraction from XBRL
 
 import logging
 from enum import Enum
-from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +50,7 @@ class InsuranceType(Enum):
 # Target combined ratios by insurance type
 # Combined Ratio < 1.0 indicates underwriting profit
 # Combined Ratio > 1.0 indicates underwriting loss (must rely on investment income)
-TARGET_COMBINED_RATIOS: Dict[InsuranceType, float] = {
+TARGET_COMBINED_RATIOS: dict[InsuranceType, float] = {
     InsuranceType.PROPERTY_CASUALTY: 0.95,  # P&C typically targets 95%
     InsuranceType.LIFE: 0.85,  # Life insurance has lower target
     InsuranceType.HEALTH: 0.88,  # Health insurance target
@@ -75,7 +74,7 @@ COMBINED_RATIO_THRESHOLDS = {
 # ====================
 
 
-def calculate_combined_ratio(metrics: Dict) -> Optional[float]:
+def calculate_combined_ratio(metrics: dict) -> float | None:
     """
     Calculate actual combined ratio from XBRL insurance data.
 
@@ -135,7 +134,7 @@ def calculate_combined_ratio(metrics: Dict) -> Optional[float]:
     return combined_ratio
 
 
-def calculate_loss_ratio(metrics: Dict) -> Optional[float]:
+def calculate_loss_ratio(metrics: dict) -> float | None:
     """
     Calculate loss ratio (claims / premiums).
 
@@ -156,7 +155,7 @@ def calculate_loss_ratio(metrics: Dict) -> Optional[float]:
     return claims / premiums
 
 
-def calculate_expense_ratio(metrics: Dict) -> Optional[float]:
+def calculate_expense_ratio(metrics: dict) -> float | None:
     """
     Calculate expense ratio (expenses / premiums).
 
@@ -185,9 +184,9 @@ def calculate_expense_ratio(metrics: Dict) -> Optional[float]:
 
 
 def assess_combined_ratio_quality(
-    combined_ratio: Optional[float],
+    combined_ratio: float | None,
     insurance_type: InsuranceType = InsuranceType.UNKNOWN,
-) -> Tuple[str, str]:
+) -> tuple[str, str]:
     """
     Assess the quality of underwriting based on combined ratio.
 
@@ -224,7 +223,7 @@ def assess_combined_ratio_quality(
         return ("poor", f"Poor underwriting ({combined_ratio:.1%} - significant loss)")
 
 
-def extract_insurance_metrics_from_xbrl(symbol: str, xbrl_data: Dict, database_url: Optional[str] = None) -> Dict:
+def extract_insurance_metrics_from_xbrl(symbol: str, xbrl_data: dict, database_url: str | None = None) -> dict:
     """
     Extract insurance-specific metrics from XBRL data using insurance tag aliases.
 
@@ -310,12 +309,12 @@ def extract_insurance_metrics_from_xbrl(symbol: str, xbrl_data: Dict, database_u
 
 def value_insurance_company(
     symbol: str,
-    financials: Dict,
+    financials: dict,
     current_price: float,
-    database_url: Optional[str] = None,
-    xbrl_data: Optional[Dict] = None,
+    database_url: str | None = None,
+    xbrl_data: dict | None = None,
     insurance_type: InsuranceType = InsuranceType.UNKNOWN,
-) -> Dict:
+) -> dict:
     """
     Value insurance company using Price-to-Book (P/BV) methodology
 
@@ -361,7 +360,7 @@ def value_insurance_company(
                 warnings.append("shares_outstanding derived from market_cap/current_price")
                 logger.info(f"{symbol} - Derived shares_outstanding from market cap: {shares_outstanding / 1e6:.1f}M")
             except Exception:
-                pass
+                logger.debug("value_insurance_company: suppressed error", exc_info=True)
 
     # Validate required data
     if not all([stockholders_equity, shares_outstanding]):
@@ -494,8 +493,8 @@ def _determine_target_pb_from_combined_ratio(
     roe: float,
     combined_ratio: float,
     insurance_type: InsuranceType,
-    warnings: List[str],
-) -> Tuple[float, str]:
+    warnings: list[str],
+) -> tuple[float, str]:
     """
     Determine target P/BV ratio based on ROE and actual combined ratio.
 
@@ -572,8 +571,8 @@ def _determine_target_pb_from_combined_ratio(
 
 def _fetch_from_database(
     symbol: str,
-    database_url: Optional[str],
-) -> Tuple[Optional[float], Optional[float], Optional[float]]:
+    database_url: str | None,
+) -> tuple[float | None, float | None, float | None]:
     """
     Fetch latest stockholders_equity, shares_outstanding, and revenue from database.
 
@@ -643,8 +642,8 @@ def _fetch_from_database(
 
 
 def _calculate_ttm_metrics(
-    symbol: str, database_url: Optional[str], warnings: List[str]
-) -> Tuple[Optional[float], Optional[float]]:
+    symbol: str, database_url: str | None, warnings: list[str]
+) -> tuple[float | None, float | None]:
     """
     Calculate TTM (Trailing Twelve Months) net income and average equity
 
@@ -719,13 +718,11 @@ def _calculate_ttm_metrics(
 
     except Exception as e:
         logger.warning(f"{symbol} - TTM calculation failed: {e}")
-        warnings.append(f"TTM calculation failed: {str(e)}")
+        warnings.append(f"TTM calculation failed: {e!s}")
         return None, None
 
 
-def _determine_target_pb(
-    symbol: str, roe: float, net_margin: Optional[float], warnings: List[str]
-) -> Tuple[float, str]:
+def _determine_target_pb(symbol: str, roe: float, net_margin: float | None, warnings: list[str]) -> tuple[float, str]:
     """
     Determine target P/BV ratio based on ROE and underwriting quality
 
@@ -809,7 +806,7 @@ def _determine_target_pb(
     return target_pb, confidence
 
 
-def calculate_insurance_specific_metrics(symbol: str, financials: Dict, xbrl_data: Optional[Dict] = None) -> Dict:
+def calculate_insurance_specific_metrics(symbol: str, financials: dict, xbrl_data: dict | None = None) -> dict:
     """
     Calculate insurance-specific metrics from XBRL data or financial metrics.
 

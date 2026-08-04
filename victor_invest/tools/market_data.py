@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -45,7 +45,7 @@ Example:
 
 import asyncio
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from victor_invest.tools.base import BaseTool, ToolResult
 
@@ -87,14 +87,14 @@ Parameters:
 Returns current market data, historical prices, and company metadata.
 """
 
-    def __init__(self, config: Optional[Any] = None):
+    def __init__(self, config: Any | None = None):
         """Initialize Market Data Tool.
 
         Args:
             config: Optional investigator config object
         """
         super().__init__(config)
-        self._fetcher: Optional[Any] = None
+        self._fetcher: Any | None = None
 
     async def initialize(self) -> None:
         """Initialize market data infrastructure."""
@@ -119,8 +119,8 @@ Returns current market data, historical prices, and company metadata.
 
     async def execute(
         self,
-        _exec_ctx: Optional[Dict[str, Any]] = None,
-        symbol: Optional[str] = None,
+        _exec_ctx: dict[str, Any] | None = None,
+        symbol: str | None = None,
         action: str = "get_quote",
         days: int = 365,
         period: str = "1y",
@@ -182,7 +182,7 @@ Returns current market data, historical prices, and company metadata.
         except Exception as e:
             logger.error(f"MarketDataTool execute error: {e}")
             return ToolResult.create_failure(
-                f"Market data operation failed: {str(e)}",
+                f"Market data operation failed: {e!s}",
                 metadata={"symbol": symbol, "action": action},
             )
 
@@ -220,7 +220,7 @@ Returns current market data, historical prices, and company metadata.
 
         except Exception as e:
             logger.error(f"Error getting quote for {symbol}: {e}")
-            return ToolResult.create_failure(f"Failed to get quote: {str(e)}")
+            return ToolResult.create_failure(f"Failed to get quote: {e!s}")
 
     async def _get_history(self, symbol: str, days: int) -> ToolResult:
         """Get historical OHLCV data.
@@ -285,7 +285,7 @@ Returns current market data, historical prices, and company metadata.
 
         except Exception as e:
             logger.error(f"Error getting history for {symbol}: {e}")
-            return ToolResult.create_failure(f"Failed to get history: {str(e)}")
+            return ToolResult.create_failure(f"Failed to get history: {e!s}")
 
     async def _get_info(self, symbol: str) -> ToolResult:
         """Get detailed company information.
@@ -332,7 +332,7 @@ Returns current market data, historical prices, and company metadata.
 
         except Exception as e:
             logger.error(f"Error getting info for {symbol}: {e}")
-            return ToolResult.create_failure(f"Failed to get info: {str(e)}")
+            return ToolResult.create_failure(f"Failed to get info: {e!s}")
 
     async def _get_price_change(self, symbol: str, period: str) -> ToolResult:
         """Calculate price change over a period.
@@ -408,7 +408,7 @@ Returns current market data, historical prices, and company metadata.
 
         except Exception as e:
             logger.error(f"Error calculating price change for {symbol}: {e}")
-            return ToolResult.create_failure(f"Failed to calculate price change: {str(e)}")
+            return ToolResult.create_failure(f"Failed to calculate price change: {e!s}")
 
     async def _check_available(self, symbol: str) -> ToolResult:
         """Check if symbol is available in database.
@@ -473,9 +473,9 @@ Returns current market data, historical prices, and company metadata.
 
         except Exception as e:
             logger.error(f"Error listing symbols: {e}")
-            return ToolResult.create_failure(f"Failed to list symbols: {str(e)}")
+            return ToolResult.create_failure(f"Failed to list symbols: {e!s}")
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """Get JSON schema for Market Data Tool parameters."""
         return {
             "type": "object",

@@ -7,7 +7,7 @@ Validates LLM signals and provides standardized output for PDF reports.
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -30,19 +30,19 @@ class IntegratedSignals:
     """Combined signals from LLM and programmatic analysis"""
 
     # Programmatic signals (always available)
-    programmatic_entry_signals: List[EntrySignal]
-    programmatic_exit_signals: List[ExitSignal]
-    programmatic_entry_zone: Optional[OptimalEntryZone]
+    programmatic_entry_signals: list[EntrySignal]
+    programmatic_exit_signals: list[ExitSignal]
+    programmatic_entry_zone: OptimalEntryZone | None
 
     # LLM signals (when available)
-    llm_entry_signals: Optional[List[Dict]]
-    llm_exit_signals: Optional[List[Dict]]
-    llm_entry_zone: Optional[Dict]
+    llm_entry_signals: list[dict] | None
+    llm_exit_signals: list[dict] | None
+    llm_entry_zone: dict | None
 
     # Merged/validated signals (best of both)
-    final_entry_signals: List[EntrySignal]
-    final_exit_signals: List[ExitSignal]
-    final_entry_zone: Optional[OptimalEntryZone]
+    final_entry_signals: list[EntrySignal]
+    final_exit_signals: list[ExitSignal]
+    final_entry_zone: OptimalEntryZone | None
 
     # Metadata
     signal_agreement_score: float  # 0-1: how much LLM and programmatic agree
@@ -67,9 +67,9 @@ class SignalIntegrator:
     def integrate_signals(
         self,
         price_data: pd.DataFrame,
-        indicators: Dict[str, Any],
-        valuation: Optional[Dict[str, Any]] = None,
-        llm_technical_analysis: Optional[Dict[str, Any]] = None,
+        indicators: dict[str, Any],
+        valuation: dict[str, Any] | None = None,
+        llm_technical_analysis: dict[str, Any] | None = None,
     ) -> IntegratedSignals:
         """
         Integrate programmatic and LLM-based signals.
@@ -160,9 +160,9 @@ class SignalIntegrator:
 
     def _build_support_resistance(
         self,
-        indicators: Dict[str, Any],
+        indicators: dict[str, Any],
         price_data: pd.DataFrame,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Build support/resistance dict from indicators and price data."""
         close_col = "close" if "close" in price_data.columns else "Close"
         high_col = "high" if "high" in price_data.columns else "High"
@@ -224,12 +224,12 @@ class SignalIntegrator:
 
     def _merge_signals(
         self,
-        prog_entry: List[EntrySignal],
-        prog_exit: List[ExitSignal],
-        prog_zone: Optional[OptimalEntryZone],
-        llm_entry: Optional[List[Dict]],
-        llm_exit: Optional[List[Dict]],
-        llm_zone: Optional[Dict],
+        prog_entry: list[EntrySignal],
+        prog_exit: list[ExitSignal],
+        prog_zone: OptimalEntryZone | None,
+        llm_entry: list[dict] | None,
+        llm_exit: list[dict] | None,
+        llm_zone: dict | None,
         current_price: float,
     ) -> tuple:
         """
@@ -352,7 +352,7 @@ class SignalIntegrator:
 
         return final_entry, final_exit, final_zone, agreement_score, confidence_boost
 
-    def _is_buy_signal(self, llm_signal: Dict) -> bool:
+    def _is_buy_signal(self, llm_signal: dict) -> bool:
         """Check if LLM signal is a buy signal."""
         signal_type = llm_signal.get("signal_type", "").upper()
         buy_types = [
@@ -371,8 +371,8 @@ class SignalIntegrator:
 
     def _signal_exists(
         self,
-        llm_signal: Dict,
-        existing_signals: List[EntrySignal],
+        llm_signal: dict,
+        existing_signals: list[EntrySignal],
         current_price: float,
     ) -> bool:
         """Check if LLM signal already exists in programmatic signals."""
@@ -387,9 +387,9 @@ class SignalIntegrator:
 
     def _convert_llm_entry_signal(
         self,
-        llm_signal: Dict,
+        llm_signal: dict,
         current_price: float,
-    ) -> Optional[EntrySignal]:
+    ) -> EntrySignal | None:
         """Convert LLM signal dict to EntrySignal."""
         try:
             price_level = float(llm_signal.get("price_level", 0))
@@ -435,9 +435,9 @@ class SignalIntegrator:
 
     def _convert_llm_entry_zone(
         self,
-        llm_zone: Dict,
+        llm_zone: dict,
         current_price: float,
-    ) -> Optional[OptimalEntryZone]:
+    ) -> OptimalEntryZone | None:
         """Convert LLM entry zone dict to OptimalEntryZone."""
         try:
             lower = float(llm_zone.get("lower_bound", current_price * 0.97))
@@ -487,7 +487,7 @@ class SignalIntegrator:
             logger.warning(f"Failed to convert LLM entry zone: {e}")
             return None
 
-    def to_report_format(self, signals: IntegratedSignals) -> Dict[str, Any]:
+    def to_report_format(self, signals: IntegratedSignals) -> dict[str, Any]:
         """
         Convert integrated signals to report-friendly format for PDF generation.
 
@@ -495,7 +495,7 @@ class SignalIntegrator:
             Dict suitable for report_payload_builder.py
         """
 
-        def signal_to_dict(sig: EntrySignal) -> Dict:
+        def signal_to_dict(sig: EntrySignal) -> dict:
             return {
                 "signal_type": sig.signal_type.value,
                 "price_level": round(sig.price_level, 2),
@@ -511,7 +511,7 @@ class SignalIntegrator:
                 "trend_alignment": sig.trend_alignment,
             }
 
-        def exit_to_dict(sig: ExitSignal) -> Dict:
+        def exit_to_dict(sig: ExitSignal) -> dict:
             return {
                 "signal_type": sig.signal_type.value,
                 "price_level": round(sig.price_level, 2),
@@ -521,7 +521,7 @@ class SignalIntegrator:
                 "partial_exit_pct": round(sig.partial_exit_pct, 1),
             }
 
-        def zone_to_dict(zone: OptimalEntryZone) -> Dict:
+        def zone_to_dict(zone: OptimalEntryZone) -> dict:
             return {
                 "lower_bound": round(zone.lower_bound, 2),
                 "upper_bound": round(zone.upper_bound, 2),
@@ -546,7 +546,7 @@ class SignalIntegrator:
 
 
 # Singleton
-_signal_integrator: Optional[SignalIntegrator] = None
+_signal_integrator: SignalIntegrator | None = None
 
 
 def get_signal_integrator() -> SignalIntegrator:

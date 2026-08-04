@@ -29,7 +29,7 @@ Usage:
 import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, ClassVar
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ class PEThresholds:
     moderate: float
     low: float
     sector: str
-    industry: Optional[str] = None
+    industry: str | None = None
 
     def classify(self, pe_ratio: float) -> PELevel:
         """Classify a P/E ratio against these thresholds."""
@@ -95,7 +95,7 @@ class ThresholdRegistry:
 
     # Default P/E thresholds by sector
     # Format: {sector: {'extreme': X, 'high': Y, 'moderate': Z, 'low': W}}
-    DEFAULT_SECTOR_THRESHOLDS = {
+    DEFAULT_SECTOR_THRESHOLDS: ClassVar[dict] = {
         # Technology sector - higher thresholds due to growth expectations
         "Technology": {
             "extreme": 300,
@@ -212,7 +212,7 @@ class ThresholdRegistry:
     }
 
     # Industry-specific overrides (more granular than sector)
-    DEFAULT_INDUSTRY_OVERRIDES = {
+    DEFAULT_INDUSTRY_OVERRIDES: ClassVar[dict] = {
         # SaaS companies - very high P/E acceptable
         "Software - Application": {
             "extreme": 400,
@@ -359,7 +359,7 @@ class ThresholdRegistry:
     }
 
     # Default thresholds when sector/industry not found
-    DEFAULT_THRESHOLDS = {
+    DEFAULT_THRESHOLDS: ClassVar[dict] = {
         "extreme": 200,
         "high": 100,
         "moderate": 50,
@@ -368,8 +368,8 @@ class ThresholdRegistry:
 
     def __init__(
         self,
-        sector_thresholds: Optional[Dict[str, Dict[str, float]]] = None,
-        industry_overrides: Optional[Dict[str, Dict[str, float]]] = None,
+        sector_thresholds: dict[str, dict[str, float]] | None = None,
+        industry_overrides: dict[str, dict[str, float]] | None = None,
     ):
         """
         Initialize registry with optional custom thresholds.
@@ -386,7 +386,7 @@ class ThresholdRegistry:
         if industry_overrides:
             self.industry_overrides.update(industry_overrides)
 
-    def get_pe_thresholds(self, sector: Optional[str] = None, industry: Optional[str] = None) -> PEThresholds:
+    def get_pe_thresholds(self, sector: str | None = None, industry: str | None = None) -> PEThresholds:
         """
         Get P/E thresholds for a sector/industry.
 
@@ -434,7 +434,7 @@ class ThresholdRegistry:
             industry=source_industry,
         )
 
-    def _find_key_case_insensitive(self, key: str, dictionary: Dict[str, Any]) -> Optional[str]:
+    def _find_key_case_insensitive(self, key: str, dictionary: dict[str, Any]) -> str | None:
         """Find a key in dictionary case-insensitively."""
         key_lower = key.lower()
         for dict_key in dictionary:
@@ -445,8 +445,8 @@ class ThresholdRegistry:
     def classify_pe_level(
         self,
         pe_ratio: float,
-        sector: Optional[str] = None,
-        industry: Optional[str] = None,
+        sector: str | None = None,
+        industry: str | None = None,
     ) -> PELevel:
         """
         Classify a P/E ratio against sector/industry thresholds.
@@ -465,9 +465,9 @@ class ThresholdRegistry:
     def get_pe_weight_adjustment(
         self,
         pe_ratio: float,
-        sector: Optional[str] = None,
-        industry: Optional[str] = None,
-    ) -> Tuple[float, str]:
+        sector: str | None = None,
+        industry: str | None = None,
+    ) -> tuple[float, str]:
         """
         Get weight adjustment multiplier based on P/E level.
 
@@ -500,7 +500,7 @@ class ThresholdRegistry:
 
 
 # Singleton instance
-_registry: Optional[ThresholdRegistry] = None
+_registry: ThresholdRegistry | None = None
 
 
 def get_threshold_registry() -> ThresholdRegistry:

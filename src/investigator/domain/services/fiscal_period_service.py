@@ -15,7 +15,7 @@ import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, ClassVar
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ class FiscalPeriodService:
     """
 
     # Period normalization mapping table (deterministic)
-    PERIOD_MAPPINGS = {
+    PERIOD_MAPPINGS: ClassVar[dict] = {
         # Standard formats
         "Q1": "Q1",
         "Q2": "Q2",
@@ -81,7 +81,7 @@ class FiscalPeriodService:
     }
 
     # Fiscal period sorting order (for chronological ordering)
-    PERIOD_SORT_ORDER = {
+    PERIOD_SORT_ORDER: ClassVar[dict] = {
         "FY": 5,  # Full year comes first conceptually
         "Q4": 4,
         "Q3": 3,
@@ -214,7 +214,7 @@ class FiscalPeriodService:
 
         return qtrs >= 2
 
-    def detect_fiscal_year_end(self, company_facts: Dict[str, Any]) -> str:
+    def detect_fiscal_year_end(self, company_facts: dict[str, Any]) -> str:
         """
         Detect fiscal year end from CompanyFacts API data.
 
@@ -253,11 +253,11 @@ class FiscalPeriodService:
         facts = company_facts.get("facts", {})
         us_gaap = facts.get("us-gaap", {})
 
-        for concept, concept_data in us_gaap.items():
+        for concept_data in us_gaap.values():
             if "units" not in concept_data:
                 continue
 
-            for unit_type, unit_data in concept_data["units"].items():
+            for unit_data in concept_data["units"].values():
                 for entry in unit_data:
                     # Look for fiscal year entries (form 10-K with fy field)
                     form = entry.get("form", "")
@@ -390,7 +390,7 @@ class FiscalPeriodService:
         period_end_date: str,
         fiscal_year_end_month: int,
         fiscal_year_end_day: int = 31,
-        fiscal_period: Optional[str] = None,
+        fiscal_period: str | None = None,
     ) -> int:
         """
         Calculate fiscal year from period end date and fiscal year end.
@@ -476,8 +476,8 @@ class FiscalPeriodService:
         assigned_fiscal_year: int,
         fiscal_year_end_month: int,
         fiscal_year_end_day: int = 31,
-        fiscal_period: Optional[str] = None,
-    ) -> Tuple[bool, Optional[str], Optional[int]]:
+        fiscal_period: str | None = None,
+    ) -> tuple[bool, str | None, int | None]:
         """
         Validate that a fiscal year assignment is correct.
 
@@ -513,7 +513,7 @@ class FiscalPeriodService:
 
         return (True, None, None)
 
-    def get_fiscal_year_end_from_month(self, month: int) -> Tuple[int, int]:
+    def get_fiscal_year_end_from_month(self, month: int) -> tuple[int, int]:
         """
         Get typical fiscal year end day for a given month.
 

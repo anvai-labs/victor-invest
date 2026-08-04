@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ Example:
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from victor_invest.tools.base import BaseTool, ToolResult
 
@@ -84,17 +84,17 @@ Returns yield curve data, spread analysis, recession probability,
 and investment recommendations based on current market regime.
 """
 
-    def __init__(self, config: Optional[Any] = None):
+    def __init__(self, config: Any | None = None):
         """Initialize Treasury Data Tool.
 
         Args:
             config: Optional investigator config object.
         """
         super().__init__(config)
-        self._treasury_client: Optional[Any] = None
-        self._nyfed_client: Optional[Any] = None
-        self._yield_analyzer: Optional[Any] = None
-        self._recession_indicator: Optional[Any] = None
+        self._treasury_client: Any | None = None
+        self._nyfed_client: Any | None = None
+        self._yield_analyzer: Any | None = None
+        self._recession_indicator: Any | None = None
 
     async def initialize(self) -> None:
         """Initialize treasury and market regime services."""
@@ -122,7 +122,7 @@ and investment recommendations based on current market regime.
 
     async def execute(
         self,
-        _exec_ctx: Optional[Dict[str, Any]] = None,
+        _exec_ctx: dict[str, Any] | None = None,
         action: str = "curve",
         days: int = 365,
         maturity: str = "10y",
@@ -169,7 +169,7 @@ and investment recommendations based on current market regime.
 
         except Exception as e:
             logger.error(f"TreasuryDataTool execute error: {e}")
-            return ToolResult.create_failure(f"Treasury data query failed: {str(e)}", metadata={"action": action})
+            return ToolResult.create_failure(f"Treasury data query failed: {e!s}", metadata={"action": action})
 
     async def _get_yield_curve(self) -> ToolResult:
         """Get current yield curve."""
@@ -304,7 +304,7 @@ and investment recommendations based on current market regime.
             },
         )
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """Get JSON schema for Treasury Data Tool parameters."""
         return {
             "type": "object",

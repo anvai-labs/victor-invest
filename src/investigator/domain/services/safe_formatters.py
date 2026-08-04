@@ -16,7 +16,7 @@ Usage:
 
 import math
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
-from typing import Any, Optional
+from typing import Any
 
 
 def is_valid_number(value: Any) -> bool:
@@ -53,7 +53,7 @@ def is_valid_number(value: Any) -> bool:
         return False
 
 
-def safe_round(value: Any, decimals: int = 2) -> Optional[float]:
+def safe_round(value: Any, decimals: int = 2) -> float | None:
     """
     Round a value safely, returning None for invalid inputs.
 
@@ -97,7 +97,7 @@ def safe_round(value: Any, decimals: int = 2) -> Optional[float]:
         return None
 
 
-def round_for_prompt(value: Any, decimals: int = 2) -> Optional[float]:
+def round_for_prompt(value: Any, decimals: int = 2) -> float | None:
     """
     Safe rounding for LLM prompt values.
 

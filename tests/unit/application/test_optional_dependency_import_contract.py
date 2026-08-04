@@ -1,8 +1,8 @@
 import builtins
 import importlib
 import sys
+from collections.abc import Iterable
 from types import ModuleType
-from typing import Iterable
 
 
 def _reimport_with_blocked_prefixes(module_name: str, blocked_prefixes: Iterable[str]) -> ModuleType:

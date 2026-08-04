@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List
+from typing import Any
 
 
-def calculate_consistency_bonus(quality_indicators: List[float]) -> float:
+def calculate_consistency_bonus(quality_indicators: list[float]) -> float:
     """Calculate consistency bonus for quarterly quality indicators."""
     if len(quality_indicators) < 2:
         return 0.0
@@ -20,8 +20,8 @@ def calculate_consistency_bonus(quality_indicators: List[float]) -> float:
 
 
 def determine_final_recommendation(
-    overall_score: float, ai_recommendation: Dict[str, Any], data_quality: float
-) -> Dict[str, str]:
+    overall_score: float, ai_recommendation: dict[str, Any], data_quality: float
+) -> dict[str, str]:
     """Determine final recommendation with score and data-quality adjustments."""
     if "investment_recommendation" in ai_recommendation:
         inv_rec = ai_recommendation["investment_recommendation"]
@@ -54,7 +54,7 @@ def determine_final_recommendation(
     return {"recommendation": base_recommendation, "confidence": confidence}
 
 
-def calculate_price_target(symbol: str, ai_recommendation: Dict[str, Any], current_price: float, logger: Any) -> float:
+def calculate_price_target(symbol: str, ai_recommendation: dict[str, Any], current_price: float, logger: Any) -> float:
     """Calculate 12-month target price from structured fields or score mapping."""
     if "investment_recommendation" in ai_recommendation:
         target_data = ai_recommendation["investment_recommendation"].get("target_price", {})
@@ -92,7 +92,7 @@ def calculate_price_target(symbol: str, ai_recommendation: Dict[str, Any], curre
     return price_target
 
 
-def calculate_stop_loss(current_price: float, recommendation: Dict[str, Any], overall_score: float) -> float:
+def calculate_stop_loss(current_price: float, recommendation: dict[str, Any], overall_score: float) -> float:
     """Calculate stop loss level from recommendation and conviction."""
     if not current_price or current_price <= 0:
         return 0
@@ -113,7 +113,7 @@ def calculate_stop_loss(current_price: float, recommendation: Dict[str, Any], ov
     return round(current_price * (1 - stop_loss_pct), 2)
 
 
-def extract_position_size(ai_recommendation: Dict[str, Any]) -> str:
+def extract_position_size(ai_recommendation: dict[str, Any]) -> str:
     """Extract normalized position size bucket."""
     if "investment_recommendation" in ai_recommendation:
         pos_sizing = ai_recommendation["investment_recommendation"].get("position_sizing", {})
@@ -127,9 +127,9 @@ def extract_position_size(ai_recommendation: Dict[str, Any]) -> str:
     return ai_recommendation.get("position_size", "MODERATE")
 
 
-def extract_catalysts(ai_recommendation: Dict[str, Any]) -> List[str]:
+def extract_catalysts(ai_recommendation: dict[str, Any]) -> list[str]:
     """Extract up to three catalysts from structured recommendation payloads."""
-    catalysts: List[str] = []
+    catalysts: list[str] = []
 
     if "key_catalysts" in ai_recommendation:
         cat_data = ai_recommendation["key_catalysts"]
@@ -148,7 +148,7 @@ def create_fallback_recommendation(
     symbol: str,
     overall_score: float,
     logger: Any,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a conservative fallback recommendation when response parsing fails."""
     try:
         response_text = str(raw_response) if raw_response else ""

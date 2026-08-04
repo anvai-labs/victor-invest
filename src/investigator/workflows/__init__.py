@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -40,8 +40,9 @@ Example:
 """
 
 import logging
+from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, List, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, cast
 
 logger = logging.getLogger(__name__)
 
@@ -71,9 +72,9 @@ try:
 
         def __init__(self) -> None:
             """Initialize the provider."""
-            self._workflows: Optional[Dict[str, WorkflowDefinition]] = None
+            self._workflows: dict[str, WorkflowDefinition] | None = None
 
-        def _load_python_workflows(self) -> Dict[str, WorkflowDefinition]:
+        def _load_python_workflows(self) -> dict[str, WorkflowDefinition]:
             """Load Python-defined workflows.
 
             Returns:
@@ -82,7 +83,7 @@ try:
             # No Python workflows defined yet - all in YAML
             return {}
 
-        def _load_yaml_workflows(self) -> Dict[str, WorkflowDefinition]:
+        def _load_yaml_workflows(self) -> dict[str, WorkflowDefinition]:
             """Load YAML-defined workflows from workflows/*.yaml.
 
             Returns:
@@ -93,14 +94,14 @@ try:
 
                 # Load from the workflows directory (same as this file)
                 workflows_dir = Path(__file__).parent
-                yaml_workflows = cast(Dict[str, WorkflowDefinition], load_workflows_from_directory(workflows_dir))
+                yaml_workflows = cast(dict[str, WorkflowDefinition], load_workflows_from_directory(workflows_dir))
                 logger.debug(f"Loaded {len(yaml_workflows)} YAML workflows from {workflows_dir}")
                 return yaml_workflows
             except Exception as e:
                 logger.warning(f"Failed to load YAML workflows: {e}")
                 return {}
 
-        def _load_workflows(self) -> Dict[str, WorkflowDefinition]:
+        def _load_workflows(self) -> dict[str, WorkflowDefinition]:
             """Lazy load all workflows with hybrid Python/YAML support.
 
             YAML workflows override Python workflows when names collide.
@@ -124,19 +125,19 @@ try:
                 )
             return self._workflows
 
-        def get_workflows(self) -> Dict[str, WorkflowDefinition]:
+        def get_workflows(self) -> dict[str, WorkflowDefinition]:
             """Get workflow definitions for this vertical."""
             return self._load_workflows()
 
-        def get_workflow(self, name: str) -> Optional[WorkflowDefinition]:
+        def get_workflow(self, name: str) -> WorkflowDefinition | None:
             """Get a specific workflow by name."""
             return self._load_workflows().get(name)
 
-        def get_workflow_names(self) -> List[str]:
+        def get_workflow_names(self) -> list[str]:
             """Get all available workflow names."""
             return list(self._load_workflows().keys())
 
-        def get_auto_workflows(self) -> List[Tuple[str, str]]:
+        def get_auto_workflows(self) -> list[tuple[str, str]]:
             """Get automatic workflow triggers based on query patterns."""
             return [
                 # Single stock patterns
@@ -153,7 +154,7 @@ try:
                 (r"training\s+data", "rl_training_data"),
             ]
 
-        def get_workflow_for_task_type(self, task_type: str) -> Optional[str]:
+        def get_workflow_for_task_type(self, task_type: str) -> str | None:
             """Get appropriate workflow for task type."""
             mapping = {
                 # Single stock
@@ -192,7 +193,7 @@ try:
             self,
             workflow_name: str,
             orchestrator: "AgentOrchestrator",
-            context: Optional[Dict[str, Any]] = None,
+            context: dict[str, Any] | None = None,
         ) -> AsyncIterator["WorkflowStreamChunk"]:
             """Stream workflow execution with real-time events."""
             workflow = self.get_workflow(workflow_name)
@@ -214,13 +215,13 @@ except ImportError:
         def __init__(self) -> None:
             logger.warning("Victor workflows not available, using stub provider")
 
-        def get_workflows(self) -> Dict[str, Any]:
+        def get_workflows(self) -> dict[str, Any]:
             return {}
 
         def get_workflow(self, name: str) -> None:
             return None
 
-        def get_workflow_names(self) -> List[str]:
+        def get_workflow_names(self) -> list[str]:
             return []
 
 

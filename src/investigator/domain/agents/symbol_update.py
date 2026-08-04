@@ -19,9 +19,10 @@ Data Flow:
 
 import json
 import logging
+import math
 import os
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
@@ -60,17 +61,17 @@ class SymbolUpdateAgent(InvestmentAgent):
             event_bus=event_bus or self._create_dummy_event_bus(),
             cache_manager=cache_manager,
         )
-        self.stock_engine: Optional[Engine] = None
+        self.stock_engine: Engine | None = None
         self.logger = logging.getLogger(f"agent.{agent_id}")
 
     @staticmethod
-    def _safe_float(value: Any) -> Optional[float]:
+    def _safe_float(value: Any) -> float | None:
         """Best-effort numeric conversion for optional analysis payload values."""
         try:
             if value is None:
                 return None
             numeric = float(value)
-            if numeric != numeric:
+            if math.isnan(numeric):
                 return None
             return numeric
         except (TypeError, ValueError):
@@ -79,9 +80,9 @@ class SymbolUpdateAgent(InvestmentAgent):
     def _is_suspicious_fair_value(
         self,
         *,
-        current_price: Optional[float],
-        fair_value: Optional[float],
-        model_agreement: Optional[float],
+        current_price: float | None,
+        fair_value: float | None,
+        model_agreement: float | None,
     ) -> bool:
         """
         Return whether a per-share fair value is too far from current price to persist.
@@ -116,7 +117,7 @@ class SymbolUpdateAgent(InvestmentAgent):
 
         return DummyEventBus()
 
-    def register_capabilities(self) -> Dict[str, Any]:
+    def register_capabilities(self) -> dict[str, Any]:
         """
         Register agent capabilities.
 
@@ -210,8 +211,6 @@ class SymbolUpdateAgent(InvestmentAgent):
         else:
             self.logger.info(f"✅ SEC data validated: {len(sec_data)} keys")
 
-        return None
-
     async def process(self, task: AgentTask) -> AgentResult:
         """
         Update symbol table with fundamental metrics.
@@ -280,7 +279,7 @@ class SymbolUpdateAgent(InvestmentAgent):
             )
 
         except Exception as e:
-            self.logger.error(f"Failed to update symbol table for {symbol}: {e}", exc_info=True)
+            self.logger.exception(f"Failed to update symbol table for {symbol}")
             return AgentResult(
                 task_id=task.task_id,
                 agent_id=self.agent_id,
@@ -291,7 +290,7 @@ class SymbolUpdateAgent(InvestmentAgent):
                 metadata={"error_type": type(e).__name__},
             )
 
-    def _extract_metrics(self, symbol: str, fundamental: Dict, sec_data: Dict) -> Dict[str, Any]:
+    def _extract_metrics(self, symbol: str, fundamental: dict, sec_data: dict) -> dict[str, Any]:
         """
         Extract metrics from fundamental and SEC analysis.
 
@@ -305,7 +304,7 @@ class SymbolUpdateAgent(InvestmentAgent):
         Returns:
             Dict of column_name: value pairs for UPDATE statement
         """
-        update_data: Dict[str, Any] = {}
+        update_data: dict[str, Any] = {}
 
         # Extract valuation data
         valuation = fundamental.get("valuation", {})
@@ -496,7 +495,7 @@ class SymbolUpdateAgent(InvestmentAgent):
             if sector_ps and sector_ps > 0:
                 update_data["sector_median_ps"] = round(float(sector_ps), 2)
                 # Calculate P/S premium/discount
-                if "ps_ratio" in update_data and update_data["ps_ratio"]:
+                if update_data.get("ps_ratio"):
                     ps_premium = ((update_data["ps_ratio"] / sector_ps) - 1) * 100
                     update_data["ps_premium_discount"] = round(ps_premium, 2)
 
@@ -594,7 +593,7 @@ class SymbolUpdateAgent(InvestmentAgent):
 
         return update_data
 
-    def _update_symbol_table(self, symbol: str, update_data: Dict[str, Any]) -> int:
+    def _update_symbol_table(self, symbol: str, update_data: dict[str, Any]) -> int:
         """
         Execute UPDATE statement on symbol table.
 
@@ -615,13 +614,12 @@ class SymbolUpdateAgent(InvestmentAgent):
         # PostgreSQL JSONB columns require JSON-encoded strings, not Python dicts
         jsonb_columns = ["valuation_models_json"]
         for col in jsonb_columns:
-            if col in update_data and update_data[col] is not None:
-                if isinstance(update_data[col], dict):
-                    update_data[col] = json.dumps(update_data[col])
-                    self.logger.debug(f"Serialized {col} to JSON string ({len(update_data[col])} chars)")
+            if col in update_data and update_data[col] is not None and isinstance(update_data[col], dict):
+                update_data[col] = json.dumps(update_data[col])
+                self.logger.debug(f"Serialized {col} to JSON string ({len(update_data[col])} chars)")
 
         # Build SET clause
-        set_clause = ", ".join([f"{col} = :{col}" for col in update_data.keys()])
+        set_clause = ", ".join([f"{col} = :{col}" for col in update_data])
 
         # Build UPDATE statement
         query = text(f"""

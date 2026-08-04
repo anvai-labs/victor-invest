@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,17 +41,17 @@ Usage:
 
 import logging
 from collections import defaultdict
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 def subtract_metric(
-    fy_val: Optional[float],
-    q1_val: Optional[float],
-    q2_val: Optional[float],
-    q3_val: Optional[float],
-) -> Optional[float]:
+    fy_val: float | None,
+    q1_val: float | None,
+    q2_val: float | None,
+    q3_val: float | None,
+) -> float | None:
     """
     Safely subtract Q1+Q2+Q3 from FY value.
 
@@ -70,7 +70,7 @@ def subtract_metric(
     return None
 
 
-def derive_q4_from_fy(quarters_data: List[Dict[str, Any]], symbol: str) -> List[Dict[str, Any]]:
+def derive_q4_from_fy(quarters_data: list[dict[str, Any]], symbol: str) -> list[dict[str, Any]]:
     """
     Derive Q4 quarterly data from FY filings when Q4 is missing.
 
@@ -318,7 +318,7 @@ def derive_q4_from_fy(quarters_data: List[Dict[str, Any]], symbol: str) -> List[
     return derived_quarters
 
 
-def extract_quarter_from_frame(frame: str) -> Optional[str]:
+def extract_quarter_from_frame(frame: str) -> str | None:
     """
     Extract quarter identifier from frame field.
 
@@ -355,7 +355,7 @@ def extract_quarter_from_frame(frame: str) -> Optional[str]:
     return None
 
 
-def extract_year_from_frame(frame: str) -> Optional[int]:
+def extract_year_from_frame(frame: str) -> int | None:
     """
     Extract year from frame field.
 
@@ -384,7 +384,7 @@ def extract_year_from_frame(frame: str) -> Optional[int]:
     return None
 
 
-def use_frame_based_quarters(quarters_data: List[Dict[str, Any]], symbol: str) -> List[Dict[str, Any]]:
+def use_frame_based_quarters(quarters_data: list[dict[str, Any]], symbol: str) -> list[dict[str, Any]]:
     """
     Reorganize quarterly data using frame field for accurate quarter identification.
 
@@ -502,7 +502,7 @@ def use_frame_based_quarters(quarters_data: List[Dict[str, Any]], symbol: str) -
     return result
 
 
-def filter_quarters_only(quarters_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def filter_quarters_only(quarters_data: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Filter to only include Q1-Q4 periods, excluding FY periods.
 

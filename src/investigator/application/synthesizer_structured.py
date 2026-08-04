@@ -3,19 +3,20 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 
-PeerCountProvider = Callable[[str], Optional[int]]
+PeerCountProvider = Callable[[str], int | None]
 
 
-def calculate_quarterly_trends(quarterly_data: List[Dict[str, Any]], *, logger: Optional[Any] = None) -> Dict[str, Any]:
+def calculate_quarterly_trends(quarterly_data: list[dict[str, Any]], *, logger: Any | None = None) -> dict[str, Any]:
     """Calculate QoQ, YoY, and chart-oriented trends for quarterly financial data."""
     if len(quarterly_data) < 2:
         return {}
 
     try:
-        trends: Dict[str, Any] = {
+        trends: dict[str, Any] = {
             "revenue_trend": [],
             "net_income_trend": [],
             "operating_cash_flow_trend": [],
@@ -75,7 +76,7 @@ def calculate_quarterly_trends(quarterly_data: List[Dict[str, Any]], *, logger: 
         return {}
 
 
-def _normalize_sec_payload(content: Dict[str, Any]) -> Dict[str, Any]:
+def _normalize_sec_payload(content: dict[str, Any]) -> dict[str, Any]:
     return {
         "financial_health_score": content.get("financial_health_score", 0.0),
         "business_quality_score": content.get("business_quality_score", 0.0),
@@ -94,7 +95,7 @@ def _normalize_sec_payload(content: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def extract_sec_comprehensive_data(llm_responses: Dict[str, Any]) -> Dict[str, Any]:
+def extract_sec_comprehensive_data(llm_responses: dict[str, Any]) -> dict[str, Any]:
     """Extract structured SEC comprehensive data from dict or JSON-string responses."""
     fundamental_responses = llm_responses.get("fundamental", {})
     if "comprehensive" not in fundamental_responses:
@@ -114,11 +115,11 @@ def extract_sec_comprehensive_data(llm_responses: Dict[str, Any]) -> Dict[str, A
 
 def create_recommendation_from_llm_data(
     symbol: str,
-    sec_data: Dict[str, Any],
-    tech_indicators: Dict[str, Any],
+    sec_data: dict[str, Any],
+    tech_indicators: dict[str, Any],
     current_price: float,
     overall_score: float,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build a recommendation payload directly from SEC comprehensive data and technical indicators."""
     _ = current_price
 
@@ -242,13 +243,13 @@ def create_recommendation_from_llm_data(
 
 def calculate_data_quality_detailed(
     symbol: str,
-    llm_responses: Dict[str, Any],
-    quarterly_metrics: List[Any],
-    latest_data: Dict[str, Any],
+    llm_responses: dict[str, Any],
+    quarterly_metrics: list[Any],
+    latest_data: dict[str, Any],
     *,
     get_peer_count: PeerCountProvider,
-    logger: Optional[Any] = None,
-) -> Dict[str, Any]:
+    logger: Any | None = None,
+) -> dict[str, Any]:
     """Calculate a detailed data-quality report with peer availability supplied via callback."""
     scores = []
     details = {}
@@ -294,5 +295,5 @@ def calculate_data_quality_detailed(
         "overall_score": round(overall_score, 1),
         "grade": grade,
         "components": details,
-        "timestamp": datetime.now(timezone.utc),
+        "timestamp": datetime.now(UTC),
     }

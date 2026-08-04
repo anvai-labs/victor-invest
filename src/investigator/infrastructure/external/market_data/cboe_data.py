@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ import logging
 from dataclasses import dataclass
 from datetime import date, datetime
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 
 import aiohttp
 
@@ -89,13 +89,13 @@ class VIXData:
 
     date: date
     vix_spot: float
-    vix_open: Optional[float] = None
-    vix_high: Optional[float] = None
-    vix_low: Optional[float] = None
-    previous_close: Optional[float] = None
-    change: Optional[float] = None
-    change_pct: Optional[float] = None
-    regime: Optional[VolatilityRegime] = None
+    vix_open: float | None = None
+    vix_high: float | None = None
+    vix_low: float | None = None
+    previous_close: float | None = None
+    change: float | None = None
+    change_pct: float | None = None
+    regime: VolatilityRegime | None = None
 
     def __post_init__(self):
         if self.regime is None:
@@ -136,12 +136,12 @@ class VIXTermStructure:
 
     date: date
     spot: float
-    front_month: Optional[float] = None
-    second_month: Optional[float] = None
-    third_month: Optional[float] = None
-    vix3m: Optional[float] = None
-    vix6m: Optional[float] = None
-    structure: Optional[TermStructure] = None
+    front_month: float | None = None
+    second_month: float | None = None
+    third_month: float | None = None
+    vix3m: float | None = None
+    vix6m: float | None = None
+    structure: TermStructure | None = None
 
     def __post_init__(self):
         if self.structure is None and self.front_month:
@@ -165,21 +165,21 @@ class VIXTermStructure:
             return TermStructure.STEEP_BACKWARDATION
 
     @property
-    def front_vs_spot(self) -> Optional[float]:
+    def front_vs_spot(self) -> float | None:
         """Front month premium/discount vs spot."""
         if self.front_month:
             return self.front_month - self.spot
         return None
 
     @property
-    def second_vs_front(self) -> Optional[float]:
+    def second_vs_front(self) -> float | None:
         """Second month vs front month (roll yield indicator)."""
         if self.second_month and self.front_month:
             return self.second_month - self.front_month
         return None
 
     @property
-    def contango_ratio(self) -> Optional[float]:
+    def contango_ratio(self) -> float | None:
         """Front month / Spot ratio."""
         if self.front_month and self.spot > 0:
             return self.front_month / self.spot
@@ -211,9 +211,9 @@ class SKEWData:
 
     date: date
     skew: float
-    previous: Optional[float] = None
-    change: Optional[float] = None
-    percentile_90d: Optional[float] = None
+    previous: float | None = None
+    change: float | None = None
+    percentile_90d: float | None = None
 
     @property
     def is_elevated(self) -> bool:
@@ -243,10 +243,10 @@ class PutCallRatio:
 
     date: date
     total_ratio: float
-    equity_ratio: Optional[float] = None
-    index_ratio: Optional[float] = None
-    volume_puts: Optional[int] = None
-    volume_calls: Optional[int] = None
+    equity_ratio: float | None = None
+    index_ratio: float | None = None
+    volume_puts: int | None = None
+    volume_calls: int | None = None
 
     @property
     def is_bearish(self) -> bool:
@@ -274,7 +274,7 @@ class CBOEClient:
         print(f"SKEW: {skew.skew} (elevated: {skew.is_elevated})")
     """
 
-    def __init__(self, session: Optional[aiohttp.ClientSession] = None):
+    def __init__(self, session: aiohttp.ClientSession | None = None):
         self._session = session
         self._owns_session = session is None
 
@@ -295,7 +295,7 @@ class CBOEClient:
             await self._session.close()
             self._session = None
 
-    async def get_vix(self) -> Optional[VIXData]:
+    async def get_vix(self) -> VIXData | None:
         """Get current VIX data."""
         try:
             session = await self._get_session()
@@ -310,11 +310,11 @@ class CBOEClient:
             logger.warning(f"Failed to fetch VIX: {e}")
             return None
 
-    def _parse_vix_json(self, data: Dict) -> Optional[VIXData]:
+    def _parse_vix_json(self, data: dict) -> VIXData | None:
         """Parse VIX data from CBOE JSON response."""
         try:
             # CBOE returns historical data array
-            if "data" in data and data["data"]:
+            if data.get("data"):
                 latest = data["data"][-1]
                 # Format: [date, open, high, low, close]
                 obs_date = datetime.strptime(latest[0], "%Y-%m-%d").date()
@@ -330,7 +330,7 @@ class CBOEClient:
             logger.debug(f"Could not parse VIX JSON: {e}")
             return None
 
-    async def get_vix_term_structure(self) -> Optional[VIXTermStructure]:
+    async def get_vix_term_structure(self) -> VIXTermStructure | None:
         """Get VIX futures term structure."""
         try:
             # Get spot VIX first
@@ -348,7 +348,7 @@ class CBOEClient:
             logger.warning(f"Failed to get VIX term structure: {e}")
             return None
 
-    async def get_skew(self) -> Optional[SKEWData]:
+    async def get_skew(self) -> SKEWData | None:
         """Get CBOE SKEW index data."""
         try:
             session = await self._get_session()
@@ -363,10 +363,10 @@ class CBOEClient:
             logger.warning(f"Failed to fetch SKEW: {e}")
             return None
 
-    def _parse_skew_json(self, data: Dict) -> Optional[SKEWData]:
+    def _parse_skew_json(self, data: dict) -> SKEWData | None:
         """Parse SKEW data from CBOE JSON response."""
         try:
-            if "data" in data and data["data"]:
+            if data.get("data"):
                 latest = data["data"][-1]
                 prev = data["data"][-2] if len(data["data"]) > 1 else None
 
@@ -385,7 +385,7 @@ class CBOEClient:
             logger.debug(f"Could not parse SKEW JSON: {e}")
             return None
 
-    async def get_all_indicators(self) -> Dict[str, Any]:
+    async def get_all_indicators(self) -> dict[str, Any]:
         """Get all CBOE indicators."""
         import asyncio
 
@@ -403,7 +403,7 @@ class CBOEClient:
         }
 
 
-_client: Optional[CBOEClient] = None
+_client: CBOEClient | None = None
 
 
 def get_cboe_client() -> CBOEClient:

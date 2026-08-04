@@ -32,7 +32,7 @@ import logging
 import os
 import pickle
 from datetime import datetime
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import numpy as np
 from scipy import linalg
@@ -188,12 +188,12 @@ class ContextualBanditPolicy(RLPolicy):
 
     def __init__(
         self,
-        n_features: Optional[int] = None,
+        n_features: int | None = None,
         n_actions: int = len(TIER_CLASSIFICATIONS),
         prior_variance: float = 1.0,
         noise_variance: float = 0.1,
         exploration_weight: float = 1.0,
-        normalizer: Optional[FeatureNormalizer] = None,
+        normalizer: FeatureNormalizer | None = None,
     ):
         """
         Initialize contextual bandit policy.
@@ -223,9 +223,9 @@ class ContextualBanditPolicy(RLPolicy):
         # For each action a: y = x^T theta_a + noise
         # Posterior: theta_a ~ N(mu_a, Sigma_a)
         self._initialized = False
-        self._mu: Optional[np.ndarray] = None  # Shape: (n_actions, n_features)
-        self._Sigma: Optional[np.ndarray] = None  # Shape: (n_actions, n_features, n_features)
-        self._Lambda: Optional[np.ndarray] = None  # Precision matrices
+        self._mu: np.ndarray | None = None  # Shape: (n_actions, n_features)
+        self._Sigma: np.ndarray | None = None  # Shape: (n_actions, n_features, n_features)
+        self._Lambda: np.ndarray | None = None  # Precision matrices
 
         self.action_counts = np.zeros(n_actions)
         self.action_rewards = np.zeros(n_actions)
@@ -252,7 +252,7 @@ class ContextualBanditPolicy(RLPolicy):
         self._ready = True
         logger.info(f"Initialized bandit with {n_features} features, {self.n_actions} actions")
 
-    def predict(self, context: ValuationContext) -> Dict[str, float]:
+    def predict(self, context: ValuationContext) -> dict[str, float]:
         """
         Predict model weights using Thompson Sampling.
 
@@ -296,7 +296,7 @@ class ContextualBanditPolicy(RLPolicy):
     def predict_with_confidence(
         self,
         context: ValuationContext,
-    ) -> Tuple[Dict[str, float], float]:
+    ) -> tuple[dict[str, float], float]:
         """
         Predict with confidence estimate based on posterior uncertainty.
         """
@@ -328,7 +328,7 @@ class ContextualBanditPolicy(RLPolicy):
     def update(
         self,
         context: ValuationContext,
-        action: Dict[str, float],
+        action: dict[str, float],
         reward: float,
     ) -> None:
         """
@@ -380,7 +380,7 @@ class ContextualBanditPolicy(RLPolicy):
         self._update_count += 1
         self._updated_at = datetime.now()
 
-    def _identify_action(self, weights: Dict[str, float]) -> int:
+    def _identify_action(self, weights: dict[str, float]) -> int:
         """
         Identify which tier action corresponds to the given weights.
 
@@ -408,7 +408,7 @@ class ContextualBanditPolicy(RLPolicy):
     def get_exploration_bonus(
         self,
         context: ValuationContext,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Get exploration bonus based on posterior uncertainty.
         """
@@ -501,7 +501,7 @@ class ContextualBanditPolicy(RLPolicy):
             logger.error(f"Failed to load policy: {e}")
             return False
 
-    def get_state(self) -> Dict[str, Any]:
+    def get_state(self) -> dict[str, Any]:
         """Get policy state for inspection."""
         state = super().get_state()
         state.update(
@@ -515,7 +515,7 @@ class ContextualBanditPolicy(RLPolicy):
         )
         return state
 
-    def get_action_stats(self) -> Dict[str, Dict[str, float]]:
+    def get_action_stats(self) -> dict[str, dict[str, float]]:
         """Get statistics for each action."""
         stats = {}
         for i, tier in enumerate(TIER_CLASSIFICATIONS):

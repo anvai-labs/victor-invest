@@ -24,7 +24,8 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from datetime import UTC
+from typing import TYPE_CHECKING, Any, ClassVar
 
 if TYPE_CHECKING:
     from investigator.domain.services.valuation.insurance_valuation import InsuranceType
@@ -41,19 +42,19 @@ class ValuationResult:
     current_price: float
     upside_percent: float
     confidence: str  # "high", "medium", "low"
-    details: Dict  # Method-specific details
+    details: dict  # Method-specific details
     warnings: list  # Any warnings or caveats
     # Industry-specific metrics from IndustryDatasetRegistry
-    industry_metrics: Optional[Dict[str, Any]] = None
-    industry_adjustments: Optional[List[Dict[str, Any]]] = None
-    adjusted_fair_value: Optional[float] = None  # Fair value after industry adjustments
+    industry_metrics: dict[str, Any] | None = None
+    industry_adjustments: list[dict[str, Any]] | None = None
+    adjusted_fair_value: float | None = None  # Fair value after industry adjustments
 
 
 class SectorValuationRouter:
     """Routes to appropriate valuation method based on sector/industry"""
 
     # Sector/industry routing map
-    VALUATION_METHODS = {
+    VALUATION_METHODS: ClassVar[dict] = {
         # Insurance companies - use P/BV and DDM
         ("Financials", "Insurance"): "insurance",
         # Banks - use ROE multiples
@@ -82,7 +83,7 @@ class SectorValuationRouter:
         self.logger = logging.getLogger(self.__class__.__name__)
 
     @staticmethod
-    def _is_fee_based_insurance_service(industry: Optional[str]) -> bool:
+    def _is_fee_based_insurance_service(industry: str | None) -> bool:
         """
         Return True for insurance brokers/administrators that are fee-driven,
         not underwriting-balance-sheet businesses.
@@ -106,12 +107,12 @@ class SectorValuationRouter:
     def route_valuation(
         self,
         symbol: str,
-        sector: Optional[str],
-        industry: Optional[str],
-        financials: Dict,
+        sector: str | None,
+        industry: str | None,
+        financials: dict,
         current_price: float,
-        database_url: Optional[str] = None,
-        xbrl_data: Optional[Dict] = None,
+        database_url: str | None = None,
+        xbrl_data: dict | None = None,
     ) -> ValuationResult:
         """
         Route to appropriate valuation method based on sector/industry
@@ -217,11 +218,11 @@ class SectorValuationRouter:
     def _value_insurance(
         self,
         symbol: str,
-        financials: Dict,
+        financials: dict,
         current_price: float,
-        database_url: Optional[str] = None,
-        xbrl_data: Optional[Dict] = None,
-        industry: Optional[str] = None,
+        database_url: str | None = None,
+        xbrl_data: dict | None = None,
+        industry: str | None = None,
     ) -> ValuationResult:
         """
         Value insurance company using Price-to-Book (P/BV) method
@@ -290,7 +291,7 @@ class SectorValuationRouter:
             self.logger.warning(f"{symbol} - Insurance valuation failed: {e}")
             raise
 
-    def _detect_insurance_type(self, industry: Optional[str]) -> "InsuranceType":
+    def _detect_insurance_type(self, industry: str | None) -> InsuranceType:
         """
         Detect insurance type from industry string.
 
@@ -353,7 +354,7 @@ class SectorValuationRouter:
 
         return InsuranceType.UNKNOWN
 
-    def _value_bank(self, symbol: str, financials: Dict, current_price: float) -> ValuationResult:
+    def _value_bank(self, symbol: str, financials: dict, current_price: float) -> ValuationResult:
         """
         Value bank using ROE multiples method
 
@@ -423,10 +424,10 @@ class SectorValuationRouter:
     def _value_reit(
         self,
         symbol: str,
-        financials: Dict,
+        financials: dict,
         current_price: float,
-        company_name: Optional[str] = None,
-        industry: Optional[str] = None,
+        company_name: str | None = None,
+        industry: str | None = None,
     ) -> ValuationResult:
         """
         Value REIT using property-type-specific FFO multiples with rate adjustment.
@@ -505,7 +506,7 @@ class SectorValuationRouter:
             self.logger.warning(f"{symbol} - REIT valuation failed: {e}")
             raise
 
-    def _is_biotech_industry(self, industry: Optional[str], sector: Optional[str], financials: Dict) -> bool:
+    def _is_biotech_industry(self, industry: str | None, sector: str | None, financials: dict) -> bool:
         """
         Determine if company should use biotech pre-revenue valuation.
 
@@ -547,11 +548,11 @@ class SectorValuationRouter:
     def _value_biotech(
         self,
         symbol: str,
-        financials: Dict,
+        financials: dict,
         current_price: float,
-        company_name: Optional[str] = None,
-        industry: Optional[str] = None,
-        pipeline: Optional[list] = None,
+        company_name: str | None = None,
+        industry: str | None = None,
+        pipeline: list | None = None,
     ) -> ValuationResult:
         """
         Value pre-revenue biotech using pipeline probability-weighted valuation.
@@ -636,7 +637,7 @@ class SectorValuationRouter:
             self.logger.warning(f"{symbol} - Biotech valuation failed: {e}")
             raise
 
-    def _is_defense_industry(self, industry: Optional[str], sector: Optional[str], symbol: str) -> bool:
+    def _is_defense_industry(self, industry: str | None, sector: str | None, symbol: str) -> bool:
         """
         Determine if company should use defense contractor valuation.
 
@@ -670,7 +671,7 @@ class SectorValuationRouter:
 
         return classification.is_defense_contractor
 
-    def _is_reit(self, sector: Optional[str], industry: Optional[str]) -> bool:
+    def _is_reit(self, sector: str | None, industry: str | None) -> bool:
         """
         Determine if company should use REIT valuation.
 
@@ -709,10 +710,10 @@ class SectorValuationRouter:
     def _value_defense_contractor(
         self,
         symbol: str,
-        financials: Dict,
+        financials: dict,
         current_price: float,
-        xbrl_data: Optional[Dict] = None,
-        industry: Optional[str] = None,
+        xbrl_data: dict | None = None,
+        industry: str | None = None,
     ) -> ValuationResult:
         """
         Value defense contractor with backlog-adjusted valuation.
@@ -802,7 +803,7 @@ class SectorValuationRouter:
             self.logger.warning(f"{symbol} - Defense contractor valuation failed: {e}")
             raise
 
-    def _calculate_defense_base_value(self, symbol: str, financials: Dict, current_price: float) -> float:
+    def _calculate_defense_base_value(self, symbol: str, financials: dict, current_price: float) -> float:
         """
         Calculate base fair value for defense contractor using EV/EBITDA.
 
@@ -864,10 +865,10 @@ class SectorValuationRouter:
         self,
         result: ValuationResult,
         symbol: str,
-        sector: Optional[str],
-        industry: Optional[str],
-        financials: Dict,
-        xbrl_data: Optional[Dict] = None,
+        sector: str | None,
+        industry: str | None,
+        financials: dict,
+        xbrl_data: dict | None = None,
         use_cache: bool = True,
         cache_ttl_days: int = 7,
     ) -> ValuationResult:
@@ -992,7 +993,7 @@ class SectorValuationRouter:
                 result.industry_adjustments = adjustments_list
 
                 # Apply adjustments to fair value
-                adjusted_value, reasons = apply_adjustments_to_fair_value(
+                adjusted_value, _reasons = apply_adjustments_to_fair_value(
                     base_fair_value=result.fair_value,
                     adjustments=adjustments,
                 )
@@ -1047,10 +1048,10 @@ class SectorValuationRouter:
 
             if entry:
                 # Check if cache is expired (based on cached_at and ttl)
-                from datetime import datetime, timezone
+                from datetime import datetime
 
                 cached_at = datetime.fromisoformat(entry.cached_at)
-                now = datetime.now(timezone.utc)
+                now = datetime.now(UTC)
                 age_days = (now - cached_at).days
 
                 # Default TTL is 7 days, but check expires_at if set
@@ -1078,9 +1079,9 @@ class SectorValuationRouter:
         self,
         symbol: str,
         industry: str,
-        sector: Optional[str],
+        sector: str | None,
         metrics,
-        adjustments: List[Dict],
+        adjustments: list[dict],
         cache=None,
         ttl_days: int = 7,
     ):
@@ -1141,10 +1142,10 @@ class SectorValuationRouter:
                 # Check if benchmarks exist and are recent
                 existing = cache.get_industry_benchmarks(industry)
                 if existing:
-                    from datetime import datetime, timezone
+                    from datetime import datetime
 
                     cached_at = datetime.fromisoformat(existing.cached_at)
-                    age_days = (datetime.now(timezone.utc) - cached_at).days
+                    age_days = (datetime.now(UTC) - cached_at).days
                     # Only recompute if old or symbol count changed significantly
                     if age_days < 1 and abs(existing.symbol_count - len(industry_symbols)) < 2:
                         return
@@ -1160,7 +1161,7 @@ class SectorValuationRouter:
     def get_industry_benchmarks(
         self,
         industry: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """
         Get shared industry-level benchmarks (peer statistics, thresholds).
 
@@ -1202,11 +1203,11 @@ class SectorValuationRouter:
     def get_industry_summary(
         self,
         symbol: str,
-        sector: Optional[str],
-        industry: Optional[str],
-        financials: Dict,
-        xbrl_data: Optional[Dict] = None,
-    ) -> Optional[Dict[str, Any]]:
+        sector: str | None,
+        industry: str | None,
+        financials: dict,
+        xbrl_data: dict | None = None,
+    ) -> dict[str, Any] | None:
         """
         Get a comprehensive industry summary for a stock.
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Split-Adjusted Market Cap Calculator
 
@@ -28,7 +27,6 @@ Usage:
 
 import logging
 from datetime import date, datetime, timedelta
-from typing import Optional
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -42,7 +40,7 @@ def get_split_adjusted_price(
     symbol: str,
     split_adjusted_price: float,
     price_date: date,
-    engine: Optional[Engine] = None,
+    engine: Engine | None = None,
 ) -> float:
     """
     Convert split-adjusted price to actual price for a specific date.
@@ -106,10 +104,10 @@ def calculate_market_cap(
     symbol: str,
     price: float,
     shares: float,
-    price_date: Optional[date] = None,
+    price_date: date | None = None,
     shares_source: str = "sec",
-    engine: Optional[Engine] = None,
-) -> Optional[float]:
+    engine: Engine | None = None,
+) -> float | None:
     """
     Calculate market cap accounting for stock splits.
 
@@ -180,8 +178,8 @@ def calculate_market_cap_from_sec_data(
     split_adjusted_price: float,
     sec_shares: float,
     sec_fiscal_year: int,
-    engine: Optional[Engine] = None,
-) -> Optional[float]:
+    engine: Engine | None = None,
+) -> float | None:
     """
     Calculate market cap using SEC shares and split-adjusted price.
 
@@ -246,9 +244,9 @@ def calculate_market_cap_from_sec_data(
 
 def calculate_enterprise_pe(
     symbol: str,
-    market_cap: Optional[float],
-    net_income: Optional[float],
-) -> Optional[float]:
+    market_cap: float | None,
+    net_income: float | None,
+) -> float | None:
     """
     Calculate P/E ratio using enterprise-level valuation (split-independent).
 
@@ -282,7 +280,7 @@ def get_market_cap_with_split_adjustment(
     current_price: float,
     sec_shares: float,
     fiscal_year: int,
-    engine: Optional[Engine] = None,
+    engine: Engine | None = None,
 ) -> dict:
     """
     Get market cap and related metrics with proper split adjustment.

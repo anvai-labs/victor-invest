@@ -14,7 +14,6 @@ Date: 2025-12-30
 """
 
 import logging
-from typing import Dict, List, Optional, Set, Tuple
 
 from investigator.domain.services.industry_datasets.base import (
     BaseIndustryDataset,
@@ -85,7 +84,7 @@ class BankDataset(BaseIndustryDataset):
     def version(self) -> str:
         return "1.0.0"
 
-    def get_industry_names(self) -> List[str]:
+    def get_industry_names(self) -> list[str]:
         return [
             "Banks",
             "Diversified Banks",
@@ -97,10 +96,10 @@ class BankDataset(BaseIndustryDataset):
             "Banks - Money Center",
         ]
 
-    def get_known_symbols(self) -> Set[str]:
+    def get_known_symbols(self) -> set[str]:
         return KNOWN_BANK_SYMBOLS.copy()
 
-    def get_metric_definitions(self) -> List[MetricDefinition]:
+    def get_metric_definitions(self) -> list[MetricDefinition]:
         return [
             MetricDefinition(
                 name="net_interest_margin",
@@ -181,7 +180,7 @@ class BankDataset(BaseIndustryDataset):
             ),
         ]
 
-    def extract_metrics(self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs) -> IndustryMetrics:
+    def extract_metrics(self, symbol: str, xbrl_data: dict | None, financials: dict, **kwargs) -> IndustryMetrics:
         """Extract bank-specific metrics from XBRL data and financials."""
         metrics = IndustryMetrics(
             industry="bank",
@@ -276,7 +275,7 @@ class BankDataset(BaseIndustryDataset):
 
         return metrics
 
-    def _calculate_nim(self, financials: Dict) -> Optional[float]:
+    def _calculate_nim(self, financials: dict) -> float | None:
         """Calculate NIM from available financial data."""
         net_interest = financials.get("netInterestIncome")
         earning_assets = financials.get("totalAssets")
@@ -286,7 +285,7 @@ class BankDataset(BaseIndustryDataset):
 
         return None
 
-    def _calculate_efficiency_ratio(self, financials: Dict) -> Optional[float]:
+    def _calculate_efficiency_ratio(self, financials: dict) -> float | None:
         """Calculate efficiency ratio."""
         non_interest_expense = financials.get("nonInterestExpense")
         revenue = financials.get("revenue") or financials.get("totalRevenue")
@@ -296,7 +295,7 @@ class BankDataset(BaseIndustryDataset):
 
         return None
 
-    def _calculate_roe(self, financials: Dict) -> Optional[float]:
+    def _calculate_roe(self, financials: dict) -> float | None:
         """Calculate ROE from available data."""
         net_income = financials.get("netIncome")
         equity = financials.get("totalEquity") or financials.get("shareholdersEquity")
@@ -306,7 +305,7 @@ class BankDataset(BaseIndustryDataset):
 
         return None
 
-    def _determine_bank_type(self, symbol: str, financials: Dict) -> str:
+    def _determine_bank_type(self, symbol: str, financials: dict) -> str:
         """Determine bank type based on symbol and characteristics."""
         symbol_upper = symbol.upper()
 
@@ -317,7 +316,7 @@ class BankDataset(BaseIndustryDataset):
         else:
             return "regional"
 
-    def assess_quality(self, metrics: IndustryMetrics) -> Tuple[MetricQuality, str]:
+    def assess_quality(self, metrics: IndustryMetrics) -> tuple[MetricQuality, str]:
         """Assess quality of bank metrics."""
         required_metrics = [
             "net_interest_margin",
@@ -340,8 +339,8 @@ class BankDataset(BaseIndustryDataset):
             return (MetricQuality.POOR, "Missing key metrics for bank valuation")
 
     def get_valuation_adjustments(
-        self, metrics: IndustryMetrics, financials: Dict, **kwargs
-    ) -> List[ValuationAdjustment]:
+        self, metrics: IndustryMetrics, financials: dict, **kwargs
+    ) -> list[ValuationAdjustment]:
         """Calculate bank-specific valuation adjustments."""
         adjustments = []
 
@@ -452,7 +451,7 @@ class BankDataset(BaseIndustryDataset):
 
         return adjustments
 
-    def get_tier_weights(self) -> Optional[Dict[str, int]]:
+    def get_tier_weights(self) -> dict[str, int] | None:
         """Return recommended tier weights for banks."""
         return {
             "pb": 50,

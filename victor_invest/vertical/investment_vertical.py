@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -62,7 +62,7 @@ See: docs/ARCHITECTURE_DECISION_DATA_ACCESS.md for full rationale.
 """
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from victor_contracts import StageDefinition, ToolSet, VerticalBase
 from victor_contracts.verticals import register_vertical
@@ -77,7 +77,7 @@ DEFAULT_INVESTMENT_TOOL_NAMES = [
 ]
 
 
-def _ensure_investment_tool_pack_registered(tool_names: List[str]) -> None:
+def _ensure_investment_tool_pack_registered(tool_names: list[str]) -> None:
     """Register the investment tool pack in Victor's registry (if available).
 
     NOTE: The victor.framework.tool_packs module doesn't exist in the current
@@ -115,7 +115,7 @@ class InvestmentVertical(VerticalBase):
     description = "Institutional-grade investment research and equity analysis"
     version = "0.5.0"
     VERTICAL_API_VERSION = 1
-    _yaml_config_cache: Optional[Dict[str, Any]] = None
+    _yaml_config_cache: dict[str, Any] | None = None
 
     @classmethod
     def get_name(cls) -> str:
@@ -130,7 +130,7 @@ class InvestmentVertical(VerticalBase):
         return Path(__file__).parent / "config" / "vertical.yaml"
 
     @classmethod
-    def _load_vertical_yaml_config(cls) -> Dict[str, Any]:
+    def _load_vertical_yaml_config(cls) -> dict[str, Any]:
         if cls._yaml_config_cache is not None:
             return cls._yaml_config_cache
 
@@ -150,13 +150,13 @@ class InvestmentVertical(VerticalBase):
         return cls._yaml_config_cache
 
     @classmethod
-    def _yaml_stage_definitions(cls) -> Dict[str, StageDefinition]:
+    def _yaml_stage_definitions(cls) -> dict[str, StageDefinition]:
         config = cls._load_vertical_yaml_config()
         stages_config = config.get("core", {}).get("stages", {})
         if not isinstance(stages_config, dict):
             return {}
 
-        stages: Dict[str, StageDefinition] = {}
+        stages: dict[str, StageDefinition] = {}
         for stage_name, raw in stages_config.items():
             stage_data = raw if isinstance(raw, dict) else {}
             stages[stage_name] = StageDefinition(
@@ -169,7 +169,7 @@ class InvestmentVertical(VerticalBase):
         return stages
 
     @classmethod
-    def get_tools(cls) -> List[str]:
+    def get_tools(cls) -> list[str]:
         """Get the list of tool names for investment analysis.
 
         Returns:
@@ -206,26 +206,26 @@ class InvestmentVertical(VerticalBase):
         )
 
     @classmethod
-    def get_stages(cls) -> Dict[str, StageDefinition]:
+    def get_stages(cls) -> dict[str, StageDefinition]:
         """Get stage definitions, preferring YAML-backed workflow stages."""
         yaml_stages = cls._yaml_stage_definitions()
         if yaml_stages:
             return yaml_stages
-        result: Dict[str, StageDefinition] = super().get_stages()
+        result: dict[str, StageDefinition] = super().get_stages()
         return result
 
     @classmethod
-    def get_provider_hints(cls) -> Dict[str, Any]:
+    def get_provider_hints(cls) -> dict[str, Any]:
         """Get provider hints, preferring YAML metadata."""
         config = cls._load_vertical_yaml_config()
         hints = config.get("provider", {}).get("hints")
         if isinstance(hints, dict) and hints:
             return hints
-        result: Dict[str, Any] = super().get_provider_hints()
+        result: dict[str, Any] = super().get_provider_hints()
         return result
 
     @classmethod
-    def get_evaluation_criteria(cls) -> List[str]:
+    def get_evaluation_criteria(cls) -> list[str]:
         """Get evaluation criteria, preferring YAML metadata."""
         config = cls._load_vertical_yaml_config()
         criteria = config.get("evaluation", {}).get("criteria")
@@ -260,18 +260,18 @@ class InvestmentVertical(VerticalBase):
                 config.tools = RuntimeToolSet.from_tools(config.tools)
 
         if not hasattr(config, "provider_hints"):
-            setattr(config, "provider_hints", cls.get_provider_hints())
+            config.provider_hints = cls.get_provider_hints()
         if not hasattr(config, "evaluation_criteria"):
-            setattr(config, "evaluation_criteria", cls.get_evaluation_criteria())
+            config.evaluation_criteria = cls.get_evaluation_criteria()
 
         # Backward compatibility for tests/callers that expect config.name.
         if not hasattr(config, "name"):
-            setattr(config, "name", cls.name)
+            config.name = cls.name
 
         return config
 
     @classmethod
-    def get_task_type_hints(cls) -> Dict[str, Any]:
+    def get_task_type_hints(cls) -> dict[str, Any]:
         """Get investment-specific task type hints.
 
         Returns:
@@ -316,7 +316,7 @@ class InvestmentVertical(VerticalBase):
         }
 
     @classmethod
-    def get_mode_config(cls) -> Dict[str, Any]:
+    def get_mode_config(cls) -> dict[str, Any]:
         """Get investment-specific operational modes.
 
         Returns:
@@ -354,7 +354,7 @@ class InvestmentVertical(VerticalBase):
         }
 
     @classmethod
-    def get_workflow_provider(cls) -> Optional[Any]:
+    def get_workflow_provider(cls) -> Any | None:
         """Get workflow provider for investment analysis.
 
         Provides access to YAML-defined investment workflows including:
@@ -379,7 +379,7 @@ class InvestmentVertical(VerticalBase):
     async def create_orchestrator(
         cls,
         provider: str = "ollama",
-        model: Optional[str] = None,
+        model: str | None = None,
     ) -> Any:
         """Create an AgentOrchestrator for YAML workflow execution.
 
@@ -427,7 +427,7 @@ class InvestmentVertical(VerticalBase):
         cls,
         symbol: str,
         mode: str = "standard",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Run investment analysis using the workflow system.
 
         This is the primary entry point for running investment analysis

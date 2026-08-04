@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ import logging
 from dataclasses import dataclass
 from datetime import date
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 
 import aiohttp
 
@@ -81,15 +81,15 @@ class KCManufacturing:
 
     date: date
     composite_index: float
-    production: Optional[float] = None
-    shipments: Optional[float] = None
-    new_orders: Optional[float] = None
-    employment: Optional[float] = None
-    workweek: Optional[float] = None
-    prices_paid: Optional[float] = None
-    prices_received: Optional[float] = None
-    future_composite: Optional[float] = None
-    future_production: Optional[float] = None
+    production: float | None = None
+    shipments: float | None = None
+    new_orders: float | None = None
+    employment: float | None = None
+    workweek: float | None = None
+    prices_paid: float | None = None
+    prices_received: float | None = None
+    future_composite: float | None = None
+    future_production: float | None = None
 
     @property
     def is_expanding(self) -> bool:
@@ -113,9 +113,9 @@ class KCFinancialStressIndex:
 
     date: date
     kcfsi: float
-    previous_week: Optional[float] = None
-    one_month_change: Optional[float] = None
-    stress_level: Optional[FinancialStressLevel] = None
+    previous_week: float | None = None
+    one_month_change: float | None = None
+    stress_level: FinancialStressLevel | None = None
 
     def __post_init__(self):
         if self.stress_level is None:
@@ -153,7 +153,7 @@ class LaborMarketConditions:
 
     date: date
     lmci_level: float
-    lmci_momentum: Optional[float] = None
+    lmci_momentum: float | None = None
 
     @property
     def is_strong(self) -> bool:
@@ -167,7 +167,7 @@ class LaborMarketConditions:
 class KansasCityFedClient:
     """Client for Kansas City Federal Reserve economic data."""
 
-    def __init__(self, session: Optional[aiohttp.ClientSession] = None):
+    def __init__(self, session: aiohttp.ClientSession | None = None):
         self._session = session
         self._owns_session = session is None
 
@@ -188,7 +188,7 @@ class KansasCityFedClient:
             await self._session.close()
             self._session = None
 
-    async def get_manufacturing_survey(self) -> Optional[KCManufacturing]:
+    async def get_manufacturing_survey(self) -> KCManufacturing | None:
         """Get the latest Manufacturing Survey."""
         try:
             session = await self._get_session()
@@ -201,7 +201,7 @@ class KansasCityFedClient:
             logger.warning(f"Failed to fetch KC manufacturing: {e}")
             return None
 
-    def _parse_mfg_excel(self, content: bytes) -> Optional[KCManufacturing]:
+    def _parse_mfg_excel(self, content: bytes) -> KCManufacturing | None:
         try:
             import io
 
@@ -220,7 +220,7 @@ class KansasCityFedClient:
             logger.debug(f"Could not parse KC mfg Excel: {e}")
             return None
 
-    async def get_financial_stress_index(self) -> Optional[KCFinancialStressIndex]:
+    async def get_financial_stress_index(self) -> KCFinancialStressIndex | None:
         """Get the latest KCFSI."""
         try:
             session = await self._get_session()
@@ -233,7 +233,7 @@ class KansasCityFedClient:
             logger.warning(f"Failed to fetch KCFSI: {e}")
             return None
 
-    def _parse_kcfsi_excel(self, content: bytes) -> Optional[KCFinancialStressIndex]:
+    def _parse_kcfsi_excel(self, content: bytes) -> KCFinancialStressIndex | None:
         try:
             import io
 
@@ -254,7 +254,7 @@ class KansasCityFedClient:
             logger.debug(f"Could not parse KCFSI Excel: {e}")
             return None
 
-    async def get_labor_market_conditions(self) -> Optional[LaborMarketConditions]:
+    async def get_labor_market_conditions(self) -> LaborMarketConditions | None:
         """Get the latest LMCI."""
         try:
             session = await self._get_session()
@@ -267,7 +267,7 @@ class KansasCityFedClient:
             logger.warning(f"Failed to fetch LMCI: {e}")
             return None
 
-    def _parse_lmci_excel(self, content: bytes) -> Optional[LaborMarketConditions]:
+    def _parse_lmci_excel(self, content: bytes) -> LaborMarketConditions | None:
         try:
             import io
 
@@ -287,7 +287,7 @@ class KansasCityFedClient:
             logger.debug(f"Could not parse LMCI Excel: {e}")
             return None
 
-    async def get_all_indicators(self) -> Dict[str, Any]:
+    async def get_all_indicators(self) -> dict[str, Any]:
         import asyncio
 
         mfg, kcfsi, lmci = await asyncio.gather(
@@ -303,7 +303,7 @@ class KansasCityFedClient:
         }
 
 
-_client: Optional[KansasCityFedClient] = None
+_client: KansasCityFedClient | None = None
 
 
 def get_kc_fed_client() -> KansasCityFedClient:

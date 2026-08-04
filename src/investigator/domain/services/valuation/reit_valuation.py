@@ -15,7 +15,6 @@ import logging
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +45,7 @@ class REITPropertyType(Enum):
 # FFO Multiple ranges by property type
 # Format: (low_multiple, high_multiple)
 # Based on historical trading ranges and growth profiles
-REIT_FFO_MULTIPLES: Dict[REITPropertyType, Tuple[float, float]] = {
+REIT_FFO_MULTIPLES: dict[REITPropertyType, tuple[float, float]] = {
     # Premium growth sectors (secular tailwinds)
     REITPropertyType.INDUSTRIAL_LOGISTICS: (22.0, 25.0),
     REITPropertyType.DATA_CENTERS: (20.0, 24.0),
@@ -77,7 +76,7 @@ REIT_FFO_MULTIPLES: Dict[REITPropertyType, Tuple[float, float]] = {
 
 # Known REIT symbols with their property types
 # This provides explicit mappings for major REITs
-KNOWN_REIT_MAPPINGS: Dict[str, REITPropertyType] = {
+KNOWN_REIT_MAPPINGS: dict[str, REITPropertyType] = {
     # Industrial/Logistics
     "PLD": REITPropertyType.INDUSTRIAL_LOGISTICS,  # Prologis
     "DRE": REITPropertyType.INDUSTRIAL_LOGISTICS,  # Duke Realty (merged with Prologis)
@@ -178,7 +177,7 @@ KNOWN_REIT_MAPPINGS: Dict[str, REITPropertyType] = {
 
 
 # Pattern-based detection for company names
-COMPANY_NAME_PATTERNS: Dict[REITPropertyType, list] = {
+COMPANY_NAME_PATTERNS: dict[REITPropertyType, list] = {
     REITPropertyType.INDUSTRIAL_LOGISTICS: [
         r"industrial",
         r"logistics",
@@ -268,14 +267,14 @@ class REITPropertyTypeResult:
     property_type: REITPropertyType
     confidence: str  # "high", "medium", "low"
     detection_method: str  # "symbol_lookup", "name_pattern", "industry_classification", "default"
-    details: Dict
+    details: dict
 
 
 def detect_reit_property_type(
     symbol: str,
-    company_name: Optional[str] = None,
-    industry: Optional[str] = None,
-    sic_code: Optional[str] = None,
+    company_name: str | None = None,
+    industry: str | None = None,
+    sic_code: str | None = None,
 ) -> REITPropertyTypeResult:
     """
     Detect REIT property type from available information.
@@ -384,7 +383,7 @@ def detect_reit_property_type(
     )
 
 
-def get_ffo_multiple_range(property_type: REITPropertyType) -> Tuple[float, float]:
+def get_ffo_multiple_range(property_type: REITPropertyType) -> tuple[float, float]:
     """
     Get FFO multiple range for a property type.
 
@@ -462,7 +461,7 @@ def adjust_ffo_multiple_for_rates(
     return adjusted_multiple
 
 
-def get_current_treasury_yield() -> Optional[float]:
+def get_current_treasury_yield() -> float | None:
     """
     Get current 10-year Treasury yield from FRED database.
 
@@ -502,17 +501,17 @@ class REITValuationResult:
     property_type: REITPropertyType
     property_type_confidence: str
     detection_method: str
-    current_10yr_yield: Optional[float]
+    current_10yr_yield: float | None
     rate_adjustment: float
     warnings: list
 
 
 def value_reit(
     symbol: str,
-    financials: Dict,
+    financials: dict,
     current_price: float,
-    company_name: Optional[str] = None,
-    industry: Optional[str] = None,
+    company_name: str | None = None,
+    industry: str | None = None,
     use_rate_adjustment: bool = True,
 ) -> REITValuationResult:
     """

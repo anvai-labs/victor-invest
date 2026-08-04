@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict
+from collections.abc import Callable
+from typing import Any
 
 
 def calculate_cost_of_equity_capm(
     *,
     symbol: str,
-    get_stock_info: Callable[[str], Dict[str, Any]],
-    get_latest_indicators: Callable[[list[str]], Dict[str, Any]],
+    get_stock_info: Callable[[str], dict[str, Any]],
+    get_latest_indicators: Callable[[list[str]], dict[str, Any]],
     logger: Any,
     beta_floor: float = 0.50,
     beta_cap: float = 2.50,

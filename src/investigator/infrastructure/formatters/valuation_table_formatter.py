@@ -8,7 +8,7 @@ Author: InvestiGator Team
 Date: 2025-11-07
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class ValuationTableFormatter:
@@ -17,11 +17,11 @@ class ValuationTableFormatter:
     @staticmethod
     def format_dcf_table(
         symbol: str,
-        inputs: Dict[str, Any],
-        wacc_breakdown: Dict[str, float],
-        projections: List[Dict[str, float]],
-        terminal: Dict[str, float],
-        valuation: Dict[str, float],
+        inputs: dict[str, Any],
+        wacc_breakdown: dict[str, float],
+        projections: list[dict[str, float]],
+        terminal: dict[str, float],
+        valuation: dict[str, float],
     ) -> str:
         """
         Format DCF valuation as comprehensive table.
@@ -127,7 +127,7 @@ class ValuationTableFormatter:
         return "\n".join(lines)
 
     @staticmethod
-    def format_relative_valuation_table(symbol: str, models: List[Dict[str, Any]], current_price: float) -> str:
+    def format_relative_valuation_table(symbol: str, models: list[dict[str, Any]], current_price: float) -> str:
         """
         Format relative valuation models (P/E, P/S, P/B, EV/EBITDA) as single table.
 
@@ -192,9 +192,9 @@ class ValuationTableFormatter:
     @staticmethod
     def format_ggm_table(
         symbol: str,
-        inputs: Dict[str, Any],
-        dividend_projections: List[Dict[str, float]],
-        valuation: Dict[str, float],
+        inputs: dict[str, Any],
+        dividend_projections: list[dict[str, float]],
+        valuation: dict[str, float],
         applicable: bool = True,
         reason: str = "",
     ) -> str:
@@ -297,12 +297,12 @@ class ValuationTableFormatter:
     @staticmethod
     def format_valuation_summary_table(
         symbol: str,
-        all_models: List[Dict[str, Any]],
-        dynamic_weights: Dict[str, float],
+        all_models: list[dict[str, Any]],
+        dynamic_weights: dict[str, float],
         blended_fair_value: float,
         current_price: float,
         tier: str,
-        notes: Optional[List[str]] = None,
+        notes: list[str] | None = None,
     ) -> str:
         """
         Format comprehensive valuation summary with all models.

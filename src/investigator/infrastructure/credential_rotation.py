@@ -30,11 +30,12 @@ Usage:
 
 import json
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -68,10 +69,10 @@ class RotationPolicy:
     notify_before_days: int = 14
     auto_rotate: bool = False
     require_approval: bool = True
-    rotation_callback: Optional[Callable[[], bool]] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    rotation_callback: Callable[[], bool] | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "credential_name": self.credential_name,
@@ -83,7 +84,7 @@ class RotationPolicy:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "RotationPolicy":
+    def from_dict(cls, data: dict[str, Any]) -> "RotationPolicy":
         """Create from dictionary."""
         return cls(
             credential_name=data["credential_name"],
@@ -107,7 +108,7 @@ class RotationRecord:
     previous_version_hash: str = ""  # Hash of old credential (not the credential itself)
     new_version_hash: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "credential_name": self.credential_name,
@@ -124,12 +125,12 @@ class RotationScheduleEntry:
 
     credential_name: str
     policy: RotationPolicy
-    last_rotation: Optional[datetime] = None
-    next_rotation: Optional[datetime] = None
+    last_rotation: datetime | None = None
+    next_rotation: datetime | None = None
     status: RotationStatus = RotationStatus.SCHEDULED
 
     @property
-    def days_until_rotation(self) -> Optional[int]:
+    def days_until_rotation(self) -> int | None:
         """Days until next rotation."""
         if not self.next_rotation:
             return None
@@ -162,16 +163,16 @@ class RotationScheduler:
     - Maintain rotation history
     """
 
-    def __init__(self, storage_path: Optional[Path] = None):
+    def __init__(self, storage_path: Path | None = None):
         """Initialize rotation scheduler.
 
         Args:
             storage_path: Path to persist rotation state
         """
-        self._schedules: Dict[str, RotationScheduleEntry] = {}
-        self._history: List[RotationRecord] = []
+        self._schedules: dict[str, RotationScheduleEntry] = {}
+        self._history: list[RotationRecord] = []
         self._storage_path = storage_path
-        self._notification_callbacks: List[Callable[[RotationScheduleEntry], None]] = []
+        self._notification_callbacks: list[Callable[[RotationScheduleEntry], None]] = []
 
         if storage_path and storage_path.exists():
             self._load_state()
@@ -240,7 +241,7 @@ class RotationScheduler:
         logger.info(f"Recorded rotation for {credential_name} by {rotated_by}")
         self._save_state()
 
-    def get_pending_rotations(self) -> List[RotationScheduleEntry]:
+    def get_pending_rotations(self) -> list[RotationScheduleEntry]:
         """Get credentials that need rotation soon.
 
         Returns:
@@ -257,7 +258,7 @@ class RotationScheduler:
 
         return sorted(pending, key=lambda e: e.days_until_rotation or 0)
 
-    def get_overdue_rotations(self) -> List[RotationScheduleEntry]:
+    def get_overdue_rotations(self) -> list[RotationScheduleEntry]:
         """Get credentials with overdue rotations.
 
         Returns:
@@ -265,7 +266,7 @@ class RotationScheduler:
         """
         return [e for e in self._schedules.values() if e.is_overdue]
 
-    def get_schedule(self, credential_name: str) -> Optional[RotationScheduleEntry]:
+    def get_schedule(self, credential_name: str) -> RotationScheduleEntry | None:
         """Get rotation schedule for a credential.
 
         Args:
@@ -276,7 +277,7 @@ class RotationScheduler:
         """
         return self._schedules.get(credential_name)
 
-    def get_all_schedules(self) -> List[RotationScheduleEntry]:
+    def get_all_schedules(self) -> list[RotationScheduleEntry]:
         """Get all rotation schedules.
 
         Returns:
@@ -286,9 +287,9 @@ class RotationScheduler:
 
     def get_rotation_history(
         self,
-        credential_name: Optional[str] = None,
+        credential_name: str | None = None,
         limit: int = 100,
-    ) -> List[RotationRecord]:
+    ) -> list[RotationRecord]:
         """Get rotation history.
 
         Args:
@@ -314,7 +315,7 @@ class RotationScheduler:
         """
         self._notification_callbacks.append(callback)
 
-    def check_and_notify(self) -> List[RotationScheduleEntry]:
+    def check_and_notify(self) -> list[RotationScheduleEntry]:
         """Check for pending rotations and send notifications.
 
         Returns:
@@ -422,7 +423,7 @@ DEFAULT_ROTATION_POLICIES = {
 }
 
 
-def get_default_scheduler(storage_path: Optional[Path] = None) -> RotationScheduler:
+def get_default_scheduler(storage_path: Path | None = None) -> RotationScheduler:
     """Get a scheduler pre-configured with default policies.
 
     Args:
@@ -440,11 +441,11 @@ def get_default_scheduler(storage_path: Optional[Path] = None) -> RotationSchedu
 
 
 __all__ = [
-    "RotationStatus",
+    "DEFAULT_ROTATION_POLICIES",
     "RotationPolicy",
     "RotationRecord",
     "RotationScheduleEntry",
     "RotationScheduler",
-    "DEFAULT_ROTATION_POLICIES",
+    "RotationStatus",
     "get_default_scheduler",
 ]

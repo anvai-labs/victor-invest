@@ -7,7 +7,7 @@ Free API with 120 requests/minute limit.
 
 import logging
 from datetime import date
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ..base import (
     DataCategory,
@@ -96,7 +96,7 @@ class FredMacroSource(MacroDataSource):
     Rate Limit: 120 requests/minute
     """
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         super().__init__("fred_macro", DataFrequency.DAILY)
         self._api_key = api_key
         self._base_url = "https://api.stlouisfed.org/fred"
@@ -130,7 +130,7 @@ class FredMacroSource(MacroDataSource):
 
             return os.environ.get("FRED_API_KEY", "")
 
-    def _fetch_impl(self, symbol: str, as_of_date: Optional[date] = None) -> DataResult:
+    def _fetch_impl(self, symbol: str, as_of_date: date | None = None) -> DataResult:
         """Fetch all FRED series"""
         try:
             from sqlalchemy import text
@@ -192,7 +192,7 @@ class FredMacroSource(MacroDataSource):
                 source=self.name,
             )
 
-    def _calculate_derived_metrics(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def _calculate_derived_metrics(self, data: dict[str, Any]) -> dict[str, Any]:
         """Calculate derived metrics from raw data"""
         derived = {}
 
@@ -217,8 +217,8 @@ class FredMacroSource(MacroDataSource):
     def fetch_series(
         self,
         series_id: str,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
     ) -> DataResult:
         """Fetch a specific FRED series"""
         try:
@@ -276,6 +276,6 @@ class FredMacroSource(MacroDataSource):
                 source=self.name,
             )
 
-    def get_available_series(self) -> Dict[str, Dict[str, str]]:
+    def get_available_series(self) -> dict[str, dict[str, str]]:
         """Return available FRED series by category"""
         return FRED_SERIES

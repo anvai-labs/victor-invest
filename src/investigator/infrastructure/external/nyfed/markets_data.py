@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ import logging
 from dataclasses import dataclass
 from datetime import date, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import aiohttp
 
@@ -82,7 +82,7 @@ class RecessionProbability:
 
     date: date
     probability: float
-    spread_10y_3m: Optional[float] = None
+    spread_10y_3m: float | None = None
     risk_level: RecessionRiskLevel = RecessionRiskLevel.LOW
     historical_avg: float = 14.5  # Long-term average ~14.5%
 
@@ -101,7 +101,7 @@ class RecessionProbability:
         else:
             self.risk_level = RecessionRiskLevel.VERY_HIGH
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "date": str(self.date),
@@ -158,8 +158,8 @@ class GSCPIData:
     date: date
     value: float
     level: GSCPILevel = GSCPILevel.NORMAL
-    one_month_change: Optional[float] = None
-    yoy_change: Optional[float] = None
+    one_month_change: float | None = None
+    yoy_change: float | None = None
 
     def __post_init__(self):
         """Classify pressure level based on value."""
@@ -176,7 +176,7 @@ class GSCPIData:
         else:
             self.level = GSCPILevel.VERY_HIGH
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "date": str(self.date),
@@ -219,7 +219,7 @@ class NYFedDataClient:
             timeout: Request timeout in seconds
         """
         self.timeout = aiohttp.ClientTimeout(total=timeout)
-        self._session: Optional[aiohttp.ClientSession] = None
+        self._session: aiohttp.ClientSession | None = None
 
     async def _get_session(self) -> aiohttp.ClientSession:
         """Get or create aiohttp session."""
@@ -232,7 +232,7 @@ class NYFedDataClient:
         if self._session and not self._session.closed:
             await self._session.close()
 
-    async def get_recession_probability(self) -> Optional[RecessionProbability]:
+    async def get_recession_probability(self) -> RecessionProbability | None:
         """Get latest NY Fed recession probability.
 
         The NY Fed model uses the 10Y-3M Treasury spread to estimate
@@ -259,7 +259,7 @@ class NYFedDataClient:
             logger.error(f"Error fetching recession probability: {e}")
             return None
 
-    async def _get_recession_prob_from_fred(self) -> Optional[RecessionProbability]:
+    async def _get_recession_prob_from_fred(self) -> RecessionProbability | None:
         """Get recession probability from FRED if available.
 
         FRED series: RECPROUSM156N (Smoothed U.S. Recession Probabilities)
@@ -290,7 +290,7 @@ class NYFedDataClient:
 
     async def _calculate_recession_prob_from_spread(
         self,
-    ) -> Optional[RecessionProbability]:
+    ) -> RecessionProbability | None:
         """Calculate recession probability from yield spread.
 
         Uses the NY Fed's probit model approximation:
@@ -332,7 +332,7 @@ class NYFedDataClient:
             logger.debug(f"Spread-based calculation failed: {e}")
             return None
 
-    async def get_gscpi(self) -> Optional[GSCPIData]:
+    async def get_gscpi(self) -> GSCPIData | None:
         """Get latest Global Supply Chain Pressure Index.
 
         The GSCPI is published monthly by the NY Fed and measures
@@ -354,7 +354,7 @@ class NYFedDataClient:
             logger.error(f"Error fetching GSCPI: {e}")
             return None
 
-    async def _get_gscpi_from_fred(self) -> Optional[GSCPIData]:
+    async def _get_gscpi_from_fred(self) -> GSCPIData | None:
         """Get GSCPI from FRED if available.
 
         FRED series: GSCPI (Global Supply Chain Pressure Index)
@@ -402,7 +402,7 @@ class NYFedDataClient:
 
         return None
 
-    async def get_recession_probability_history(self, months: int = 24) -> List[Dict[str, Any]]:
+    async def get_recession_probability_history(self, months: int = 24) -> list[dict[str, Any]]:
         """Get historical recession probability.
 
         Args:
@@ -450,7 +450,7 @@ class NYFedDataClient:
             logger.error(f"Error fetching recession probability history: {e}")
             return []
 
-    async def get_market_summary(self) -> Dict[str, Any]:
+    async def get_market_summary(self) -> dict[str, Any]:
         """Get comprehensive NY Fed market summary.
 
         Returns:
@@ -470,7 +470,7 @@ class NYFedDataClient:
 
 
 # Singleton instance
-_nyfed_client: Optional[NYFedDataClient] = None
+_nyfed_client: NYFedDataClient | None = None
 
 
 def get_nyfed_client() -> NYFedDataClient:

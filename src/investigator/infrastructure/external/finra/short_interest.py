@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -45,7 +45,7 @@ Example:
 import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import aiohttp
 
@@ -82,13 +82,13 @@ class ShortInterestData:
     short_interest: int = 0
     avg_daily_volume: int = 0
     days_to_cover: float = 0.0
-    short_percent_float: Optional[float] = None
-    short_percent_outstanding: Optional[float] = None
-    previous_short_interest: Optional[int] = None
-    change_from_previous: Optional[int] = None
-    change_percent: Optional[float] = None
+    short_percent_float: float | None = None
+    short_percent_outstanding: float | None = None
+    previous_short_interest: int | None = None
+    change_from_previous: int | None = None
+    change_percent: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "symbol": self.symbol,
@@ -132,7 +132,7 @@ class ShortVolumeData:
     total_volume: int = 0
     short_percent: float = 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "symbol": self.symbol,
@@ -159,10 +159,10 @@ class ShortSqueezeRisk:
     symbol: str
     squeeze_score: float = 0.0
     risk_level: str = "low"
-    factors: List[str] = field(default_factory=list)
+    factors: list[str] = field(default_factory=list)
     interpretation: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "symbol": self.symbol,
@@ -192,7 +192,7 @@ class ShortInterestFetcher:
             timeout: Request timeout in seconds
         """
         self.timeout = aiohttp.ClientTimeout(total=timeout)
-        self._session: Optional[aiohttp.ClientSession] = None
+        self._session: aiohttp.ClientSession | None = None
 
     async def _get_session(self) -> aiohttp.ClientSession:
         """Get or create aiohttp session."""
@@ -212,7 +212,7 @@ class ShortInterestFetcher:
     async def get_short_interest(
         self,
         symbol: str,
-    ) -> Optional[ShortInterestData]:
+    ) -> ShortInterestData | None:
         """Get current short interest for a symbol.
 
         Args:
@@ -240,7 +240,7 @@ class ShortInterestFetcher:
 
         return None
 
-    async def _get_from_database(self, symbol: str) -> Optional[ShortInterestData]:
+    async def _get_from_database(self, symbol: str) -> ShortInterestData | None:
         """Get short interest from local database."""
         try:
             from sqlalchemy import create_engine, text
@@ -293,7 +293,7 @@ class ShortInterestFetcher:
             logger.debug(f"Database short interest lookup failed: {e}")
             return None
 
-    async def _fetch_from_finra(self, symbol: str) -> Optional[ShortInterestData]:
+    async def _fetch_from_finra(self, symbol: str) -> ShortInterestData | None:
         """Fetch short interest from FINRA API."""
         try:
             session = await self._get_session()
@@ -346,7 +346,7 @@ class ShortInterestFetcher:
             logger.debug(f"FINRA API fetch failed: {e}")
             return None
 
-    async def _fetch_from_alternative(self, symbol: str) -> Optional[ShortInterestData]:
+    async def _fetch_from_alternative(self, symbol: str) -> ShortInterestData | None:
         """Fetch from alternative sources (NASDAQ, etc.)."""
         # For now, return synthetic data based on typical patterns
         # In production, this would scrape NASDAQ or other sources
@@ -377,7 +377,7 @@ class ShortInterestFetcher:
 
         return None  # Return None if no real data available
 
-    async def get_short_interest_history(self, symbol: str, periods: int = 12) -> List[ShortInterestData]:
+    async def get_short_interest_history(self, symbol: str, periods: int = 12) -> list[ShortInterestData]:
         """Get historical short interest data.
 
         Args:
@@ -443,7 +443,7 @@ class ShortInterestFetcher:
             logger.error(f"Error getting short interest history: {e}")
             return []
 
-    async def get_short_volume(self, symbol: str, days: int = 30) -> List[ShortVolumeData]:
+    async def get_short_volume(self, symbol: str, days: int = 30) -> list[ShortVolumeData]:
         """Get daily short volume data.
 
         Args:
@@ -640,7 +640,7 @@ class ShortInterestFetcher:
             interpretation=interpretation,
         )
 
-    async def get_most_shorted(self, limit: int = 20) -> List[Dict[str, Any]]:
+    async def get_most_shorted(self, limit: int = 20) -> list[dict[str, Any]]:
         """Get most shorted stocks.
 
         Args:
@@ -689,7 +689,7 @@ class ShortInterestFetcher:
 
 
 # Singleton instance
-_short_interest_fetcher: Optional[ShortInterestFetcher] = None
+_short_interest_fetcher: ShortInterestFetcher | None = None
 
 
 def get_short_interest_fetcher() -> ShortInterestFetcher:

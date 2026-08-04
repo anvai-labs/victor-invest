@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ Example:
 
 import asyncio
 import logging
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, ClassVar
 
 from victor_invest.tools.base import BaseTool, ToolResult
 
@@ -107,7 +107,7 @@ Returns cache data, operation status, or statistics.
 """
 
     # Map string cache type names to enum values
-    CACHE_TYPE_MAP = {
+    CACHE_TYPE_MAP: ClassVar[dict] = {
         "llm_response": "LLM_RESPONSE",
         "sec_response": "SEC_RESPONSE",
         "company_facts": "COMPANY_FACTS",
@@ -117,15 +117,15 @@ Returns cache data, operation status, or statistics.
         "market_context": "MARKET_CONTEXT",
     }
 
-    def __init__(self, config: Optional[Any] = None):
+    def __init__(self, config: Any | None = None):
         """Initialize Cache Tool.
 
         Args:
             config: Optional investigator config object
         """
         super().__init__(config)
-        self._cache_manager: Optional[Any] = None
-        self._cache_type_enum: Optional[Any] = None
+        self._cache_manager: Any | None = None
+        self._cache_type_enum: Any | None = None
 
     async def initialize(self) -> None:
         """Initialize cache infrastructure."""
@@ -177,12 +177,12 @@ Returns cache data, operation status, or statistics.
 
     async def execute(
         self,
-        _exec_ctx: Optional[Dict[str, Any]] = None,
+        _exec_ctx: dict[str, Any] | None = None,
         action: str = "",
-        cache_type: Optional[str] = None,
-        key: Optional[Union[Dict, Tuple]] = None,
-        value: Optional[Dict[str, Any]] = None,
-        symbol: Optional[str] = None,
+        cache_type: str | None = None,
+        key: dict | tuple | None = None,
+        value: dict[str, Any] | None = None,
+        symbol: str | None = None,
         **kwargs,
     ) -> ToolResult:
         """Execute cache operation.
@@ -247,9 +247,9 @@ Returns cache data, operation status, or statistics.
 
         except Exception as e:
             logger.error(f"CacheTool execute error: {e}")
-            return ToolResult.create_failure(f"Cache operation failed: {str(e)}", metadata={"action": action})
+            return ToolResult.create_failure(f"Cache operation failed: {e!s}", metadata={"action": action})
 
-    async def _cache_get(self, cache_type: str, key: Union[Dict, Tuple]) -> ToolResult:
+    async def _cache_get(self, cache_type: str, key: dict | tuple) -> ToolResult:
         """Get data from cache.
 
         Args:
@@ -298,9 +298,9 @@ Returns cache data, operation status, or statistics.
             return ToolResult.create_failure(str(e))
         except Exception as e:
             logger.error(f"Cache get error: {e}")
-            return ToolResult.create_failure(f"Cache get failed: {str(e)}")
+            return ToolResult.create_failure(f"Cache get failed: {e!s}")
 
-    async def _cache_set(self, cache_type: str, key: Union[Dict, Tuple], value: Optional[Dict[str, Any]]) -> ToolResult:
+    async def _cache_set(self, cache_type: str, key: dict | tuple, value: dict[str, Any] | None) -> ToolResult:
         """Set data in cache.
 
         Args:
@@ -350,9 +350,9 @@ Returns cache data, operation status, or statistics.
             return ToolResult.create_failure(str(e))
         except Exception as e:
             logger.error(f"Cache set error: {e}")
-            return ToolResult.create_failure(f"Cache set failed: {str(e)}")
+            return ToolResult.create_failure(f"Cache set failed: {e!s}")
 
-    async def _cache_exists(self, cache_type: str, key: Union[Dict, Tuple]) -> ToolResult:
+    async def _cache_exists(self, cache_type: str, key: dict | tuple) -> ToolResult:
         """Check if cache entry exists.
 
         Args:
@@ -388,9 +388,9 @@ Returns cache data, operation status, or statistics.
             return ToolResult.create_failure(str(e))
         except Exception as e:
             logger.error(f"Cache exists error: {e}")
-            return ToolResult.create_failure(f"Cache exists check failed: {str(e)}")
+            return ToolResult.create_failure(f"Cache exists check failed: {e!s}")
 
-    async def _cache_delete(self, cache_type: str, key: Union[Dict, Tuple]) -> ToolResult:
+    async def _cache_delete(self, cache_type: str, key: dict | tuple) -> ToolResult:
         """Delete cache entry.
 
         Args:
@@ -426,7 +426,7 @@ Returns cache data, operation status, or statistics.
             return ToolResult.create_failure(str(e))
         except Exception as e:
             logger.error(f"Cache delete error: {e}")
-            return ToolResult.create_failure(f"Cache delete failed: {str(e)}")
+            return ToolResult.create_failure(f"Cache delete failed: {e!s}")
 
     async def _delete_by_symbol(self, symbol: str) -> ToolResult:
         """Delete all cache entries for a symbol.
@@ -461,7 +461,7 @@ Returns cache data, operation status, or statistics.
 
         except Exception as e:
             logger.error(f"Delete by symbol error: {e}")
-            return ToolResult.create_failure(f"Delete by symbol failed: {str(e)}")
+            return ToolResult.create_failure(f"Delete by symbol failed: {e!s}")
 
     async def _clear_type(self, cache_type: str) -> ToolResult:
         """Clear all entries for a cache type.
@@ -495,7 +495,7 @@ Returns cache data, operation status, or statistics.
             return ToolResult.create_failure(str(e))
         except Exception as e:
             logger.error(f"Clear cache type error: {e}")
-            return ToolResult.create_failure(f"Clear cache type failed: {str(e)}")
+            return ToolResult.create_failure(f"Clear cache type failed: {e!s}")
 
     async def _get_stats(self) -> ToolResult:
         """Get cache performance statistics.
@@ -523,7 +523,7 @@ Returns cache data, operation status, or statistics.
 
         except Exception as e:
             logger.error(f"Get stats error: {e}")
-            return ToolResult.create_failure(f"Get stats failed: {str(e)}")
+            return ToolResult.create_failure(f"Get stats failed: {e!s}")
 
     async def _get_recent_ops(self, cache_type=None) -> ToolResult:
         """Get recent cache operations for debugging.
@@ -545,9 +545,9 @@ Returns cache data, operation status, or statistics.
 
         except Exception as e:
             logger.error(f"Get recent ops error: {e}")
-            return ToolResult.create_failure(f"Get recent ops failed: {str(e)}")
+            return ToolResult.create_failure(f"Get recent ops failed: {e!s}")
 
-    async def _validate_entry(self, cache_type: str, key: Union[Dict, Tuple]) -> ToolResult:
+    async def _validate_entry(self, cache_type: str, key: dict | tuple) -> ToolResult:
         """Validate a cache entry for integrity.
 
         Args:
@@ -604,7 +604,7 @@ Returns cache data, operation status, or statistics.
             return ToolResult.create_failure(str(e))
         except Exception as e:
             logger.error(f"Validate entry error: {e}")
-            return ToolResult.create_failure(f"Validate entry failed: {str(e)}")
+            return ToolResult.create_failure(f"Validate entry failed: {e!s}")
 
     async def _invalidate_sec(self, symbol: str, filing_date: str, dry_run: bool = True) -> ToolResult:
         """Invalidate SEC-related cache entries after new filing.
@@ -641,7 +641,7 @@ Returns cache data, operation status, or statistics.
 
         except Exception as e:
             logger.error(f"Invalidate SEC cache error: {e}")
-            return ToolResult.create_failure(f"Invalidate SEC cache failed: {str(e)}")
+            return ToolResult.create_failure(f"Invalidate SEC cache failed: {e!s}")
 
     async def _ping(self) -> ToolResult:
         """Health check for cache system.
@@ -666,7 +666,7 @@ Returns cache data, operation status, or statistics.
             logger.error(f"Cache ping error: {e}")
             return ToolResult.create_success(output={"healthy": False, "status": "error", "error": str(e)})
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """Get JSON schema for Cache Tool parameters."""
         return {
             "type": "object",

@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -45,7 +45,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -107,14 +107,14 @@ class InsiderSentiment:
     cluster_type: ClusterType = ClusterType.NO_CLUSTER
     analysis_period_days: int = 90
     confidence: float = 0.0
-    analysis_date: Optional[date] = None
-    warnings: List[str] = field(default_factory=list)
+    analysis_date: date | None = None
+    warnings: list[str] = field(default_factory=list)
 
     def __post_init__(self):
         if self.analysis_date is None:
             self.analysis_date = date.today()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "symbol": self.symbol,
@@ -185,15 +185,15 @@ class ClusterActivity:
 
     symbol: str
     cluster_type: ClusterType = ClusterType.NO_CLUSTER
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
+    start_date: date | None = None
+    end_date: date | None = None
     insider_count: int = 0
     transaction_count: int = 0
     total_value: float = 0.0
-    insiders: List[str] = field(default_factory=list)
+    insiders: list[str] = field(default_factory=list)
     is_significant: bool = False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "symbol": self.symbol,
@@ -309,10 +309,10 @@ class InsiderActivityService:
         except Exception as e:
             logger.error(f"Error analyzing sentiment for {symbol}: {e}")
             sentiment = InsiderSentiment(symbol=symbol.upper(), analysis_period_days=days)
-            sentiment.warnings.append(f"Analysis error: {str(e)}")
+            sentiment.warnings.append(f"Analysis error: {e!s}")
             return sentiment
 
-    def _calculate_confidence(self, sentiment: InsiderSentiment, key_transactions: List[Dict]) -> float:
+    def _calculate_confidence(self, sentiment: InsiderSentiment, key_transactions: list[dict]) -> float:
         """Calculate confidence score for sentiment signal.
 
         Confidence is based on:
@@ -370,7 +370,7 @@ class InsiderActivityService:
 
         return min(confidence, 1.0)
 
-    async def detect_cluster_activity(self, symbol: str, days: int = 30, window_days: int = 7) -> List[ClusterActivity]:
+    async def detect_cluster_activity(self, symbol: str, days: int = 30, window_days: int = 7) -> list[ClusterActivity]:
         """Detect clusters of coordinated insider activity.
 
         A cluster is defined as multiple insiders transacting
@@ -425,10 +425,10 @@ class InsiderActivityService:
     def _find_cluster(
         self,
         symbol: str,
-        filings: List[Dict],
+        filings: list[dict],
         window_days: int,
         cluster_type: ClusterType,
-    ) -> Optional[ClusterActivity]:
+    ) -> ClusterActivity | None:
         """Find cluster activity in a list of filings.
 
         Args:
@@ -470,7 +470,7 @@ class InsiderActivityService:
             ]
 
             # Get unique insiders in window
-            insiders = set(f.get("owner_name") for f in window_filings if f.get("owner_name"))
+            insiders = {f.get("owner_name") for f in window_filings if f.get("owner_name")}
 
             if len(insiders) >= self.CLUSTER_MIN_INSIDERS:
                 total_value = sum(abs(f.get("total_value", 0)) for f in window_filings)
@@ -499,7 +499,7 @@ class InsiderActivityService:
 
         return best_cluster
 
-    async def get_key_insider_summary(self, symbol: str, days: int = 180) -> Dict[str, Any]:
+    async def get_key_insider_summary(self, symbol: str, days: int = 180) -> dict[str, Any]:
         """Get summary of key insider (C-suite, directors) activity.
 
         Args:
@@ -568,7 +568,7 @@ class InsiderActivityService:
 
 
 # Singleton instance
-_insider_activity_service: Optional[InsiderActivityService] = None
+_insider_activity_service: InsiderActivityService | None = None
 
 
 def get_insider_activity_service() -> InsiderActivityService:

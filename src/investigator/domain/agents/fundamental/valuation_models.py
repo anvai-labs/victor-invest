@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Any, Callable, Dict, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
 from investigator.domain.services.valuation.helpers import normalize_model_output
 from investigator.domain.services.valuation.models import (
@@ -22,10 +23,10 @@ _FORWARD_HORIZON_TO_QUARTERS = {"1q": 1, "2q": 2, "3q": 3, "1y": 4}
 def _normalize_basis_inputs(
     *,
     symbol: str,
-    valuation_basis: Optional[str],
-    forward_horizon: Optional[str],
+    valuation_basis: str | None,
+    forward_horizon: str | None,
     logger: Any,
-) -> Tuple[str, str]:
+) -> tuple[str, str]:
     basis = str(valuation_basis or "ttm").strip().lower()
     horizon = str(forward_horizon or "1y").strip().lower()
 
@@ -54,7 +55,7 @@ def _normalize_basis_inputs(
 
 def _annual_growth_factor(
     *,
-    growth_value: Optional[float],
+    growth_value: float | None,
     forward_horizon: str,
 ) -> float:
     if growth_value is None:
@@ -75,7 +76,7 @@ def _annual_growth_factor(
     return float(max((1.0 + growth) ** exponent, 0.1))
 
 
-def _normalize_growth_value(value: Optional[float]) -> Optional[float]:
+def _normalize_growth_value(value: float | None) -> float | None:
     if value is None:
         return None
     try:
@@ -87,7 +88,7 @@ def _normalize_growth_value(value: Optional[float]) -> Optional[float]:
     return clamp(parsed, -0.75, 2.5)
 
 
-def _normalize_share_count(value: Any) -> Optional[float]:
+def _normalize_share_count(value: Any) -> float | None:
     try:
         shares = float(value)
     except (TypeError, ValueError):
@@ -111,7 +112,7 @@ def _normalize_share_count(value: Any) -> Optional[float]:
     return shares
 
 
-def _extract_midpoint(value: Any) -> Tuple[Optional[float], Optional[str]]:
+def _extract_midpoint(value: Any) -> tuple[float | None, str | None]:
     if not isinstance(value, dict):
         return None, None
     mid = value.get("mid")
@@ -137,7 +138,7 @@ def _annualize_by_horizon(value: float, horizon: str) -> float:
     return value * (4.0 / max(quarters, 1))
 
 
-def _is_plausible_eps_override(*, annualized_eps: Optional[float], base_eps: Optional[float]) -> bool:
+def _is_plausible_eps_override(*, annualized_eps: float | None, base_eps: float | None) -> bool:
     if annualized_eps is None:
         return False
     try:
@@ -162,10 +163,10 @@ def _is_plausible_eps_override(*, annualized_eps: Optional[float], base_eps: Opt
 
 def _resolve_guidance_overrides(
     *,
-    guidance_context: Optional[Dict[str, Any]],
-    base_eps: Optional[float],
-    base_revenue: Optional[float],
-) -> Tuple[Optional[float], Optional[float], Optional[float], Dict[str, Any]]:
+    guidance_context: dict[str, Any] | None,
+    base_eps: float | None,
+    base_revenue: float | None,
+) -> tuple[float | None, float | None, float | None, dict[str, Any]]:
     """
     Convert extracted guidance payload into growth overrides for forward valuation.
 
@@ -175,14 +176,14 @@ def _resolve_guidance_overrides(
     if not isinstance(guidance_context, dict) or not guidance_context:
         return None, None, None, {}
 
-    metadata: Dict[str, Any] = {
+    metadata: dict[str, Any] = {
         "guidance_source_form": guidance_context.get("source_form"),
         "guidance_confidence_score": guidance_context.get("confidence_score"),
     }
 
     revenue_growth = _normalize_growth_value(guidance_context.get("revenue_growth_guidance"))
     earnings_growth = _normalize_growth_value(guidance_context.get("earnings_growth_guidance"))
-    annualized_eps_override: Optional[float] = None
+    annualized_eps_override: float | None = None
 
     revenue_mid, revenue_horizon = _extract_midpoint(guidance_context.get("revenue_guidance"))
     if revenue_mid is not None:
@@ -234,7 +235,7 @@ def _attach_basis_metadata(
     valuation_basis: str,
     forward_horizon: str,
     denominator_label: str,
-    denominator_value: Optional[float],
+    denominator_value: float | None,
 ) -> None:
     if not isinstance(model_output, dict):
         return
@@ -255,7 +256,7 @@ def _attach_basis_metadata(
 _logger = logging.getLogger(__name__)
 
 
-def _lookup_industry_ev_ebitda(industry: Optional[str], config: Any) -> Optional[float]:
+def _lookup_industry_ev_ebitda(industry: str | None, config: Any) -> float | None:
     """Look up industry-level EV/EBITDA override from config."""
     if not industry:
         return None
@@ -276,19 +277,19 @@ def calculate_relative_valuation_models(
     *,
     symbol: str,
     company_profile: Any,
-    company_data: Dict[str, Any],
-    ratios: Dict[str, Any],
-    financials: Dict[str, Any],
-    market_data: Dict[str, Any],
+    company_data: dict[str, Any],
+    ratios: dict[str, Any],
+    financials: dict[str, Any],
+    market_data: dict[str, Any],
     config: Any,
-    sector_specific_result: Optional[Dict[str, Any]],
-    lookup_sector_multiple: Callable[[Optional[str], str, Optional[str]], Optional[float]],
-    calculate_enterprise_value: Callable[[Dict[str, Any], Dict[str, Any]], Optional[float]],
+    sector_specific_result: dict[str, Any] | None,
+    lookup_sector_multiple: Callable[[str | None, str, str | None], float | None],
+    calculate_enterprise_value: Callable[[dict[str, Any], dict[str, Any]], float | None],
     logger: Any,
     valuation_basis: str = "ttm",
     forward_horizon: str = "1y",
-    guidance_context: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Dict[str, Any]]:
+    guidance_context: dict[str, Any] | None = None,
+) -> dict[str, dict[str, Any]]:
     """Calculate P/E, EV/EBITDA, P/S and P/B model outputs."""
     valuation_basis, forward_horizon = _normalize_basis_inputs(
         symbol=symbol,
@@ -366,8 +367,8 @@ def calculate_relative_valuation_models(
         or revenue_growth
     )
     base_annual_revenue = ratios.get("ttm_revenue") or financials.get("revenues")
-    guidance_metadata: Dict[str, Any] = {}
-    annualized_eps_override: Optional[float] = None
+    guidance_metadata: dict[str, Any] = {}
+    annualized_eps_override: float | None = None
     if valuation_basis == "forward":
         (
             guidance_revenue_growth,

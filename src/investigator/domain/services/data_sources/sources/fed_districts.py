@@ -7,7 +7,7 @@ Each district source follows the same pattern for consistency.
 
 import logging
 from datetime import date
-from typing import List, Optional
+from typing import ClassVar
 
 from ..base import (
     DataCategory,
@@ -30,7 +30,7 @@ class FedDistrictSource(MacroDataSource):
     """
 
     DISTRICT_NAME: str = ""
-    INDICATORS: List[str] = []
+    INDICATORS: ClassVar[list[str]] = []
 
     def __init__(self):
         super().__init__(f"{self.DISTRICT_NAME.lower().replace(' ', '_')}_fed", DataFrequency.DAILY)
@@ -51,7 +51,7 @@ class FedDistrictSource(MacroDataSource):
             symbols_supported=False,
         )
 
-    def _fetch_impl(self, symbol: str, as_of_date: Optional[date] = None) -> DataResult:
+    def _fetch_impl(self, symbol: str, as_of_date: date | None = None) -> DataResult:
         """Fetch district-specific indicators"""
         try:
             from sqlalchemy import text
@@ -112,7 +112,7 @@ class AtlantaFedSource(FedDistrictSource):
     """Atlanta Fed - GDPNow, Wage Growth Tracker"""
 
     DISTRICT_NAME = "Atlanta"
-    INDICATORS = ["gdpnow", "wage_growth_tracker", "business_inflation_expectations"]
+    INDICATORS: ClassVar[list] = ["gdpnow", "wage_growth_tracker", "business_inflation_expectations"]
 
 
 @register_source("chicago_fed", DataCategory.MACRO)
@@ -120,7 +120,7 @@ class ChicagoFedSource(FedDistrictSource):
     """Chicago Fed - CFNAI, NFCI"""
 
     DISTRICT_NAME = "Chicago"
-    INDICATORS = ["cfnai", "nfci", "anfci"]
+    INDICATORS: ClassVar[list] = ["cfnai", "nfci", "anfci"]
 
 
 @register_source("cleveland_fed", DataCategory.MACRO)
@@ -128,7 +128,7 @@ class ClevelandFedSource(FedDistrictSource):
     """Cleveland Fed - Inflation Expectations, Yield Curve Model"""
 
     DISTRICT_NAME = "Cleveland"
-    INDICATORS = [
+    INDICATORS: ClassVar[list] = [
         "inflation_expectations",
         "yield_curve_model",
         "median_cpi",
@@ -141,7 +141,7 @@ class DallasFedSource(FedDistrictSource):
     """Dallas Fed - Texas Manufacturing, Trimmed Mean PCE"""
 
     DISTRICT_NAME = "Dallas"
-    INDICATORS = ["texas_manufacturing", "texas_services", "trimmed_mean_pce"]
+    INDICATORS: ClassVar[list] = ["texas_manufacturing", "texas_services", "trimmed_mean_pce"]
 
 
 @register_source("kansas_city_fed", DataCategory.MACRO)
@@ -149,9 +149,9 @@ class KansasCityFedSource(FedDistrictSource):
     """Kansas City Fed - Manufacturing Survey, KCFSI"""
 
     DISTRICT_NAME = "Kansas City"
-    INDICATORS = ["manufacturing_survey", "kcfsi", "lmci"]
+    INDICATORS: ClassVar[list] = ["manufacturing_survey", "kcfsi", "lmci"]
 
-    def _fetch_impl(self, symbol: str, as_of_date: Optional[date] = None) -> DataResult:
+    def _fetch_impl(self, symbol: str, as_of_date: date | None = None) -> DataResult:
         result = super()._fetch_impl(symbol, as_of_date)
         if result.success and result.data:
             # Add KCFSI interpretation
@@ -177,9 +177,9 @@ class NewYorkFedSource(FedDistrictSource):
     """New York Fed - Recession Probability, Empire State Mfg"""
 
     DISTRICT_NAME = "New York"
-    INDICATORS = ["recession_probability", "gscpi", "empire_state_manufacturing"]
+    INDICATORS: ClassVar[list] = ["recession_probability", "gscpi", "empire_state_manufacturing"]
 
-    def _fetch_impl(self, symbol: str, as_of_date: Optional[date] = None) -> DataResult:
+    def _fetch_impl(self, symbol: str, as_of_date: date | None = None) -> DataResult:
         result = super()._fetch_impl(symbol, as_of_date)
         if result.success and result.data:
             indicators = result.data.get("indicators", {})
@@ -203,7 +203,7 @@ class PhiladelphiaFedSource(FedDistrictSource):
     """Philadelphia Fed - Manufacturing Survey, ADS Index"""
 
     DISTRICT_NAME = "Philadelphia"
-    INDICATORS = [
+    INDICATORS: ClassVar[list] = [
         "manufacturing_survey",
         "ads_index",
         "leading_index",
@@ -216,7 +216,7 @@ class RichmondFedSource(FedDistrictSource):
     """Richmond Fed - Manufacturing Survey, Services Survey"""
 
     DISTRICT_NAME = "Richmond"
-    INDICATORS = ["manufacturing_survey", "services_survey"]
+    INDICATORS: ClassVar[list] = ["manufacturing_survey", "services_survey"]
 
 
 # =============================================================================
@@ -262,7 +262,7 @@ class AllFedDistrictsSource(MacroDataSource):
             symbols_supported=False,
         )
 
-    def _fetch_impl(self, symbol: str, as_of_date: Optional[date] = None) -> DataResult:
+    def _fetch_impl(self, symbol: str, as_of_date: date | None = None) -> DataResult:
         """Fetch and aggregate data from all districts"""
         by_district = {}
         summary = {}

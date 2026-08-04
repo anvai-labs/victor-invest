@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import yaml
 from pydantic import Field, field_validator
@@ -202,12 +202,12 @@ class OllamaSettings(BaseSettings):
     num_llm_threads: int = Field(default=1)
     pool_strategy: str = Field(default="prefer_remote")
 
-    servers: List[Dict[str, Any]] = Field(default_factory=list)
-    models: Dict[str, str] = Field(default_factory=dict)
-    model_specs: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
-    num_predict: Dict[str, int] = Field(default_factory=dict)
+    servers: list[dict[str, Any]] = Field(default_factory=list)
+    models: dict[str, str] = Field(default_factory=dict)
+    model_specs: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    num_predict: dict[str, int] = Field(default_factory=dict)
     use_toon_format: bool = Field(default=False)
-    toon_agents: Dict[str, bool] = Field(default_factory=dict)
+    toon_agents: dict[str, bool] = Field(default_factory=dict)
 
     @field_validator("pool_strategy")
     @classmethod
@@ -233,7 +233,7 @@ class DiskCompressionConfig(BaseSettings):
     algorithm: str = Field(default="gzip")
     level: int = Field(default=9)
     apply_to_all: bool = Field(default=True)
-    file_extensions: List[str] = Field(default_factory=list)
+    file_extensions: list[str] = Field(default_factory=list)
 
 
 class DiskStructureConfig(BaseSettings):
@@ -243,8 +243,8 @@ class DiskStructureConfig(BaseSettings):
 
     use_symbol_directories: bool = Field(default=True)
     compression: DiskCompressionConfig = Field(default_factory=DiskCompressionConfig)
-    base_paths: Dict[str, str] = Field(default_factory=dict)
-    directory_structure: Dict[str, str] = Field(default_factory=dict)
+    base_paths: dict[str, str] = Field(default_factory=dict)
+    directory_structure: dict[str, str] = Field(default_factory=dict)
 
 
 class CacheControlSettings(BaseSettings):
@@ -255,10 +255,10 @@ class CacheControlSettings(BaseSettings):
     read_from_cache: bool = Field(default=True)
     write_to_cache: bool = Field(default=True)
     force_refresh: bool = Field(default=False)
-    force_refresh_symbols: Optional[List[str]] = Field(default=None)
+    force_refresh_symbols: list[str] | None = Field(default=None)
 
-    storage: List[str] = Field(default_factory=list)
-    types: List[str] = Field(default_factory=list)
+    storage: list[str] = Field(default_factory=list)
+    types: list[str] = Field(default_factory=list)
     disk_structure: DiskStructureConfig = Field(default_factory=DiskStructureConfig)
 
 
@@ -353,7 +353,7 @@ class EmailSettings(BaseSettings):
     username: str = Field(default="")
     password: str = Field(default="")
     from_address: str = Field(default="investigator@example.com")
-    recipients: List[str] = Field(default_factory=list)
+    recipients: list[str] = Field(default_factory=list)
 
     @field_validator("smtp_port")
     @classmethod
@@ -374,7 +374,7 @@ class TrackingSettings(BaseSettings):
 
     model_config = SettingsConfigDict(extra="allow")
 
-    symbols: List[str] = Field(default_factory=list)
+    symbols: list[str] = Field(default_factory=list)
 
 
 # =============================================================================
@@ -408,15 +408,15 @@ class ValuationSettings(BaseSettings):
     liquidity_floor_usd: int = Field(default=5000000)
     ggm_payout_threshold_pct: float = Field(default=40.0)
 
-    fading_dcf_thresholds: Dict[str, float] = Field(default_factory=dict)
-    sector_normalization: Dict[str, List[str]] = Field(default_factory=dict)
-    tier_thresholds: Dict[str, Any] = Field(default_factory=dict)
-    tier_base_weights: Dict[str, Dict[str, int]] = Field(default_factory=dict)
-    industry_specific_weights: Dict[str, Any] = Field(default_factory=dict)
-    model_applicability: Dict[str, Any] = Field(default_factory=dict)
-    data_quality_thresholds: Dict[str, Any] = Field(default_factory=dict)
-    outlier_detection: Dict[str, Any] = Field(default_factory=dict)
-    model_fallback: Dict[str, Any] = Field(default_factory=dict)
+    fading_dcf_thresholds: dict[str, float] = Field(default_factory=dict)
+    sector_normalization: dict[str, list[str]] = Field(default_factory=dict)
+    tier_thresholds: dict[str, Any] = Field(default_factory=dict)
+    tier_base_weights: dict[str, dict[str, int]] = Field(default_factory=dict)
+    industry_specific_weights: dict[str, Any] = Field(default_factory=dict)
+    model_applicability: dict[str, Any] = Field(default_factory=dict)
+    data_quality_thresholds: dict[str, Any] = Field(default_factory=dict)
+    outlier_detection: dict[str, Any] = Field(default_factory=dict)
+    model_fallback: dict[str, Any] = Field(default_factory=dict)
 
 
 # =============================================================================
@@ -429,12 +429,12 @@ class DCFValuationSettings(BaseSettings):
 
     model_config = SettingsConfigDict(extra="allow")
 
-    sector_based_parameters: Dict[str, Any] = Field(default_factory=dict)
-    default_parameters: Dict[str, Any] = Field(default_factory=dict)
-    wacc_parameters: Dict[str, Any] = Field(default_factory=dict)
-    fcf_growth_parameters: Dict[str, Any] = Field(default_factory=dict)
-    fcf_growth_caps_by_sector: Dict[str, Any] = Field(default_factory=dict)
-    rule_of_40: Dict[str, Any] = Field(default_factory=dict)
+    sector_based_parameters: dict[str, Any] = Field(default_factory=dict)
+    default_parameters: dict[str, Any] = Field(default_factory=dict)
+    wacc_parameters: dict[str, Any] = Field(default_factory=dict)
+    fcf_growth_parameters: dict[str, Any] = Field(default_factory=dict)
+    fcf_growth_caps_by_sector: dict[str, Any] = Field(default_factory=dict)
+    rule_of_40: dict[str, Any] = Field(default_factory=dict)
 
 
 # =============================================================================
@@ -472,7 +472,7 @@ class InvestiGatorConfig(BaseSettings):
     dcf_valuation: DCFValuationSettings = Field(default_factory=DCFValuationSettings)
 
     @classmethod
-    def from_yaml(cls, config_path: str | Path = "config.yaml") -> "InvestiGatorConfig":
+    def from_yaml(cls, config_path: str | Path = "config.yaml") -> InvestiGatorConfig:
         """
         Load configuration from YAML file with environment variable substitution.
 
@@ -556,21 +556,21 @@ except (FileNotFoundError, ValueError):
 
 
 __all__ = [
-    "InvestiGatorConfig",
+    "AnalysisSettings",
     "AppSettings",
     "ApplicationSettings",
-    "DatabaseSettings",
-    "SECSettings",
-    "OllamaSettings",
     "CacheControlSettings",
-    "AnalysisSettings",
-    "OrchestratorSettings",
-    "MonitoringSettings",
-    "EmailSettings",
-    "TrackingSettings",
-    "VectorDBSettings",
-    "ValuationSettings",
     "DCFValuationSettings",
+    "DatabaseSettings",
+    "EmailSettings",
+    "InvestiGatorConfig",
+    "MonitoringSettings",
+    "OllamaSettings",
+    "OrchestratorSettings",
+    "SECSettings",
+    "TrackingSettings",
+    "ValuationSettings",
+    "VectorDBSettings",
     "get_settings",
     "settings",
 ]

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Cache Cleanup Utility - Background TTL Enforcement
 
@@ -15,7 +14,6 @@ import json
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Optional
 
 from .cache_types import CacheType
 
@@ -176,7 +174,7 @@ class CacheCleanupService:
                 f"Cleaned {cache_type.value}: removed {files_removed} files, freed {bytes_freed / (1024 * 1024):.2f} MB"
             )
 
-    def _get_expires_at_from_file(self, cache_file: Path) -> Optional[datetime]:
+    def _get_expires_at_from_file(self, cache_file: Path) -> datetime | None:
         """
         Extract expires_at timestamp from cache file metadata
 
@@ -200,11 +198,11 @@ class CacheCleanupService:
 
         except Exception:
             # Silently fail - will use mtime fallback
-            pass
+            logger.debug("_get_expires_at_from_file: suppressed error", exc_info=True)
 
         return None
 
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> dict:
         """Get cleanup statistics"""
         return {
             **self.stats,

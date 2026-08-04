@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -60,7 +60,7 @@ See: docs/ARCHITECTURE_DECISION_DATA_ACCESS.md for full rationale.
 
 import logging
 from abc import abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any
 
 from victor.tools.base import BaseTool as VictorBaseTool
 from victor.tools.base import ToolResult as VictorToolResult
@@ -97,16 +97,16 @@ class ToolResult(VictorToolResult):
         )
     """
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary for serialization."""
-        result: Dict[str, Any] = self.model_dump()
+        result: dict[str, Any] = self.model_dump()
         return result
 
     @classmethod
     def create_success(
         cls,
         output: Any = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> "ToolResult":
         """Victor-native success factory."""
         return cls(
@@ -121,7 +121,7 @@ class ToolResult(VictorToolResult):
         cls,
         error: str,
         output: Any = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> "ToolResult":
         """Victor-native failure factory."""
         return cls(
@@ -165,7 +165,7 @@ class BaseTool(VictorBaseTool):
     name: str = ""
     description: str = ""
 
-    def __init__(self, config: Optional[Any] = None):
+    def __init__(self, config: Any | None = None):
         """Initialize tool with optional configuration.
 
         Args:
@@ -189,12 +189,12 @@ class BaseTool(VictorBaseTool):
             await self.initialize()
 
     @property
-    def parameters(self) -> Dict[str, Any]:
+    def parameters(self) -> dict[str, Any]:
         """Victor-compatible parameter schema property."""
         return self.get_schema()
 
     @abstractmethod
-    async def execute(self, _exec_ctx: Optional[Dict[str, Any]] = None, **kwargs) -> ToolResult:
+    async def execute(self, _exec_ctx: dict[str, Any] | None = None, **kwargs) -> ToolResult:
         """Execute the tool with provided parameters.
 
         Args:
@@ -212,7 +212,7 @@ class BaseTool(VictorBaseTool):
         """
         raise NotImplementedError("Subclasses must implement execute()")
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """Get JSON schema for this tool's parameters.
 
         Override in subclasses to provide parameter validation schema.

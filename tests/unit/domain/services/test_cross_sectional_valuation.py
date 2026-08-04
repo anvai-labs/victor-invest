@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ Tests the Layer 3 peer comparison functionality including:
 - Status determination (expensive/fair/cheap)
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -459,7 +459,7 @@ class TestCompareAllMetrics:
                     premium_to_peers_pct=16.7,
                     outperforming_peers=2,
                     underperforming_peers=0,
-                    calculated_at=datetime.now(timezone.utc).isoformat(),
+                    calculated_at=datetime.now(UTC).isoformat(),
                 ),
                 PeerComparisonResult(
                     symbol=symbol,
@@ -481,7 +481,7 @@ class TestCompareAllMetrics:
                     premium_to_peers_pct=14.3,
                     outperforming_peers=2,
                     underperforming_peers=0,
-                    calculated_at=datetime.now(timezone.utc).isoformat(),
+                    calculated_at=datetime.now(UTC).isoformat(),
                 ),
                 PeerComparisonResult(
                     symbol=symbol,
@@ -503,7 +503,7 @@ class TestCompareAllMetrics:
                     premium_to_peers_pct=16.7,
                     outperforming_peers=2,
                     underperforming_peers=0,
-                    calculated_at=datetime.now(timezone.utc).isoformat(),
+                    calculated_at=datetime.now(UTC).isoformat(),
                 ),
             ]
 
@@ -547,7 +547,7 @@ class TestCompareAllMetrics:
                     premium_to_peers_pct=0.0,
                     outperforming_peers=0,
                     underperforming_peers=0,
-                    calculated_at=datetime.now(timezone.utc).isoformat(),
+                    calculated_at=datetime.now(UTC).isoformat(),
                 ),
                 None,  # ps fails
                 None,  # pb fails
@@ -730,7 +730,7 @@ class TestGeneratePeerSummary:
                     premium_to_peers_pct=16.7,
                     outperforming_peers=2,
                     underperforming_peers=0,
-                    calculated_at=datetime.now(timezone.utc).isoformat(),
+                    calculated_at=datetime.now(UTC).isoformat(),
                 ),
                 "ps": PeerComparisonResult(
                     symbol=symbol,
@@ -752,7 +752,7 @@ class TestGeneratePeerSummary:
                     premium_to_peers_pct=14.3,
                     outperforming_peers=2,
                     underperforming_peers=0,
-                    calculated_at=datetime.now(timezone.utc).isoformat(),
+                    calculated_at=datetime.now(UTC).isoformat(),
                 ),
             }
 
@@ -816,7 +816,7 @@ class TestGeneratePeerSummary:
                     premium_to_peers_pct=-33.3,
                     outperforming_peers=0,
                     underperforming_peers=2,
-                    calculated_at=datetime.now(timezone.utc).isoformat(),
+                    calculated_at=datetime.now(UTC).isoformat(),
                 ),
             }
 

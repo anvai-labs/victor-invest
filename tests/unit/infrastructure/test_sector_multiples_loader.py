@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from investigator.infrastructure.data.sector_multiples_loader import (
     SectorMultiplesLoader,
@@ -18,7 +18,7 @@ def _write_multiples_file(path, tech_age_days: int, util_age_days: int) -> None:
             "ps": 6.0,
             "pb": 5.0,
             "sample_size": 50,
-            "last_updated": (datetime.now(timezone.utc) - timedelta(days=tech_age_days)).isoformat(),
+            "last_updated": (datetime.now(UTC) - timedelta(days=tech_age_days)).isoformat(),
         },
         "Utilities": {
             "pe": 15.0,
@@ -26,7 +26,7 @@ def _write_multiples_file(path, tech_age_days: int, util_age_days: int) -> None:
             "ps": 2.0,
             "pb": 1.5,
             "sample_size": 25,
-            "last_updated": (datetime.now(timezone.utc) - timedelta(days=util_age_days)).isoformat(),
+            "last_updated": (datetime.now(UTC) - timedelta(days=util_age_days)).isoformat(),
         },
     }
     path.write_text(json.dumps(payload))

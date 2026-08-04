@@ -9,7 +9,7 @@ registration to ``InvestmentPlugin`` so both surfaces stay in sync.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from victor_contracts import PluginContext, VictorPlugin
 
@@ -38,7 +38,7 @@ class InvestPlugin(VictorPlugin):
         """Delegate full registration to InvestmentPlugin."""
         self._delegate.register(context)
 
-    def get_cli_app(self) -> Optional[Any]:
+    def get_cli_app(self) -> Any | None:
         return None
 
     def on_activate(self) -> None:
@@ -53,7 +53,7 @@ class InvestPlugin(VictorPlugin):
     async def on_deactivate_async(self) -> None:
         await self._delegate.on_deactivate_async()
 
-    def health_check(self) -> Dict[str, Any]:
+    def health_check(self) -> dict[str, Any]:
         health = self._delegate.health_check()
         health["plugin_name"] = self.name
         return health

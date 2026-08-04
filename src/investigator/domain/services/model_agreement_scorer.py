@@ -34,7 +34,7 @@ import logging
 import math
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -55,14 +55,14 @@ class AgreementScore:
     agreement_score: float  # 0-1, higher = more agreement
     cv: float  # Coefficient of variation (std/mean)
     divergence_flag: bool  # True if significant divergence
-    outlier_models: List[str]  # Models with z-score > threshold
+    outlier_models: list[str]  # Models with z-score > threshold
     confidence_adjustment: float  # -0.15 to +0.10
     agreement_level: AgreementLevel
     weighted_mean: float  # Weighted average fair value
     simple_mean: float  # Simple average fair value
     std_dev: float  # Standard deviation
-    model_z_scores: Dict[str, float]  # Z-score for each model
-    notes: List[str] = field(default_factory=list)
+    model_z_scores: dict[str, float]  # Z-score for each model
+    notes: list[str] = field(default_factory=list)
 
     def summary(self) -> str:
         """Get a summary of the agreement analysis."""
@@ -119,7 +119,7 @@ class ModelAgreementScorer:
         adjusted_weights = scorer.apply_outlier_penalty(weights, agreement.outlier_models)
     """
 
-    def __init__(self, config: Optional[AgreementConfig] = None):
+    def __init__(self, config: AgreementConfig | None = None):
         """
         Initialize scorer with optional custom configuration.
 
@@ -130,9 +130,9 @@ class ModelAgreementScorer:
 
     def analyze(
         self,
-        model_fair_values: Dict[str, float],
+        model_fair_values: dict[str, float],
         symbol: str,
-        model_weights: Optional[Dict[str, float]] = None,
+        model_weights: dict[str, float] | None = None,
     ) -> AgreementScore:
         """
         Analyze agreement between model fair values.
@@ -145,7 +145,7 @@ class ModelAgreementScorer:
         Returns:
             AgreementScore with analysis results
         """
-        notes: List[str] = []
+        notes: list[str] = []
 
         # Filter out invalid values
         valid_values = {
@@ -262,10 +262,10 @@ class ModelAgreementScorer:
 
     def apply_outlier_penalty(
         self,
-        weights: Dict[str, float],
-        outlier_models: List[str],
+        weights: dict[str, float],
+        outlier_models: list[str],
         normalize: bool = True,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Apply weight penalties to outlier models.
 
@@ -296,10 +296,10 @@ class ModelAgreementScorer:
 
     def get_weighted_fair_value(
         self,
-        model_fair_values: Dict[str, float],
-        model_weights: Dict[str, float],
+        model_fair_values: dict[str, float],
+        model_weights: dict[str, float],
         apply_outlier_penalty: bool = True,
-    ) -> Tuple[float, Dict[str, float]]:
+    ) -> tuple[float, dict[str, float]]:
         """
         Calculate weighted fair value with optional outlier handling.
 
@@ -344,7 +344,7 @@ class ModelAgreementScorer:
 
 
 # Singleton instance
-_scorer: Optional[ModelAgreementScorer] = None
+_scorer: ModelAgreementScorer | None = None
 
 
 def get_model_agreement_scorer() -> ModelAgreementScorer:

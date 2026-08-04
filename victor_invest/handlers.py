@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, List, Tuple
+from typing import TYPE_CHECKING, Any
 
 # Victor framework imports for new pattern
 from victor_invest.compat.handlers import BaseHandler, handler_decorator
@@ -68,10 +68,10 @@ class FetchSECDataHandler(BaseHandler):
 
     async def execute(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> Tuple[Any, int]:
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> tuple[Any, int]:
         """Execute SEC data fetch.
 
         Returns:
@@ -105,10 +105,10 @@ class FetchMarketDataHandler(BaseHandler):
 
     async def execute(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> Tuple[Any, int]:
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> tuple[Any, int]:
         """Execute market data fetch.
 
         Returns:
@@ -143,10 +143,10 @@ class FetchMacroDataHandler(BaseHandler):
 
     async def execute(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> Tuple[Any, int]:
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> tuple[Any, int]:
         """Execute macro data fetch.
 
         Returns:
@@ -200,10 +200,10 @@ class FetchManagementDiscussionHandler(BaseHandler):
 
     async def execute(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> Tuple[Any, int]:
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> tuple[Any, int]:
         """Execute management discussion fetch.
 
         Returns:
@@ -246,10 +246,10 @@ class FetchCompanyNewsHandler(BaseHandler):
 
     async def execute(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> Tuple[Any, int]:
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> tuple[Any, int]:
         """Execute company news fetch.
 
         Returns:
@@ -296,10 +296,10 @@ class RunFundamentalAnalysisHandler(BaseHandler):
 
     async def execute(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> Tuple[Any, int]:
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> tuple[Any, int]:
         """Execute fundamental analysis.
 
         Returns:
@@ -389,10 +389,10 @@ class RunTechnicalAnalysisHandler(BaseHandler):
 
     async def execute(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> Tuple[Any, int]:
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> tuple[Any, int]:
         """Execute technical analysis with weekly (strategic) and daily (tactical) data.
 
         Returns:
@@ -516,10 +516,10 @@ class RunMarketContextHandler(BaseHandler):
 
     async def execute(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> Tuple[Any, int]:
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> tuple[Any, int]:
         """Execute market context analysis.
 
         Returns:
@@ -581,10 +581,10 @@ class RunSynthesisHandler(BaseHandler):
 
     async def execute(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> Tuple[Any, int]:
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> tuple[Any, int]:
         """Execute synthesis analysis.
 
         Returns:
@@ -680,7 +680,7 @@ class RunSynthesisHandler(BaseHandler):
                 await self._llm_client.close()
                 self._llm_client = None
             except Exception:
-                pass
+                logger.debug("execute: suppressed error", exc_info=True)
 
         return output, 1 if llm_result else 0
 
@@ -1778,10 +1778,10 @@ class GenerateReportHandler(BaseHandler):
 
     async def execute(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> Tuple[Any, int]:
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> tuple[Any, int]:
         """Execute report generation.
 
         Returns:
@@ -1946,7 +1946,7 @@ class GenerateReportHandler(BaseHandler):
 
         Returns metrics dict.
         """
-        metrics: Dict[str, Any] = {}
+        metrics: dict[str, Any] = {}
 
         # Extract company metrics from fundamental data
         if not fund_data:
@@ -1982,21 +1982,19 @@ class GenerateReportHandler(BaseHandler):
 
         # Get growth metrics
         growth = fund_data.get("growth") or {}
-        if growth:
-            if "revenue_growth" in growth:
-                metrics["revenue_growth"] = {
-                    "company": growth.get("revenue_growth"),
-                    "sector": growth.get("sector_revenue_growth_median"),
-                }
+        if growth and "revenue_growth" in growth:
+            metrics["revenue_growth"] = {
+                "company": growth.get("revenue_growth"),
+                "sector": growth.get("sector_revenue_growth_median"),
+            }
 
         # Get leverage metrics
         leverage = fund_data.get("leverage") or fund_data.get("balance_sheet") or {}
-        if leverage:
-            if "debt_to_equity" in leverage:
-                metrics["debt_to_equity"] = {
-                    "company": leverage.get("debt_to_equity"),
-                    "sector": leverage.get("sector_debt_to_equity_median"),
-                }
+        if leverage and "debt_to_equity" in leverage:
+            metrics["debt_to_equity"] = {
+                "company": leverage.get("debt_to_equity"),
+                "sector": leverage.get("sector_debt_to_equity_median"),
+            }
 
         # Try to get from SEC filing data as fallback
         sec_data = context.get("sec_data") if context else None
@@ -2092,10 +2090,10 @@ class IdentifyPeersHandler(BaseHandler):
 
     async def execute(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> Tuple[Any, int]:
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> tuple[Any, int]:
         """Execute peer identification.
 
         Returns:
@@ -2247,7 +2245,7 @@ class IdentifyPeersHandler(BaseHandler):
 
         return {"peers": peers, "peer_metrics": peer_metrics}, 0
 
-    def _calculate_peer_medians(self, peers: List[Dict]) -> Dict:
+    def _calculate_peer_medians(self, peers: list[dict]) -> dict:
         """Calculate median valuation metrics across peer group.
 
         Returns metrics dict.
@@ -2257,7 +2255,7 @@ class IdentifyPeersHandler(BaseHandler):
         if not peers:
             return {}
 
-        metrics: Dict[str, list] = {
+        metrics: dict[str, list] = {
             "pe_ratio": [],
             "revenue_growth": [],
             "fcf_margin": [],
@@ -2297,10 +2295,10 @@ class AnalyzePeersHandler(BaseHandler):
 
     async def execute(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> Tuple[Any, int]:
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> tuple[Any, int]:
         """Execute peer analysis.
 
         Returns:
@@ -2353,10 +2351,10 @@ class GenerateLookbackDatesHandler(BaseHandler):
 
     async def execute(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> Tuple[Any, int]:
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> tuple[Any, int]:
         """Execute lookback date generation.
 
         Returns:
@@ -2383,10 +2381,10 @@ class ProcessBacktestBatchHandler(BaseHandler):
 
     async def execute(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> Tuple[Any, int]:
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> tuple[Any, int]:
         """Execute backtest batch processing.
 
         Returns:
@@ -2418,10 +2416,10 @@ class SaveRLPredictionsHandler(BaseHandler):
 
     async def execute(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> Tuple[Any, int]:
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> tuple[Any, int]:
         """Execute RL predictions save.
 
         Returns:
@@ -2894,10 +2892,10 @@ class RefreshSectorMultiplesHandler(BaseHandler):
 
     async def execute(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> Tuple[Any, int]:
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> tuple[Any, int]:
         """Execute sector multiples refresh.
 
         Returns:
@@ -2937,10 +2935,10 @@ class HistoricalSectorMultiplesHandler(BaseHandler):
 
     async def execute(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> Tuple[Any, int]:
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> tuple[Any, int]:
         """Execute historical sector multiples calculation.
 
         Returns:
@@ -2989,10 +2987,10 @@ class SectorMultiplesTimelineHandler(BaseHandler):
 
     async def execute(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> Tuple[Any, int]:
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> tuple[Any, int]:
         """Execute sector multiples timeline.
 
         Returns:
@@ -3030,10 +3028,10 @@ class SectorMultiplesTrendHandler(BaseHandler):
 
     async def execute(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> Tuple[Any, int]:
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> tuple[Any, int]:
         """Execute sector multiples trend.
 
         Returns:
@@ -3080,10 +3078,10 @@ class SectorMultiplesTrendAdjustedHandler(BaseHandler):
 
     async def execute(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> Tuple[Any, int]:
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> tuple[Any, int]:
         """Execute trend-adjusted sector multiples calculation.
 
         Returns:
@@ -3125,10 +3123,10 @@ class CalculateFairMultipleHandler(BaseHandler):
 
     async def execute(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> Tuple[Any, int]:
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> tuple[Any, int]:
         """Execute fair multiple calculation.
 
         Returns:
@@ -3179,10 +3177,10 @@ class GenerateFairValueReportHandler(BaseHandler):
 
     async def execute(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> Tuple[Any, int]:
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> tuple[Any, int]:
         """Execute fair value report generation.
 
         Returns:
@@ -3239,8 +3237,8 @@ class RobustValuationAnalyzeHandler(BaseHandler):
     """
 
     async def execute(
-        self, node: "ComputeNode", context: Dict[str, Any], tool_registry: Any
-    ) -> Tuple[Dict[str, Any], int]:
+        self, node: ComputeNode, context: dict[str, Any], tool_registry: Any
+    ) -> tuple[dict[str, Any], int]:
         """Execute robust valuation analysis.
 
         Expected node.params:
@@ -3297,8 +3295,8 @@ class PeerCompareAnalysisHandler(BaseHandler):
     """
 
     async def execute(
-        self, node: "ComputeNode", context: Dict[str, Any], tool_registry: Any
-    ) -> Tuple[Dict[str, Any], int]:
+        self, node: ComputeNode, context: dict[str, Any], tool_registry: Any
+    ) -> tuple[dict[str, Any], int]:
         """Execute peer comparison analysis.
 
         Expected node.params:
@@ -3356,8 +3354,8 @@ class GenerateRobustValuationReportHandler(BaseHandler):
     """
 
     async def execute(
-        self, node: "ComputeNode", context: Dict[str, Any], tool_registry: Any
-    ) -> Tuple[Dict[str, Any], int]:
+        self, node: ComputeNode, context: dict[str, Any], tool_registry: Any
+    ) -> tuple[dict[str, Any], int]:
         """Execute robust valuation report generation.
 
         Expected node.params:
@@ -3419,42 +3417,41 @@ def register_handlers() -> None:
     This is a no-op function for backward compatibility.
     Handlers are auto-registered via @handler_decorator on module import.
     """
-    pass
 
 
 __all__ = [
+    "AnalyzePeersHandler",
+    # Fair multiple calculator
+    "CalculateFairMultipleHandler",
+    "FetchMacroDataHandler",
+    "FetchMarketDataHandler",
     # Data collection handlers
     "FetchSECDataHandler",
-    "FetchMarketDataHandler",
-    "FetchMacroDataHandler",
+    "GenerateFairValueReportHandler",
+    # RL backtest
+    "GenerateLookbackDatesHandler",
+    # Report generation
+    "GenerateReportHandler",
+    "GenerateRobustValuationReportHandler",
+    "HistoricalSectorMultiplesHandler",
+    # Peer comparison
+    "IdentifyPeersHandler",
+    "PeerCompareAnalysisHandler",
+    "ProcessBacktestBatchHandler",
+    # Sector multiples
+    "RefreshSectorMultiplesHandler",
+    # Robust valuation
+    "RobustValuationAnalyzeHandler",
     # Analysis handlers
     "RunFundamentalAnalysisHandler",
-    "RunTechnicalAnalysisHandler",
     "RunMarketContextHandler",
     # Synthesis handlers
     "RunSynthesisHandler",
-    # Report generation
-    "GenerateReportHandler",
-    # Peer comparison
-    "IdentifyPeersHandler",
-    "AnalyzePeersHandler",
-    # RL backtest
-    "GenerateLookbackDatesHandler",
-    "ProcessBacktestBatchHandler",
+    "RunTechnicalAnalysisHandler",
     "SaveRLPredictionsHandler",
-    # Sector multiples
-    "RefreshSectorMultiplesHandler",
-    "HistoricalSectorMultiplesHandler",
     "SectorMultiplesTimelineHandler",
-    "SectorMultiplesTrendHandler",
     "SectorMultiplesTrendAdjustedHandler",
-    # Fair multiple calculator
-    "CalculateFairMultipleHandler",
-    "GenerateFairValueReportHandler",
-    # Robust valuation
-    "RobustValuationAnalyzeHandler",
-    "PeerCompareAnalysisHandler",
-    "GenerateRobustValuationReportHandler",
+    "SectorMultiplesTrendHandler",
     # Helper functions
     "_format_fundamental",
     "_format_technical",

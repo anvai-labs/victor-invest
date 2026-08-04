@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ Usage:
     tools = provider.get_tools_for_role("researcher", vertical="investment")
 """
 
-from typing import Dict, List, Optional
+from typing import ClassVar
 
 
 class InvestmentRoleProvider:
@@ -43,10 +43,10 @@ class InvestmentRoleProvider:
     """
 
     # Core tools available to all investment roles
-    CORE_TOOLS = ["read"]
+    CORE_TOOLS: ClassVar[list] = ["read"]
 
     # Investment-specific tools by role
-    ROLE_TOOLS: Dict[str, List[str]] = {
+    ROLE_TOOLS: ClassVar[dict[str, list[str]]] = {
         # Researcher: Read-only analysis, no data modification
         "researcher": [
             "read",  # Generic file reading
@@ -73,7 +73,7 @@ class InvestmentRoleProvider:
     }
 
     # Tool budgets (lower for investment since synthesis is context-based)
-    ROLE_BUDGETS: Dict[str, int] = {
+    ROLE_BUDGETS: ClassVar[dict[str, int]] = {
         "researcher": 5,  # Minimal - synthesis is via context, not tools
         "planner": 5,
         "executor": 10,
@@ -82,7 +82,7 @@ class InvestmentRoleProvider:
     }
 
     # Context limits (higher for investment to include analysis data)
-    ROLE_CONTEXT_LIMITS: Dict[str, int] = {
+    ROLE_CONTEXT_LIMITS: ClassVar[dict[str, int]] = {
         "researcher": 100000,  # Large - needs full analysis context
         "planner": 50000,
         "executor": 80000,
@@ -93,8 +93,8 @@ class InvestmentRoleProvider:
     def get_tools_for_role(
         self,
         role: str,
-        vertical: Optional[str] = None,
-    ) -> List[str]:
+        vertical: str | None = None,
+    ) -> list[str]:
         """Get investment-appropriate tools for a role.
 
         For investment synthesis, we rely on context stuffing rather than

@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Callable, Dict
+import logging
+from collections.abc import Callable
+from typing import Any
 
 from investigator.application.synthesizer_recommendation import calculate_consistency_bonus
 
-FundamentalScoreCalculator = Callable[[Dict[str, Any]], float]
+logger = logging.getLogger(__name__)
+
+FundamentalScoreCalculator = Callable[[dict[str, Any]], float]
 QuarterlyBusinessQualityAnalyzer = Callable[[str, str], float]
 
 
@@ -21,8 +25,8 @@ def _normalize_response_content(content: Any) -> str:
 
 
 def extract_income_score(
-    llm_responses: Dict[str, Any],
-    ai_recommendation: Dict[str, Any],
+    llm_responses: dict[str, Any],
+    ai_recommendation: dict[str, Any],
     *,
     calculate_fundamental_score: FundamentalScoreCalculator,
 ) -> float:
@@ -51,8 +55,8 @@ def extract_income_score(
 
 
 def extract_cashflow_score(
-    llm_responses: Dict[str, Any],
-    ai_recommendation: Dict[str, Any],
+    llm_responses: dict[str, Any],
+    ai_recommendation: dict[str, Any],
     *,
     calculate_fundamental_score: FundamentalScoreCalculator,
 ) -> float:
@@ -85,8 +89,8 @@ def extract_cashflow_score(
 
 
 def extract_balance_score(
-    llm_responses: Dict[str, Any],
-    ai_recommendation: Dict[str, Any],
+    llm_responses: dict[str, Any],
+    ai_recommendation: dict[str, Any],
     *,
     calculate_fundamental_score: FundamentalScoreCalculator,
 ) -> float:
@@ -120,8 +124,8 @@ def extract_balance_score(
 
 
 def extract_growth_score(
-    llm_responses: Dict[str, Any],
-    ai_recommendation: Dict[str, Any],
+    llm_responses: dict[str, Any],
+    ai_recommendation: dict[str, Any],
     *,
     calculate_fundamental_score: FundamentalScoreCalculator,
 ) -> float:
@@ -164,8 +168,8 @@ def extract_growth_score(
 
 
 def extract_value_score(
-    llm_responses: Dict[str, Any],
-    ai_recommendation: Dict[str, Any],
+    llm_responses: dict[str, Any],
+    ai_recommendation: dict[str, Any],
     *,
     calculate_fundamental_score: FundamentalScoreCalculator,
 ) -> float:
@@ -210,8 +214,8 @@ def extract_value_score(
 
 
 def extract_business_quality_score(
-    llm_responses: Dict[str, Any],
-    ai_recommendation: Dict[str, Any],
+    llm_responses: dict[str, Any],
+    ai_recommendation: dict[str, Any],
     *,
     analyze_quarterly_business_quality: QuarterlyBusinessQualityAnalyzer,
 ) -> float:
@@ -239,7 +243,7 @@ def extract_business_quality_score(
             if "business_quality_score" in parsed:
                 return float(parsed["business_quality_score"])
         except Exception:
-            pass
+            logger.debug("extract_business_quality_score: suppressed error", exc_info=True)
 
     quarterly_analyses = llm_responses.get("fundamental", {})
     quality_indicators = []

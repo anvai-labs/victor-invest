@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from investigator.domain.services.credit_risk.altman_zscore import (
     AltmanZScoreCalculator,
@@ -73,13 +73,13 @@ class CreditRiskAssessment:
     """
 
     symbol: str
-    altman: Optional[AltmanZScoreResult] = None
-    beneish: Optional[BeneishMScoreResult] = None
-    piotroski: Optional[PiotroskiFScoreResult] = None
-    composite: Optional[CompositeCreditRiskResult] = None
+    altman: AltmanZScoreResult | None = None
+    beneish: BeneishMScoreResult | None = None
+    piotroski: PiotroskiFScoreResult | None = None
+    composite: CompositeCreditRiskResult | None = None
     data_quality: str = "unknown"
-    warnings: List[str] = None
-    calculation_date: Optional[date] = None
+    warnings: list[str] = None
+    calculation_date: date | None = None
 
     def __post_init__(self):
         if self.warnings is None:
@@ -87,7 +87,7 @@ class CreditRiskAssessment:
         if self.calculation_date is None:
             self.calculation_date = date.today()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "symbol": self.symbol,
@@ -103,7 +103,7 @@ class CreditRiskAssessment:
             "summary": self._get_summary(),
         }
 
-    def _get_summary(self) -> Dict[str, Any]:
+    def _get_summary(self) -> dict[str, Any]:
         """Get summary of credit risk assessment."""
         summary = {
             "symbol": self.symbol,
@@ -250,7 +250,7 @@ class CreditRiskService:
     async def calculate_from_symbol(
         self,
         symbol: str,
-        sec_data: Optional[Dict[str, Any]] = None,
+        sec_data: dict[str, Any] | None = None,
     ) -> CreditRiskAssessment:
         """Calculate credit risk from symbol, fetching SEC data if needed.
 
@@ -276,7 +276,7 @@ class CreditRiskService:
 
         return self.calculate_all(fin_data)
 
-    async def _fetch_financial_data(self, symbol: str) -> Optional[FinancialData]:
+    async def _fetch_financial_data(self, symbol: str) -> FinancialData | None:
         """Fetch financial data from SEC infrastructure.
 
         Args:
@@ -314,7 +314,7 @@ class CreditRiskService:
             logger.error(f"Error fetching financial data for {symbol}: {e}")
             return None
 
-    def _transform_sec_metrics(self, symbol: str, metrics: Dict[str, Any]) -> FinancialData:
+    def _transform_sec_metrics(self, symbol: str, metrics: dict[str, Any]) -> FinancialData:
         """Transform SEC extracted metrics to FinancialData format.
 
         Args:
@@ -364,7 +364,7 @@ class CreditRiskService:
             ),
         )
 
-    def _transform_sec_data(self, symbol: str, sec_data: Dict[str, Any]) -> FinancialData:
+    def _transform_sec_data(self, symbol: str, sec_data: dict[str, Any]) -> FinancialData:
         """Transform raw SEC tool data to FinancialData format.
 
         Args:

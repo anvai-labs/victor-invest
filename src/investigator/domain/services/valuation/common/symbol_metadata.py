@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ This eliminates duplicate metadata lookup logic between legacy CLI and victor_in
 
 import logging
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import ClassVar
 
 import yaml
 
@@ -48,13 +48,13 @@ class SymbolMetadata:
         Technology, Technology Hardware
     """
 
-    _config: Optional[Dict] = None
-    _config_path: Optional[Path] = None
-    _sector_overrides: Dict[str, str] = {}
-    _industry_overrides: Dict[str, str] = {}
+    _config: dict | None = None
+    _config_path: Path | None = None
+    _sector_overrides: ClassVar[dict[str, str]] = {}
+    _industry_overrides: ClassVar[dict[str, str]] = {}
 
     @classmethod
-    def load_config(cls, config_path: Optional[str] = None) -> Dict:
+    def load_config(cls, config_path: str | None = None) -> dict:
         """Load symbol metadata configuration from config.yaml.
 
         Args:
@@ -93,7 +93,7 @@ class SymbolMetadata:
         return config
 
     @classmethod
-    def _load_sector_overrides(cls, config: Dict) -> None:
+    def _load_sector_overrides(cls, config: dict) -> None:
         """Load sector overrides from config.yaml."""
         cls._sector_overrides = {}
         if not config:
@@ -121,7 +121,7 @@ class SymbolMetadata:
         logger.debug(f"Loaded {len(cls._sector_overrides)} sector overrides")
 
     @classmethod
-    def _load_industry_overrides(cls, config: Dict) -> None:
+    def _load_industry_overrides(cls, config: dict) -> None:
         """Load industry overrides from config.yaml."""
         cls._industry_overrides = {}
         if not config:
@@ -147,9 +147,9 @@ class SymbolMetadata:
         cls,
         symbol: str,
         *,
-        fallback_sector: Optional[str] = None,
-        fallback_industry: Optional[str] = None,
-    ) -> Tuple[str, Optional[str]]:
+        fallback_sector: str | None = None,
+        fallback_industry: str | None = None,
+    ) -> tuple[str, str | None]:
         """Get sector and industry for a symbol from config overrides.
 
         Args:
@@ -185,7 +185,7 @@ class SymbolMetadata:
         return sector, industry
 
     @classmethod
-    def get_sector(cls, symbol: str, *, fallback_sector: Optional[str] = None) -> str:
+    def get_sector(cls, symbol: str, *, fallback_sector: str | None = None) -> str:
         """Get sector for a symbol.
 
         Args:
@@ -202,7 +202,7 @@ class SymbolMetadata:
         return sector
 
     @classmethod
-    def get_industry(cls, symbol: str, *, fallback_industry: Optional[str] = None) -> Optional[str]:
+    def get_industry(cls, symbol: str, *, fallback_industry: str | None = None) -> str | None:
         """Get industry for a symbol.
 
         Args:

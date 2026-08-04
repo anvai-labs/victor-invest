@@ -7,14 +7,14 @@ import functools
 import logging
 import os
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional
 
 import click
 import yaml
 
 
-def setup_logging(log_level: str = "INFO", log_file: Optional[str] = None):
+def setup_logging(log_level: str = "INFO", log_file: str | None = None):
     """
     Configure application logging with production-friendly defaults.
 
@@ -137,7 +137,7 @@ class MutuallyExclusiveOption(click.Option):
         return super().handle_parse_result(ctx, opts, args)
 
 
-def print_table(headers: list, rows: list, widths: Optional[list] = None):
+def print_table(headers: list, rows: list, widths: list | None = None):
     """Print a formatted table to stdout"""
     if not widths:
         widths = [max(len(str(h)), max(len(str(r[i])) for r in rows) if rows else 0) + 2 for i, h in enumerate(headers)]
@@ -153,7 +153,7 @@ def print_table(headers: list, rows: list, widths: Optional[list] = None):
         click.echo(row_line)
 
 
-def format_currency(value: Optional[float], symbol: str = "$") -> str:
+def format_currency(value: float | None, symbol: str = "$") -> str:
     """Format a value as currency"""
     if value is None:
         return "N/A"
@@ -166,7 +166,7 @@ def format_currency(value: Optional[float], symbol: str = "$") -> str:
     return f"{symbol}{value:.2f}"
 
 
-def format_percent(value: Optional[float]) -> str:
+def format_percent(value: float | None) -> str:
     """Format a value as percentage"""
     if value is None:
         return "N/A"

@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ Plugin paradigm (consolidated, contract >= 0.7.0):
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from victor_contracts import PluginContext, VictorPlugin
 
@@ -92,7 +92,7 @@ class InvestmentPlugin(VictorPlugin):
             except Exception as exc:
                 logger.debug("Safety rule registration skipped: %s", exc)
 
-    def get_cli_app(self) -> Optional[Any]:
+    def get_cli_app(self) -> Any | None:
         """No CLI subcommand — victor-invest ships its own `victor-invest` CLI."""
         return None
 
@@ -113,9 +113,8 @@ class InvestmentPlugin(VictorPlugin):
 
     def on_deactivate(self) -> None:
         """Called when investment vertical is deactivated."""
-        pass
 
-    def health_check(self) -> Dict[str, Any]:
+    def health_check(self) -> dict[str, Any]:
         """Return health status for investment plugin."""
         try:
             from investigator.config import get_config
@@ -142,4 +141,4 @@ def __getattr__(name: str) -> Any:
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-__all__ = ["InvestmentVertical", "InvestmentPlugin", "plugin"]
+__all__ = ["InvestmentPlugin", "InvestmentVertical", "plugin"]

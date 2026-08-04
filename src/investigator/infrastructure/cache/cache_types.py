@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - Cache Type Definitions
 Copyright (c) 2025 Vijaykumar Singh

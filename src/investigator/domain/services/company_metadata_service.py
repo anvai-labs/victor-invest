@@ -11,7 +11,6 @@ Date: 2025-11-07
 import json
 import logging
 import os
-from typing import Dict, Optional, Tuple
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
@@ -38,8 +37,8 @@ class CompanyMetadataService:
 
     def __init__(
         self,
-        database_engine: Optional[Engine] = None,
-        sector_normalization: Optional[Dict[str, list]] = None,
+        database_engine: Engine | None = None,
+        sector_normalization: dict[str, list] | None = None,
         peer_group_json_path: str = "data/sector_mapping.json",
         sector_map_txt_path: str = "data/sector_industry_ticker_map.txt",
     ):
@@ -66,7 +65,7 @@ class CompanyMetadataService:
 
         # Cache for database lookups (symbol → (sector, industry))
         # Using functools.lru_cache for automatic size management
-        self._cache: Dict[str, Tuple[str, Optional[str]]] = {}
+        self._cache: dict[str, tuple[str, str | None]] = {}
 
     def _create_default_engine(self) -> Engine:
         """
@@ -81,7 +80,7 @@ class CompanyMetadataService:
         stock_password = os.environ.get("STOCK_DB_PASSWORD")
         stock_host = os.environ.get("STOCK_DB_HOST", config.database.host)
         if not stock_password:
-            raise EnvironmentError(
+            raise OSError(
                 "STOCK_DB_PASSWORD environment variable not set. Please set it or source your ~/.investigator/env file."
             )
         stock_db_url = f"postgresql://stockuser:{stock_password}@{stock_host}:{config.database.port}/stock"
@@ -89,7 +88,7 @@ class CompanyMetadataService:
         logger.info("Created default database engine for stock database")
         return engine
 
-    def _load_peer_group_sectors(self) -> Dict[str, str]:
+    def _load_peer_group_sectors(self) -> dict[str, str]:
         """
         Load peer group sector mapping from JSON file.
 
@@ -111,11 +110,11 @@ class CompanyMetadataService:
             logger.warning(f"Error loading peer group sector mapping: {e}")
             return {}
 
-    def _load_sector_map_txt(self) -> Dict[str, Dict[str, Optional[str]]]:
+    def _load_sector_map_txt(self) -> dict[str, dict[str, str | None]]:
         """
         Parse the comprehensive sector/industry map exported as a pipe-delimited text table.
         """
-        mapping: Dict[str, Dict[str, Optional[str]]] = {}
+        mapping: dict[str, dict[str, str | None]] = {}
         if not os.path.exists(self.sector_map_txt_path):
             logger.debug("Sector map txt not found: %s", self.sector_map_txt_path)
             return mapping
@@ -151,7 +150,7 @@ class CompanyMetadataService:
 
         return mapping
 
-    def _load_sector_overrides(self) -> Dict[str, str]:
+    def _load_sector_overrides(self) -> dict[str, str]:
         """
         Load sector overrides from config.yaml for misclassified companies.
 
@@ -179,7 +178,7 @@ class CompanyMetadataService:
             logger.warning(f"Failed to load sector overrides from config.yaml: {exc}")
             return {}
 
-    def _load_industry_overrides(self) -> Dict[str, str]:
+    def _load_industry_overrides(self) -> dict[str, str]:
         """
         Load industry overrides from config.yaml for business-model corrections.
 
@@ -207,7 +206,7 @@ class CompanyMetadataService:
             logger.warning(f"Failed to load industry overrides from config.yaml: {exc}")
             return {}
 
-    def get_sector_industry(self, symbol: str, use_cache: bool = True) -> Tuple[str, Optional[str]]:
+    def get_sector_industry(self, symbol: str, use_cache: bool = True) -> tuple[str, str | None]:
         """
         Get normalized sector and industry for a symbol.
 
@@ -306,7 +305,7 @@ class CompanyMetadataService:
 
         return sector, industry
 
-    def _get_from_database(self, symbol: str) -> Tuple[str, Optional[str]]:
+    def _get_from_database(self, symbol: str) -> tuple[str, str | None]:
         """
         Fetch sector and industry from database.
 
@@ -366,8 +365,8 @@ class CompanyMetadataService:
         return SectorIndustryMapper.to_standard(raw_sector)
 
     def _normalize_industry_and_infer_sector(
-        self, raw_industry: Optional[str], raw_sector: Optional[str] = None
-    ) -> Tuple[Optional[str], str]:
+        self, raw_industry: str | None, raw_sector: str | None = None
+    ) -> tuple[str | None, str]:
         """
         Normalize industry name and ensure sector is inferred if needed.
 
@@ -409,7 +408,7 @@ class CompanyMetadataService:
         sector, _ = self.get_sector_industry(symbol, use_cache=use_cache)
         return sector
 
-    def get_industry(self, symbol: str, use_cache: bool = True) -> Optional[str]:
+    def get_industry(self, symbol: str, use_cache: bool = True) -> str | None:
         """
         Get industry only (convenience method).
 
@@ -423,7 +422,7 @@ class CompanyMetadataService:
         _, industry = self.get_sector_industry(symbol, use_cache=use_cache)
         return industry
 
-    def batch_get_sector_industry(self, symbols: list[str]) -> Dict[str, Tuple[str, Optional[str]]]:
+    def batch_get_sector_industry(self, symbols: list[str]) -> dict[str, tuple[str, str | None]]:
         """
         Fetch sector/industry for multiple symbols efficiently.
 
@@ -509,7 +508,7 @@ class CompanyMetadataService:
         self._cache.clear()
         logger.info("Cleared cache after sector map reload")
 
-    def get_cache_stats(self) -> Dict[str, int]:
+    def get_cache_stats(self) -> dict[str, int]:
         """
         Get cache statistics.
 

@@ -13,7 +13,7 @@ Updated: 2025-12-29 (added auto manufacturing valuation tier P1-A)
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, cast
 
 from investigator.domain.models.market_context import MarketContext
 from investigator.domain.services.company_metadata_service import CompanyMetadataService
@@ -80,7 +80,7 @@ def _to_float(value: Any) -> float:
         return 0.0
 
 
-def _to_ratio(value: Any) -> Optional[float]:
+def _to_ratio(value: Any) -> float | None:
     numeric = _to_float(value)
     if numeric <= 0:
         return None
@@ -90,7 +90,7 @@ def _to_ratio(value: Any) -> Optional[float]:
     return ratio
 
 
-def _to_yield_ratio(value: Any) -> Optional[float]:
+def _to_yield_ratio(value: Any) -> float | None:
     numeric = _to_float(value)
     if numeric <= 0:
         return None
@@ -115,7 +115,7 @@ class DynamicModelWeightingService:
     8. Normalize and round to 5%
     """
 
-    def __init__(self, valuation_config: Dict[str, Any]):
+    def __init__(self, valuation_config: dict[str, Any]):
         """
         Initialize with valuation configuration section.
 
@@ -208,11 +208,11 @@ class DynamicModelWeightingService:
     def determine_weights(
         self,
         symbol: str,
-        financials: Dict[str, Any],
-        ratios: Dict[str, Any],
-        data_quality: Optional[Dict[str, Any]] = None,
-        market_context: Optional[MarketContext] = None,
-    ) -> Tuple[Dict[str, float], str, Optional[WeightAuditTrail]]:
+        financials: dict[str, Any],
+        ratios: dict[str, Any],
+        data_quality: dict[str, Any] | None = None,
+        market_context: MarketContext | None = None,
+    ) -> tuple[dict[str, float], str, WeightAuditTrail | None]:
         """
         Determine dynamic model weights for a company.
 
@@ -281,30 +281,29 @@ class DynamicModelWeightingService:
         # and update financials dict so applicability filters can use it
         # Note: Managed care companies are in Health Care sector, not Financials!
         is_insurance_like = self._is_insurance_or_managed_care(sector, industry, symbol)
-        if is_insurance_like:
-            if stockholders_equity <= 0:
-                try:
-                    from investigator.domain.services.valuation.insurance_valuation import (
-                        _fetch_from_database,
-                    )
+        if is_insurance_like and stockholders_equity <= 0:
+            try:
+                from investigator.domain.services.valuation.insurance_valuation import (
+                    _fetch_from_database,
+                )
 
-                    db_equity, db_shares, _ = _fetch_from_database(symbol, None)
-                    if db_equity:
-                        stockholders_equity = db_equity
-                        financials["stockholders_equity"] = stockholders_equity
+                db_equity, db_shares, _ = _fetch_from_database(symbol, None)
+                if db_equity:
+                    stockholders_equity = db_equity
+                    financials["stockholders_equity"] = stockholders_equity
+                    logger.info(
+                        f"{symbol} - Insurance: Updated financials with DB equity: ${stockholders_equity / 1e9:.2f}B"
+                    )
+                if db_shares and not financials.get("shares_outstanding"):
+                    financials["shares_outstanding"] = db_shares
+                    # Also calculate book_value_per_share for P/B applicability
+                    if stockholders_equity and db_shares:
+                        financials["book_value_per_share"] = stockholders_equity / db_shares
                         logger.info(
-                            f"{symbol} - Insurance: Updated financials with DB equity: ${stockholders_equity / 1e9:.2f}B"
+                            f"{symbol} - Insurance: Calculated BV/share: ${financials['book_value_per_share']:.2f}"
                         )
-                    if db_shares and not financials.get("shares_outstanding"):
-                        financials["shares_outstanding"] = db_shares
-                        # Also calculate book_value_per_share for P/B applicability
-                        if stockholders_equity and db_shares:
-                            financials["book_value_per_share"] = stockholders_equity / db_shares
-                            logger.info(
-                                f"{symbol} - Insurance: Calculated BV/share: ${financials['book_value_per_share']:.2f}"
-                            )
-                except Exception as e:
-                    logger.warning(f"{symbol} - Insurance: Could not fetch from database: {e}")
+            except Exception as e:
+                logger.warning(f"{symbol} - Insurance: Could not fetch from database: {e}")
 
         # 4. Classify tier
         tier, sub_tier = self._classify_tier(
@@ -615,7 +614,7 @@ class DynamicModelWeightingService:
         # This prevents duplicate logging when the caller also logs the summary
         return weights, sub_tier, audit_trail
 
-    def _resolve_payout_ratio_ratio(self, financials: Dict[str, Any], ratios: Dict[str, Any]) -> float:
+    def _resolve_payout_ratio_ratio(self, financials: dict[str, Any], ratios: dict[str, Any]) -> float:
         """
         Normalize payout ratio to ratio format (0.40 = 40%) using multiple signals.
 
@@ -624,7 +623,7 @@ class DynamicModelWeightingService:
         2. Dividends-to-earnings implied payout
         3. Dividend-yield + market-cap implied payout
         """
-        candidates: List[float] = []
+        candidates: list[float] = []
 
         for value in (
             financials.get("payout_ratio"),
@@ -674,10 +673,10 @@ class DynamicModelWeightingService:
         sector: str,
         revenue: float = 0,
         ebitda: float = 0,
-        industry: Optional[str] = None,
+        industry: str | None = None,
         stockholders_equity: float = 0,
-        symbol: Optional[str] = None,
-    ) -> Tuple[str, str]:
+        symbol: str | None = None,
+    ) -> tuple[str, str]:
         """
         Classify company into one of 15+ sub-tiers based on decision tree.
 
@@ -726,9 +725,7 @@ class DynamicModelWeightingService:
                     logger.info(
                         f"{symbol or 'UNKNOWN'} - P&C Insurance tier classification: ROE={roe:.1f}% (NI=${net_income / 1e9:.2f}B, Equity=${stockholders_equity / 1e9:.2f}B)"
                     )
-                    if roe >= 12:
-                        return ("insurance", "insurance_property_casualty")
-                    elif roe >= 8:
+                    if roe >= 12 or roe >= 8:
                         return ("insurance", "insurance_property_casualty")
                     else:
                         return ("insurance", "insurance_property_casualty")
@@ -1036,7 +1033,7 @@ class DynamicModelWeightingService:
         # TIER 8: Balanced Default
         return ("balanced", "balanced_default")
 
-    def _get_tier_base_weights(self, sub_tier: str) -> Dict[str, float]:
+    def _get_tier_base_weights(self, sub_tier: str) -> dict[str, float]:
         """
         Get base weights for a given sub-tier from config.
 
@@ -1046,12 +1043,12 @@ class DynamicModelWeightingService:
         Returns:
             Dict mapping model names to weights
         """
-        weights = cast(Optional[Dict[str, float]], self.tier_base_weights.get(sub_tier))
+        weights = cast(dict[str, float] | None, self.tier_base_weights.get(sub_tier))
 
         if not weights:
             logger.warning(f"No base weights found for sub_tier '{sub_tier}', using balanced_default")
             weights = cast(
-                Dict[str, float],
+                dict[str, float],
                 self.tier_base_weights.get(
                     "balanced_default",
                     {"dcf": 30, "pe": 25, "ev_ebitda": 20, "ps": 15, "pb": 10, "ggm": 0},
@@ -1060,7 +1057,7 @@ class DynamicModelWeightingService:
 
         return weights.copy()
 
-    def _apply_industry_overrides(self, base_weights: Dict[str, float], industry: str) -> Dict[str, float]:
+    def _apply_industry_overrides(self, base_weights: dict[str, float], industry: str) -> dict[str, float]:
         """
         Apply industry-specific weight adjustments from config.
 
@@ -1098,7 +1095,7 @@ class DynamicModelWeightingService:
                 logger.warning(
                     f"Industry {industry} direct weights sum to {total}%, not 100%. Will be normalized later."
                 )
-            return cast(Dict[str, float], direct_weights).copy()
+            return cast(dict[str, float], direct_weights).copy()
 
         # PRIORITY 3: Percentage adjustments (legacy approach)
         adjustments = industry_config.get("weight_adjustments", {})
@@ -1126,7 +1123,7 @@ class DynamicModelWeightingService:
         # No override applied
         return base_weights
 
-    def _apply_symbol_overrides(self, base_weights: Dict[str, float], symbol: str) -> Dict[str, float]:
+    def _apply_symbol_overrides(self, base_weights: dict[str, float], symbol: str) -> dict[str, float]:
         """
         Apply symbol-specific weight overrides from config.
 
@@ -1159,7 +1156,7 @@ class DynamicModelWeightingService:
                 logger.warning(
                     f"Symbol {symbol_upper} direct weights sum to {total}%, not 100%. Will be normalized later."
                 )
-            return cast(Dict[str, float], direct_weights).copy()
+            return cast(dict[str, float], direct_weights).copy()
 
         # PRIORITY 2: Tier override
         tier_override = symbol_config.get("tier_override")
@@ -1171,8 +1168,8 @@ class DynamicModelWeightingService:
         return base_weights
 
     def apply_market_context_adjustments(
-        self, base_weights: Dict[str, float], market_context: MarketContext, symbol: str
-    ) -> Dict[str, float]:
+        self, base_weights: dict[str, float], market_context: MarketContext, symbol: str
+    ) -> dict[str, float]:
         """
         Apply market context multipliers to tier-based weights.
 
@@ -1269,9 +1266,9 @@ class DynamicModelWeightingService:
 
     def _apply_applicability_filters(
         self,
-        weights: Dict[str, float],
-        financials: Dict[str, Any],
-    ) -> Dict[str, float]:
+        weights: dict[str, float],
+        financials: dict[str, Any],
+    ) -> dict[str, float]:
         """
         Set model weight to 0% if fundamental assumptions are violated.
 
@@ -1303,9 +1300,9 @@ class DynamicModelWeightingService:
 
     def _apply_data_quality_adjustments(
         self,
-        weights: Dict[str, float],
-        data_quality: Dict[str, Any],
-    ) -> Dict[str, float]:
+        weights: dict[str, float],
+        data_quality: dict[str, Any],
+    ) -> dict[str, float]:
         """
         Reduce model weights based on data quality issues.
 
@@ -1368,9 +1365,9 @@ class DynamicModelWeightingService:
         revenue: float,
         revenue_growth: float,
         ebitda: float,
-        operating_income: Optional[float] = None,
-        free_cash_flow: Optional[float] = None,
-        fcf_margin: Optional[float] = None,
+        operating_income: float | None = None,
+        free_cash_flow: float | None = None,
+        fcf_margin: float | None = None,
     ) -> str:
         """
         Classify company's profitability stage using multi-indicator analysis.
@@ -1439,7 +1436,7 @@ class DynamicModelWeightingService:
 
         return stage
 
-    def _calculate_market_pe(self, current_price: float, ttm_eps: float) -> Optional[float]:
+    def _calculate_market_pe(self, current_price: float, ttm_eps: float) -> float | None:
         """
         Calculate market's implied P/E ratio.
 
@@ -1458,15 +1455,15 @@ class DynamicModelWeightingService:
 
     def _apply_company_specific_adjustments(
         self,
-        base_weights: Dict[str, float],
+        base_weights: dict[str, float],
         company_size: str,
         profitability_stage: str,
-        market_pe: Optional[float],
+        market_pe: float | None,
         revenue_growth: float,
         symbol: str,
-        sector: Optional[str] = None,
-        industry: Optional[str] = None,
-    ) -> Dict[str, float]:
+        sector: str | None = None,
+        industry: str | None = None,
+    ) -> dict[str, float]:
         """
         Apply company-specific weight adjustments based on characteristics.
 
@@ -1606,11 +1603,11 @@ class DynamicModelWeightingService:
         tier: str,
         sub_tier: str,
         sector: str,
-        industry: Optional[str],
-        weights: Dict[str, float],
-        company_size: Optional[str] = None,
-        profitability_stage: Optional[str] = None,
-        market_pe: Optional[float] = None,
+        industry: str | None,
+        weights: dict[str, float],
+        company_size: str | None = None,
+        profitability_stage: str | None = None,
+        market_pe: float | None = None,
     ) -> None:
         """
         Log weighting decision for audit trail with enhanced context.
@@ -1653,7 +1650,7 @@ class DynamicModelWeightingService:
     # INSURANCE & MANAGED CARE DETECTION
     # =========================================================================
 
-    def _is_fee_based_insurance(self, symbol: Optional[str], industry: Optional[str]) -> bool:
+    def _is_fee_based_insurance(self, symbol: str | None, industry: str | None) -> bool:
         """Return True for fee-based insurance service models (broker/agency/admin)."""
         if symbol and symbol.upper() in self.fee_based_insurance_symbols:
             return True
@@ -1666,9 +1663,9 @@ class DynamicModelWeightingService:
 
     def _is_insurance_or_managed_care(
         self,
-        sector: Optional[str],
-        industry: Optional[str],
-        symbol: Optional[str] = None,
+        sector: str | None,
+        industry: str | None,
+        symbol: str | None = None,
     ) -> bool:
         """
         Check if the company is an insurance or managed care company.
@@ -1730,7 +1727,7 @@ class DynamicModelWeightingService:
 
         return False
 
-    def _is_property_casualty_insurance(self, industry: Optional[str], symbol: Optional[str] = None) -> bool:
+    def _is_property_casualty_insurance(self, industry: str | None, symbol: str | None = None) -> bool:
         """
         Check if company is a Property & Casualty insurance company.
 
@@ -1760,7 +1757,7 @@ class DynamicModelWeightingService:
         industry_lower = industry.lower()
         return any(keyword in industry_lower for keyword in self.property_casualty_insurance_industry_keywords)
 
-    def _is_low_margin_industry(self, sector: Optional[str], industry: Optional[str]) -> bool:
+    def _is_low_margin_industry(self, sector: str | None, industry: str | None) -> bool:
         """
         Check if industry is known to have structurally low margins (<5%).
 
@@ -1825,10 +1822,10 @@ class DynamicModelWeightingService:
 
     def _get_ps_weight_adjustment(
         self,
-        sector: Optional[str],
-        industry: Optional[str],
-        net_margin: Optional[float] = None,
-        symbol: Optional[str] = None,
+        sector: str | None,
+        industry: str | None,
+        net_margin: float | None = None,
+        symbol: str | None = None,
     ) -> float:
         """
         Get PS weight multiplier based on margin analysis.
@@ -1883,7 +1880,7 @@ class DynamicModelWeightingService:
     # AUTO MANUFACTURING TIER METHODS (P1-A)
     # =========================================================================
 
-    def _is_auto_manufacturing(self, industry: Optional[str]) -> bool:
+    def _is_auto_manufacturing(self, industry: str | None) -> bool:
         """
         Check if the industry is an auto manufacturing industry.
 
@@ -1935,10 +1932,10 @@ class DynamicModelWeightingService:
 
     def _classify_auto_manufacturing_tier(
         self,
-        symbol: Optional[str],
-        industry: Optional[str],
-        financials_context: Dict[str, Any],
-    ) -> Tuple[str, str]:
+        symbol: str | None,
+        industry: str | None,
+        financials_context: dict[str, Any],
+    ) -> tuple[str, str]:
         """
         Classify auto manufacturing company into appropriate sub-tier.
 
@@ -1987,7 +1984,7 @@ class DynamicModelWeightingService:
 
         return ("auto_manufacturing", sub_tier)
 
-    def _get_ev_revenue_percentage(self, symbol: Optional[str], xbrl_data: Optional[Dict] = None) -> float:
+    def _get_ev_revenue_percentage(self, symbol: str | None, xbrl_data: dict | None = None) -> float:
         """
         Get EV revenue percentage for an auto manufacturer.
 
@@ -2046,7 +2043,7 @@ class DynamicModelWeightingService:
         self,
         symbol: str,
         base_fair_value: float,
-    ) -> Tuple[float, float, str]:
+    ) -> tuple[float, float, str]:
         """
         Calculate EV transition premium for auto manufacturers.
 
@@ -2106,7 +2103,7 @@ class DynamicModelWeightingService:
         symbol: str,
         capex: float,
         depreciation: float,
-    ) -> Tuple[bool, float, str]:
+    ) -> tuple[bool, float, str]:
         """
         Detect high capital intensity based on capex/depreciation ratio.
 
@@ -2161,7 +2158,7 @@ class DynamicModelWeightingService:
     def get_auto_manufacturing_dcf_parameters(
         self,
         symbol: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get DCF parameters specific to auto manufacturing.
 
@@ -2209,7 +2206,7 @@ class DynamicModelWeightingService:
     # DEFENSE CONTRACTOR TIER METHODS (P2-B)
     # =========================================================================
 
-    def _is_defense_contractor(self, industry: Optional[str], symbol: Optional[str]) -> bool:
+    def _is_defense_contractor(self, industry: str | None, symbol: str | None) -> bool:
         """Check if company is a defense contractor."""
         from investigator.domain.services.valuation.defense_valuation import (
             DEFENSE_INDUSTRIES,
@@ -2228,8 +2225,8 @@ class DynamicModelWeightingService:
         return False
 
     def _classify_defense_tier(
-        self, symbol: Optional[str], industry: Optional[str], financials_context: Dict
-    ) -> Tuple[str, str]:
+        self, symbol: str | None, industry: str | None, financials_context: dict
+    ) -> tuple[str, str]:
         """Classify defense contractor tier based on backlog visibility."""
         # Use defense_contractor tier with backlog-adjusted weights
         logger.info(f"{symbol or 'UNKNOWN'} - Defense contractor tier (industry={industry})")
@@ -2239,7 +2236,7 @@ class DynamicModelWeightingService:
     # REIT TIER CLASSIFICATION (P1-C)
     # =========================================================================
 
-    def _is_reit(self, sector: Optional[str], industry: Optional[str], symbol: Optional[str]) -> bool:
+    def _is_reit(self, sector: str | None, industry: str | None, symbol: str | None) -> bool:
         """
         Check if company is a REIT (Real Estate Investment Trust).
 
@@ -2277,9 +2274,7 @@ class DynamicModelWeightingService:
 
         return False
 
-    def _classify_reit_tier(
-        self, symbol: Optional[str], sector: Optional[str], industry: Optional[str]
-    ) -> Tuple[str, str]:
+    def _classify_reit_tier(self, symbol: str | None, sector: str | None, industry: str | None) -> tuple[str, str]:
         """
         Classify REIT into property-type-specific tier.
 

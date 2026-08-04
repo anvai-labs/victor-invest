@@ -21,7 +21,7 @@ Design Principles (SOLID):
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +31,8 @@ class SourceInsight:
     """Insights extracted from a single analysis source."""
 
     source: str
-    positive_factors: List[str]
-    negative_factors: List[str]
+    positive_factors: list[str]
+    negative_factors: list[str]
     critical_metric: str
     unique_insight: str
     confidence: int  # 0-100
@@ -42,13 +42,13 @@ class SourceInsight:
 class ExtractedInsights:
     """Complete extracted insights from all sources."""
 
-    fundamental: Optional[SourceInsight] = None
-    technical: Optional[SourceInsight] = None
-    sec: Optional[SourceInsight] = None
-    market_context: Optional[SourceInsight] = None
-    quantitative: Dict[str, Any] = field(default_factory=dict)
+    fundamental: SourceInsight | None = None
+    technical: SourceInsight | None = None
+    sec: SourceInsight | None = None
+    market_context: SourceInsight | None = None
+    quantitative: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for API compatibility."""
         result = {}
         if self.fundamental:
@@ -63,7 +63,7 @@ class ExtractedInsights:
             result["quantitative"] = self.quantitative
         return result
 
-    def _source_to_dict(self, insight: SourceInsight) -> Dict[str, Any]:
+    def _source_to_dict(self, insight: SourceInsight) -> dict[str, Any]:
         return {
             "positive_factors": insight.positive_factors,
             "negative_factors": insight.negative_factors,
@@ -76,7 +76,7 @@ class ExtractedInsights:
 class SourceExtractor(Protocol):
     """Protocol for extracting insights from a specific analysis source."""
 
-    def extract(self, data: Dict[str, Any]) -> Optional[SourceInsight]:
+    def extract(self, data: dict[str, Any]) -> SourceInsight | None:
         """Extract insights from source data."""
         ...
 
@@ -126,7 +126,7 @@ class MetricThresholds:
 class FundamentalInsightExtractor:
     """Extracts insights from fundamental analysis."""
 
-    def extract(self, data: Dict[str, Any]) -> Optional[SourceInsight]:
+    def extract(self, data: dict[str, Any]) -> SourceInsight | None:
         """Extract insights from fundamental analysis data."""
         if not data:
             return None
@@ -214,7 +214,7 @@ class FundamentalInsightExtractor:
             confidence=confidence,
         )
 
-    def _determine_critical_metric(self, valuation: Dict[str, Any], ratios: Dict[str, Any]) -> str:
+    def _determine_critical_metric(self, valuation: dict[str, Any], ratios: dict[str, Any]) -> str:
         """Determine the most critical metric from fundamental analysis."""
         # Priority: valuation upside > ROE > revenue growth > margins
 
@@ -235,7 +235,7 @@ class FundamentalInsightExtractor:
 
         return "Financial metrics require further analysis"
 
-    def _determine_unique_insight(self, data: Dict[str, Any], positive: List[str], negative: List[str]) -> str:
+    def _determine_unique_insight(self, data: dict[str, Any], positive: list[str], negative: list[str]) -> str:
         """Determine a unique insight not commonly found elsewhere."""
         # Check for multi-model valuation insights
         multi_model = data.get("multi_model_summary", {})
@@ -263,7 +263,7 @@ class FundamentalInsightExtractor:
         else:
             return "Mixed fundamental picture requires careful position sizing"
 
-    def _calculate_confidence(self, data: Dict[str, Any]) -> int:
+    def _calculate_confidence(self, data: dict[str, Any]) -> int:
         """Calculate confidence in fundamental analysis."""
         base_confidence = 70
 
@@ -291,7 +291,7 @@ class FundamentalInsightExtractor:
 class TechnicalInsightExtractor:
     """Extracts insights from technical analysis."""
 
-    def extract(self, data: Dict[str, Any]) -> Optional[SourceInsight]:
+    def extract(self, data: dict[str, Any]) -> SourceInsight | None:
         """Extract insights from technical analysis data."""
         if not data:
             return None
@@ -367,7 +367,7 @@ class TechnicalInsightExtractor:
             confidence=confidence,
         )
 
-    def _determine_critical_metric(self, data: Dict[str, Any]) -> str:
+    def _determine_critical_metric(self, data: dict[str, Any]) -> str:
         """Determine critical technical metric."""
         signals = data.get("signals", data.get("analysis", {}))
 
@@ -382,7 +382,7 @@ class TechnicalInsightExtractor:
 
         return "Technical signals mixed - await confirmation"
 
-    def _determine_unique_insight(self, data: Dict[str, Any], positive: List[str], negative: List[str]) -> str:
+    def _determine_unique_insight(self, data: dict[str, Any], positive: list[str], negative: list[str]) -> str:
         """Determine unique technical insight."""
         signals = data.get("signals", {})
 
@@ -401,7 +401,7 @@ class TechnicalInsightExtractor:
         else:
             return "Technical caution warranted - await clearer signals"
 
-    def _calculate_confidence(self, data: Dict[str, Any]) -> int:
+    def _calculate_confidence(self, data: dict[str, Any]) -> int:
         """Calculate confidence in technical analysis."""
         base_confidence = 65
 
@@ -432,7 +432,7 @@ class TechnicalInsightExtractor:
 class SECInsightExtractor:
     """Extracts insights from SEC filing analysis."""
 
-    def extract(self, data: Dict[str, Any]) -> Optional[SourceInsight]:
+    def extract(self, data: dict[str, Any]) -> SourceInsight | None:
         """Extract insights from SEC analysis data."""
         if not data:
             return None
@@ -502,7 +502,7 @@ class SECInsightExtractor:
             confidence=confidence,
         )
 
-    def _determine_critical_metric(self, analysis: Dict[str, Any]) -> str:
+    def _determine_critical_metric(self, analysis: dict[str, Any]) -> str:
         """Determine critical SEC-derived metric."""
         rating = analysis.get("overall_rating")
         if rating is not None:
@@ -514,7 +514,7 @@ class SECInsightExtractor:
 
         return "SEC filing analysis in progress"
 
-    def _determine_unique_insight(self, data: Dict[str, Any], analysis: Dict[str, Any]) -> str:
+    def _determine_unique_insight(self, data: dict[str, Any], analysis: dict[str, Any]) -> str:
         """Determine unique SEC insight."""
         # Check for accounting quality flags
         accounting_flags = analysis.get("accounting_quality", {}).get("flags", [])
@@ -528,7 +528,7 @@ class SECInsightExtractor:
 
         return "SEC filings provide foundational data for fundamental analysis"
 
-    def _calculate_confidence(self, data: Dict[str, Any]) -> int:
+    def _calculate_confidence(self, data: dict[str, Any]) -> int:
         """Calculate confidence in SEC analysis."""
         base_confidence = 75  # SEC data is authoritative
 
@@ -553,10 +553,10 @@ class QuantitativeInsightExtractor:
 
     def extract(
         self,
-        fundamental: Optional[Dict[str, Any]] = None,
-        technical: Optional[Dict[str, Any]] = None,
-        sec: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        fundamental: dict[str, Any] | None = None,
+        technical: dict[str, Any] | None = None,
+        sec: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Extract quantitative metrics summary."""
         quant = {}
 
@@ -622,10 +622,10 @@ class DeterministicInsightExtractor:
 
     def __init__(
         self,
-        fundamental_extractor: Optional[SourceExtractor] = None,
-        technical_extractor: Optional[SourceExtractor] = None,
-        sec_extractor: Optional[SourceExtractor] = None,
-        quantitative_extractor: Optional[QuantitativeInsightExtractor] = None,
+        fundamental_extractor: SourceExtractor | None = None,
+        technical_extractor: SourceExtractor | None = None,
+        sec_extractor: SourceExtractor | None = None,
+        quantitative_extractor: QuantitativeInsightExtractor | None = None,
     ):
         self.fundamental_extractor = fundamental_extractor or FundamentalInsightExtractor()
         self.technical_extractor = technical_extractor or TechnicalInsightExtractor()
@@ -634,10 +634,10 @@ class DeterministicInsightExtractor:
 
     def extract(
         self,
-        fundamental: Optional[Dict[str, Any]] = None,
-        technical: Optional[Dict[str, Any]] = None,
-        sec: Optional[Dict[str, Any]] = None,
-        market_context: Optional[Dict[str, Any]] = None,
+        fundamental: dict[str, Any] | None = None,
+        technical: dict[str, Any] | None = None,
+        sec: dict[str, Any] | None = None,
+        market_context: dict[str, Any] | None = None,
     ) -> ExtractedInsights:
         """
         Extract key insights from all analysis sources.
@@ -677,11 +677,11 @@ class DeterministicInsightExtractor:
 
 
 def extract_key_insights(
-    fundamental: Optional[Dict[str, Any]] = None,
-    technical: Optional[Dict[str, Any]] = None,
-    sec: Optional[Dict[str, Any]] = None,
-    market_context: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    fundamental: dict[str, Any] | None = None,
+    technical: dict[str, Any] | None = None,
+    sec: dict[str, Any] | None = None,
+    market_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """
     Drop-in replacement for LLM-based key insight extraction.
 
@@ -711,11 +711,11 @@ def extract_key_insights(
 __all__ = [
     "DeterministicInsightExtractor",
     "ExtractedInsights",
-    "SourceInsight",
     "FundamentalInsightExtractor",
-    "TechnicalInsightExtractor",
-    "SECInsightExtractor",
-    "QuantitativeInsightExtractor",
     "MetricThresholds",
+    "QuantitativeInsightExtractor",
+    "SECInsightExtractor",
+    "SourceInsight",
+    "TechnicalInsightExtractor",
     "extract_key_insights",
 ]

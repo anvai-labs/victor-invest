@@ -36,9 +36,11 @@ Date: 2025-01-05
 
 import logging
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Pattern, Set, Tuple, Union
+from re import Pattern
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -58,14 +60,14 @@ class HandlerRegistration:
 
     handler_name: str
     handler: Callable
-    sectors: Set[str]
-    industries: Set[str]
-    sector_patterns: List[Tuple[MatchType, Union[str, Pattern]]] = field(default_factory=list)
-    industry_patterns: List[Tuple[MatchType, Union[str, Pattern]]] = field(default_factory=list)
+    sectors: set[str]
+    industries: set[str]
+    sector_patterns: list[tuple[MatchType, str | Pattern]] = field(default_factory=list)
+    industry_patterns: list[tuple[MatchType, str | Pattern]] = field(default_factory=list)
     priority: int = 0  # Higher priority = checked first
     description: str = ""
 
-    def matches(self, sector: Optional[str], industry: Optional[str]) -> bool:
+    def matches(self, sector: str | None, industry: str | None) -> bool:
         """
         Check if this handler matches the given sector/industry.
 
@@ -84,7 +86,7 @@ class HandlerRegistration:
 
         return sector_match and industry_match
 
-    def _matches_sector(self, sector: Optional[str]) -> bool:
+    def _matches_sector(self, sector: str | None) -> bool:
         """Check if sector matches any registered patterns."""
         # If no sectors registered, match all
         if not self.sectors and not self.sector_patterns:
@@ -105,7 +107,7 @@ class HandlerRegistration:
 
         return False
 
-    def _matches_industry(self, industry: Optional[str]) -> bool:
+    def _matches_industry(self, industry: str | None) -> bool:
         """Check if industry matches any registered patterns."""
         # If no industries registered, match all
         if not self.industries and not self.industry_patterns:
@@ -131,7 +133,7 @@ class HandlerRegistration:
         value: str,
         value_lower: str,
         match_type: MatchType,
-        pattern: Union[str, Pattern],
+        pattern: str | Pattern,
     ) -> bool:
         """Check if value matches a pattern."""
         if match_type == MatchType.EXACT:
@@ -167,8 +169,8 @@ class ValuationRegistry:
 
     def __init__(self):
         """Initialize empty registry."""
-        self._handlers: List[HandlerRegistration] = []
-        self._default_handler: Optional[Callable] = None
+        self._handlers: list[HandlerRegistration] = []
+        self._default_handler: Callable | None = None
         self._initialized = False
         self.logger = logger
 
@@ -176,8 +178,8 @@ class ValuationRegistry:
         self,
         handler_name: str,
         handler: Callable,
-        sectors: Optional[List[str]] = None,
-        industries: Optional[List[str]] = None,
+        sectors: list[str] | None = None,
+        industries: list[str] | None = None,
         priority: int = 0,
         description: str = "",
     ) -> "ValuationRegistry":
@@ -269,10 +271,10 @@ class ValuationRegistry:
 
     def get_handler(
         self,
-        sector: Optional[str] = None,
-        industry: Optional[str] = None,
-        symbol: Optional[str] = None,
-    ) -> Tuple[Optional[str], Optional[Callable]]:
+        sector: str | None = None,
+        industry: str | None = None,
+        symbol: str | None = None,
+    ) -> tuple[str | None, Callable | None]:
         """
         Get the appropriate valuation handler for a sector/industry.
 
@@ -299,7 +301,7 @@ class ValuationRegistry:
 
         return (None, None)
 
-    def get_handler_info(self, handler_name: str) -> Optional[Dict[str, Any]]:
+    def get_handler_info(self, handler_name: str) -> dict[str, Any] | None:
         """
         Get information about a registered handler.
 
@@ -320,7 +322,7 @@ class ValuationRegistry:
                 }
         return None
 
-    def list_handlers(self) -> List[Dict[str, Any]]:
+    def list_handlers(self) -> list[dict[str, Any]]:
         """
         List all registered handlers.
 
@@ -363,7 +365,7 @@ class ValuationRegistry:
         self.logger.debug("Cleared all valuation handlers")
 
     @staticmethod
-    def _parse_pattern(pattern: str) -> Tuple[MatchType, Union[str, Pattern]]:
+    def _parse_pattern(pattern: str) -> tuple[MatchType, str | Pattern]:
         """
         Parse a pattern string into match type and pattern.
 
@@ -412,7 +414,7 @@ class ValuationRegistry:
 
 
 # Singleton instance
-_registry_instance: Optional[ValuationRegistry] = None
+_registry_instance: ValuationRegistry | None = None
 
 
 def get_valuation_registry() -> ValuationRegistry:

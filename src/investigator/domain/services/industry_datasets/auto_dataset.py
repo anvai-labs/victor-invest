@@ -15,7 +15,6 @@ Date: 2025-12-30
 """
 
 import logging
-from typing import Dict, List, Optional, Set, Tuple
 
 from investigator.domain.services.industry_datasets.base import (
     BaseIndustryDataset,
@@ -102,7 +101,7 @@ class AutoDataset(BaseIndustryDataset):
     def version(self) -> str:
         return "1.0.0"
 
-    def get_industry_names(self) -> List[str]:
+    def get_industry_names(self) -> list[str]:
         return [
             "Auto Manufacturing",
             "Auto Manufacturers",
@@ -114,10 +113,10 @@ class AutoDataset(BaseIndustryDataset):
             "Auto & Truck Manufacturers",
         ]
 
-    def get_known_symbols(self) -> Set[str]:
+    def get_known_symbols(self) -> set[str]:
         return KNOWN_AUTO_SYMBOLS.copy()
 
-    def get_metric_definitions(self) -> List[MetricDefinition]:
+    def get_metric_definitions(self) -> list[MetricDefinition]:
         return [
             MetricDefinition(
                 name="ev_sales_mix",
@@ -205,7 +204,7 @@ class AutoDataset(BaseIndustryDataset):
             ),
         ]
 
-    def extract_metrics(self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs) -> IndustryMetrics:
+    def extract_metrics(self, symbol: str, xbrl_data: dict | None, financials: dict, **kwargs) -> IndustryMetrics:
         """Extract auto-specific metrics from XBRL data and financials."""
         metrics = IndustryMetrics(
             industry="auto_manufacturing",
@@ -289,7 +288,7 @@ class AutoDataset(BaseIndustryDataset):
 
         return metrics
 
-    def _extract_warranty_ratio(self, xbrl_data: Optional[Dict], financials: Dict) -> Optional[float]:
+    def _extract_warranty_ratio(self, xbrl_data: dict | None, financials: dict) -> float | None:
         """Extract or calculate warranty reserve ratio."""
         warranty = self._extract_from_xbrl(
             xbrl_data,
@@ -305,7 +304,7 @@ class AutoDataset(BaseIndustryDataset):
 
         return None
 
-    def _calculate_rd_ratio(self, financials: Dict) -> Optional[float]:
+    def _calculate_rd_ratio(self, financials: dict) -> float | None:
         """Calculate R&D to revenue ratio."""
         rd = financials.get("rd_expense") or financials.get("researchAndDevelopment")
         revenue = financials.get("revenue") or financials.get("totalRevenue")
@@ -315,7 +314,7 @@ class AutoDataset(BaseIndustryDataset):
 
         return None
 
-    def _calculate_gross_margin(self, financials: Dict) -> Optional[float]:
+    def _calculate_gross_margin(self, financials: dict) -> float | None:
         """Calculate gross margin from available data."""
         gross_profit = financials.get("grossProfit")
         revenue = financials.get("revenue") or financials.get("totalRevenue")
@@ -336,7 +335,7 @@ class AutoDataset(BaseIndustryDataset):
         else:
             return "traditional"
 
-    def assess_quality(self, metrics: IndustryMetrics) -> Tuple[MetricQuality, str]:
+    def assess_quality(self, metrics: IndustryMetrics) -> tuple[MetricQuality, str]:
         """Assess quality of auto metrics."""
         required_metrics = ["ev_sales_mix", "gross_margin"]
         important_metrics = [
@@ -358,8 +357,8 @@ class AutoDataset(BaseIndustryDataset):
             return (MetricQuality.POOR, "Missing key metrics for auto valuation")
 
     def get_valuation_adjustments(
-        self, metrics: IndustryMetrics, financials: Dict, **kwargs
-    ) -> List[ValuationAdjustment]:
+        self, metrics: IndustryMetrics, financials: dict, **kwargs
+    ) -> list[ValuationAdjustment]:
         """Calculate auto-specific valuation adjustments."""
         adjustments = []
 
@@ -461,7 +460,7 @@ class AutoDataset(BaseIndustryDataset):
 
         return adjustments
 
-    def get_tier_weights(self) -> Optional[Dict[str, int]]:
+    def get_tier_weights(self) -> dict[str, int] | None:
         """Return recommended tier weights for auto manufacturing."""
         return {
             "ev_ebitda": 40,

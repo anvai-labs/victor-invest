@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - Infrastructure Layer HTTP
 Copyright (c) 2025 Vijaykumar Singh
@@ -17,8 +16,8 @@ from .api_client import (
 
 __all__ = [
     "BaseAPIClient",
-    "SECAPIClient",
     "OllamaAPIClient",
+    "SECAPIClient",
     "rate_limit",
     "retry_on_failure",
 ]

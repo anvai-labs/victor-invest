@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ import logging
 from dataclasses import dataclass
 from datetime import date
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from investigator.domain.services.credit_risk.protocols import (
     CreditScoreResult,
@@ -73,11 +73,11 @@ class BeneishMScoreResult(CreditScoreResult):
         manipulation_probability: Estimated probability of manipulation
     """
 
-    risk_level: Optional[ManipulationRisk] = None
-    manipulation_probability: Optional[float] = None
+    risk_level: ManipulationRisk | None = None
+    manipulation_probability: float | None = None
     score_name: str = "Beneish M-Score"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary."""
         result = super().to_dict()
         result.update(
@@ -131,7 +131,7 @@ class BeneishMScoreCalculator:
         """Return calculator description."""
         return self._description
 
-    def validate_data(self, data: FinancialData) -> List[str]:
+    def validate_data(self, data: FinancialData) -> list[str]:
         """Validate required financial data fields.
 
         M-Score requires both current and prior period data.
@@ -244,12 +244,12 @@ class BeneishMScoreCalculator:
 
         except Exception as e:
             logger.error(f"Error calculating Beneish M-Score for {data.symbol}: {e}")
-            result.warnings.append(f"Calculation error: {str(e)}")
+            result.warnings.append(f"Calculation error: {e!s}")
             result.interpretation = "Calculation failed"
 
         return result
 
-    def _calculate_indices(self, data: FinancialData) -> Dict[str, Any]:
+    def _calculate_indices(self, data: FinancialData) -> dict[str, Any]:
         """Calculate the eight M-Score indices.
 
         Args:
@@ -347,7 +347,7 @@ class BeneishMScoreCalculator:
 
         return indices
 
-    def _calculate_mscore(self, indices: Dict[str, Any]) -> Optional[float]:
+    def _calculate_mscore(self, indices: dict[str, Any]) -> float | None:
         """Calculate M-Score from indices.
 
         M = -4.84 + 0.920×DSRI + 0.528×GMI + 0.404×AQI + 0.892×SGI
@@ -376,7 +376,7 @@ class BeneishMScoreCalculator:
 
         return m_score
 
-    def _classify_risk(self, m_score: Optional[float]) -> Optional[ManipulationRisk]:
+    def _classify_risk(self, m_score: float | None) -> ManipulationRisk | None:
         """Classify M-Score into risk levels."""
         if m_score is None:
             return None
@@ -388,7 +388,7 @@ class BeneishMScoreCalculator:
         else:
             return ManipulationRisk.MODERATE
 
-    def _get_interpretation(self, risk: Optional[ManipulationRisk], score: Optional[float]) -> str:
+    def _get_interpretation(self, risk: ManipulationRisk | None, score: float | None) -> str:
         """Generate human-readable interpretation."""
         if risk is None or score is None:
             return "Unable to calculate M-Score due to missing data"
@@ -414,7 +414,7 @@ class BeneishMScoreCalculator:
                 "Recommend detailed review of accounting policies."
             )
 
-    def _estimate_manipulation_prob(self, m_score: Optional[float]) -> Optional[float]:
+    def _estimate_manipulation_prob(self, m_score: float | None) -> float | None:
         """Estimate manipulation probability from M-Score.
 
         Based on Beneish's research:
@@ -434,14 +434,14 @@ class BeneishMScoreCalculator:
             return 1.0 if m_score > -1.78 else 0.0
 
     @staticmethod
-    def _safe_divide(numerator: Optional[float], denominator: Optional[float]) -> Optional[float]:
+    def _safe_divide(numerator: float | None, denominator: float | None) -> float | None:
         """Safely divide two numbers, handling None and zero."""
         if numerator is None or denominator is None or denominator == 0:
             return None
         return numerator / denominator
 
     @staticmethod
-    def _safe_sum(*values: Optional[float]) -> Optional[float]:
+    def _safe_sum(*values: float | None) -> float | None:
         """Safely sum values, returning None if any are None."""
         if any(v is None for v in values):
             return None
@@ -449,11 +449,11 @@ class BeneishMScoreCalculator:
 
     def _safe_ratio_index(
         self,
-        curr_num: Optional[float],
-        curr_den: Optional[float],
-        prior_num: Optional[float],
-        prior_den: Optional[float],
-    ) -> Optional[float]:
+        curr_num: float | None,
+        curr_den: float | None,
+        prior_num: float | None,
+        prior_den: float | None,
+    ) -> float | None:
         """Calculate ratio index: (curr_num/curr_den) / (prior_num/prior_den)."""
         curr_ratio = self._safe_divide(curr_num, curr_den)
         prior_ratio = self._safe_divide(prior_num, prior_den)

@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -70,7 +70,7 @@ Note on Execution Models:
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
 from victor_contracts.workflow_runtime import BaseYAMLWorkflowProvider
 
@@ -149,7 +149,7 @@ class InvestmentWorkflowProvider(BaseYAMLWorkflowProvider):
         """
         return Path(__file__).parent
 
-    def get_auto_workflows(self) -> List[Tuple[str, str]]:
+    def get_auto_workflows(self) -> list[tuple[str, str]]:
         """Get automatic workflow triggers based on query patterns.
 
         Returns:
@@ -171,7 +171,7 @@ class InvestmentWorkflowProvider(BaseYAMLWorkflowProvider):
             (r"relative\s+valuation", "peer_comparison"),
         ]
 
-    def get_workflow_for_task_type(self, task_type: str) -> Optional[str]:
+    def get_workflow_for_task_type(self, task_type: str) -> str | None:
         """Get appropriate workflow for task type.
 
         Args:
@@ -196,10 +196,10 @@ class InvestmentWorkflowProvider(BaseYAMLWorkflowProvider):
     async def run_agentic_workflow(
         self,
         workflow_name: str,
-        context: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
         provider: str = "ollama",
-        model: Optional[str] = None,
-        timeout: Optional[float] = None,
+        model: str | None = None,
+        timeout: float | None = None,
     ) -> "WorkflowResult":
         """Execute a YAML workflow with full agent node support.
 
@@ -269,8 +269,8 @@ class InvestmentWorkflowProvider(BaseYAMLWorkflowProvider):
     async def run_workflow_with_handlers(
         self,
         workflow_name: str,
-        context: Optional[Dict[str, Any]] = None,
-        timeout: Optional[float] = None,
+        context: dict[str, Any] | None = None,
+        timeout: float | None = None,
     ) -> "WorkflowResult":
         """Execute a YAML workflow using registered compute handlers.
 
@@ -384,7 +384,7 @@ def ensure_handlers_registered() -> None:
         synced = True
         sync_method_used = "sync_handlers_with_executor"
     except Exception:
-        pass
+        logger.debug("ensure_handlers_registered: suppressed error", exc_info=True)
 
     if not synced:
         # Compatibility path for newer/older Victor variants:
@@ -399,7 +399,7 @@ def ensure_handlers_registered() -> None:
                 synced = True
                 sync_method_used = "registry.sync_with_executor"
         except Exception:
-            pass
+            logger.debug("ensure_handlers_registered: suppressed error", exc_info=True)
 
     if not synced:
         # Last-resort bridge: push handlers from framework registry to
@@ -421,7 +421,7 @@ def ensure_handlers_registered() -> None:
             synced = pushed > 0
             sync_method_used = "manual_executor_bridge"
         except Exception:
-            pass
+            logger.debug("ensure_handlers_registered: suppressed error", exc_info=True)
 
     if not synced:
         logger.warning(
@@ -434,27 +434,27 @@ def ensure_handlers_registered() -> None:
 
 
 __all__ = [
-    # YAML-first workflow provider
-    "InvestmentWorkflowProvider",
-    # Lazy handler registration
-    "ensure_handlers_registered",
     # Analysis state definitions
     "AnalysisMode",
     "AnalysisWorkflowState",
+    # YAML-first workflow provider
+    "InvestmentWorkflowProvider",
+    # RL Backtest state
+    "RLBacktestWorkflowState",
+    "build_comprehensive_graph",
     # Analysis graph builders (Python-based, for backwards compatibility)
     "build_graph_for_mode",
     "build_quick_graph",
-    "build_standard_graph",
-    "build_comprehensive_graph",
-    # Analysis convenience
-    "run_analysis",
-    "run_yaml_analysis",
-    # RL Backtest state
-    "RLBacktestWorkflowState",
     # RL Backtest graph builders
     "build_rl_backtest_graph",
+    "build_standard_graph",
+    # Lazy handler registration
+    "ensure_handlers_registered",
+    "generate_lookback_list",
+    # Analysis convenience
+    "run_analysis",
     # RL Backtest convenience
     "run_rl_backtest",
     "run_rl_backtest_batch",
-    "generate_lookback_list",
+    "run_yaml_analysis",
 ]

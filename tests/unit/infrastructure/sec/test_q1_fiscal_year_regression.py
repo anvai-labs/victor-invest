@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Regression Tests for Q1 Fiscal Year Mislabeling Fix
 
@@ -233,11 +232,11 @@ class TestQ1FiscalYearBulkTablePathRegression:
             )
 
         # Verify Q1 fiscal_year was adjusted
-        q1_quarter = [q for q in quarters if q["fiscal_period"] == "Q1"][0]
+        q1_quarter = next(q for q in quarters if q["fiscal_period"] == "Q1")
         assert q1_quarter["fiscal_year"] == 2024, "Q1 ending Oct 31, 2023 should be fiscal_year 2024 in bulk table path"
 
         # Verify FY fiscal_year NOT changed
-        fy_quarter = [q for q in quarters if q["fiscal_period"] == "FY"][0]
+        fy_quarter = next(q for q in quarters if q["fiscal_period"] == "FY")
         assert fy_quarter["fiscal_year"] == 2023, "FY ending Jul 31, 2023 should stay fiscal_year 2023"
 
     def test_q1_fiscal_year_multiple_years_in_get_multiple_quarters(self):
@@ -311,10 +310,10 @@ class TestQ1FiscalYearBulkTablePathRegression:
         q1_quarters = [q for q in quarters if q["fiscal_period"] == "Q1"]
         assert len(q1_quarters) == 2, "Should have 2 Q1 periods"
 
-        q1_2024 = [q for q in q1_quarters if q["period_end"] == "2024-10-31"][0]
+        q1_2024 = next(q for q in q1_quarters if q["period_end"] == "2024-10-31")
         assert q1_2024["fiscal_year"] == 2025, "Q1 ending Oct 31, 2024 should be fiscal_year 2025"
 
-        q1_2023 = [q for q in q1_quarters if q["period_end"] == "2023-10-31"][0]
+        q1_2023 = next(q for q in q1_quarters if q["period_end"] == "2023-10-31")
         assert q1_2023["fiscal_year"] == 2024, "Q1 ending Oct 31, 2023 should be fiscal_year 2024"
 
     def test_q1_fiscal_year_no_fy_periods_available(self):

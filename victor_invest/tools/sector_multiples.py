@@ -33,7 +33,7 @@ Example:
 """
 
 import logging
-from typing import Any, List, Optional
+from typing import Any
 
 from victor_invest.tools.base import BaseTool, ToolResult
 
@@ -104,13 +104,13 @@ class SectorMultiplesTool(BaseTool):
                 )
 
         except Exception as e:
-            logger.exception(f"Error in SectorMultiplesTool.execute: {e}")
-            return ToolResult.create_failure(f"Error executing sector multiples: {str(e)}")
+            logger.exception("Error in SectorMultiplesTool.execute")
+            return ToolResult.create_failure(f"Error executing sector multiples: {e!s}")
 
     async def _refresh(
         self,
-        sectors: Optional[str] = None,
-        industries: Optional[str] = None,
+        sectors: str | None = None,
+        industries: str | None = None,
         min_samples: int = 10,
         exclude_outliers: bool = True,
         update_config: bool = True,
@@ -128,8 +128,8 @@ class SectorMultiplesTool(BaseTool):
         )
 
         # Parse sector/industry lists
-        sector_list: Optional[List[str]] = None
-        industry_list: Optional[List[str]] = None
+        sector_list: list[str] | None = None
+        industry_list: list[str] | None = None
 
         if sectors:
             sector_list = [s.strip() for s in sectors.split(",")]
@@ -195,12 +195,12 @@ class SectorMultiplesTool(BaseTool):
     async def _historical(
         self,
         fiscal_year: int,
-        sectors: Optional[str] = None,
-        industries: Optional[str] = None,
+        sectors: str | None = None,
+        industries: str | None = None,
         min_samples: int = 5,
         exclude_outliers: bool = True,
         store: bool = True,
-        export: Optional[str] = None,
+        export: str | None = None,
         **kwargs,
     ) -> ToolResult:
         """
@@ -213,8 +213,8 @@ class SectorMultiplesTool(BaseTool):
         )
 
         # Parse sector/industry lists
-        sector_list: Optional[List[str]] = None
-        industry_list: Optional[List[str]] = None
+        sector_list: list[str] | None = None
+        industry_list: list[str] | None = None
 
         if sectors:
             sector_list = [s.strip() for s in sectors.split(",")]
@@ -301,7 +301,7 @@ class SectorMultiplesTool(BaseTool):
     async def _timeline(
         self,
         sectors: str = "Technology",
-        industries: Optional[str] = None,
+        industries: str | None = None,
         years: str = "5",
         metric: str = "all",
         **kwargs,
@@ -426,9 +426,9 @@ class SectorMultiplesTool(BaseTool):
         self,
         group_name: str,
         group_type: str = "sector",
-        start_year: Optional[int] = None,
-        end_year: Optional[int] = None,
-        export: Optional[str] = None,
+        start_year: int | None = None,
+        end_year: int | None = None,
+        export: str | None = None,
         **kwargs,
     ) -> ToolResult:
         """
@@ -509,8 +509,8 @@ class SectorMultiplesTool(BaseTool):
 
     async def _trend_adjusted(
         self,
-        sectors: Optional[str] = None,
-        industries: Optional[str] = None,
+        sectors: str | None = None,
+        industries: str | None = None,
         min_samples: int = 10,
         exclude_outliers: bool = True,
         lookback_years: int = 5,
@@ -546,8 +546,8 @@ class SectorMultiplesTool(BaseTool):
         )
 
         # Parse sector/industry lists
-        sector_list: Optional[List[str]] = None
-        industry_list: Optional[List[str]] = None
+        sector_list: list[str] | None = None
+        industry_list: list[str] | None = None
 
         if sectors:
             sector_list = [s.strip() for s in sectors.split(",")]

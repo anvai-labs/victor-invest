@@ -25,7 +25,6 @@ def backtest(ctx):
         investigator backtest train --epochs 100
         investigator backtest status
     """
-    pass
 
 
 @backtest.command("run")

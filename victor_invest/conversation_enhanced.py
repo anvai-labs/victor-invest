@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from victor_contracts.conversation import ConversationCoordinator, ConversationStats, TurnType
 
@@ -60,15 +60,15 @@ class InvestmentContext:
         watchlist_updates: List of watchlist additions/removals
     """
 
-    trades_analyzed: List[Dict[str, Any]] = field(default_factory=list)
-    investment_decisions: List[Dict[str, Any]] = field(default_factory=list)
-    portfolio_considerations: List[Dict[str, Any]] = field(default_factory=list)
-    risk_assessments: List[Dict[str, Any]] = field(default_factory=list)
-    research_conducted: List[Dict[str, Any]] = field(default_factory=list)
-    market_data_sources: List[str] = field(default_factory=list)
-    watchlist_updates: List[Dict[str, Any]] = field(default_factory=list)
+    trades_analyzed: list[dict[str, Any]] = field(default_factory=list)
+    investment_decisions: list[dict[str, Any]] = field(default_factory=list)
+    portfolio_considerations: list[dict[str, Any]] = field(default_factory=list)
+    risk_assessments: list[dict[str, Any]] = field(default_factory=list)
+    research_conducted: list[dict[str, Any]] = field(default_factory=list)
+    market_data_sources: list[str] = field(default_factory=list)
+    watchlist_updates: list[dict[str, Any]] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "trades_analyzed": self.trades_analyzed,
@@ -108,7 +108,7 @@ class InvestmentContext:
     def add_investment_decision(
         self,
         decision: str,
-        symbol: Optional[str] = None,
+        symbol: str | None = None,
         rationale: str = "",
     ) -> None:
         """Record an investment decision.
@@ -229,8 +229,8 @@ class EnhancedInvestConversationManager:
         role: str,
         content: str,
         turn_type: TurnType,
-        metadata: Optional[Dict[str, Any]] = None,
-        tool_calls: Optional[List[Dict[str, Any]]] = None,
+        metadata: dict[str, Any] | None = None,
+        tool_calls: list[dict[str, Any]] | None = None,
     ) -> str:
         """Add a message to the conversation.
 
@@ -248,10 +248,10 @@ class EnhancedInvestConversationManager:
 
     def get_history(
         self,
-        max_turns: Optional[int] = None,
+        max_turns: int | None = None,
         include_system: bool = True,
         include_tool: bool = True,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get conversation history.
 
         Args:
@@ -299,7 +299,7 @@ class EnhancedInvestConversationManager:
     def track_investment_decision(
         self,
         decision: str,
-        symbol: Optional[str] = None,
+        symbol: str | None = None,
         rationale: str = "",
     ) -> None:
         """Track an investment decision.
@@ -422,7 +422,7 @@ class EnhancedInvestConversationManager:
         """
         return self._investment_context
 
-    def get_observability_data(self) -> Dict[str, Any]:
+    def get_observability_data(self) -> dict[str, Any]:
         """Get observability data for dashboard integration.
 
         Returns:
@@ -446,6 +446,6 @@ class EnhancedInvestConversationManager:
 
 
 __all__ = [
-    "InvestmentContext",
     "EnhancedInvestConversationManager",
+    "InvestmentContext",
 ]

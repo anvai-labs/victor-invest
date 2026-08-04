@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - SEC Data Adapter Patterns
 Copyright (c) 2025 Vijaykumar Singh
@@ -10,7 +9,7 @@ Converts between different data formats (SEC API, Internal, LLM)
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any
 
 from data.models import FinancialStatementData, QuarterlyData
 from investigator.config import get_config
@@ -24,12 +23,10 @@ class IDataFormatAdapter(ABC):
     @abstractmethod
     def adapt(self, data: Any) -> Any:
         """Adapt data from one format to another"""
-        pass
 
     @abstractmethod
     def reverse_adapt(self, data: Any) -> Any:
         """Reverse adaptation (if supported)"""
-        pass
 
 
 class SECToInternalAdapter(IDataFormatAdapter):
@@ -39,7 +36,7 @@ class SECToInternalAdapter(IDataFormatAdapter):
         self.config = config or get_config()
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-    def adapt(self, sec_data: Dict[str, Any]) -> List[QuarterlyData]:
+    def adapt(self, sec_data: dict[str, Any]) -> list[QuarterlyData]:
         """Convert SEC API response to internal QuarterlyData format"""
         quarterly_data = []
 
@@ -51,7 +48,7 @@ class SECToInternalAdapter(IDataFormatAdapter):
 
         return quarterly_data
 
-    def _adapt_submissions(self, submissions_data: Dict) -> List[QuarterlyData]:
+    def _adapt_submissions(self, submissions_data: dict) -> list[QuarterlyData]:
         """Adapt SEC submissions format"""
         quarterly_data = []
 
@@ -91,7 +88,7 @@ class SECToInternalAdapter(IDataFormatAdapter):
 
         return quarterly_data
 
-    def _adapt_company_facts(self, facts_data: Dict) -> List[QuarterlyData]:
+    def _adapt_company_facts(self, facts_data: dict) -> list[QuarterlyData]:
         """Adapt SEC company facts format"""
         quarterly_data = []
 
@@ -164,7 +161,7 @@ class SECToInternalAdapter(IDataFormatAdapter):
         except Exception:
             return 0, ""
 
-    def reverse_adapt(self, internal_data: List[QuarterlyData]) -> Dict[str, Any]:
+    def reverse_adapt(self, internal_data: list[QuarterlyData]) -> dict[str, Any]:
         """Convert internal format back to SEC format (for compatibility)"""
         if not internal_data:
             return {}
@@ -197,7 +194,7 @@ class InternalToLLMAdapter(IDataFormatAdapter):
         self.config = config or get_config()
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-    def adapt(self, quarterly_data: List[QuarterlyData]) -> str:
+    def adapt(self, quarterly_data: list[QuarterlyData]) -> str:
         """Convert quarterly data to LLM-friendly format"""
         if not quarterly_data:
             return "No financial data available"
@@ -234,7 +231,7 @@ class InternalToLLMAdapter(IDataFormatAdapter):
 
         return "\n".join(sections)
 
-    def _format_financial_section(self, data: Dict[str, Any]) -> List[str]:
+    def _format_financial_section(self, data: dict[str, Any]) -> list[str]:
         """Format a financial statement section"""
         lines = []
 
@@ -311,7 +308,7 @@ class InternalToLLMAdapter(IDataFormatAdapter):
 
         return lines
 
-    def reverse_adapt(self, llm_response: str) -> Dict[str, Any]:
+    def reverse_adapt(self, llm_response: str) -> dict[str, Any]:
         """Parse LLM response back to structured format"""
         # This would parse LLM output back to structured data
         # Implementation depends on LLM response format
@@ -403,7 +400,7 @@ class CompanyFactsToDetailedAdapter(IDataFormatAdapter):
         self.frame_details = getattr(self.config.sec, "frame_api_details", {})
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-    def adapt(self, facts_data: Dict[str, Any]) -> Dict[str, Any]:
+    def adapt(self, facts_data: dict[str, Any]) -> dict[str, Any]:
         """Convert company facts to detailed categories"""
         detailed_results = {}
 
@@ -423,7 +420,7 @@ class CompanyFactsToDetailedAdapter(IDataFormatAdapter):
 
         return detailed_results
 
-    def _extract_category_data(self, facts: Dict, concept_mappings: Dict) -> Dict[str, Any]:
+    def _extract_category_data(self, facts: dict, concept_mappings: dict) -> dict[str, Any]:
         """Extract data for a specific category"""
         concepts = {}
         successful = 0
@@ -442,7 +439,7 @@ class CompanyFactsToDetailedAdapter(IDataFormatAdapter):
                     units = us_gaap[clean_concept].get("units", {})
 
                     for unit_type in ["USD", "shares", "pure"]:
-                        if unit_type in units and units[unit_type]:
+                        if units.get(unit_type):
                             latest = max(units[unit_type], key=lambda x: x.get("end", ""))
 
                             concepts[field_name] = {
@@ -478,7 +475,7 @@ class CompanyFactsToDetailedAdapter(IDataFormatAdapter):
             },
         }
 
-    def reverse_adapt(self, detailed_data: Dict[str, Any]) -> Dict[str, Any]:
+    def reverse_adapt(self, detailed_data: dict[str, Any]) -> dict[str, Any]:
         """Convert detailed format back to company facts format"""
         # This would reconstruct company facts structure from detailed categories
         # Implementation would be complex and rarely needed

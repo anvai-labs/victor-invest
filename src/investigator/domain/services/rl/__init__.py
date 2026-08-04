@@ -85,34 +85,34 @@ from investigator.domain.services.rl.training import (
 )
 
 __all__ = [
-    # Models
-    "ValuationContext",
-    "Experience",
-    "TrainingMetrics",
-    "EvaluationMetrics",
     "ABTestResults",
-    "RewardSignal",
+    "ABTestingFramework",
+    "ContextualBanditPolicy",
+    "EvaluationMetrics",
+    "Experience",
+    # Training
+    "ExperienceCollector",
+    "FeatureNormalizer",
+    "HybridPolicy",
     # Core services
     "OutcomeTracker",
     "PriceHistoryService",
-    "ValuationContextExtractor",
-    "FeatureNormalizer",
-    # Policies
-    "RLPolicy",
-    "ContextualBanditPolicy",
-    "HybridPolicy",
-    # Training
-    "ExperienceCollector",
-    "RLTrainer",
-    "RLTrainingPipeline",
     # Monitoring
     "RLMetrics",
-    "ABTestingFramework",
     # Integration
     "RLModelWeightingService",
+    # Policies
+    "RLPolicy",
+    "RLTrainer",
+    "RLTrainingPipeline",
     # Reward calculation
     "RewardCalculator",
     "RewardComponents",
-    "get_reward_calculator",
+    "RewardSignal",
+    "TrainingMetrics",
+    # Models
+    "ValuationContext",
+    "ValuationContextExtractor",
     "calculate_reward",
+    "get_reward_calculator",
 ]

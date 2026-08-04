@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Ticker to CIK (Central Index Key) Mapper
 
@@ -13,7 +12,6 @@ import json
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import requests
 
@@ -44,7 +42,7 @@ class TickerCIKMapper:
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(exist_ok=True)
         self.mapping_file = self.data_dir / "ticker_cik_map.txt"
-        self.ticker_map: Dict[str, str] = {}
+        self.ticker_map: dict[str, str] = {}
 
         # Get user agent from config or use default
         if config and hasattr(config, "sec") and hasattr(config.sec, "user_agent"):
@@ -134,7 +132,7 @@ class TickerCIKMapper:
             logger.error(f"Unexpected error downloading ticker mapping: {e}")
             return False
 
-    def get_cik(self, ticker: str) -> Optional[str]:
+    def get_cik(self, ticker: str) -> str | None:
         """
         Get CIK for a given ticker symbol.
 
@@ -158,7 +156,7 @@ class TickerCIKMapper:
             logger.warning(f"CIK not found for ticker: {ticker}")
             return None
 
-    def get_cik_padded(self, ticker: str) -> Optional[str]:
+    def get_cik_padded(self, ticker: str) -> str | None:
         """
         Get CIK padded to 10 digits with leading zeros.
 
@@ -173,7 +171,7 @@ class TickerCIKMapper:
             return f"{int(cik):010d}"
         return None
 
-    def resolve_cik(self, symbol: str, provided_cik: str = None) -> Optional[str]:
+    def resolve_cik(self, symbol: str, provided_cik: str | None = None) -> str | None:
         """
         Resolve CIK for a symbol, ensuring it's in proper zero-padded format
 
@@ -205,7 +203,7 @@ class TickerCIKMapper:
 
         return None
 
-    def get_multiple_ciks(self, tickers: List[str]) -> Dict[str, Optional[str]]:
+    def get_multiple_ciks(self, tickers: list[str]) -> dict[str, str | None]:
         """
         Get CIKs for multiple tickers.
 
@@ -222,7 +220,7 @@ class TickerCIKMapper:
         logger.info("Forcing ticker mapping refresh...")
         return self._download_mapping()
 
-    def search_by_cik(self, cik: str) -> Optional[str]:
+    def search_by_cik(self, cik: str) -> str | None:
         """
         Reverse lookup: find ticker by CIK.
 
@@ -240,9 +238,9 @@ class TickerCIKMapper:
 
         return None
 
-    def get_all_tickers(self) -> List[str]:
+    def get_all_tickers(self) -> list[str]:
         """Get list of all available tickers."""
-        return sorted([t.upper() for t in self.ticker_map.keys()])
+        return sorted([t.upper() for t in self.ticker_map])
 
     def ticker_exists(self, ticker: str) -> bool:
         """Check if a ticker exists in the mapping."""
@@ -265,7 +263,7 @@ class TickerCIKMapper:
 
 
 # Singleton instance
-_mapper_instance: Optional[TickerCIKMapper] = None
+_mapper_instance: TickerCIKMapper | None = None
 
 
 def get_ticker_mapper(data_dir: str = "data") -> TickerCIKMapper:
@@ -277,12 +275,12 @@ def get_ticker_mapper(data_dir: str = "data") -> TickerCIKMapper:
 
 
 # Convenience functions
-def ticker_to_cik(ticker: str) -> Optional[str]:
+def ticker_to_cik(ticker: str) -> str | None:
     """Convert ticker to CIK using default mapper."""
     return get_ticker_mapper().get_cik(ticker)
 
 
-def ticker_to_cik_padded(ticker: str) -> Optional[str]:
+def ticker_to_cik_padded(ticker: str) -> str | None:
     """Convert ticker to 10-digit padded CIK."""
     return get_ticker_mapper().get_cik_padded(ticker)
 

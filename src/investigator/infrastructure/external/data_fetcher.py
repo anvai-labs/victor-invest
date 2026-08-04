@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,7 +35,6 @@ Usage:
     health = await fetcher.health_check()
 """
 
-import asyncio
 import io
 import json
 import logging
@@ -45,7 +44,7 @@ import ssl
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import aiohttp
 import yaml
@@ -66,10 +65,10 @@ class FetchResult:
     source: str = ""  # "primary_url", "fallback_url_1", "fred"
     url_used: str = ""
     fetch_time: datetime = field(default_factory=datetime.now)
-    error: Optional[str] = None
+    error: str | None = None
     cached: bool = False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "success": self.success,
             "source": self.source,
@@ -87,8 +86,8 @@ class HealthStatus:
     source_id: str
     indicator_id: str
     is_healthy: bool
-    last_success: Optional[datetime] = None
-    last_failure: Optional[datetime] = None
+    last_success: datetime | None = None
+    last_failure: datetime | None = None
     failure_count: int = 0
     is_stale: bool = False
     staleness_hours: float = 0.0
@@ -100,10 +99,10 @@ class HealthStatus:
 class DataSourceRegistry:
     """Manages the data sources registry configuration."""
 
-    def __init__(self, registry_path: Optional[Path] = None):
+    def __init__(self, registry_path: Path | None = None):
         self.registry_path = registry_path or REGISTRY_PATH
-        self._config: Dict[str, Any] = {}
-        self._load_time: Optional[datetime] = None
+        self._config: dict[str, Any] = {}
+        self._load_time: datetime | None = None
         self._load()
 
     def _load(self) -> None:
@@ -125,19 +124,19 @@ class DataSourceRegistry:
         """Reload registry from file."""
         self._load()
 
-    def get_source(self, source_id: str, indicator_id: str) -> Optional[Dict[str, Any]]:
+    def get_source(self, source_id: str, indicator_id: str) -> dict[str, Any] | None:
         """Get configuration for a specific data source indicator."""
         source = self._config.get(source_id, {})
         return source.get(indicator_id)
 
-    def get_urls(self, source_id: str, indicator_id: str) -> List[str]:
+    def get_urls(self, source_id: str, indicator_id: str) -> list[str]:
         """Get list of URLs for a source (primary + fallbacks)."""
         config = self.get_source(source_id, indicator_id)
         if config:
             return config.get("urls", [])
         return []
 
-    def get_fred_series(self, source_id: str, indicator_id: str) -> Optional[str]:
+    def get_fred_series(self, source_id: str, indicator_id: str) -> str | None:
         """Get FRED series ID if available."""
         config = self.get_source(source_id, indicator_id)
         if config:
@@ -151,7 +150,7 @@ class DataSourceRegistry:
             return config.get("parser", "excel")
         return "excel"
 
-    def get_parser_hints(self, source_id: str, indicator_id: str) -> Dict[str, Any]:
+    def get_parser_hints(self, source_id: str, indicator_id: str) -> dict[str, Any]:
         """Get parser hints for a source."""
         config = self.get_source(source_id, indicator_id)
         if config:
@@ -170,7 +169,7 @@ class DataSourceRegistry:
             return config.get("freshness_hours", 168)  # Default 1 week
         return 168
 
-    def list_all_sources(self) -> List[Tuple[str, str]]:
+    def list_all_sources(self) -> list[tuple[str, str]]:
         """List all (source_id, indicator_id) pairs."""
         pairs = []
         for source_id, indicators in self._config.items():
@@ -189,8 +188,8 @@ class ResilientParser:
     @staticmethod
     def parse_excel(
         content: bytes,
-        hints: Dict[str, Any] = None,
-    ) -> Optional[Dict[str, Any]]:
+        hints: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
         """Parse Excel file with resilient column detection."""
         hints = hints or {}
         try:
@@ -203,6 +202,7 @@ class ResilientParser:
                     if not df.empty:
                         break
                 except Exception:
+                    logger.debug("parse_excel: suppressed error", exc_info=True)
                     continue
             else:
                 return None
@@ -247,7 +247,7 @@ class ResilientParser:
                 try:
                     prev_value = float(prev[value_col])
                 except Exception:
-                    pass
+                    logger.debug("parse_excel: suppressed error", exc_info=True)
 
             return {
                 "date": obs_date,
@@ -264,8 +264,8 @@ class ResilientParser:
     @staticmethod
     def parse_csv(
         content: bytes,
-        hints: Dict[str, Any] = None,
-    ) -> Optional[Dict[str, Any]]:
+        hints: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
         """Parse CSV file with resilient column detection."""
         hints = hints or {}
         try:
@@ -278,6 +278,7 @@ class ResilientParser:
                     if not df.empty:
                         break
                 except Exception:
+                    logger.debug("parse_csv: suppressed error", exc_info=True)
                     continue
             else:
                 return None
@@ -295,8 +296,8 @@ class ResilientParser:
     @staticmethod
     def parse_json(
         content: bytes,
-        hints: Dict[str, Any] = None,
-    ) -> Optional[Dict[str, Any]]:
+        hints: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
         """Parse JSON response."""
         hints = hints or {}
         try:
@@ -354,7 +355,7 @@ class ResilientParser:
                         try:
                             obs_date = datetime.strptime(str(latest["date"]), "%Y-%m-%d").date()
                         except Exception:
-                            pass
+                            logger.debug("parse_json: suppressed error", exc_info=True)
 
                     # Try to find a value field
                     value = None
@@ -381,8 +382,8 @@ class ResilientParser:
     @staticmethod
     def parse_html(
         content: str,
-        hints: Dict[str, Any] = None,
-    ) -> Optional[Dict[str, Any]]:
+        hints: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
         """Parse HTML page for data using patterns."""
         hints = hints or {}
         try:
@@ -414,9 +415,9 @@ class ResilientParser:
 
     @staticmethod
     def _find_column(
-        columns: List[str],
-        patterns: List[str],
-    ) -> Optional[str]:
+        columns: list[str],
+        patterns: list[str],
+    ) -> str | None:
         """Find column matching any pattern."""
         for col in columns:
             col_lower = str(col).lower()
@@ -431,15 +432,15 @@ class DataFetcher:
 
     def __init__(
         self,
-        registry: Optional[DataSourceRegistry] = None,
-        fred_api_key: Optional[str] = None,
+        registry: DataSourceRegistry | None = None,
+        fred_api_key: str | None = None,
     ):
         self.registry = registry or DataSourceRegistry()
         self._fred_api_key = fred_api_key
-        self._session: Optional[aiohttp.ClientSession] = None
-        self._cache: Dict[str, Tuple[FetchResult, datetime]] = {}
+        self._session: aiohttp.ClientSession | None = None
+        self._cache: dict[str, tuple[FetchResult, datetime]] = {}
         self._cache_ttl = timedelta(hours=1)
-        self._health_status: Dict[str, HealthStatus] = {}
+        self._health_status: dict[str, HealthStatus] = {}
 
     async def _get_session(self) -> aiohttp.ClientSession:
         """Get or create aiohttp session with SSL handling."""
@@ -468,7 +469,7 @@ class DataFetcher:
         """Generate cache key."""
         return f"{source_id}:{indicator_id}"
 
-    def _get_cached(self, source_id: str, indicator_id: str) -> Optional[FetchResult]:
+    def _get_cached(self, source_id: str, indicator_id: str) -> FetchResult | None:
         """Get cached result if still valid."""
         key = self._get_cache_key(source_id, indicator_id)
         if key in self._cache:
@@ -558,7 +559,7 @@ class DataFetcher:
         self,
         url: str,
         parser_type: str,
-        hints: Dict[str, Any],
+        hints: dict[str, Any],
         source_id: str,
         indicator_id: str,
         url_index: int,
@@ -606,7 +607,7 @@ class DataFetcher:
                 else:
                     return FetchResult(success=False, url_used=url, error="Parsing failed")
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return FetchResult(success=False, url_used=url, error="Timeout")
         except Exception as e:
             return FetchResult(success=False, url_used=url, error=str(e))
@@ -715,7 +716,7 @@ class DataFetcher:
 
         self._health_status[key] = status
 
-    async def health_check(self) -> Dict[str, HealthStatus]:
+    async def health_check(self) -> dict[str, HealthStatus]:
         """Check health of all configured sources."""
         all_sources = self.registry.list_all_sources()
 
@@ -725,7 +726,7 @@ class DataFetcher:
 
         return self._health_status
 
-    def get_health_report(self) -> Dict[str, Any]:
+    def get_health_report(self) -> dict[str, Any]:
         """Generate health report."""
         total = len(self._health_status)
         healthy = sum(1 for s in self._health_status.values() if s.is_healthy)
@@ -752,7 +753,7 @@ class DataFetcher:
 
 
 # Singleton instance
-_fetcher: Optional[DataFetcher] = None
+_fetcher: DataFetcher | None = None
 
 
 def get_data_fetcher() -> DataFetcher:

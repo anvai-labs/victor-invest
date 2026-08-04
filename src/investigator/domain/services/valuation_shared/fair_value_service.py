@@ -36,7 +36,7 @@ Example:
 """
 
 import logging
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from .sector_multiples_service import SectorMultiplesService
 from .valuation_config_service import ValuationConfigService
@@ -53,8 +53,8 @@ class FairValueService:
 
     def __init__(
         self,
-        config_service: Optional[ValuationConfigService] = None,
-        multiples_service: Optional[SectorMultiplesService] = None,
+        config_service: ValuationConfigService | None = None,
+        multiples_service: SectorMultiplesService | None = None,
     ):
         """
         Initialize FairValueService.
@@ -70,9 +70,9 @@ class FairValueService:
         self,
         eps: float,
         sector: str,
-        industry: Optional[str] = None,
-        pe_multiple: Optional[float] = None,
-    ) -> Optional[float]:
+        industry: str | None = None,
+        pe_multiple: float | None = None,
+    ) -> float | None:
         """
         Calculate fair value using P/E model.
 
@@ -99,9 +99,9 @@ class FairValueService:
         self,
         revenue_per_share: float,
         sector: str,
-        industry: Optional[str] = None,
-        ps_multiple: Optional[float] = None,
-    ) -> Optional[float]:
+        industry: str | None = None,
+        ps_multiple: float | None = None,
+    ) -> float | None:
         """
         Calculate fair value using P/S model.
 
@@ -128,9 +128,9 @@ class FairValueService:
         self,
         book_value_per_share: float,
         sector: str,
-        industry: Optional[str] = None,
-        pb_multiple: Optional[float] = None,
-    ) -> Optional[float]:
+        industry: str | None = None,
+        pb_multiple: float | None = None,
+    ) -> float | None:
         """
         Calculate fair value using P/B model.
 
@@ -160,9 +160,9 @@ class FairValueService:
         total_debt: float = 0,
         cash: float = 0,
         sector: str = "Unknown",
-        industry: Optional[str] = None,
-        ev_ebitda_multiple: Optional[float] = None,
-    ) -> Optional[float]:
+        industry: str | None = None,
+        ev_ebitda_multiple: float | None = None,
+    ) -> float | None:
         """
         Calculate fair value using EV/EBITDA model.
 
@@ -199,9 +199,9 @@ class FairValueService:
     def calculate_ggm_fair_value(
         self,
         dividend_per_share: float,
-        growth_rate: Optional[float] = None,
-        cost_of_equity: Optional[float] = None,
-    ) -> Optional[float]:
+        growth_rate: float | None = None,
+        cost_of_equity: float | None = None,
+    ) -> float | None:
         """
         Calculate fair value using Gordon Growth Model.
 
@@ -236,13 +236,13 @@ class FairValueService:
 
     def calculate_fair_values(
         self,
-        financials: Dict[str, Any],
-        ratios: Dict[str, Any],
+        financials: dict[str, Any],
+        ratios: dict[str, Any],
         sector: str,
         current_price: float,
         shares: float,
-        industry: Optional[str] = None,
-    ) -> Dict[str, Optional[float]]:
+        industry: str | None = None,
+    ) -> dict[str, float | None]:
         """
         Calculate fair values using all applicable models.
 
@@ -318,13 +318,13 @@ class FairValueService:
 
     def calculate_blended_fair_value(
         self,
-        fair_values: Dict[str, Optional[float]],
-        weights: Dict[str, float],
-        current_price: Optional[float] = None,
+        fair_values: dict[str, float | None],
+        weights: dict[str, float],
+        current_price: float | None = None,
         max_upside_multiple: float = 3.0,
         min_downside_multiple: float = 0.2,
-        tier: Optional[str] = None,
-    ) -> Tuple[float, Dict[str, Any]]:
+        tier: str | None = None,
+    ) -> tuple[float, dict[str, Any]]:
         """
         Calculate weighted blended fair value with sanity checks.
 
@@ -425,9 +425,9 @@ class FairValueService:
 
     def get_model_applicability(
         self,
-        financials: Dict[str, Any],
+        financials: dict[str, Any],
         sector: str,
-    ) -> Dict[str, bool]:
+    ) -> dict[str, bool]:
         """
         Determine which valuation models are applicable.
 
@@ -473,10 +473,10 @@ class FairValueService:
 
     def get_valuation_summary(
         self,
-        fair_values: Dict[str, Optional[float]],
+        fair_values: dict[str, float | None],
         current_price: float,
-        weights: Dict[str, float],
-    ) -> Dict[str, Any]:
+        weights: dict[str, float],
+    ) -> dict[str, Any]:
         """
         Generate a valuation summary with upside/downside analysis.
 

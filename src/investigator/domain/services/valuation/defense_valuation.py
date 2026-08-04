@@ -26,7 +26,6 @@ Phase: P2-B (Defense Contractor Valuation Tier)
 import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +59,7 @@ DEFENSE_INDUSTRIES = [
 ]
 
 # Known defense contractor symbols for explicit mapping
-KNOWN_DEFENSE_CONTRACTORS: Dict[str, DefenseContractorType] = {
+KNOWN_DEFENSE_CONTRACTORS: dict[str, DefenseContractorType] = {
     # Prime Contractors
     "LMT": DefenseContractorType.PRIME_CONTRACTOR,  # Lockheed Martin
     "RTX": DefenseContractorType.PRIME_CONTRACTOR,  # Raytheon Technologies
@@ -122,21 +121,21 @@ DEFENSE_CONTRACTOR_TIER = {
 class BacklogMetrics:
     """Container for defense contractor backlog metrics."""
 
-    total_backlog: Optional[float] = None
-    funded_backlog: Optional[float] = None
-    unfunded_backlog: Optional[float] = None
-    contract_liability: Optional[float] = None
-    deferred_revenue: Optional[float] = None
-    unbilled_receivables: Optional[float] = None
-    contract_assets: Optional[float] = None
-    annual_revenue: Optional[float] = None
-    backlog_ratio: Optional[float] = None  # Backlog / Annual Revenue
+    total_backlog: float | None = None
+    funded_backlog: float | None = None
+    unfunded_backlog: float | None = None
+    contract_liability: float | None = None
+    deferred_revenue: float | None = None
+    unbilled_receivables: float | None = None
+    contract_assets: float | None = None
+    annual_revenue: float | None = None
+    backlog_ratio: float | None = None  # Backlog / Annual Revenue
 
 
 def extract_backlog_metrics_from_xbrl(
     symbol: str,
-    xbrl_data: Dict,
-    annual_revenue: Optional[float] = None,
+    xbrl_data: dict,
+    annual_revenue: float | None = None,
 ) -> BacklogMetrics:
     """
     Extract backlog-related metrics from XBRL data for defense contractors.
@@ -414,13 +413,13 @@ class DefenseContractorClassification:
     contractor_type: DefenseContractorType
     confidence: str  # "high", "medium", "low"
     detection_method: str  # "symbol_lookup", "industry_match", "default"
-    industry: Optional[str] = None
+    industry: str | None = None
 
 
 def classify_defense_contractor(
     symbol: str,
-    industry: Optional[str] = None,
-    sector: Optional[str] = None,
+    industry: str | None = None,
+    sector: str | None = None,
 ) -> DefenseContractorClassification:
     """
     Classify whether a company is a defense contractor and determine type.
@@ -503,23 +502,23 @@ class DefenseValuationResult:
     base_fair_value: float  # Before backlog adjustments
     backlog_premium: float
     contract_mix_adjustment: float
-    total_backlog: Optional[float]
-    backlog_ratio: Optional[float]
-    backlog_value: Optional[float]  # NPV of backlog
+    total_backlog: float | None
+    backlog_ratio: float | None
+    backlog_value: float | None  # NPV of backlog
     contractor_type: DefenseContractorType
     confidence: str
-    warnings: List[str]
-    details: Dict
+    warnings: list[str]
+    details: dict
 
 
 def value_defense_contractor(
     symbol: str,
-    financials: Dict,
+    financials: dict,
     current_price: float,
     base_fair_value: float,
-    xbrl_data: Optional[Dict] = None,
-    industry: Optional[str] = None,
-    cost_plus_pct: Optional[float] = None,
+    xbrl_data: dict | None = None,
+    industry: str | None = None,
+    cost_plus_pct: float | None = None,
 ) -> DefenseValuationResult:
     """
     Apply defense contractor-specific valuation adjustments.
@@ -644,7 +643,7 @@ def value_defense_contractor(
     )
 
 
-def get_defense_tier_weights() -> Dict[str, float]:
+def get_defense_tier_weights() -> dict[str, float]:
     """
     Get the valuation model weights for defense contractor tier.
 
@@ -654,7 +653,7 @@ def get_defense_tier_weights() -> Dict[str, float]:
     return DEFENSE_CONTRACTOR_TIER["weights"].copy()
 
 
-def get_defense_tier_parameters() -> Dict[str, float]:
+def get_defense_tier_parameters() -> dict[str, float]:
     """
     Get the valuation parameters for defense contractor tier.
 
@@ -664,7 +663,7 @@ def get_defense_tier_parameters() -> Dict[str, float]:
     return DEFENSE_CONTRACTOR_TIER["parameters"].copy()
 
 
-def is_defense_industry(industry: Optional[str]) -> bool:
+def is_defense_industry(industry: str | None) -> bool:
     """
     Check if an industry string matches defense contractor industries.
 

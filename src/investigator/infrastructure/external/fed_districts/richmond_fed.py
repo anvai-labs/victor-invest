@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ Investment Signals:
 import logging
 from dataclasses import dataclass
 from datetime import date
-from typing import Any, Dict, Optional
+from typing import Any
 
 import aiohttp
 
@@ -69,19 +69,19 @@ class FifthDistrictSurvey:
 
     date: date
     composite_index: float
-    shipments: Optional[float] = None
-    new_orders: Optional[float] = None
-    employment: Optional[float] = None
-    wages: Optional[float] = None
-    prices_paid: Optional[float] = None
-    prices_received: Optional[float] = None
-    capacity_utilization: Optional[float] = None
-    backlog: Optional[float] = None
-    vendor_lead_time: Optional[float] = None
-    inventories: Optional[float] = None
-    future_shipments: Optional[float] = None
-    future_new_orders: Optional[float] = None
-    future_employment: Optional[float] = None
+    shipments: float | None = None
+    new_orders: float | None = None
+    employment: float | None = None
+    wages: float | None = None
+    prices_paid: float | None = None
+    prices_received: float | None = None
+    capacity_utilization: float | None = None
+    backlog: float | None = None
+    vendor_lead_time: float | None = None
+    inventories: float | None = None
+    future_shipments: float | None = None
+    future_new_orders: float | None = None
+    future_employment: float | None = None
     survey_type: str = "manufacturing"
 
     @property
@@ -98,7 +98,7 @@ class FifthDistrictSurvey:
 class RichmondFedClient:
     """Client for Richmond Federal Reserve economic data."""
 
-    def __init__(self, session: Optional[aiohttp.ClientSession] = None):
+    def __init__(self, session: aiohttp.ClientSession | None = None):
         self._session = session
         self._owns_session = session is None
 
@@ -119,7 +119,7 @@ class RichmondFedClient:
             await self._session.close()
             self._session = None
 
-    async def get_manufacturing_survey(self) -> Optional[FifthDistrictSurvey]:
+    async def get_manufacturing_survey(self) -> FifthDistrictSurvey | None:
         """Get the latest Fifth District Manufacturing Survey."""
         try:
             session = await self._get_session()
@@ -132,7 +132,7 @@ class RichmondFedClient:
             logger.warning(f"Failed to fetch Richmond mfg survey: {e}")
             return None
 
-    async def get_services_survey(self) -> Optional[FifthDistrictSurvey]:
+    async def get_services_survey(self) -> FifthDistrictSurvey | None:
         """Get the latest Fifth District Services Survey."""
         try:
             session = await self._get_session()
@@ -145,7 +145,7 @@ class RichmondFedClient:
             logger.warning(f"Failed to fetch Richmond services survey: {e}")
             return None
 
-    def _parse_survey_excel(self, content: bytes, survey_type: str) -> Optional[FifthDistrictSurvey]:
+    def _parse_survey_excel(self, content: bytes, survey_type: str) -> FifthDistrictSurvey | None:
         try:
             import io
 
@@ -159,7 +159,7 @@ class RichmondFedClient:
             date_col = df.columns[0]
             obs_date = pd.to_datetime(latest[date_col]).date()
 
-            def find_col(pattern: str) -> Optional[str]:
+            def find_col(pattern: str) -> str | None:
                 for col in df.columns:
                     if pattern.lower() in str(col).lower():
                         return col
@@ -188,7 +188,7 @@ class RichmondFedClient:
             logger.debug(f"Could not parse Richmond survey Excel: {e}")
             return None
 
-    async def get_all_indicators(self) -> Dict[str, Any]:
+    async def get_all_indicators(self) -> dict[str, Any]:
         import asyncio
 
         mfg, svc = await asyncio.gather(
@@ -202,7 +202,7 @@ class RichmondFedClient:
         }
 
 
-_client: Optional[RichmondFedClient] = None
+_client: RichmondFedClient | None = None
 
 
 def get_richmond_fed_client() -> RichmondFedClient:

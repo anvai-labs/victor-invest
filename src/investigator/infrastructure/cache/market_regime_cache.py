@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Market Regime Cache Component
 Caches market-wide and sector-wide ETF analysis with daily TTL
@@ -7,7 +6,6 @@ Reusable across all stock analyses for the same trading day
 
 import logging
 from datetime import datetime
-from typing import Dict, Optional
 
 from investigator.infrastructure.cache.cache_manager import CacheManager, CacheType
 from investigator.infrastructure.database.market_data import get_market_data_fetcher
@@ -41,7 +39,7 @@ class MarketRegimeCache:
 
         logger.info("Initialized MarketRegimeCache with 24-hour TTL")
 
-    def get_cache_key(self, component_type: str, date: Optional[str] = None) -> Dict:
+    def get_cache_key(self, component_type: str, date: str | None = None) -> dict:
         """
         Generate cache key for market regime component
 
@@ -57,7 +55,7 @@ class MarketRegimeCache:
 
         return {"component_type": component_type, "date": date, "cache_version": "v1.0"}
 
-    def get_market_regime(self, force_refresh: bool = False) -> Optional[Dict]:
+    def get_market_regime(self, force_refresh: bool = False) -> dict | None:
         """
         Get cached market regime analysis or compute if needed
 
@@ -89,7 +87,7 @@ class MarketRegimeCache:
 
         return market_regime
 
-    def get_sector_performance(self, sector: Optional[str] = None, force_refresh: bool = False) -> Optional[Dict]:
+    def get_sector_performance(self, sector: str | None = None, force_refresh: bool = False) -> dict | None:
         """
         Get cached sector performance or compute if needed
 
@@ -129,7 +127,7 @@ class MarketRegimeCache:
 
         return sector_performance
 
-    def get_market_breadth(self, force_refresh: bool = False) -> Optional[Dict]:
+    def get_market_breadth(self, force_refresh: bool = False) -> dict | None:
         """
         Get cached market breadth indicators
 
@@ -156,7 +154,7 @@ class MarketRegimeCache:
 
         return market_breadth
 
-    def get_commodity_signals(self, force_refresh: bool = False) -> Optional[Dict]:
+    def get_commodity_signals(self, force_refresh: bool = False) -> dict | None:
         """
         Get cached commodity and inflation signals
 
@@ -188,7 +186,7 @@ class MarketRegimeCache:
 
         return commodity_signals
 
-    def _compute_market_regime(self) -> Dict:
+    def _compute_market_regime(self) -> dict:
         """
         Compute comprehensive market regime analysis
 
@@ -261,7 +259,7 @@ class MarketRegimeCache:
             logger.error(f"Failed to compute market regime: {e}")
             return None
 
-    def _compute_sector_performance(self, sector: Optional[str] = None) -> Dict:
+    def _compute_sector_performance(self, sector: str | None = None) -> dict:
         """
         Compute sector performance analysis
 
@@ -323,7 +321,7 @@ class MarketRegimeCache:
             logger.error(f"Failed to compute sector performance: {e}")
             return None
 
-    def _compute_market_breadth(self) -> Dict:
+    def _compute_market_breadth(self) -> dict:
         """
         Compute market breadth indicators
 
@@ -368,7 +366,7 @@ class MarketRegimeCache:
                             else:
                                 underperforming += 1
                     except Exception:
-                        pass
+                        logger.debug("_compute_market_breadth: suppressed error", exc_info=True)
 
                 breadth_data["sectors_outperforming"] = outperforming
                 breadth_data["sectors_underperforming"] = underperforming
@@ -388,7 +386,7 @@ class MarketRegimeCache:
             logger.error(f"Failed to compute market breadth: {e}")
             return None
 
-    def _compute_commodity_signals(self) -> Dict:
+    def _compute_commodity_signals(self) -> dict:
         """
         Compute commodity and inflation signals
 
@@ -618,7 +616,7 @@ class MarketRegimeCache:
 
         return rankings
 
-    def clear_cache(self, date: Optional[str] = None):
+    def clear_cache(self, date: str | None = None):
         """
         Clear all cached market regime data for a specific date
 
@@ -647,11 +645,11 @@ class MarketRegimeCache:
                 ]:
                     self.cache_manager.delete(cache_type, cache_key)
             except Exception:
-                pass
+                logger.debug("clear_cache: suppressed error", exc_info=True)
 
         logger.info(f"Cleared all market regime cache for {date}")
 
-    def get_cache_stats(self) -> Dict:
+    def get_cache_stats(self) -> dict:
         """
         Get statistics about cached market regime data
 

@@ -15,7 +15,6 @@ Date: 2025-12-30
 """
 
 import logging
-from typing import Dict, List, Optional, Set, Tuple
 
 from investigator.domain.services.industry_datasets.base import (
     BaseIndustryDataset,
@@ -88,7 +87,7 @@ class InsuranceDataset(BaseIndustryDataset):
     def version(self) -> str:
         return "1.0.0"
 
-    def get_industry_names(self) -> List[str]:
+    def get_industry_names(self) -> list[str]:
         return [
             "Insurance",
             "Property & Casualty Insurance",
@@ -103,10 +102,10 @@ class InsuranceDataset(BaseIndustryDataset):
             "Reinsurance",
         ]
 
-    def get_known_symbols(self) -> Set[str]:
+    def get_known_symbols(self) -> set[str]:
         return KNOWN_INSURANCE_SYMBOLS.copy()
 
-    def get_metric_definitions(self) -> List[MetricDefinition]:
+    def get_metric_definitions(self) -> list[MetricDefinition]:
         return [
             MetricDefinition(
                 name="combined_ratio",
@@ -203,7 +202,7 @@ class InsuranceDataset(BaseIndustryDataset):
             ),
         ]
 
-    def extract_metrics(self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs) -> IndustryMetrics:
+    def extract_metrics(self, symbol: str, xbrl_data: dict | None, financials: dict, **kwargs) -> IndustryMetrics:
         """Extract insurance-specific metrics from XBRL data and financials."""
         metrics = IndustryMetrics(
             industry="insurance",
@@ -318,7 +317,7 @@ class InsuranceDataset(BaseIndustryDataset):
 
         return metrics
 
-    def _calculate_combined_ratio(self, xbrl_data: Optional[Dict], financials: Dict) -> Optional[float]:
+    def _calculate_combined_ratio(self, xbrl_data: dict | None, financials: dict) -> float | None:
         """Calculate combined ratio from loss and expense ratios."""
         loss_ratio = self._extract_from_xbrl(xbrl_data, "loss_ratio", ["LossRatio", "InsuranceLossRatio"])
         expense_ratio = self._extract_from_xbrl(xbrl_data, "expense_ratio", ["ExpenseRatio", "InsuranceExpenseRatio"])
@@ -333,7 +332,7 @@ class InsuranceDataset(BaseIndustryDataset):
 
         return None
 
-    def _calculate_loss_ratio(self, financials: Dict) -> Optional[float]:
+    def _calculate_loss_ratio(self, financials: dict) -> float | None:
         """Calculate loss ratio from available data."""
         incurred_losses = financials.get("incurredLosses") or financials.get("claimsExpense")
         earned_premiums = financials.get("earnedPremiums") or financials.get("netPremiumsEarned")
@@ -343,7 +342,7 @@ class InsuranceDataset(BaseIndustryDataset):
 
         return None
 
-    def _calculate_investment_yield(self, financials: Dict) -> Optional[float]:
+    def _calculate_investment_yield(self, financials: dict) -> float | None:
         """Calculate investment yield."""
         inv_income = financials.get("investmentIncome") or financials.get("netInvestmentIncome")
         invested_assets = financials.get("investedAssets") or financials.get("totalInvestments")
@@ -353,7 +352,7 @@ class InsuranceDataset(BaseIndustryDataset):
 
         return None
 
-    def _calculate_roe(self, financials: Dict) -> Optional[float]:
+    def _calculate_roe(self, financials: dict) -> float | None:
         """Calculate ROE from available data."""
         net_income = financials.get("netIncome")
         equity = financials.get("totalEquity") or financials.get("shareholdersEquity")
@@ -387,7 +386,7 @@ class InsuranceDataset(BaseIndustryDataset):
 
         return "diversified"
 
-    def assess_quality(self, metrics: IndustryMetrics) -> Tuple[MetricQuality, str]:
+    def assess_quality(self, metrics: IndustryMetrics) -> tuple[MetricQuality, str]:
         """Assess quality of insurance metrics."""
         required_metrics = ["combined_ratio", "loss_ratio", "roe"]
         important_metrics = ["expense_ratio", "investment_yield", "reserve_to_premium"]
@@ -405,8 +404,8 @@ class InsuranceDataset(BaseIndustryDataset):
             return (MetricQuality.POOR, "Missing key metrics for insurance valuation")
 
     def get_valuation_adjustments(
-        self, metrics: IndustryMetrics, financials: Dict, **kwargs
-    ) -> List[ValuationAdjustment]:
+        self, metrics: IndustryMetrics, financials: dict, **kwargs
+    ) -> list[ValuationAdjustment]:
         """Calculate insurance-specific valuation adjustments."""
         adjustments = []
 
@@ -529,7 +528,7 @@ class InsuranceDataset(BaseIndustryDataset):
 
         return adjustments
 
-    def get_tier_weights(self) -> Optional[Dict[str, int]]:
+    def get_tier_weights(self) -> dict[str, int] | None:
         """Return recommended tier weights for insurance companies."""
         return {
             "pb": 45,

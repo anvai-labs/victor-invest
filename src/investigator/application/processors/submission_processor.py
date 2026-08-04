@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - Submission Processor Module
 Copyright (c) 2025 Vijaykumar Singh
@@ -10,7 +9,6 @@ Handles SEC submission data parsing, filtering, and processing with support for 
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -23,11 +21,11 @@ class Filing:
     filing_date: str
     accession_number: str
     primary_document: str
-    fiscal_year: Optional[int] = None
-    fiscal_period: Optional[str] = None
+    fiscal_year: int | None = None
+    fiscal_period: str | None = None
     is_amended: bool = False
-    amendment_number: Optional[int] = None
-    report_date: Optional[str] = None
+    amendment_number: int | None = None
+    report_date: str | None = None
 
     def __post_init__(self):
         """Parse fiscal information from filing data"""
@@ -79,7 +77,7 @@ class SubmissionProcessor:
     def __init__(self):
         self.logger = logger
 
-    def parse_submissions(self, submissions_data: Dict) -> Dict:
+    def parse_submissions(self, submissions_data: dict) -> dict:
         """
         Parse raw SEC submissions JSON data into structured format
 
@@ -120,7 +118,7 @@ class SubmissionProcessor:
             self.logger.error(f"Error parsing submissions data: {e}")
             raise
 
-    def _parse_filings(self, filings_data: Dict) -> Dict:
+    def _parse_filings(self, filings_data: dict) -> dict:
         """Parse filings section of submissions data"""
         try:
             self.logger.debug(f"Parsing filings data, filings count: {len(filings_data)}")
@@ -157,8 +155,8 @@ class SubmissionProcessor:
             return {"all": [], "count": 0}
 
     def get_recent_earnings_filings(
-        self, submissions_data: Dict, limit: int = 8, include_amendments: bool = True
-    ) -> List[Filing]:
+        self, submissions_data: dict, limit: int = 8, include_amendments: bool = True
+    ) -> list[Filing]:
         """
         Get recent 10-K and 10-Q filings with amendment handling
 
@@ -180,9 +178,8 @@ class SubmissionProcessor:
             earnings_filings = []
             for filing in all_filings:
                 base_type = filing.base_form_type
-                if base_type in ["10-K", "10-Q"]:
-                    if include_amendments or not filing.is_amended:
-                        earnings_filings.append(filing)
+                if base_type in ["10-K", "10-Q"] and (include_amendments or not filing.is_amended):
+                    earnings_filings.append(filing)
             self.logger.debug(f"Found {len(earnings_filings)} earnings filings")
 
             self.logger.debug("Grouping filings by period and resolving amendments")
@@ -203,8 +200,8 @@ class SubmissionProcessor:
             return []
 
     def get_filings_by_type(
-        self, submissions_data: Dict, form_types: List[str], limit: Optional[int] = None
-    ) -> List[Filing]:
+        self, submissions_data: dict, form_types: list[str], limit: int | None = None
+    ) -> list[Filing]:
         """
         Get filings of specific types
 
@@ -238,7 +235,7 @@ class SubmissionProcessor:
             self.logger.error(f"Error getting filings by type: {e}")
             return []
 
-    def convert_to_cache_format(self, parsed_data: Dict) -> Dict:
+    def convert_to_cache_format(self, parsed_data: dict) -> dict:
         """
         Convert parsed submission data to cache storage format
 
@@ -288,7 +285,7 @@ class SubmissionProcessor:
             self.logger.error(f"Error converting to cache format: {e}")
             raise
 
-    def restore_from_cache_format(self, cache_data: Dict) -> Dict:
+    def restore_from_cache_format(self, cache_data: dict) -> dict:
         """
         Restore parsed submission data from cache format
 

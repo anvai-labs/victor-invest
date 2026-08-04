@@ -27,19 +27,19 @@ from investigator.config.settings import (
 CacheSettings = CacheControlSettings
 
 __all__ = [
-    # Legacy config (dataclasses)
-    "DatabaseConfig",
-    "OllamaConfig",
-    "SECConfig",
-    "ModelSpec",
-    "get_config",
     # New Pydantic settings
     "AppSettings",
-    "DatabaseSettings",
-    "OllamaSettings",
-    "SECSettings",
     "CacheSettings",
+    # Legacy config (dataclasses)
+    "DatabaseConfig",
+    "DatabaseSettings",
+    "ModelSpec",
     "MonitoringSettings",
+    "OllamaConfig",
+    "OllamaSettings",
+    "SECConfig",
+    "SECSettings",
+    "get_config",
     "get_settings",
     "settings",
 ]

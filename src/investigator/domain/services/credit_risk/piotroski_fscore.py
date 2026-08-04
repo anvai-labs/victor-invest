@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import date
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from investigator.domain.services.credit_risk.protocols import (
     CreditScoreResult,
@@ -80,14 +80,14 @@ class PiotroskiFScoreResult(CreditScoreResult):
         criteria_details: Individual criterion pass/fail details
     """
 
-    strength: Optional[FinancialStrength] = None
+    strength: FinancialStrength | None = None
     profitability_score: int = 0
     leverage_score: int = 0
     efficiency_score: int = 0
-    criteria_details: Dict[str, bool] = field(default_factory=dict)
+    criteria_details: dict[str, bool] = field(default_factory=dict)
     score_name: str = "Piotroski F-Score"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary."""
         result = super().to_dict()
         result.update(
@@ -137,7 +137,7 @@ class PiotroskiFScoreCalculator:
         """Return calculator description."""
         return self._description
 
-    def validate_data(self, data: FinancialData) -> List[str]:
+    def validate_data(self, data: FinancialData) -> list[str]:
         """Validate required financial data fields.
 
         Args:
@@ -251,12 +251,12 @@ class PiotroskiFScoreCalculator:
 
         except Exception as e:
             logger.error(f"Error calculating Piotroski F-Score for {data.symbol}: {e}")
-            result.warnings.append(f"Calculation error: {str(e)}")
+            result.warnings.append(f"Calculation error: {e!s}")
             result.interpretation = "Calculation failed"
 
         return result
 
-    def _calculate_profitability(self, data: FinancialData) -> tuple[int, Dict[str, bool], Dict[str, Any]]:
+    def _calculate_profitability(self, data: FinancialData) -> tuple[int, dict[str, bool], dict[str, Any]]:
         """Calculate profitability criteria (4 points).
 
         1. Positive ROA (net income > 0)
@@ -311,7 +311,7 @@ class PiotroskiFScoreCalculator:
 
         return score, criteria, components
 
-    def _calculate_leverage(self, data: FinancialData) -> tuple[int, Dict[str, bool], Dict[str, Any]]:
+    def _calculate_leverage(self, data: FinancialData) -> tuple[int, dict[str, bool], dict[str, Any]]:
         """Calculate leverage and liquidity criteria (3 points).
 
         5. Leverage decreasing (LTD/Assets lower)
@@ -341,20 +341,19 @@ class PiotroskiFScoreCalculator:
 
         # 6. Current ratio improving
         current_ratio_improving = False
-        if data.current_assets is not None and data.current_liabilities:
-            if data.current_liabilities > 0:
-                current_ratio = data.current_assets / data.current_liabilities
-                components["current_ratio"] = current_ratio
+        if data.current_assets is not None and data.current_liabilities and data.current_liabilities > 0:
+            current_ratio = data.current_assets / data.current_liabilities
+            components["current_ratio"] = current_ratio
 
-                if data.prior_period:
-                    if data.prior_period.current_assets is not None and data.prior_period.current_liabilities:
-                        if data.prior_period.current_liabilities > 0:
-                            prior_ratio = data.prior_period.current_assets / data.prior_period.current_liabilities
-                            components["prior_current_ratio"] = prior_ratio
-                            current_ratio_improving = current_ratio > prior_ratio
-                            components["current_ratio_change"] = current_ratio - prior_ratio
-                            if current_ratio_improving:
-                                score += 1
+            if data.prior_period:
+                if data.prior_period.current_assets is not None and data.prior_period.current_liabilities:
+                    if data.prior_period.current_liabilities > 0:
+                        prior_ratio = data.prior_period.current_assets / data.prior_period.current_liabilities
+                        components["prior_current_ratio"] = prior_ratio
+                        current_ratio_improving = current_ratio > prior_ratio
+                        components["current_ratio_change"] = current_ratio - prior_ratio
+                        if current_ratio_improving:
+                            score += 1
         criteria["F6_current_ratio_improving"] = current_ratio_improving
 
         # 7. No equity dilution (shares not increased)
@@ -371,7 +370,7 @@ class PiotroskiFScoreCalculator:
 
         return score, criteria, components
 
-    def _calculate_efficiency(self, data: FinancialData) -> tuple[int, Dict[str, bool], Dict[str, Any]]:
+    def _calculate_efficiency(self, data: FinancialData) -> tuple[int, dict[str, bool], dict[str, Any]]:
         """Calculate operating efficiency criteria (2 points).
 
         8. Gross margin improving
@@ -426,7 +425,7 @@ class PiotroskiFScoreCalculator:
         else:
             return FinancialStrength.MODERATE
 
-    def _get_interpretation(self, strength: FinancialStrength, score: int, criteria: Dict[str, bool]) -> str:
+    def _get_interpretation(self, strength: FinancialStrength, score: int, criteria: dict[str, bool]) -> str:
         """Generate human-readable interpretation."""
         passed = sum(1 for v in criteria.values() if v)
         len(criteria) - passed

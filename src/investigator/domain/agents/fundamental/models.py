@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class ValueType(Enum):
@@ -38,7 +38,7 @@ class ValueType(Enum):
     TTM = "ttm"
 
     @classmethod
-    def from_string(cls, value: str) -> "ValueType":
+    def from_string(cls, value: str) -> ValueType:
         """Convert string to ValueType enum, with fallback to QUARTERLY."""
         if not value:
             return cls.QUARTERLY
@@ -73,12 +73,12 @@ class QuarterlyData:
 
     fiscal_year: int
     fiscal_period: str
-    financial_data: Dict[str, Any]
-    ratios: Optional[Dict[str, Any]] = None
-    market_data: Optional[Dict[str, Any]] = None
-    data_quality: Optional[Dict[str, Any]] = None
-    filing_date: Optional[str] = None
-    period_end_date: Optional[str] = None
+    financial_data: dict[str, Any]
+    ratios: dict[str, Any] | None = None
+    market_data: dict[str, Any] | None = None
+    data_quality: dict[str, Any] | None = None
+    filing_date: str | None = None
+    period_end_date: str | None = None
 
     # Legacy YTD flags (kept for backward compatibility)
     is_ytd_cashflow: bool = False
@@ -90,7 +90,7 @@ class QuarterlyData:
     value_type: str = "quarterly"  # "quarterly", "ytd", "annual", "ttm"
 
     # TD3 FIX: Additional metadata for value type tracking per statement
-    value_types_by_statement: Optional[Dict[str, str]] = None
+    value_types_by_statement: dict[str, str] | None = None
     # Example: {"income_statement": "ytd", "cash_flow": "ytd", "balance_sheet": "quarterly"}
 
     def __post_init__(self) -> None:
@@ -152,7 +152,7 @@ class QuarterlyData:
     def calendar_year(self) -> int:
         return self.fiscal_year
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert QuarterlyData to dictionary format.
 
@@ -221,7 +221,7 @@ class QuarterlyData:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "QuarterlyData":
+    def from_dict(cls, data: dict[str, Any]) -> QuarterlyData:
         """
         Create QuarterlyData from dictionary.
 
@@ -333,7 +333,7 @@ class QuarterlyData:
             return self.value_types_by_statement[statement]
         return self.value_type
 
-    def requires_ytd_conversion(self, statement: Optional[str] = None) -> bool:
+    def requires_ytd_conversion(self, statement: str | None = None) -> bool:
         """
         TD3 FIX: Check if data requires YTD-to-quarterly conversion.
 

@@ -15,7 +15,6 @@ Date: 2025-12-30
 """
 
 import logging
-from typing import Dict, List, Optional, Set, Tuple
 
 from investigator.domain.services.industry_datasets.base import (
     BaseIndustryDataset,
@@ -81,7 +80,7 @@ class DefenseDataset(BaseIndustryDataset):
     def version(self) -> str:
         return "1.0.0"
 
-    def get_industry_names(self) -> List[str]:
+    def get_industry_names(self) -> list[str]:
         return [
             "Aerospace & Defense",
             "Defense",
@@ -93,10 +92,10 @@ class DefenseDataset(BaseIndustryDataset):
             "Defense Primes",
         ]
 
-    def get_known_symbols(self) -> Set[str]:
+    def get_known_symbols(self) -> set[str]:
         return KNOWN_DEFENSE_SYMBOLS.copy()
 
-    def get_metric_definitions(self) -> List[MetricDefinition]:
+    def get_metric_definitions(self) -> list[MetricDefinition]:
         return [
             MetricDefinition(
                 name="order_backlog",
@@ -180,7 +179,7 @@ class DefenseDataset(BaseIndustryDataset):
             ),
         ]
 
-    def extract_metrics(self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs) -> IndustryMetrics:
+    def extract_metrics(self, symbol: str, xbrl_data: dict | None, financials: dict, **kwargs) -> IndustryMetrics:
         """Extract defense-specific metrics from XBRL data and financials."""
         metrics = IndustryMetrics(
             industry="defense",
@@ -267,7 +266,7 @@ class DefenseDataset(BaseIndustryDataset):
 
         return metrics
 
-    def _calculate_operating_margin(self, financials: Dict) -> Optional[float]:
+    def _calculate_operating_margin(self, financials: dict) -> float | None:
         """Calculate operating margin from available data."""
         operating_income = financials.get("operatingIncome")
         revenue = financials.get("revenue") or financials.get("totalRevenue")
@@ -277,7 +276,7 @@ class DefenseDataset(BaseIndustryDataset):
 
         return None
 
-    def _calculate_fcf_conversion(self, financials: Dict) -> Optional[float]:
+    def _calculate_fcf_conversion(self, financials: dict) -> float | None:
         """Calculate FCF conversion rate."""
         fcf = financials.get("freeCashFlow") or financials.get("fcf")
         net_income = financials.get("netIncome")
@@ -287,7 +286,7 @@ class DefenseDataset(BaseIndustryDataset):
 
         return None
 
-    def _calculate_rd_ratio(self, financials: Dict) -> Optional[float]:
+    def _calculate_rd_ratio(self, financials: dict) -> float | None:
         """Calculate R&D to revenue ratio."""
         rd = financials.get("rd_expense") or financials.get("researchAndDevelopment")
         revenue = financials.get("revenue") or financials.get("totalRevenue")
@@ -310,7 +309,7 @@ class DefenseDataset(BaseIndustryDataset):
         else:
             return "diversified"
 
-    def assess_quality(self, metrics: IndustryMetrics) -> Tuple[MetricQuality, str]:
+    def assess_quality(self, metrics: IndustryMetrics) -> tuple[MetricQuality, str]:
         """Assess quality of defense metrics."""
         required_metrics = ["order_backlog", "backlog_to_revenue", "operating_margin"]
         important_metrics = ["book_to_bill", "fcf_conversion"]
@@ -328,8 +327,8 @@ class DefenseDataset(BaseIndustryDataset):
             return (MetricQuality.POOR, "Missing key metrics for defense valuation")
 
     def get_valuation_adjustments(
-        self, metrics: IndustryMetrics, financials: Dict, **kwargs
-    ) -> List[ValuationAdjustment]:
+        self, metrics: IndustryMetrics, financials: dict, **kwargs
+    ) -> list[ValuationAdjustment]:
         """Calculate defense-specific valuation adjustments."""
         adjustments = []
 
@@ -448,7 +447,7 @@ class DefenseDataset(BaseIndustryDataset):
 
         return adjustments
 
-    def get_tier_weights(self) -> Optional[Dict[str, int]]:
+    def get_tier_weights(self) -> dict[str, int] | None:
         """Return recommended tier weights for defense contractors."""
         return {
             "dcf": 35,

@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -76,10 +76,6 @@ from investigator.domain.services.credit_risk.service import (
 )
 
 __all__ = [
-    # Protocols and base types
-    "CreditScoreCalculator",
-    "CreditScoreResult",
-    "FinancialData",
     # Altman Z-Score
     "AltmanZScoreCalculator",
     "AltmanZScoreResult",
@@ -87,16 +83,20 @@ __all__ = [
     # Beneish M-Score
     "BeneishMScoreCalculator",
     "BeneishMScoreResult",
+    "CompositeCreditRiskResult",
+    # Composite Distress
+    "CompositeDistressCalculator",
+    # Service
+    "CreditRiskService",
+    # Protocols and base types
+    "CreditScoreCalculator",
+    "CreditScoreResult",
+    "DistressTier",
+    "FinancialData",
+    "FinancialStrength",
     "ManipulationRisk",
     # Piotroski F-Score
     "PiotroskiFScoreCalculator",
     "PiotroskiFScoreResult",
-    "FinancialStrength",
-    # Composite Distress
-    "CompositeDistressCalculator",
-    "CompositeCreditRiskResult",
-    "DistressTier",
-    # Service
-    "CreditRiskService",
     "get_credit_risk_service",
 ]

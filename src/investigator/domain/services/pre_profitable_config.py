@@ -22,8 +22,6 @@ Usage:
         revenue_growth = assumptions['default_revenue_growth']
 """
 
-from typing import Dict, Optional
-
 # Industry-specific growth assumptions for pre-profitable companies
 PRE_PROFITABLE_GROWTH_ASSUMPTIONS = {
     # Technology - Software & Services
@@ -141,7 +139,7 @@ CONSERVATIVE_DEFAULTS = {
 }
 
 
-def get_growth_assumptions(sector: Optional[str] = None, industry: Optional[str] = None) -> Dict[str, any]:
+def get_growth_assumptions(sector: str | None = None, industry: str | None = None) -> dict[str, any]:
     """
     Get growth assumptions for a pre-profitable company.
 
@@ -191,10 +189,10 @@ def get_growth_assumptions(sector: Optional[str] = None, industry: Optional[str]
 
 def should_use_industry_defaults(
     num_quarters: int,
-    net_income: Optional[float] = None,
-    ebitda: Optional[float] = None,
-    sector: Optional[str] = None,
-    industry: Optional[str] = None,
+    net_income: float | None = None,
+    ebitda: float | None = None,
+    sector: str | None = None,
+    industry: str | None = None,
 ) -> bool:
     """
     Determine if industry defaults should be used instead of historical growth.
@@ -258,8 +256,8 @@ def should_use_industry_defaults(
 
 def get_terminal_growth_rate(
     base_terminal_growth: float,
-    sector: Optional[str] = None,
-    industry: Optional[str] = None,
+    sector: str | None = None,
+    industry: str | None = None,
     is_high_quality: bool = False,
 ) -> float:
     """
@@ -289,9 +287,9 @@ def get_terminal_growth_rate(
 
 
 def format_assumptions_log(
-    assumptions: Dict[str, any],
-    sector: Optional[str] = None,
-    industry: Optional[str] = None,
+    assumptions: dict[str, any],
+    sector: str | None = None,
+    industry: str | None = None,
 ) -> str:
     """
     Format growth assumptions for logging.

@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ Date: 2025-01-02
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar
 
 logger = logging.getLogger(__name__)
 
@@ -69,17 +69,17 @@ class ShortInterestSignal(Enum):
 class CreditRiskSignal:
     """Credit risk signal for valuation adjustment."""
 
-    altman_zscore: Optional[float] = None
-    altman_zone: Optional[str] = None  # "safe", "grey", "distress"
-    beneish_mscore: Optional[float] = None
+    altman_zscore: float | None = None
+    altman_zone: str | None = None  # "safe", "grey", "distress"
+    beneish_mscore: float | None = None
     manipulation_flag: bool = False
-    piotroski_fscore: Optional[int] = None
-    piotroski_grade: Optional[str] = None  # "strong", "moderate", "weak"
+    piotroski_fscore: int | None = None
+    piotroski_grade: str | None = None  # "strong", "moderate", "weak"
     distress_tier: DistressTier = DistressTier.HEALTHY
     discount_pct: float = 0.0
-    factors: List[str] = field(default_factory=list)
+    factors: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "altman_zscore": self.altman_zscore,
             "altman_zone": self.altman_zone,
@@ -98,14 +98,14 @@ class InsiderSentimentSignal:
     """Insider sentiment signal for confidence adjustment."""
 
     signal: InsiderSignal = InsiderSignal.NEUTRAL
-    buy_sell_ratio: Optional[float] = None
-    net_shares_change: Optional[int] = None
+    buy_sell_ratio: float | None = None
+    net_shares_change: int | None = None
     cluster_detected: bool = False
     confidence_adjustment: float = 0.0
     interpretation: str = ""
-    factors: List[str] = field(default_factory=list)
+    factors: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "signal": self.signal.value,
             "buy_sell_ratio": self.buy_sell_ratio,
@@ -122,15 +122,15 @@ class ShortInterestAdjustment:
     """Short interest signal for valuation."""
 
     signal: ShortInterestSignal = ShortInterestSignal.NORMAL
-    short_percent_float: Optional[float] = None
-    days_to_cover: Optional[float] = None
-    squeeze_score: Optional[float] = None
+    short_percent_float: float | None = None
+    days_to_cover: float | None = None
+    squeeze_score: float | None = None
     is_contrarian_signal: bool = False
     warning_flag: bool = False
     interpretation: str = ""
-    factors: List[str] = field(default_factory=list)
+    factors: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "signal": self.signal.value,
             "short_percent_float": self.short_percent_float,
@@ -156,9 +156,9 @@ class MarketRegimeAdjustment:
     equity_allocation_adjustment: float = 0.0
     valuation_adjustment_factor: float = 1.0
     interpretation: str = ""
-    factors: List[str] = field(default_factory=list)
+    factors: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "credit_cycle_phase": self.credit_cycle_phase,
             "volatility_regime": self.volatility_regime,
@@ -181,15 +181,15 @@ class IntegratedValuationSignals:
     base_fair_value: float
     adjusted_fair_value: float
     current_price: float
-    credit_risk: Optional[CreditRiskSignal] = None
-    insider_sentiment: Optional[InsiderSentimentSignal] = None
-    short_interest: Optional[ShortInterestAdjustment] = None
-    market_regime: Optional[MarketRegimeAdjustment] = None
+    credit_risk: CreditRiskSignal | None = None
+    insider_sentiment: InsiderSentimentSignal | None = None
+    short_interest: ShortInterestAdjustment | None = None
+    market_regime: MarketRegimeAdjustment | None = None
     total_adjustment_pct: float = 0.0
     confidence_adjustment: float = 0.0
-    warnings: List[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "symbol": self.symbol,
             "base_fair_value": self.base_fair_value,
@@ -238,7 +238,7 @@ class ValuationSignalIntegrator:
     """
 
     # Credit risk discount tiers
-    DISTRESS_DISCOUNTS = {
+    DISTRESS_DISCOUNTS: ClassVar[dict] = {
         DistressTier.HEALTHY: 0.0,
         DistressTier.WATCH: 0.05,
         DistressTier.CONCERN: 0.15,
@@ -247,7 +247,7 @@ class ValuationSignalIntegrator:
     }
 
     # Insider sentiment confidence adjustments
-    INSIDER_CONFIDENCE_ADJUSTMENTS = {
+    INSIDER_CONFIDENCE_ADJUSTMENTS: ClassVar[dict] = {
         InsiderSignal.STRONG_BUY: 0.10,
         InsiderSignal.BUY: 0.05,
         InsiderSignal.NEUTRAL: 0.0,
@@ -255,7 +255,7 @@ class ValuationSignalIntegrator:
         InsiderSignal.STRONG_SELL: -0.10,
     }
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize the signal integrator.
 
         Args:
@@ -271,9 +271,9 @@ class ValuationSignalIntegrator:
 
     def calculate_credit_risk_signal(
         self,
-        altman_zscore: Optional[float] = None,
-        beneish_mscore: Optional[float] = None,
-        piotroski_fscore: Optional[int] = None,
+        altman_zscore: float | None = None,
+        beneish_mscore: float | None = None,
+        piotroski_fscore: int | None = None,
     ) -> CreditRiskSignal:
         """Calculate credit risk signal from credit models.
 
@@ -357,10 +357,10 @@ class ValuationSignalIntegrator:
 
     def calculate_insider_sentiment_signal(
         self,
-        buy_sell_ratio: Optional[float] = None,
-        net_shares_change: Optional[int] = None,
+        buy_sell_ratio: float | None = None,
+        net_shares_change: int | None = None,
         cluster_detected: bool = False,
-        sentiment_score: Optional[float] = None,
+        sentiment_score: float | None = None,
     ) -> InsiderSentimentSignal:
         """Calculate insider sentiment signal.
 
@@ -446,9 +446,9 @@ class ValuationSignalIntegrator:
 
     def calculate_short_interest_signal(
         self,
-        short_percent_float: Optional[float] = None,
-        days_to_cover: Optional[float] = None,
-        squeeze_score: Optional[float] = None,
+        short_percent_float: float | None = None,
+        days_to_cover: float | None = None,
+        squeeze_score: float | None = None,
     ) -> ShortInterestAdjustment:
         """Calculate short interest signal.
 
@@ -525,7 +525,7 @@ class ValuationSignalIntegrator:
         recession_probability: str = "low",
         fed_policy_stance: str = "neutral",
         risk_free_rate: float = 0.04,
-        yield_curve_spread_bps: Optional[int] = None,
+        yield_curve_spread_bps: int | None = None,
     ) -> MarketRegimeAdjustment:
         """Calculate market regime adjustment for valuation.
 
@@ -638,10 +638,10 @@ class ValuationSignalIntegrator:
         symbol: str,
         base_fair_value: float,
         current_price: float,
-        credit_risk_data: Optional[Dict[str, Any]] = None,
-        insider_data: Optional[Dict[str, Any]] = None,
-        short_interest_data: Optional[Dict[str, Any]] = None,
-        market_regime_data: Optional[Dict[str, Any]] = None,
+        credit_risk_data: dict[str, Any] | None = None,
+        insider_data: dict[str, Any] | None = None,
+        short_interest_data: dict[str, Any] | None = None,
+        market_regime_data: dict[str, Any] | None = None,
     ) -> IntegratedValuationSignals:
         """Integrate all signals to produce adjusted fair value.
 
@@ -759,11 +759,11 @@ class ValuationSignalIntegrator:
 
 
 # Singleton accessor
-_signal_integrator: Optional[ValuationSignalIntegrator] = None
+_signal_integrator: ValuationSignalIntegrator | None = None
 
 
 def get_signal_integrator(
-    config: Optional[Dict[str, Any]] = None,
+    config: dict[str, Any] | None = None,
 ) -> ValuationSignalIntegrator:
     """Get or create the signal integrator singleton.
 

@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 # SPDX-License-Identifier: Apache-2.0
 
 """FastAPI application for Victor Investment API.
@@ -50,7 +50,7 @@ from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request
@@ -107,7 +107,7 @@ def _react_dist_dir() -> Path:
     return Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
 
 
-def _get_allowed_origins() -> List[str]:
+def _get_allowed_origins() -> list[str]:
     """Resolve CORS origins from environment with safe local defaults."""
     configured = os.environ.get("VICTOR_ALLOWED_ORIGINS", "")
     if configured.strip():
@@ -121,7 +121,7 @@ def _get_allowed_origins() -> List[str]:
     return list(DEFAULT_CORS_ORIGINS)
 
 
-def _allow_credentials_for_origins(origins: List[str]) -> bool:
+def _allow_credentials_for_origins(origins: list[str]) -> bool:
     """Credentials cannot be used with a wildcard CORS origin."""
     return not (len(origins) == 1 and origins[0] == "*")
 
@@ -147,7 +147,7 @@ def _is_local_origin(origin: str) -> bool:
     return host in {"localhost", "127.0.0.1"}
 
 
-def _warn_for_risky_api_exposure(origins: List[str]) -> None:
+def _warn_for_risky_api_exposure(origins: list[str]) -> None:
     """Emit startup warnings when the API is broadly exposed without auth."""
     if not origins:
         return
@@ -297,7 +297,7 @@ class AnalysisRequest(BaseModel):
         description="Analysis mode: quick, standard, comprehensive",
     )
     provider: str = Field(default="ollama", description="LLM provider")
-    model: Optional[str] = Field(default=None, description="Model name")
+    model: str | None = Field(default=None, description="Model name")
 
 
 class AnalysisResponse(BaseModel):
@@ -306,12 +306,12 @@ class AnalysisResponse(BaseModel):
     symbol: str
     mode: str
     status: str
-    fundamental_analysis: Optional[Dict[str, Any]] = None
-    technical_analysis: Optional[Dict[str, Any]] = None
-    market_context: Optional[Dict[str, Any]] = None
-    synthesis: Optional[Dict[str, Any]] = None
-    recommendation: Optional[Dict[str, Any]] = None
-    errors: List[str] = []
+    fundamental_analysis: dict[str, Any] | None = None
+    technical_analysis: dict[str, Any] | None = None
+    market_context: dict[str, Any] | None = None
+    synthesis: dict[str, Any] | None = None
+    recommendation: dict[str, Any] | None = None
+    errors: list[str] = []
     timestamp: str
 
 
@@ -320,19 +320,19 @@ class HealthResponse(BaseModel):
 
     status: str
     version: str
-    database: Optional[str] = None
-    cache: Optional[str] = None
-    llm: Optional[str] = None
+    database: str | None = None
+    cache: str | None = None
+    llm: str | None = None
     victor_installed: bool
-    providers: List[str]
-    services: Dict[str, str]
+    providers: list[str]
+    services: dict[str, str]
     timestamp: str
 
 
 class BatchAnalysisRequest(BaseModel):
     """Request model for batch analysis."""
 
-    symbols: List[str] = Field(..., description="List of stock ticker symbols")
+    symbols: list[str] = Field(..., description="List of stock ticker symbols")
     mode: str = Field(default="standard", description="Analysis mode")
 
 
@@ -347,7 +347,7 @@ class BatchAnalysisResponse(BaseModel):
 class CacheWarmRequest(BaseModel):
     """Request model for cache warming."""
 
-    symbols: List[str] = Field(..., description="Symbols to warm cache for")
+    symbols: list[str] = Field(..., description="Symbols to warm cache for")
 
 
 class UIRefreshRequest(BaseModel):
@@ -367,11 +367,11 @@ class ModelInfo(BaseModel):
     """Model information."""
 
     name: str
-    size: Optional[str] = None
-    modified: Optional[str] = None
+    size: str | None = None
+    modified: str | None = None
 
 
-def _parse_analysis_mode(mode: Optional[str]) -> AnalysisMode:
+def _parse_analysis_mode(mode: str | None) -> AnalysisMode:
     """Normalize and validate API analysis mode values."""
     normalized_mode = (mode or AnalysisMode.STANDARD.value).strip().lower()
     if not normalized_mode:
@@ -398,9 +398,9 @@ def _parse_analysis_mode(mode: Optional[str]) -> AnalysisMode:
     return parsed_mode
 
 
-def _normalize_symbols(symbols: List[str]) -> List[str]:
+def _normalize_symbols(symbols: list[str]) -> list[str]:
     """Normalize symbol list for stable batch execution."""
-    normalized_symbols: List[str] = []
+    normalized_symbols: list[str] = []
     seen = set()
 
     for symbol in symbols:
@@ -416,11 +416,11 @@ def _normalize_symbols(symbols: List[str]) -> List[str]:
     return normalized_symbols
 
 
-def _get_analysis_jobs_store() -> Dict[str, Any]:
+def _get_analysis_jobs_store() -> dict[str, Any]:
     """Get or lazily initialize the batch job store backed by local JSON files."""
     if not hasattr(app.state, "analysis_jobs") or app.state.analysis_jobs is None:
         app.state.analysis_jobs = _load_persisted_batch_jobs()
-    result: Dict[str, Any] = app.state.analysis_jobs
+    result: dict[str, Any] = app.state.analysis_jobs
     return result
 
 
@@ -436,7 +436,7 @@ def _batch_job_path(job_id: str) -> Path:
     return _ensure_batch_jobs_dir() / f"{safe_job_id}.json"
 
 
-def _normalize_persisted_batch_job(job_id: str, job: Dict[str, Any]) -> Dict[str, Any]:
+def _normalize_persisted_batch_job(job_id: str, job: dict[str, Any]) -> dict[str, Any]:
     """Mark unfinished persisted jobs as interrupted after process restart."""
     normalized = dict(job)
     normalized.setdefault("job_id", job_id)
@@ -447,12 +447,12 @@ def _normalize_persisted_batch_job(job_id: str, job: Dict[str, Any]) -> Dict[str
     return normalized
 
 
-def _load_persisted_batch_jobs() -> Dict[str, Any]:
+def _load_persisted_batch_jobs() -> dict[str, Any]:
     """Load persisted batch-job state from disk."""
     if not BATCH_JOBS_DIR.exists():
         return {}
 
-    jobs: Dict[str, Any] = {}
+    jobs: dict[str, Any] = {}
     for path in sorted(BATCH_JOBS_DIR.glob("*.json")):
         if not path.is_file():
             continue
@@ -469,7 +469,7 @@ def _load_persisted_batch_jobs() -> Dict[str, Any]:
     return jobs
 
 
-def _persist_batch_job(job_id: str, job: Dict[str, Any]) -> None:
+def _persist_batch_job(job_id: str, job: dict[str, Any]) -> None:
     """Persist a batch job snapshot to disk."""
     payload = dict(job)
     payload["job_id"] = job_id
@@ -517,7 +517,7 @@ def _is_analysis_payload(payload: Any) -> bool:
     return "summary" in payload and ("fundamental" in payload or "technical" in payload)
 
 
-def _save_ui_cache(symbol: str, payload: Dict[str, Any], source: str, cached_at: Optional[str] = None) -> None:
+def _save_ui_cache(symbol: str, payload: dict[str, Any], source: str, cached_at: str | None = None) -> None:
     try:
         UI_CACHE_DIR.mkdir(parents=True, exist_ok=True)
         record = {
@@ -531,7 +531,7 @@ def _save_ui_cache(symbol: str, payload: Dict[str, Any], source: str, cached_at:
         logger.warning("Failed to save UI cache for %s: %s", symbol, exc)
 
 
-def _load_ui_cache(symbol: str) -> Optional[Dict[str, Any]]:
+def _load_ui_cache(symbol: str) -> dict[str, Any] | None:
     try:
         path = _ui_cache_path(symbol)
         if not path.exists():
@@ -552,7 +552,7 @@ def _load_ui_cache(symbol: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def _extract_payload_from_log_text(raw: str, symbol: str) -> Optional[Dict[str, Any]]:
+def _extract_payload_from_log_text(raw: str, symbol: str) -> dict[str, Any] | None:
     if not raw:
         return None
 
@@ -572,16 +572,17 @@ def _extract_payload_from_log_text(raw: str, symbol: str) -> Optional[Dict[str, 
         try:
             parsed, _ = decoder.raw_decode(json_candidate)
         except Exception:
+            logger.debug("_extract_payload_from_log_text: suppressed error", exc_info=True)
             continue
         if _is_analysis_payload(parsed):
             parsed_symbol = str(parsed.get("symbol", "")).upper()
             if not parsed_symbol or parsed_symbol == symbol.upper():
-                result: Dict[str, Any] = parsed
+                result: dict[str, Any] = parsed
                 return result
     return None
 
 
-def _extract_payload_from_log_file(path: Path, symbol: str) -> Optional[Dict[str, Any]]:
+def _extract_payload_from_log_file(path: Path, symbol: str) -> dict[str, Any] | None:
     try:
         if not path.exists() or not path.is_file():
             return None
@@ -599,11 +600,11 @@ def _extract_payload_from_log_file(path: Path, symbol: str) -> Optional[Dict[str
         return None
 
 
-def _candidate_log_files(symbol: str) -> List[Path]:
+def _candidate_log_files(symbol: str) -> list[Path]:
     symbol_upper = symbol.upper()
     symbol_lower = symbol.lower()
     seen: set = set()
-    files: List[Path] = []
+    files: list[Path] = []
 
     for directory in UI_LOG_SCAN_DIRS:
         if not directory.exists():
@@ -620,7 +621,7 @@ def _candidate_log_files(symbol: str) -> List[Path]:
     return files[:UI_MAX_LOG_SCAN_FILES]
 
 
-def _get_latest_payload_from_logs(symbol: str) -> Optional[Dict[str, Any]]:
+def _get_latest_payload_from_logs(symbol: str) -> dict[str, Any] | None:
     for path in _candidate_log_files(symbol):
         payload = _extract_payload_from_log_file(path, symbol)
         if payload:
@@ -635,7 +636,7 @@ def _get_latest_payload_from_logs(symbol: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def _get_latest_ui_payload(symbol: str) -> Optional[Dict[str, Any]]:
+def _get_latest_ui_payload(symbol: str) -> dict[str, Any] | None:
     from_db = _get_latest_orchestrator_payload(symbol)
     if from_db:
         _save_ui_cache(
@@ -664,10 +665,10 @@ def _get_latest_ui_payload(symbol: str) -> Optional[Dict[str, Any]]:
 
 
 def _ui_view_matches_valuation_request(
-    view: Dict[str, Any],
+    view: dict[str, Any],
     *,
     valuation_basis: str,
-    forward_horizon: Optional[str],
+    forward_horizon: str | None,
 ) -> bool:
     """Return whether a normalized UI view matches a requested valuation basis."""
     summary = view.get("summary", {}) if isinstance(view, dict) else {}
@@ -681,7 +682,7 @@ def _ui_view_matches_valuation_request(
     return True
 
 
-def _normalize_valuation_inputs(basis: Optional[str], horizon: Optional[str]) -> tuple[str, str]:
+def _normalize_valuation_inputs(basis: str | None, horizon: str | None) -> tuple[str, str]:
     normalized_basis = str(basis or "ttm").strip().lower()
     normalized_horizon = str(horizon or "1y").strip().lower()
 
@@ -699,7 +700,7 @@ async def _run_legacy_cli_analysis(
     valuation_basis: str,
     forward_horizon: str,
     force_refresh: bool,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     repo_root = Path(__file__).resolve().parents[2]
     UI_CACHE_DIR.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S_%f")
@@ -738,7 +739,7 @@ async def _run_legacy_cli_analysis(
     )
     try:
         stdout_bytes, _ = await asyncio.wait_for(process.communicate(), timeout=20 * 60)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         process.kill()
         await process.wait()
         return {
@@ -770,7 +771,7 @@ async def _run_legacy_cli_analysis(
     }
 
 
-def _coerce_json_payload(value: Any) -> Optional[Dict[str, Any]]:
+def _coerce_json_payload(value: Any) -> dict[str, Any] | None:
     if isinstance(value, dict):
         return value
     if isinstance(value, str):
@@ -785,9 +786,9 @@ def _coerce_json_payload(value: Any) -> Optional[Dict[str, Any]]:
 
 def _extract_basis_and_horizon_from_models(
     models: Any,
-) -> tuple[Optional[str], Optional[str]]:
-    basis: Optional[str] = None
-    horizon: Optional[str] = None
+) -> tuple[str | None, str | None]:
+    basis: str | None = None
+    horizon: str | None = None
     if not isinstance(models, dict):
         return basis, horizon
 
@@ -806,7 +807,7 @@ def _extract_basis_and_horizon_from_models(
     return basis, horizon
 
 
-def _extract_forward_guidance_from_models(models: Any) -> Dict[str, Any]:
+def _extract_forward_guidance_from_models(models: Any) -> dict[str, Any]:
     """
     Infer forward-guidance signals from model assumptions when SEC guidance
     payload is unavailable in the compact schema.
@@ -828,7 +829,7 @@ def _extract_forward_guidance_from_models(models: Any) -> Dict[str, Any]:
         if not has_guidance:
             continue
 
-        guidance: Dict[str, Any] = {
+        guidance: dict[str, Any] = {
             "source": "valuation_model_assumptions",
             "source_model": model_name,
             "source_form": assumptions.get("guidance_source_form"),
@@ -866,7 +867,7 @@ def _extract_forward_guidance_from_models(models: Any) -> Dict[str, Any]:
     return {}
 
 
-def _extract_forward_guidance(sec_section: Any, models: Any) -> Dict[str, Any]:
+def _extract_forward_guidance(sec_section: Any, models: Any) -> dict[str, Any]:
     if isinstance(sec_section, dict):
         forward_guidance = sec_section.get("forward_guidance")
         if isinstance(forward_guidance, dict) and forward_guidance:
@@ -874,7 +875,7 @@ def _extract_forward_guidance(sec_section: Any, models: Any) -> Dict[str, Any]:
     return _extract_forward_guidance_from_models(models)
 
 
-def _apply_thesis_fallback(result: Dict[str, Any]) -> Dict[str, Any]:
+def _apply_thesis_fallback(result: dict[str, Any]) -> dict[str, Any]:
     """Fill empty thesis with a template-based fallback using available data."""
     summary = result.get("summary", {})
     if summary.get("thesis"):
@@ -899,11 +900,11 @@ def _apply_thesis_fallback(result: Dict[str, Any]) -> Dict[str, Any]:
         if not summary.get("key_risks"):
             summary["key_risks"] = thesis_data.get("bear_case_considerations", [])
     except Exception:
-        pass  # Template fallback is best-effort
+        logger.debug("_apply_thesis_fallback: suppressed error", exc_info=True)
     return result
 
 
-def _extract_ui_view_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+def _extract_ui_view_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
     """
     Normalize either compact analysis JSON or legacy orchestrator JSON into a
     stable UI payload with summary/fundamental/technical sections.
@@ -1056,7 +1057,7 @@ def _extract_ui_view_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     )
 
 
-def _safe_float(value: Any) -> Optional[float]:
+def _safe_float(value: Any) -> float | None:
     try:
         if value is None:
             return None
@@ -1070,11 +1071,11 @@ def _safe_float(value: Any) -> Optional[float]:
 
 def _build_history_entry(
     symbol: str,
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     *,
-    timestamp: Optional[str],
-    source: Optional[str],
-) -> Dict[str, Any]:
+    timestamp: str | None,
+    source: str | None,
+) -> dict[str, Any]:
     """Convert an analysis payload into the lightweight history row used by the UI."""
     view = _extract_ui_view_from_payload(payload)
     summary = view.get("summary", {}) if isinstance(view, dict) else {}
@@ -1100,14 +1101,14 @@ def _parse_cached_at_epoch(value: Any, fallback_epoch: float) -> float:
     return fallback_epoch
 
 
-def _to_confidence_percent(value: Any) -> Optional[float]:
+def _to_confidence_percent(value: Any) -> float | None:
     parsed = _safe_float(value)
     if parsed is None:
         return None
     return parsed * 100.0 if parsed <= 1.0 else parsed
 
 
-def _extract_model_weight_stats(payload: Dict[str, Any]) -> Dict[str, Any]:
+def _extract_model_weight_stats(payload: dict[str, Any]) -> dict[str, Any]:
     valuation = payload.get("valuation", {}) if isinstance(payload, dict) else {}
     models = valuation.get("models", {}) if isinstance(valuation, dict) else {}
     if not isinstance(models, dict):
@@ -1117,8 +1118,8 @@ def _extract_model_weight_stats(payload: Dict[str, Any]) -> Dict[str, Any]:
             "dominant_model": None,
         }
 
-    max_weight: Optional[float] = None
-    dominant_model: Optional[str] = None
+    max_weight: float | None = None
+    dominant_model: str | None = None
     weighted_model_count = 0
     for model_name, model_payload in models.items():
         if not isinstance(model_payload, dict):
@@ -1138,14 +1139,14 @@ def _extract_model_weight_stats(payload: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _load_rankable_cache_entries() -> List[Dict[str, Any]]:
+def _load_rankable_cache_entries() -> list[dict[str, Any]]:
     """
     Load deduplicated latest UI cache entries (one row per symbol) suitable for ranking.
     """
     if not UI_CACHE_DIR.exists():
         return []
 
-    latest_by_symbol: Dict[str, Dict[str, Any]] = {}
+    latest_by_symbol: dict[str, dict[str, Any]] = {}
     for path in UI_CACHE_DIR.glob("*.json"):
         if not path.is_file():
             continue
@@ -1156,6 +1157,7 @@ def _load_rankable_cache_entries() -> List[Dict[str, Any]]:
         try:
             raw = json.loads(path.read_text(encoding="utf-8"))
         except Exception:
+            logger.debug("_load_rankable_cache_entries: suppressed error", exc_info=True)
             continue
 
         payload = raw.get("payload") if isinstance(raw, dict) else None
@@ -1167,6 +1169,7 @@ def _load_rankable_cache_entries() -> List[Dict[str, Any]]:
         try:
             view = _extract_ui_view_from_payload(payload)  # type: ignore[arg-type]
         except Exception:
+            logger.debug("_load_rankable_cache_entries: suppressed error", exc_info=True)
             continue
 
         summary = view.get("summary", {}) if isinstance(view, dict) else {}
@@ -1219,7 +1222,7 @@ def _load_rankable_cache_entries() -> List[Dict[str, Any]]:
     return list(latest_by_symbol.values())
 
 
-def _load_rankable_db_entries() -> List[Dict[str, Any]]:
+def _load_rankable_db_entries() -> list[dict[str, Any]]:
     """
     Load latest valuation rows from the database-backed symbol table.
 
@@ -1339,7 +1342,7 @@ def _load_rankable_db_entries() -> List[Dict[str, Any]]:
         logger.warning("Failed to load DB-backed ranking entries: %s", exc)
         return []
 
-    entries: List[Dict[str, Any]] = []
+    entries: list[dict[str, Any]] = []
     for row in rows:
         cached_at = row.get("cached_at")
         cached_at_text = cached_at.isoformat() if hasattr(cached_at, "isoformat") else str(cached_at or "")
@@ -1375,7 +1378,7 @@ def _load_rankable_db_entries() -> List[Dict[str, Any]]:
     return [entry for entry in entries if entry.get("symbol")]
 
 
-def _load_symbol_metadata(symbols: List[str]) -> Dict[str, Dict[str, Any]]:
+def _load_symbol_metadata(symbols: list[str]) -> dict[str, dict[str, Any]]:
     """
     Best-effort metadata enrichment from symbol table (beta/mktcap/sector).
     """
@@ -1420,7 +1423,7 @@ def _load_symbol_metadata(symbols: List[str]) -> Dict[str, Dict[str, Any]]:
     except Exception:
         return {}
 
-    metadata: Dict[str, Dict[str, Any]] = {}
+    metadata: dict[str, dict[str, Any]] = {}
     for row in rows:
         symbol = str(row.get("ticker") or "").upper()
         if not symbol:
@@ -1441,12 +1444,12 @@ def _load_symbol_metadata(symbols: List[str]) -> Dict[str, Dict[str, Any]]:
 
 
 def _compute_portfolio_preview(
-    overall_longs: List[Dict[str, Any]],
-    overall_shorts: List[Dict[str, Any]],
+    overall_longs: list[dict[str, Any]],
+    overall_shorts: list[dict[str, Any]],
     *,
-    symbol_metadata: Dict[str, Dict[str, Any]],
+    symbol_metadata: dict[str, dict[str, Any]],
     portfolio_legs: int,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     if portfolio_legs <= 0:
         return {}
 
@@ -1455,8 +1458,8 @@ def _compute_portfolio_preview(
     if not longs or not shorts:
         return {}
 
-    def _with_beta(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        out: List[Dict[str, Any]] = []
+    def _with_beta(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
         for item in items:
             symbol = str(item.get("symbol") or "").upper()
             meta = symbol_metadata.get(symbol, {})
@@ -1470,7 +1473,7 @@ def _compute_portfolio_preview(
     longs = _with_beta(longs)
     shorts = _with_beta(shorts)
 
-    def _avg(values: List[Optional[float]], default: float = 0.0) -> float:
+    def _avg(values: list[float | None], default: float = 0.0) -> float:
         clean = [float(v) for v in values if v is not None]
         if not clean:
             return default
@@ -1484,8 +1487,8 @@ def _compute_portfolio_preview(
     def _sector_exposure(
         long_weight_each: float,
         short_weight_each: float,
-    ) -> List[Dict[str, Any]]:
-        exposure: Dict[str, float] = defaultdict(float)
+    ) -> list[dict[str, Any]]:
+        exposure: dict[str, float] = defaultdict(float)
         for item in longs:
             exposure[str(item.get("sector") or "Unknown")] += long_weight_each
         for item in shorts:
@@ -1549,7 +1552,7 @@ def _compute_portfolio_preview(
     }
 
 
-def _attach_decision_policy(item: Dict[str, Any]) -> None:
+def _attach_decision_policy(item: dict[str, Any]) -> None:
     """Attach deterministic decision policy fields to a rankable item."""
     try:
         policy_output = InvestmentDecisionPolicy().evaluate(from_symbol_ranking_row(item))
@@ -1573,7 +1576,7 @@ def _attach_decision_policy(item: Dict[str, Any]) -> None:
     item["guardrails_triggered"] = list(policy_output.guardrails_triggered)
 
 
-def _decision_action_rank(action: Optional[str], *, side: str) -> int:
+def _decision_action_rank(action: str | None, *, side: str) -> int:
     action_text = str(action or "").upper()
     if side == "long":
         return {
@@ -1594,7 +1597,7 @@ def _decision_action_rank(action: Optional[str], *, side: str) -> int:
     }.get(action_text, 0)
 
 
-def _long_ranking_key(item: Dict[str, Any]) -> tuple[float, float, float, float]:
+def _long_ranking_key(item: dict[str, Any]) -> tuple[float, float, float, float]:
     return (
         float(_decision_action_rank(item.get("decision_action"), side="long")),
         _safe_float(item.get("expected_return_pct")) or -9999.0,
@@ -1603,7 +1606,7 @@ def _long_ranking_key(item: Dict[str, Any]) -> tuple[float, float, float, float]
     )
 
 
-def _short_ranking_key(item: Dict[str, Any]) -> tuple[float, float, float, float]:
+def _short_ranking_key(item: dict[str, Any]) -> tuple[float, float, float, float]:
     expected = _safe_float(item.get("expected_return_pct"))
     return (
         float(_decision_action_rank(item.get("decision_action"), side="short")),
@@ -1614,7 +1617,7 @@ def _short_ranking_key(item: Dict[str, Any]) -> tuple[float, float, float, float
 
 
 def _build_rankings_payload(
-    entries: List[Dict[str, Any]],
+    entries: list[dict[str, Any]],
     *,
     limit: int,
     per_sector: int,
@@ -1622,8 +1625,8 @@ def _build_rankings_payload(
     max_age_hours: float,
     min_model_agreement: float,
     max_dispersion: float,
-    basis: Optional[str],
-    forward_horizon: Optional[str],
+    basis: str | None,
+    forward_horizon: str | None,
     pair_limit: int = 25,
     pair_per_sector: int = 2,
     min_pair_spread: float = 5.0,
@@ -1639,10 +1642,10 @@ def _build_rankings_payload(
     exclude_split_suspects: bool = True,
     split_suspect_min_multiple: float = 4.0,
     split_suspect_max_inverse_multiple: float = 0.25,
-    symbol_metadata: Optional[Dict[str, Dict[str, Any]]] = None,
-) -> Dict[str, Any]:
+    symbol_metadata: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     now_epoch = datetime.utcnow().timestamp()
-    filtered: List[Dict[str, Any]] = []
+    filtered: list[dict[str, Any]] = []
     split_suspect_count = 0
     for item in entries:
         expected = _safe_float(item.get("expected_return_pct"))
@@ -1732,12 +1735,12 @@ def _build_rankings_payload(
         reverse=True,
     )[:limit]
 
-    grouped: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for item in filtered:
         grouped[str(item.get("sector") or "Unknown")].append(item)
 
-    sectors: List[Dict[str, Any]] = []
-    pair_candidates: List[Dict[str, Any]] = []
+    sectors: list[dict[str, Any]] = []
+    pair_candidates: list[dict[str, Any]] = []
     for sector, items in grouped.items():
         if not items:
             continue
@@ -1891,8 +1894,8 @@ def _compute_rankings(
     max_age_hours: float,
     min_model_agreement: float,
     max_dispersion: float,
-    basis: Optional[str],
-    forward_horizon: Optional[str],
+    basis: str | None,
+    forward_horizon: str | None,
     pair_limit: int,
     pair_per_sector: int,
     min_pair_spread: float,
@@ -1906,7 +1909,7 @@ def _compute_rankings(
     max_target_multiple: float,
     require_positive_target: bool,
     exclude_split_suspects: bool,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     entries = _load_rankable_db_entries()
     if not entries:
         entries = _load_rankable_cache_entries()
@@ -1976,7 +1979,7 @@ def _compute_rankings(
     )
 
 
-def _rankings_to_csv(payload: Dict[str, Any], export_type: str) -> str:
+def _rankings_to_csv(payload: dict[str, Any], export_type: str) -> str:
     out = io.StringIO()
     writer = csv.writer(out)
 
@@ -2128,10 +2131,10 @@ def _rankings_to_csv(payload: Dict[str, Any], export_type: str) -> str:
     return out.getvalue()
 
 
-def _series_to_float_list(series: Any) -> List[Optional[float]]:
+def _series_to_float_list(series: Any) -> list[float | None]:
     if series is None:
         return []
-    values: List[Optional[float]] = []
+    values: list[float | None] = []
     converter = getattr(series, "tolist", None)
     items = converter() if callable(converter) else list(series)
     for item in items:
@@ -2143,7 +2146,7 @@ def _series_to_float_list(series: Any) -> List[Optional[float]]:
     return values
 
 
-def _build_chart_payload(symbol: str, days: int, ui_view: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def _build_chart_payload(symbol: str, days: int, ui_view: dict[str, Any] | None = None) -> dict[str, Any]:
     import numpy as np
     import pandas as pd
 
@@ -2268,7 +2271,7 @@ def _build_chart_payload(symbol: str, days: int, ui_view: Optional[Dict[str, Any
     return {
         "symbol": symbol,
         "days": days,
-        "rows": int(len(data)),
+        "rows": len(data),
         "indicator_engine": indicator_engine,
         "dates": dates,
         "ohlcv": {
@@ -2300,7 +2303,7 @@ def _build_chart_payload(symbol: str, days: int, ui_view: Optional[Dict[str, Any
     }
 
 
-def _get_latest_orchestrator_payload(symbol: str) -> Optional[Dict[str, Any]]:
+def _get_latest_orchestrator_payload(symbol: str) -> dict[str, Any] | None:
     """Fetch the newest valid analysis payload from llm_responses."""
     try:
         if getattr(app.state, "db_engine", None) is None:
@@ -2314,7 +2317,7 @@ def _get_latest_orchestrator_payload(symbol: str) -> Optional[Dict[str, Any]]:
             "orchestrator",
         )
 
-        def _row_to_payload(row: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        def _row_to_payload(row: dict[str, Any]) -> dict[str, Any] | None:
             if not row:
                 return None
             payload = _coerce_json_payload(row.get("response"))
@@ -2473,7 +2476,7 @@ async def ui_search_symbols(
     except Exception as exc:
         logger.warning("UI symbol search failed for %s: %s", query, exc)
         # Fallback: local ticker map for environments without stock DB access.
-        fallback_results: List[Dict[str, Any]] = []
+        fallback_results: list[dict[str, Any]] = []
         try:
             map_path = Path("data/sector_industry_ticker_map.txt")
             if map_path.exists():
@@ -2528,7 +2531,7 @@ async def ui_latest_analysis(symbol: str, include_raw: bool = Query(False)):
 
     payload = cached["payload"]
     view = _extract_ui_view_from_payload(payload)
-    response: Dict[str, Any] = {
+    response: dict[str, Any] = {
         "symbol": normalized_symbol,
         "cached_at": cached.get("cached_at"),
         "period": cached.get("period"),
@@ -2549,7 +2552,7 @@ async def ui_analysis_history(symbol: str, limit: int = Query(20, ge=1, le=200))
     if not normalized_symbol:
         raise HTTPException(status_code=400, detail="No symbol provided")
 
-    entries: List[Dict[str, Any]] = []
+    entries: list[dict[str, Any]] = []
     seen: set[tuple[str, str]] = set()
 
     cached = _load_ui_cache(normalized_symbol)
@@ -2629,9 +2632,9 @@ async def ui_refresh_analysis(symbol: str, request: UIRefreshRequest):
     if backend not in {"auto", "legacy", "workflow"}:
         raise HTTPException(status_code=400, detail="Invalid backend. Use auto, legacy, or workflow.")
 
-    workflow_error: Optional[str] = None
-    legacy_error: Optional[str] = None
-    live_result: Optional[Any] = None
+    workflow_error: str | None = None
+    legacy_error: str | None = None
+    live_result: Any | None = None
     refresh_result_available = False
 
     prefer_legacy = backend == "legacy" or (backend == "auto" and os.getenv("INVESTIGATOR_LEGACY", "0") == "1")
@@ -2793,7 +2796,7 @@ async def ui_predictions(symbol: str, limit: int = Query(50, ge=1, le=200)):
 @app.get("/history")
 async def ui_history(limit: int = Query(20, ge=1, le=200)):
     """Return recent symbols from UI cache for quick navigation."""
-    items: List[Dict[str, Any]] = []
+    items: list[dict[str, Any]] = []
     try:
         if not UI_CACHE_DIR.exists():
             return {"items": items}
@@ -2822,6 +2825,7 @@ async def ui_history(limit: int = Query(20, ge=1, le=200)):
                     }
                 )
             except Exception:
+                logger.debug("ui_history: suppressed error", exc_info=True)
                 continue
     except Exception as exc:
         logger.warning("UI history load failed: %s", exc)
@@ -2836,8 +2840,8 @@ async def ui_rankings(
     max_age_hours: float = Query(24.0 * 30.0, ge=1.0, le=24.0 * 365.0),
     min_model_agreement: float = Query(0.35, ge=0.0, le=1.0),
     max_dispersion: float = Query(0.8, ge=0.0, le=10.0),
-    basis: Optional[str] = Query(default=None, pattern="^(ttm|forward)$"),
-    forward_horizon: Optional[str] = Query(default=None, pattern="^(1q|2q|3q|1y)$"),
+    basis: str | None = Query(default=None, pattern="^(ttm|forward)$"),
+    forward_horizon: str | None = Query(default=None, pattern="^(1q|2q|3q|1y)$"),
     pair_limit: int = Query(25, ge=0, le=200),
     pair_per_sector: int = Query(2, ge=0, le=20),
     min_pair_spread: float = Query(5.0, ge=0.0, le=200.0),
@@ -2892,8 +2896,8 @@ async def ui_rankings_export_csv(
     max_age_hours: float = Query(24.0 * 30.0, ge=1.0, le=24.0 * 365.0),
     min_model_agreement: float = Query(0.35, ge=0.0, le=1.0),
     max_dispersion: float = Query(0.8, ge=0.0, le=10.0),
-    basis: Optional[str] = Query(default=None, pattern="^(ttm|forward)$"),
-    forward_horizon: Optional[str] = Query(default=None, pattern="^(1q|2q|3q|1y)$"),
+    basis: str | None = Query(default=None, pattern="^(ttm|forward)$"),
+    forward_horizon: str | None = Query(default=None, pattern="^(1q|2q|3q|1y)$"),
     pair_limit: int = Query(25, ge=0, le=200),
     pair_per_sector: int = Query(2, ge=0, le=20),
     min_pair_spread: float = Query(5.0, ge=0.0, le=200.0),
@@ -2949,7 +2953,7 @@ async def ui_spa_fallback(path: str):
     return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
 
 
-@app.get("/", response_model=Dict[str, str])
+@app.get("/", response_model=dict[str, str])
 async def root():
     """Root endpoint with API information."""
     return {
@@ -2994,12 +2998,14 @@ async def health():
     try:
         import aiohttp
 
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(
                 "http://localhost:11434/api/tags",
                 timeout=aiohttp.ClientTimeout(total=2),
-            ) as resp:
-                services["ollama"] = "healthy" if resp.status == 200 else "degraded"
+            ) as resp,
+        ):
+            services["ollama"] = "healthy" if resp.status == 200 else "degraded"
     except Exception:
         services["ollama"] = "unavailable"
 
@@ -3156,24 +3162,23 @@ async def list_models():
     try:
         import aiohttp
 
-        async with aiohttp.ClientSession() as session:
-            async with session.get("http://localhost:11434/api/tags") as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    models = data.get("models", [])
-                    return {
-                        "models": [
-                            {
-                                "name": m.get("name"),
-                                "size": m.get("size"),
-                                "modified": m.get("modified_at"),
-                            }
-                            for m in models
-                        ],
-                        "count": len(models),
-                    }
-                else:
-                    raise HTTPException(status_code=resp.status, detail="Ollama unavailable")
+        async with aiohttp.ClientSession() as session, session.get("http://localhost:11434/api/tags") as resp:
+            if resp.status == 200:
+                data = await resp.json()
+                models = data.get("models", [])
+                return {
+                    "models": [
+                        {
+                            "name": m.get("name"),
+                            "size": m.get("size"),
+                            "modified": m.get("modified_at"),
+                        }
+                        for m in models
+                    ],
+                    "count": len(models),
+                }
+            else:
+                raise HTTPException(status_code=resp.status, detail="Ollama unavailable")
     except aiohttp.ClientError as e:
         raise HTTPException(status_code=503, detail=f"Cannot connect to Ollama: {e}")
 
@@ -3249,7 +3254,7 @@ async def clear_symbol_cache(symbol: str):
 # ========================================================================================
 
 
-async def _run_batch_analysis(job_id: str, symbols: List[str], mode: str):
+async def _run_batch_analysis(job_id: str, symbols: list[str], mode: str):
     """Background task for batch analysis."""
     analysis_jobs = _get_analysis_jobs_store()
     job = analysis_jobs.get(job_id)
@@ -3308,7 +3313,7 @@ async def _run_batch_analysis(job_id: str, symbols: List[str], mode: str):
         _persist_batch_job(job_id, job)
 
 
-async def _warm_cache_for_symbols(symbols: List[str]):
+async def _warm_cache_for_symbols(symbols: list[str]):
     """Background task for cache warming."""
     try:
         from victor_invest.tools import MarketDataTool, SECFilingTool

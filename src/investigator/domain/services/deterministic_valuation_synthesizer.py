@@ -22,7 +22,7 @@ Design Principles (SOLID):
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, ClassVar, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -44,11 +44,11 @@ class ModelContribution:
     """Represents a valuation model's contribution to the blended value."""
 
     model_name: str
-    fair_value: Optional[float]
+    fair_value: float | None
     weight: float
     is_applicable: bool
-    reason: Optional[str] = None
-    assumptions: Optional[Dict[str, Any]] = None
+    reason: str | None = None
+    assumptions: dict[str, Any] | None = None
     weighted_contribution: float = 0.0
 
     def __post_init__(self):
@@ -69,10 +69,10 @@ class SynthesisContext:
     data_quality_score: float
     quality_grade: str
     sector: str
-    industry: Optional[str]
-    model_contributions: List[ModelContribution]
-    notes: List[str] = field(default_factory=list)
-    archetypes: List[str] = field(default_factory=list)
+    industry: str | None
+    model_contributions: list[ModelContribution]
+    notes: list[str] = field(default_factory=list)
+    archetypes: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -88,7 +88,7 @@ class ValuationSynthesisResult:
     valuation_stance: str
     margin_of_safety_target: float
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for API compatibility."""
         return {
             "fair_value_estimate": self.fair_value_estimate,
@@ -118,7 +118,7 @@ class MarginOfSafetyCalculator(Protocol):
         model_agreement: float,
         data_quality: float,
         confidence: float,
-        volatility: Optional[float] = None,
+        volatility: float | None = None,
     ) -> float:
         """Calculate recommended margin of safety target."""
         ...
@@ -127,7 +127,7 @@ class MarginOfSafetyCalculator(Protocol):
 class ExplanationGenerator(Protocol):
     """Protocol for generating text explanations."""
 
-    def generate_model_influence(self, contributions: List[ModelContribution]) -> str: ...
+    def generate_model_influence(self, contributions: list[ModelContribution]) -> str: ...
 
     def generate_confidence_caution(
         self,
@@ -137,9 +137,9 @@ class ExplanationGenerator(Protocol):
         quality_grade: str,
     ) -> str: ...
 
-    def generate_key_drivers(self, contributions: List[ModelContribution]) -> str: ...
+    def generate_key_drivers(self, contributions: list[ModelContribution]) -> str: ...
 
-    def generate_valuation_risks(self, model_agreement: float, data_quality: float, notes: List[str]) -> str: ...
+    def generate_valuation_risks(self, model_agreement: float, data_quality: float, notes: list[str]) -> str: ...
 
 
 # ============================================================================
@@ -156,7 +156,7 @@ class ThresholdBasedStanceDeterminer:
     2. Confidence level (adjusts thresholds for edge cases)
     """
 
-    DEFAULT_THRESHOLDS = {
+    DEFAULT_THRESHOLDS: ClassVar[dict] = {
         "significantly_undervalued": 0.30,  # >30% upside
         "undervalued": 0.15,  # >15% upside
         "slightly_undervalued": 0.05,  # >5% upside
@@ -166,7 +166,7 @@ class ThresholdBasedStanceDeterminer:
         "significantly_overvalued": -0.30,  # <-30%
     }
 
-    def __init__(self, thresholds: Optional[Dict[str, Any]] = None):
+    def __init__(self, thresholds: dict[str, Any] | None = None):
         self.thresholds = thresholds or self.DEFAULT_THRESHOLDS
 
     def determine_stance(self, upside_pct: float, confidence: float) -> ValuationStance:
@@ -217,7 +217,7 @@ class RiskBasedMarginOfSafetyCalculator:
     """
 
     # Base margin of safety targets by risk level
-    BASE_MARGINS = {
+    BASE_MARGINS: ClassVar[dict] = {
         "low_risk": 0.10,  # 10% for high-quality, high-agreement
         "medium_risk": 0.20,  # 20% default
         "high_risk": 0.30,  # 30% for divergence or quality issues
@@ -229,7 +229,7 @@ class RiskBasedMarginOfSafetyCalculator:
         model_agreement: float,
         data_quality: float,
         confidence: float,
-        volatility: Optional[float] = None,
+        volatility: float | None = None,
     ) -> float:
         """
         Calculate recommended margin of safety.
@@ -291,7 +291,7 @@ class TemplateBasedExplanationGenerator:
     Templates are designed to be professional, clear, and actionable.
     """
 
-    def generate_model_influence(self, contributions: List[ModelContribution]) -> str:
+    def generate_model_influence(self, contributions: list[ModelContribution]) -> str:
         """Generate explanation of how each model influences the final value."""
         applicable = [c for c in contributions if c.is_applicable and c.fair_value]
 
@@ -378,7 +378,7 @@ class TemplateBasedExplanationGenerator:
 
         return " ".join(parts)
 
-    def generate_key_drivers(self, contributions: List[ModelContribution]) -> str:
+    def generate_key_drivers(self, contributions: list[ModelContribution]) -> str:
         """Generate summary of key drivers and assumptions."""
         drivers = []
 
@@ -413,7 +413,7 @@ class TemplateBasedExplanationGenerator:
 
         return "Key drivers: " + "; ".join(drivers) + "."
 
-    def generate_valuation_risks(self, model_agreement: float, data_quality: float, notes: List[str]) -> str:
+    def generate_valuation_risks(self, model_agreement: float, data_quality: float, notes: list[str]) -> str:
         """Generate valuation risks and scenario considerations."""
         risks = []
 
@@ -459,9 +459,9 @@ class DeterministicValuationSynthesizer:
 
     def __init__(
         self,
-        stance_determiner: Optional[StanceDeterminer] = None,
-        margin_calculator: Optional[MarginOfSafetyCalculator] = None,
-        explanation_generator: Optional[ExplanationGenerator] = None,
+        stance_determiner: StanceDeterminer | None = None,
+        margin_calculator: MarginOfSafetyCalculator | None = None,
+        explanation_generator: ExplanationGenerator | None = None,
     ):
         self.stance_determiner = stance_determiner or ThresholdBasedStanceDeterminer()
         self.margin_calculator = margin_calculator or RiskBasedMarginOfSafetyCalculator()
@@ -525,11 +525,11 @@ class DeterministicValuationSynthesizer:
         cls,
         symbol: str,
         current_price: float,
-        valuation_results: Dict[str, Any],
-        multi_model_summary: Dict[str, Any],
-        data_quality: Dict[str, Any],
-        company_profile: Dict[str, Any],
-        notes: Optional[List[str]] = None,
+        valuation_results: dict[str, Any],
+        multi_model_summary: dict[str, Any],
+        data_quality: dict[str, Any],
+        company_profile: dict[str, Any],
+        notes: list[str] | None = None,
     ) -> "ValuationSynthesisResult":
         """
         Factory method to create synthesis from existing valuation outputs.
@@ -595,12 +595,12 @@ class DeterministicValuationSynthesizer:
 def synthesize_valuation(
     symbol: str,
     current_price: float,
-    valuation_results: Dict[str, Any],
-    multi_model_summary: Dict[str, Any],
-    data_quality: Dict[str, Any],
-    company_profile: Dict[str, Any],
-    notes: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+    valuation_results: dict[str, Any],
+    multi_model_summary: dict[str, Any],
+    data_quality: dict[str, Any],
+    company_profile: dict[str, Any],
+    notes: list[str] | None = None,
+) -> dict[str, Any]:
     """
     Drop-in replacement for LLM-based valuation synthesis.
 
@@ -634,12 +634,12 @@ def synthesize_valuation(
 
 __all__ = [
     "DeterministicValuationSynthesizer",
-    "ValuationSynthesisResult",
-    "SynthesisContext",
     "ModelContribution",
-    "ValuationStance",
-    "ThresholdBasedStanceDeterminer",
     "RiskBasedMarginOfSafetyCalculator",
+    "SynthesisContext",
     "TemplateBasedExplanationGenerator",
+    "ThresholdBasedStanceDeterminer",
+    "ValuationStance",
+    "ValuationSynthesisResult",
     "synthesize_valuation",
 ]

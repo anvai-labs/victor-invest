@@ -5,7 +5,7 @@ Parses XBRL data from SEC filings
 
 import logging
 import xml.etree.ElementTree as ET
-from typing import Any, Dict
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class XBRLParser:
             "dei": "http://xbrl.sec.gov/dei/",
         }
 
-    async def parse_filing(self, xbrl_content: str) -> Dict[str, Any]:
+    async def parse_filing(self, xbrl_content: str) -> dict[str, Any]:
         """
         Parse XBRL content from a filing
         """
@@ -55,7 +55,7 @@ class XBRLParser:
             logger.error(f"Error parsing XBRL: {e}")
             return {}
 
-    def _extract_document_info(self, root: ET.Element) -> Dict:
+    def _extract_document_info(self, root: ET.Element) -> dict:
         """Extract document information from XBRL"""
         doc_info = {}
 
@@ -80,7 +80,7 @@ class XBRLParser:
 
         return doc_info
 
-    def _extract_financial_data(self, root: ET.Element) -> Dict:
+    def _extract_financial_data(self, root: ET.Element) -> dict:
         """Extract financial data from XBRL"""
         financial_data = {}
 
@@ -118,7 +118,7 @@ class XBRLParser:
 
         return financial_data
 
-    async def extract_metrics(self, parsed_data: Dict) -> Dict[str, float]:
+    async def extract_metrics(self, parsed_data: dict) -> dict[str, float]:
         """
         Extract key financial metrics from parsed XBRL data
         """
@@ -151,7 +151,7 @@ class XBRLParser:
 
         return metrics
 
-    def format_financial_statement(self, metrics: Dict[str, float]) -> str:
+    def format_financial_statement(self, metrics: dict[str, float]) -> str:
         """
         Format financial metrics into a readable statement
         """

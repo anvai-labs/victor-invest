@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import math
-from typing import Any, Callable, Dict, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
 
-def _extract_numeric(financials: Dict[str, Any], *keys: str) -> Optional[float]:
+def _extract_numeric(financials: dict[str, Any], *keys: str) -> float | None:
     """Return first parseable numeric value for the provided keys."""
     for key in keys:
         if key not in financials:
@@ -23,8 +24,8 @@ def _extract_numeric(financials: Dict[str, Any], *keys: str) -> Optional[float]:
 
 def backfill_market_fields(
     *,
-    company_data: Dict[str, Any],
-    ratios: Dict[str, Any],
+    company_data: dict[str, Any],
+    ratios: dict[str, Any],
     symbol: str,
     logger: Any,
 ) -> None:
@@ -59,8 +60,8 @@ def backfill_market_fields(
 
 def normalize_leverage_ratios(
     *,
-    company_data: Dict[str, Any],
-    ratios: Dict[str, Any],
+    company_data: dict[str, Any],
+    ratios: dict[str, Any],
     symbol: str,
     logger: Any,
     leverage_abs_tol: float = 0.05,
@@ -79,7 +80,7 @@ def normalize_leverage_ratios(
     total_equity = _extract_numeric(financials, "stockholders_equity", "equity")
     total_assets = _extract_numeric(financials, "total_assets", "assets")
 
-    def normalize_ratio(name: str, recomputed: Optional[float]) -> None:
+    def normalize_ratio(name: str, recomputed: float | None) -> None:
         if recomputed is None or not math.isfinite(recomputed):
             return
 
@@ -93,9 +94,9 @@ def normalize_leverage_ratios(
             except (TypeError, ValueError):
                 needs_log = True
             else:
-                if not math.isfinite(existing_value):
-                    needs_log = True
-                elif abs(existing_value - recomputed) > max(leverage_abs_tol, leverage_rel_tol * abs(recomputed)):
+                if not math.isfinite(existing_value) or abs(existing_value - recomputed) > max(
+                    leverage_abs_tol, leverage_rel_tol * abs(recomputed)
+                ):
                     needs_log = True
 
         if needs_log:
@@ -115,11 +116,11 @@ def normalize_leverage_ratios(
         normalize_ratio("debt_to_assets", total_debt / total_assets)
 
 
-def enforce_quick_ratio_bound(*, ratios: Dict[str, Any], symbol: str, logger: Any) -> None:
+def enforce_quick_ratio_bound(*, ratios: dict[str, Any], symbol: str, logger: Any) -> None:
     """Ensure quick ratio never exceeds current ratio when both are positive."""
     current_ratio = ratios.get("current_ratio", 0)
     quick_ratio = ratios.get("quick_ratio", 0)
-    if quick_ratio > current_ratio and current_ratio > 0:
+    if quick_ratio > current_ratio > 0:
         logger.warning(
             "⚠️  %s: Invalid ratios - quick_ratio (%.2f) > current_ratio (%.2f). "
             "Adjusting quick_ratio to equal current_ratio.",
@@ -132,12 +133,12 @@ def enforce_quick_ratio_bound(*, ratios: Dict[str, Any], symbol: str, logger: An
 
 def sanitize_for_llm_inputs(
     *,
-    company_data: Dict[str, Any],
-    ratios: Dict[str, Any],
+    company_data: dict[str, Any],
+    ratios: dict[str, Any],
     symbol: str,
     logger: Any,
-    log_data_quality_issues: Callable[[Any, str, Dict[str, Any], Dict[str, Any]], None],
-) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    log_data_quality_issues: Callable[[Any, str, dict[str, Any], dict[str, Any]], None],
+) -> tuple[dict[str, Any], dict[str, Any]]:
     """Apply deterministic sanitation to company/ratio payloads before LLM usage."""
     backfill_market_fields(company_data=company_data, ratios=ratios, symbol=symbol, logger=logger)
     normalize_leverage_ratios(company_data=company_data, ratios=ratios, symbol=symbol, logger=logger)

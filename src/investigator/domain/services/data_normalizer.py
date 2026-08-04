@@ -11,7 +11,7 @@ Date: 2025-11-02
 
 import logging
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class DataNormalizer:
     """
 
     # Field mapping: snake_case → camelCase (SEC CompanyFacts uses camelCase)
-    FIELD_MAPPINGS = {
+    FIELD_MAPPINGS: ClassVar[dict] = {
         # Income Statement
         "total_revenue": "totalRevenue",
         "revenues": "totalRevenue",  # Alias
@@ -103,10 +103,10 @@ class DataNormalizer:
     }
 
     # Reverse mapping: camelCase → snake_case
-    REVERSE_MAPPINGS = {v: k for k, v in FIELD_MAPPINGS.items()}
+    REVERSE_MAPPINGS: ClassVar[dict] = {v: k for k, v in FIELD_MAPPINGS.items()}
 
     # Core metrics that MUST be present for quality assessment
-    CORE_METRICS = [
+    CORE_METRICS: ClassVar[list] = [
         "totalRevenue",
         "netIncome",
         "totalAssets",
@@ -117,7 +117,7 @@ class DataNormalizer:
     ]
 
     # Debt metrics for enhanced completeness scoring (snake_case - canonical format)
-    DEBT_METRICS = [
+    DEBT_METRICS: ClassVar[list] = [
         "total_debt",
         "long_term_debt",
         "short_term_debt",
@@ -125,7 +125,7 @@ class DataNormalizer:
     ]
 
     # Ratios that should warn if zeroed due to missing data
-    CRITICAL_RATIOS = [
+    CRITICAL_RATIOS: ClassVar[list] = [
         "current_ratio",
         "quick_ratio",
         "debt_to_equity",
@@ -137,7 +137,7 @@ class DataNormalizer:
     ]
 
     @classmethod
-    def normalize_field_names(cls, data: Dict[str, Any], to_camel_case: bool = True) -> Dict[str, Any]:
+    def normalize_field_names(cls, data: dict[str, Any], to_camel_case: bool = True) -> dict[str, Any]:
         """
         Normalize field names between snake_case and camelCase.
 
@@ -167,7 +167,7 @@ class DataNormalizer:
         return normalized
 
     @classmethod
-    def round_number(cls, value: Any, decimal_places: int = 2) -> Optional[float]:
+    def round_number(cls, value: Any, decimal_places: int = 2) -> float | None:
         """
         Apply judicious rounding to a numerical value.
 
@@ -215,14 +215,12 @@ class DataNormalizer:
             # Special handling for very large numbers
             if abs(num) >= 1_000_000:
                 # Round to whole numbers for millions/billions
-                return float(num.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+                return float(num.quantize(Decimal(1), rounding=ROUND_HALF_UP))
 
             # Determine appropriate decimal places
             if decimal_places is None:
                 # Auto-detect based on magnitude
-                if abs(num) >= 100:
-                    decimal_places = 2
-                elif abs(num) >= 1:
+                if abs(num) >= 100 or abs(num) >= 1:
                     decimal_places = 2
                 else:
                     decimal_places = 4  # For ratios < 1
@@ -238,7 +236,7 @@ class DataNormalizer:
             return None
 
     @classmethod
-    def round_financial_data(cls, data: Dict[str, Any], config: Optional[Dict[str, int]] = None) -> Dict[str, Any]:
+    def round_financial_data(cls, data: dict[str, Any], config: dict[str, int] | None = None) -> dict[str, Any]:
         """
         Apply judicious rounding to all numerical values in financial data.
 
@@ -296,7 +294,7 @@ class DataNormalizer:
         return rounded
 
     @classmethod
-    def assess_completeness(cls, data: Dict[str, Any], include_debt_metrics: bool = True) -> Dict[str, Any]:
+    def assess_completeness(cls, data: dict[str, Any], include_debt_metrics: bool = True) -> dict[str, Any]:
         """
         Assess data completeness with enhanced debt metrics tracking.
 
@@ -321,7 +319,7 @@ class DataNormalizer:
         # This ensures we prioritize canonical data format as defined in FIELD_NAME_MAP
 
         # Helper function to check for a key in both snake_case and camelCase formats
-        def get_value_flexible(data_dict: Dict[str, Any], snake_case_key: str) -> Any:
+        def get_value_flexible(data_dict: dict[str, Any], snake_case_key: str) -> Any:
             """Try snake_case first (canonical), then camelCase (for backwards compatibility)"""
             # First try snake_case (canonical format)
             if snake_case_key in data_dict:
@@ -389,10 +387,10 @@ class DataNormalizer:
     @classmethod
     def validate_and_warn(
         cls,
-        ratios: Dict[str, Any],
+        ratios: dict[str, Any],
         symbol: str,
-        logger_instance: Optional[logging.Logger] = None,
-        skip_ratios: Optional[List[str]] = None,
+        logger_instance: logging.Logger | None = None,
+        skip_ratios: list[str] | None = None,
     ) -> None:
         """
         Validate critical ratios and log explicit warnings when they're zeroed due to missing data.
@@ -423,7 +421,7 @@ class DataNormalizer:
                 )
 
     @classmethod
-    def normalize_and_round(cls, data: Dict[str, Any], to_camel_case: bool = True) -> Dict[str, Any]:
+    def normalize_and_round(cls, data: dict[str, Any], to_camel_case: bool = True) -> dict[str, Any]:
         """
         Convenience method: normalize field names AND apply judicious rounding.
 
@@ -444,16 +442,16 @@ class DataNormalizer:
 
 
 # Convenience functions for common operations
-def normalize_financials(data: Dict[str, Any]) -> Dict[str, Any]:
+def normalize_financials(data: dict[str, Any]) -> dict[str, Any]:
     """Normalize financial data to camelCase with rounding."""
     return DataNormalizer.normalize_and_round(data, to_camel_case=True)
 
 
-def round_for_prompt(value: Any, decimal_places: int = 2) -> Optional[float]:
+def round_for_prompt(value: Any, decimal_places: int = 2) -> float | None:
     """Round a single value for use in LLM prompts (token efficiency)."""
     return DataNormalizer.round_number(value, decimal_places)
 
 
-def assess_data_quality(data: Dict[str, Any]) -> Dict[str, Any]:
+def assess_data_quality(data: dict[str, Any]) -> dict[str, Any]:
     """Assess financial data completeness including debt metrics."""
     return DataNormalizer.assess_completeness(data, include_debt_metrics=True)

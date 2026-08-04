@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 """Sector multiples management commands for InvestiGator CLI."""
 
 import logging
-from typing import List, Optional
 
 import click
 
@@ -35,7 +34,6 @@ def sector_multiples(ctx):
         investigator sector-multiples refresh --dry-run
         investigator sector-multiples refresh --min-samples 20
     """
-    pass
 
 
 @sector_multiples.command("refresh")
@@ -113,8 +111,8 @@ def refresh(ctx, sectors, industries, min_samples, exclude_outliers, update_conf
     )
 
     # Parse sector/industry lists
-    sector_list: Optional[List[str]] = None
-    industry_list: Optional[List[str]] = None
+    sector_list: list[str] | None = None
+    industry_list: list[str] | None = None
 
     if sectors:
         sector_list = [s.strip() for s in sectors.split(",")]
@@ -273,8 +271,8 @@ def historical(
     )
 
     # Parse sector/industry lists
-    sector_list: Optional[List[str]] = None
-    industry_list: Optional[List[str]] = None
+    sector_list: list[str] | None = None
+    industry_list: list[str] | None = None
 
     if sectors:
         sector_list = [s.strip() for s in sectors.split(",")]

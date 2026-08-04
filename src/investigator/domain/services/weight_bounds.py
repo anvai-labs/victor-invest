@@ -31,7 +31,6 @@ Usage:
 import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -54,17 +53,17 @@ class MultiplierAuditEntry:
     original_multiplier: float
     applied_multiplier: float
     action: BoundAction
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 @dataclass
 class BoundedMultiplierResult:
     """Result of bounded multiplier application."""
 
-    adjusted_weights: Dict[str, float]
-    cumulative_multipliers: Dict[str, float]
-    audit_entries: List[MultiplierAuditEntry]
-    warnings: List[str]
+    adjusted_weights: dict[str, float]
+    cumulative_multipliers: dict[str, float]
+    audit_entries: list[MultiplierAuditEntry]
+    warnings: list[str]
     bounds_applied: bool
 
     def summary(self) -> str:
@@ -110,7 +109,7 @@ class BoundedMultiplierApplicator:
         # Result enforces bounds even if cumulative multiplier would collapse weights
     """
 
-    def __init__(self, config: Optional[BoundConfig] = None):
+    def __init__(self, config: BoundConfig | None = None):
         """
         Initialize with optional custom configuration.
 
@@ -121,8 +120,8 @@ class BoundedMultiplierApplicator:
 
     def apply_multipliers(
         self,
-        base_weights: Dict[str, float],
-        multiplier_groups: Dict[str, Dict[str, float]],
+        base_weights: dict[str, float],
+        multiplier_groups: dict[str, dict[str, float]],
         symbol: str,
     ) -> BoundedMultiplierResult:
         """
@@ -140,12 +139,12 @@ class BoundedMultiplierApplicator:
         Returns:
             BoundedMultiplierResult with adjusted weights and audit info
         """
-        audit_entries: List[MultiplierAuditEntry] = []
-        warnings: List[str] = []
+        audit_entries: list[MultiplierAuditEntry] = []
+        warnings: list[str] = []
         bounds_applied = False
 
         # Calculate cumulative multipliers for each model
-        cumulative_multipliers: Dict[str, float] = {}
+        cumulative_multipliers: dict[str, float] = {}
 
         for model in base_weights:
             cumulative = 1.0
@@ -169,7 +168,7 @@ class BoundedMultiplierApplicator:
             cumulative_multipliers[model] = cumulative
 
         # Apply bounds to cumulative multipliers
-        bounded_multipliers: Dict[str, float] = {}
+        bounded_multipliers: dict[str, float] = {}
 
         for model, cumulative in cumulative_multipliers.items():
             bounded = cumulative
@@ -214,7 +213,7 @@ class BoundedMultiplierApplicator:
                 )
 
         # Apply bounded multipliers to base weights
-        adjusted_weights: Dict[str, float] = {}
+        adjusted_weights: dict[str, float] = {}
 
         for model, base_weight in base_weights.items():
             multiplier = bounded_multipliers.get(model, 1.0)
@@ -258,7 +257,7 @@ class BoundedMultiplierApplicator:
             bounds_applied=bounds_applied,
         )
 
-    def validate_weights(self, weights: Dict[str, float]) -> Tuple[bool, List[str]]:
+    def validate_weights(self, weights: dict[str, float]) -> tuple[bool, list[str]]:
         """
         Validate that weights meet all bounds constraints.
 
@@ -287,7 +286,7 @@ class BoundedMultiplierApplicator:
 DEFAULT_BOUND_CONFIG = BoundConfig()
 
 # Singleton instance
-_applicator: Optional[BoundedMultiplierApplicator] = None
+_applicator: BoundedMultiplierApplicator | None = None
 
 
 def get_bounded_multiplier_applicator() -> BoundedMultiplierApplicator:

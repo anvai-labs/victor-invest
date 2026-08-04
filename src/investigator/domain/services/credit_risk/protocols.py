@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ SOLID: Interface Segregation & Dependency Inversion
 
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Any, Dict, List, Optional, Protocol, TypeVar, runtime_checkable
+from typing import Any, Optional, Protocol, TypeVar, runtime_checkable
 
 
 @dataclass
@@ -81,68 +81,68 @@ class FinancialData:
     """
 
     symbol: str
-    fiscal_year: Optional[int] = None
-    fiscal_period: Optional[str] = None
-    data_date: Optional[date] = None
+    fiscal_year: int | None = None
+    fiscal_period: str | None = None
+    data_date: date | None = None
 
     # Balance Sheet - Assets
-    total_assets: Optional[float] = None
-    current_assets: Optional[float] = None
-    cash_and_equivalents: Optional[float] = None
-    accounts_receivable: Optional[float] = None
-    inventory: Optional[float] = None
-    property_plant_equipment: Optional[float] = None
+    total_assets: float | None = None
+    current_assets: float | None = None
+    cash_and_equivalents: float | None = None
+    accounts_receivable: float | None = None
+    inventory: float | None = None
+    property_plant_equipment: float | None = None
 
     # Balance Sheet - Liabilities & Equity
-    total_liabilities: Optional[float] = None
-    current_liabilities: Optional[float] = None
-    total_debt: Optional[float] = None
-    long_term_debt: Optional[float] = None
-    short_term_debt: Optional[float] = None
-    stockholders_equity: Optional[float] = None
-    retained_earnings: Optional[float] = None
+    total_liabilities: float | None = None
+    current_liabilities: float | None = None
+    total_debt: float | None = None
+    long_term_debt: float | None = None
+    short_term_debt: float | None = None
+    stockholders_equity: float | None = None
+    retained_earnings: float | None = None
 
     # Income Statement
-    revenue: Optional[float] = None
-    gross_profit: Optional[float] = None
-    operating_income: Optional[float] = None
-    net_income: Optional[float] = None
-    cost_of_revenue: Optional[float] = None
-    sga_expense: Optional[float] = None
-    depreciation_amortization: Optional[float] = None
-    interest_expense: Optional[float] = None
+    revenue: float | None = None
+    gross_profit: float | None = None
+    operating_income: float | None = None
+    net_income: float | None = None
+    cost_of_revenue: float | None = None
+    sga_expense: float | None = None
+    depreciation_amortization: float | None = None
+    interest_expense: float | None = None
 
     # Cash Flow
-    operating_cash_flow: Optional[float] = None
-    capital_expenditures: Optional[float] = None
+    operating_cash_flow: float | None = None
+    capital_expenditures: float | None = None
 
     # Market Data
-    market_cap: Optional[float] = None
-    shares_outstanding: Optional[float] = None
+    market_cap: float | None = None
+    shares_outstanding: float | None = None
 
     # Prior Period (for YoY comparisons)
     prior_period: Optional["FinancialData"] = None
 
     @property
-    def working_capital(self) -> Optional[float]:
+    def working_capital(self) -> float | None:
         """Calculate working capital (Current Assets - Current Liabilities)."""
         if self.current_assets is not None and self.current_liabilities is not None:
             return self.current_assets - self.current_liabilities
         return None
 
     @property
-    def ebit(self) -> Optional[float]:
+    def ebit(self) -> float | None:
         """EBIT (Earnings Before Interest and Taxes) = Operating Income."""
         return self.operating_income
 
     @property
-    def free_cash_flow(self) -> Optional[float]:
+    def free_cash_flow(self) -> float | None:
         """Free Cash Flow = Operating Cash Flow - CapEx."""
         if self.operating_cash_flow is not None and self.capital_expenditures is not None:
             return self.operating_cash_flow - abs(self.capital_expenditures)
         return None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         result = {
             "symbol": self.symbol,
@@ -203,21 +203,21 @@ class CreditScoreResult:
     """
 
     symbol: str
-    score: Optional[float] = None
+    score: float | None = None
     score_name: str = ""
     interpretation: str = ""
-    calculation_date: Optional[date] = None
-    data_date: Optional[date] = None
-    components: Dict[str, Any] = field(default_factory=dict)
-    warnings: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    calculation_date: date | None = None
+    data_date: date | None = None
+    components: dict[str, Any] = field(default_factory=dict)
+    warnings: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def is_valid(self) -> bool:
         """Check if the score was successfully calculated."""
         return self.score is not None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary for serialization."""
         return {
             "symbol": self.symbol,
@@ -270,7 +270,7 @@ class CreditScoreCalculator(Protocol[T]):
         """
         ...
 
-    def validate_data(self, data: FinancialData) -> List[str]:
+    def validate_data(self, data: FinancialData) -> list[str]:
         """Validate that required data fields are present.
 
         Args:

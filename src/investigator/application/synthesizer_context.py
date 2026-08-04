@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 UNKNOWN_SECTOR_CONTEXT = "Unknown Sector - Requires Research"
 DEFAULT_MARKET_ENVIRONMENT_CONTEXT = (
@@ -12,7 +12,7 @@ DEFAULT_MARKET_ENVIRONMENT_CONTEXT = (
 )
 
 
-def extract_quarterly_trends(quarterly_analyses: List[Dict[str, Any]]) -> str:
+def extract_quarterly_trends(quarterly_analyses: list[dict[str, Any]]) -> str:
     """Summarize the available quarterly analyses at a high level."""
     if not quarterly_analyses:
         return "No quarterly data available for trend analysis"
@@ -29,9 +29,9 @@ def extract_quarterly_trends(quarterly_analyses: List[Dict[str, Any]]) -> str:
     return "\n".join(trends)
 
 
-def extract_financial_metrics_from_quarter(quarter_data: Dict[str, Any], period: str) -> Optional[Dict[str, Any]]:
+def extract_financial_metrics_from_quarter(quarter_data: dict[str, Any], period: str) -> dict[str, Any] | None:
     """Extract a normalized set of financial metrics from one quarter payload."""
-    metrics: Dict[str, Any] = {"period": period}
+    metrics: dict[str, Any] = {"period": period}
 
     if not isinstance(quarter_data, dict):
         return None
@@ -58,9 +58,9 @@ def extract_financial_metrics_from_quarter(quarter_data: Dict[str, Any], period:
 
 
 def create_financial_trends_analysis(
-    metrics_by_quarter: List[Dict[str, Any]],
+    metrics_by_quarter: list[dict[str, Any]],
     *,
-    logger: Optional[Any] = None,
+    logger: Any | None = None,
 ) -> str:
     """Create a formatted financial-trends summary from quarterly metrics."""
     try:
@@ -94,7 +94,7 @@ def create_financial_trends_analysis(
         return "[ERROR CREATING TRENDS ANALYSIS]"
 
 
-def get_sector_context(symbol: str, data_dir: Path, *, logger: Optional[Any] = None) -> str:
+def get_sector_context(symbol: str, data_dir: Path, *, logger: Any | None = None) -> str:
     """Load sector and industry context from the configured mapping file."""
     try:
         sector_mapping_file = Path(data_dir) / "sector_mapping.json"

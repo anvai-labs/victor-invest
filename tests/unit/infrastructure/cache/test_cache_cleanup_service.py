@@ -3,14 +3,13 @@ import gzip
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Optional
 from unittest.mock import AsyncMock, Mock
 
 from investigator.infrastructure.cache.cache_cleaner import CacheCleanupService
 from investigator.infrastructure.cache.cache_types import CacheType
 
 
-def _write_cache_file(path: Path, *, age: timedelta, metadata: Optional[Dict[str, str]] = None) -> Path:
+def _write_cache_file(path: Path, *, age: timedelta, metadata: dict[str, str] | None = None) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "response": {"data": "payload"},

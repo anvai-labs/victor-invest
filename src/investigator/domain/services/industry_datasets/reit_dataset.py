@@ -18,7 +18,6 @@ Date: 2025-12-30
 """
 
 import logging
-from typing import Dict, List, Optional, Set, Tuple
 
 from investigator.domain.services.industry_datasets.base import (
     BaseIndustryDataset,
@@ -110,7 +109,7 @@ class REITDataset(BaseIndustryDataset):
     def version(self) -> str:
         return "1.0.0"
 
-    def get_industry_names(self) -> List[str]:
+    def get_industry_names(self) -> list[str]:
         return [
             "REIT",
             "REITs",
@@ -131,10 +130,10 @@ class REITDataset(BaseIndustryDataset):
             "Telecom Tower REITs",
         ]
 
-    def get_known_symbols(self) -> Set[str]:
+    def get_known_symbols(self) -> set[str]:
         return KNOWN_REIT_SYMBOLS.copy()
 
-    def get_metric_definitions(self) -> List[MetricDefinition]:
+    def get_metric_definitions(self) -> list[MetricDefinition]:
         return [
             MetricDefinition(
                 name="ffo",
@@ -229,7 +228,7 @@ class REITDataset(BaseIndustryDataset):
             ),
         ]
 
-    def extract_metrics(self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs) -> IndustryMetrics:
+    def extract_metrics(self, symbol: str, xbrl_data: dict | None, financials: dict, **kwargs) -> IndustryMetrics:
         """Extract REIT-specific metrics from XBRL data and financials."""
         metrics = IndustryMetrics(
             industry="reit",
@@ -332,7 +331,7 @@ class REITDataset(BaseIndustryDataset):
 
         return metrics
 
-    def _calculate_ffo(self, financials: Dict) -> Optional[float]:
+    def _calculate_ffo(self, financials: dict) -> float | None:
         """Calculate FFO from available data."""
         net_income = financials.get("netIncome")
         depreciation = financials.get("depreciation") or financials.get("depreciationAmortization")
@@ -343,7 +342,7 @@ class REITDataset(BaseIndustryDataset):
 
         return None
 
-    def _calculate_debt_to_ebitda(self, financials: Dict) -> Optional[float]:
+    def _calculate_debt_to_ebitda(self, financials: dict) -> float | None:
         """Calculate Debt/EBITDA ratio."""
         total_debt = financials.get("totalDebt") or financials.get("longTermDebt")
         ebitda = financials.get("ebitda")
@@ -353,7 +352,7 @@ class REITDataset(BaseIndustryDataset):
 
         return None
 
-    def _calculate_cap_rate(self, financials: Dict) -> Optional[float]:
+    def _calculate_cap_rate(self, financials: dict) -> float | None:
         """Calculate implied cap rate."""
         noi = financials.get("noi") or financials.get("netOperatingIncome")
         total_assets = financials.get("totalAssets")
@@ -404,7 +403,7 @@ class REITDataset(BaseIndustryDataset):
 
         return "diversified"
 
-    def assess_quality(self, metrics: IndustryMetrics) -> Tuple[MetricQuality, str]:
+    def assess_quality(self, metrics: IndustryMetrics) -> tuple[MetricQuality, str]:
         """Assess quality of REIT metrics."""
         required_metrics = ["ffo", "ffo_per_share", "occupancy_rate"]
         important_metrics = ["affo", "debt_to_ebitda", "same_store_noi_growth"]
@@ -422,8 +421,8 @@ class REITDataset(BaseIndustryDataset):
             return (MetricQuality.POOR, "Missing key metrics for REIT valuation")
 
     def get_valuation_adjustments(
-        self, metrics: IndustryMetrics, financials: Dict, **kwargs
-    ) -> List[ValuationAdjustment]:
+        self, metrics: IndustryMetrics, financials: dict, **kwargs
+    ) -> list[ValuationAdjustment]:
         """Calculate REIT-specific valuation adjustments."""
         adjustments = []
 
@@ -529,7 +528,7 @@ class REITDataset(BaseIndustryDataset):
 
         return adjustments
 
-    def get_tier_weights(self) -> Optional[Dict[str, int]]:
+    def get_tier_weights(self) -> dict[str, int] | None:
         """Return recommended tier weights for REITs."""
         return {
             "ev_ebitda": 35,

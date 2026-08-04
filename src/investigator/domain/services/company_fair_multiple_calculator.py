@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@ to produce company-specific fair value multiples with safety margins.
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any, ClassVar
 
 from investigator.domain.services.company_premium_history import (
     CompanyPremiumHistory,
@@ -55,7 +55,7 @@ class FairMultipleResult:
 
     # Metadata
     confidence: str  # HIGH, MEDIUM, LOW
-    confidence_factors: List[str]  # Reasons for confidence level
+    confidence_factors: list[str]  # Reasons for confidence level
     mean_reversion_signal: str  # buy, sell, none
     upside_downside_pct: float  # % upside/downside to fair value
 
@@ -80,14 +80,14 @@ class CompanyFairMultipleCalculator:
     """
 
     # Safety margins by confidence level
-    SAFETY_MARGINS = {
+    SAFETY_MARGINS: ClassVar[dict] = {
         "HIGH": 0.05,  # 5% discount for high confidence
         "MEDIUM": 0.10,  # 10% discount for medium confidence
         "LOW": 0.15,  # 15% discount for low confidence
     }
 
     # Mean reversion adjustments
-    MEAN_REVERSION_ADJUSTMENTS = {
+    MEAN_REVERSION_ADJUSTMENTS: ClassVar[dict] = {
         "strong_buy": 1.10,  # 10% upside for strong buy signals
         "buy": 1.05,  # 5% upside for buy signals
         "none": 1.00,  # No adjustment
@@ -137,8 +137,8 @@ class CompanyFairMultipleCalculator:
         symbol: str,
         sector: str,
         metric: str = "pe",
-        sector_trend_adjusted: Optional[float] = None,
-    ) -> Optional[FairMultipleResult]:
+        sector_trend_adjusted: float | None = None,
+    ) -> FairMultipleResult | None:
         """Calculate company's fair value multiple for a metric.
 
         Args:
@@ -239,7 +239,7 @@ class CompanyFairMultipleCalculator:
             confidence_factors=confidence_factors,
             mean_reversion_signal=mean_reversion_signal,
             upside_downside_pct=round(upside_downside_pct, 1),
-            calculated_at=datetime.now(timezone.utc).isoformat(),
+            calculated_at=datetime.now(UTC).isoformat(),
         )
 
         logger.info(
@@ -255,8 +255,8 @@ class CompanyFairMultipleCalculator:
         self,
         symbol: str,
         sector: str,
-        industry: Optional[str] = None,
-    ) -> Dict[str, Optional[FairMultipleResult]]:
+        industry: str | None = None,
+    ) -> dict[str, FairMultipleResult | None]:
         """Calculate fair multiples for all available metrics.
 
         Args:
@@ -290,7 +290,7 @@ class CompanyFairMultipleCalculator:
 
         return results
 
-    def _get_sector_trend_adjusted(self, sector: str, metric: str) -> Optional[float]:
+    def _get_sector_trend_adjusted(self, sector: str, metric: str) -> float | None:
         """Get trend-adjusted sector multiple for a metric.
 
         Args:
@@ -305,7 +305,7 @@ class CompanyFairMultipleCalculator:
         # In production, this would cache or look up from database
         return None
 
-    def _get_all_sector_trend_adjusted(self, sector: str) -> Dict[str, float]:
+    def _get_all_sector_trend_adjusted(self, sector: str) -> dict[str, float]:
         """Get all trend-adjusted sector multiples.
 
         Args:
@@ -318,7 +318,7 @@ class CompanyFairMultipleCalculator:
         # For now, return empty dict
         return {}
 
-    def _get_current_company_multiple(self, symbol: str, metric: str) -> Optional[float]:
+    def _get_current_company_multiple(self, symbol: str, metric: str) -> float | None:
         """Get company's current multiple for a metric.
 
         Args:
@@ -343,13 +343,13 @@ class CompanyFairMultipleCalculator:
 
             # Get latest data
             query = text(
-                """
-                SELECT market_cap, {denominator}
+                f"""
+                SELECT market_cap, {metric_column_map[metric]}
                 FROM sec_companyfacts_processed
                 WHERE UPPER(symbol) = UPPER(:symbol)
                 ORDER BY fiscal_year DESC, fiscal_period DESC
                 LIMIT 1
-            """.format(denominator=metric_column_map[metric])
+            """
             )
 
             result = conn.execute(query, {"symbol": symbol})
@@ -370,7 +370,7 @@ class CompanyFairMultipleCalculator:
         premium_std_dev: float,
         premium_trend: str,
         premium_z_score: float,
-    ) -> tuple[str, List[str]]:
+    ) -> tuple[str, list[str]]:
         """Determine confidence level based on data quality factors.
 
         Args:
@@ -441,12 +441,12 @@ class CompanyFairMultipleCalculator:
         self,
         symbol: str,
         sector: str,
-        industry: Optional[str] = None,
-        current_price: Optional[float] = None,
-        eps: Optional[float] = None,
-        revenue_per_share: Optional[float] = None,
-        book_value_per_share: Optional[float] = None,
-    ) -> Dict[str, Any]:
+        industry: str | None = None,
+        current_price: float | None = None,
+        eps: float | None = None,
+        revenue_per_share: float | None = None,
+        book_value_per_share: float | None = None,
+    ) -> dict[str, Any]:
         """Generate comprehensive fair value report.
 
         Args:
@@ -471,7 +471,7 @@ class CompanyFairMultipleCalculator:
             "symbol": symbol.upper(),
             "sector": sector,
             "industry": industry,
-            "calculated_at": datetime.now(timezone.utc).isoformat(),
+            "calculated_at": datetime.now(UTC).isoformat(),
             "fair_multiples": {},
             "fair_values": {},
             "recommendation": None,

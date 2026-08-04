@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,9 +24,9 @@ This provides data-driven sector multiples instead of manual/static values.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import yaml
 from sqlalchemy import create_engine, text
@@ -52,7 +52,7 @@ class SectorMultiplesRefresh:
         stock_db_manager: Any = None,
         sec_db_manager: Any = None,
         min_samples: int = 5,
-        percentile_exclude: Tuple[float, float] = (0.05, 0.95),
+        percentile_exclude: tuple[float, float] = (0.05, 0.95),
     ):
         """Initialize sector multiples refresh service.
 
@@ -91,10 +91,10 @@ class SectorMultiplesRefresh:
     def calculate_sector_multiples(
         self,
         *,
-        sectors: Optional[List[str]] = None,
-        industries: Optional[List[str]] = None,
+        sectors: list[str] | None = None,
+        industries: list[str] | None = None,
         use_config_overrides: bool = True,
-    ) -> Dict[str, Dict[str, Any]]:
+    ) -> dict[str, dict[str, Any]]:
         """Calculate sector/industry multiples from processed data.
 
         Args:
@@ -123,8 +123,8 @@ class SectorMultiplesRefresh:
         results = {}
 
         # Group by sector first
-        sector_groups: Dict[str, List[str]] = {}
-        industry_groups: Dict[str, List[str]] = {}
+        sector_groups: dict[str, list[str]] = {}
+        industry_groups: dict[str, list[str]] = {}
 
         for symbol, sector, industry in symbol_classification:
             if sector not in sector_groups:
@@ -155,10 +155,10 @@ class SectorMultiplesRefresh:
     def _get_symbols_by_sector_industry(
         self,
         *,
-        sectors: Optional[List[str]],
-        industries: Optional[List[str]],
-        config_overrides: Dict[str, str],
-    ) -> List[Tuple[str, str, Optional[str]]]:
+        sectors: list[str] | None,
+        industries: list[str] | None,
+        config_overrides: dict[str, str],
+    ) -> list[tuple[str, str, str | None]]:
         """Get symbols grouped by sector/industry from stock.symbol table.
 
         Returns:
@@ -167,7 +167,7 @@ class SectorMultiplesRefresh:
         with self.stock_db_manager.get_session() as session:
             # Build query filters
             filters = ["islisted = true"]
-            params: Dict[str, Any] = {}
+            params: dict[str, Any] = {}
 
             if sectors:
                 # Apply config overrides first
@@ -200,7 +200,7 @@ class SectorMultiplesRefresh:
             result = session.execute(query, params)
             return [(row[0], row[1], row[2]) for row in result]
 
-    def _calculate_multiples_for_symbols(self, symbols: List[str], group_name: str) -> Optional[Dict[str, Any]]:
+    def _calculate_multiples_for_symbols(self, symbols: list[str], group_name: str) -> dict[str, Any] | None:
         """Calculate valuation multiples for a group of symbols.
 
         Args:
@@ -290,10 +290,10 @@ class SectorMultiplesRefresh:
             "ev_ebitda": round(ev_ebitda_median, 2) if ev_ebitda_median else None,
             "pb": round(pb_median, 2) if pb_median else None,
             "sample_size": len(metrics_data),
-            "last_updated": datetime.now(timezone.utc).isoformat(),
+            "last_updated": datetime.now(UTC).isoformat(),
         }
 
-    def _filtered_median(self, values: List[float], name: str) -> Optional[float]:
+    def _filtered_median(self, values: list[float], name: str) -> float | None:
         """Calculate median - robust to outliers without filtering.
 
         The median is inherently robust to outliers (unlike mean).
@@ -326,7 +326,7 @@ class SectorMultiplesRefresh:
 
         return float(median)
 
-    def _get_ttm_metrics(self, symbols: List[str]) -> Dict[str, Dict[str, float]]:
+    def _get_ttm_metrics(self, symbols: list[str]) -> dict[str, dict[str, float]]:
         """Get TTM metrics from sec_companyfacts_processed.
 
         Aggregates the last 4 quarters (or 1 FY) to get TTM values.
@@ -349,7 +349,7 @@ class SectorMultiplesRefresh:
             result = session.execute(period_query, {"symbols": list(symbols)})
 
             # Get most recent FY or last 4 quarters per symbol
-            latest_periods: Dict[str, List[str]] = {}
+            latest_periods: dict[str, list[str]] = {}
             for row in result:
                 symbol, period, year = row[0], row[1], row[2]
                 if symbol not in latest_periods:
@@ -363,7 +363,7 @@ class SectorMultiplesRefresh:
                         latest_periods[symbol].append(f"{year}-{period}")
 
             # Query TTM metrics for the determined periods
-            ttm_metrics: Dict[str, Dict[str, float]] = {}
+            ttm_metrics: dict[str, dict[str, float]] = {}
 
             for symbol, periods in latest_periods.items():
                 # Build query for this symbol's periods
@@ -429,7 +429,7 @@ class SectorMultiplesRefresh:
 
             return ttm_metrics
 
-    def _load_config_overrides(self) -> Dict[str, str]:
+    def _load_config_overrides(self) -> dict[str, str]:
         """Load sector overrides from config.yaml."""
         # From: src/investigator/domain/services/sector_multiples_refresh.py
         # To: repo_root/config.yaml
@@ -485,7 +485,7 @@ class SectorMultiplesRefresh:
 
         return excluded_set
 
-    def update_config_yaml(self, calculated_multiples: Dict[str, Dict[str, Any]]) -> bool:
+    def update_config_yaml(self, calculated_multiples: dict[str, dict[str, Any]]) -> bool:
         """Update config.yaml with calculated sector multiples.
 
         Args:
@@ -559,7 +559,7 @@ class SectorMultiplesRefresh:
         logger.info(f"Updated config.yaml: {config_path}")
         return True
 
-    def _is_industry_name(self, name: str, all_groups: Dict[str, Dict[str, Any]]) -> bool:
+    def _is_industry_name(self, name: str, all_groups: dict[str, dict[str, Any]]) -> bool:
         """Determine if a name is an industry or sector based on hierarchy."""
         # Industries typically have more specific names (contain spaces, special words)
         industry_keywords = [
@@ -591,11 +591,11 @@ class SectorMultiplesRefresh:
     def refresh(
         self,
         *,
-        sectors: Optional[List[str]] = None,
-        industries: Optional[List[str]] = None,
+        sectors: list[str] | None = None,
+        industries: list[str] | None = None,
         update_config: bool = True,
         use_config_overrides: bool = True,
-    ) -> Dict[str, Dict[str, Any]]:
+    ) -> dict[str, dict[str, Any]]:
         """Main method to calculate and refresh sector multiples.
 
         Args:

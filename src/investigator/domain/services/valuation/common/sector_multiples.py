@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ This eliminates duplicate config reading logic between legacy CLI and victor_inv
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import yaml
 
@@ -49,11 +49,11 @@ class SectorMultiples:
         >>> ps = SectorMultiples.get_industry_override("Software - Application", "ps")
     """
 
-    _config: Optional[Dict[str, Any]] = None
-    _config_path: Optional[Path] = None
+    _config: dict[str, Any] | None = None
+    _config_path: Path | None = None
 
     @classmethod
-    def load_config(cls, config_path: Optional[str] = None) -> Dict[str, Any]:
+    def load_config(cls, config_path: str | None = None) -> dict[str, Any]:
         """Load sector multiples configuration from config.yaml.
 
         Args:
@@ -120,7 +120,7 @@ class SectorMultiples:
             cls.load_config()
 
     @classmethod
-    def get_sector_multiple(cls, sector: str, metric: str) -> Optional[float]:
+    def get_sector_multiple(cls, sector: str, metric: str) -> float | None:
         """Get sector valuation multiple from config.
 
         Args:
@@ -173,7 +173,7 @@ class SectorMultiples:
         return default.get(metric)
 
     @classmethod
-    def get_industry_override(cls, industry: str, metric: str) -> Optional[float]:
+    def get_industry_override(cls, industry: str, metric: str) -> float | None:
         """Check for industry-level override in config.
 
         Industry overrides provide more granular multiples when sector-level
@@ -238,7 +238,7 @@ class SectorMultiples:
         return None
 
     @classmethod
-    def get_multiple_with_override(cls, sector: str, industry: Optional[str], metric: str) -> float:
+    def get_multiple_with_override(cls, sector: str, industry: str | None, metric: str) -> float:
         """Get valuation multiple with industry override check.
 
         This is the primary method to use - it checks for industry overrides

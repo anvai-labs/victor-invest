@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - Application Layer Prompts
 Copyright (c) 2025 Vijaykumar Singh
@@ -15,6 +14,6 @@ from .prompt_manager import (
 
 __all__ = [
     "PromptManager",
-    "get_prompt_manager",
     "get_enhanced_prompt_manager",
+    "get_prompt_manager",
 ]

@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,8 +37,8 @@ from investigator.domain.services.sentiment.insider_activity import (
 )
 
 __all__ = [
+    "ClusterActivity",
     "InsiderActivityService",
     "InsiderSentiment",
-    "ClusterActivity",
     "get_insider_activity_service",
 ]

@@ -27,7 +27,7 @@ Usage:
 import logging
 import math
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 
@@ -82,9 +82,9 @@ class ValuationContextExtractor:
 
     def __init__(
         self,
-        metadata_service: Optional[Any] = None,
-        profitability_classifier: Optional[Any] = None,
-        threshold_registry: Optional[Any] = None,
+        metadata_service: Any | None = None,
+        profitability_classifier: Any | None = None,
+        threshold_registry: Any | None = None,
     ):
         """
         Initialize extractor with optional service dependencies.
@@ -101,13 +101,13 @@ class ValuationContextExtractor:
     def extract(
         self,
         symbol: str,
-        financials: Dict[str, Any],
-        ratios: Dict[str, Any],
-        market_context: Optional[Dict[str, Any]] = None,
-        data_quality: Optional[Dict[str, Any]] = None,
-        insider_data: Optional[Dict[str, Any]] = None,
-        current_price: Optional[float] = None,
-        analysis_date: Optional[date] = None,
+        financials: dict[str, Any],
+        ratios: dict[str, Any],
+        market_context: dict[str, Any] | None = None,
+        data_quality: dict[str, Any] | None = None,
+        insider_data: dict[str, Any] | None = None,
+        current_price: float | None = None,
+        analysis_date: date | None = None,
     ) -> ValuationContext:
         """
         Extract context features from financial data.
@@ -363,7 +363,7 @@ class ValuationContextExtractor:
 
         return np.array(features, dtype=np.float32)
 
-    def get_feature_names(self, include_categorical: bool = True) -> List[str]:
+    def get_feature_names(self, include_categorical: bool = True) -> list[str]:
         """Get list of feature names in order they appear in tensor."""
         names = [
             # Fundamental features
@@ -422,35 +422,35 @@ class ValuationContextExtractor:
 
     def _extract_sector(
         self,
-        financials: Dict[str, Any],
-        ratios: Dict[str, Any],
+        financials: dict[str, Any],
+        ratios: dict[str, Any],
     ) -> str:
         """Extract sector from financial data."""
         # Check multiple possible field names
         for key in ["sector", "gics_sector", "sec_sector"]:
-            if key in financials and financials[key]:
+            if financials.get(key):
                 return str(financials[key])
-            if key in ratios and ratios[key]:
+            if ratios.get(key):
                 return str(ratios[key])
         return "Unknown"
 
     def _extract_industry(
         self,
-        financials: Dict[str, Any],
-        ratios: Dict[str, Any],
+        financials: dict[str, Any],
+        ratios: dict[str, Any],
     ) -> str:
         """Extract industry from financial data."""
         for key in ["industry", "gics_industry", "sec_industry"]:
-            if key in financials and financials[key]:
+            if financials.get(key):
                 return str(financials[key])
-            if key in ratios and ratios[key]:
+            if ratios.get(key):
                 return str(ratios[key])
         return "Unknown"
 
     def _classify_growth_stage(
         self,
-        financials: Dict[str, Any],
-        ratios: Dict[str, Any],
+        financials: dict[str, Any],
+        ratios: dict[str, Any],
     ) -> GrowthStage:
         """Classify company growth stage based on financial characteristics."""
         # Check profitability
@@ -484,8 +484,8 @@ class ValuationContextExtractor:
 
     def _classify_company_size(
         self,
-        financials: Dict[str, Any],
-        current_price: Optional[float],
+        financials: dict[str, Any],
+        current_price: float | None,
     ) -> CompanySize:
         """Classify company by market cap."""
         market_cap = self._safe_get_float(financials, "market_cap", 0)
@@ -512,8 +512,8 @@ class ValuationContextExtractor:
 
     def _calculate_profitability_score(
         self,
-        financials: Dict[str, Any],
-        ratios: Dict[str, Any],
+        financials: dict[str, Any],
+        ratios: dict[str, Any],
     ) -> float:
         """Calculate profitability score (0-1)."""
         # Use profitability classifier if available
@@ -522,7 +522,7 @@ class ValuationContextExtractor:
                 result = self.profitability_classifier.classify(financials, ratios)
                 return result.get("score", 0.5)
             except Exception:
-                pass
+                logger.debug("_calculate_profitability_score: suppressed error", exc_info=True)
 
         # Fallback: simple calculation based on margins
         gross_margin = self._safe_get_float(ratios, "gross_margin", 0)
@@ -540,7 +540,7 @@ class ValuationContextExtractor:
 
         return max(0.0, min(1.0, score))
 
-    def _normalize_pe(self, pe: Optional[float]) -> float:
+    def _normalize_pe(self, pe: float | None) -> float:
         """Normalize P/E ratio to 0-1 scale."""
         if pe is None or pe <= 0:
             return 0.5  # Unknown/negative earnings
@@ -556,8 +556,8 @@ class ValuationContextExtractor:
 
     def _calculate_rule_of_40(
         self,
-        financials: Dict[str, Any],
-        ratios: Dict[str, Any],
+        financials: dict[str, Any],
+        ratios: dict[str, Any],
     ) -> float:
         """Calculate Rule of 40 score."""
         revenue_growth = self._safe_get_float(ratios, "revenue_growth", 0) * 100
@@ -569,7 +569,7 @@ class ValuationContextExtractor:
 
         return revenue_growth + fcf_margin
 
-    def _count_quarters(self, financials: Dict[str, Any]) -> int:
+    def _count_quarters(self, financials: dict[str, Any]) -> int:
         """Count available quarters of data."""
         # Check for quarterly data availability
         if "quarterly_data" in financials:
@@ -582,7 +582,7 @@ class ValuationContextExtractor:
         # Default assumption
         return 4
 
-    def _normalize_volatility(self, volatility: Optional[float]) -> float:
+    def _normalize_volatility(self, volatility: float | None) -> float:
         """Normalize volatility to 0-1."""
         if volatility is None:
             return 0.5
@@ -713,8 +713,8 @@ class ValuationContextExtractor:
 
     def _extract_insider_features(
         self,
-        insider_data: Dict[str, Any],
-    ) -> Dict[str, float]:
+        insider_data: dict[str, Any],
+    ) -> dict[str, float]:
         """Extract insider sentiment features from Form 4 data.
 
         Args:
@@ -796,10 +796,10 @@ class ValuationContextExtractor:
 
     def _determine_model_applicability(
         self,
-        financials: Dict[str, Any],
-        ratios: Dict[str, Any],
+        financials: dict[str, Any],
+        ratios: dict[str, Any],
         growth_stage: GrowthStage,
-    ) -> Dict[str, bool]:
+    ) -> dict[str, bool]:
         """Determine which valuation models can be applied."""
         applicability = {
             "dcf": True,
@@ -837,7 +837,7 @@ class ValuationContextExtractor:
 
         return applicability
 
-    def _one_hot_sector(self, sector: str) -> List[float]:
+    def _one_hot_sector(self, sector: str) -> list[float]:
         """One-hot encode sector."""
         encoding = [0.0] * len(GICS_SECTORS)
         try:
@@ -850,7 +850,7 @@ class ValuationContextExtractor:
 
     def _safe_get_float(
         self,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         key: str,
         default: float = 0.0,
     ) -> float:

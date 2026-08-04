@@ -7,7 +7,6 @@ institutional holdings (Form 13F), and quarterly financials.
 
 import logging
 from datetime import date, timedelta
-from typing import Optional
 
 from ..base import (
     DataCategory,
@@ -50,7 +49,7 @@ class InsiderTransactionSource(DataSource):
             symbols_supported=True,
         )
 
-    def _fetch_impl(self, symbol: str, as_of_date: Optional[date] = None) -> DataResult:
+    def _fetch_impl(self, symbol: str, as_of_date: date | None = None) -> DataResult:
         """Fetch insider transaction data"""
         try:
             from sqlalchemy import text
@@ -222,7 +221,7 @@ class InstitutionalHoldingsSource(DataSource):
             symbols_supported=True,
         )
 
-    def _fetch_impl(self, symbol: str, as_of_date: Optional[date] = None) -> DataResult:
+    def _fetch_impl(self, symbol: str, as_of_date: date | None = None) -> DataResult:
         """Fetch institutional holdings data"""
         try:
             from sqlalchemy import text
@@ -334,7 +333,7 @@ class SECQuarterlySource(DataSource):
             symbols_supported=True,
         )
 
-    def _fetch_impl(self, symbol: str, as_of_date: Optional[date] = None) -> DataResult:
+    def _fetch_impl(self, symbol: str, as_of_date: date | None = None) -> DataResult:
         """Fetch quarterly financial data"""
         try:
             from sqlalchemy import text

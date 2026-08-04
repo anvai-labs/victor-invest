@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Test script to verify Victor framework handler migration.
 
@@ -10,6 +9,7 @@ Run: python tests/test_migration_verification.py
 """
 
 import inspect
+import sys
 from dataclasses import is_dataclass
 
 from victor.framework.workflows.base_handler import BaseHandler
@@ -100,7 +100,7 @@ if __name__ == "__main__":
         print("\n❌ Migration Tests Failed:")
         for error in errors:
             print(f"  ✗ {error}")
-        exit(1)
+        sys.exit(1)
     else:
         print("\n✅ All Migration Tests Passed!")
         print(f"  ✓ All {len(ALL_HANDLERS)} handlers extend BaseHandler")
@@ -109,4 +109,4 @@ if __name__ == "__main__":
         print("  ✓ All handlers are dataclasses")
         print("  ✓ register_handlers() is no-op (backward compatible)")
         print("=" * 60)
-        exit(0)
+        sys.exit(0)

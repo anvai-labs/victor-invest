@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from decimal import Decimal
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any
 
 from sqlalchemy import text
 
@@ -27,7 +28,7 @@ def query_recent_processed_periods(
     db_manager: Any,
     fiscal_period_service: Any,
     logger: Any,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Load recent FY/Q periods for a symbol from `sec_companyfacts_processed`."""
     query = text("""
         SELECT
@@ -85,7 +86,7 @@ def query_recent_processed_periods(
         logger.warning("No quarterly data in processed table for %s", symbol)
         return []
 
-    quarters_data: List[Dict[str, Any]] = []
+    quarters_data: list[dict[str, Any]] = []
     for row in rows:
         cf_qtrs = int(row.cash_flow_statement_qtrs) if row.cash_flow_statement_qtrs else 1
         inc_qtrs = int(row.income_statement_qtrs) if row.income_statement_qtrs else 1
@@ -184,7 +185,7 @@ def normalize_cached_quarter(
     fiscal_year: int,
     fiscal_period: str,
     logger: Any,
-) -> Optional[Any]:
+) -> Any | None:
     """Validate/deserialize quarter cache entry and return normalized quarter object."""
     if not cached_quarter:
         return None
@@ -222,9 +223,9 @@ def normalize_cached_quarter(
 
 def build_financials_from_processed_data(
     *,
-    processed_data: Dict[str, Any],
+    processed_data: dict[str, Any],
     shares_outstanding: float,
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Flatten statement-level processed payload into QuarterlyData financial_data layout."""
     income_statement = processed_data.get("income_statement", {})
     revenue = income_statement.get("total_revenue", 0)
@@ -276,7 +277,7 @@ def build_financials_from_bulk_tables(
     canonical_mapper: Any,
     strategy: Any,
     logger: Any,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Extract canonical values from bulk SEC tables for fallback quarter construction."""
     all_tags = set()
     for canonical_key in canonical_keys_needed:
@@ -340,7 +341,7 @@ def fetch_processed_quarter_payload(
     engine: Any,
     fiscal_period_service: Any,
     logger: Any,
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Fetch one processed-quarter payload and map into statement-oriented structure."""
     logger.info(
         "🔍 [PROCESSED_TABLE] Querying for %s %s-%s ADSH=%s...",
@@ -539,21 +540,21 @@ def fetch_processed_quarter_payload(
 def resolve_quarter_data(
     *,
     symbol: str,
-    quarter: Dict[str, Any],
+    quarter: dict[str, Any],
     cache: Any,
     cache_type: Any,
     build_cache_key: Callable[..., Any],
     quarterly_data_cls: Any,
-    fetch_from_processed_table: Callable[[str, int, str, str], Optional[Dict[str, Any]]],
+    fetch_from_processed_table: Callable[[str, int, str, str], dict[str, Any] | None],
     get_sector_for_symbol: Callable[[str], str],
     get_fiscal_period_strategy: Callable[[], Any],
     bulk_strategy: Any,
     canonical_mapper: Any,
     fallback_canonical_keys: Sequence[str],
-    calculate_quarterly_ratios: Callable[[Dict[str, Any]], Dict[str, Any]],
-    assess_quarter_quality: Callable[[Dict[str, Any]], Dict[str, Any]],
+    calculate_quarterly_ratios: Callable[[dict[str, Any]], dict[str, Any]],
+    assess_quarter_quality: Callable[[dict[str, Any]], dict[str, Any]],
     logger: Any,
-) -> Tuple[Any, Any]:
+) -> tuple[Any, Any]:
     """Resolve one quarter to a QuarterlyData object, using processed path then bulk fallback."""
     quarter_cache_key = build_cache_key(
         cache_type,

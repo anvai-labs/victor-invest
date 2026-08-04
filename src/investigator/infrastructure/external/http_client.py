@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@ Provides:
 
 import logging
 import ssl
-from typing import Optional
 
 import aiohttp
 
@@ -61,7 +60,7 @@ async def create_session() -> aiohttp.ClientSession:
     return aiohttp.ClientSession(connector=connector, headers=headers)
 
 
-_shared_session: Optional[aiohttp.ClientSession] = None
+_shared_session: aiohttp.ClientSession | None = None
 
 
 async def get_shared_session() -> aiohttp.ClientSession:

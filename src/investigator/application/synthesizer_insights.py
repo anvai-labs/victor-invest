@@ -8,7 +8,7 @@ from text-inspection utilities.
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List
+from typing import Any
 
 STANDARD_RECOMMENDATION_FIELDS = {
     "overall_score",
@@ -28,7 +28,7 @@ STANDARD_RECOMMENDATION_FIELDS = {
 }
 
 
-def extract_reasoning_themes(thinking_content: str) -> List[str]:
+def extract_reasoning_themes(thinking_content: str) -> list[str]:
     """Extract key reasoning themes from thinking content."""
     if not thinking_content:
         return []
@@ -53,7 +53,7 @@ def extract_reasoning_themes(thinking_content: str) -> List[str]:
     return list(set(themes))
 
 
-def extract_decision_process(thinking_content: str) -> Dict[str, Any]:
+def extract_decision_process(thinking_content: str) -> dict[str, Any]:
     """Extract decision-making process indicators from thinking content."""
     if not thinking_content:
         return {}
@@ -84,7 +84,7 @@ def detect_markdown_content(content: str) -> bool:
     return any(re.search(pattern, content) for pattern in markdown_patterns)
 
 
-def extract_bullet_points(content: str) -> List[str]:
+def extract_bullet_points(content: str) -> list[str]:
     """Extract bullet points from content."""
     if not content:
         return []
@@ -99,7 +99,7 @@ def extract_bullet_points(content: str) -> List[str]:
     return [bullet.strip() for bullet in bullets if len(bullet.strip()) > 5]
 
 
-def extract_numerical_insights(content: str) -> List[Dict[str, Any]]:
+def extract_numerical_insights(content: str) -> list[dict[str, Any]]:
     """Extract percentages, amounts, ratios, and multiples from content."""
     if not content:
         return []
@@ -120,7 +120,7 @@ def extract_numerical_insights(content: str) -> List[Dict[str, Any]]:
     return numbers[:10]
 
 
-def analyze_field_completeness(ai_recommendation: Dict[str, Any]) -> Dict[str, Any]:
+def analyze_field_completeness(ai_recommendation: dict[str, Any]) -> dict[str, Any]:
     """Analyze completeness of standard recommendation fields."""
     standard_fields = [
         "overall_score",
@@ -142,7 +142,7 @@ def analyze_field_completeness(ai_recommendation: Dict[str, Any]) -> Dict[str, A
     }
 
     for field in standard_fields:
-        if field in ai_recommendation and ai_recommendation[field]:
+        if ai_recommendation.get(field):
             completeness["present_fields"].append(field)
         else:
             completeness["missing_fields"].append(field)
@@ -151,16 +151,16 @@ def analyze_field_completeness(ai_recommendation: Dict[str, Any]) -> Dict[str, A
     return completeness
 
 
-def identify_custom_fields(ai_recommendation: Dict[str, Any]) -> List[str]:
+def identify_custom_fields(ai_recommendation: dict[str, Any]) -> list[str]:
     """Identify custom/non-standard fields in the recommendation."""
     custom_fields = []
-    for key in ai_recommendation.keys():
+    for key in ai_recommendation:
         if key not in STANDARD_RECOMMENDATION_FIELDS:
             custom_fields.append(key)
     return custom_fields
 
 
-def check_fallback_flags(ai_recommendation: Dict[str, Any]) -> Dict[str, bool]:
+def check_fallback_flags(ai_recommendation: dict[str, Any]) -> dict[str, bool]:
     """Check fallback and parsing flags."""
     return {
         "is_fallback": ai_recommendation.get("_fallback_created", False),
@@ -171,8 +171,8 @@ def check_fallback_flags(ai_recommendation: Dict[str, Any]) -> Dict[str, bool]:
 
 
 def recommend_report_sections(
-    ai_recommendation: Dict[str, Any], thinking_content: str, additional_details: str
-) -> List[str]:
+    ai_recommendation: dict[str, Any], thinking_content: str, additional_details: str
+) -> list[str]:
     """Recommend report sections based on available content."""
     sections = ["executive_summary", "recommendation"]
 
@@ -194,7 +194,7 @@ def recommend_report_sections(
     return sections
 
 
-def extract_priority_insights(thinking_content: str, additional_details: str) -> List[str]:
+def extract_priority_insights(thinking_content: str, additional_details: str) -> list[str]:
     """Extract high-priority insights for report highlighting."""
     insights = []
 
@@ -213,7 +213,7 @@ def extract_priority_insights(thinking_content: str, additional_details: str) ->
     return insights
 
 
-def suggest_visualizations(ai_recommendation: Dict[str, Any]) -> List[str]:
+def suggest_visualizations(ai_recommendation: dict[str, Any]) -> list[str]:
     """Suggest visualizations based on recommendation content."""
     suggestions = []
 

@@ -15,7 +15,6 @@ Date: 2025-12-30
 """
 
 import logging
-from typing import Dict, List, Optional, Set, Tuple
 
 from investigator.domain.services.industry_datasets.base import (
     BaseIndustryDataset,
@@ -88,7 +87,7 @@ class SemiconductorDataset(BaseIndustryDataset):
     def version(self) -> str:
         return "1.0.0"
 
-    def get_industry_names(self) -> List[str]:
+    def get_industry_names(self) -> list[str]:
         return [
             "Semiconductors",
             "Semiconductor Equipment",
@@ -99,10 +98,10 @@ class SemiconductorDataset(BaseIndustryDataset):
             "Semiconductor - Analog",
         ]
 
-    def get_known_symbols(self) -> Set[str]:
+    def get_known_symbols(self) -> set[str]:
         return KNOWN_SEMICONDUCTOR_SYMBOLS.copy()
 
-    def get_metric_definitions(self) -> List[MetricDefinition]:
+    def get_metric_definitions(self) -> list[MetricDefinition]:
         return [
             MetricDefinition(
                 name="inventory_days",
@@ -169,7 +168,7 @@ class SemiconductorDataset(BaseIndustryDataset):
             ),
         ]
 
-    def extract_metrics(self, symbol: str, xbrl_data: Optional[Dict], financials: Dict, **kwargs) -> IndustryMetrics:
+    def extract_metrics(self, symbol: str, xbrl_data: dict | None, financials: dict, **kwargs) -> IndustryMetrics:
         """Extract semiconductor-specific metrics from XBRL data and financials."""
         metrics = IndustryMetrics(
             industry="semiconductor",
@@ -230,7 +229,7 @@ class SemiconductorDataset(BaseIndustryDataset):
 
         return metrics
 
-    def _extract_inventory_days(self, xbrl_data: Optional[Dict], financials: Dict) -> Optional[float]:
+    def _extract_inventory_days(self, xbrl_data: dict | None, financials: dict) -> float | None:
         """Extract or calculate inventory days."""
         # Try direct XBRL extraction first
         inv_days = self._extract_from_xbrl(
@@ -250,7 +249,7 @@ class SemiconductorDataset(BaseIndustryDataset):
 
         return None
 
-    def _calculate_inventory_to_sales(self, financials: Dict) -> Optional[float]:
+    def _calculate_inventory_to_sales(self, financials: dict) -> float | None:
         """Calculate inventory to sales ratio."""
         inventory = financials.get("inventory") or financials.get("totalInventory")
         revenue = financials.get("revenue") or financials.get("totalRevenue")
@@ -260,7 +259,7 @@ class SemiconductorDataset(BaseIndustryDataset):
 
         return None
 
-    def _calculate_rd_ratio(self, financials: Dict) -> Optional[float]:
+    def _calculate_rd_ratio(self, financials: dict) -> float | None:
         """Calculate R&D to revenue ratio."""
         rd = financials.get("rd_expense") or financials.get("researchAndDevelopment")
         revenue = financials.get("revenue") or financials.get("totalRevenue")
@@ -270,7 +269,7 @@ class SemiconductorDataset(BaseIndustryDataset):
 
         return None
 
-    def _determine_cycle_position(self, metrics_dict: Dict) -> str:
+    def _determine_cycle_position(self, metrics_dict: dict) -> str:
         """
         Determine semiconductor cycle position.
 
@@ -295,7 +294,7 @@ class SemiconductorDataset(BaseIndustryDataset):
 
         return "normal"
 
-    def assess_quality(self, metrics: IndustryMetrics) -> Tuple[MetricQuality, str]:
+    def assess_quality(self, metrics: IndustryMetrics) -> tuple[MetricQuality, str]:
         """Assess quality of semiconductor metrics."""
         required_metrics = ["inventory_days", "gross_margin"]
         important_metrics = ["book_to_bill", "rd_to_revenue"]
@@ -322,8 +321,8 @@ class SemiconductorDataset(BaseIndustryDataset):
             )
 
     def get_valuation_adjustments(
-        self, metrics: IndustryMetrics, financials: Dict, **kwargs
-    ) -> List[ValuationAdjustment]:
+        self, metrics: IndustryMetrics, financials: dict, **kwargs
+    ) -> list[ValuationAdjustment]:
         """Calculate cycle-based valuation adjustments."""
         adjustments = []
 
@@ -403,7 +402,7 @@ class SemiconductorDataset(BaseIndustryDataset):
 
         return adjustments
 
-    def get_tier_weights(self) -> Optional[Dict[str, int]]:
+    def get_tier_weights(self) -> dict[str, int] | None:
         """Return recommended tier weights for semiconductors."""
         return {
             "ev_ebitda": 45,

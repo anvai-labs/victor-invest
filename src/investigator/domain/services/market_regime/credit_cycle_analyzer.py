@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -49,7 +49,7 @@ Example:
 import logging
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar
 
 from investigator.domain.models.market_context import (
     CreditCyclePhase,
@@ -83,20 +83,20 @@ class CreditCycleAnalysis:
 
     date: date
     phase: CreditCyclePhase = CreditCyclePhase.UNKNOWN
-    baa_spread_bps: Optional[float] = None
-    baa_spread_percentile: Optional[float] = None
-    vix_level: Optional[float] = None
+    baa_spread_bps: float | None = None
+    baa_spread_percentile: float | None = None
+    vix_level: float | None = None
     volatility_regime: VolatilityRegime = VolatilityRegime.UNKNOWN
-    fed_funds_rate: Optional[float] = None
+    fed_funds_rate: float | None = None
     fed_policy_stance: FedPolicyStance = FedPolicyStance.UNKNOWN
     recession_probability: RecessionProbability = RecessionProbability.UNKNOWN
     confidence: float = 0.0
-    factors: List[str] = field(default_factory=list)
+    factors: list[str] = field(default_factory=list)
     interpretation: str = ""
-    sector_recommendations: Dict[str, str] = field(default_factory=dict)
-    warnings: List[str] = field(default_factory=list)
+    sector_recommendations: dict[str, str] = field(default_factory=dict)
+    warnings: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "date": str(self.date),
@@ -133,7 +133,7 @@ class CreditCycleAnalyzer:
 
     # Historical thresholds for BAA-10Y spread
     # Normal: ~200 bps, Stressed: >300 bps, Crisis: >500 bps
-    SPREAD_THRESHOLDS = {
+    SPREAD_THRESHOLDS: ClassVar[dict] = {
         "tight": 150,  # Early expansion
         "normal": 200,  # Mid cycle
         "wide": 300,  # Late cycle
@@ -142,7 +142,7 @@ class CreditCycleAnalyzer:
     }
 
     # VIX thresholds
-    VIX_THRESHOLDS = {
+    VIX_THRESHOLDS: ClassVar[dict] = {
         "very_low": 12,
         "low": 16,
         "normal": 20,
@@ -263,7 +263,7 @@ class CreditCycleAnalyzer:
 
         return analysis
 
-    async def _get_credit_spread(self) -> Optional[Dict[str, Any]]:
+    async def _get_credit_spread(self) -> dict[str, Any] | None:
         """Get BAA-10Y credit spread from stock database macro_indicator_values table."""
         try:
             from sqlalchemy import create_engine, text
@@ -319,7 +319,7 @@ class CreditCycleAnalyzer:
 
         return None
 
-    async def _get_vix(self) -> Optional[Dict[str, Any]]:
+    async def _get_vix(self) -> dict[str, Any] | None:
         """Get VIX level from stock database macro_indicator_values table."""
         try:
             from sqlalchemy import create_engine, text
@@ -357,7 +357,7 @@ class CreditCycleAnalyzer:
 
         return None
 
-    async def _get_fed_funds(self) -> Optional[Dict[str, Any]]:
+    async def _get_fed_funds(self) -> dict[str, Any] | None:
         """Get Fed funds rate from stock database macro_indicator_values table."""
         try:
             from sqlalchemy import create_engine, text
@@ -401,7 +401,7 @@ class CreditCycleAnalyzer:
 
         return None
 
-    def _score_credit_spread(self, data: Dict[str, Any]) -> tuple:
+    def _score_credit_spread(self, data: dict[str, Any]) -> tuple:
         """Score credit spread indicator."""
         scores = {phase: 0 for phase in CreditCyclePhase if phase != CreditCyclePhase.UNKNOWN}
         factors = []
@@ -441,7 +441,7 @@ class CreditCycleAnalyzer:
 
         return scores, factors
 
-    def _score_vix(self, data: Dict[str, Any]) -> tuple:
+    def _score_vix(self, data: dict[str, Any]) -> tuple:
         """Score VIX indicator."""
         scores = {phase: 0 for phase in CreditCyclePhase if phase != CreditCyclePhase.UNKNOWN}
         factors = []
@@ -475,7 +475,7 @@ class CreditCycleAnalyzer:
 
         return scores, factors
 
-    def _score_fed_policy(self, data: Dict[str, Any]) -> tuple:
+    def _score_fed_policy(self, data: dict[str, Any]) -> tuple:
         """Score Fed policy indicator."""
         scores = {phase: 0 for phase in CreditCyclePhase if phase != CreditCyclePhase.UNKNOWN}
         factors = []
@@ -544,7 +544,7 @@ class CreditCycleAnalyzer:
 
         return scores, factors
 
-    def _classify_volatility(self, vix: Optional[float]) -> VolatilityRegime:
+    def _classify_volatility(self, vix: float | None) -> VolatilityRegime:
         """Classify volatility regime from VIX level."""
         if vix is None:
             return VolatilityRegime.UNKNOWN
@@ -560,7 +560,7 @@ class CreditCycleAnalyzer:
             return VolatilityRegime.HIGH
         return VolatilityRegime.EXTREME
 
-    def _classify_fed_stance(self, data: Dict[str, Any]) -> FedPolicyStance:
+    def _classify_fed_stance(self, data: dict[str, Any]) -> FedPolicyStance:
         """Classify Fed policy stance."""
         data.get("rate", 0)
         change_1y = data.get("change_1y", 0)
@@ -620,7 +620,7 @@ class CreditCycleAnalyzer:
         }
         return interpretations.get(phase, "Credit cycle phase undetermined")
 
-    def _get_sector_recommendations(self, phase: CreditCyclePhase) -> Dict[str, str]:
+    def _get_sector_recommendations(self, phase: CreditCyclePhase) -> dict[str, str]:
         """Get sector recommendations for phase."""
         recommendations = {
             CreditCyclePhase.EARLY_EXPANSION: {
@@ -658,7 +658,7 @@ class CreditCycleAnalyzer:
 
 
 # Singleton instance
-_credit_cycle_analyzer: Optional[CreditCycleAnalyzer] = None
+_credit_cycle_analyzer: CreditCycleAnalyzer | None = None
 
 
 def get_credit_cycle_analyzer() -> CreditCycleAnalyzer:

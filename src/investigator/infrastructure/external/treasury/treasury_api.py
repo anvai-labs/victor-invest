@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ import logging
 import ssl
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar
 
 import aiohttp
 
@@ -79,7 +79,7 @@ class TreasuryYield:
 
     date: date
     maturity: str
-    yield_pct: Optional[float]
+    yield_pct: float | None
     maturity_months: int = 0
 
     def __post_init__(self):
@@ -123,21 +123,21 @@ class YieldCurveData:
     """
 
     date: date
-    yield_1m: Optional[float] = None
-    yield_2m: Optional[float] = None
-    yield_3m: Optional[float] = None
-    yield_4m: Optional[float] = None
-    yield_6m: Optional[float] = None
-    yield_1y: Optional[float] = None
-    yield_2y: Optional[float] = None
-    yield_3y: Optional[float] = None
-    yield_5y: Optional[float] = None
-    yield_7y: Optional[float] = None
-    yield_10y: Optional[float] = None
-    yield_20y: Optional[float] = None
-    yield_30y: Optional[float] = None
-    spread_10y_2y: Optional[float] = None
-    spread_10y_3m: Optional[float] = None
+    yield_1m: float | None = None
+    yield_2m: float | None = None
+    yield_3m: float | None = None
+    yield_4m: float | None = None
+    yield_6m: float | None = None
+    yield_1y: float | None = None
+    yield_2y: float | None = None
+    yield_3y: float | None = None
+    yield_5y: float | None = None
+    yield_7y: float | None = None
+    yield_10y: float | None = None
+    yield_20y: float | None = None
+    yield_30y: float | None = None
+    spread_10y_2y: float | None = None
+    spread_10y_3m: float | None = None
     is_inverted: bool = False
     is_deeply_inverted: bool = False
 
@@ -153,7 +153,7 @@ class YieldCurveData:
         if self.yield_10y is not None and self.yield_3m is not None:
             self.spread_10y_3m = round((self.yield_10y - self.yield_3m) * 100, 2)  # bps
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "date": str(self.date),
@@ -208,7 +208,7 @@ class TreasuryApiClient:
     """
 
     # Maturity mappings for parsing
-    MATURITY_MAP = {
+    MATURITY_MAP: ClassVar[dict] = {
         "1 Mo": "1m",
         "2 Mo": "2m",
         "3 Mo": "3m",
@@ -231,7 +231,7 @@ class TreasuryApiClient:
             timeout: Request timeout in seconds
         """
         self.timeout = aiohttp.ClientTimeout(total=timeout)
-        self._session: Optional[aiohttp.ClientSession] = None
+        self._session: aiohttp.ClientSession | None = None
 
     async def _get_session(self) -> aiohttp.ClientSession:
         """Get or create aiohttp session with proper SSL context."""
@@ -246,7 +246,7 @@ class TreasuryApiClient:
         if self._session and not self._session.closed:
             await self._session.close()
 
-    async def get_yield_curve(self, as_of_date: Optional[date] = None) -> Optional[YieldCurveData]:
+    async def get_yield_curve(self, as_of_date: date | None = None) -> YieldCurveData | None:
         """Get yield curve for a specific date.
 
         Args:
@@ -270,9 +270,7 @@ class TreasuryApiClient:
             logger.error(f"Error fetching yield curve: {e}")
             return None
 
-    async def _fetch_treasury_yields(
-        self, as_of_date: Optional[date] = None, days_back: int = 10
-    ) -> List[Dict[str, Any]]:
+    async def _fetch_treasury_yields(self, as_of_date: date | None = None, days_back: int = 10) -> list[dict[str, Any]]:
         """Fetch treasury yields from Treasury.gov.
 
         Uses the Treasury.gov XML feed which provides daily par yield curve rates.
@@ -304,7 +302,7 @@ class TreasuryApiClient:
         # Fallback: Try FRED for Treasury yields
         return await self._fetch_from_fred_fallback(target_date)
 
-    def _parse_treasury_csv(self, csv_text: str, target_date: date, days_back: int) -> List[Dict[str, Any]]:
+    def _parse_treasury_csv(self, csv_text: str, target_date: date, days_back: int) -> list[dict[str, Any]]:
         """Parse Treasury CSV response.
 
         Args:
@@ -411,7 +409,7 @@ class TreasuryApiClient:
 
         return yields
 
-    async def _fetch_from_fred_fallback(self, target_date: date) -> List[Dict[str, Any]]:
+    async def _fetch_from_fred_fallback(self, target_date: date) -> list[dict[str, Any]]:
         """Fallback to FRED for treasury yields if Treasury.gov fails.
 
         Args:
@@ -448,12 +446,12 @@ class TreasuryApiClient:
                 try:
                     # Get latest value from FRED service
                     value = await asyncio.get_event_loop().run_in_executor(
-                        None, lambda: service.get_latest_value(series_id)
+                        None, lambda sid=series_id: service.get_latest_value(sid)
                     )
                     if value is not None:
                         yields[maturity] = value
                 except Exception:
-                    pass
+                    logger.debug("_fetch_from_fred_fallback: suppressed error", exc_info=True)
 
             if len(yields) > 1:  # Has at least one yield besides date
                 return [yields]
@@ -465,7 +463,7 @@ class TreasuryApiClient:
 
         return []
 
-    def _build_yield_curve(self, yields: List[Dict[str, Any]]) -> Optional[YieldCurveData]:
+    def _build_yield_curve(self, yields: list[dict[str, Any]]) -> YieldCurveData | None:
         """Build YieldCurveData from parsed yields.
 
         Args:
@@ -497,7 +495,7 @@ class TreasuryApiClient:
             yield_30y=data.get("30y"),
         )
 
-    async def get_yield_history(self, days: int = 365, maturity: str = "10y") -> List[Dict[str, Any]]:
+    async def get_yield_history(self, days: int = 365, maturity: str = "10y") -> list[dict[str, Any]]:
         """Get historical yields for a specific maturity.
 
         Args:
@@ -572,7 +570,7 @@ class TreasuryApiClient:
             logger.error(f"Error fetching yield history: {e}")
             return []
 
-    async def get_spread_history(self, days: int = 365, spread_type: str = "10y_2y") -> List[Dict[str, Any]]:
+    async def get_spread_history(self, days: int = 365, spread_type: str = "10y_2y") -> list[dict[str, Any]]:
         """Get historical spread data.
 
         Args:
@@ -669,7 +667,7 @@ class TreasuryApiClient:
 
 
 # Singleton instance
-_treasury_client: Optional[TreasuryApiClient] = None
+_treasury_client: TreasuryApiClient | None = None
 
 
 def get_treasury_client() -> TreasuryApiClient:
@@ -693,7 +691,7 @@ class TreasuryFetcher:
         self,
         start_date: str,
         end_date: str,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get yield curve history between dates.
 
         Args:
@@ -748,7 +746,7 @@ class TreasuryFetcher:
 
 
 # Singleton fetcher instance
-_treasury_fetcher: Optional[TreasuryFetcher] = None
+_treasury_fetcher: TreasuryFetcher | None = None
 
 
 def get_treasury_fetcher() -> TreasuryFetcher:

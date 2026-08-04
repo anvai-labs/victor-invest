@@ -21,7 +21,7 @@ The tests need to be updated to match the new API signature:
 """
 
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
@@ -38,7 +38,7 @@ class TestQ4ComputationRegression:
     """Regression tests for Q4 computation logic"""
 
     @pytest.fixture
-    def zs_fiscal_periods(self) -> List[Dict[str, Any]]:
+    def zs_fiscal_periods(self) -> list[dict[str, Any]]:
         """
         Simulates ZS (Zscaler) fiscal periods with fiscal year end = July 31
 

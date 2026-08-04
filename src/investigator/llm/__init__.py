@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - LLM Pattern Implementations Initialization
 Copyright (c) 2025 Vijaykumar Singh
@@ -8,41 +7,44 @@ LLM Pattern Implementations
 LLM processing and interaction patterns
 """
 
-from .llm_facade import *  # noqa: F403
-from .llm_interfaces import *  # noqa: F403
-from .llm_processors import *  # noqa: F403
-from .llm_strategies import *  # noqa: F403
+# Barrel module: re-exports via star imports.
+# ruff: noqa: F403, F405
 
-__all__ = [  # noqa: F405
+from .llm_facade import *
+from .llm_interfaces import *
+from .llm_processors import *
+from .llm_strategies import *
+
+__all__ = [
+    "AggressiveLLMCacheStrategy",
+    # Strategies
+    "ComprehensiveLLMStrategy",
+    "ILLMAnalysisTemplate",
+    "ILLMCacheStrategy",
+    "ILLMFactory",
+    "ILLMHandler",
+    "ILLMObserver",
+    "ILLMProcessor",
+    "ILLMStrategy",
+    "ILLMSubject",
+    # Observer
+    "LLMAnalysisObserver",
+    # Processors
+    "LLMCacheHandler",
+    "LLMExecutionHandler",
     # Facade and factories
     "LLMFacade",
-    "create_llm_facade",
-    "create_comprehensive_llm_facade",
-    "create_quick_llm_facade",
+    "LLMPriority",
     # Interfaces
     "LLMRequest",
     "LLMResponse",
     "LLMTaskType",
-    "LLMPriority",
-    "ILLMStrategy",
-    "ILLMProcessor",
-    "ILLMHandler",
-    "ILLMObserver",
-    "ILLMSubject",
-    "ILLMAnalysisTemplate",
-    "ILLMFactory",
-    "ILLMCacheStrategy",
-    # Strategies
-    "ComprehensiveLLMStrategy",
-    "QuickLLMStrategy",
-    "StandardLLMCacheStrategy",
-    "AggressiveLLMCacheStrategy",
-    # Processors
-    "LLMCacheHandler",
     "LLMValidationHandler",
-    "LLMExecutionHandler",
     "QueuedLLMProcessor",
+    "QuickLLMStrategy",
     "StandardLLMAnalysisTemplate",
-    # Observer
-    "LLMAnalysisObserver",
+    "StandardLLMCacheStrategy",
+    "create_comprehensive_llm_facade",
+    "create_llm_facade",
+    "create_quick_llm_facade",
 ]

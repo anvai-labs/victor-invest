@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ from __future__ import annotations
 import logging
 import re
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from victor_invest.tools.base import BaseTool, ToolResult
 
@@ -72,14 +72,14 @@ Parameters:
 - days_back: Number of days to search back (default: 30)
 """
 
-    def __init__(self, config: Optional[Any] = None):
+    def __init__(self, config: Any | None = None):
         """Initialize Web Search Tool.
 
         Args:
             config: Optional investigator config object.
         """
         super().__init__(config)
-        self._search_cache: Dict[str, Any] = {}
+        self._search_cache: dict[str, Any] = {}
         self._cache_ttl = timedelta(hours=1)
 
     async def initialize(self) -> None:
@@ -90,7 +90,7 @@ Parameters:
 
     async def execute(
         self,
-        _exec_ctx: Optional[Dict[str, Any]] = None,
+        _exec_ctx: dict[str, Any] | None = None,
         symbol: str = "",
         company_name: str = "",
         action: str = "company_news",
@@ -150,11 +150,11 @@ Parameters:
         except Exception as e:
             logger.error(f"WebSearchTool execute error for {symbol}: {e}")
             return ToolResult.create_failure(
-                f"Web search failed: {str(e)}",
+                f"Web search failed: {e!s}",
                 metadata={"symbol": symbol, "action": action},
             )
 
-    def _build_search_queries(self, symbol: str, company_name: str, category: str, days_back: int) -> List[str]:
+    def _build_search_queries(self, symbol: str, company_name: str, category: str, days_back: int) -> list[str]:
         """Build search queries for different categories.
 
         Args:
@@ -220,7 +220,7 @@ Parameters:
         except Exception:
             return date_str
 
-    def _extract_relevant_snippet(self, result: Dict[str, Any], symbol: str) -> str:
+    def _extract_relevant_snippet(self, result: dict[str, Any], symbol: str) -> str:
         """Extract and clean the most relevant snippet from a search result.
 
         Args:
@@ -244,7 +244,7 @@ Parameters:
 
         return snippet[:500]
 
-    async def _perform_web_search(self, queries: List[str], max_results: int) -> List[Dict[str, Any]]:
+    async def _perform_web_search(self, queries: list[str], max_results: int) -> list[dict[str, Any]]:
         """Perform web search using available tools.
 
         Args:
@@ -279,7 +279,7 @@ Parameters:
 
         return unique_results[:max_results]
 
-    async def _web_search_call(self, query: str, max_results: int) -> List[Dict[str, Any]]:
+    async def _web_search_call(self, query: str, max_results: int) -> list[dict[str, Any]]:
         """Make the actual web search API call.
 
         Args:
@@ -308,7 +308,7 @@ Parameters:
             # Return empty list on failure
             return []
 
-    def _format_search_results(self, results: List[Dict[str, Any]], category: str) -> str:
+    def _format_search_results(self, results: list[dict[str, Any]], category: str) -> str:
         """Format search results into readable text.
 
         Args:
@@ -495,7 +495,7 @@ Parameters:
             metadata={"source": "web_search_comprehensive", "days_back": days_back},
         )
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """Get JSON schema for Web Search Tool parameters."""
         return {
             "type": "object",

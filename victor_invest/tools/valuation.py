@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -47,7 +47,8 @@ Example:
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional
+from pathlib import Path
+from typing import Any
 
 # Shared market data services (used by rl_backtest, batch_analysis_runner, victor_invest)
 from investigator.domain.services.market_data import (
@@ -143,22 +144,22 @@ Parameters:
 Returns fair value estimates, model assumptions, and upside/downside vs current price.
 """
 
-    def __init__(self, config: Optional[Any] = None):
+    def __init__(self, config: Any | None = None):
         """Initialize Valuation Tool.
 
         Args:
             config: Optional investigator config object
         """
         super().__init__(config)
-        self._db_manager: Optional[Any] = None
+        self._db_manager: Any | None = None
         # Shared services will be initialized lazily
-        self._shares_service: Optional[Any] = None
-        self._price_service: Optional[Any] = None
-        self._metadata_service: Optional[Any] = None
-        self._validation_service: Optional[Any] = None
+        self._shares_service: Any | None = None
+        self._price_service: Any | None = None
+        self._metadata_service: Any | None = None
+        self._validation_service: Any | None = None
         # Shared valuation config services
-        self._valuation_config_service: Optional[Any] = None
-        self._sector_multiples_service: Optional[Any] = None
+        self._valuation_config_service: Any | None = None
+        self._sector_multiples_service: Any | None = None
 
     async def initialize(self) -> None:
         """Initialize valuation infrastructure components."""
@@ -214,14 +215,14 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
     async def execute(
         self,
-        _exec_ctx: Optional[Dict[str, Any]] = None,
+        _exec_ctx: dict[str, Any] | None = None,
         symbol: str = "",
         model: str = "all",
-        quarterly_metrics: Optional[List[Dict]] = None,
-        multi_year_data: Optional[List[Dict]] = None,
-        current_price: Optional[float] = None,
-        cost_of_equity: Optional[float] = None,
-        terminal_growth_rate: Optional[float] = None,
+        quarterly_metrics: list[dict] | None = None,
+        multi_year_data: list[dict] | None = None,
+        current_price: float | None = None,
+        cost_of_equity: float | None = None,
+        terminal_growth_rate: float | None = None,
         **kwargs,
     ) -> ToolResult:
         """Execute valuation model(s) for a symbol.
@@ -319,11 +320,11 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
         except Exception as e:
             logger.error(f"ValuationTool execute error for {symbol}: {e}")
             return ToolResult.create_failure(
-                f"Valuation failed: {str(e)}",
+                f"Valuation failed: {e!s}",
                 metadata={"symbol": symbol, "model": model},
             )
 
-    async def _fetch_valuation_data(self, symbol: str) -> Dict[str, Any]:
+    async def _fetch_valuation_data(self, symbol: str) -> dict[str, Any]:
         """Fetch required data for valuation.
 
         Attempts multiple sources:
@@ -402,7 +403,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 "multi_year_data": [],
             }
 
-    async def _get_current_price(self, symbol: str) -> Optional[float]:
+    async def _get_current_price(self, symbol: str) -> float | None:
         """Get current stock price.
 
         Delegates to shared PriceService for consistent implementation
@@ -426,7 +427,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             logger.warning(f"Could not get current price for {symbol}: {e}")
             return None
 
-    async def _get_stock_info(self, symbol: str) -> Dict[str, Any]:
+    async def _get_stock_info(self, symbol: str) -> dict[str, Any]:
         """Get comprehensive stock info including sector, shares outstanding, etc.
 
         Delegates to shared SymbolMetadataService for consistent implementation
@@ -470,7 +471,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             logger.warning(f"Could not get stock info for {symbol}: {e}")
             return {}
 
-    def _build_company_profile(self, symbol: str, stock_info: Dict[str, Any], quarterly_metrics: List[Dict]):
+    def _build_company_profile(self, symbol: str, stock_info: dict[str, Any], quarterly_metrics: list[dict]):
         """Build a CompanyProfile from available data.
 
         Handles two formats:
@@ -661,8 +662,8 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             return None
 
     def _calculate_ttm_metrics(
-        self, quarterly_metrics: List[Dict], shares_outstanding: Optional[float]
-    ) -> Dict[str, Optional[float]]:
+        self, quarterly_metrics: list[dict], shares_outstanding: float | None
+    ) -> dict[str, float | None]:
         """Calculate TTM metrics from quarterly data.
 
         Handles two formats:
@@ -671,7 +672,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
         Uses shared TTMMetrics from valuation.common for standardized calculations.
         """
-        result: Dict[str, Optional[float]] = {
+        result: dict[str, float | None] = {
             "ttm_eps": None,
             "ttm_revenue": None,
             "ttm_ebitda": None,
@@ -935,7 +936,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
         return result
 
-    def _get_sector_multiples(self, sector: str, industry: str | None = None) -> Dict[str, float]:
+    def _get_sector_multiples(self, sector: str, industry: str | None = None) -> dict[str, float]:
         """Get sector median multiples with industry override.
 
         Uses normalized sector/industry names and prioritizes config overrides.
@@ -1000,11 +1001,11 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
     async def _run_all_models(
         self,
         symbol: str,
-        quarterly_metrics: List[Dict],
-        multi_year_data: List[Dict],
-        current_price: Optional[float],
-        cost_of_equity: Optional[float],
-        terminal_growth_rate: Optional[float],
+        quarterly_metrics: list[dict],
+        multi_year_data: list[dict],
+        current_price: float | None,
+        cost_of_equity: float | None,
+        terminal_growth_rate: float | None,
     ) -> ToolResult:
         """Run all applicable valuation models.
 
@@ -1020,7 +1021,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             ToolResult with all model results
         """
         try:
-            results: Dict[str, Any] = {}
+            results: dict[str, Any] = {}
             warnings: list[str] = []
 
             # Run DCF
@@ -1098,8 +1099,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 )
 
                 # Load valuation config directly from YAML
-                with open("config.yaml", "r") as f:
-                    config = yaml.safe_load(f)
+                config = yaml.safe_load(await asyncio.to_thread(Path("config.yaml").read_text))
                 valuation_config = config.get("valuation", {})
 
                 # Initialize metadata service for sector/industry lookup
@@ -1141,7 +1141,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                     ttm = quarterly_metrics[:4]
 
                     # Helper function to extract metric from nested or flat format
-                    def extract_ttm_metric(keys: List[str]) -> float:
+                    def extract_ttm_metric(keys: list[str]) -> float:
                         """Extract TTM metric from quarterly data, handling both nested and flat formats."""
                         total = 0.0
                         for q in ttm:
@@ -1348,16 +1348,16 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
         except Exception as e:
             logger.error(f"Error running all models for {symbol}: {e}")
-            return ToolResult.create_failure(f"Multi-model valuation failed: {str(e)}")
+            return ToolResult.create_failure(f"Multi-model valuation failed: {e!s}")
 
     async def _run_dcf(
         self,
         symbol: str,
-        quarterly_metrics: List[Dict],
-        multi_year_data: List[Dict],
-        current_price: Optional[float],
-        cost_of_equity: Optional[float],
-        terminal_growth_rate: Optional[float],
+        quarterly_metrics: list[dict],
+        multi_year_data: list[dict],
+        current_price: float | None,
+        cost_of_equity: float | None,
+        terminal_growth_rate: float | None,
     ) -> ToolResult:
         """Run DCF valuation model."""
         try:
@@ -1401,16 +1401,16 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
         except Exception as e:
             logger.error(f"DCF error for {symbol}: {e}")
-            return ToolResult.create_failure(f"DCF calculation failed: {str(e)}")
+            return ToolResult.create_failure(f"DCF calculation failed: {e!s}")
 
     async def _run_ggm(
         self,
         symbol: str,
-        quarterly_metrics: List[Dict],
-        multi_year_data: List[Dict],
-        current_price: Optional[float],
-        cost_of_equity: Optional[float],
-        terminal_growth_rate: Optional[float],
+        quarterly_metrics: list[dict],
+        multi_year_data: list[dict],
+        current_price: float | None,
+        cost_of_equity: float | None,
+        terminal_growth_rate: float | None,
     ) -> ToolResult:
         """Run Gordon Growth Model valuation."""
         try:
@@ -1460,10 +1460,10 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
         except Exception as e:
             logger.error(f"GGM error for {symbol}: {e}")
-            return ToolResult.create_failure(f"GGM calculation failed: {str(e)}")
+            return ToolResult.create_failure(f"GGM calculation failed: {e!s}")
 
     async def _run_pe_multiple(
-        self, symbol: str, quarterly_metrics: List[Dict], current_price: Optional[float]
+        self, symbol: str, quarterly_metrics: list[dict], current_price: float | None
     ) -> ToolResult:
         """Run P/E Multiple valuation."""
         try:
@@ -1545,10 +1545,10 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
         except Exception as e:
             logger.error(f"P/E error for {symbol}: {e}")
-            return ToolResult.create_failure(f"P/E calculation failed: {str(e)}")
+            return ToolResult.create_failure(f"P/E calculation failed: {e!s}")
 
     async def _run_ps_multiple(
-        self, symbol: str, quarterly_metrics: List[Dict], current_price: Optional[float]
+        self, symbol: str, quarterly_metrics: list[dict], current_price: float | None
     ) -> ToolResult:
         """Run P/S Multiple valuation."""
         try:
@@ -1631,10 +1631,10 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
         except Exception as e:
             logger.error(f"P/S error for {symbol}: {e}")
-            return ToolResult.create_failure(f"P/S calculation failed: {str(e)}")
+            return ToolResult.create_failure(f"P/S calculation failed: {e!s}")
 
     async def _run_pb_multiple(
-        self, symbol: str, quarterly_metrics: List[Dict], current_price: Optional[float]
+        self, symbol: str, quarterly_metrics: list[dict], current_price: float | None
     ) -> ToolResult:
         """Run P/B Multiple valuation."""
         try:
@@ -1713,10 +1713,10 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
         except Exception as e:
             logger.error(f"P/B error for {symbol}: {e}")
-            return ToolResult.create_failure(f"P/B calculation failed: {str(e)}")
+            return ToolResult.create_failure(f"P/B calculation failed: {e!s}")
 
     async def _run_ev_ebitda(
-        self, symbol: str, quarterly_metrics: List[Dict], current_price: Optional[float]
+        self, symbol: str, quarterly_metrics: list[dict], current_price: float | None
     ) -> ToolResult:
         """Run EV/EBITDA Multiple valuation."""
         try:
@@ -1882,14 +1882,14 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
         except Exception as e:
             logger.error(f"EV/EBITDA error for {symbol}: {e}")
-            return ToolResult.create_failure(f"EV/EBITDA calculation failed: {str(e)}")
+            return ToolResult.create_failure(f"EV/EBITDA calculation failed: {e!s}")
 
     async def _run_sector_routed(
         self,
         symbol: str,
-        quarterly_metrics: List[Dict],
-        multi_year_data: List[Dict],
-        current_price: Optional[float],
+        quarterly_metrics: list[dict],
+        multi_year_data: list[dict],
+        current_price: float | None,
     ) -> ToolResult:
         """Run sector-appropriate valuation using SectorValuationRouter."""
         try:
@@ -1932,9 +1932,9 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
         except Exception as e:
             logger.error(f"Sector-routed valuation error for {symbol}: {e}")
-            return ToolResult.create_failure(f"Sector-routed valuation failed: {str(e)}")
+            return ToolResult.create_failure(f"Sector-routed valuation failed: {e!s}")
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """Get JSON schema for Valuation Tool parameters."""
         return {
             "type": "object",

@@ -35,7 +35,7 @@ Usage:
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from investigator.config import get_config
 from investigator.domain.services.company_metadata_service import (
@@ -60,10 +60,10 @@ class UnifiedValuationExecutor:
         self,
         symbol: str,
         current_price: float,
-        quarterly_metrics: Optional[List[Dict]] = None,
-        multi_year_data: Optional[List[Dict]] = None,
-        cost_of_equity: Optional[float] = None,
-        terminal_growth_rate: Optional[float] = None,
+        quarterly_metrics: list[dict] | None = None,
+        multi_year_data: list[dict] | None = None,
+        cost_of_equity: float | None = None,
+        terminal_growth_rate: float | None = None,
     ):
         """
         Initialize the unified valuation executor.
@@ -95,7 +95,7 @@ class UnifiedValuationExecutor:
 
     async def run_comprehensive_valuation(
         self,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Run comprehensive multi-model valuation with sector-weighted blending.
 
@@ -140,7 +140,7 @@ class UnifiedValuationExecutor:
         financials = self._build_financials_dict()
         ratios = self._build_ratios_dict()
 
-        weights, tier, audit_trail = self.weighting_service.determine_weights(
+        weights, tier, _audit_trail = self.weighting_service.determine_weights(
             symbol=self.symbol,
             financials=financials,
             ratios=ratios,
@@ -199,7 +199,7 @@ class UnifiedValuationExecutor:
             "weights_applied": applied_weights,
         }
 
-    async def _run_all_models(self) -> Dict[str, Any]:
+    async def _run_all_models(self) -> dict[str, Any]:
         """
         Run all applicable valuation models.
 
@@ -382,9 +382,9 @@ class UnifiedValuationExecutor:
 
         return results
 
-    def _build_financials_dict(self) -> Dict[str, Any]:
+    def _build_financials_dict(self) -> dict[str, Any]:
         """Build financials dict for weight calculation."""
-        financials: Dict[str, Any] = {
+        financials: dict[str, Any] = {
             "net_income": None,
             "revenue": None,
             "shareholders_equity": None,
@@ -412,7 +412,7 @@ class UnifiedValuationExecutor:
 
         return financials
 
-    def _build_ratios_dict(self) -> Dict[str, Any]:
+    def _build_ratios_dict(self) -> dict[str, Any]:
         """Build ratios dict for weight calculation."""
         ratios = {
             "roe": None,
@@ -433,7 +433,7 @@ class UnifiedValuationExecutor:
 
         return ratios
 
-    def _extract_metric(self, data: Dict, keys: List[str]) -> Any:
+    def _extract_metric(self, data: dict, keys: list[str]) -> Any:
         """Extract a metric value from data dict, trying multiple keys."""
         for key in keys:
             value = data.get(key)
@@ -441,19 +441,19 @@ class UnifiedValuationExecutor:
                 return value
         return None
 
-    async def _fetch_quarterly_metrics(self) -> List[Dict]:
+    async def _fetch_quarterly_metrics(self) -> list[dict]:
         """Fetch quarterly metrics from database."""
         # This would be implemented to fetch from the same source as investigator
         # For now, return empty to use the data passed in __init__
         return []
 
-    async def _fetch_multi_year_data(self) -> List[Dict]:
+    async def _fetch_multi_year_data(self) -> list[dict]:
         """Fetch multi-year data from database."""
         # This would be implemented to fetch from the same source as investigator
         # For now, return empty to use the data passed in __init__
         return []
 
-    def _calculate_enterprise_value(self, market_data: Dict) -> Optional[float]:
+    def _calculate_enterprise_value(self, market_data: dict) -> float | None:
         """Calculate enterprise value from market data."""
         market_cap = market_data.get("market_cap")
         total_debt = market_data.get("total_debt", 0)

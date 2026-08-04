@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,8 +24,8 @@ Produces comprehensive fair value analysis with consensus recommendations.
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any, ClassVar
 
 from investigator.domain.services.company_fair_multiple_calculator import (
     CompanyFairMultipleCalculator,
@@ -50,16 +50,16 @@ class RobustValuationResult:
 
     symbol: str
     sector: str
-    industry: Optional[str]
+    industry: str | None
 
     # Layer 1: Trend-adjusted sector multiples
-    layer1_sector_multiples: Dict[str, float]
+    layer1_sector_multiples: dict[str, float]
 
     # Layer 2: Company fair multiples
-    layer2_fair_multiples: Dict[str, FairMultipleResult]
+    layer2_fair_multiples: dict[str, FairMultipleResult]
 
     # Layer 3: Peer comparison
-    layer3_peer_comparison: Dict[str, PeerComparisonResult]
+    layer3_peer_comparison: dict[str, PeerComparisonResult]
 
     # Synthesis
     fair_value_estimate: float
@@ -69,15 +69,15 @@ class RobustValuationResult:
     upside_downside_pct: float
 
     # Breakdown
-    valuation_methods: Dict[str, float]  # pe_based, ps_based, pb_based
-    method_weights: Dict[str, float]  # Weight assigned to each method
+    valuation_methods: dict[str, float]  # pe_based, ps_based, pb_based
+    method_weights: dict[str, float]  # Weight assigned to each method
 
     # Signals
-    signals: List[str]
+    signals: list[str]
 
     # Metadata
     calculated_at: str
-    data_sources: List[str] = field(default_factory=list)
+    data_sources: list[str] = field(default_factory=list)
 
 
 class RobustValuationService:
@@ -102,7 +102,7 @@ class RobustValuationService:
     """
 
     # Default weights for each layer
-    DEFAULT_WEIGHTS = {
+    DEFAULT_WEIGHTS: ClassVar[dict] = {
         "layer1_sector": 0.40,
         "layer2_company": 0.40,
         "layer3_peers": 0.20,
@@ -121,7 +121,7 @@ class RobustValuationService:
         sec_db_manager: Any = None,
         stock_db_manager: Any = None,
         lookback_years: int = 5,
-        weights: Optional[Dict[str, float]] = None,
+        weights: dict[str, float] | None = None,
         conservative: bool = False,
     ):
         """Initialize robust valuation service.
@@ -166,12 +166,12 @@ class RobustValuationService:
         self,
         symbol: str,
         sector: str,
-        industry: Optional[str] = None,
-        current_price: Optional[float] = None,
-        eps: Optional[float] = None,
-        revenue_per_share: Optional[float] = None,
-        book_value_per_share: Optional[float] = None,
-    ) -> Optional[RobustValuationResult]:
+        industry: str | None = None,
+        current_price: float | None = None,
+        eps: float | None = None,
+        revenue_per_share: float | None = None,
+        book_value_per_share: float | None = None,
+    ) -> RobustValuationResult | None:
         """Calculate comprehensive robust valuation.
 
         Args:
@@ -235,7 +235,7 @@ class RobustValuationService:
 
         return result
 
-    def _get_layer1_data(self, sector: str) -> Optional[Dict[str, float]]:
+    def _get_layer1_data(self, sector: str) -> dict[str, float] | None:
         """Get Layer 1: Trend-adjusted sector multiples.
 
         Args:
@@ -267,7 +267,7 @@ class RobustValuationService:
 
         return {metric: float(current[metric]) for metric in ("pe", "ps", "pb") if current.get(metric) is not None}
 
-    def _get_current_sector_multiples(self, sector: str) -> Optional[Dict[str, Any]]:
+    def _get_current_sector_multiples(self, sector: str) -> dict[str, Any] | None:
         """Fetch the latest stored sector multiples from sector_multiples_history."""
         from sqlalchemy import text
 
@@ -308,9 +308,7 @@ class RobustValuationService:
             return None
         return result
 
-    def _get_layer2_data(
-        self, symbol: str, sector: str, industry: Optional[str]
-    ) -> Optional[Dict[str, FairMultipleResult]]:
+    def _get_layer2_data(self, symbol: str, sector: str, industry: str | None) -> dict[str, FairMultipleResult] | None:
         """Get Layer 2: Company fair multiples.
 
         Args:
@@ -341,7 +339,7 @@ class RobustValuationService:
 
         return fair_multiples if fair_multiples else None
 
-    def _get_layer3_data(self, symbol: str, industry: Optional[str]) -> Dict[str, PeerComparisonResult]:
+    def _get_layer3_data(self, symbol: str, industry: str | None) -> dict[str, PeerComparisonResult]:
         """Get Layer 3: Peer comparison data.
 
         Args:
@@ -374,14 +372,14 @@ class RobustValuationService:
     def _synthesize_layers(
         self,
         symbol: str,
-        layer1_data: Dict[str, float],
-        layer2_data: Dict[str, FairMultipleResult],
-        layer3_data: Dict[str, PeerComparisonResult],
-        current_price: Optional[float],
-        eps: Optional[float],
-        revenue_per_share: Optional[float],
-        book_value_per_share: Optional[float],
-    ) -> Dict[str, Any]:
+        layer1_data: dict[str, float],
+        layer2_data: dict[str, FairMultipleResult],
+        layer3_data: dict[str, PeerComparisonResult],
+        current_price: float | None,
+        eps: float | None,
+        revenue_per_share: float | None,
+        book_value_per_share: float | None,
+    ) -> dict[str, Any]:
         """Synthesize all 3 layers into final valuation.
 
         Args:
@@ -441,7 +439,7 @@ class RobustValuationService:
                 "valuation_methods": {},
                 "method_weights": {},
                 "signals": ["Insufficient data for valuation"],
-                "calculated_at": datetime.now(timezone.utc).isoformat(),
+                "calculated_at": datetime.now(UTC).isoformat(),
                 "data_sources": [],
             }
 
@@ -516,7 +514,7 @@ class RobustValuationService:
             "valuation_methods": {k: round(v, 2) for k, v in valuation_methods.items()},
             "method_weights": method_weights,
             "signals": signals,
-            "calculated_at": datetime.now(timezone.utc).isoformat(),
+            "calculated_at": datetime.now(UTC).isoformat(),
             "data_sources": [
                 "Layer 1: Trend-adjusted sector multiples",
                 "Layer 2: Company premium history",
@@ -524,7 +522,7 @@ class RobustValuationService:
             ],
         }
 
-    def _determine_overall_confidence(self, confidences: List[str]) -> str:
+    def _determine_overall_confidence(self, confidences: list[str]) -> str:
         """Determine overall confidence from individual confidences.
 
         Args:
@@ -580,11 +578,11 @@ class RobustValuationService:
 
     def _collect_signals(
         self,
-        layer2_data: Dict[str, FairMultipleResult],
-        layer3_data: Dict[str, PeerComparisonResult],
+        layer2_data: dict[str, FairMultipleResult],
+        layer3_data: dict[str, PeerComparisonResult],
         confidence: str,
-        divergence_analysis: Optional[Dict[str, Any]] = None,
-    ) -> List[str]:
+        divergence_analysis: dict[str, Any] | None = None,
+    ) -> list[str]:
         """Collect all signals from analysis.
 
         Args:
@@ -627,7 +625,7 @@ class RobustValuationService:
         current_price: float,
         fair_value: float,
         model_agreement_score: float = 0.0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Detect if a stock split has occurred but fair values weren't adjusted.
 
         Red flags:
@@ -701,9 +699,9 @@ class RobustValuationService:
         symbol: str,
         revenue_per_share: float,
         mkt_cap: float,
-        industry: Optional[str] = None,
-        sector: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        industry: str | None = None,
+        sector: str | None = None,
+    ) -> dict[str, Any]:
         """Validate revenue data before using in models.
 
         Sanity checks:
@@ -721,9 +719,9 @@ class RobustValuationService:
         Returns:
             Dict with validation results
         """
-        warnings: List[str] = []
-        recommendations: List[str] = []
-        result: Dict[str, Any] = {
+        warnings: list[str] = []
+        recommendations: list[str] = []
+        result: dict[str, Any] = {
             "symbol": symbol.upper(),
             "is_valid": True,
             "ps_ratio": None,
@@ -762,9 +760,8 @@ class RobustValuationService:
                 )
 
         # Financials validation
-        elif "financial" in sector_lower or "bank" in industry_lower:
-            if ps_ratio > 50:
-                warnings.append(f"High P/S ratio {ps_ratio:.1f} for financial. Consider using P/B or P/E instead.")
+        elif ("financial" in sector_lower or "bank" in industry_lower) and ps_ratio > 50:
+            warnings.append(f"High P/S ratio {ps_ratio:.1f} for financial. Consider using P/B or P/E instead.")
 
         # General sanity check for all industries
         if ps_ratio > 1000:
@@ -780,8 +777,8 @@ class RobustValuationService:
 
     def detect_model_divergence(
         self,
-        layer2_data: Dict[str, FairMultipleResult],
-    ) -> Dict[str, Any]:
+        layer2_data: dict[str, FairMultipleResult],
+    ) -> dict[str, Any]:
         """Detect when valuation models diverge significantly.
 
         When models disagree, blended average is unreliable.
@@ -792,8 +789,8 @@ class RobustValuationService:
         Returns:
             Dict with divergence analysis
         """
-        divergent_models: List[str] = []
-        result: Dict[str, Any] = {
+        divergent_models: list[str] = []
+        result: dict[str, Any] = {
             "is_divergent": False,
             "dispersion_score": None,
             "divergent_models": divergent_models,
@@ -863,12 +860,12 @@ class RobustValuationService:
         self,
         symbol: str,
         sector: str,
-        industry: Optional[str] = None,
-        current_price: Optional[float] = None,
-        eps: Optional[float] = None,
-        revenue_per_share: Optional[float] = None,
-        book_value_per_share: Optional[float] = None,
-    ) -> Dict[str, Any]:
+        industry: str | None = None,
+        current_price: float | None = None,
+        eps: float | None = None,
+        revenue_per_share: float | None = None,
+        book_value_per_share: float | None = None,
+    ) -> dict[str, Any]:
         """Generate comprehensive valuation report.
 
         Args:
@@ -900,13 +897,13 @@ class RobustValuationService:
             return {
                 "symbol": symbol.upper(),
                 "error": "Could not calculate robust valuation",
-                "calculated_at": datetime.now(timezone.utc).isoformat(),
+                "calculated_at": datetime.now(UTC).isoformat(),
             }
 
         # Build report
-        layer2_formatted: Dict[str, Any] = {}
-        layer3_formatted: Dict[str, Any] = {}
-        report: Dict[str, Any] = {
+        layer2_formatted: dict[str, Any] = {}
+        layer3_formatted: dict[str, Any] = {}
+        report: dict[str, Any] = {
             "symbol": valuation.symbol,
             "sector": valuation.sector,
             "industry": valuation.industry,

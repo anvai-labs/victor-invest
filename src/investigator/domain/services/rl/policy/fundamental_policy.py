@@ -26,7 +26,7 @@ import logging
 import os
 import pickle
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -133,8 +133,8 @@ class FundamentalRLPolicy(RLPolicy):
 
     def __init__(
         self,
-        base_weighting_service: Optional[Any] = None,
-        normalizer: Optional[FeatureNormalizer] = None,
+        base_weighting_service: Any | None = None,
+        normalizer: FeatureNormalizer | None = None,
         prior_variance: float = 1.0,
         noise_variance: float = 0.1,
         exploration_weight: float = 0.3,
@@ -196,9 +196,9 @@ class FundamentalRLPolicy(RLPolicy):
         self.exploration_weight = exploration_weight
 
         # Industry-specific learning tracking
-        self._industry_update_counts: Dict[str, int] = {}
-        self._industry_rewards: Dict[str, List[float]] = {}
-        self._industry_optimal_weights: Dict[str, Dict[str, float]] = {}
+        self._industry_update_counts: dict[str, int] = {}
+        self._industry_rewards: dict[str, list[float]] = {}
+        self._industry_optimal_weights: dict[str, dict[str, float]] = {}
 
         # Bayesian parameters for model weight adjustments
         # Each model has its own weight adjustment learned
@@ -220,8 +220,8 @@ class FundamentalRLPolicy(RLPolicy):
         self.holding_rewards = np.zeros(self.n_holding_periods)
 
         # Sector-specific learned holding periods
-        self._sector_optimal_periods: Dict[str, str] = {}
-        self._sector_period_rewards: Dict[str, Dict[str, List[float]]] = {}
+        self._sector_optimal_periods: dict[str, str] = {}
+        self._sector_period_rewards: dict[str, dict[str, list[float]]] = {}
 
         self._ready = True
 
@@ -327,7 +327,7 @@ class FundamentalRLPolicy(RLPolicy):
 
         return features
 
-    def _get_industry_info(self, context: ValuationContext) -> Tuple[str, str, IndustryCategory]:
+    def _get_industry_info(self, context: ValuationContext) -> tuple[str, str, IndustryCategory]:
         """Extract industry information from context."""
         if isinstance(context, dict):
             sector = context.get("sector", "Unknown")
@@ -339,7 +339,7 @@ class FundamentalRLPolicy(RLPolicy):
         category = classify_industry(sector, industry)
         return sector, industry, category
 
-    def predict(self, context: ValuationContext) -> Dict[str, float]:
+    def predict(self, context: ValuationContext) -> dict[str, float]:
         """
         Predict model weights.
 
@@ -370,8 +370,8 @@ class FundamentalRLPolicy(RLPolicy):
         # Normalize to 100%
         total = sum(adjusted_weights.values())
         if total > 0:
-            for model in adjusted_weights:
-                adjusted_weights[model] = adjusted_weights[model] * 100.0 / total
+            for model, weight in adjusted_weights.items():
+                adjusted_weights[model] = weight * 100.0 / total
 
         return adjusted_weights
 
@@ -420,7 +420,7 @@ class FundamentalRLPolicy(RLPolicy):
     def predict_with_holding_period(
         self,
         context: ValuationContext,
-    ) -> Tuple[Dict[str, float], str]:
+    ) -> tuple[dict[str, float], str]:
         """
         Predict both model weights and holding period.
 
@@ -431,7 +431,7 @@ class FundamentalRLPolicy(RLPolicy):
         holding = self.predict_holding_period(context)
         return weights, holding
 
-    def _get_base_weights(self, context: ValuationContext) -> Dict[str, float]:
+    def _get_base_weights(self, context: ValuationContext) -> dict[str, float]:
         """
         Get base weights from industry profile or rule-based service.
 
@@ -476,7 +476,7 @@ class FundamentalRLPolicy(RLPolicy):
     def update_weights(
         self,
         context: ValuationContext,
-        weights_used: Dict[str, float],
+        weights_used: dict[str, float],
         reward: float,
     ) -> None:
         """
@@ -572,13 +572,13 @@ class FundamentalRLPolicy(RLPolicy):
     def update(
         self,
         context: ValuationContext,
-        action: Dict[str, float],
+        action: dict[str, float],
         reward: float,
     ) -> None:
         """Combined update for weights (backward compatibility)."""
         self.update_weights(context, action, reward)
 
-    def get_model_stats(self) -> Dict[str, Dict[str, float]]:
+    def get_model_stats(self) -> dict[str, dict[str, float]]:
         """Get statistics for each model."""
         stats = {}
         for i, model in enumerate(VALUATION_MODELS):
@@ -591,7 +591,7 @@ class FundamentalRLPolicy(RLPolicy):
             }
         return stats
 
-    def get_holding_period_stats(self) -> Dict[str, Any]:
+    def get_holding_period_stats(self) -> dict[str, Any]:
         """Get holding period learning statistics."""
         period_stats = {}
         for i, period in enumerate(HOLDING_PERIODS):
@@ -608,7 +608,7 @@ class FundamentalRLPolicy(RLPolicy):
             "sectors_learned": len(self._sector_optimal_periods),
         }
 
-    def get_industry_stats(self) -> Dict[str, Any]:
+    def get_industry_stats(self) -> dict[str, Any]:
         """Get industry-level learning statistics."""
         if not self.use_industry_granularity:
             return {"enabled": False}
@@ -755,7 +755,7 @@ class FundamentalRLPolicy(RLPolicy):
             logger.error(f"Failed to load fundamental policy: {e}")
             return False
 
-    def get_state(self) -> Dict[str, Any]:
+    def get_state(self) -> dict[str, Any]:
         """Get policy state for inspection."""
         return {
             "name": self.name,

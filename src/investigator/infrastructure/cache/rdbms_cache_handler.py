@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - RDBMS Cache Handler
 Copyright (c) 2025 Vijaykumar Singh
@@ -10,8 +9,8 @@ RDBMS based cache storage handler
 import json
 import logging
 import re
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Tuple, Union
+from datetime import UTC, datetime
+from typing import Any
 
 from .cache_base import CacheStorageHandler
 from .cache_types import CacheType
@@ -78,7 +77,7 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
         else:
             raise ValueError(f"Unsupported cache type for RDBMS: {cache_type}")
 
-    def get(self, key: Union[Tuple, Dict]) -> Optional[Dict[str, Any]]:
+    def get(self, key: tuple | dict) -> dict[str, Any] | None:
         """Retrieve data from RDBMS cache"""
         if self.priority < 0:
             return None  # Skip lookup for negative priority
@@ -198,7 +197,7 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
             logger.error(f"Error reading from RDBMS cache: {e}")
             return None
 
-    def _convert_to_dict(self, value: Any) -> Dict[str, Any]:
+    def _convert_to_dict(self, value: Any) -> dict[str, Any]:
         """
         Convert value to dictionary if it's a dataclass or other object.
 
@@ -229,7 +228,7 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
         # Last resort: wrap primitive values
         return {"value": value}
 
-    def set(self, key: Union[Tuple, Dict], value: Dict[str, Any]) -> bool:
+    def set(self, key: tuple | dict, value: dict[str, Any]) -> bool:
         """Store data in RDBMS cache"""
         # MARKET_CONTEXT not stored in RDBMS (use file/parquet cache instead)
         if self.cache_type == CacheType.MARKET_CONTEXT:
@@ -264,7 +263,7 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
                     metadata.update(existing_metadata)
                 metadata.setdefault("form_type", form_type)
                 metadata["cache_period_key"] = period_key
-                metadata["cached_at"] = datetime.now(timezone.utc).isoformat()
+                metadata["cached_at"] = datetime.now(UTC).isoformat()
 
                 return self.dao.save_response(
                     symbol=symbol,
@@ -289,7 +288,7 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
                     metadata = dict(value.get("metadata"))
                 metadata.setdefault("analysis_type", key_dict.get("analysis_type"))
                 metadata.setdefault("llm_type", llm_type)
-                metadata.setdefault("cached_at", datetime.now(timezone.utc).isoformat())
+                metadata.setdefault("cached_at", datetime.now(UTC).isoformat())
 
                 return self.dao.save_llm_response(
                     symbol=key_dict.get("symbol"),
@@ -438,7 +437,7 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
             logger.error(f"Error writing to RDBMS cache: {e}")
             return False
 
-    def _parse_period_key(self, period_key: Optional[str]) -> Tuple[Optional[int], Optional[str]]:
+    def _parse_period_key(self, period_key: str | None) -> tuple[int | None, str | None]:
         """Parse canonical period strings like '2024-Q1' or '2023-FY'."""
         if not period_key:
             return None, None
@@ -449,8 +448,8 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
         return None, None
 
     def _derive_fiscal_period(
-        self, form_type: Optional[str], period_key: Optional[str], value: Dict[str, Any]
-    ) -> Tuple[Optional[int], Optional[str]]:
+        self, form_type: str | None, period_key: str | None, value: dict[str, Any]
+    ) -> tuple[int | None, str | None]:
         """Determine fiscal year/period from explicit key or filing metadata."""
         fiscal_year, fiscal_period = self._parse_period_key(period_key)
         if fiscal_year is not None and fiscal_period is not None:
@@ -469,7 +468,7 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
         return dt.year, "FY"
 
     @staticmethod
-    def _parse_datetime(candidate: Any) -> Optional[datetime]:
+    def _parse_datetime(candidate: Any) -> datetime | None:
         """Parse ISO-formatted datetime strings into datetime objects."""
         if isinstance(candidate, datetime):
             return candidate
@@ -484,7 +483,7 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
                     return None
         return None
 
-    def _rehydrate_filing_payload(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _rehydrate_filing_payload(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Convert serialized fields back into richer Python types."""
         if not isinstance(payload, dict):
             return payload
@@ -496,12 +495,12 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
                     payload[field] = dt
         return payload
 
-    def exists(self, key: Union[Tuple, Dict]) -> bool:
+    def exists(self, key: tuple | dict) -> bool:
         """Check if key exists in RDBMS cache"""
         # Use get method to check existence
         return self.get(key) is not None
 
-    def delete(self, key: Union[Tuple, Dict]) -> bool:
+    def delete(self, key: tuple | dict) -> bool:
         """Delete data from RDBMS cache"""
         try:
             key_dict = self._normalize_key(key)

@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,8 +30,8 @@ from investigator.infrastructure.external.finra.short_interest import (
 )
 
 __all__ = [
-    "ShortInterestFetcher",
     "ShortInterestData",
+    "ShortInterestFetcher",
     "ShortVolumeData",
     "get_short_interest_fetcher",
 ]

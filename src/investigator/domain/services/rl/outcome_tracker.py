@@ -34,7 +34,7 @@ Usage:
 
 import logging
 from datetime import date, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 from sqlalchemy import text
@@ -96,28 +96,28 @@ class ValuationOutcomesDAO:
     Handles all database operations for prediction/outcome storage.
     """
 
-    def __init__(self, db_manager: Optional[DatabaseManager] = None):
+    def __init__(self, db_manager: DatabaseManager | None = None):
         self.db = db_manager or get_db_manager()
 
     def insert_prediction(
         self,
         symbol: str,
         analysis_date: date,
-        fiscal_period: Optional[str],
+        fiscal_period: str | None,
         blended_fair_value: float,
         current_price: float,
         predicted_upside_pct: float,
-        model_fair_values: Dict[str, float],
-        model_weights: Dict[str, float],
+        model_fair_values: dict[str, float],
+        model_weights: dict[str, float],
         tier_classification: str,
-        context_features: Dict[str, Any],
-        ab_test_group: Optional[str] = None,
-        policy_version: Optional[str] = None,
+        context_features: dict[str, Any],
+        ab_test_group: str | None = None,
+        policy_version: str | None = None,
         position_type: str = "inferred",
-        entry_date: Optional[date] = None,
-        exit_date_30d: Optional[date] = None,
-        exit_date_90d: Optional[date] = None,
-    ) -> Optional[int]:
+        entry_date: date | None = None,
+        exit_date_30d: date | None = None,
+        exit_date_90d: date | None = None,
+    ) -> int | None:
         """
         Insert new prediction record.
 
@@ -233,42 +233,42 @@ class ValuationOutcomesDAO:
         self,
         symbol: str,
         analysis_date: date,
-        fiscal_period: Optional[str],
+        fiscal_period: str | None,
         blended_fair_value: float,
         current_price: float,
         predicted_upside_pct: float,
-        model_fair_values: Dict[str, float],
-        model_weights: Dict[str, float],
+        model_fair_values: dict[str, float],
+        model_weights: dict[str, float],
         tier_classification: str,
-        context_features: Dict[str, Any],
-        actual_price_30d: Optional[float] = None,
-        actual_price_90d: Optional[float] = None,
-        actual_price_180d: Optional[float] = None,
-        actual_price_365d: Optional[float] = None,
-        actual_price_548d: Optional[float] = None,
-        actual_price_730d: Optional[float] = None,
-        actual_price_1095d: Optional[float] = None,
-        reward_30d: Optional[float] = None,
-        reward_90d: Optional[float] = None,
-        reward_180d: Optional[float] = None,
-        reward_365d: Optional[float] = None,
-        reward_548d: Optional[float] = None,
-        reward_730d: Optional[float] = None,
-        reward_1095d: Optional[float] = None,
-        multi_period_rewards: Optional[Dict[str, Dict[str, float]]] = None,
-        per_model_rewards: Optional[Dict[str, Any]] = None,
-        ab_test_group: Optional[str] = None,
-        policy_version: Optional[str] = None,
+        context_features: dict[str, Any],
+        actual_price_30d: float | None = None,
+        actual_price_90d: float | None = None,
+        actual_price_180d: float | None = None,
+        actual_price_365d: float | None = None,
+        actual_price_548d: float | None = None,
+        actual_price_730d: float | None = None,
+        actual_price_1095d: float | None = None,
+        reward_30d: float | None = None,
+        reward_90d: float | None = None,
+        reward_180d: float | None = None,
+        reward_365d: float | None = None,
+        reward_548d: float | None = None,
+        reward_730d: float | None = None,
+        reward_1095d: float | None = None,
+        multi_period_rewards: dict[str, dict[str, float]] | None = None,
+        per_model_rewards: dict[str, Any] | None = None,
+        ab_test_group: str | None = None,
+        policy_version: str | None = None,
         position_type: str = "inferred",
-        entry_date: Optional[date] = None,
-        exit_date_30d: Optional[date] = None,
-        exit_date_90d: Optional[date] = None,
-        exit_date_180d: Optional[date] = None,
-        exit_date_365d: Optional[date] = None,
-        exit_date_548d: Optional[date] = None,
-        exit_date_730d: Optional[date] = None,
-        exit_date_1095d: Optional[date] = None,
-    ) -> Optional[int]:
+        entry_date: date | None = None,
+        exit_date_30d: date | None = None,
+        exit_date_90d: date | None = None,
+        exit_date_180d: date | None = None,
+        exit_date_365d: date | None = None,
+        exit_date_548d: date | None = None,
+        exit_date_730d: date | None = None,
+        exit_date_1095d: date | None = None,
+    ) -> int | None:
         """
         Insert prediction record with outcome data for RL backtest.
 
@@ -465,9 +465,9 @@ class ValuationOutcomesDAO:
     def update_outcome_prices(
         self,
         record_id: int,
-        actual_price_30d: Optional[float] = None,
-        actual_price_90d: Optional[float] = None,
-        actual_price_365d: Optional[float] = None,
+        actual_price_30d: float | None = None,
+        actual_price_90d: float | None = None,
+        actual_price_365d: float | None = None,
     ) -> bool:
         """Update outcome prices for a prediction record."""
         try:
@@ -507,10 +507,10 @@ class ValuationOutcomesDAO:
     def update_rewards(
         self,
         record_id: int,
-        reward_30d: Optional[float] = None,
-        reward_90d: Optional[float] = None,
-        reward_365d: Optional[float] = None,
-        per_model_rewards: Optional[Dict[str, Any]] = None,
+        reward_30d: float | None = None,
+        reward_90d: float | None = None,
+        reward_365d: float | None = None,
+        per_model_rewards: dict[str, Any] | None = None,
     ) -> bool:
         """Update calculated rewards for a prediction record."""
         try:
@@ -551,7 +551,7 @@ class ValuationOutcomesDAO:
 
     def mark_used_for_training(
         self,
-        record_ids: List[int],
+        record_ids: list[int],
         training_batch_id: int,
     ) -> int:
         """Mark records as used for training."""
@@ -573,7 +573,7 @@ class ValuationOutcomesDAO:
             logger.error(f"Failed to mark records as used for training: {e}")
             return 0
 
-    def get_pending_30d_updates(self, limit: int = 1000) -> List[Dict[str, Any]]:
+    def get_pending_30d_updates(self, limit: int = 1000) -> list[dict[str, Any]]:
         """Get predictions needing 30-day outcome update."""
         try:
             with self.db.get_session() as session:
@@ -604,7 +604,7 @@ class ValuationOutcomesDAO:
             logger.error(f"Failed to get pending 30d updates: {e}")
             return []
 
-    def get_pending_90d_updates(self, limit: int = 1000) -> List[Dict[str, Any]]:
+    def get_pending_90d_updates(self, limit: int = 1000) -> list[dict[str, Any]]:
         """Get predictions needing 90-day outcome update."""
         try:
             with self.db.get_session() as session:
@@ -647,10 +647,10 @@ class ValuationOutcomesDAO:
 
     def get_training_ready_experiences(
         self,
-        limit: Optional[int] = 10000,
+        limit: int | None = 10000,
         exclude_used: bool = True,
         horizon: str = "90d",
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get experiences ready for training for a specific horizon.
 
         Args:
@@ -706,7 +706,7 @@ class ValuationOutcomesDAO:
         self,
         symbol: str,
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get all predictions for a symbol."""
         try:
             with self.db.get_session() as session:
@@ -734,7 +734,7 @@ class ValuationOutcomesDAO:
             logger.error(f"Failed to get predictions for {symbol}: {e}")
             return []
 
-    def _row_to_dict(self, row: tuple) -> Dict[str, Any]:
+    def _row_to_dict(self, row: tuple) -> dict[str, Any]:
         """Convert database row to dictionary."""
         # Handle both old (25 columns) and new (33 columns) row structures
         # Old: backtest_v3_dual_position (25 cols)
@@ -835,8 +835,8 @@ class OutcomeTracker:
 
     def __init__(
         self,
-        dao: Optional[ValuationOutcomesDAO] = None,
-        price_history_service: Optional[Any] = None,  # PriceHistoryService
+        dao: ValuationOutcomesDAO | None = None,
+        price_history_service: Any | None = None,  # PriceHistoryService
     ):
         """
         Initialize OutcomeTracker.
@@ -854,18 +854,18 @@ class OutcomeTracker:
         analysis_date: date,
         blended_fair_value: float,
         current_price: float,
-        model_fair_values: Dict[str, float],
-        model_weights: Dict[str, float],
+        model_fair_values: dict[str, float],
+        model_weights: dict[str, float],
         tier_classification: str,
         context_features: ValuationContext,
-        fiscal_period: Optional[str] = None,
-        ab_test_group: Optional[ABTestGroup] = None,
-        policy_version: Optional[str] = None,
+        fiscal_period: str | None = None,
+        ab_test_group: ABTestGroup | None = None,
+        policy_version: str | None = None,
         position_type: str = "inferred",
-        entry_date: Optional[date] = None,
-        exit_date_30d: Optional[date] = None,
-        exit_date_90d: Optional[date] = None,
-    ) -> Optional[int]:
+        entry_date: date | None = None,
+        exit_date_30d: date | None = None,
+        exit_date_90d: date | None = None,
+    ) -> int | None:
         """
         Record a valuation prediction for future outcome tracking.
 
@@ -929,39 +929,39 @@ class OutcomeTracker:
         analysis_date: date,
         blended_fair_value: float,
         current_price: float,
-        model_fair_values: Dict[str, float],
-        model_weights: Dict[str, float],
+        model_fair_values: dict[str, float],
+        model_weights: dict[str, float],
         tier_classification: str,
         context_features: ValuationContext,
-        fiscal_period: Optional[str] = None,
-        actual_price_30d: Optional[float] = None,
-        actual_price_90d: Optional[float] = None,
-        actual_price_180d: Optional[float] = None,
-        actual_price_365d: Optional[float] = None,
-        actual_price_548d: Optional[float] = None,
-        actual_price_730d: Optional[float] = None,
-        actual_price_1095d: Optional[float] = None,
-        reward_30d: Optional[float] = None,
-        reward_90d: Optional[float] = None,
-        reward_180d: Optional[float] = None,
-        reward_365d: Optional[float] = None,
-        reward_548d: Optional[float] = None,
-        reward_730d: Optional[float] = None,
-        reward_1095d: Optional[float] = None,
-        multi_period_rewards: Optional[Dict[str, Dict[str, float]]] = None,
-        per_model_rewards: Optional[Dict[str, Dict[str, Any]]] = None,
-        ab_test_group: Optional[ABTestGroup] = None,
-        policy_version: Optional[str] = None,
+        fiscal_period: str | None = None,
+        actual_price_30d: float | None = None,
+        actual_price_90d: float | None = None,
+        actual_price_180d: float | None = None,
+        actual_price_365d: float | None = None,
+        actual_price_548d: float | None = None,
+        actual_price_730d: float | None = None,
+        actual_price_1095d: float | None = None,
+        reward_30d: float | None = None,
+        reward_90d: float | None = None,
+        reward_180d: float | None = None,
+        reward_365d: float | None = None,
+        reward_548d: float | None = None,
+        reward_730d: float | None = None,
+        reward_1095d: float | None = None,
+        multi_period_rewards: dict[str, dict[str, float]] | None = None,
+        per_model_rewards: dict[str, dict[str, Any]] | None = None,
+        ab_test_group: ABTestGroup | None = None,
+        policy_version: str | None = None,
         position_type: str = "inferred",
-        entry_date: Optional[date] = None,
-        exit_date_30d: Optional[date] = None,
-        exit_date_90d: Optional[date] = None,
-        exit_date_180d: Optional[date] = None,
-        exit_date_365d: Optional[date] = None,
-        exit_date_548d: Optional[date] = None,
-        exit_date_730d: Optional[date] = None,
-        exit_date_1095d: Optional[date] = None,
-    ) -> Optional[int]:
+        entry_date: date | None = None,
+        exit_date_30d: date | None = None,
+        exit_date_90d: date | None = None,
+        exit_date_180d: date | None = None,
+        exit_date_365d: date | None = None,
+        exit_date_548d: date | None = None,
+        exit_date_730d: date | None = None,
+        exit_date_1095d: date | None = None,
+    ) -> int | None:
         """
         Record a valuation prediction with outcome data for RL backtest.
 
@@ -1052,7 +1052,7 @@ class OutcomeTracker:
         self,
         lookback_days: int = 90,
         batch_size: int = 100,
-    ) -> Tuple[int, int]:
+    ) -> tuple[int, int]:
         """
         Batch update outcomes with actual prices.
 
@@ -1120,10 +1120,10 @@ class OutcomeTracker:
         blended_fair_value: float,
         current_price: float,
         actual_price_90d: float,
-        model_fair_values: Dict[str, Optional[float]],
-        actual_price_30d: Optional[float] = None,
+        model_fair_values: dict[str, float | None],
+        actual_price_30d: float | None = None,
         beta: float = 1.0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Calculate reward signals from prediction outcomes.
 
@@ -1190,10 +1190,10 @@ class OutcomeTracker:
 
     def get_training_experiences(
         self,
-        limit: Optional[int] = 10000,
+        limit: int | None = 10000,
         exclude_used: bool = True,
         horizon: str = "90d",
-    ) -> List[Experience]:
+    ) -> list[Experience]:
         """
         Get experiences ready for training.
 
@@ -1250,7 +1250,7 @@ class OutcomeTracker:
 
     def mark_experiences_used(
         self,
-        experience_ids: List[int],
+        experience_ids: list[int],
         training_batch_id: int,
     ) -> int:
         """
@@ -1265,7 +1265,7 @@ class OutcomeTracker:
         """
         return self.dao.mark_used_for_training(experience_ids, training_batch_id)
 
-    def get_symbol_history(self, symbol: str, limit: int = 100) -> List[Dict[str, Any]]:
+    def get_symbol_history(self, symbol: str, limit: int = 100) -> list[dict[str, Any]]:
         """
         Get prediction history for a symbol.
 

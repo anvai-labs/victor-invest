@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ import logging
 from dataclasses import dataclass
 from datetime import date
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 
 import aiohttp
 
@@ -84,19 +84,19 @@ class TexasManufacturing:
 
     date: date
     production_index: float
-    new_orders_index: Optional[float] = None
-    capacity_utilization: Optional[float] = None
-    shipments_index: Optional[float] = None
-    employment_index: Optional[float] = None
-    hours_worked: Optional[float] = None
-    wages_benefits: Optional[float] = None
-    raw_materials_prices: Optional[float] = None
-    finished_goods_prices: Optional[float] = None
-    general_business_activity: Optional[float] = None
-    company_outlook: Optional[float] = None
-    future_production: Optional[float] = None
-    future_employment: Optional[float] = None
-    outlook: Optional[RegionalOutlook] = None
+    new_orders_index: float | None = None
+    capacity_utilization: float | None = None
+    shipments_index: float | None = None
+    employment_index: float | None = None
+    hours_worked: float | None = None
+    wages_benefits: float | None = None
+    raw_materials_prices: float | None = None
+    finished_goods_prices: float | None = None
+    general_business_activity: float | None = None
+    company_outlook: float | None = None
+    future_production: float | None = None
+    future_employment: float | None = None
+    outlook: RegionalOutlook | None = None
 
     def __post_init__(self):
         if self.outlook is None:
@@ -144,15 +144,15 @@ class TexasServices:
 
     date: date
     revenue_index: float
-    employment_index: Optional[float] = None
-    hours_worked: Optional[float] = None
-    wages_benefits: Optional[float] = None
-    input_prices: Optional[float] = None
-    selling_prices: Optional[float] = None
-    general_business_activity: Optional[float] = None
-    company_outlook: Optional[float] = None
-    future_revenue: Optional[float] = None
-    outlook: Optional[RegionalOutlook] = None
+    employment_index: float | None = None
+    hours_worked: float | None = None
+    wages_benefits: float | None = None
+    input_prices: float | None = None
+    selling_prices: float | None = None
+    general_business_activity: float | None = None
+    company_outlook: float | None = None
+    future_revenue: float | None = None
+    outlook: RegionalOutlook | None = None
 
     def __post_init__(self):
         if self.outlook is None:
@@ -185,8 +185,8 @@ class TrimmedMeanPCE:
 
     date: date
     one_month_annualized: float
-    six_month_annualized: Optional[float] = None
-    twelve_month: Optional[float] = None
+    six_month_annualized: float | None = None
+    twelve_month: float | None = None
 
 
 class DallasFedClient:
@@ -204,7 +204,7 @@ class DallasFedClient:
         print(f"12M Trimmed PCE: {pce.twelve_month}%")
     """
 
-    def __init__(self, session: Optional[aiohttp.ClientSession] = None):
+    def __init__(self, session: aiohttp.ClientSession | None = None):
         self._session = session
         self._owns_session = session is None
 
@@ -225,7 +225,7 @@ class DallasFedClient:
             await self._session.close()
             self._session = None
 
-    async def get_texas_manufacturing(self) -> Optional[TexasManufacturing]:
+    async def get_texas_manufacturing(self) -> TexasManufacturing | None:
         """Get the latest Texas Manufacturing Outlook Survey.
 
         Returns:
@@ -244,7 +244,7 @@ class DallasFedClient:
             logger.warning(f"Failed to fetch TMOS: {e}")
             return None
 
-    def _parse_tmos_excel(self, content: bytes) -> Optional[TexasManufacturing]:
+    def _parse_tmos_excel(self, content: bytes) -> TexasManufacturing | None:
         """Parse Texas Manufacturing data from Excel."""
         try:
             import io
@@ -261,7 +261,7 @@ class DallasFedClient:
 
             obs_date = pd.to_datetime(latest[date_col]).date()
 
-            def find_col(pattern: str) -> Optional[str]:
+            def find_col(pattern: str) -> str | None:
                 for col in df.columns:
                     if pattern.lower() in str(col).lower():
                         return col
@@ -285,7 +285,7 @@ class DallasFedClient:
             logger.debug(f"Could not parse TMOS Excel: {e}")
             return None
 
-    async def get_texas_services(self) -> Optional[TexasServices]:
+    async def get_texas_services(self) -> TexasServices | None:
         """Get the latest Texas Service Sector Outlook Survey.
 
         Returns:
@@ -304,7 +304,7 @@ class DallasFedClient:
             logger.warning(f"Failed to fetch TSSOS: {e}")
             return None
 
-    def _parse_tssos_excel(self, content: bytes) -> Optional[TexasServices]:
+    def _parse_tssos_excel(self, content: bytes) -> TexasServices | None:
         """Parse Texas Services data from Excel."""
         try:
             import io
@@ -321,7 +321,7 @@ class DallasFedClient:
 
             obs_date = pd.to_datetime(latest[date_col]).date()
 
-            def find_col(pattern: str) -> Optional[str]:
+            def find_col(pattern: str) -> str | None:
                 for col in df.columns:
                     if pattern.lower() in str(col).lower():
                         return col
@@ -341,7 +341,7 @@ class DallasFedClient:
             logger.debug(f"Could not parse TSSOS Excel: {e}")
             return None
 
-    async def get_trimmed_mean_pce(self) -> Optional[TrimmedMeanPCE]:
+    async def get_trimmed_mean_pce(self) -> TrimmedMeanPCE | None:
         """Get the latest Trimmed Mean PCE inflation.
 
         Returns:
@@ -360,7 +360,7 @@ class DallasFedClient:
             logger.warning(f"Failed to fetch Trimmed Mean PCE: {e}")
             return None
 
-    def _parse_pce_excel(self, content: bytes) -> Optional[TrimmedMeanPCE]:
+    def _parse_pce_excel(self, content: bytes) -> TrimmedMeanPCE | None:
         """Parse Trimmed Mean PCE from Excel."""
         try:
             import io
@@ -377,7 +377,7 @@ class DallasFedClient:
 
             obs_date = pd.to_datetime(latest[date_col]).date()
 
-            def find_col(pattern: str) -> Optional[str]:
+            def find_col(pattern: str) -> str | None:
                 for col in df.columns:
                     if pattern.lower() in str(col).lower():
                         return col
@@ -397,7 +397,7 @@ class DallasFedClient:
             logger.debug(f"Could not parse PCE Excel: {e}")
             return None
 
-    async def get_all_indicators(self) -> Dict[str, Any]:
+    async def get_all_indicators(self) -> dict[str, Any]:
         """Get all Dallas Fed indicators.
 
         Returns:
@@ -420,7 +420,7 @@ class DallasFedClient:
 
 
 # Singleton instance
-_client: Optional[DallasFedClient] = None
+_client: DallasFedClient | None = None
 
 
 def get_dallas_fed_client() -> DallasFedClient:

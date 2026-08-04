@@ -287,7 +287,7 @@ class TestYTDGroupingLogic:
         assert groups[2024] == ["Q3", "Q2", "Q1"], "FY 2024 should have Q3, Q2, Q1"
 
         # Verify Q1 dates are in correct fiscal year
-        q1_2025 = [q for q in quarters if q["fiscal_year"] == 2025 and q["fiscal_period"] == "Q1"][0]
+        q1_2025 = next(q for q in quarters if q["fiscal_year"] == 2025 and q["fiscal_period"] == "Q1")
         assert q1_2025["period_end_date"] == date(2024, 10, 31), "Q1 FY2025 should end 2024-10-31"
 
     def test_ytd_grouping_prevents_collisions(self):

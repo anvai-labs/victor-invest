@@ -34,7 +34,7 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -74,14 +74,14 @@ class MCPClientAuth:
     oauth_client_id: str = ""
     oauth_client_secret_name: str = ""  # Credential name for client secret
     oauth_token_url: str = ""
-    oauth_scopes: List[str] = field(default_factory=list)
+    oauth_scopes: list[str] = field(default_factory=list)
 
     # Certificate specific
     cert_path: str = ""
     key_path: str = ""
     ca_path: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "auth_type": self.auth_type.value,
@@ -92,7 +92,7 @@ class MCPClientAuth:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MCPClientAuth":
+    def from_dict(cls, data: dict[str, Any]) -> "MCPClientAuth":
         """Create from dictionary."""
         return cls(
             auth_type=MCPAuthType(data.get("auth_type", "none")),
@@ -112,11 +112,11 @@ class MCPServerCredentials:
     """
 
     server_name: str
-    required_credentials: List[str] = field(default_factory=list)
-    optional_credentials: List[str] = field(default_factory=list)
-    env_mappings: Dict[str, str] = field(default_factory=dict)  # cred_name -> env_var
+    required_credentials: list[str] = field(default_factory=list)
+    optional_credentials: list[str] = field(default_factory=list)
+    env_mappings: dict[str, str] = field(default_factory=dict)  # cred_name -> env_var
 
-    def get_all_credential_names(self) -> Set[str]:
+    def get_all_credential_names(self) -> set[str]:
         """Get all credential names (required + optional)."""
         return set(self.required_credentials) | set(self.optional_credentials)
 
@@ -126,9 +126,9 @@ class CredentialExpirationInfo:
     """Track credential expiration."""
 
     credential_name: str
-    expires_at: Optional[datetime] = None
-    refresh_token: Optional[str] = None
-    last_refreshed: Optional[datetime] = None
+    expires_at: datetime | None = None
+    refresh_token: str | None = None
+    last_refreshed: datetime | None = None
 
     @property
     def is_expired(self) -> bool:
@@ -161,8 +161,8 @@ class MCPCredentialResolver:
     """
 
     def __init__(self):
-        self._cache: Dict[str, Any] = {}
-        self._expiration_info: Dict[str, CredentialExpirationInfo] = {}
+        self._cache: dict[str, Any] = {}
+        self._expiration_info: dict[str, CredentialExpirationInfo] = {}
         self._victor_cred_mgr = None
 
         # Try to get Victor framework credential manager
@@ -173,7 +173,7 @@ class MCPCredentialResolver:
         except ImportError:
             pass
 
-    def resolve_api_key(self, name: str) -> Optional[str]:
+    def resolve_api_key(self, name: str) -> str | None:
         """Resolve an API key credential.
 
         Args:
@@ -210,7 +210,7 @@ class MCPCredentialResolver:
 
         return api_key
 
-    def resolve_database(self, alias: str) -> Optional[Dict[str, Any]]:
+    def resolve_database(self, alias: str) -> dict[str, Any] | None:
         """Resolve database credentials.
 
         Args:
@@ -237,7 +237,7 @@ class MCPCredentialResolver:
     def resolve_server_env(
         self,
         server_creds: MCPServerCredentials,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """Resolve all credentials for an MCP server as environment variables.
 
         Args:
@@ -269,7 +269,7 @@ class MCPCredentialResolver:
 
         return env_vars
 
-    def resolve_auth(self, auth: MCPClientAuth) -> Optional[str]:
+    def resolve_auth(self, auth: MCPClientAuth) -> str | None:
         """Resolve authentication credential.
 
         Args:
@@ -309,8 +309,8 @@ class MCPCredentialResolver:
     def track_expiration(
         self,
         credential_name: str,
-        expires_at: Optional[datetime] = None,
-        refresh_token: Optional[str] = None,
+        expires_at: datetime | None = None,
+        refresh_token: str | None = None,
     ) -> None:
         """Track credential expiration for proactive refresh.
 
@@ -329,7 +329,7 @@ class MCPCredentialResolver:
     def get_expiring_credentials(
         self,
         within_minutes: int = 10,
-    ) -> List[CredentialExpirationInfo]:
+    ) -> list[CredentialExpirationInfo]:
         """Get credentials that are expiring soon.
 
         Args:
@@ -347,10 +347,10 @@ class MCPCredentialResolver:
 
 
 def inject_mcp_credentials(
-    server_config: Dict[str, Any],
+    server_config: dict[str, Any],
     server_creds: MCPServerCredentials,
-    resolver: Optional[MCPCredentialResolver] = None,
-) -> Dict[str, Any]:
+    resolver: MCPCredentialResolver | None = None,
+) -> dict[str, Any]:
     """Inject credentials into MCP server configuration.
 
     Adds resolved credentials to the server config's env dict.
@@ -407,7 +407,7 @@ MCP_SERVER_CREDENTIALS = {
 }
 
 
-def get_server_credentials(server_name: str) -> Optional[MCPServerCredentials]:
+def get_server_credentials(server_name: str) -> MCPServerCredentials | None:
     """Get pre-defined credential config for an MCP server.
 
     Args:
@@ -420,12 +420,12 @@ def get_server_credentials(server_name: str) -> Optional[MCPServerCredentials]:
 
 
 __all__ = [
+    "MCP_SERVER_CREDENTIALS",
+    "CredentialExpirationInfo",
     "MCPAuthType",
     "MCPClientAuth",
-    "MCPServerCredentials",
     "MCPCredentialResolver",
-    "CredentialExpirationInfo",
-    "inject_mcp_credentials",
+    "MCPServerCredentials",
     "get_server_credentials",
-    "MCP_SERVER_CREDENTIALS",
+    "inject_mcp_credentials",
 ]

@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,9 +29,9 @@ from victor_invest.agents.specs.synthesis_agent import SYNTHESIS_AGENT_SPEC
 from victor_invest.agents.specs.technical_agent import TECHNICAL_AGENT_SPEC
 
 __all__ = [
-    "SEC_AGENT_SPEC",
     "FUNDAMENTAL_AGENT_SPEC",
-    "TECHNICAL_AGENT_SPEC",
     "MARKET_AGENT_SPEC",
+    "SEC_AGENT_SPEC",
     "SYNTHESIS_AGENT_SPEC",
+    "TECHNICAL_AGENT_SPEC",
 ]

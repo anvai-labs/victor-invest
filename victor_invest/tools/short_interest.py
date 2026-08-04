@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ Example:
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from victor_invest.tools.base import BaseTool, ToolResult
 
@@ -88,15 +88,15 @@ Investment Signals:
 - Short ratio spike: Contrarian buy signal if fundamentals strong
 """
 
-    def __init__(self, config: Optional[Any] = None):
+    def __init__(self, config: Any | None = None):
         """Initialize Short Interest Tool.
 
         Args:
             config: Optional investigator config object.
         """
         super().__init__(config)
-        self._fetcher: Optional[Any] = None
-        self._data_source_manager: Optional[Any] = None
+        self._fetcher: Any | None = None
+        self._data_source_manager: Any | None = None
 
     async def initialize(self) -> None:
         """Initialize short interest fetcher and DataSourceManager."""
@@ -128,9 +128,9 @@ Investment Signals:
 
     async def execute(
         self,
-        _exec_ctx: Optional[Dict[str, Any]] = None,
+        _exec_ctx: dict[str, Any] | None = None,
         action: str = "current",
-        symbol: Optional[str] = None,
+        symbol: str | None = None,
         periods: int = 12,
         days: int = 30,
         limit: int = 20,
@@ -190,7 +190,7 @@ Investment Signals:
         except Exception as e:
             logger.error(f"ShortInterestTool execute error: {e}")
             return ToolResult.create_failure(
-                f"Short interest query failed: {str(e)}",
+                f"Short interest query failed: {e!s}",
                 metadata={"action": action, "symbol": symbol},
             )
 
@@ -349,7 +349,7 @@ Investment Signals:
             },
         )
 
-    def _convert_consolidated_to_data(self, symbol: str, current: Dict[str, Any]):
+    def _convert_consolidated_to_data(self, symbol: str, current: dict[str, Any]):
         """Convert DataSourceManager format to ShortInterestData.
 
         Args:
@@ -391,7 +391,7 @@ Investment Signals:
             change_percent=None,
         )
 
-    def _calculate_signal(self, data) -> Dict[str, Any]:
+    def _calculate_signal(self, data) -> dict[str, Any]:
         """Calculate investment signal from short interest data.
 
         Args:
@@ -401,7 +401,7 @@ Investment Signals:
             Signal dict with level and interpretation
         """
         factors: list[str] = []
-        signal: Dict[str, Any] = {
+        signal: dict[str, Any] = {
             "level": "neutral",
             "interpretation": "",
             "factors": factors,
@@ -471,7 +471,7 @@ Investment Signals:
 
         return signal
 
-    def _analyze_trend(self, history: list) -> Dict[str, Any]:
+    def _analyze_trend(self, history: list) -> dict[str, Any]:
         """Analyze short interest trend from history.
 
         Args:
@@ -544,7 +544,7 @@ Investment Signals:
             "periods_decreasing": decreases,
         }
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """Get JSON schema for Short Interest Tool parameters."""
         return {
             "type": "object",

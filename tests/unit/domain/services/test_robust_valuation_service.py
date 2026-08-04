@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ Tests the comprehensive robust valuation combining all 3 layers:
 - Synthesis and recommendation logic
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -118,7 +118,7 @@ class TestLayer2Data:
                 confidence_factors=["Sufficient data points"],
                 mean_reversion_signal="none",
                 upside_downside_pct=0.0,
-                calculated_at=datetime.now(timezone.utc).isoformat(),
+                calculated_at=datetime.now(UTC).isoformat(),
             ),
             "ps": FairMultipleResult(
                 symbol=symbol,
@@ -135,7 +135,7 @@ class TestLayer2Data:
                 confidence_factors=["Sufficient data points"],
                 mean_reversion_signal="none",
                 upside_downside_pct=0.0,
-                calculated_at=datetime.now(timezone.utc).isoformat(),
+                calculated_at=datetime.now(UTC).isoformat(),
             ),
             "pb": FairMultipleResult(
                 symbol=symbol,
@@ -152,17 +152,19 @@ class TestLayer2Data:
                 confidence_factors=["Sufficient data points"],
                 mean_reversion_signal="none",
                 upside_downside_pct=0.0,
-                calculated_at=datetime.now(timezone.utc).isoformat(),
+                calculated_at=datetime.now(UTC).isoformat(),
             ),
         }
 
-        with patch.object(valuation_service, "_get_layer1_data", return_value=layer1_data):
-            with patch.object(
+        with (
+            patch.object(valuation_service, "_get_layer1_data", return_value=layer1_data),
+            patch.object(
                 valuation_service.layer2,
                 "calculate_fair_multiple",
                 side_effect=lambda **kwargs: mock_results.get(kwargs.get("metric")),
-            ):
-                result = valuation_service._get_layer2_data(symbol, sector, industry)
+            ),
+        ):
+            result = valuation_service._get_layer2_data(symbol, sector, industry)
 
         assert result is not None
         assert "pe" in result
@@ -197,7 +199,7 @@ class TestLayer2Data:
                 confidence_factors=["Sufficient data points"],
                 mean_reversion_signal="none",
                 upside_downside_pct=0.0,
-                calculated_at=datetime.now(timezone.utc).isoformat(),
+                calculated_at=datetime.now(UTC).isoformat(),
             ),
             "pb": FairMultipleResult(
                 symbol=symbol,
@@ -214,17 +216,19 @@ class TestLayer2Data:
                 confidence_factors=["Sufficient data points"],
                 mean_reversion_signal="none",
                 upside_downside_pct=0.0,
-                calculated_at=datetime.now(timezone.utc).isoformat(),
+                calculated_at=datetime.now(UTC).isoformat(),
             ),
         }
 
-        with patch.object(valuation_service, "_get_layer1_data", return_value=layer1_data):
-            with patch.object(
+        with (
+            patch.object(valuation_service, "_get_layer1_data", return_value=layer1_data),
+            patch.object(
                 valuation_service.layer2,
                 "calculate_fair_multiple",
                 side_effect=lambda **kwargs: mock_results.get(kwargs.get("metric")),
-            ):
-                result = valuation_service._get_layer2_data(symbol, sector, None)
+            ),
+        ):
+            result = valuation_service._get_layer2_data(symbol, sector, None)
 
         assert result is not None
         assert "pe" in result
@@ -263,7 +267,7 @@ class TestLayer3Data:
                 premium_to_peers_pct=16.7,
                 outperforming_peers=2,
                 underperforming_peers=0,
-                calculated_at=datetime.now(timezone.utc).isoformat(),
+                calculated_at=datetime.now(UTC).isoformat(),
             ),
             "ps": PeerComparisonResult(
                 symbol=symbol,
@@ -285,7 +289,7 @@ class TestLayer3Data:
                 premium_to_peers_pct=14.3,
                 outperforming_peers=2,
                 underperforming_peers=0,
-                calculated_at=datetime.now(timezone.utc).isoformat(),
+                calculated_at=datetime.now(UTC).isoformat(),
             ),
         }
 
@@ -339,7 +343,7 @@ class TestSynthesis:
                 confidence_factors=["Sufficient data points"],
                 mean_reversion_signal="none",
                 upside_downside_pct=0.0,
-                calculated_at=datetime.now(timezone.utc).isoformat(),
+                calculated_at=datetime.now(UTC).isoformat(),
             ),
         }
 
@@ -383,7 +387,7 @@ class TestSynthesis:
                 confidence_factors=["Sufficient data points"],
                 mean_reversion_signal="none",
                 upside_downside_pct=0.0,
-                calculated_at=datetime.now(timezone.utc).isoformat(),
+                calculated_at=datetime.now(UTC).isoformat(),
             ),
         }
 
@@ -425,7 +429,7 @@ class TestSynthesis:
                 confidence_factors=["Sufficient data points"],
                 mean_reversion_signal="none",
                 upside_downside_pct=0.0,
-                calculated_at=datetime.now(timezone.utc).isoformat(),
+                calculated_at=datetime.now(UTC).isoformat(),
             ),
         }
 
@@ -466,7 +470,7 @@ class TestSynthesis:
                 confidence_factors=["Sufficient data points"],
                 mean_reversion_signal="none",
                 upside_downside_pct=0.0,
-                calculated_at=datetime.now(timezone.utc).isoformat(),
+                calculated_at=datetime.now(UTC).isoformat(),
             ),
         }
 
@@ -509,7 +513,7 @@ class TestSynthesis:
                 confidence_factors=["Sufficient data points"],
                 mean_reversion_signal="none",
                 upside_downside_pct=0.0,
-                calculated_at=datetime.now(timezone.utc).isoformat(),
+                calculated_at=datetime.now(UTC).isoformat(),
             ),
             "ps": FairMultipleResult(
                 symbol=symbol,
@@ -526,7 +530,7 @@ class TestSynthesis:
                 confidence_factors=["Sufficient data points"],
                 mean_reversion_signal="none",
                 upside_downside_pct=0.0,
-                calculated_at=datetime.now(timezone.utc).isoformat(),
+                calculated_at=datetime.now(UTC).isoformat(),
             ),
             "pb": FairMultipleResult(
                 symbol=symbol,
@@ -543,7 +547,7 @@ class TestSynthesis:
                 confidence_factors=["Sufficient data points"],
                 mean_reversion_signal="none",
                 upside_downside_pct=0.0,
-                calculated_at=datetime.now(timezone.utc).isoformat(),
+                calculated_at=datetime.now(UTC).isoformat(),
             ),
         }
 
@@ -586,7 +590,7 @@ class TestSynthesis:
                 confidence_factors=[],
                 mean_reversion_signal="none",
                 upside_downside_pct=0.0,
-                calculated_at=datetime.now(timezone.utc).isoformat(),
+                calculated_at=datetime.now(UTC).isoformat(),
             ),
             "ps": FairMultipleResult(
                 symbol=symbol,
@@ -603,7 +607,7 @@ class TestSynthesis:
                 confidence_factors=[],
                 mean_reversion_signal="none",
                 upside_downside_pct=0.0,
-                calculated_at=datetime.now(timezone.utc).isoformat(),
+                calculated_at=datetime.now(UTC).isoformat(),
             ),
         }
 
@@ -664,7 +668,7 @@ class TestSynthesis:
                 confidence_factors=["Sufficient data points"],
                 mean_reversion_signal="none",
                 upside_downside_pct=0.0,
-                calculated_at=datetime.now(timezone.utc).isoformat(),
+                calculated_at=datetime.now(UTC).isoformat(),
             ),
         }
 
@@ -769,7 +773,7 @@ class TestSignalCollection:
                 confidence_factors=["Sufficient data points"],
                 mean_reversion_signal="buy",
                 upside_downside_pct=0.0,
-                calculated_at=datetime.now(timezone.utc).isoformat(),
+                calculated_at=datetime.now(UTC).isoformat(),
             ),
             "ps": FairMultipleResult(
                 symbol="AAPL",
@@ -786,7 +790,7 @@ class TestSignalCollection:
                 confidence_factors=["Sufficient data points"],
                 mean_reversion_signal="none",
                 upside_downside_pct=0.0,
-                calculated_at=datetime.now(timezone.utc).isoformat(),
+                calculated_at=datetime.now(UTC).isoformat(),
             ),
         }
 
@@ -811,7 +815,7 @@ class TestSignalCollection:
                 premium_to_peers_pct=-16.7,
                 outperforming_peers=0,
                 underperforming_peers=1,
-                calculated_at=datetime.now(timezone.utc).isoformat(),
+                calculated_at=datetime.now(UTC).isoformat(),
             ),
         }
 
@@ -839,7 +843,7 @@ class TestSignalCollection:
                 confidence_factors=["Sufficient data points"],
                 mean_reversion_signal="none",
                 upside_downside_pct=0.0,
-                calculated_at=datetime.now(timezone.utc).isoformat(),
+                calculated_at=datetime.now(UTC).isoformat(),
             ),
         }
 
@@ -884,23 +888,25 @@ class TestCalculateRobustValuation:
                 confidence_factors=["Sufficient data points"],
                 mean_reversion_signal="none",
                 upside_downside_pct=0.0,
-                calculated_at=datetime.now(timezone.utc).isoformat(),
+                calculated_at=datetime.now(UTC).isoformat(),
             ),
         }
 
         # Mock Layer 3
         layer3_data = {}
 
-        with patch.object(valuation_service, "_get_layer1_data", return_value=layer1_data):
-            with patch.object(valuation_service, "_get_layer2_data", return_value=layer2_data):
-                with patch.object(valuation_service, "_get_layer3_data", return_value=layer3_data):
-                    result = valuation_service.calculate_robust_valuation(
-                        symbol=symbol,
-                        sector=sector,
-                        industry=industry,
-                        current_price=current_price,
-                        eps=eps,
-                    )
+        with (
+            patch.object(valuation_service, "_get_layer1_data", return_value=layer1_data),
+            patch.object(valuation_service, "_get_layer2_data", return_value=layer2_data),
+            patch.object(valuation_service, "_get_layer3_data", return_value=layer3_data),
+        ):
+            result = valuation_service.calculate_robust_valuation(
+                symbol=symbol,
+                sector=sector,
+                industry=industry,
+                current_price=current_price,
+                eps=eps,
+            )
 
         assert result is not None
         assert isinstance(result, RobustValuationResult)
@@ -939,12 +945,14 @@ class TestCalculateRobustValuation:
         # Mock Layer 1
         layer1_data = {"pe": 55.0}
 
-        with patch.object(valuation_service, "_get_layer1_data", return_value=layer1_data):
-            with patch.object(valuation_service, "_get_layer2_data", return_value=None):
-                result = valuation_service.calculate_robust_valuation(
-                    symbol=symbol,
-                    sector=sector,
-                )
+        with (
+            patch.object(valuation_service, "_get_layer1_data", return_value=layer1_data),
+            patch.object(valuation_service, "_get_layer2_data", return_value=None),
+        ):
+            result = valuation_service.calculate_robust_valuation(
+                symbol=symbol,
+                sector=sector,
+            )
 
         assert result is None
 
@@ -983,7 +991,7 @@ class TestGenerateComprehensiveReport:
                     confidence_factors=["Sufficient data points"],
                     mean_reversion_signal="none",
                     upside_downside_pct=0.0,
-                    calculated_at=datetime.now(timezone.utc).isoformat(),
+                    calculated_at=datetime.now(UTC).isoformat(),
                 ),
             },
             layer3_peer_comparison={},
@@ -995,7 +1003,7 @@ class TestGenerateComprehensiveReport:
             valuation_methods={"pe_based": 344.88},
             method_weights={"pe_weight": 1.0},
             signals=["Overall confidence: HIGH"],
-            calculated_at=datetime.now(timezone.utc).isoformat(),
+            calculated_at=datetime.now(UTC).isoformat(),
         )
 
         with patch.object(valuation_service, "calculate_robust_valuation", return_value=mock_valuation):

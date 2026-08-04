@@ -14,7 +14,7 @@ Updated: 2025-12-29 (TD2 fiscal_period fix)
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar
 
 from investigator.infrastructure.cache.cache_types import CacheType
 
@@ -41,7 +41,7 @@ class CacheKeyBuilder:
     # Cache types that REQUIRE fiscal_period for financial accuracy
     # These are financial data types where the same symbol has different
     # values for different periods - caching without period causes collisions
-    FISCAL_PERIOD_REQUIRED_TYPES: List[CacheType] = [
+    FISCAL_PERIOD_REQUIRED_TYPES: ClassVar[list[CacheType]] = [
         CacheType.LLM_RESPONSE,
         CacheType.COMPANY_FACTS,
         CacheType.SEC_RESPONSE,
@@ -49,7 +49,7 @@ class CacheKeyBuilder:
     ]
 
     # Cache types where fiscal_period is optional (non-period-specific data)
-    FISCAL_PERIOD_OPTIONAL_TYPES: List[CacheType] = [
+    FISCAL_PERIOD_OPTIONAL_TYPES: ClassVar[list[CacheType]] = [
         CacheType.TECHNICAL_DATA,  # Technical indicators are time-based, not period-based
         CacheType.MARKET_CONTEXT,  # Market context uses date/timeframe instead
     ]
@@ -58,14 +58,14 @@ class CacheKeyBuilder:
     def build_key(
         cache_type: CacheType,
         symbol: str,
-        fiscal_year: Optional[int] = None,
-        fiscal_period: Optional[str] = None,
-        adsh: Optional[str] = None,
-        analysis_type: Optional[str] = None,
-        timeframe: Optional[str] = None,
+        fiscal_year: int | None = None,
+        fiscal_period: str | None = None,
+        adsh: str | None = None,
+        analysis_type: str | None = None,
+        timeframe: str | None = None,
         enforce_fiscal_period: bool = True,
         **extra_fields,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Build standardized cache key for any cache type.
 
@@ -144,16 +144,15 @@ class CacheKeyBuilder:
         # TD2 FIX: Check if fiscal_period is required for this cache type
         is_fiscal_required = cache_type in CacheKeyBuilder.FISCAL_PERIOD_REQUIRED_TYPES
 
-        if is_fiscal_required and enforce_fiscal_period:
-            if not effective_fiscal_period:
-                # Log warning and use "latest" as default to maintain backward compatibility
-                logger.warning(
-                    f"TD2 WARNING: fiscal_period missing for {cache_type.value} cache key "
-                    f"(symbol={symbol}). Using 'latest' as default. "
-                    f"This may cause cache collisions between different periods. "
-                    f"Please provide fiscal_period for accurate caching."
-                )
-                effective_fiscal_period = "latest"
+        if is_fiscal_required and enforce_fiscal_period and not effective_fiscal_period:
+            # Log warning and use "latest" as default to maintain backward compatibility
+            logger.warning(
+                f"TD2 WARNING: fiscal_period missing for {cache_type.value} cache key "
+                f"(symbol={symbol}). Using 'latest' as default. "
+                f"This may cause cache collisions between different periods. "
+                f"Please provide fiscal_period for accurate caching."
+            )
+            effective_fiscal_period = "latest"
 
         # Cache-type-specific fields
         if cache_type == CacheType.LLM_RESPONSE:
@@ -225,7 +224,7 @@ class CacheKeyBuilder:
         return key
 
     @staticmethod
-    def validate_key(cache_type: CacheType, key: Dict[str, Any], strict: bool = True) -> bool:
+    def validate_key(cache_type: CacheType, key: dict[str, Any], strict: bool = True) -> bool:
         """
         Validate that cache key has required fields for cache type.
 
@@ -270,7 +269,7 @@ class CacheKeyBuilder:
         return True
 
     @staticmethod
-    def validate_key_with_warnings(cache_type: CacheType, key: Dict[str, Any]) -> tuple:
+    def validate_key_with_warnings(cache_type: CacheType, key: dict[str, Any]) -> tuple:
         """
         Validate cache key and return detailed validation result.
 
@@ -330,7 +329,7 @@ class CacheKeyBuilder:
         return is_valid, missing_required + missing_recommended, warnings
 
     @staticmethod
-    def format_for_filename(key: Dict[str, Any]) -> str:
+    def format_for_filename(key: dict[str, Any]) -> str:
         """
         Convert cache key to filename-safe string
 
@@ -370,6 +369,6 @@ class CacheKeyBuilder:
 
 
 # Convenience function
-def build_cache_key(cache_type: CacheType, **kwargs) -> Dict[str, Any]:
+def build_cache_key(cache_type: CacheType, **kwargs) -> dict[str, Any]:
     """Convenience wrapper for CacheKeyBuilder.build_key()"""
     return CacheKeyBuilder.build_key(cache_type, **kwargs)

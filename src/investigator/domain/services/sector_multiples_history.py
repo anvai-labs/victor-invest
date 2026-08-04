@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ This enables tracking:
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, ClassVar
 
 import yaml
 from sqlalchemy import create_engine, text
@@ -49,7 +49,7 @@ class SectorMultiplesHistory:
     """
 
     # Key SEC tags for valuation metrics
-    TAGS = {
+    TAGS: ClassVar[dict] = {
         "total_revenue": ["us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax"],
         "net_income": ["us-gaap:NetIncomeLoss", "us-gaap:ProfitLoss"],
         "ebitda": [],  # Calculated from operating income + D&A
@@ -59,7 +59,7 @@ class SectorMultiplesHistory:
     }
 
     # Quarter end dates (approximate) for announcement proxy (+1 month)
-    QUARTER_ENDS = {
+    QUARTER_ENDS: ClassVar[dict] = {
         "Q1": (3, 31),  # March 31 -> April 30 announcement
         "Q2": (6, 30),  # June 30 -> July 31 announcement
         "Q3": (9, 30),  # Sept 30 -> Oct 31 announcement
@@ -73,7 +73,7 @@ class SectorMultiplesHistory:
         stock_db_manager: Any = None,
         sec_db_manager: Any = None,
         min_samples: int = 5,
-        percentile_exclude: Tuple[float, float] = (0.05, 0.95),
+        percentile_exclude: tuple[float, float] = (0.05, 0.95),
     ):
         """Initialize sector multiples history service.
 
@@ -128,8 +128,6 @@ class SectorMultiplesHistory:
             from sqlalchemy.orm import sessionmaker
 
             sec_db_manager.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sec_db_manager.engine)
-        else:
-            sec_db_manager = sec_db_manager
 
         self.sec_db_manager = sec_db_manager
         self.min_samples = min_samples
@@ -142,10 +140,10 @@ class SectorMultiplesHistory:
         self,
         *,
         fiscal_year: int,
-        sectors: Optional[List[str]] = None,
-        industries: Optional[List[str]] = None,
+        sectors: list[str] | None = None,
+        industries: list[str] | None = None,
         use_config_overrides: bool = True,
-    ) -> Dict[str, Dict[str, Any]]:
+    ) -> dict[str, dict[str, Any]]:
         """Calculate sector/industry multiples for a specific fiscal year.
 
         Uses SEC num/tag data for FY values and market data for prices.
@@ -179,9 +177,9 @@ class SectorMultiplesHistory:
         results = {}
 
         # Group by sector first (standardizing names)
-        sector_groups: Dict[str, List[str]] = {}
+        sector_groups: dict[str, list[str]] = {}
         # Track industries with their parent sector: {(industry, sector): [symbols]}
-        industry_groups: Dict[Tuple[str, str], List[str]] = {}
+        industry_groups: dict[tuple[str, str], list[str]] = {}
 
         for symbol, sector, industry in symbol_classification:
             # Standardize sector name
@@ -216,8 +214,8 @@ class SectorMultiplesHistory:
         return results
 
     def _calculate_historical_multiples_for_symbols(
-        self, symbols: List[str], group_name: str, fiscal_year: int
-    ) -> Optional[Dict[str, Any]]:
+        self, symbols: list[str], group_name: str, fiscal_year: int
+    ) -> dict[str, Any] | None:
         """Calculate valuation multiples for a group of symbols for specific FY.
 
         Uses SEC tag data for FY values and historical market data for prices.
@@ -346,7 +344,7 @@ class SectorMultiplesHistory:
             "percentile_high": self.percentile_exclude[1],
         }
 
-    def _get_fy_metrics(self, symbols: List[str], fiscal_year: int) -> Dict[str, Dict[str, float]]:
+    def _get_fy_metrics(self, symbols: list[str], fiscal_year: int) -> dict[str, dict[str, float]]:
         """Get FY metrics from sec_companyfacts_processed table.
 
         This table has cleaned, validated FY data with market data.
@@ -395,7 +393,7 @@ class SectorMultiplesHistory:
                 return {}
 
             # Process results into metrics with fallback logic
-            fy_metrics: Dict[str, Dict[str, float]] = {}
+            fy_metrics: dict[str, dict[str, float]] = {}
 
             for row in result:
                 symbol = row[0]
@@ -553,8 +551,7 @@ class SectorMultiplesHistory:
                                     f"excluding from multiples calculation"
                                 )
                                 # Remove from metrics so it will be skipped in calculation
-                                if symbol in fy_metrics:
-                                    del fy_metrics[symbol]
+                                fy_metrics.pop(symbol, None)
                         continue
 
                 # Fallback 2: If we have shares but no price, we can't calculate P/E or P/B
@@ -576,7 +573,7 @@ class SectorMultiplesHistory:
 
             return validated_metrics
 
-    def _get_historical_price(self, session: Session, symbol: str, target_date: datetime) -> Optional[float]:
+    def _get_historical_price(self, session: Session, symbol: str, target_date: datetime) -> float | None:
         """Get historical price around target date from tickerdata table.
 
         Uses price closest to target date (within ±7 days).
@@ -621,7 +618,7 @@ class SectorMultiplesHistory:
 
         return None
 
-    def _detect_splits_between_dates(self, symbol: str, start_date, end_date) -> List[Dict[str, any]]:
+    def _detect_splits_between_dates(self, symbol: str, start_date, end_date) -> list[dict[str, any]]:
         """Detect if any stock splits occurred between two dates.
 
         This is used to identify periods where split adjustment may be unreliable.
@@ -662,7 +659,7 @@ class SectorMultiplesHistory:
             logger.debug(f"Error detecting splits for {symbol}: {e}")
             return []
 
-    def _validate_market_cap_consistency(self, symbol: str, metrics: Dict[str, any]) -> bool:
+    def _validate_market_cap_consistency(self, symbol: str, metrics: dict[str, any]) -> bool:
         """Validate that market_cap is consistent with price × shares.
 
         This catches split adjustment issues where:
@@ -708,7 +705,7 @@ class SectorMultiplesHistory:
     # Use SectorIndustryMapper.to_standard() for normalization
     # and SectorIndustryMapper.to_database_variants() for expansion
 
-    def _normalize_sector_names(self, sectors: List[str]) -> List[str]:
+    def _normalize_sector_names(self, sectors: list[str]) -> list[str]:
         """Expand sector names to include all database variants."""
         return SectorIndustryMapper.expand_sectors_for_query(sectors)
 
@@ -719,14 +716,14 @@ class SectorMultiplesHistory:
     def _get_symbols_by_sector_industry(
         self,
         *,
-        sectors: Optional[List[str]],
-        industries: Optional[List[str]],
-        config_overrides: Dict[str, str],
-    ) -> List[Tuple[str, str, Optional[str]]]:
+        sectors: list[str] | None,
+        industries: list[str] | None,
+        config_overrides: dict[str, str],
+    ) -> list[tuple[str, str, str | None]]:
         """Get symbols grouped by sector/industry from stock.symbol table."""
         with self.stock_db_manager.get_session() as session:
             filters = ["islisted = true"]
-            params: Dict[str, Any] = {}
+            params: dict[str, Any] = {}
 
             if sectors:
                 override_symbols = [s.upper() for s, sec in config_overrides.items() if sec in sectors]
@@ -757,7 +754,7 @@ class SectorMultiplesHistory:
             result = session.execute(query, params)
             return [(row[0], row[1], row[2]) for row in result]
 
-    def _filtered_median(self, values: List[float], name: str) -> Optional[float]:
+    def _filtered_median(self, values: list[float], name: str) -> float | None:
         """Calculate median - robust to outliers without filtering.
 
         The median is inherently robust to outliers (unlike mean).
@@ -790,7 +787,7 @@ class SectorMultiplesHistory:
 
         return float(median)
 
-    def _load_config_overrides(self) -> Dict[str, str]:
+    def _load_config_overrides(self) -> dict[str, str]:
         """Load sector overrides from config.yaml."""
         from pathlib import Path
 
@@ -850,7 +847,7 @@ class SectorMultiplesHistory:
 
     def store_history(
         self,
-        calculated_multiples: Dict[str, Dict[str, Any]],
+        calculated_multiples: dict[str, dict[str, Any]],
         group_type: str = "sector",
     ) -> bool:
         """Store calculated historical multiples to database.
@@ -932,9 +929,9 @@ class SectorMultiplesHistory:
         self,
         group_name: str,
         group_type: str = "sector",
-        start_year: Optional[int] = None,
-        end_year: Optional[int] = None,
-    ) -> List[Dict[str, Any]]:
+        start_year: int | None = None,
+        end_year: int | None = None,
+    ) -> list[dict[str, Any]]:
         """Retrieve historical trend data for a sector/industry.
 
         Args:
@@ -976,8 +973,8 @@ class SectorMultiplesHistory:
         self,
         output_path: str,
         *,
-        start_year: Optional[int] = None,
-        end_year: Optional[int] = None,
+        start_year: int | None = None,
+        end_year: int | None = None,
         format: str = "json",
     ) -> bool:
         """Export historical multiples to file for analysis.

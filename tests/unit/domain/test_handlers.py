@@ -1,4 +1,4 @@
-# Copyright 2025 Vijaykumar Singh <singhvjd@gmail.com>
+# Copyright 2025 Vijaykumar Singh <vijay@anvaiops.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ Tests all compute handlers in investigator.domain.handlers:
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -38,8 +38,8 @@ import pytest
 class MockNodeResult:
     node_id: str
     status: str
-    output: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
+    output: dict[str, Any] | None = None
+    error: str | None = None
     duration_seconds: float = 0.0
     tool_calls_used: int = 0
 
@@ -53,12 +53,12 @@ class MockNodeStatus:
 @dataclass
 class MockComputeNode:
     id: str
-    input_mapping: Dict[str, Any]
-    output_key: Optional[str] = None
+    input_mapping: dict[str, Any]
+    output_key: str | None = None
 
 
 class MockWorkflowContext:
-    def __init__(self, data: Dict[str, Any] = None):
+    def __init__(self, data: dict[str, Any] | None = None):
         self._data = data or {}
 
     def get(self, key: str) -> Any:
