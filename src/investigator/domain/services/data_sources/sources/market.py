@@ -6,7 +6,7 @@ Provides price history, technical indicators, and short interest data.
 
 import logging
 from datetime import date, timedelta
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ..base import (
     DataCategory,
@@ -50,7 +50,7 @@ class PriceHistorySource(MarketDataSource):
             symbols_supported=True,
         )
 
-    def _fetch_impl(self, symbol: str, as_of_date: Optional[date] = None) -> DataResult:
+    def _fetch_impl(self, symbol: str, as_of_date: date | None = None) -> DataResult:
         """Fetch current price and recent history using PriceService"""
         try:
             from investigator.domain.services.market_data.price_service import (
@@ -200,7 +200,7 @@ class TechnicalIndicatorSource(MarketDataSource):
             symbols_supported=True,
         )
 
-    def _fetch_impl(self, symbol: str, as_of_date: Optional[date] = None) -> DataResult:
+    def _fetch_impl(self, symbol: str, as_of_date: date | None = None) -> DataResult:
         """Fetch technical indicators"""
         try:
             from investigator.domain.services.market_data.technical_analysis_service import (
@@ -260,7 +260,7 @@ class TechnicalIndicatorSource(MarketDataSource):
             logger.error(f"Technical indicator fetch error: {e}")
             return DataResult(success=False, error=str(e), source=self.name)
 
-    def _calculate_basic_indicators(self, symbol: str, as_of_date: Optional[date]) -> DataResult:
+    def _calculate_basic_indicators(self, symbol: str, as_of_date: date | None) -> DataResult:
         """Calculate basic indicators from price data using PriceService"""
         try:
             from investigator.domain.services.market_data.price_service import (
@@ -291,7 +291,7 @@ class TechnicalIndicatorSource(MarketDataSource):
 
             # RSI (14-day)
             changes = [closes[i] - closes[i - 1] for i in range(1, len(closes))]
-            gains = [c if c > 0 else 0 for c in changes[-14:]]
+            gains = [max(0, c) for c in changes[-14:]]
             losses = [-c if c < 0 else 0 for c in changes[-14:]]
             avg_gain = sum(gains) / 14
             avg_loss = sum(losses) / 14
@@ -322,7 +322,7 @@ class TechnicalIndicatorSource(MarketDataSource):
         except Exception as e:
             return DataResult(success=False, error=str(e), source=self.name)
 
-    def _extract_signals(self, indicators: Dict) -> Dict[str, Any]:
+    def _extract_signals(self, indicators: dict) -> dict[str, Any]:
         """Extract trading signals from indicators"""
         signals = {}
 
@@ -377,7 +377,7 @@ class ShortInterestSource(DataSource):
             symbols_supported=True,
         )
 
-    def _fetch_impl(self, symbol: str, as_of_date: Optional[date] = None) -> DataResult:
+    def _fetch_impl(self, symbol: str, as_of_date: date | None = None) -> DataResult:
         """Fetch short interest data"""
         try:
             from sqlalchemy import text
@@ -439,15 +439,12 @@ class ShortInterestSource(DataSource):
 
             # Calculate trend
             trend = "stable"
-            if len(history) >= 2:
-                if history[0].get("short_interest") and history[1].get("short_interest"):
-                    change = (history[0]["short_interest"] - history[1]["short_interest"]) / history[1][
-                        "short_interest"
-                    ]
-                    if change > 0.1:
-                        trend = "increasing"
-                    elif change < -0.1:
-                        trend = "decreasing"
+            if len(history) >= 2 and history[0].get("short_interest") and history[1].get("short_interest"):
+                change = (history[0]["short_interest"] - history[1]["short_interest"]) / history[1]["short_interest"]
+                if change > 0.1:
+                    trend = "increasing"
+                elif change < -0.1:
+                    trend = "decreasing"
 
             return DataResult(
                 success=True,

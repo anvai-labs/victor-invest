@@ -11,8 +11,8 @@ from investigator.infrastructure.llm.pool import ResourceAwareOllamaPool
 from investigator.infrastructure.llm.semaphore import DynamicLLMSemaphore
 
 __all__ = [
+    "DynamicLLMSemaphore",
     "OllamaClient",
     "ResourceAwareOllamaPool",
     "vram_calculator",
-    "DynamicLLMSemaphore",
 ]

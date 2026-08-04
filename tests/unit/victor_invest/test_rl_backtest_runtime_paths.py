@@ -169,7 +169,7 @@ def test_convert_yaml_result_to_state_collects_top_level_and_node_errors():
         error="workflow failed",
     )
 
-    state = rl_backtest._convert_yaml_result_to_state(  # noqa: SLF001 - test coverage for conversion contract
+    state = rl_backtest._convert_yaml_result_to_state(
         symbol="AAPL",
         lookback_months_list=[12],
         interval="quarterly",

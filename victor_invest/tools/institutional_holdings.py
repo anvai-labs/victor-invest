@@ -38,7 +38,7 @@ Example:
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from victor_invest.tools.base import BaseTool, ToolResult
 
@@ -88,15 +88,15 @@ Investment Signals:
 - Sudden exits by major holders warrant caution
 """
 
-    def __init__(self, config: Optional[Any] = None):
+    def __init__(self, config: Any | None = None):
         """Initialize Institutional Holdings Tool.
 
         Args:
             config: Optional investigator config object.
         """
         super().__init__(config)
-        self._fetcher: Optional[Any] = None
-        self._data_source_manager: Optional[Any] = None
+        self._fetcher: Any | None = None
+        self._data_source_manager: Any | None = None
 
     async def initialize(self) -> None:
         """Initialize institutional holdings fetcher and DataSourceManager."""
@@ -128,14 +128,14 @@ Investment Signals:
 
     async def execute(
         self,
-        _exec_ctx: Optional[Dict[str, Any]] = None,
+        _exec_ctx: dict[str, Any] | None = None,
         action: str = "holdings",
-        symbol: Optional[str] = None,
+        symbol: str | None = None,
         limit: int = 20,
         quarters: int = 4,
-        cik: Optional[str] = None,
-        query: Optional[str] = None,
-        quarter: Optional[str] = None,
+        cik: str | None = None,
+        query: str | None = None,
+        quarter: str | None = None,
         **kwargs,
     ) -> ToolResult:
         """Execute institutional holdings query.
@@ -196,11 +196,11 @@ Investment Signals:
         except Exception as e:
             logger.error(f"InstitutionalHoldingsTool execute error: {e}")
             return ToolResult.create_failure(
-                f"Institutional holdings query failed: {str(e)}",
+                f"Institutional holdings query failed: {e!s}",
                 metadata={"action": action, "symbol": symbol},
             )
 
-    async def _get_holdings(self, symbol: str, quarter: Optional[str] = None) -> ToolResult:
+    async def _get_holdings(self, symbol: str, quarter: str | None = None) -> ToolResult:
         """Get institutional holdings for a symbol.
 
         Uses DataSourceManager for consolidated data access when available,
@@ -385,7 +385,7 @@ Investment Signals:
             },
         )
 
-    async def _get_institution_holdings(self, cik: str, quarter: Optional[str] = None) -> ToolResult:
+    async def _get_institution_holdings(self, cik: str, quarter: str | None = None) -> ToolResult:
         """Get holdings for a specific institution."""
         if self._fetcher is None:
             return ToolResult.create_failure("Institutional holdings fetcher not initialized")
@@ -466,7 +466,7 @@ Investment Signals:
             },
         )
 
-    def _calculate_ownership_signal(self, ownership) -> Dict[str, Any]:
+    def _calculate_ownership_signal(self, ownership) -> dict[str, Any]:
         """Calculate investment signal from ownership data.
 
         Args:
@@ -476,7 +476,7 @@ Investment Signals:
             Signal dict with level and interpretation
         """
         factors: list[str] = []
-        signal: Dict[str, Any] = {
+        signal: dict[str, Any] = {
             "level": "neutral",
             "interpretation": "",
             "factors": factors,
@@ -517,7 +517,7 @@ Investment Signals:
 
         return signal
 
-    def _analyze_ownership_trend(self, changes: list) -> Dict[str, Any]:
+    def _analyze_ownership_trend(self, changes: list) -> dict[str, Any]:
         """Analyze ownership trend from quarterly changes.
 
         Args:
@@ -580,7 +580,7 @@ Investment Signals:
             "down_quarters": down_quarters,
         }
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """Get JSON schema for Institutional Holdings Tool parameters."""
         return {
             "type": "object",

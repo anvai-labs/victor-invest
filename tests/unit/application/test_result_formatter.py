@@ -85,14 +85,14 @@ class TestIsEmptyValue:
 
     def test_numpy_masked_array_not_empty(self):
         """Numpy masked array with data should NOT be considered empty."""
-        import numpy.ma as ma
+        from numpy import ma
 
         arr = ma.array([1, 2, 3], mask=[False, True, False])
         assert _is_empty_value(arr) is False
 
     def test_numpy_masked_array_empty(self):
         """Empty numpy masked array should be considered empty."""
-        import numpy.ma as ma
+        from numpy import ma
 
         arr = ma.array([], mask=[])
         assert _is_empty_value(arr) is True

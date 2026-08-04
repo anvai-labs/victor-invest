@@ -9,7 +9,7 @@ Author: Claude Code
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class FCFGrowthCalculator:
         """
         self.symbol = symbol
 
-    def calculate_geometric_mean_fcf_growth(self, quarterly_metrics: List[Dict[str, Any]], years: int = 3) -> float:
+    def calculate_geometric_mean_fcf_growth(self, quarterly_metrics: list[dict[str, Any]], years: int = 3) -> float:
         """
         Calculate geometric mean FCF growth over N years using TTM data
 
@@ -120,7 +120,7 @@ class FCFGrowthCalculator:
 
         return final_growth
 
-    def calculate_fcf_margin(self, quarterly_metrics: List[Dict[str, Any]], ttm: bool = True) -> float:
+    def calculate_fcf_margin(self, quarterly_metrics: list[dict[str, Any]], ttm: bool = True) -> float:
         """
         Calculate Free Cash Flow margin (FCF / Revenue)
 

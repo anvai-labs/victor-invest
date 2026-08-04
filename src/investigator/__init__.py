@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - Design Patterns Package Initialization
 Copyright (c) 2025 Vijaykumar Singh

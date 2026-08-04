@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - API Client Utilities
 Copyright (c) 2025 Vijaykumar Singh
@@ -11,9 +10,10 @@ Eliminates duplicate HTTP session management, rate limiting, and retry logic
 import logging
 import time
 from abc import ABC
+from collections.abc import Callable
 from datetime import datetime
 from functools import wraps
-from typing import Any, Callable, Dict, Optional
+from typing import Any, ClassVar
 from urllib.parse import urlparse
 
 import requests
@@ -86,14 +86,14 @@ class BaseAPIClient(ABC):
     """
 
     # Class-level rate limiting tracker for different hosts
-    _rate_limit_tracker: Dict[str, Dict[str, Any]] = {}
+    _rate_limit_tracker: ClassVar[dict[str, dict[str, Any]]] = {}
 
     def __init__(
         self,
         base_url: str,
         user_agent: str,
         rate_limit_delay: float = 0.1,
-        timeout: Optional[int] = None,
+        timeout: int | None = None,
     ):
         """
         Initialize API client
@@ -184,21 +184,21 @@ class BaseAPIClient(ABC):
             logger.error(f"Request failed: {method} {url} - {e}")
             raise
 
-    def get(self, endpoint: str, params: Optional[Dict] = None) -> requests.Response:
+    def get(self, endpoint: str, params: dict | None = None) -> requests.Response:
         """Make GET request"""
         return self._make_request("GET", endpoint, params=params)
 
     def post(
         self,
         endpoint: str,
-        data: Optional[Dict] = None,
-        json: Optional[Dict] = None,
+        data: dict | None = None,
+        json: dict | None = None,
         **kwargs,
     ) -> requests.Response:
         """Make POST request"""
         return self._make_request("POST", endpoint, data=data, json=json, **kwargs)
 
-    def get_json(self, endpoint: str, params: Optional[Dict] = None) -> Dict[str, Any]:
+    def get_json(self, endpoint: str, params: dict | None = None) -> dict[str, Any]:
         """Make GET request and return JSON response"""
         response = self.get(endpoint, params=params)
         return response.json()
@@ -206,15 +206,15 @@ class BaseAPIClient(ABC):
     def post_json(
         self,
         endpoint: str,
-        data: Optional[Dict] = None,
-        json: Optional[Dict] = None,
+        data: dict | None = None,
+        json: dict | None = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Make POST request and return JSON response"""
         response = self.post(endpoint, data=data, json=json, **kwargs)
         return response.json()
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get statistics for this API client"""
         tracker = BaseAPIClient._rate_limit_tracker.get(self.host, {})
         return {
@@ -230,7 +230,7 @@ class BaseAPIClient(ABC):
         }
 
     @staticmethod
-    def get_all_stats() -> Dict[str, Dict[str, Any]]:
+    def get_all_stats() -> dict[str, dict[str, Any]]:
         """Get statistics for all API clients"""
         stats = {}
         for host, tracker in BaseAPIClient._rate_limit_tracker.items():
@@ -280,15 +280,15 @@ class SECAPIClient(BaseAPIClient):
             timeout=timeout,
         )
 
-    def get_company_facts(self, cik: str) -> Dict[str, Any]:
+    def get_company_facts(self, cik: str) -> dict[str, Any]:
         """Get company facts for CIK"""
         return self.get_json(f"/api/xbrl/companyfacts/CIK{cik.zfill(10)}.json")
 
-    def get_submissions(self, cik: str) -> Dict[str, Any]:
+    def get_submissions(self, cik: str) -> dict[str, Any]:
         """Get submissions for CIK"""
         return self.get_json(f"/submissions/CIK{cik.zfill(10)}.json")
 
-    def get_frame_data(self, concept: str, unit: str, year: int) -> Dict[str, Any]:
+    def get_frame_data(self, concept: str, unit: str, year: int) -> dict[str, Any]:
         """Get frame data for concept"""
         return self.get_json(f"/api/xbrl/frames/{concept}/{unit}/CY{year}.json")
 
@@ -317,7 +317,7 @@ class OllamaAPIClient(BaseAPIClient):
             timeout=timeout,
         )
 
-    def generate(self, model: str, prompt: str, system: Optional[str] = None, **kwargs) -> Dict[str, Any]:
+    def generate(self, model: str, prompt: str, system: str | None = None, **kwargs) -> dict[str, Any]:
         """Generate text using Ollama model"""
         payload = {"model": model, "prompt": prompt, "stream": False}
 
@@ -338,15 +338,15 @@ class OllamaAPIClient(BaseAPIClient):
 
         return self.post_json("/api/generate", json=payload)
 
-    def list_models(self) -> Dict[str, Any]:
+    def list_models(self) -> dict[str, Any]:
         """List available models"""
         return self.get_json("/api/tags")
 
-    def show_model(self, model: str) -> Dict[str, Any]:
+    def show_model(self, model: str) -> dict[str, Any]:
         """Show model information"""
         return self.post_json("/api/show", json={"name": model})
 
-    def get_model_capabilities(self, model: str) -> Dict[str, Any]:
+    def get_model_capabilities(self, model: str) -> dict[str, Any]:
         """
         Get model capabilities including context size
 
@@ -501,7 +501,7 @@ class OllamaAPIClient(BaseAPIClient):
         logger.warning(f"Unknown model {model}, using conservative 4096 context size")
         return 4096
 
-    def _estimate_memory_requirements(self, parameter_size) -> Dict[str, Any]:
+    def _estimate_memory_requirements(self, parameter_size) -> dict[str, Any]:
         """Estimate memory requirements for a model"""
         if not parameter_size:
             return {}
@@ -532,7 +532,7 @@ class OllamaAPIClient(BaseAPIClient):
             try:
                 import subprocess
 
-                result = subprocess.run(["sysctl", "hw.memsize"], capture_output=True, text=True)
+                result = subprocess.run(["sysctl", "hw.memsize"], capture_output=True, text=True, check=False)
                 if result.returncode == 0:
                     system_memory_bytes = int(result.stdout.split(": ")[1])
                     system_memory_gb = system_memory_bytes / (1024**3)

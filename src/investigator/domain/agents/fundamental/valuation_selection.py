@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import inspect
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import yaml
 
@@ -12,14 +12,14 @@ from investigator.domain.services.valuation.models import CompanyProfile
 
 
 def lookup_sector_multiple(
-    sector: Optional[str],
+    sector: str | None,
     multiple: str,
     *,
-    industry: Optional[str] = None,
+    industry: str | None = None,
     loader: Any = None,
     config: Any = None,
     logger: Any = None,
-) -> Optional[float]:
+) -> float | None:
     """Fetch sector-level reference multiples from layered sources."""
     if not sector:
         if logger is not None:
@@ -130,7 +130,7 @@ def lookup_sector_multiple(
     return None
 
 
-def calculate_enterprise_value(market_data: Dict[str, Any], financials: Dict[str, Any]) -> Optional[float]:
+def calculate_enterprise_value(market_data: dict[str, Any], financials: dict[str, Any]) -> float | None:
     """Calculate enterprise value from explicit EV fields or from market cap, debt, and cash."""
     ev_candidates = [
         market_data.get("enterprise_value"),
@@ -160,7 +160,7 @@ def calculate_enterprise_value(market_data: Dict[str, Any], financials: Dict[str
         return None
 
 
-def load_model_selection_rules(rules_path: Path, *, logger: Any = None) -> Dict[str, Any]:
+def load_model_selection_rules(rules_path: Path, *, logger: Any = None) -> dict[str, Any]:
     """Load model-selection rules from disk, returning an empty mapping when unavailable."""
     if not rules_path.exists():
         return {}
@@ -175,8 +175,8 @@ def load_model_selection_rules(rules_path: Path, *, logger: Any = None) -> Dict[
 
 def select_models_for_company(
     profile: CompanyProfile,
-    model_selection_rules: Dict[str, Any],
-) -> Optional[List[str]]:
+    model_selection_rules: dict[str, Any],
+) -> list[str] | None:
     """Select valuation models for a company profile based on configured archetype rules."""
     if not model_selection_rules:
         return None
@@ -186,9 +186,9 @@ def select_models_for_company(
 
     include = set(defaults.get("include", []))
     exclude = set(defaults.get("exclude", []))
-    blocking_flags: Dict[str, List[str]] = {}
+    blocking_flags: dict[str, list[str]] = {}
 
-    def _merge_blocking(rule_blocking: Optional[Dict[str, Any]]) -> None:
+    def _merge_blocking(rule_blocking: dict[str, Any] | None) -> None:
         if not isinstance(rule_blocking, dict):
             return
         for flag, models in rule_blocking.items():

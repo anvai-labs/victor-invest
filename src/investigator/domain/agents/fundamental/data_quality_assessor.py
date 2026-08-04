@@ -14,7 +14,7 @@ Date: 2025-01-05
 """
 
 import logging
-from typing import Dict, List, Optional
+from typing import ClassVar
 
 from investigator.domain.services.data_normalizer import DataNormalizer
 
@@ -36,7 +36,7 @@ class DataQualityAssessor:
     """
 
     # Required fields for quarter quality assessment
-    QUARTER_REQUIRED_FIELDS = [
+    QUARTER_REQUIRED_FIELDS: ClassVar[list] = [
         "revenues",
         "net_income",
         "total_assets",
@@ -47,7 +47,7 @@ class DataQualityAssessor:
     ]
 
     # Ratio metrics checked for completeness
-    RATIO_METRICS = [
+    RATIO_METRICS: ClassVar[list] = [
         "pe_ratio",
         "price_to_book",
         "current_ratio",
@@ -58,7 +58,7 @@ class DataQualityAssessor:
         "operating_margin",
     ]
 
-    def __init__(self, logger: Optional[logging.Logger] = None):
+    def __init__(self, logger: logging.Logger | None = None):
         """
         Initialize data quality assessor.
 
@@ -67,7 +67,7 @@ class DataQualityAssessor:
         """
         self.logger = logger or logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-    def assess_data_quality(self, company_data: Dict, ratios: Dict) -> Dict:
+    def assess_data_quality(self, company_data: dict, ratios: dict) -> dict:
         """
         Assess the quality and completeness of financial data.
         Returns a data quality score (0-100) and detailed assessment.
@@ -229,7 +229,7 @@ class DataQualityAssessor:
             "enhancement_summary": enhancement_summary,
         }
 
-    def _check_consistency(self, financials: Dict, ratios: Dict) -> List[str]:
+    def _check_consistency(self, financials: dict, ratios: dict) -> list[str]:
         """
         Check for data consistency issues (red flags).
 
@@ -245,9 +245,8 @@ class DataQualityAssessor:
         # Check for impossible values (with None-safe comparisons)
         net_income = financials.get("net_income") or 0
         total_revenue = financials.get("revenues") or 0
-        if net_income < 0 and total_revenue > 0:
-            if abs(net_income) > total_revenue:
-                consistency_issues.append("Net loss exceeds revenue (possible data error)")
+        if net_income < 0 and total_revenue > 0 and abs(net_income) > total_revenue:
+            consistency_issues.append("Net loss exceeds revenue (possible data error)")
 
         current_liabilities = financials.get("current_liabilities") or 0
         total_assets = financials.get("total_assets") or 0
@@ -281,7 +280,7 @@ class DataQualityAssessor:
         else:
             return "Very Poor"
 
-    def calculate_confidence_level(self, data_quality: Dict) -> Dict:
+    def calculate_confidence_level(self, data_quality: dict) -> dict:
         """
         Calculate confidence level based on data quality score.
 
@@ -338,7 +337,7 @@ class DataQualityAssessor:
             "quality_grade": quality_grade,
         }
 
-    def assess_quarter_quality(self, financial_data: Dict) -> Dict:
+    def assess_quarter_quality(self, financial_data: dict) -> dict:
         """
         Assess data quality for a single quarter.
 
@@ -394,11 +393,11 @@ class DataQualityAssessor:
 
 
 # Singleton instance
-_assessor_instance: Optional[DataQualityAssessor] = None
+_assessor_instance: DataQualityAssessor | None = None
 
 
 def get_data_quality_assessor(
-    logger: Optional[logging.Logger] = None,
+    logger: logging.Logger | None = None,
 ) -> DataQualityAssessor:
     """
     Get singleton DataQualityAssessor instance.

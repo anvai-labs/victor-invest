@@ -12,7 +12,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional, Self
 
 from .base import DataCategory, DataQuality, DataSource
 from .registry import get_registry
@@ -37,32 +37,32 @@ class ConsolidatedData:
     timestamp: datetime = field(default_factory=datetime.now)
 
     # Market Data
-    price: Optional[Dict[str, Any]] = None
-    technical: Optional[Dict[str, Any]] = None
+    price: dict[str, Any] | None = None
+    technical: dict[str, Any] | None = None
 
     # Fundamental Data
-    financials: Optional[Dict[str, Any]] = None
-    ratios: Optional[Dict[str, Any]] = None
+    financials: dict[str, Any] | None = None
+    ratios: dict[str, Any] | None = None
 
     # Sentiment Data
-    insider: Optional[Dict[str, Any]] = None
-    institutional: Optional[Dict[str, Any]] = None
-    short_interest: Optional[Dict[str, Any]] = None
+    insider: dict[str, Any] | None = None
+    institutional: dict[str, Any] | None = None
+    short_interest: dict[str, Any] | None = None
 
     # Macro Data
-    macro: Optional[Dict[str, Any]] = None
-    fed_districts: Optional[Dict[str, Any]] = None
-    treasury: Optional[Dict[str, Any]] = None
+    macro: dict[str, Any] | None = None
+    fed_districts: dict[str, Any] | None = None
+    treasury: dict[str, Any] | None = None
 
     # Volatility
-    volatility: Optional[Dict[str, Any]] = None
+    volatility: dict[str, Any] | None = None
 
     # Quality Metrics
-    sources_succeeded: List[str] = field(default_factory=list)
-    sources_failed: List[str] = field(default_factory=list)
+    sources_succeeded: list[str] = field(default_factory=list)
+    sources_failed: list[str] = field(default_factory=list)
     overall_quality: DataQuality = DataQuality.MEDIUM
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization"""
         return {
             "symbol": self.symbol,
@@ -86,7 +86,7 @@ class ConsolidatedData:
             },
         }
 
-    def get_rl_features(self) -> Dict[str, float]:
+    def get_rl_features(self) -> dict[str, float]:
         """
         Extract features for RL model.
 
@@ -348,7 +348,7 @@ class DataSourceManager:
 
     _instance: Optional["DataSourceManager"] = None
 
-    def __new__(cls) -> "DataSourceManager":
+    def __new__(cls) -> Self:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._initialized = False
@@ -372,8 +372,8 @@ class DataSourceManager:
     def get_data(
         self,
         symbol: str,
-        as_of_date: Optional[date] = None,
-        categories: Optional[List[DataCategory]] = None,
+        as_of_date: date | None = None,
+        categories: list[DataCategory] | None = None,
     ) -> ConsolidatedData:
         """
         Get consolidated data from all sources for a symbol.
@@ -440,7 +440,7 @@ class DataSourceManager:
 
         return data
 
-    def get_macro_data(self, as_of_date: Optional[date] = None) -> Dict[str, Any]:
+    def get_macro_data(self, as_of_date: date | None = None) -> dict[str, Any]:
         """Get all macro economic data"""
         target_date = as_of_date or date.today()
         data = {}
@@ -461,7 +461,7 @@ class DataSourceManager:
 
         return data
 
-    def get_sentiment_data(self, symbol: str, as_of_date: Optional[date] = None) -> Dict[str, Any]:
+    def get_sentiment_data(self, symbol: str, as_of_date: date | None = None) -> dict[str, Any]:
         """Get sentiment data for a symbol"""
         target_date = as_of_date or date.today()
         data = {}
@@ -483,10 +483,10 @@ class DataSourceManager:
 
     def get_batch_data(
         self,
-        symbols: List[str],
-        as_of_date: Optional[date] = None,
+        symbols: list[str],
+        as_of_date: date | None = None,
         parallel: bool = True,
-    ) -> Dict[str, ConsolidatedData]:
+    ) -> dict[str, ConsolidatedData]:
         """
         Get data for multiple symbols.
 
@@ -510,7 +510,7 @@ class DataSourceManager:
 
         return results
 
-    def get_rl_context(self, symbol: str, as_of_date: Optional[date] = None) -> Dict[str, float]:
+    def get_rl_context(self, symbol: str, as_of_date: date | None = None) -> dict[str, float]:
         """
         Get features for RL model.
 
@@ -519,15 +519,15 @@ class DataSourceManager:
         data = self.get_data(symbol, as_of_date)
         return data.get_rl_features()
 
-    def list_sources(self) -> List[Dict[str, Any]]:
+    def list_sources(self) -> list[dict[str, Any]]:
         """List all available data sources"""
         return self._registry.list_sources()
 
-    def get_source(self, name: str) -> Optional[DataSource]:
+    def get_source(self, name: str) -> DataSource | None:
         """Get a specific data source"""
         return self._registry.get(name)
 
-    def refresh_source(self, name: str, symbol: Optional[str] = None) -> bool:
+    def refresh_source(self, name: str, symbol: str | None = None) -> bool:
         """Refresh/invalidate cache for a source"""
         source = self._registry.get(name)
         if source:
@@ -535,7 +535,7 @@ class DataSourceManager:
             return True
         return False
 
-    def health_check(self) -> Dict[str, Any]:
+    def health_check(self) -> dict[str, Any]:
         """Check health of all sources"""
         from .registry import check_all_sources_health
 
@@ -549,7 +549,7 @@ class DataSourceManager:
 # Global Access Functions
 # =============================================================================
 
-_manager: Optional[DataSourceManager] = None
+_manager: DataSourceManager | None = None
 
 
 def get_data_source_manager() -> DataSourceManager:
@@ -560,16 +560,16 @@ def get_data_source_manager() -> DataSourceManager:
     return _manager
 
 
-def get_consolidated_data(symbol: str, as_of_date: Optional[date] = None) -> ConsolidatedData:
+def get_consolidated_data(symbol: str, as_of_date: date | None = None) -> ConsolidatedData:
     """Convenience function to get consolidated data"""
     return get_data_source_manager().get_data(symbol, as_of_date)
 
 
-def get_macro_indicators(as_of_date: Optional[date] = None) -> Dict[str, Any]:
+def get_macro_indicators(as_of_date: date | None = None) -> dict[str, Any]:
     """Convenience function to get macro data"""
     return get_data_source_manager().get_macro_data(as_of_date)
 
 
-def get_rl_features(symbol: str, as_of_date: Optional[date] = None) -> Dict[str, float]:
+def get_rl_features(symbol: str, as_of_date: date | None = None) -> dict[str, float]:
     """Convenience function to get RL features"""
     return get_data_source_manager().get_rl_context(symbol, as_of_date)

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Quarterly Metrics Calculator - Clean Architecture Migration
 
@@ -70,7 +69,7 @@ DCF/TTM Calculations: Use only Q periods (NO FY periods present)
 import logging
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 # Import FiscalPeriodService for centralized fiscal period handling
 from investigator.domain.services.fiscal_period_service import get_fiscal_period_service
@@ -83,10 +82,10 @@ _ytd_warnings_logged = set()
 
 # Module-level cache to suppress duplicate Q4 computation warnings across repeated calls
 # Key format: "{scope}:{warning_type}" where scope is symbol/fiscal_year/period_end_date
-_q4_warning_log_counts: Dict[str, int] = {}
+_q4_warning_log_counts: dict[str, int] = {}
 
 
-def _build_warning_scope(period: Dict[str, Any]) -> str:
+def _build_warning_scope(period: dict[str, Any]) -> str:
     """Build a stable scope key for warning throttling."""
     symbol = (
         period.get("symbol")
@@ -100,7 +99,7 @@ def _build_warning_scope(period: Dict[str, Any]) -> str:
     return f"{symbol}:{fiscal_year}:{period_end}"
 
 
-def _log_q4_compute_warning(warning_type: str, fy_period: Dict[str, Any], message: str) -> None:
+def _log_q4_compute_warning(warning_type: str, fy_period: dict[str, Any], message: str) -> None:
     """
     Log Q4 computation warnings once per FY scope, downgrade repeats to DEBUG.
     """
@@ -122,11 +121,11 @@ def _log_q4_compute_warning(warning_type: str, fy_period: Dict[str, Any], messag
 
 
 def compute_missing_quarter(
-    fy_data: Dict[str, Any],
-    q1_data: Optional[Dict[str, Any]] = None,
-    q2_data: Optional[Dict[str, Any]] = None,
-    q3_data: Optional[Dict[str, Any]] = None,
-) -> Optional[Dict[str, Any]]:
+    fy_data: dict[str, Any],
+    q1_data: dict[str, Any] | None = None,
+    q2_data: dict[str, Any] | None = None,
+    q3_data: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
     """
     Compute Q4 metrics implicitly from FY and Q1-Q3.
 
@@ -209,12 +208,12 @@ def compute_missing_quarter(
         logger.warning("FY data missing fiscal_year field")
         return None
 
-    def _ensure_free_cash_flow(container: Optional[Dict[str, Any]], label: str) -> None:
+    def _ensure_free_cash_flow(container: dict[str, Any] | None, label: str) -> None:
         """Derive free cash flow from operating cash flow and capex when missing or zero."""
         if not container:
             return
 
-        def derive(target: Dict[str, Any], prefix: str = "") -> None:
+        def derive(target: dict[str, Any], prefix: str = "") -> None:
             ocf = target.get("operating_cash_flow")
             capex = target.get("capital_expenditures")
             if ocf is None or capex is None:
@@ -469,7 +468,7 @@ def compute_missing_quarter(
     return q4_computed if (has_cash_flow or has_income) else None
 
 
-def extract_nested_value(data_dict: Dict[str, Any], key: str, debug: bool = False) -> Optional[float]:
+def extract_nested_value(data_dict: dict[str, Any], key: str, debug: bool = False) -> float | None:
     """
     Extract value from dict, handling nested financial_data structure and dot notation.
 
@@ -560,19 +559,18 @@ def extract_nested_value(data_dict: Dict[str, Any], key: str, debug: bool = Fals
                 return float(val) if val is not None else None
 
         # Try balance_sheet
-        if "balance_sheet" in fd and isinstance(fd["balance_sheet"], dict):
-            if key in fd["balance_sheet"]:
-                val = fd["balance_sheet"][key]
-                if debug:
-                    logger.info(f"🔍 extract: FOUND in BALANCE key='{key}', val={val}")
-                return float(val) if val is not None else None
+        if "balance_sheet" in fd and isinstance(fd["balance_sheet"], dict) and key in fd["balance_sheet"]:
+            val = fd["balance_sheet"][key]
+            if debug:
+                logger.info(f"🔍 extract: FOUND in BALANCE key='{key}', val={val}")
+            return float(val) if val is not None else None
 
     if debug:
         logger.warning(f"🔍 extract: NOT FOUND key='{key}'")
     return None
 
 
-def convert_ytd_to_quarterly(quarters: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def convert_ytd_to_quarterly(quarters: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Convert YTD (Year-To-Date) cumulative values to individual quarter values.
 
@@ -599,7 +597,7 @@ def convert_ytd_to_quarterly(quarters: List[Dict[str, Any]]) -> List[Dict[str, A
     # CRITICAL FIX: Use fiscal_year label to create separate groups, not proximity
     # Previous bug: All quarters within 365 days went into ONE group, causing overwrites
     # Example: Q3-2025, Q3-2024, Q3-2023 all overwrote the 'Q3' key in the same dict
-    fiscal_year_groups: List[Dict[str, Dict]] = []
+    fiscal_year_groups: list[dict[str, dict]] = []
 
     def parse_date(q):
         date_str = q.get("period_end_date", "")
@@ -612,7 +610,7 @@ def convert_ytd_to_quarterly(quarters: List[Dict[str, Any]]) -> List[Dict[str, A
 
     # Group by fiscal_year label first, then by period
     # This ensures Q1-2025, Q2-2025, Q3-2025 stay together
-    fy_dict: Dict[int, Dict[str, Dict]] = {}
+    fy_dict: dict[int, dict[str, dict]] = {}
 
     for q in quarters:
         period = q.get("fiscal_period", "")
@@ -783,7 +781,7 @@ def convert_ytd_to_quarterly(quarters: List[Dict[str, Any]]) -> List[Dict[str, A
     return quarters
 
 
-def _find_consecutive_quarters(periods: List[Dict[str, Any]], target_count: int, logger) -> List[Dict[str, Any]]:
+def _find_consecutive_quarters(periods: list[dict[str, Any]], target_count: int, logger) -> list[dict[str, Any]]:
     """
     Find the longest sequence of consecutive quarters from a sorted list.
 
@@ -849,9 +847,7 @@ def _find_consecutive_quarters(periods: List[Dict[str, Any]], target_count: int,
         # e.g., Q1-2025 → Q4-2024 (year boundary)
         if prev_fy == curr_fy and prev_q == curr_q + 1:
             return True
-        if prev_fy == curr_fy + 1 and prev_q == 1 and curr_q == 4:
-            return True
-        return False
+        return bool(prev_fy == curr_fy + 1 and prev_q == 1 and curr_q == 4)
 
     # Start with the most recent period as the first candidate sequence
     best_sequence = []
@@ -916,10 +912,10 @@ def _find_consecutive_quarters(periods: List[Dict[str, Any]], target_count: int,
 
 
 def get_rolling_ttm_periods(
-    all_periods: List[Dict[str, Any]],
+    all_periods: list[dict[str, Any]],
     compute_missing: bool = True,
     num_quarters: int = 4,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Get the most recent N quarters for TTM or historical analysis.
 
@@ -989,7 +985,7 @@ def get_rolling_ttm_periods(
         return []
 
     # Normalize and validate fiscal_year/fiscal_period using frame if available
-    def normalize_period_data(period: Dict[str, Any]) -> Dict[str, Any]:
+    def normalize_period_data(period: dict[str, Any]) -> dict[str, Any]:
         """
         Validate and correct fiscal_year/fiscal_period using frame key.
 
@@ -1366,8 +1362,8 @@ def get_rolling_ttm_periods(
 
 
 def analyze_quarterly_patterns(
-    quarters: List[Dict[str, Any]], metric_key: str = "operating_cash_flow"
-) -> Dict[str, Any]:
+    quarters: list[dict[str, Any]], metric_key: str = "operating_cash_flow"
+) -> dict[str, Any]:
     """
     Analyze quarterly patterns using TTM-based YoY comparison (fiscal-year agnostic).
 
@@ -1582,11 +1578,11 @@ def analyze_quarterly_patterns(
 class Q4ComputationResult:
     """Result of Q4 fallback calculation with quality metadata."""
 
-    q4_data: Optional[Dict[str, Any]]
+    q4_data: dict[str, Any] | None
     method: str  # 'exact', 'proportional', 'annual_average', 'none'
     confidence: float  # 0.0-1.0
-    warnings: List[str]
-    metrics_computed: List[str]
+    warnings: list[str]
+    metrics_computed: list[str]
 
     def is_valid(self) -> bool:
         """Check if Q4 was successfully computed."""
@@ -1594,10 +1590,10 @@ class Q4ComputationResult:
 
 
 def calculate_q4_with_fallback(
-    fy_data: Dict[str, Any],
-    q1_data: Optional[Dict[str, Any]] = None,
-    q2_data: Optional[Dict[str, Any]] = None,
-    q3_data: Optional[Dict[str, Any]] = None,
+    fy_data: dict[str, Any],
+    q1_data: dict[str, Any] | None = None,
+    q2_data: dict[str, Any] | None = None,
+    q3_data: dict[str, Any] | None = None,
 ) -> Q4ComputationResult:
     """
     Calculate Q4 with multi-strategy fallback chain.
@@ -1654,8 +1650,8 @@ def calculate_q4_with_fallback(
                 warnings.append("Computed revenue is negative")
                 confidence *= 0.7
 
-            metrics_computed = [k for k in cash_flow.keys() if k != "is_ytd"]
-            metrics_computed += [k for k in income.keys() if k != "is_ytd"]
+            metrics_computed = [k for k in cash_flow if k != "is_ytd"]
+            metrics_computed += [k for k in income if k != "is_ytd"]
 
             logger.info(
                 f"✅ Q4 computed via EXACT method for FY {fiscal_year} "
@@ -1731,8 +1727,8 @@ def calculate_q4_with_fallback(
 
 
 def _estimate_q4_proportional(
-    fy_data: Dict[str, Any], available_quarters: List[Dict[str, Any]]
-) -> Optional[Dict[str, Any]]:
+    fy_data: dict[str, Any], available_quarters: list[dict[str, Any]]
+) -> dict[str, Any] | None:
     """
     Estimate Q4 proportionally from available quarters.
 
@@ -1789,7 +1785,7 @@ def _estimate_q4_proportional(
     return q4_computed
 
 
-def _estimate_q4_annual_average(fy_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _estimate_q4_annual_average(fy_data: dict[str, Any]) -> dict[str, Any] | None:
     """
     Estimate Q4 as FY / 4 (simple annual average).
 
@@ -1825,18 +1821,18 @@ def _estimate_q4_annual_average(fy_data: Dict[str, Any]) -> Optional[Dict[str, A
 class TTMResult:
     """Result of weighted TTM calculation with quality metadata."""
 
-    ttm_data: Dict[str, float]
+    ttm_data: dict[str, float]
     quarters_used: int
     quality_score: float  # 0-100
     scaling_applied: bool
-    warnings: List[str]
+    warnings: list[str]
 
     def is_complete(self) -> bool:
         """Check if TTM is based on complete 4 quarters."""
         return self.quarters_used >= 4 and not self.scaling_applied
 
 
-def calculate_ttm_weighted(quarters: List[Dict[str, Any]], weights: Optional[List[float]] = None) -> TTMResult:
+def calculate_ttm_weighted(quarters: list[dict[str, Any]], weights: list[float] | None = None) -> TTMResult:
     """
     Calculate TTM with weighted quarters and quality scoring.
 
@@ -1954,7 +1950,7 @@ def calculate_ttm_weighted(quarters: List[Dict[str, Any]], weights: Optional[Lis
     )
 
 
-def _calculate_ttm_quality_score(quarters_used: int, metric_counts: Dict[str, int], scaling_applied: bool) -> float:
+def _calculate_ttm_quality_score(quarters_used: int, metric_counts: dict[str, int], scaling_applied: bool) -> float:
     """Calculate quality score for TTM calculation."""
     # Base score from quarters used
     quarter_score = quarters_used / 4.0 * 100  # 25 per quarter
@@ -1976,10 +1972,10 @@ def _calculate_ttm_quality_score(quarters_used: int, metric_counts: Dict[str, in
 
 
 def validate_computed_quarter(
-    computed: Dict[str, Any],
-    fy_data: Dict[str, Any],
-    reported_quarters: List[Dict[str, Any]],
-) -> Tuple[bool, List[str]]:
+    computed: dict[str, Any],
+    fy_data: dict[str, Any],
+    reported_quarters: list[dict[str, Any]],
+) -> tuple[bool, list[str]]:
     """
     Validate computed Q4 against business logic rules.
 

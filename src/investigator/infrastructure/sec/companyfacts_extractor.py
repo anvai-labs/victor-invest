@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - SEC Company Facts Extractor
 Copyright (c) 2025 Vijaykumar Singh
@@ -9,7 +8,7 @@ Extracts financial data from SEC Company Facts API (with database fallback)
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from sqlalchemy import create_engine, text
 
@@ -34,7 +33,7 @@ class SECCompanyFactsExtractor:
     while maintaining data freshness aligned with filing frequency.
     """
 
-    def __init__(self, db_config: Dict = None):
+    def __init__(self, db_config: dict | None = None):
         """
         Initialize with database configuration
 
@@ -76,10 +75,10 @@ class SECCompanyFactsExtractor:
     def get_company_facts(
         self,
         symbol: str,
-        cik: str = None,
-        max_age_days: int = None,
+        cik: str | None = None,
+        max_age_days: int | None = None,
         force_refresh: bool = False,
-    ) -> Optional[Dict]:
+    ) -> dict | None:
         """
         Get company facts with database-first strategy and staleness check
 
@@ -153,7 +152,7 @@ class SECCompanyFactsExtractor:
 
             # Parse ISO format timestamp
             if isinstance(fetched_at_str, str):
-                fetched_at = datetime.fromisoformat(fetched_at_str.replace("Z", "+00:00"))
+                fetched_at = datetime.fromisoformat(fetched_at_str)
             else:
                 fetched_at = fetched_at_str
 
@@ -164,7 +163,7 @@ class SECCompanyFactsExtractor:
             logger.warning(f"Error calculating age from {fetched_at_str}: {e}")
             return float("inf")  # Treat as very old if can't calculate
 
-    def _fetch_from_database(self, symbol: str) -> Optional[Dict]:
+    def _fetch_from_database(self, symbol: str) -> dict | None:
         """
         Fetch RAW company facts from sec_companyfacts_raw table (3-table architecture)
 
@@ -233,7 +232,7 @@ class SECCompanyFactsExtractor:
             logger.error(traceback.format_exc())
             return None
 
-    def _fetch_from_api(self, symbol: str, cik: str) -> Optional[Dict]:
+    def _fetch_from_api(self, symbol: str, cik: str) -> dict | None:
         """
         Fetch company facts from SEC API
 
@@ -295,7 +294,7 @@ class SECCompanyFactsExtractor:
             logger.error(f"Error fetching {symbol} from SEC API: {e}")
             return None
 
-    def _save_to_database(self, data: Dict) -> int:
+    def _save_to_database(self, data: dict) -> int:
         """
         Save RAW SEC API response to sec_companyfacts_raw table (3-table architecture)
 
@@ -397,7 +396,7 @@ class SECCompanyFactsExtractor:
             logger.error(traceback.format_exc())
             return None
 
-    def _trigger_processing(self, symbol: str, raw_data: Dict, raw_data_id: int):
+    def _trigger_processing(self, symbol: str, raw_data: dict, raw_data_id: int):
         """
         Trigger processing of raw SEC data to populate sec_companyfacts_processed table
 
@@ -434,7 +433,7 @@ class SECCompanyFactsExtractor:
 
             logger.error(traceback.format_exc())
 
-    def _get_cik_from_db(self, symbol: str) -> Optional[str]:
+    def _get_cik_from_db(self, symbol: str) -> str | None:
         """
         Get CIK for symbol using TickerCIKMapper (reads from data/ticker_cik_map.txt).
 
@@ -463,9 +462,7 @@ class SECCompanyFactsExtractor:
             logger.error(f"Error fetching CIK for {symbol} via TickerCIKMapper: {e}")
             return None
 
-    def _get_latest_value(
-        self, units_data: List[Dict], prefer_annual: bool = True, max_years: int = 4
-    ) -> Optional[float]:
+    def _get_latest_value(self, units_data: list[dict], prefer_annual: bool = True, max_years: int = 4) -> float | None:
         """
         Get the most recent value from units array.
 
@@ -526,8 +523,8 @@ class SECCompanyFactsExtractor:
             return None
 
     def _get_latest_value_with_period(
-        self, units_data: List[Dict], prefer_annual: bool = True, max_years: int = 4
-    ) -> Tuple[Optional[float], Optional[int], Optional[str]]:
+        self, units_data: list[dict], prefer_annual: bool = True, max_years: int = 4
+    ) -> tuple[float | None, int | None, str | None]:
         """
         Get the most recent value from units array along with fiscal period info.
 
@@ -613,7 +610,7 @@ class SECCompanyFactsExtractor:
             logger.debug(f"Error extracting latest value with period: {e}")
             return (None, None, None)
 
-    def _get_fiscal_year_end_month(self, cik: str) -> Optional[int]:
+    def _get_fiscal_year_end_month(self, cik: str) -> int | None:
         """
         Get fiscal year end month from sec_sub_data table.
 
@@ -655,7 +652,7 @@ class SECCompanyFactsExtractor:
         self,
         period_end_date: str,
         fiscal_year_end_month: int,
-        fiscal_period: Optional[str] = None,
+        fiscal_period: str | None = None,
     ) -> int:
         """
         Calculate fiscal year from period end date and fiscal year end month.
@@ -701,7 +698,7 @@ class SECCompanyFactsExtractor:
             except (ValueError, IndexError):
                 return datetime.now().year
 
-    def _derive_fiscal_period_from_date(self, end_date: str) -> Tuple[Optional[int], Optional[str]]:
+    def _derive_fiscal_period_from_date(self, end_date: str) -> tuple[int | None, str | None]:
         """
         Derive fiscal period from end date (fallback when raw SEC data not available).
 
@@ -729,8 +726,8 @@ class SECCompanyFactsExtractor:
             return (None, None)
 
     def _determine_latest_fiscal_period(
-        self, symbol: str, us_gaap: Dict[str, Any], cik: str = None
-    ) -> Tuple[Optional[int], Optional[str], Optional[str]]:
+        self, symbol: str, us_gaap: dict[str, Any], cik: str | None = None
+    ) -> tuple[int | None, str | None, str | None]:
         """
         CRITICAL: Determine the latest fiscal period (FY, FP) FIRST by collecting ALL
         distinct fiscal periods across ALL tags in the JSON API.
@@ -787,7 +784,7 @@ class SECCompanyFactsExtractor:
             else:
                 logger.warning(f"[DEBUG_FY_FIX] {symbol} - No CIK provided to _determine_latest_fiscal_period!")
 
-            for tag_name, tag_data in us_gaap.items():
+            for tag_data in us_gaap.values():
                 units = tag_data.get("units", {})
                 usd_data = units.get("USD", [])
                 if not usd_data:
@@ -844,7 +841,7 @@ class SECCompanyFactsExtractor:
             logger.warning(f"Error determining latest fiscal period for {symbol}: {e}")
             return (None, None, None)
 
-    def _extract_period_from_cache(self, cached_data: Dict) -> Tuple[Optional[int], Optional[str]]:
+    def _extract_period_from_cache(self, cached_data: dict) -> tuple[int | None, str | None]:
         """
         Extract fiscal period from cached/flattened data.
 
@@ -921,10 +918,10 @@ class SECCompanyFactsExtractor:
         symbol: str,
         cik: str,
         metric_tag: str,
-        fiscal_year: int = None,
-        fiscal_period: str = None,
+        fiscal_year: int | None = None,
+        fiscal_period: str | None = None,
         max_bulk_age_days: int = 180,
-    ) -> Tuple[Optional[float], Optional[int], Optional[str]]:
+    ) -> tuple[float | None, int | None, str | None]:
         """
         STANDARDIZED HYBRID EXTRACTION: Get a single metric value using dual strategy.
 
@@ -1086,7 +1083,7 @@ class SECCompanyFactsExtractor:
             logger.error(f"Error in hybrid metric extraction for {symbol} {metric_tag}: {e}")
             return (None, None, None)
 
-    def extract_financial_metrics(self, symbol: str) -> Dict:
+    def extract_financial_metrics(self, symbol: str) -> dict:
         """
         Extract key financial metrics for ratio calculations.
 
@@ -1215,7 +1212,9 @@ class SECCompanyFactsExtractor:
 
             # Helper function to get metric value with HYBRID STRATEGY (bulk + API)
             # NOW PERIOD-SCOPED: Will extract for the determined fiscal period
-            def get_metric(concept_names, prefer_annual: bool = True, canonical_name: str = None) -> Optional[float]:
+            def get_metric(
+                concept_names, prefer_annual: bool = True, canonical_name: str | None = None
+            ) -> float | None:
                 """
                 Get metric value with HYBRID STRATEGY (tries bulk tables first, then JSON API).
 
@@ -1284,7 +1283,7 @@ class SECCompanyFactsExtractor:
                             return value
 
                     # Try other currency units if USD not available
-                    for unit_name, unit_data in units.items():
+                    for unit_data in units.values():
                         if unit_data:
                             value = self._get_latest_value(unit_data, prefer_annual)
                             if value is not None:
@@ -1486,7 +1485,7 @@ class SECCompanyFactsExtractor:
             logger.error(f"Error extracting financial metrics for {symbol}: {e}")
             return self._empty_metrics()
 
-    def _empty_metrics(self) -> Dict:
+    def _empty_metrics(self) -> dict:
         """Return empty metrics structure"""
         return {
             # Balance Sheet
@@ -1538,7 +1537,7 @@ class SECCompanyFactsExtractor:
             "source": None,
         }
 
-    def get_processed_quarterly_data(self, symbol: str, num_periods: int = 12) -> List[Dict[str, Any]]:
+    def get_processed_quarterly_data(self, symbol: str, num_periods: int = 12) -> list[dict[str, Any]]:
         """
         Fetch pre-processed quarterly financial data from sec_companyfacts_processed table.
 
@@ -1672,7 +1671,7 @@ class SECCompanyFactsExtractor:
             logger.error(traceback.format_exc())
             return []
 
-    def calculate_financial_ratios(self, symbol: str, current_price: Optional[float] = None) -> Dict:
+    def calculate_financial_ratios(self, symbol: str, current_price: float | None = None) -> dict:
         """
         Calculate financial ratios from extracted metrics.
 

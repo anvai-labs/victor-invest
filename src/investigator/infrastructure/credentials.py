@@ -22,7 +22,6 @@ Usage:
 import logging
 import os
 from dataclasses import dataclass
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +49,7 @@ class DatabaseCredentials:
         return f"host={self.host} port={self.port} dbname={self.database} user={self.username} password={self.password}"
 
 
-def _get_from_victor_framework(alias: str) -> Optional[DatabaseCredentials]:
+def _get_from_victor_framework(alias: str) -> DatabaseCredentials | None:
     """Try to get credentials from Victor framework's CredentialManager."""
     try:
         from victor.workflows.services.credentials import get_credential_manager
@@ -77,7 +76,7 @@ def _get_from_victor_framework(alias: str) -> Optional[DatabaseCredentials]:
     return None
 
 
-def _get_from_environment(alias: str) -> Optional[DatabaseCredentials]:
+def _get_from_environment(alias: str) -> DatabaseCredentials | None:
     """Get credentials from environment variables.
 
     Supports two patterns:
@@ -163,7 +162,7 @@ def get_database_credentials(alias: str) -> DatabaseCredentials:
         return creds
 
     # No credentials found
-    raise EnvironmentError(
+    raise OSError(
         f"Database credentials for '{alias}' not found. "
         f"Please either:\n"
         f"  1. Source your environment file: source ~/.investigator/env\n"
@@ -198,7 +197,7 @@ def validate_database_connection(alias: str) -> bool:
         logger.info(f"✓ Database connection validated: {alias} @ {creds.host}")
         return True
 
-    except EnvironmentError as e:
+    except OSError as e:
         logger.error(f"✗ Credentials not found for {alias}: {e}")
         return False
     except Exception as e:

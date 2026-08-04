@@ -29,7 +29,6 @@ Example:
 import logging
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Dict, List, Optional
 
 import pandas as pd
 from sqlalchemy import create_engine, text
@@ -44,11 +43,11 @@ class PriceData:
 
     symbol: str
     date: date
-    open: Optional[float]
-    high: Optional[float]
-    low: Optional[float]
+    open: float | None
+    high: float | None
+    low: float | None
     close: float
-    volume: Optional[int]
+    volume: int | None
 
 
 class PriceService:
@@ -61,7 +60,7 @@ class PriceService:
 
     def __init__(
         self,
-        stock_db_url: str = None,
+        stock_db_url: str | None = None,
     ):
         """
         Initialize PriceService with database connection.
@@ -89,7 +88,7 @@ class PriceService:
         symbol: str,
         target_date: date,
         search_days: int = 5,
-    ) -> Optional[float]:
+    ) -> float | None:
         """
         Get stock closing price on or near target date.
 
@@ -121,7 +120,7 @@ class PriceService:
                 return float(result[0])
             return None
 
-    def get_current_price(self, symbol: str) -> Optional[float]:
+    def get_current_price(self, symbol: str) -> float | None:
         """
         Get most recent closing price.
 
@@ -137,7 +136,7 @@ class PriceService:
         self,
         symbol: str,
         target_date: date,
-    ) -> Optional[PriceData]:
+    ) -> PriceData | None:
         """
         Get full OHLCV data for a date.
 
@@ -177,7 +176,7 @@ class PriceService:
         self,
         symbol: str,
         start_date: date,
-        end_date: Optional[date] = None,
+        end_date: date | None = None,
     ) -> pd.DataFrame:
         """
         Get price history for a date range.
@@ -215,8 +214,8 @@ class PriceService:
         self,
         symbol: str,
         months_back: int,
-        reference_date: Optional[date] = None,
-    ) -> Optional[float]:
+        reference_date: date | None = None,
+    ) -> float | None:
         """
         Get price at a specific lookback period.
 
@@ -241,9 +240,9 @@ class PriceService:
     def get_prices_for_lookbacks(
         self,
         symbol: str,
-        lookback_months: List[int],
-        reference_date: Optional[date] = None,
-    ) -> Dict[int, Optional[float]]:
+        lookback_months: list[int],
+        reference_date: date | None = None,
+    ) -> dict[int, float | None]:
         """
         Get prices for multiple lookback periods.
 
@@ -272,7 +271,7 @@ class PriceService:
         symbol: str,
         start_date: date,
         end_date: date,
-    ) -> Optional[float]:
+    ) -> float | None:
         """
         Calculate price return between two dates.
 
@@ -296,8 +295,8 @@ class PriceService:
         self,
         symbol: str,
         days: int = 30,
-        end_date: Optional[date] = None,
-    ) -> Optional[float]:
+        end_date: date | None = None,
+    ) -> float | None:
         """
         Calculate historical volatility (annualized standard deviation of returns).
 

@@ -6,7 +6,7 @@ used by both resource_aware_pool and llm_semaphore to ensure consistency.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -18,9 +18,9 @@ MAX_CONTEXT_FOR_VRAM_CALC = 32768
 def estimate_model_vram_requirement(
     model_spec: Any,  # Dict or object
     include_kv_cache: bool = True,
-    prompt_tokens: Optional[int] = None,
-    response_tokens: Optional[int] = None,
-) -> Dict[str, float]:
+    prompt_tokens: int | None = None,
+    response_tokens: int | None = None,
+) -> dict[str, float]:
     """
     Estimate total VRAM requirement for a model
 
@@ -108,7 +108,7 @@ def get_spec_value(spec: Any, key: str, default: Any) -> Any:
     return getattr(spec, key, default)
 
 
-def estimate_kv_cache_only(model_spec: Dict[str, Any], prompt_tokens: int = 0, response_tokens: int = 0) -> float:
+def estimate_kv_cache_only(model_spec: dict[str, Any], prompt_tokens: int = 0, response_tokens: int = 0) -> float:
     """
     Estimate only KV cache VRAM (without model weights)
 

@@ -21,7 +21,7 @@ Usage:
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from sqlalchemy import text
 
@@ -49,7 +49,7 @@ class RLMetrics:
         self,
         min_samples: int = 10,
         days: int = 365,
-    ) -> Dict[str, Dict[str, float]]:
+    ) -> dict[str, dict[str, float]]:
         """
         Get accuracy breakdown by GICS sector.
 
@@ -104,7 +104,7 @@ class RLMetrics:
         self,
         min_samples: int = 10,
         days: int = 365,
-    ) -> Dict[str, Dict[str, float]]:
+    ) -> dict[str, dict[str, float]]:
         """
         Get accuracy breakdown by tier classification.
 
@@ -153,7 +153,7 @@ class RLMetrics:
     def get_model_contribution(
         self,
         days: int = 365,
-    ) -> Dict[str, Dict[str, float]]:
+    ) -> dict[str, dict[str, float]]:
         """
         Analyze which models contribute most to accurate predictions.
 
@@ -201,7 +201,7 @@ class RLMetrics:
     def compare_to_baseline(
         self,
         days: int = 90,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Compare RL policy performance to baseline (rule-based).
 
@@ -260,7 +260,7 @@ class RLMetrics:
         self,
         days: int = 90,
         bucket: str = "week",
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get performance trend over time.
 
@@ -313,7 +313,7 @@ class RLMetrics:
     def get_summary(
         self,
         days: int = 90,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get summary of RL system performance.
 

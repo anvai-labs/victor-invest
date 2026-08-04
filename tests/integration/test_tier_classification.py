@@ -67,7 +67,7 @@ class TestAutoManufacturingTierClassification:
         bypassing the metadata lookup which may have data quality issues.
         """
         # Test the classification logic directly
-        tier, sub_tier = weighting_service._classify_tier(
+        _tier, sub_tier = weighting_service._classify_tier(
             net_income=15e9,
             payout_ratio=0.10,
             rule_of_40=25,
@@ -93,7 +93,7 @@ class TestAutoManufacturingTierClassification:
         TSLA in production may get incorrect industry from metadata sources.
         """
         # Use the _classify_tier method directly with correct industry
-        tier, sub_tier = weighting_service._classify_tier(
+        _tier, sub_tier = weighting_service._classify_tier(
             net_income=15e9,
             payout_ratio=0.10,
             rule_of_40=25,
@@ -135,7 +135,7 @@ class TestSemiconductorTierClassification:
             "rule_of_40_score": 162,
         }
 
-        weights, tier, audit = weighting_service.determine_weights(
+        _weights, tier, _audit = weighting_service.determine_weights(
             symbol="NVDA",
             financials=financials,
             ratios=ratios,
@@ -170,7 +170,7 @@ class TestInsuranceTierClassification:
             "revenue_growth_pct": 5,
         }
 
-        weights, tier, audit = weighting_service.determine_weights(
+        weights, tier, _audit = weighting_service.determine_weights(
             symbol="ALL",
             financials=financials,
             ratios=ratios,
@@ -204,7 +204,7 @@ class TestDefenseTierClassification:
             "revenue_growth_pct": 2,
         }
 
-        weights, tier, audit = weighting_service.determine_weights(
+        _weights, tier, _audit = weighting_service.determine_weights(
             symbol="LMT",
             financials=financials,
             ratios=ratios,
@@ -239,7 +239,7 @@ class TestSaaSTierClassification:
             "rule_of_40_score": 64,
         }
 
-        weights, tier, audit = weighting_service.determine_weights(
+        _weights, tier, _audit = weighting_service.determine_weights(
             symbol="SNOW",
             financials=financials,
             ratios=ratios,
@@ -280,7 +280,7 @@ class TestDividendAristocratTierClassification:
             "revenue_growth_pct": 2,
         }
 
-        weights, tier, audit = weighting_service.determine_weights(
+        weights, tier, _audit = weighting_service.determine_weights(
             symbol="JNJ",
             financials=financials,
             ratios=ratios,
@@ -310,7 +310,7 @@ class TestDividendAristocratTierClassification:
             "rule_of_40_score": 12.0,
         }
 
-        weights, tier, audit = weighting_service.determine_weights(
+        weights, tier, _audit = weighting_service.determine_weights(
             symbol="STX",  # not in KNOWN_DIVIDEND_ARISTOCRATS
             financials=financials,
             ratios=ratios,
@@ -342,7 +342,7 @@ class TestTierClassificationWeights:
             "rule_of_40_score": 45,
         }
 
-        weights, tier, audit = weighting_service.determine_weights(
+        weights, _tier, _audit = weighting_service.determine_weights(
             symbol="NVDA",
             financials=financials,
             ratios=ratios,
@@ -367,7 +367,7 @@ class TestTierClassificationWeights:
             "revenue_growth_pct": 4,
         }
 
-        weights, tier, audit = weighting_service.determine_weights(
+        weights, _tier, _audit = weighting_service.determine_weights(
             symbol="ALL",
             financials=financials,
             ratios=ratios,
@@ -391,7 +391,7 @@ class TestTierClassificationWeights:
             "rule_of_40_score": 70,
         }
 
-        weights, tier, audit = weighting_service.determine_weights(
+        weights, _tier, _audit = weighting_service.determine_weights(
             symbol="SNOW",
             financials=financials,
             ratios=ratios,
@@ -425,7 +425,7 @@ class TestEdgeCaseTierClassification:
             "rule_of_40_score": 200,
         }
 
-        weights, tier, audit = weighting_service.determine_weights(
+        _weights, tier, _audit = weighting_service.determine_weights(
             symbol="NVDA",
             financials=financials,
             ratios=ratios,
@@ -452,7 +452,7 @@ class TestEdgeCaseTierClassification:
             "revenue_growth_pct": 3,
         }
 
-        weights, tier, audit = weighting_service.determine_weights(
+        _weights, tier, _audit = weighting_service.determine_weights(
             symbol="JNJ",
             financials=financials,
             ratios=ratios,

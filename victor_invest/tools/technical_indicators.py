@@ -47,7 +47,7 @@ Example:
 
 import asyncio
 import logging
-from typing import Any, Dict, Optional, cast
+from typing import Any, cast
 
 import pandas as pd
 
@@ -94,15 +94,15 @@ Parameters:
 Returns calculated indicators as structured data suitable for analysis.
 """
 
-    def __init__(self, config: Optional[Any] = None):
+    def __init__(self, config: Any | None = None):
         """Initialize Technical Indicators Tool.
 
         Args:
             config: Optional investigator config object
         """
         super().__init__(config)
-        self._calculator: Optional[Any] = None
-        self._market_data_fetcher: Optional[Any] = None
+        self._calculator: Any | None = None
+        self._market_data_fetcher: Any | None = None
 
     async def initialize(self) -> None:
         """Initialize technical analysis infrastructure."""
@@ -131,7 +131,7 @@ Returns calculated indicators as structured data suitable for analysis.
 
     async def execute(
         self,
-        _exec_ctx: Optional[Dict[str, Any]] = None,
+        _exec_ctx: dict[str, Any] | None = None,
         symbol: str = "",
         action: str = "calculate_all",
         days: int = 365,
@@ -213,11 +213,11 @@ Returns calculated indicators as structured data suitable for analysis.
         except Exception as e:
             logger.error(f"TechnicalIndicatorsTool execute error for {symbol}: {e}")
             return ToolResult.create_failure(
-                f"Technical analysis failed: {str(e)}",
+                f"Technical analysis failed: {e!s}",
                 metadata={"symbol": symbol, "action": action},
             )
 
-    async def _fetch_market_data(self, symbol: str, days: int, granularity: str = "daily") -> Optional[pd.DataFrame]:
+    async def _fetch_market_data(self, symbol: str, days: int, granularity: str = "daily") -> pd.DataFrame | None:
         """Fetch market data for technical analysis.
 
         Args:
@@ -236,7 +236,7 @@ Returns calculated indicators as structured data suitable for analysis.
             # Choose fetch method based on granularity
             if granularity == "weekly":
                 df = cast(
-                    Optional[pd.DataFrame],
+                    pd.DataFrame | None,
                     await loop.run_in_executor(
                         None,
                         self._market_data_fetcher.get_stock_data_weekly,
@@ -246,7 +246,7 @@ Returns calculated indicators as structured data suitable for analysis.
                 )
             else:  # daily (default)
                 df = cast(
-                    Optional[pd.DataFrame],
+                    pd.DataFrame | None,
                     await loop.run_in_executor(None, self._market_data_fetcher.get_stock_data, symbol, days),
                 )
             return df
@@ -350,7 +350,7 @@ Returns calculated indicators as structured data suitable for analysis.
 
         except Exception as e:
             logger.error(f"Error formatting all indicators: {e}")
-            return ToolResult.create_failure(f"Failed to format indicators: {str(e)}")
+            return ToolResult.create_failure(f"Failed to format indicators: {e!s}")
 
     def _format_momentum(self, symbol: str, df: pd.DataFrame, period: int) -> ToolResult:
         """Format momentum indicators."""
@@ -383,7 +383,7 @@ Returns calculated indicators as structured data suitable for analysis.
             )
 
         except Exception as e:
-            return ToolResult.create_failure(f"Failed to format momentum: {str(e)}")
+            return ToolResult.create_failure(f"Failed to format momentum: {e!s}")
 
     def _format_volatility(self, symbol: str, df: pd.DataFrame) -> ToolResult:
         """Format volatility indicators."""
@@ -409,7 +409,7 @@ Returns calculated indicators as structured data suitable for analysis.
             )
 
         except Exception as e:
-            return ToolResult.create_failure(f"Failed to format volatility: {str(e)}")
+            return ToolResult.create_failure(f"Failed to format volatility: {e!s}")
 
     def _format_moving_averages(self, symbol: str, df: pd.DataFrame) -> ToolResult:
         """Format moving averages."""
@@ -443,7 +443,7 @@ Returns calculated indicators as structured data suitable for analysis.
             )
 
         except Exception as e:
-            return ToolResult.create_failure(f"Failed to format moving averages: {str(e)}")
+            return ToolResult.create_failure(f"Failed to format moving averages: {e!s}")
 
     def _format_volume_indicators(self, symbol: str, df: pd.DataFrame) -> ToolResult:
         """Format volume indicators."""
@@ -467,7 +467,7 @@ Returns calculated indicators as structured data suitable for analysis.
             )
 
         except Exception as e:
-            return ToolResult.create_failure(f"Failed to format volume: {str(e)}")
+            return ToolResult.create_failure(f"Failed to format volume: {e!s}")
 
     def _format_support_resistance(self, symbol: str, df: pd.DataFrame) -> ToolResult:
         """Format support/resistance levels."""
@@ -510,7 +510,7 @@ Returns calculated indicators as structured data suitable for analysis.
             )
 
         except Exception as e:
-            return ToolResult.create_failure(f"Failed to format S/R levels: {str(e)}")
+            return ToolResult.create_failure(f"Failed to format S/R levels: {e!s}")
 
     def _format_recent(self, symbol: str, df: pd.DataFrame, days: int) -> ToolResult:
         """Format recent data with indicators."""
@@ -534,7 +534,7 @@ Returns calculated indicators as structured data suitable for analysis.
             )
 
         except Exception as e:
-            return ToolResult.create_failure(f"Failed to format recent data: {str(e)}")
+            return ToolResult.create_failure(f"Failed to format recent data: {e!s}")
 
     def _format_summary(self, symbol: str, df: pd.DataFrame) -> ToolResult:
         """Generate technical analysis summary with trading signals."""
@@ -614,9 +614,9 @@ Returns calculated indicators as structured data suitable for analysis.
             )
 
         except Exception as e:
-            return ToolResult.create_failure(f"Failed to generate summary: {str(e)}")
+            return ToolResult.create_failure(f"Failed to generate summary: {e!s}")
 
-    def _interpret_momentum_signals(self, latest: Dict) -> Dict[str, str]:
+    def _interpret_momentum_signals(self, latest: dict) -> dict[str, str]:
         """Interpret momentum indicator signals."""
         signals = {}
 
@@ -651,7 +651,7 @@ Returns calculated indicators as structured data suitable for analysis.
 
         return signals
 
-    def _interpret_volatility_signals(self, latest: Dict) -> Dict[str, str]:
+    def _interpret_volatility_signals(self, latest: dict) -> dict[str, str]:
         """Interpret volatility indicator signals."""
         signals = {}
 
@@ -666,7 +666,7 @@ Returns calculated indicators as structured data suitable for analysis.
 
         return signals
 
-    def _interpret_volume_signals(self, latest: Dict) -> Dict[str, str]:
+    def _interpret_volume_signals(self, latest: dict) -> dict[str, str]:
         """Interpret volume indicator signals."""
         signals = {}
 
@@ -681,7 +681,7 @@ Returns calculated indicators as structured data suitable for analysis.
 
         return signals
 
-    def _interpret_ma_signals(self, latest: Dict, current_price: Optional[float]) -> Dict[str, str]:
+    def _interpret_ma_signals(self, latest: dict, current_price: float | None) -> dict[str, str]:
         """Interpret moving average signals."""
         signals: dict[str, str] = {}
 
@@ -698,7 +698,7 @@ Returns calculated indicators as structured data suitable for analysis.
 
         return signals
 
-    def _check_golden_cross(self, df: pd.DataFrame) -> Optional[bool]:
+    def _check_golden_cross(self, df: pd.DataFrame) -> bool | None:
         """Check for golden cross (SMA50 crosses above SMA200)."""
         try:
             if len(df) < 2:
@@ -717,7 +717,7 @@ Returns calculated indicators as structured data suitable for analysis.
         except Exception:
             return None
 
-    def _check_death_cross(self, df: pd.DataFrame) -> Optional[bool]:
+    def _check_death_cross(self, df: pd.DataFrame) -> bool | None:
         """Check for death cross (SMA50 crosses below SMA200)."""
         try:
             if len(df) < 2:
@@ -736,7 +736,7 @@ Returns calculated indicators as structured data suitable for analysis.
         except Exception:
             return None
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """Get JSON schema for Technical Indicators Tool parameters."""
         return {
             "type": "object",

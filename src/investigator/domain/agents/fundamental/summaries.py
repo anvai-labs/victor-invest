@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 
-def get_historical_trend(financials: Dict[str, Any]) -> Dict[str, Any]:
+def get_historical_trend(financials: dict[str, Any]) -> dict[str, Any]:
     """Get historical financial trends."""
     _ = financials  # Placeholder until multi-year extraction is implemented.
     return {
@@ -15,7 +15,7 @@ def get_historical_trend(financials: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def summarize_company_data(company_data: Dict[str, Any]) -> Dict[str, Any]:
+def summarize_company_data(company_data: dict[str, Any]) -> dict[str, Any]:
     """Create summary of company data for report."""
     financials = company_data.get("financials") or {}
     market_data = company_data.get("market_data", {})
@@ -33,7 +33,7 @@ def summarize_company_data(company_data: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def extract_latest_financials(quarterly_data: List[Any]) -> Dict[str, Any]:
+def extract_latest_financials(quarterly_data: list[Any]) -> dict[str, Any]:
     """Extract latest financial statement from quarterly data.
 
     Supports both legacy dict payloads and object payloads with `financial_data`.

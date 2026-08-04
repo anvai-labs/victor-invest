@@ -27,7 +27,7 @@ Example:
 """
 
 import logging
-from typing import Dict, Optional
+from typing import ClassVar
 
 from .valuation_config_service import ValuationConfigService
 
@@ -43,7 +43,7 @@ class SectorMultiplesService:
     """
 
     # Sector normalization mapping - handles variant names
-    SECTOR_ALIASES = {
+    SECTOR_ALIASES: ClassVar[dict] = {
         # Technology variants
         "technology": "Technology",
         "tech": "Technology",
@@ -86,7 +86,7 @@ class SectorMultiplesService:
     }
 
     # Industry-specific P/E overrides (from pe_multiples.industry_overrides)
-    INDUSTRY_PE_OVERRIDES = {
+    INDUSTRY_PE_OVERRIDES: ClassVar[dict] = {
         "Software - Application": 35.0,
         "Software - Infrastructure": 32.0,
         "Semiconductors": 18.0,
@@ -115,7 +115,7 @@ class SectorMultiplesService:
         "Defense Contractors": 16.0,
     }
 
-    def __init__(self, config_service: Optional[ValuationConfigService] = None):
+    def __init__(self, config_service: ValuationConfigService | None = None):
         """
         Initialize SectorMultiplesService.
 
@@ -149,7 +149,7 @@ class SectorMultiplesService:
         # Return as-is if not found (will use Default in lookups)
         return sector
 
-    def get_pe(self, sector: str, industry: Optional[str] = None) -> float:
+    def get_pe(self, sector: str, industry: str | None = None) -> float:
         """
         Get P/E multiple for a sector.
 
@@ -195,7 +195,7 @@ class SectorMultiplesService:
         # Priority 4: Fall back to config sector default
         return self._config.get_sector_pe_multiple(normalized)
 
-    def get_ps(self, sector: str, industry: Optional[str] = None) -> float:
+    def get_ps(self, sector: str, industry: str | None = None) -> float:
         """
         Get P/S multiple for a sector.
 
@@ -209,7 +209,7 @@ class SectorMultiplesService:
         normalized = self.normalize_sector(sector)
         return self._config.get_sector_ps_multiple(normalized)
 
-    def get_pb(self, sector: str, industry: Optional[str] = None) -> float:
+    def get_pb(self, sector: str, industry: str | None = None) -> float:
         """
         Get P/B multiple for a sector.
 
@@ -251,7 +251,7 @@ class SectorMultiplesService:
         # Priority 4: Fall back to config sector default
         return self._config.get_sector_pb_multiple(normalized)
 
-    def get_ev_ebitda(self, sector: str, industry: Optional[str] = None) -> float:
+    def get_ev_ebitda(self, sector: str, industry: str | None = None) -> float:
         """
         Get EV/EBITDA multiple for a sector.
 
@@ -265,7 +265,7 @@ class SectorMultiplesService:
         normalized = self.normalize_sector(sector)
         return self._config.get_sector_ev_ebitda_multiple(normalized)
 
-    def get_multiples(self, sector: str, industry: Optional[str] = None) -> Dict[str, float]:
+    def get_multiples(self, sector: str, industry: str | None = None) -> dict[str, float]:
         """
         Get all multiples for a sector.
 
@@ -283,7 +283,7 @@ class SectorMultiplesService:
             "ev_ebitda": self.get_ev_ebitda(sector, industry),
         }
 
-    def get_multiple(self, multiple_type: str, sector: str, industry: Optional[str] = None) -> float:
+    def get_multiple(self, multiple_type: str, sector: str, industry: str | None = None) -> float:
         """
         Get a specific multiple type for a sector.
 
@@ -318,11 +318,11 @@ class SectorMultiplesService:
     def _get_historical_multiple(
         self,
         metric: str,
-        sector: Optional[str],
-        industry: Optional[str] = None,
-        fiscal_year: Optional[int] = None,
+        sector: str | None,
+        industry: str | None = None,
+        fiscal_year: int | None = None,
         lookback_years: int = 3,
-    ) -> Optional[float]:
+    ) -> float | None:
         """Get historical multiple for sector/industry from database.
 
         Priority:
@@ -414,9 +414,9 @@ class SectorMultiplesService:
         self,
         sector: str,
         metric: str,
-        fiscal_year: Optional[int] = None,
+        fiscal_year: int | None = None,
         lookback_years: int = 3,
-    ) -> Optional[float]:
+    ) -> float | None:
         """Get median multiple for a sector over historical period.
 
         Queries the sector_multiples_history table for historical sector multiples
@@ -522,12 +522,12 @@ class SectorMultiplesService:
 
     def get_sector_industry_multiple(
         self,
-        sector: Optional[str] = None,
-        industry: Optional[str] = None,
+        sector: str | None = None,
+        industry: str | None = None,
         metric: str = "pe",
-        fiscal_year: Optional[int] = None,
+        fiscal_year: int | None = None,
         lookback_years: int = 3,
-    ) -> Optional[float]:
+    ) -> float | None:
         """Get multiple for sector or industry, with industry-specific override.
 
         Priority order:
@@ -586,9 +586,9 @@ class SectorMultiplesService:
         self,
         industry: str,
         metric: str,
-        fiscal_year: Optional[int] = None,
+        fiscal_year: int | None = None,
         lookback_years: int = 3,
-    ) -> Optional[float]:
+    ) -> float | None:
         """Get historical multiple for an industry from sector_multiples_history.
 
         Args:
@@ -675,21 +675,21 @@ class SectorMultiplesService:
 
 
 # Convenience functions for backward compatibility
-def get_sector_pe_multiple(sector: str, industry: Optional[str] = None) -> float:
+def get_sector_pe_multiple(sector: str, industry: str | None = None) -> float:
     """Get P/E multiple for a sector (convenience function)."""
     return SectorMultiplesService().get_pe(sector, industry)
 
 
-def get_sector_ps_multiple(sector: str, industry: Optional[str] = None) -> float:
+def get_sector_ps_multiple(sector: str, industry: str | None = None) -> float:
     """Get P/S multiple for a sector (convenience function)."""
     return SectorMultiplesService().get_ps(sector, industry)
 
 
-def get_sector_pb_multiple(sector: str, industry: Optional[str] = None) -> float:
+def get_sector_pb_multiple(sector: str, industry: str | None = None) -> float:
     """Get P/B multiple for a sector (convenience function)."""
     return SectorMultiplesService().get_pb(sector, industry)
 
 
-def get_sector_ev_ebitda_multiple(sector: str, industry: Optional[str] = None) -> float:
+def get_sector_ev_ebitda_multiple(sector: str, industry: str | None = None) -> float:
     """Get EV/EBITDA multiple for a sector (convenience function)."""
     return SectorMultiplesService().get_ev_ebitda(sector, industry)

@@ -22,7 +22,6 @@ import logging
 import sqlite3
 import sys
 from pathlib import Path
-from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +70,7 @@ def load_schema_sql(schema_dir: Path) -> str:
     return "\n".join(sql_parts)
 
 
-def install_sqlite(db_path: str, schema_sql: str) -> Tuple[bool, str]:
+def install_sqlite(db_path: str, schema_sql: str) -> tuple[bool, str]:
     """Install schema to SQLite database."""
     try:
         conn = sqlite3.connect(db_path)
@@ -97,7 +96,7 @@ def install_sqlite(db_path: str, schema_sql: str) -> Tuple[bool, str]:
         return False, f"SQLite install failed: {e}"
 
 
-def install_postgres(db_url: str, schema_sql: str) -> Tuple[bool, str]:
+def install_postgres(db_url: str, schema_sql: str) -> tuple[bool, str]:
     """Install schema to PostgreSQL database."""
     try:
         from sqlalchemy import create_engine, text
@@ -210,7 +209,7 @@ def split_sql_statements(sql: str) -> list:
     return statements
 
 
-def check_schema_version(db_url: str, is_sqlite: bool = False) -> Tuple[bool, str]:
+def check_schema_version(db_url: str, is_sqlite: bool = False) -> tuple[bool, str]:
     """Check the current schema version."""
     try:
         if is_sqlite:

@@ -31,7 +31,7 @@ Example:
 
 import logging
 from datetime import date
-from typing import Any, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -46,12 +46,12 @@ class RatioCalculator:
     def calculate_pe_ratio(
         self,
         current_price: float,
-        eps: Optional[float] = None,
-        net_income: Optional[float] = None,
-        shares: Optional[float] = None,
-        market_cap: Optional[float] = None,
-        symbol: Optional[str] = None,
-    ) -> Optional[float]:
+        eps: float | None = None,
+        net_income: float | None = None,
+        shares: float | None = None,
+        market_cap: float | None = None,
+        symbol: str | None = None,
+    ) -> float | None:
         """
         Calculate Price-to-Earnings ratio.
 
@@ -90,14 +90,14 @@ class RatioCalculator:
 
     def calculate_ps_ratio(
         self,
-        market_cap: Optional[float] = None,
-        revenue: Optional[float] = None,
-        current_price: Optional[float] = None,
-        shares: Optional[float] = None,
+        market_cap: float | None = None,
+        revenue: float | None = None,
+        current_price: float | None = None,
+        shares: float | None = None,
         shares_source: str = "tickerdata",
-        symbol: Optional[str] = None,
-        price_date: Optional[date] = None,
-    ) -> Optional[float]:
+        symbol: str | None = None,
+        price_date: date | None = None,
+    ) -> float | None:
         """
         Calculate Price-to-Sales ratio with split-adjusted market cap support.
 
@@ -139,10 +139,10 @@ class RatioCalculator:
     def calculate_pb_ratio(
         self,
         current_price: float,
-        book_value_per_share: Optional[float] = None,
-        stockholders_equity: Optional[float] = None,
-        shares: Optional[float] = None,
-    ) -> Optional[float]:
+        book_value_per_share: float | None = None,
+        stockholders_equity: float | None = None,
+        shares: float | None = None,
+    ) -> float | None:
         """
         Calculate Price-to-Book ratio.
 
@@ -169,12 +169,12 @@ class RatioCalculator:
         self,
         market_cap: float,
         ebitda: float,
-        total_debt: Optional[float] = None,
-        cash: Optional[float] = None,
-        long_term_debt: Optional[float] = None,
-        short_term_debt: Optional[float] = None,
-        cash_and_equivalents: Optional[float] = None,
-    ) -> Optional[float]:
+        total_debt: float | None = None,
+        cash: float | None = None,
+        long_term_debt: float | None = None,
+        short_term_debt: float | None = None,
+        cash_and_equivalents: float | None = None,
+    ) -> float | None:
         """
         Calculate EV/EBITDA ratio.
 
@@ -212,7 +212,7 @@ class RatioCalculator:
         self,
         dividends_paid: float,
         net_income: float,
-    ) -> Optional[float]:
+    ) -> float | None:
         """
         Calculate dividend payout ratio.
 
@@ -233,11 +233,11 @@ class RatioCalculator:
     def calculate_margins(
         self,
         revenue: float,
-        gross_profit: Optional[float] = None,
-        operating_income: Optional[float] = None,
-        net_income: Optional[float] = None,
-        free_cash_flow: Optional[float] = None,
-    ) -> Dict[str, Optional[float]]:
+        gross_profit: float | None = None,
+        operating_income: float | None = None,
+        net_income: float | None = None,
+        free_cash_flow: float | None = None,
+    ) -> dict[str, float | None]:
         """
         Calculate profitability margins.
 
@@ -269,8 +269,8 @@ class RatioCalculator:
     def calculate_rule_of_40(
         self,
         revenue_growth_pct: float,
-        fcf_margin_pct: Optional[float] = None,
-        operating_margin_pct: Optional[float] = None,
+        fcf_margin_pct: float | None = None,
+        operating_margin_pct: float | None = None,
     ) -> float:
         """
         Calculate Rule of 40 score.
@@ -293,7 +293,7 @@ class RatioCalculator:
         self,
         net_income: float,
         stockholders_equity: float,
-    ) -> Optional[float]:
+    ) -> float | None:
         """
         Calculate Return on Equity.
 
@@ -310,11 +310,11 @@ class RatioCalculator:
 
     def calculate_debt_to_equity(
         self,
-        total_debt: Optional[float] = None,
-        stockholders_equity: Optional[float] = None,
-        long_term_debt: Optional[float] = None,
-        short_term_debt: Optional[float] = None,
-    ) -> Optional[float]:
+        total_debt: float | None = None,
+        stockholders_equity: float | None = None,
+        long_term_debt: float | None = None,
+        short_term_debt: float | None = None,
+    ) -> float | None:
         """
         Calculate Debt-to-Equity ratio.
 
@@ -337,12 +337,12 @@ class RatioCalculator:
 
     def calculate_all_ratios(
         self,
-        financials: Dict[str, Any],
+        financials: dict[str, Any],
         current_price: float,
         shares: float,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
         revenue_growth_pct: float = 0.0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Calculate all financial ratios from TTM financials.
 
@@ -460,8 +460,8 @@ class RatioCalculator:
 
     def validate_ratios(
         self,
-        ratios: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        ratios: dict[str, Any],
+    ) -> dict[str, Any]:
         """
         Validate calculated ratios and flag anomalies.
 

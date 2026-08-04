@@ -15,7 +15,7 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from investigator.domain.services.terminal_growth_calculator import (
     TerminalGrowthCalculator,
@@ -33,10 +33,10 @@ class FrameworkResult:
     """Result from a single valuation framework execution"""
 
     framework_type: str
-    fair_value: Optional[float]
+    fair_value: float | None
     confidence: float  # 0.0-1.0
-    metrics: Dict[str, Any]
-    error: Optional[str] = None
+    metrics: dict[str, Any]
+    error: str | None = None
     execution_time_ms: float = 0.0
 
 
@@ -47,10 +47,10 @@ class BlendedValuationResult:
     blended_fair_value: float
     current_price: float
     upside_pct: float
-    framework_results: List[FrameworkResult]
-    weights_used: Dict[str, float]
-    terminal_growth_info: Dict[str, Any]
-    execution_summary: Dict[str, Any]
+    framework_results: list[FrameworkResult]
+    weights_used: dict[str, float]
+    terminal_growth_info: dict[str, Any]
+    execution_summary: dict[str, Any]
 
 
 class ParallelValuationOrchestrator:
@@ -109,11 +109,11 @@ class ParallelValuationOrchestrator:
 
     async def execute_valuation(
         self,
-        frameworks: List[FrameworkConfig],
+        frameworks: list[FrameworkConfig],
         rule_of_40_score: float,
         revenue_growth_pct: float,
         fcf_margin_pct: float,
-        financials: Dict[str, Any],
+        financials: dict[str, Any],
         dcf_calculator: Any = None,  # DCFValuation instance
         pe_calculator: Any = None,  # PERatioValuation instance
         ggm_calculator: Any = None,  # GordonGrowthModel instance
@@ -252,7 +252,7 @@ class ParallelValuationOrchestrator:
         self,
         framework: FrameworkConfig,
         terminal_growth_rate: float,
-        financials: Dict[str, Any],
+        financials: dict[str, Any],
         dcf_calculator: Any = None,
         pe_calculator: Any = None,
         ggm_calculator: Any = None,
@@ -340,7 +340,7 @@ class ParallelValuationOrchestrator:
             )
 
         except Exception as e:
-            logger.error(f"{self.symbol} - {framework.type} execution failed: {e}", exc_info=True)
+            logger.exception(f"{self.symbol} - {framework.type} execution failed")
             return FrameworkResult(
                 framework_type=framework.type,
                 fair_value=None,
@@ -354,10 +354,10 @@ class ParallelValuationOrchestrator:
     async def _execute_dcf_growth(
         self,
         terminal_growth_rate: float,
-        financials: Dict[str, Any],
-        params: Dict[str, Any],
+        financials: dict[str, Any],
+        params: dict[str, Any],
         dcf_calculator: Any,
-    ) -> tuple[float, Dict[str, Any]]:
+    ) -> tuple[float, dict[str, Any]]:
         """Execute DCF with growth assumptions"""
         # TODO: Call existing DCFValuation with terminal_growth_rate parameter
         # For now, return placeholder
@@ -366,38 +366,38 @@ class ParallelValuationOrchestrator:
     async def _execute_dcf_fading(
         self,
         terminal_growth_rate: float,
-        financials: Dict[str, Any],
-        params: Dict[str, Any],
+        financials: dict[str, Any],
+        params: dict[str, Any],
         dcf_calculator: Any,
-    ) -> tuple[float, Dict[str, Any]]:
+    ) -> tuple[float, dict[str, Any]]:
         """Execute DCF with fading growth assumptions"""
         # TODO: Call existing DCFValuation with fading growth logic
         return 280.00, {"method": "dcf_fading", "terminal_growth": terminal_growth_rate}
 
     async def _execute_pe_ratio(
-        self, financials: Dict[str, Any], params: Dict[str, Any], pe_calculator: Any
-    ) -> tuple[float, Dict[str, Any]]:
+        self, financials: dict[str, Any], params: dict[str, Any], pe_calculator: Any
+    ) -> tuple[float, dict[str, Any]]:
         """Execute P/E ratio valuation"""
         # TODO: Call existing P/E calculator
         return 305.00, {"method": "pe_ratio"}
 
     async def _execute_ev_ebitda(
-        self, financials: Dict[str, Any], params: Dict[str, Any]
-    ) -> tuple[float, Dict[str, Any]]:
+        self, financials: dict[str, Any], params: dict[str, Any]
+    ) -> tuple[float, dict[str, Any]]:
         """Execute EV/EBITDA valuation"""
         # TODO: Implement EV/EBITDA calculation
         return 295.00, {"method": "ev_ebitda"}
 
     async def _execute_ps_ratio(
-        self, financials: Dict[str, Any], params: Dict[str, Any]
-    ) -> tuple[float, Dict[str, Any]]:
+        self, financials: dict[str, Any], params: dict[str, Any]
+    ) -> tuple[float, dict[str, Any]]:
         """Execute P/S ratio valuation"""
         # TODO: Implement P/S ratio calculation
         return 310.00, {"method": "ps_ratio"}
 
     async def _execute_peg_ratio(
-        self, financials: Dict[str, Any], params: Dict[str, Any], pe_calculator: Any
-    ) -> tuple[float, Dict[str, Any]]:
+        self, financials: dict[str, Any], params: dict[str, Any], pe_calculator: Any
+    ) -> tuple[float, dict[str, Any]]:
         """Execute PEG ratio valuation"""
         # TODO: Implement PEG ratio calculation
         return 300.00, {"method": "peg_ratio"}
@@ -405,10 +405,10 @@ class ParallelValuationOrchestrator:
     async def _execute_gordon_growth(
         self,
         terminal_growth_rate: float,
-        financials: Dict[str, Any],
-        params: Dict[str, Any],
+        financials: dict[str, Any],
+        params: dict[str, Any],
         ggm_calculator: Any,
-    ) -> tuple[float, Dict[str, Any]]:
+    ) -> tuple[float, dict[str, Any]]:
         """Execute Gordon Growth Model valuation"""
         # TODO: Call existing GordonGrowthModel with terminal_growth_rate
         return 285.00, {

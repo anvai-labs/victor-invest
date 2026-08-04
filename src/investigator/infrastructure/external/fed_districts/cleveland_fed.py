@@ -34,7 +34,7 @@ import logging
 from dataclasses import dataclass
 from datetime import date
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 
 import aiohttp
 
@@ -78,12 +78,12 @@ class InflationExpectations:
 
     date: date
     one_year: float
-    two_year: Optional[float] = None
-    five_year: Optional[float] = None
-    ten_year: Optional[float] = None
-    five_year_five_year: Optional[float] = None
-    inflation_risk_premium: Optional[float] = None
-    outlook: Optional[InflationOutlook] = None
+    two_year: float | None = None
+    five_year: float | None = None
+    ten_year: float | None = None
+    five_year_five_year: float | None = None
+    inflation_risk_premium: float | None = None
+    outlook: InflationOutlook | None = None
 
     def __post_init__(self):
         if self.outlook is None:
@@ -116,7 +116,7 @@ class InflationExpectations:
         return False
 
     @property
-    def term_structure_slope(self) -> Optional[float]:
+    def term_structure_slope(self) -> float | None:
         """Difference between 10Y and 1Y expectations (steepness)."""
         if self.ten_year and self.one_year:
             return self.ten_year - self.one_year
@@ -141,10 +141,10 @@ class YieldCurveModel:
 
     date: date
     recession_prob_12m: float
-    recession_prob_24m: Optional[float] = None
-    expected_gdp_growth: Optional[float] = None
-    term_spread_10y_3m: Optional[float] = None
-    term_spread_10y_2y: Optional[float] = None
+    recession_prob_24m: float | None = None
+    expected_gdp_growth: float | None = None
+    term_spread_10y_3m: float | None = None
+    term_spread_10y_2y: float | None = None
 
     @property
     def is_warning(self) -> bool:
@@ -174,9 +174,9 @@ class MedianCPI:
 
     date: date
     median_cpi: float
-    median_cpi_yoy: Optional[float] = None
-    trimmed_mean_16: Optional[float] = None
-    trimmed_mean_16_yoy: Optional[float] = None
+    median_cpi_yoy: float | None = None
+    trimmed_mean_16: float | None = None
+    trimmed_mean_16_yoy: float | None = None
 
 
 class ClevelandFedClient:
@@ -194,7 +194,7 @@ class ClevelandFedClient:
         print(f"12M recession prob: {yc.recession_prob_12m}%")
     """
 
-    def __init__(self, session: Optional[aiohttp.ClientSession] = None):
+    def __init__(self, session: aiohttp.ClientSession | None = None):
         self._session = session
         self._owns_session = session is None
 
@@ -215,7 +215,7 @@ class ClevelandFedClient:
             await self._session.close()
             self._session = None
 
-    async def get_inflation_expectations(self) -> Optional[InflationExpectations]:
+    async def get_inflation_expectations(self) -> InflationExpectations | None:
         """Get the latest model-based inflation expectations.
 
         Returns:
@@ -234,7 +234,7 @@ class ClevelandFedClient:
             logger.warning(f"Failed to fetch inflation expectations: {e}")
             return None
 
-    def _parse_inflation_excel(self, content: bytes) -> Optional[InflationExpectations]:
+    def _parse_inflation_excel(self, content: bytes) -> InflationExpectations | None:
         """Parse inflation expectations from Excel file."""
         try:
             import io
@@ -252,7 +252,7 @@ class ClevelandFedClient:
             obs_date = pd.to_datetime(latest[date_col]).date()
 
             # Find columns by pattern
-            def find_col(pattern: str) -> Optional[str]:
+            def find_col(pattern: str) -> str | None:
                 for col in df.columns:
                     if pattern.lower() in str(col).lower():
                         return col
@@ -279,7 +279,7 @@ class ClevelandFedClient:
             logger.debug(f"Could not parse inflation Excel: {e}")
             return None
 
-    async def get_yield_curve_model(self) -> Optional[YieldCurveModel]:
+    async def get_yield_curve_model(self) -> YieldCurveModel | None:
         """Get the latest yield curve recession probability.
 
         Returns:
@@ -298,7 +298,7 @@ class ClevelandFedClient:
             logger.warning(f"Failed to fetch yield curve model: {e}")
             return None
 
-    def _parse_yield_curve_excel(self, content: bytes) -> Optional[YieldCurveModel]:
+    def _parse_yield_curve_excel(self, content: bytes) -> YieldCurveModel | None:
         """Parse yield curve model from Excel file."""
         try:
             import io
@@ -316,7 +316,7 @@ class ClevelandFedClient:
             obs_date = pd.to_datetime(latest[date_col]).date()
 
             # Find recession probability column
-            def find_col(pattern: str) -> Optional[str]:
+            def find_col(pattern: str) -> str | None:
                 for col in df.columns:
                     if pattern.lower() in str(col).lower():
                         return col
@@ -338,7 +338,7 @@ class ClevelandFedClient:
             logger.debug(f"Could not parse yield curve Excel: {e}")
             return None
 
-    async def get_median_cpi(self) -> Optional[MedianCPI]:
+    async def get_median_cpi(self) -> MedianCPI | None:
         """Get the latest Median CPI data.
 
         Returns:
@@ -357,7 +357,7 @@ class ClevelandFedClient:
             logger.warning(f"Failed to fetch median CPI: {e}")
             return None
 
-    def _parse_median_cpi_excel(self, content: bytes) -> Optional[MedianCPI]:
+    def _parse_median_cpi_excel(self, content: bytes) -> MedianCPI | None:
         """Parse median CPI from Excel file."""
         try:
             import io
@@ -375,7 +375,7 @@ class ClevelandFedClient:
             obs_date = pd.to_datetime(latest[date_col]).date()
 
             # Find columns
-            def find_col(pattern: str) -> Optional[str]:
+            def find_col(pattern: str) -> str | None:
                 for col in df.columns:
                     if pattern.lower() in str(col).lower():
                         return col
@@ -393,7 +393,7 @@ class ClevelandFedClient:
             logger.debug(f"Could not parse median CPI Excel: {e}")
             return None
 
-    async def get_all_indicators(self) -> Dict[str, Any]:
+    async def get_all_indicators(self) -> dict[str, Any]:
         """Get all Cleveland Fed indicators.
 
         Returns:
@@ -416,7 +416,7 @@ class ClevelandFedClient:
 
 
 # Singleton instance
-_client: Optional[ClevelandFedClient] = None
+_client: ClevelandFedClient | None = None
 
 
 def get_cleveland_fed_client() -> ClevelandFedClient:

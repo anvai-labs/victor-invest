@@ -46,7 +46,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import date
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -93,16 +93,16 @@ class YieldCurveAnalysis:
 
     date: date
     shape: YieldCurveShape = YieldCurveShape.UNKNOWN
-    spread_10y_2y_bps: Optional[float] = None
-    spread_10y_3m_bps: Optional[float] = None
+    spread_10y_2y_bps: float | None = None
+    spread_10y_3m_bps: float | None = None
     investment_signal: InvestmentSignal = InvestmentSignal.MODERATE_RISK
-    yield_10y: Optional[float] = None
-    yield_2y: Optional[float] = None
-    yield_3m: Optional[float] = None
-    risk_free_rate: Optional[float] = None
+    yield_10y: float | None = None
+    yield_2y: float | None = None
+    yield_3m: float | None = None
+    risk_free_rate: float | None = None
     days_inverted: int = 0
-    historical_context: Dict[str, Any] = field(default_factory=dict)
-    warnings: List[str] = field(default_factory=list)
+    historical_context: dict[str, Any] = field(default_factory=dict)
+    warnings: list[str] = field(default_factory=list)
 
     def __post_init__(self):
         """Calculate derived values."""
@@ -125,7 +125,7 @@ class YieldCurveAnalysis:
         }
         self.investment_signal = signal_map.get(self.shape, InvestmentSignal.MODERATE_RISK)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "date": str(self.date),
@@ -237,7 +237,7 @@ class YieldCurveAnalyzer:
             self._treasury_client = get_treasury_client()
         return self._treasury_client
 
-    async def analyze(self, as_of_date: Optional[date] = None) -> YieldCurveAnalysis:
+    async def analyze(self, as_of_date: date | None = None) -> YieldCurveAnalysis:
         """Analyze current yield curve.
 
         Args:
@@ -286,10 +286,10 @@ class YieldCurveAnalyzer:
         except Exception as e:
             logger.error(f"Error analyzing yield curve: {e}")
             analysis = YieldCurveAnalysis(date=as_of_date or date.today())
-            analysis.warnings.append(f"Analysis error: {str(e)}")
+            analysis.warnings.append(f"Analysis error: {e!s}")
             return analysis
 
-    def _classify_shape(self, spread_bps: Optional[float]) -> YieldCurveShape:
+    def _classify_shape(self, spread_bps: float | None) -> YieldCurveShape:
         """Classify yield curve shape from 10Y-2Y spread.
 
         Args:
@@ -337,7 +337,7 @@ class YieldCurveAnalyzer:
             logger.debug(f"Error counting inversion days: {e}")
             return 0
 
-    async def get_shape_history(self, days: int = 365) -> List[Dict[str, Any]]:
+    async def get_shape_history(self, days: int = 365) -> list[dict[str, Any]]:
         """Get historical yield curve shapes.
 
         Args:
@@ -369,7 +369,7 @@ class YieldCurveAnalyzer:
             logger.error(f"Error fetching shape history: {e}")
             return []
 
-    async def get_valuation_adjustments(self) -> Dict[str, Any]:
+    async def get_valuation_adjustments(self) -> dict[str, Any]:
         """Get valuation model adjustments based on yield curve.
 
         Returns:
@@ -390,7 +390,7 @@ class YieldCurveAnalyzer:
 
 
 # Singleton instance
-_yield_curve_analyzer: Optional[YieldCurveAnalyzer] = None
+_yield_curve_analyzer: YieldCurveAnalyzer | None = None
 
 
 def get_yield_curve_analyzer() -> YieldCurveAnalyzer:

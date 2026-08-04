@@ -27,7 +27,7 @@ Example:
 import logging
 from dataclasses import dataclass
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pandas as pd
 from dateutil.relativedelta import relativedelta
@@ -68,8 +68,8 @@ class SharesService:
 
     def __init__(
         self,
-        sec_db_url: str = None,
-        stock_db_url: str = None,
+        sec_db_url: str | None = None,
+        stock_db_url: str | None = None,
     ):
         """
         Initialize SharesService with database connections.
@@ -110,8 +110,8 @@ class SharesService:
     def get_sec_shares(
         self,
         symbol: str,
-        as_of_date: Optional[date] = None,
-    ) -> Optional[float]:
+        as_of_date: date | None = None,
+    ) -> float | None:
         """
         Get shares outstanding from SEC filing.
 
@@ -160,7 +160,7 @@ class SharesService:
                 return float(result[0])
             return None
 
-    def get_symbol_table_shares(self, symbol: str) -> Optional[float]:
+    def get_symbol_table_shares(self, symbol: str) -> float | None:
         """
         Get shares outstanding from symbol table (fallback).
 
@@ -183,9 +183,9 @@ class SharesService:
     def get_shares(
         self,
         symbol: str,
-        as_of_date: Optional[date] = None,
+        as_of_date: date | None = None,
         prefer_sec: bool = True,
-    ) -> Optional[float]:
+    ) -> float | None:
         """
         Get shares outstanding with source priority.
 
@@ -215,8 +215,8 @@ class SharesService:
     def get_shares_history(
         self,
         symbol: str,
-        lookback_months: List[int],
-        reference_date: Optional[date] = None,
+        lookback_months: list[int],
+        reference_date: date | None = None,
     ) -> pd.DataFrame:
         """
         Get shares outstanding history with split detection and normalization.
@@ -327,9 +327,9 @@ class SharesService:
         self,
         symbol: str,
         as_of_date: date,
-        lookback_months: List[int],
-        reference_date: Optional[date] = None,
-    ) -> Optional[float]:
+        lookback_months: list[int],
+        reference_date: date | None = None,
+    ) -> float | None:
         """
         Get split-adjusted shares for a specific lookback period.
 
@@ -358,9 +358,9 @@ class SharesService:
     def detect_splits(
         self,
         symbol: str,
-        lookback_months: List[int],
-        reference_date: Optional[date] = None,
-    ) -> List[Dict[str, Any]]:
+        lookback_months: list[int],
+        reference_date: date | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Detect stock splits in historical data.
 

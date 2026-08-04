@@ -19,15 +19,15 @@ from investigator.domain.models.analysis import (
 )
 
 __all__ = [
+    "AgentCapability",
+    "AgentMetrics",
+    "AgentResult",
+    "AgentTask",
     # Models
     "AnalysisType",
-    "TaskStatus",
-    "Priority",
-    "AgentCapability",
-    "AgentTask",
-    "AgentResult",
-    "AgentMetrics",
     # Agents
     "InvestmentAgent",
+    "Priority",
+    "TaskStatus",
     "get_cache_type_for_analysis",
 ]

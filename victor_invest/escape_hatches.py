@@ -30,7 +30,7 @@ Example YAML usage:
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 
-def data_quality_check(ctx: Dict[str, Any]) -> str:
+def data_quality_check(ctx: dict[str, Any]) -> str:
     """Check if data quality is sufficient for synthesis.
 
     Evaluates data completeness, freshness, and consistency.
@@ -71,7 +71,7 @@ def data_quality_check(ctx: Dict[str, Any]) -> str:
     return "low"
 
 
-def valuation_confidence_check(ctx: Dict[str, Any]) -> str:
+def valuation_confidence_check(ctx: dict[str, Any]) -> str:
     """Assess confidence in valuation results.
 
     Multi-factor assessment based on model agreement and data quality.
@@ -101,7 +101,7 @@ def valuation_confidence_check(ctx: Dict[str, Any]) -> str:
     return "low_confidence"
 
 
-def recommendation_strength(ctx: Dict[str, Any]) -> str:
+def recommendation_strength(ctx: dict[str, Any]) -> str:
     """Determine recommendation strength from analysis.
 
     Args:
@@ -132,7 +132,7 @@ def recommendation_strength(ctx: Dict[str, Any]) -> str:
         return "strong_sell"
 
 
-def should_request_peer_comparison(ctx: Dict[str, Any]) -> str:
+def should_request_peer_comparison(ctx: dict[str, Any]) -> str:
     """Determine if peer comparison is needed.
 
     Args:
@@ -153,7 +153,7 @@ def should_request_peer_comparison(ctx: Dict[str, Any]) -> str:
     return "skip_peers"
 
 
-def technical_signal_strength(ctx: Dict[str, Any]) -> str:
+def technical_signal_strength(ctx: dict[str, Any]) -> str:
     """Assess technical signal strength.
 
     Args:
@@ -208,7 +208,7 @@ def technical_signal_strength(ctx: Dict[str, Any]) -> str:
         return "neutral"
 
 
-def insider_sentiment_check(ctx: Dict[str, Any]) -> str:
+def insider_sentiment_check(ctx: dict[str, Any]) -> str:
     """Assess insider trading sentiment.
 
     Args:
@@ -241,7 +241,7 @@ def insider_sentiment_check(ctx: Dict[str, Any]) -> str:
     return "neutral"
 
 
-def risk_level_assessment(ctx: Dict[str, Any]) -> str:
+def risk_level_assessment(ctx: dict[str, Any]) -> str:
     """Assess overall risk level.
 
     Args:
@@ -298,7 +298,7 @@ def risk_level_assessment(ctx: Dict[str, Any]) -> str:
 # =============================================================================
 
 
-def merge_analysis_results(ctx: Dict[str, Any]) -> Dict[str, Any]:
+def merge_analysis_results(ctx: dict[str, Any]) -> dict[str, Any]:
     """Merge results from parallel analysis operations.
 
     Args:
@@ -331,7 +331,7 @@ def merge_analysis_results(ctx: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def calculate_composite_score(ctx: Dict[str, Any]) -> Dict[str, Any]:
+def calculate_composite_score(ctx: dict[str, Any]) -> dict[str, Any]:
     """Calculate weighted composite score from component analyses.
 
     Args:
@@ -375,7 +375,7 @@ def calculate_composite_score(ctx: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def format_investment_thesis(ctx: Dict[str, Any]) -> Dict[str, Any]:
+def format_investment_thesis(ctx: dict[str, Any]) -> dict[str, Any]:
     """Format investment thesis from analysis.
 
     Args:
@@ -406,7 +406,7 @@ def format_investment_thesis(ctx: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def aggregate_peer_metrics(ctx: Dict[str, Any]) -> Dict[str, Any]:
+def aggregate_peer_metrics(ctx: dict[str, Any]) -> dict[str, Any]:
     """Aggregate metrics from peer comparison.
 
     Args:
@@ -468,20 +468,20 @@ TRANSFORMS = {
 }
 
 __all__ = [
-    # Conditions
-    "data_quality_check",
-    "valuation_confidence_check",
-    "recommendation_strength",
-    "should_request_peer_comparison",
-    "technical_signal_strength",
-    "insider_sentiment_check",
-    "risk_level_assessment",
-    # Transforms
-    "merge_analysis_results",
-    "calculate_composite_score",
-    "format_investment_thesis",
-    "aggregate_peer_metrics",
     # Registries
     "CONDITIONS",
     "TRANSFORMS",
+    "aggregate_peer_metrics",
+    "calculate_composite_score",
+    # Conditions
+    "data_quality_check",
+    "format_investment_thesis",
+    "insider_sentiment_check",
+    # Transforms
+    "merge_analysis_results",
+    "recommendation_strength",
+    "risk_level_assessment",
+    "should_request_peer_comparison",
+    "technical_signal_strength",
+    "valuation_confidence_check",
 ]

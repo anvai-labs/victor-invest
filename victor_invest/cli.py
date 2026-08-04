@@ -13,12 +13,13 @@ Usage:
 
 import asyncio
 import json
+import logging
 import os
 import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import click
 from rich.console import Console
@@ -45,6 +46,8 @@ from victor_invest.workflows import (
     InvestmentWorkflowProvider,
 )
 
+logger = logging.getLogger(__name__)
+
 console = Console()
 
 
@@ -57,11 +60,11 @@ def _get_ollama_base_url() -> str:
         if base_url:
             return str(base_url)
     except Exception:
-        pass
+        logger.debug("_get_ollama_base_url: suppressed error", exc_info=True)
     return os.getenv("OLLAMA_URL") or os.getenv("OLLAMA_BASE_URL") or "http://localhost:11434"
 
 
-def _display_provider_info(provider: Optional[str], model: Optional[str]) -> tuple:
+def _display_provider_info(provider: str | None, model: str | None) -> tuple:
     """Resolve and display provider/model information from environment variables.
 
     Priority: CLI param > VICTOR_PROVIDER env var > fallback
@@ -104,7 +107,7 @@ def _display_provider_info(provider: Optional[str], model: Optional[str]) -> tup
     return resolved_provider, resolved_model
 
 
-async def _create_workflow_executor(provider: Optional[str], model: Optional[str], timeout: float):
+async def _create_workflow_executor(provider: str | None, model: str | None, timeout: float):
     from victor_contracts.workflow_executor_runtime import WorkflowExecutor
 
     from victor_invest.workflows import ensure_handlers_registered
@@ -271,7 +274,7 @@ def _convert_to_investment_recommendation(result, symbol: str):
     signals = trend_data.get("signals", {})
     key_insights = []
     if signals:
-        for category, indicators in signals.items():
+        for indicators in signals.values():
             if isinstance(indicators, dict):
                 for indicator, signal in indicators.items():
                     if signal in ["bullish", "bearish"]:
@@ -396,7 +399,6 @@ def validate_victor_installed():
 @click.version_option(version=VICTOR_INVEST_VERSION, prog_name="victor-invest")
 def cli():
     """Victor Investment Analysis CLI - Institutional-grade equity research."""
-    pass
 
 
 @cli.command()
@@ -471,9 +473,9 @@ def cli():
 def analyze(
     symbol: str,
     mode: str,
-    output: Optional[str],
+    output: str | None,
     provider: str,
-    model: Optional[str],
+    model: str | None,
     stream: bool,
     report: bool,
     detail: str,
@@ -585,8 +587,8 @@ def batch(
     symbols: tuple[str, ...],
     mode: str,
     output_dir: str,
-    provider: Optional[str],  # Changed to Optional
-    model: Optional[str],
+    provider: str | None,  # Changed to Optional
+    model: str | None,
     parallel: int,
     detail: str,
 ):
@@ -622,8 +624,8 @@ async def _run_batch(
     symbols: tuple[str, ...],
     mode: str,
     output_dir: str,
-    provider: Optional[str],  # Changed to Optional
-    model: Optional[str],
+    provider: str | None,  # Changed to Optional
+    model: str | None,
     parallel: int,
     detail: str = "standard",
 ):
@@ -749,9 +751,9 @@ async def _run_batch(
 def compare(
     target: str,
     peers: tuple[str, ...],
-    output: Optional[str],
-    provider: Optional[str],  # Changed to Optional
-    model: Optional[str],
+    output: str | None,
+    provider: str | None,  # Changed to Optional
+    model: str | None,
 ):
     """Compare a target company against peers."""
     validate_victor_installed()
@@ -837,7 +839,7 @@ def compare(
 )
 @click.option("--dry-run", is_flag=True, default=False, help="Compute but do not write results")
 def beta_refresh(
-    symbols: Optional[str],
+    symbols: str | None,
     universe: str,
     models: str,
     benchmark: str,
@@ -882,7 +884,7 @@ def beta_refresh(
 
     console.print("[bold blue]Running beta refresh job...[/bold blue]")
     console.print(" ".join(cmd))
-    result = subprocess.run(cmd, cwd=str(project_root))
+    result = subprocess.run(cmd, cwd=str(project_root), check=False)
     if result.returncode != 0:
         raise SystemExit(result.returncode)
 
@@ -890,9 +892,9 @@ def beta_refresh(
 async def _run_compare(
     target: str,
     peers: tuple[str, ...],
-    output: Optional[str],
-    provider: Optional[str],  # Changed to Optional
-    model: Optional[str],
+    output: str | None,
+    provider: str | None,  # Changed to Optional
+    model: str | None,
 ):
     workflow_provider = InvestmentWorkflowProvider()
     workflow = workflow_provider.get_workflow("peer_comparison")
@@ -954,9 +956,9 @@ async def _run_compare(
 async def _run_analysis(
     symbol: str,
     mode: str,
-    output: Optional[str],
-    provider: Optional[str],  # Changed to Optional to support env var default
-    model: Optional[str],
+    output: str | None,
+    provider: str | None,  # Changed to Optional to support env var default
+    model: str | None,
     stream: bool,
     report: bool = False,
     detail: str = "standard",
@@ -1297,6 +1299,7 @@ def metrics(days: int):
                 if timestamp >= cutoff_date:
                     all_metrics.append(data)
         except Exception:
+            logger.debug("metrics: suppressed error", exc_info=True)
             continue
 
     if not all_metrics:
@@ -1498,7 +1501,7 @@ def clean_cache(clean_all, clean_db, clean_disk, symbol):
                 try:
                     cache_manager.clear(cache_type)
                 except Exception:
-                    pass
+                    logger.debug("clean_cache: suppressed error", exc_info=True)
             console.print("[green]✅ All caches cleared[/green]")
 
         elif clean_db:
@@ -1523,7 +1526,7 @@ def clean_cache(clean_all, clean_db, clean_disk, symbol):
                     try:
                         cache_manager.clear(ct, storage_type="rdbms")
                     except Exception:
-                        pass
+                        logger.debug("clean_cache: suppressed error", exc_info=True)
                 console.print("[green]✅ Database cache cleared[/green]")
 
         elif clean_disk:
@@ -1548,7 +1551,7 @@ def clean_cache(clean_all, clean_db, clean_disk, symbol):
                     try:
                         cache_manager.clear(ct, storage_type="disk")
                     except Exception:
-                        pass
+                        logger.debug("clean_cache: suppressed error", exc_info=True)
                 console.print("[green]✅ Disk cache cleared[/green]")
 
         elif symbol:
@@ -1687,10 +1690,10 @@ def inspect_cache(symbol, verbose):
 )
 def from_batch(
     jsonl_path: str,
-    symbols: Optional[str],
+    symbols: str | None,
     output: str,
-    min_upside: Optional[float],
-    tier: Optional[str],
+    min_upside: float | None,
+    tier: str | None,
 ):
     """Generate professional reports from batch analysis results.
 
@@ -1721,7 +1724,7 @@ def from_batch(
 
     # Filter results
     filtered = []
-    symbol_filter = set(s.upper() for s in symbols.split(",")) if symbols else None
+    symbol_filter = {s.upper() for s in symbols.split(",")} if symbols else None
 
     for r in results:
         # Must be successful

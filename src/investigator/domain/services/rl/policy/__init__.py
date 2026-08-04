@@ -56,14 +56,14 @@ from investigator.domain.services.rl.policy.hybrid import HybridPolicy
 from investigator.domain.services.rl.policy.technical_policy import TechnicalRLPolicy
 
 __all__ = [
-    # Base
-    "RLPolicy",
     # Single policies
     "ContextualBanditPolicy",
+    "DualRLPolicy",
+    "FundamentalRLPolicy",
     "HybridPolicy",
+    # Base
+    "RLPolicy",
     # Dual policy system (recommended)
     "TechnicalRLPolicy",
-    "FundamentalRLPolicy",
-    "DualRLPolicy",
     "load_dual_policy",
 ]

@@ -31,7 +31,7 @@ import html
 import logging
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from victor_invest.tools.base import BaseTool, ToolResult
 
@@ -77,14 +77,14 @@ Parameters:
 - max_chars: Maximum characters to return per section (default: 15000)
 """
 
-    def __init__(self, config: Optional[Any] = None):
+    def __init__(self, config: Any | None = None):
         """Initialize SEC Filing Text Tool.
 
         Args:
             config: Optional investigator config object.
         """
         super().__init__(config)
-        self._sec_client: Optional[Any] = None
+        self._sec_client: Any | None = None
 
         # Section patterns for extraction
         self._mda_patterns = [
@@ -147,7 +147,7 @@ Parameters:
 
     async def execute(
         self,
-        _exec_ctx: Optional[Dict[str, Any]] = None,
+        _exec_ctx: dict[str, Any] | None = None,
         symbol: str = "",
         action: str = "get_mda",
         form_type: str = "10-K",
@@ -200,7 +200,7 @@ Parameters:
         except Exception as e:
             logger.error(f"SECFilingTextTool execute error for {symbol}: {e}")
             return ToolResult.create_failure(
-                f"SEC filing text extraction failed: {str(e)}",
+                f"SEC filing text extraction failed: {e!s}",
                 metadata={"symbol": symbol, "action": action},
             )
 
@@ -216,7 +216,7 @@ Parameters:
         normalized = re.sub(r"\{[^}]+\}", " ", normalized)
         return normalized.strip()
 
-    def _extract_section_by_patterns(self, text: str, patterns: List[str], max_chars: int) -> Optional[str]:
+    def _extract_section_by_patterns(self, text: str, patterns: list[str], max_chars: int) -> str | None:
         """Extract a section from filing text using regex patterns.
 
         Args:
@@ -255,7 +255,7 @@ Parameters:
 
         return None
 
-    def _extract_guidance_sentences(self, text: str, max_sentences: int = 50) -> List[str]:
+    def _extract_guidance_sentences(self, text: str, max_sentences: int = 50) -> list[str]:
         """Extract sentences containing guidance/forward-looking statements.
 
         Args:
@@ -289,7 +289,7 @@ Parameters:
 
         return guidance_sentences
 
-    async def _get_filing_text(self, symbol: str, form_type: str, period: str) -> Optional[str]:
+    async def _get_filing_text(self, symbol: str, form_type: str, period: str) -> str | None:
         """Get filing text from SEC.
 
         Args:
@@ -485,7 +485,7 @@ Parameters:
 
         except Exception as e:
             logger.error(f"Error getting developments for {symbol}: {e}")
-            return ToolResult.create_failure(f"Failed to get developments: {str(e)}")
+            return ToolResult.create_failure(f"Failed to get developments: {e!s}")
 
     async def _get_risk_factors(self, symbol: str, form_type: str, period: str, max_chars: int) -> ToolResult:
         """Extract risk factors section."""
@@ -608,7 +608,7 @@ Parameters:
             },
         )
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """Get JSON schema for SEC Filing Text Tool parameters."""
         return {
             "type": "object",

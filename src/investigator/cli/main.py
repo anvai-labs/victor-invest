@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator CLI - Main Entry Point
 
@@ -34,10 +33,10 @@ if str(project_root) not in sys.path:
 from .groups import analyze, backtest, cache, data, macro, sector_multiples, system  # noqa: E402
 from .utils import load_config, setup_logging  # noqa: E402
 
-CONTEXT_SETTINGS = dict(
-    help_option_names=["-h", "--help"],
-    max_content_width=120,
-)
+CONTEXT_SETTINGS = {
+    "help_option_names": ["-h", "--help"],
+    "max_content_width": 120,
+}
 
 
 class _VictorExternalVerticalNoiseFilter(logging.Filter):
@@ -47,12 +46,10 @@ class _VictorExternalVerticalNoiseFilter(logging.Filter):
         message = record.getMessage()
         if "External vertical '" in message and "conflicts with existing vertical" in message:
             return False
-        if (
+        return not (
             "Failed to load external vertical 'security_analysis'" in message
             and "No module named 'victor.security_analysis'" in message
-        ):
-            return False
-        return True
+        )
 
 
 def _configure_victor_external_vertical_warning_filter() -> None:

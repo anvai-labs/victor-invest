@@ -17,7 +17,7 @@ Date: 2025-01-05
 
 import json
 import logging
-from typing import Callable, Dict, List, Optional
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ class ComponentScoreExtractor:
 
     def __init__(
         self,
-        fundamental_score_calculator: Optional[Callable[[Dict], float]] = None,
+        fundamental_score_calculator: Callable[[dict], float] | None = None,
     ):
         """
         Initialize component score extractor.
@@ -52,7 +52,7 @@ class ComponentScoreExtractor:
         self._calculate_fundamental_score = fundamental_score_calculator or (lambda _: 0.0)
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-    def extract_income_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
+    def extract_income_score(self, llm_responses: dict, ai_recommendation: dict) -> float:
         """
         Extract income statement score from responses.
 
@@ -100,7 +100,7 @@ class ComponentScoreExtractor:
         base_fundamental = self._calculate_fundamental_score(llm_responses)
         return base_fundamental * 0.9 if base_fundamental > 0 else 0.0
 
-    def extract_cashflow_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
+    def extract_cashflow_score(self, llm_responses: dict, ai_recommendation: dict) -> float:
         """
         Extract cash flow score from responses.
 
@@ -147,7 +147,7 @@ class ComponentScoreExtractor:
         )
         return max(0.0, min(10.0, base_fundamental + adjustment)) if base_fundamental > 0 else 0.0
 
-    def extract_balance_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
+    def extract_balance_score(self, llm_responses: dict, ai_recommendation: dict) -> float:
         """
         Extract balance sheet score from responses.
 
@@ -193,7 +193,7 @@ class ComponentScoreExtractor:
         adjustment = sum(balance_score_adjustments) / len(balance_score_adjustments) if balance_score_adjustments else 0
         return max(0.0, min(10.0, base_fundamental + adjustment)) if base_fundamental > 0 else 0.0
 
-    def extract_growth_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
+    def extract_growth_score(self, llm_responses: dict, ai_recommendation: dict) -> float:
         """
         Extract growth prospects score from responses.
 
@@ -254,7 +254,7 @@ class ComponentScoreExtractor:
         adjustment = sum(growth_score_adjustments) / len(growth_score_adjustments) if growth_score_adjustments else 0
         return max(0.0, min(10.0, base_fundamental + adjustment)) if base_fundamental > 0 else 0.0
 
-    def extract_value_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
+    def extract_value_score(self, llm_responses: dict, ai_recommendation: dict) -> float:
         """
         Extract value investment score from responses.
 
@@ -314,7 +314,7 @@ class ComponentScoreExtractor:
         adjustment = sum(value_score_adjustments) / len(value_score_adjustments) if value_score_adjustments else 0
         return max(0.0, min(10.0, base_fundamental + adjustment)) if base_fundamental > 0 else 0.0
 
-    def extract_business_quality_score(self, llm_responses: Dict, ai_recommendation: Dict) -> float:
+    def extract_business_quality_score(self, llm_responses: dict, ai_recommendation: dict) -> float:
         """
         Extract business quality score from SEC comprehensive analysis.
 
@@ -487,7 +487,7 @@ class ComponentScoreExtractor:
 
         return max(1.0, min(10.0, quality_score))
 
-    def calculate_consistency_bonus(self, quality_indicators: List[float]) -> float:
+    def calculate_consistency_bonus(self, quality_indicators: list[float]) -> float:
         """
         Calculate bonus for consistent business quality across quarters.
 
@@ -517,11 +517,11 @@ class ComponentScoreExtractor:
 
 
 # Singleton instance
-_extractor_instance: Optional[ComponentScoreExtractor] = None
+_extractor_instance: ComponentScoreExtractor | None = None
 
 
 def get_component_score_extractor(
-    fundamental_score_calculator: Optional[Callable[[Dict], float]] = None,
+    fundamental_score_calculator: Callable[[dict], float] | None = None,
 ) -> ComponentScoreExtractor:
     """
     Get singleton ComponentScoreExtractor instance.

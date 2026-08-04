@@ -56,7 +56,7 @@ Example:
 
 import asyncio
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from victor_invest.tools.base import BaseTool, ToolResult
 
@@ -101,7 +101,7 @@ Parameters:
 - num_periods: Number of periods for get_quarterly_financials (default: 12)
 """
 
-    def __init__(self, config: Optional[Any] = None):
+    def __init__(self, config: Any | None = None):
         """Initialize SEC Filing Tool.
 
         Args:
@@ -109,9 +109,9 @@ Parameters:
                    will use get_config() on first use.
         """
         super().__init__(config)
-        self._sec_client: Optional[Any] = None
-        self._xbrl_parser: Optional[Any] = None
-        self._facts_extractor: Optional[Any] = None
+        self._sec_client: Any | None = None
+        self._xbrl_parser: Any | None = None
+        self._facts_extractor: Any | None = None
 
     async def initialize(self) -> None:
         """Initialize SEC infrastructure components."""
@@ -141,7 +141,7 @@ Parameters:
 
     async def execute(
         self,
-        _exec_ctx: Optional[Dict[str, Any]] = None,
+        _exec_ctx: dict[str, Any] | None = None,
         symbol: str = "",
         action: str = "get_company_facts",
         form_type: str = "10-K",
@@ -200,7 +200,7 @@ Parameters:
         except Exception as e:
             logger.error(f"SECFilingTool execute error for {symbol}: {e}")
             return ToolResult.create_failure(
-                f"SEC filing operation failed: {str(e)}",
+                f"SEC filing operation failed: {e!s}",
                 metadata={"symbol": symbol, "action": action},
             )
 
@@ -247,7 +247,7 @@ Parameters:
 
         except Exception as e:
             logger.error(f"Error getting filing for {symbol}: {e}")
-            return ToolResult.create_failure(f"Failed to get filing: {str(e)}")
+            return ToolResult.create_failure(f"Failed to get filing: {e!s}")
 
     async def _get_company_facts(self, symbol: str) -> ToolResult:
         """Get company facts from SEC CompanyFacts API.
@@ -290,7 +290,7 @@ Parameters:
 
         except Exception as e:
             logger.error(f"Error getting company facts for {symbol}: {e}")
-            return ToolResult.create_failure(f"Failed to get company facts: {str(e)}")
+            return ToolResult.create_failure(f"Failed to get company facts: {e!s}")
 
     def _derive_missing_q4_quarters(self, quarters_data: list, symbol: str) -> list:
         """Derive Q4 quarterly data from FY filings when Q4 is missing.
@@ -460,7 +460,7 @@ Parameters:
             import traceback
 
             logger.error(traceback.format_exc())
-            return ToolResult.create_failure(f"Failed to get quarterly financials: {str(e)}")
+            return ToolResult.create_failure(f"Failed to get quarterly financials: {e!s}")
 
     async def _search_filings(self, symbol: str, form_type: str, limit: int) -> ToolResult:
         """Search for recent filings.
@@ -496,7 +496,7 @@ Parameters:
 
         except Exception as e:
             logger.error(f"Error searching filings for {symbol}: {e}")
-            return ToolResult.create_failure(f"Failed to search filings: {str(e)}")
+            return ToolResult.create_failure(f"Failed to search filings: {e!s}")
 
     async def _extract_metrics(self, symbol: str) -> ToolResult:
         """Extract financial metrics from company facts.
@@ -624,9 +624,9 @@ Parameters:
 
         except Exception as e:
             logger.error(f"Error extracting metrics for {symbol}: {e}")
-            return ToolResult.create_failure(f"Failed to extract metrics: {str(e)}")
+            return ToolResult.create_failure(f"Failed to extract metrics: {e!s}")
 
-    def _calculate_combined_ratio(self, metrics: Dict) -> Optional[float]:
+    def _calculate_combined_ratio(self, metrics: dict) -> float | None:
         """Calculate insurance combined ratio from XBRL data.
 
         Combined Ratio = (Claims + Expenses) / Premiums
@@ -654,7 +654,7 @@ Parameters:
         result: float | None = round(combined_ratio, 2)
         return result
 
-    def _calculate_backlog_ratio(self, metrics: Dict) -> Optional[float]:
+    def _calculate_backlog_ratio(self, metrics: dict) -> float | None:
         """Calculate backlog-to-revenue ratio for defense contractors.
 
         Backlog/Revenue > 2.0x typically indicates strong revenue visibility.
@@ -709,9 +709,9 @@ Parameters:
 
         except Exception as e:
             logger.error(f"Error parsing XBRL: {e}")
-            return ToolResult.create_failure(f"Failed to parse XBRL: {str(e)}")
+            return ToolResult.create_failure(f"Failed to parse XBRL: {e!s}")
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """Get JSON schema for SEC Filing Tool parameters."""
         return {
             "type": "object",

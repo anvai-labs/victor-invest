@@ -15,7 +15,7 @@ SOLID Principles:
 import logging
 import time
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import ClassVar
 
 from .result import (
     ExtractionAttempt,
@@ -71,7 +71,7 @@ class MetricExtractionOrchestrator:
     """
 
     # Default matcher chain (ordered by reliability)
-    DEFAULT_MATCHERS = [
+    DEFAULT_MATCHERS: ClassVar[list] = [
         ByPeriodEndMatcher(),
         ByDateRangeMatcher(),
         ByFrameFieldMatcher(),
@@ -80,7 +80,7 @@ class MetricExtractionOrchestrator:
     ]
 
     # Metrics that are frequently absent in valid filings and should not flood WARNING logs.
-    LOW_SIGNAL_MISSING_KEYS = {
+    LOW_SIGNAL_MISSING_KEYS: ClassVar[set] = {
         "operating_expenses",
         "interest_expense",
         "earnings_per_share_diluted",
@@ -94,7 +94,7 @@ class MetricExtractionOrchestrator:
         "financial_fhlb_borrowings",
         "financial_other_short_term_borrowings",
     }
-    HISTORICAL_OPTIONAL_WARNING_KEYS = {
+    HISTORICAL_OPTIONAL_WARNING_KEYS: ClassVar[set] = {
         "short_term_debt",
         "goodwill",
         "dividends_paid",
@@ -105,10 +105,10 @@ class MetricExtractionOrchestrator:
 
     def __init__(
         self,
-        sector: Optional[str] = None,
-        industry: Optional[str] = None,
+        sector: str | None = None,
+        industry: str | None = None,
         canonical_mapper=None,
-        matchers: Optional[List[PeriodMatchStrategy]] = None,
+        matchers: list[PeriodMatchStrategy] | None = None,
         enable_audit: bool = True,
     ):
         """
@@ -143,18 +143,18 @@ class MetricExtractionOrchestrator:
             "by_strategy": {},
             "by_tag_position": {},
         }
-        self._failure_log_counts: Dict[str, int] = {}
+        self._failure_log_counts: dict[str, int] = {}
         self._failure_log_keys = set()
 
     def extract(
         self,
         canonical_key: str,
-        us_gaap: Dict,
-        target_period_end: Optional[str] = None,
-        target_fiscal_year: Optional[int] = None,
-        target_fiscal_period: Optional[str] = None,
-        target_adsh: Optional[str] = None,
-        fiscal_year_end: Optional[str] = None,
+        us_gaap: dict,
+        target_period_end: str | None = None,
+        target_fiscal_year: int | None = None,
+        target_fiscal_period: str | None = None,
+        target_adsh: str | None = None,
+        fiscal_year_end: str | None = None,
         tolerance_days: int = 7,
     ) -> ExtractionResult:
         """
@@ -349,7 +349,7 @@ class MetricExtractionOrchestrator:
         canonical_key: str,
         failure_key: tuple,
         failure_msg: str,
-        target_period_end: Optional[str],
+        target_period_end: str | None,
     ) -> None:
         """Log extraction failures with duplicate suppression and warning throttling."""
         if self._is_historical_optional_gap(canonical_key, target_period_end):
@@ -388,7 +388,7 @@ class MetricExtractionOrchestrator:
             canonical_key,
         )
 
-    def _is_historical_optional_gap(self, canonical_key: str, target_period_end: Optional[str]) -> bool:
+    def _is_historical_optional_gap(self, canonical_key: str, target_period_end: str | None) -> bool:
         """Downgrade optional-metric misses for very old history to DEBUG."""
         if canonical_key not in self.HISTORICAL_OPTIONAL_WARNING_KEYS:
             return False
@@ -403,7 +403,7 @@ class MetricExtractionOrchestrator:
         age_days = (datetime.utcnow() - period_end).days
         return age_days >= self.HISTORICAL_WARNING_CUTOFF_YEARS * 365
 
-    def _get_expected_month_for_quarter(self, fiscal_period: Optional[str]) -> Optional[int]:
+    def _get_expected_month_for_quarter(self, fiscal_period: str | None) -> int | None:
         """
         Get the expected month for a fiscal quarter based on period_end_date.
 
@@ -431,7 +431,7 @@ class MetricExtractionOrchestrator:
         }
         return quarter_month_map.get(fiscal_period)
 
-    def _validate_quarter_by_period_end(self, entry: Dict, target_fiscal_period: str) -> bool:
+    def _validate_quarter_by_period_end(self, entry: dict, target_fiscal_period: str) -> bool:
         """
         Validate that an entry's period_end_date matches the expected quarter.
 
@@ -469,14 +469,11 @@ class MetricExtractionOrchestrator:
             if month_diff <= 1:
                 return True
             # Handle year wraparound (Dec vs Jan)
-            if month_diff >= 11:
-                return True
-
-            return False
+            return month_diff >= 11
         except ValueError:
             return False
 
-    def _select_best_entry(self, entries: List[Dict], target_fiscal_period: Optional[str]) -> Optional[Dict]:
+    def _select_best_entry(self, entries: list[dict], target_fiscal_period: str | None) -> dict | None:
         """
         Select best entry from matched entries with multi-layer preference.
 
@@ -606,7 +603,7 @@ class MetricExtractionOrchestrator:
 
         return entries[0] if entries else None
 
-    def _log_duplicate_values(self, entries: List[Dict], target_fiscal_period: Optional[str]) -> None:
+    def _log_duplicate_values(self, entries: list[dict], target_fiscal_period: str | None) -> None:
         """
         Log warning when multiple competing values exist for the same period.
 
@@ -643,9 +640,9 @@ class MetricExtractionOrchestrator:
 
     def _check_value_anomaly(
         self,
-        best_entry: Dict,
-        entries_with_days: List[tuple],
-        target_fiscal_period: Optional[str],
+        best_entry: dict,
+        entries_with_days: list[tuple],
+        target_fiscal_period: str | None,
     ) -> None:
         """
         Check if selected value is anomalous (>2x median) compared to other entries.
@@ -728,10 +725,10 @@ class MetricExtractionOrchestrator:
     def _try_derived_value(
         self,
         canonical_key: str,
-        us_gaap: Dict,
+        us_gaap: dict,
         context: MatchContext,
-        audit: Optional[ExtractionAudit],
-    ) -> Optional[ExtractionResult]:
+        audit: ExtractionAudit | None,
+    ) -> ExtractionResult | None:
         """
         Try to calculate derived value from other metrics.
 
@@ -783,7 +780,7 @@ class MetricExtractionOrchestrator:
 
         return None
 
-    def _evaluate_formula(self, formula: str, components: Dict[str, float]) -> Optional[float]:
+    def _evaluate_formula(self, formula: str, components: dict[str, float]) -> float | None:
         """
         Safely evaluate a simple arithmetic formula.
 
@@ -806,7 +803,7 @@ class MetricExtractionOrchestrator:
         except Exception:
             return None
 
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> dict:
         """Get extraction statistics."""
         success_rate = self.stats["successes"] / self.stats["extractions"] * 100 if self.stats["extractions"] > 0 else 0
         return {**self.stats, "success_rate": f"{success_rate:.1f}%"}

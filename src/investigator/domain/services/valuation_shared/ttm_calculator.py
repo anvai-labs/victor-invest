@@ -24,7 +24,7 @@ Example:
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, ClassVar
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class TTMCalculator:
     """
 
     # Flow metrics that should be summed for TTM
-    FLOW_METRICS = {
+    FLOW_METRICS: ClassVar[dict] = {
         "income_statement": [
             "total_revenue",
             "net_income",
@@ -57,7 +57,7 @@ class TTMCalculator:
     }
 
     # Stock metrics that use most recent value (not summed)
-    STOCK_METRICS = {
+    STOCK_METRICS: ClassVar[dict] = {
         "balance_sheet": [
             "total_assets",
             "total_liabilities",
@@ -70,7 +70,7 @@ class TTMCalculator:
         ],
     }
 
-    def detect_data_format(self, data: Union[Dict, List]) -> str:
+    def detect_data_format(self, data: dict | list) -> str:
         """
         Detect the format of input financial data.
 
@@ -127,9 +127,9 @@ class TTMCalculator:
 
     def calculate_ttm(
         self,
-        data: Union[Dict, List[Dict]],
+        data: dict | list[dict],
         require_full_year: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Calculate TTM metrics from input data.
 
@@ -187,7 +187,7 @@ class TTMCalculator:
         logger.warning(f"Unknown data format: {data_format}")
         return {}
 
-    def _fy_to_ttm(self, data: Union[Dict, List]) -> Dict[str, Any]:
+    def _fy_to_ttm(self, data: dict | list) -> dict[str, Any]:
         """
         Convert SEC FY data to TTM format.
 
@@ -250,9 +250,9 @@ class TTMCalculator:
 
     def _quarterly_to_ttm(
         self,
-        quarters: List[Dict],
+        quarters: list[dict],
         require_full_year: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Calculate TTM by summing 4 quarters of data.
 
@@ -315,7 +315,7 @@ class TTMCalculator:
             },
         }
 
-    def _flat_to_ttm(self, data: Union[Dict, List]) -> Dict[str, Any]:
+    def _flat_to_ttm(self, data: dict | list) -> dict[str, Any]:
         """
         Convert flat structure to TTM format.
 
@@ -360,10 +360,10 @@ class TTMCalculator:
 
     def get_metric(
         self,
-        ttm_data: Dict[str, Any],
+        ttm_data: dict[str, Any],
         metric_name: str,
-        default: Optional[float] = None,
-    ) -> Optional[float]:
+        default: float | None = None,
+    ) -> float | None:
         """
         Extract a specific metric from TTM data.
 

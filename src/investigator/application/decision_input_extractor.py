@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import Any, Iterable, Optional
+import math
+from collections.abc import Iterable, Mapping
+from typing import Any
 
 from investigator.domain.services.investment_decision_policy import DecisionInputs
 
@@ -278,7 +279,7 @@ def from_ui_cache_summary(summary: Mapping[str, Any]) -> DecisionInputs:
     )
 
 
-def _expected_return_for_payload(payload: Mapping[str, Any], paths: Iterable[tuple[str, ...]]) -> Optional[float]:
+def _expected_return_for_payload(payload: Mapping[str, Any], paths: Iterable[tuple[str, ...]]) -> float | None:
     expected_return = _first_number(payload, paths)
     if expected_return is not None:
         return expected_return
@@ -297,7 +298,7 @@ def _expected_return_for_payload(payload: Mapping[str, Any], paths: Iterable[tup
     )
 
 
-def _extract_recommendation(payload: Mapping[str, Any]) -> Optional[str]:
+def _extract_recommendation(payload: Mapping[str, Any]) -> str | None:
     value = _first_value(
         payload,
         (
@@ -329,7 +330,7 @@ def _first_value(payload: Mapping[str, Any], paths: Iterable[tuple[str, ...]]) -
     return None
 
 
-def _first_number(payload: Mapping[str, Any], paths: Iterable[tuple[str, ...]]) -> Optional[float]:
+def _first_number(payload: Mapping[str, Any], paths: Iterable[tuple[str, ...]]) -> float | None:
     for path in paths:
         value = _to_float(_get_path(payload, path))
         if value is not None:
@@ -337,7 +338,7 @@ def _first_number(payload: Mapping[str, Any], paths: Iterable[tuple[str, ...]]) 
     return None
 
 
-def _first_int(payload: Mapping[str, Any], paths: Iterable[tuple[str, ...]]) -> Optional[int]:
+def _first_int(payload: Mapping[str, Any], paths: Iterable[tuple[str, ...]]) -> int | None:
     for path in paths:
         value = _to_int(_get_path(payload, path))
         if value is not None:
@@ -356,33 +357,33 @@ def _get_path(payload: Mapping[str, Any], path: tuple[str, ...]) -> Any:
     return current
 
 
-def _to_float(value: Any) -> Optional[float]:
+def _to_float(value: Any) -> float | None:
     try:
         if value is None or value == "":
             return None
         number = float(value)
-        if number != number:
+        if math.isnan(number):
             return None
         return number
     except (TypeError, ValueError):
         return None
 
 
-def _to_int(value: Any) -> Optional[int]:
+def _to_int(value: Any) -> int | None:
     number = _to_float(value)
     if number is None:
         return None
     return int(number)
 
 
-def _to_optional_str(value: Any) -> Optional[str]:
+def _to_optional_str(value: Any) -> str | None:
     if value is None:
         return None
     text = str(value).strip()
     return text or None
 
 
-def _normalize_agreement(value: Optional[float]) -> Optional[float]:
+def _normalize_agreement(value: float | None) -> float | None:
     if value is None:
         return None
     if value > 1.0:
@@ -390,7 +391,7 @@ def _normalize_agreement(value: Optional[float]) -> Optional[float]:
     return round(value, 4)
 
 
-def _normalize_quality(value: Optional[float]) -> Optional[float]:
+def _normalize_quality(value: float | None) -> float | None:
     if value is None:
         return None
     if 0.0 <= value <= 1.0:
@@ -398,7 +399,7 @@ def _normalize_quality(value: Optional[float]) -> Optional[float]:
     return round(value, 2)
 
 
-def _derive_expected_return(current_price: Optional[float], fair_value: Optional[float]) -> Optional[float]:
+def _derive_expected_return(current_price: float | None, fair_value: float | None) -> float | None:
     if current_price is None or fair_value is None or current_price <= 0:
         return None
     return round(((fair_value / current_price) - 1.0) * 100.0, 2)

@@ -6,10 +6,10 @@ Async client for interacting with Ollama's REST API
 import asyncio
 import json
 import logging
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import AsyncIterator, Dict, List, Optional, Set, Union
 
 import aiohttp
 
@@ -21,9 +21,9 @@ class OllamaError(Exception):
     def __init__(
         self,
         message: str,
-        status_code: Optional[int] = None,
-        endpoint: Optional[str] = None,
-        model: Optional[str] = None,
+        status_code: int | None = None,
+        endpoint: str | None = None,
+        model: str | None = None,
     ):
         self.status_code = status_code
         self.endpoint = endpoint
@@ -44,19 +44,13 @@ class OllamaError(Exception):
 class OllamaHTTPError(OllamaError):
     """HTTP error from Ollama API (4xx/5xx responses)"""
 
-    pass
-
 
 class OllamaConnectionError(OllamaError):
     """Connection error to Ollama server"""
 
-    pass
-
 
 class OllamaTimeoutError(OllamaError):
     """Timeout error from Ollama server"""
-
-    pass
 
 
 class OllamaModel(Enum):
@@ -99,8 +93,8 @@ class ModelConfig:
     top_p: float = 0.9
     top_k: int = 40
     num_predict: int = 4096
-    stop: Optional[List[str]] = None
-    seed: Optional[int] = None
+    stop: list[str] | None = None
+    seed: int | None = None
     num_ctx: int = 16384  # CRITICAL: Increased from 4096 to 16384 for detailed prompts
     repeat_penalty: float = 1.1
     mirostat: int = 0
@@ -126,11 +120,11 @@ class OllamaClient:
         self.verbose = False
 
         # Session management
-        self._session: Optional[aiohttp.ClientSession] = None
+        self._session: aiohttp.ClientSession | None = None
 
         # Model management
-        self.loaded_models: Set[str] = set()
-        self.model_info: Dict[str, Dict] = {}
+        self.loaded_models: set[str] = set()
+        self.model_info: dict[str, dict] = {}
 
         # Performance tracking
         self.request_count = 0
@@ -138,7 +132,7 @@ class OllamaClient:
         self.total_duration = 0
 
     @staticmethod
-    def _estimate_tokens(text: Optional[str]) -> int:
+    def _estimate_tokens(text: str | None) -> int:
         """Very rough heuristic to estimate token count from text length"""
         if not text:
             return 0
@@ -181,7 +175,7 @@ class OllamaClient:
             self.logger.error(f"Ollama health check failed: {e}")
             return False
 
-    async def list_models(self) -> List[Dict]:
+    async def list_models(self) -> list[dict]:
         """List available models"""
         try:
             async with self._session.get(f"{self.base_url}/api/tags") as response:
@@ -200,7 +194,7 @@ class OllamaClient:
             self.logger.error(f"Failed to list models: {e}")
             return []
 
-    async def pull_model(self, model: str, stream: bool = True) -> AsyncIterator[Dict]:
+    async def pull_model(self, model: str, stream: bool = True) -> AsyncIterator[dict]:
         """Pull a model from Ollama registry"""
         # Ensure session is connected
         if not self._session:
@@ -238,7 +232,7 @@ class OllamaClient:
                 model=model,
             )
 
-        except asyncio.TimeoutError as e:
+        except TimeoutError as e:
             raise OllamaTimeoutError(f"Timeout pulling model '{model}': {e}", endpoint=endpoint, model=model)
 
         except Exception as e:
@@ -249,14 +243,14 @@ class OllamaClient:
         self,
         model: str,
         prompt: str,
-        system: Optional[str] = None,
-        format: Optional[str] = None,
-        images: Optional[List[str]] = None,
-        config: Optional[ModelConfig] = None,
+        system: str | None = None,
+        format: str | None = None,
+        images: list[str] | None = None,
+        config: ModelConfig | None = None,
         stream: bool = False,
-        prompt_name: Optional[str] = None,
+        prompt_name: str | None = None,
         **extra_kwargs,
-    ) -> Union[Dict, AsyncIterator[Dict]]:
+    ) -> dict | AsyncIterator[dict]:
         """
         Generate completion from model
 
@@ -431,10 +425,10 @@ class OllamaClient:
 
     async def _make_generation_request(
         self,
-        payload: Dict,
+        payload: dict,
         stream: bool,
-        prompt_name: Optional[str] = None,
-    ) -> Union[Dict, AsyncIterator]:
+        prompt_name: str | None = None,
+    ) -> dict | AsyncIterator:
         """Make generation request with proper handling"""
         # Ensure session is connected
         if not self._session:
@@ -551,9 +545,9 @@ class OllamaClient:
         self,
         response: aiohttp.ClientResponse,
         start_time: datetime,
-        prompt_name: Optional[str] = None,
-        model: Optional[str] = None,
-    ) -> AsyncIterator[Dict]:
+        prompt_name: str | None = None,
+        model: str | None = None,
+    ) -> AsyncIterator[dict]:
         """Stream response from Ollama"""
         full_response = ""
 
@@ -583,7 +577,7 @@ class OllamaClient:
 
                 yield chunk
 
-    async def embeddings(self, model: str, prompt: str) -> List[float]:
+    async def embeddings(self, model: str, prompt: str) -> list[float]:
         """Generate embeddings for text"""
         payload = {"model": model, "prompt": prompt}
 
@@ -598,11 +592,11 @@ class OllamaClient:
     async def chat(
         self,
         model: str,
-        messages: List[Dict],
-        format: Optional[str] = None,
-        config: Optional[ModelConfig] = None,
+        messages: list[dict],
+        format: str | None = None,
+        config: ModelConfig | None = None,
         stream: bool = False,
-    ) -> Union[Dict, AsyncIterator[Dict]]:
+    ) -> dict | AsyncIterator[dict]:
         """
         Chat completion with conversation context
 
@@ -642,14 +636,14 @@ class OllamaClient:
             self.logger.error(f"Chat completion failed: {e}")
             raise
 
-    async def _stream_chat_response(self, response: aiohttp.ClientResponse) -> AsyncIterator[Dict]:
+    async def _stream_chat_response(self, response: aiohttp.ClientResponse) -> AsyncIterator[dict]:
         """Stream chat response"""
         async for line in response.content:
             if line:
                 chunk = json.loads(line)
                 yield chunk
 
-    def _update_metrics(self, result: Dict, start_time: datetime):
+    def _update_metrics(self, result: dict, start_time: datetime):
         """Update performance metrics"""
         self.request_count += 1
 
@@ -663,7 +657,7 @@ class OllamaClient:
         duration = (datetime.now() - start_time).total_seconds()
         self.total_duration += duration
 
-    async def get_metrics(self) -> Dict:
+    async def get_metrics(self) -> dict:
         """Get client performance metrics"""
         avg_duration = self.total_duration / self.request_count if self.request_count > 0 else 0
 
@@ -690,7 +684,7 @@ class OllamaClient:
             self.logger.error(f"Failed to unload model {model}: {e}")
             return False
 
-    async def model_info(self, model: str) -> Dict:
+    async def model_info(self, model: str) -> dict:
         """Get detailed model information"""
         payload = {"name": model}
 
@@ -906,7 +900,7 @@ class OllamaModelSelector:
             },
         }
 
-    def select_model(self, task_type: str, requirements: Dict) -> str:
+    def select_model(self, task_type: str, requirements: dict) -> str:
         """
         Select optimal model based on task requirements (updated for actual installed models)
 
@@ -968,7 +962,7 @@ class OllamaModelSelector:
                 # Standard context (<8K)
                 return OllamaModel.MISTRAL_7B.value  # Fast + good quality
 
-    async def benchmark_models(self, prompt: str, models: Optional[List[str]] = None) -> Dict:
+    async def benchmark_models(self, prompt: str, models: list[str] | None = None) -> dict:
         """Benchmark multiple models on the same prompt"""
         if not models:
             models = [m.value for m in OllamaModel]

@@ -9,7 +9,7 @@ Author: Claude Code
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -71,11 +71,11 @@ class TerminalGrowthCalculator:
         self.symbol = symbol
         self.sector = sector
         self.base_terminal_growth = base_terminal_growth
-        self.last_calculation: Optional[Dict[str, Any]] = None
+        self.last_calculation: dict[str, Any] | None = None
 
     def calculate_terminal_growth(
         self, rule_of_40_score: float, revenue_growth_pct: float, fcf_margin_pct: float
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Calculate terminal growth rate with quality adjustments
 
@@ -192,7 +192,7 @@ class TerminalGrowthCalculator:
 
         return tier, adjustment, reason
 
-    def get_last_calculation(self) -> Optional[Dict[str, Any]]:
+    def get_last_calculation(self) -> dict[str, Any] | None:
         """
         Get the most recent terminal growth calculation
 

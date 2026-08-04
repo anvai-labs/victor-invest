@@ -66,19 +66,19 @@ from investigator.domain.services.market_regime.yield_curve_analyzer import (
 )
 
 __all__ = [
+    "CreditCycleAnalysis",
+    # Credit Cycle
+    "CreditCycleAnalyzer",
+    "EconomicPhase",
+    "InvestmentSignal",
+    "RecessionAssessment",
+    # Recession
+    "RecessionIndicator",
+    "YieldCurveAnalysis",
     # Yield Curve
     "YieldCurveAnalyzer",
     "YieldCurveShape",
-    "YieldCurveAnalysis",
-    "InvestmentSignal",
-    "get_yield_curve_analyzer",
-    # Recession
-    "RecessionIndicator",
-    "RecessionAssessment",
-    "EconomicPhase",
-    "get_recession_indicator",
-    # Credit Cycle
-    "CreditCycleAnalyzer",
-    "CreditCycleAnalysis",
     "get_credit_cycle_analyzer",
+    "get_recession_indicator",
+    "get_yield_curve_analyzer",
 ]

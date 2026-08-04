@@ -21,7 +21,7 @@ to identify mean reversion opportunities and consistent premium/discount pattern
 import logging
 import statistics
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 from sqlalchemy import create_engine, text
 
@@ -81,7 +81,7 @@ class CompanyPremiumHistory:
         metric: str = "pe",
         lookback_years: int = 5,
         min_data_points: int = 4,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Get historical premium/discount statistics for a company.
 
         Args:
@@ -237,7 +237,7 @@ class CompanyPremiumHistory:
         metric: str = "pe",
         z_threshold: float = 1.5,
         lookback_years: int = 5,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Detect mean reversion opportunity.
 
         Args:
@@ -301,7 +301,7 @@ class CompanyPremiumHistory:
         symbol: str,
         fiscal_year: int,
         fiscal_period: str = "FY",
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Calculate company's premium/discount for a specific period.
 
         Args:
@@ -371,7 +371,7 @@ class CompanyPremiumHistory:
 
         return result
 
-    def _get_sector_classification(self, symbol: str) -> Optional[Dict[str, Optional[str]]]:
+    def _get_sector_classification(self, symbol: str) -> dict[str, str | None] | None:
         """Get company's sector/industry classification.
 
         Args:
@@ -397,7 +397,7 @@ class CompanyPremiumHistory:
 
         return None
 
-    def _get_company_multiples(self, symbol: str, fiscal_year: int, fiscal_period: str) -> Optional[Dict[str, Any]]:
+    def _get_company_multiples(self, symbol: str, fiscal_year: int, fiscal_period: str) -> dict[str, Any] | None:
         """Get company's valuation multiples for a period.
 
         Args:
@@ -477,7 +477,7 @@ class CompanyPremiumHistory:
 
             return multiples if len(multiples) > 1 else None
 
-    def _get_sector_multiples(self, sector: str, fiscal_year: int, fiscal_period: str) -> Optional[Dict[str, float]]:
+    def _get_sector_multiples(self, sector: str, fiscal_year: int, fiscal_period: str) -> dict[str, float] | None:
         """Get sector's median multiples for a period.
 
         Args:
@@ -495,7 +495,7 @@ class CompanyPremiumHistory:
         # For quarterly data, calculate on-the-fly
         return self._calculate_sector_multiples_period(sector, fiscal_year, fiscal_period)
 
-    def _get_sector_multiples_from_history(self, sector: str, fiscal_year: int) -> Optional[Dict[str, float]]:
+    def _get_sector_multiples_from_history(self, sector: str, fiscal_year: int) -> dict[str, float] | None:
         """Get sector multiples from sector_multiples_history table.
 
         Args:
@@ -535,7 +535,7 @@ class CompanyPremiumHistory:
 
     def _calculate_sector_multiples_period(
         self, sector: str, fiscal_year: int, fiscal_period: str
-    ) -> Optional[Dict[str, float]]:
+    ) -> dict[str, float] | None:
         """Calculate sector multiples for a specific period on-the-fly.
 
         Args:
@@ -554,7 +554,7 @@ class CompanyPremiumHistory:
         )
         return None
 
-    def store_premium_record(self, premium_data: Dict[str, Any], update_existing: bool = True) -> bool:
+    def store_premium_record(self, premium_data: dict[str, Any], update_existing: bool = True) -> bool:
         """Store premium record in database.
 
         Args:

@@ -64,7 +64,7 @@ Example:
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from victor_invest.tools.base import BaseTool, ToolResult
 
@@ -142,14 +142,14 @@ Parameters:
 Example indicators: DGS10 (10Y Treasury), FEDFUNDS (Fed Funds Rate), VIXCLS (VIX), GDP, UNRATE (Unemployment), CPIAUCSL (CPI)
 """
 
-    def __init__(self, config: Optional[Any] = None):
+    def __init__(self, config: Any | None = None):
         """Initialize Macro Data Tool.
 
         Args:
             config: Optional investigator config object.
         """
         super().__init__(config)
-        self._fetcher: Optional[Any] = None
+        self._fetcher: Any | None = None
 
     async def initialize(self) -> None:
         """Initialize FRED infrastructure components."""
@@ -168,11 +168,11 @@ Example indicators: DGS10 (10Y Treasury), FEDFUNDS (Fed Funds Rate), VIXCLS (VIX
 
     async def execute(
         self,
-        _exec_ctx: Optional[Dict[str, Any]] = None,
+        _exec_ctx: dict[str, Any] | None = None,
         action: str = "get_summary",
-        category: Optional[str] = None,
-        indicators: Optional[List[str]] = None,
-        indicator_id: Optional[str] = None,
+        category: str | None = None,
+        indicators: list[str] | None = None,
+        indicator_id: str | None = None,
         lookback_days: int = 1095,
         limit: int = 1000,
         **kwargs,
@@ -223,7 +223,7 @@ Example indicators: DGS10 (10Y Treasury), FEDFUNDS (Fed Funds Rate), VIXCLS (VIX
 
         except Exception as e:
             logger.error(f"MacroDataTool execute error: {e}")
-            return ToolResult.create_failure(f"Macro data operation failed: {str(e)}", metadata={"action": action})
+            return ToolResult.create_failure(f"Macro data operation failed: {e!s}", metadata={"action": action})
 
     async def _get_summary(self) -> ToolResult:
         """Get comprehensive macro summary with alerts.
@@ -279,9 +279,9 @@ Example indicators: DGS10 (10Y Treasury), FEDFUNDS (Fed Funds Rate), VIXCLS (VIX
 
         except Exception as e:
             logger.error(f"Error getting macro summary: {e}")
-            return ToolResult.create_failure(f"Failed to get macro summary: {str(e)}")
+            return ToolResult.create_failure(f"Failed to get macro summary: {e!s}")
 
-    async def _get_category(self, category: Optional[str], lookback_days: int) -> ToolResult:
+    async def _get_category(self, category: str | None, lookback_days: int) -> ToolResult:
         """Get indicators for a specific category.
 
         Args:
@@ -328,9 +328,9 @@ Example indicators: DGS10 (10Y Treasury), FEDFUNDS (Fed Funds Rate), VIXCLS (VIX
 
         except Exception as e:
             logger.error(f"Error getting category {category}: {e}")
-            return ToolResult.create_failure(f"Failed to get category data: {str(e)}")
+            return ToolResult.create_failure(f"Failed to get category data: {e!s}")
 
-    async def _get_indicators(self, indicators: Optional[List[str]], lookback_days: int) -> ToolResult:
+    async def _get_indicators(self, indicators: list[str] | None, lookback_days: int) -> ToolResult:
         """Get specific indicators by ID.
 
         Args:
@@ -384,9 +384,9 @@ Example indicators: DGS10 (10Y Treasury), FEDFUNDS (Fed Funds Rate), VIXCLS (VIX
 
         except Exception as e:
             logger.error(f"Error getting indicators: {e}")
-            return ToolResult.create_failure(f"Failed to get indicators: {str(e)}")
+            return ToolResult.create_failure(f"Failed to get indicators: {e!s}")
 
-    async def _get_time_series(self, indicator_id: Optional[str], limit: int) -> ToolResult:
+    async def _get_time_series(self, indicator_id: str | None, limit: int) -> ToolResult:
         """Get historical time series for an indicator.
 
         Args:
@@ -456,7 +456,7 @@ Example indicators: DGS10 (10Y Treasury), FEDFUNDS (Fed Funds Rate), VIXCLS (VIX
 
         except Exception as e:
             logger.error(f"Error getting time series for {indicator_id}: {e}")
-            return ToolResult.create_failure(f"Failed to get time series: {str(e)}")
+            return ToolResult.create_failure(f"Failed to get time series: {e!s}")
 
     async def _get_buffett_indicator(self) -> ToolResult:
         """Calculate Buffett Indicator (Total Market Cap / GDP).
@@ -511,7 +511,7 @@ Example indicators: DGS10 (10Y Treasury), FEDFUNDS (Fed Funds Rate), VIXCLS (VIX
 
         except Exception as e:
             logger.error(f"Error calculating Buffett Indicator: {e}")
-            return ToolResult.create_failure(f"Failed to calculate Buffett Indicator: {str(e)}")
+            return ToolResult.create_failure(f"Failed to calculate Buffett Indicator: {e!s}")
 
     async def _list_categories(self) -> ToolResult:
         """List available categories and their indicators.
@@ -535,7 +535,7 @@ Example indicators: DGS10 (10Y Treasury), FEDFUNDS (Fed Funds Rate), VIXCLS (VIX
             metadata={"source": "static_mapping"},
         )
 
-    def _format_category_data(self, data: Dict) -> Dict:
+    def _format_category_data(self, data: dict) -> dict:
         """Format indicator data for clean output.
 
         Args:
@@ -569,7 +569,7 @@ Example indicators: DGS10 (10Y Treasury), FEDFUNDS (Fed Funds Rate), VIXCLS (VIX
 
         return formatted
 
-    def get_schema(self) -> Dict[str, Any]:
+    def get_schema(self) -> dict[str, Any]:
         """Get JSON schema for Macro Data Tool parameters."""
         return {
             "type": "object",

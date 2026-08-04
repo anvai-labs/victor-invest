@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from victor.framework import Agent
 
@@ -75,7 +75,7 @@ def resolve_provider_from_env(fallback: str = "ollama") -> str:
     return fallback
 
 
-def resolve_model_from_env(provider: str, model: Optional[str]) -> Optional[str]:
+def resolve_model_from_env(provider: str, model: str | None) -> str | None:
     """Resolve model name from Victor framework environment variables.
 
     Priority:
@@ -142,7 +142,7 @@ def resolve_model_from_env(provider: str, model: Optional[str]) -> Optional[str]
     return None
 
 
-def resolve_investment_model(provider: str, model: Optional[str]) -> Optional[str]:
+def resolve_investment_model(provider: str, model: str | None) -> str | None:
     """Resolve model for investment workflows with provider-aware defaults.
 
     This function now delegates to resolve_model_from_env for unified
@@ -160,7 +160,7 @@ def resolve_investment_model(provider: str, model: Optional[str]) -> Optional[st
 
 def prepare_orchestrator_for_investment(
     orchestrator,
-    warning_callback: Optional[Callable[[str], None]] = None,
+    warning_callback: Callable[[str], None] | None = None,
 ) -> None:
     """Register and enable investment tools on a Victor orchestrator."""
     warn = warning_callback or logger.warning
@@ -182,13 +182,13 @@ def prepare_orchestrator_for_investment(
 
 
 async def create_investment_orchestrator(
-    provider: Optional[str] = None,
-    model: Optional[str] = None,
+    provider: str | None = None,
+    model: str | None = None,
     *,
-    ensure_handlers: Optional[Callable[[], None]] = None,
+    ensure_handlers: Callable[[], None] | None = None,
     temperature: float = 0.3,
     max_tokens: int = 4096,
-    warning_callback: Optional[Callable[[str], None]] = None,
+    warning_callback: Callable[[str], None] | None = None,
 ):
     """Create Victor orchestrator preconfigured for investment workflows.
 
@@ -233,9 +233,9 @@ async def create_investment_orchestrator(
 __all__ = [
     "DEFAULT_SYNTHESIS_MODEL",
     "PROVIDER_DEFAULT_MODELS",
-    "resolve_provider_from_env",
-    "resolve_model_from_env",
-    "resolve_investment_model",
-    "prepare_orchestrator_for_investment",
     "create_investment_orchestrator",
+    "prepare_orchestrator_for_investment",
+    "resolve_investment_model",
+    "resolve_model_from_env",
+    "resolve_provider_from_env",
 ]

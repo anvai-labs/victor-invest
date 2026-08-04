@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - SEC Data Facade Pattern
 Copyright (c) 2025 Vijaykumar Singh
@@ -11,7 +10,7 @@ Provides simplified interface for SEC data operations using design patterns
 import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from data.models import FinancialStatementData, QuarterlyData
 from investigator.config import get_config
@@ -67,8 +66,8 @@ class SECDataFacade:
         self.default_strategy = "hybrid"
 
     def get_recent_quarterly_data(
-        self, symbol: str, max_periods: int = 8, strategy: Optional[str] = None
-    ) -> List[QuarterlyData]:
+        self, symbol: str, max_periods: int = 8, strategy: str | None = None
+    ) -> list[QuarterlyData]:
         """
         Get recent quarterly data for a symbol.
 
@@ -108,7 +107,7 @@ class SECDataFacade:
             self.logger.error(f"Error getting quarterly data for {symbol}: {e}")
             return []
 
-    def get_company_facts(self, symbol: str) -> Optional[Dict[str, Any]]:
+    def get_company_facts(self, symbol: str) -> dict[str, Any] | None:
         """Get company facts with caching"""
         try:
             cik = self.ticker_mapper.resolve_cik(symbol)
@@ -122,7 +121,7 @@ class SECDataFacade:
             self.logger.error(f"Error getting company facts for {symbol}: {e}")
             return None
 
-    def get_latest_filing(self, symbol: str, form_type: str = "10-K") -> Optional[Dict[str, Any]]:
+    def get_latest_filing(self, symbol: str, form_type: str = "10-K") -> dict[str, Any] | None:
         """Get latest SEC filing for a symbol"""
         try:
             cik = self.ticker_mapper.get_cik_padded(symbol)
@@ -183,11 +182,11 @@ class SECDataFacade:
             self.logger.error(f"Error getting filing content: {e}")
             return ""
 
-    def format_for_llm(self, quarterly_data: List[QuarterlyData]) -> str:
+    def format_for_llm(self, quarterly_data: list[QuarterlyData]) -> str:
         """Format quarterly data for LLM consumption"""
         return self.llm_adapter.adapt(quarterly_data)
 
-    def get_detailed_categories(self, symbol: str, fiscal_year: int, fiscal_period: str) -> Dict[str, Any]:
+    def get_detailed_categories(self, symbol: str, fiscal_year: int, fiscal_period: str) -> dict[str, Any]:
         """Get detailed financial categories for a specific period"""
         try:
             # Get company facts
@@ -232,15 +231,15 @@ class SECDataFacade:
                 )
 
             # Populate income statement
-            income_categories = [k for k in detailed.keys() if k.startswith("income_statement_")]
+            income_categories = [k for k in detailed if k.startswith("income_statement_")]
             quarterly_data.financial_data.income_statement = {cat: detailed[cat] for cat in income_categories}
 
             # Populate balance sheet
-            balance_categories = [k for k in detailed.keys() if k.startswith("balance_sheet_")]
+            balance_categories = [k for k in detailed if k.startswith("balance_sheet_")]
             quarterly_data.financial_data.balance_sheet = {cat: detailed[cat] for cat in balance_categories}
 
             # Populate cash flow
-            cashflow_categories = [k for k in detailed.keys() if k.startswith("cash_flow_")]
+            cashflow_categories = [k for k in detailed if k.startswith("cash_flow_")]
             quarterly_data.financial_data.cash_flow_statement = {cat: detailed[cat] for cat in cashflow_categories}
 
             # Store comprehensive data
@@ -274,7 +273,7 @@ class FundamentalAnalysisFacadeV2:
 
         # Observer pattern removed - using direct logging instead
 
-    def analyze_symbol(self, symbol: str, **options) -> Dict[str, Any]:
+    def analyze_symbol(self, symbol: str, **options) -> dict[str, Any]:
         """
         Perform fundamental analysis for a symbol.
 
@@ -450,7 +449,7 @@ class FundamentalAnalysisFacadeV2:
 
     # Observer pattern removed - using direct logging for progress tracking
 
-    def _create_analysis_prompt(self, symbol: str, aggregated: Dict, llm_data: str) -> str:
+    def _create_analysis_prompt(self, symbol: str, aggregated: dict, llm_data: str) -> str:
         """Create prompt for LLM analysis"""
         return f"""
 Analyze the fundamental financial health of {symbol} based on the following data:
@@ -471,7 +470,7 @@ Please provide:
 Format as JSON.
 """
 
-    def _parse_analysis_response(self, response: str, symbol: str, aggregated: Dict) -> Dict[str, Any]:
+    def _parse_analysis_response(self, response: str, symbol: str, aggregated: dict) -> dict[str, Any]:
         """Parse LLM response"""
         try:
             from investigator.infrastructure.utils.json_utils import (
@@ -506,13 +505,13 @@ Format as JSON.
             self.logger.error(f"Error parsing response: {e}")
             return self._create_error_result(symbol, "Failed to parse analysis")
 
-    def _create_error_result(self, symbol: str, error: str) -> Dict[str, Any]:
+    def _create_error_result(self, symbol: str, error: str) -> dict[str, Any]:
         """Raise error instead of returning default values"""
         error_msg = f"SEC analysis failed for {symbol}: {error}"
         self.logger.error(error_msg)
         raise RuntimeError(error_msg)
 
-    def _analyze_single_quarter(self, symbol: str, quarter_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _analyze_single_quarter(self, symbol: str, quarter_data: dict[str, Any]) -> dict[str, Any]:
         """Analyze a single quarter's financial data"""
         try:
             from investigator.application.prompts import get_prompt_manager
@@ -558,8 +557,8 @@ Format as JSON.
             return {"error": str(e)}
 
     def _create_comprehensive_fundamental_analysis(
-        self, symbol: str, quarterly_analyses: List[Dict], aggregated_data: Dict
-    ) -> Dict[str, Any]:
+        self, symbol: str, quarterly_analyses: list[dict], aggregated_data: dict
+    ) -> dict[str, Any]:
         """Create comprehensive analysis from quarterly analyses"""
         try:
             from investigator.application.prompts import get_prompt_manager
@@ -694,7 +693,7 @@ Provide analysis in the following exact JSON format:
             self.logger.error(f"Error creating comprehensive analysis: {e}")
             return {"error": str(e), "quarterly_analyses": quarterly_analyses}
 
-    def _calculate_and_cache_quarterly_metrics(self, quarterly_data: List, symbol: str) -> None:
+    def _calculate_and_cache_quarterly_metrics(self, quarterly_data: list, symbol: str) -> None:
         """Calculate comprehensive quarterly metrics and cache them to RDBMS"""
         try:
             from investigator.infrastructure.cache import get_cache_manager

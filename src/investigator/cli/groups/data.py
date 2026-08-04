@@ -21,7 +21,6 @@ def data(ctx):
         investigator data health
         investigator data summary AAPL
     """
-    pass
 
 
 @data.command("list")

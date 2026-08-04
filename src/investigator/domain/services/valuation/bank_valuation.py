@@ -30,7 +30,6 @@ Date: 2025-12-30
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +55,7 @@ class BankType(Enum):
 
 # Target Net Interest Margin (NIM) by bank type
 # NIM = (Interest Income - Interest Expense) / Average Earning Assets
-TARGET_NIM: Dict[BankType, float] = {
+TARGET_NIM: dict[BankType, float] = {
     BankType.REGIONAL: 0.030,  # 3.0% - Regional banks typically have higher NIM
     BankType.DIVERSIFIED: 0.025,  # 2.5% - Diversified banks have lower NIM due to mix
     BankType.INVESTMENT: 0.015,  # 1.5% - Investment banks rely less on NIM
@@ -68,7 +67,7 @@ TARGET_NIM: Dict[BankType, float] = {
 # Well-capitalized banks should have Tier 1 > 10%
 # Adequately capitalized: 8-10%
 # Under-capitalized: < 8%
-TARGET_TIER1: Dict[BankType, float] = {
+TARGET_TIER1: dict[BankType, float] = {
     BankType.REGIONAL: 0.10,  # 10% - Regional banks need solid capital base
     BankType.DIVERSIFIED: 0.12,  # 12% - Systemically important banks need higher capital
     BankType.INVESTMENT: 0.12,  # 12% - Investment banks face higher capital requirements
@@ -79,7 +78,7 @@ TARGET_TIER1: Dict[BankType, float] = {
 # Target Efficiency Ratio by bank type
 # Efficiency Ratio = Non-Interest Expense / (Net Interest Income + Non-Interest Income)
 # Lower is better (indicates better cost management)
-TARGET_EFFICIENCY_RATIO: Dict[BankType, float] = {
+TARGET_EFFICIENCY_RATIO: dict[BankType, float] = {
     BankType.REGIONAL: 0.60,  # 60% - Regional banks typically 55-65%
     BankType.DIVERSIFIED: 0.58,  # 58% - Large banks benefit from scale
     BankType.INVESTMENT: 0.65,  # 65% - Investment banks have higher compensation costs
@@ -133,23 +132,23 @@ class BankMetrics:
         roe: Return on Equity
     """
 
-    net_interest_margin: Optional[float] = None
-    tier_1_capital_ratio: Optional[float] = None
-    efficiency_ratio: Optional[float] = None
-    npl_ratio: Optional[float] = None
-    loan_to_deposit: Optional[float] = None
-    roa: Optional[float] = None
-    roe: Optional[float] = None
+    net_interest_margin: float | None = None
+    tier_1_capital_ratio: float | None = None
+    efficiency_ratio: float | None = None
+    npl_ratio: float | None = None
+    loan_to_deposit: float | None = None
+    roa: float | None = None
+    roe: float | None = None
 
     # Additional metrics for transparency
-    net_interest_income: Optional[float] = None
-    non_interest_income: Optional[float] = None
-    non_interest_expense: Optional[float] = None
-    total_loans: Optional[float] = None
-    total_deposits: Optional[float] = None
-    non_performing_loans: Optional[float] = None
-    risk_weighted_assets: Optional[float] = None
-    tier_1_capital: Optional[float] = None
+    net_interest_income: float | None = None
+    non_interest_income: float | None = None
+    non_interest_expense: float | None = None
+    total_loans: float | None = None
+    total_deposits: float | None = None
+    non_performing_loans: float | None = None
+    risk_weighted_assets: float | None = None
+    tier_1_capital: float | None = None
 
 
 @dataclass
@@ -174,8 +173,8 @@ class BankValuationResult:
     current_pb_ratio: float
     roe: float
     confidence: str
-    warnings: List[str] = field(default_factory=list)
-    details: Dict = field(default_factory=dict)
+    warnings: list[str] = field(default_factory=list)
+    details: dict = field(default_factory=dict)
 
 
 # ====================
@@ -183,7 +182,7 @@ class BankValuationResult:
 # ====================
 
 
-def extract_bank_metrics_from_xbrl(symbol: str, xbrl_data: Dict, database_url: Optional[str] = None) -> BankMetrics:
+def extract_bank_metrics_from_xbrl(symbol: str, xbrl_data: dict, database_url: str | None = None) -> BankMetrics:
     """
     Extract bank-specific metrics from XBRL data using bank tag aliases.
 
@@ -272,7 +271,7 @@ def extract_bank_metrics_from_xbrl(symbol: str, xbrl_data: Dict, database_url: O
 # ====================
 
 
-def assess_bank_quality(metrics: BankMetrics, bank_type: BankType = BankType.UNKNOWN) -> Tuple[str, str]:
+def assess_bank_quality(metrics: BankMetrics, bank_type: BankType = BankType.UNKNOWN) -> tuple[str, str]:
     """
     Assess the overall quality of a bank based on key metrics.
 
@@ -394,10 +393,10 @@ def assess_bank_quality(metrics: BankMetrics, bank_type: BankType = BankType.UNK
 def _determine_target_pb_for_bank(
     symbol: str,
     roe: float,
-    efficiency_ratio: Optional[float],
-    npl_ratio: Optional[float],
-    warnings: List[str],
-) -> Tuple[float, str]:
+    efficiency_ratio: float | None,
+    npl_ratio: float | None,
+    warnings: list[str],
+) -> tuple[float, str]:
     """
     Determine target P/B ratio for a bank based on ROE and quality metrics.
 
@@ -504,11 +503,11 @@ def _determine_target_pb_for_bank(
 
 def value_bank(
     symbol: str,
-    financials: Dict,
+    financials: dict,
     current_price: float,
-    xbrl_data: Optional[Dict] = None,
+    xbrl_data: dict | None = None,
     bank_type: BankType = BankType.UNKNOWN,
-    database_url: Optional[str] = None,
+    database_url: str | None = None,
 ) -> BankValuationResult:
     """
     Value a bank using Price-to-Book (P/B) methodology.
@@ -531,8 +530,8 @@ def value_bank(
         >>> result = value_bank('JPM', financials, 150.0, xbrl_data, BankType.DIVERSIFIED)
         >>> print(f"Fair Value: ${result.fair_value:.2f}")
     """
-    warnings: List[str] = []
-    details: Dict = {}
+    warnings: list[str] = []
+    details: dict = {}
 
     # Extract required metrics (from latest quarter)
     stockholders_equity = financials.get("stockholders_equity", 0)

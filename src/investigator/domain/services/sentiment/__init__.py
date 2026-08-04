@@ -37,8 +37,8 @@ from investigator.domain.services.sentiment.insider_activity import (
 )
 
 __all__ = [
+    "ClusterActivity",
     "InsiderActivityService",
     "InsiderSentiment",
-    "ClusterActivity",
     "get_insider_activity_service",
 ]

@@ -31,9 +31,10 @@ Usage:
 """
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, ClassVar
 
 logger = logging.getLogger(__name__)
 
@@ -53,11 +54,11 @@ class FallbackResult:
     """Result of attempting a fallback."""
 
     original_model: str
-    fallback_model: Optional[str]
+    fallback_model: str | None
     reason: FallbackReason
     confidence_penalty: float  # Multiplier (e.g., 0.90 = 10% penalty)
     fallback_level: int  # 0 = primary, 1 = first fallback, etc.
-    notes: List[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
 
     def summary(self) -> str:
         """Get summary of fallback."""
@@ -75,10 +76,10 @@ class FallbackChainConfig:
     """Configuration for a model's fallback chain."""
 
     model: str
-    fallbacks: List[str]
-    penalties: List[float]  # Confidence penalty for each fallback level
+    fallbacks: list[str]
+    penalties: list[float]  # Confidence penalty for each fallback level
 
-    def get_fallback(self, level: int) -> Optional[Tuple[str, float]]:
+    def get_fallback(self, level: int) -> tuple[str, float] | None:
         """Get fallback at a specific level."""
         if level < len(self.fallbacks):
             return (self.fallbacks[level], self.penalties[level])
@@ -120,7 +121,7 @@ class FallbackChain:
 
     # Default fallback chains
     # Format: model -> [fallback1, fallback2, ...]
-    DEFAULT_CHAINS = {
+    DEFAULT_CHAINS: ClassVar[dict] = {
         "dcf": ["pe", "ps", "ev_ebitda"],
         "damodaran_dcf": ["dcf", "pe", "ps"],
         "pe": ["ps", "ev_ebitda", "pb"],
@@ -134,12 +135,12 @@ class FallbackChain:
     }
 
     # Default penalties by fallback level
-    DEFAULT_PENALTIES = [0.90, 0.80, 0.70, 0.60]
+    DEFAULT_PENALTIES: ClassVar[list] = [0.90, 0.80, 0.70, 0.60]
 
     def __init__(
         self,
-        chains: Optional[Dict[str, List[str]]] = None,
-        penalties: Optional[List[float]] = None,
+        chains: dict[str, list[str]] | None = None,
+        penalties: list[float] | None = None,
     ):
         """
         Initialize fallback chain.
@@ -155,7 +156,7 @@ class FallbackChain:
             self.chains.update(chains)
 
         # Build chain configs
-        self._configs: Dict[str, FallbackChainConfig] = {}
+        self._configs: dict[str, FallbackChainConfig] = {}
         for model, fallbacks in self.chains.items():
             self._configs[model] = FallbackChainConfig(
                 model=model,
@@ -163,7 +164,7 @@ class FallbackChain:
                 penalties=self.penalties[: len(fallbacks)],
             )
 
-    def get_fallback(self, model: str, failed_models: Optional[List[str]] = None) -> Optional[Tuple[str, float]]:
+    def get_fallback(self, model: str, failed_models: list[str] | None = None) -> tuple[str, float] | None:
         """
         Get the next fallback model for a failed model.
 
@@ -191,7 +192,7 @@ class FallbackChain:
         logger.warning(f"All fallbacks exhausted for {model}")
         return None
 
-    def get_chain(self, model: str) -> List[str]:
+    def get_chain(self, model: str) -> list[str]:
         """
         Get the full fallback chain for a model.
 
@@ -238,7 +239,7 @@ class FallbackChain:
         executor_func: Callable[..., Any],
         max_fallbacks: int = 3,
         **kwargs,
-    ) -> Tuple[Optional[Any], FallbackResult]:
+    ) -> tuple[Any | None, FallbackResult]:
         """
         Execute a valuation with automatic fallbacks.
 
@@ -251,7 +252,7 @@ class FallbackChain:
         Returns:
             Tuple of (result, FallbackResult) where result may be None
         """
-        failed_models: List[str] = []
+        failed_models: list[str] = []
         fallback_level = 0
         current_model = model_type
 
@@ -316,9 +317,9 @@ class FallbackChain:
 
     def get_applicable_models(
         self,
-        available_data: Dict[str, bool],
-        preferred_order: Optional[List[str]] = None,
-    ) -> List[Tuple[str, float]]:
+        available_data: dict[str, bool],
+        preferred_order: list[str] | None = None,
+    ) -> list[tuple[str, float]]:
         """
         Get list of applicable models based on available data.
 
@@ -340,7 +341,7 @@ class FallbackChain:
             "rule_of_40": ["revenue_growth", "fcf_margin"],
         }
 
-        applicable: List[Tuple[str, float]] = []
+        applicable: list[tuple[str, float]] = []
 
         models_to_check = preferred_order or list(requirements.keys())
 
@@ -369,7 +370,7 @@ class FallbackChain:
 
 
 # Singleton instance
-_fallback_chain: Optional[FallbackChain] = None
+_fallback_chain: FallbackChain | None = None
 
 
 def get_fallback_chain() -> FallbackChain:

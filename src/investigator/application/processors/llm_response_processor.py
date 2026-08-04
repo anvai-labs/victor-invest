@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - Common LLM Response Processor
 Copyright (c) 2025 Vijaykumar Singh
@@ -12,7 +11,7 @@ This ensures consistent handling of both cached and direct LLM responses.
 import json
 import logging
 import re
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +23,7 @@ class LLMResponseProcessor:
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self._last_thinking_content = ""
 
-    def process_response(self, response_data: Any, from_cache: bool = False) -> Tuple[str, Dict[str, Any]]:
+    def process_response(self, response_data: Any, from_cache: bool = False) -> tuple[str, dict[str, Any]]:
         """
         Process LLM response uniformly whether from cache or direct generation.
 
@@ -81,7 +80,7 @@ class LLMResponseProcessor:
             else:
                 return str(response_data), metadata
 
-    def _extract_from_cache(self, cache_data: Dict) -> Tuple[str, Dict]:
+    def _extract_from_cache(self, cache_data: dict) -> tuple[str, dict]:
         """Extract content and metadata from cached response"""
         metadata = cache_data.get("metadata", {})
         response_obj = cache_data.get("response", {})
@@ -130,7 +129,7 @@ class LLMResponseProcessor:
         else:
             return str(response_data)
 
-    def _clean_content(self, content: str) -> Tuple[str, str]:
+    def _clean_content(self, content: str) -> tuple[str, str]:
         """
         Clean content by removing thinking tags and other problematic elements.
 
@@ -176,7 +175,7 @@ class LLMResponseProcessor:
                 # Extract the problematic area to understand the issue
                 if e.pos < len(content):
                     error_context = content[max(0, e.pos - 50) : e.pos + 50]
-                    self.logger.debug(f"Error context: {repr(error_context)}")
+                    self.logger.debug(f"Error context: {error_context!r}")
 
                 # Fix the most common issue: unescaped quotes in string values
                 # Replace \" with \\" within JSON string values, but be careful not to break valid escapes
@@ -207,7 +206,6 @@ class LLMResponseProcessor:
             except Exception as e:
                 # For any other errors, leave content as is
                 self.logger.debug(f"Error in JSON fixing: {e}")
-                pass
 
         # Debug logging for output
         self.logger.debug(f"_clean_content output type: {type(content)}")
@@ -237,7 +235,7 @@ class LLMResponseProcessor:
 
         return escaped
 
-    def extract_json_from_text(self, text: str) -> Optional[Dict]:
+    def extract_json_from_text(self, text: str) -> dict | None:
         """
         Extract JSON from text that may contain markdown blocks or mixed content.
 
@@ -254,7 +252,7 @@ class LLMResponseProcessor:
         try:
             return json.loads(text)
         except Exception:
-            pass
+            logger.debug("extract_json_from_text: suppressed error", exc_info=True)
 
         # Look for JSON in markdown code block
         json_match = re.search(r"```json\s*(.*?)```", text, re.DOTALL)
@@ -262,7 +260,7 @@ class LLMResponseProcessor:
             try:
                 return json.loads(json_match.group(1).strip())
             except Exception:
-                pass
+                logger.debug("extract_json_from_text: suppressed error", exc_info=True)
 
         # Look for JSON-like content (starts with { and ends with })
         brace_match = re.search(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", text, re.DOTALL)
@@ -270,7 +268,7 @@ class LLMResponseProcessor:
             try:
                 return json.loads(brace_match.group(0))
             except Exception:
-                pass
+                logger.debug("extract_json_from_text: suppressed error", exc_info=True)
 
         return None
 

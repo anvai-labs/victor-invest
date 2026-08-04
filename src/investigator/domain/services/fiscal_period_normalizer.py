@@ -23,7 +23,7 @@ Date: 2025-12-29
 import logging
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Dict, List, Optional, Tuple
+from typing import ClassVar
 
 logger = logging.getLogger(__name__)
 
@@ -67,11 +67,11 @@ class FiscalPeriod:
 class QuarterlyConversionResult:
     """Result of YTD-to-quarterly conversion with audit trail."""
 
-    quarterly_values: Dict[str, float]  # {Q1: val, Q2: val, Q3: val, Q4: val}
-    source_values: Dict[str, float]  # Original YTD values used
+    quarterly_values: dict[str, float]  # {Q1: val, Q2: val, Q3: val, Q4: val}
+    source_values: dict[str, float]  # Original YTD values used
     conversion_method: str  # Description of method used
-    warnings: List[str] = field(default_factory=list)
-    fiscal_year: Optional[int] = None
+    warnings: list[str] = field(default_factory=list)
+    fiscal_year: int | None = None
 
     @property
     def is_valid(self) -> bool:
@@ -93,7 +93,7 @@ class FiscalPeriodNormalizer:
     """
 
     # Common fiscal year end patterns (month, day)
-    COMMON_FISCAL_YEAR_ENDS = {
+    COMMON_FISCAL_YEAR_ENDS: ClassVar[dict] = {
         "calendar": (12, 31),  # Most common: Dec 31
         "q1_fiscal": (3, 31),  # March fiscal year (some retailers)
         "q2_fiscal": (6, 30),  # June fiscal year (many tech)
@@ -107,13 +107,13 @@ class FiscalPeriodNormalizer:
         """Initialize the fiscal period normalizer."""
         self.logger = logger
         # Cache for detected fiscal year ends by symbol
-        self._fiscal_year_end_cache: Dict[str, Tuple[int, int]] = {}
+        self._fiscal_year_end_cache: dict[str, tuple[int, int]] = {}
 
     def normalize_ytd_to_quarterly(
         self,
-        ytd_values: Dict[str, float],
+        ytd_values: dict[str, float],
         fiscal_year: int,
-        annual_value: Optional[float] = None,
+        annual_value: float | None = None,
         strict_mode: bool = True,
     ) -> QuarterlyConversionResult:
         """
@@ -262,7 +262,7 @@ class FiscalPeriodNormalizer:
             fiscal_year=fiscal_year,
         )
 
-    def _normalize_ytd_keys(self, ytd_values: Dict[str, float]) -> Dict[str, float]:
+    def _normalize_ytd_keys(self, ytd_values: dict[str, float]) -> dict[str, float]:
         """Normalize YTD value dictionary keys to standard format."""
         normalized = {}
 
@@ -293,9 +293,9 @@ class FiscalPeriodNormalizer:
     def detect_fiscal_year_end(
         self,
         symbol: str,
-        company_facts: Optional[Dict] = None,
-        filing_dates: Optional[List[Tuple[str, str]]] = None,
-    ) -> Tuple[int, int]:
+        company_facts: dict | None = None,
+        filing_dates: list[tuple[str, str]] | None = None,
+    ) -> tuple[int, int]:
         """
         Detect company's fiscal year end month/day.
 
@@ -363,7 +363,7 @@ class FiscalPeriodNormalizer:
         self._fiscal_year_end_cache[symbol] = default
         return default
 
-    def _detect_from_company_facts(self, company_facts: Dict) -> Optional[Tuple[int, int]]:
+    def _detect_from_company_facts(self, company_facts: dict) -> tuple[int, int] | None:
         """Extract fiscal year end from SEC CompanyFacts data."""
         if not company_facts or "facts" not in company_facts:
             return None
@@ -376,11 +376,11 @@ class FiscalPeriodNormalizer:
             if taxonomy not in facts:
                 continue
 
-            for concept, concept_data in facts[taxonomy].items():
+            for concept_data in facts[taxonomy].values():
                 if "units" not in concept_data:
                     continue
 
-                for unit_type, unit_data in concept_data["units"].items():
+                for unit_data in concept_data["units"].values():
                     for entry in unit_data:
                         # Look for fiscal year entries (form 10-K)
                         if entry.get("form") == "10-K" and entry.get("fy"):
@@ -392,7 +392,7 @@ class FiscalPeriodNormalizer:
             return None
 
         # Count month-day patterns
-        month_day_counts: Dict[Tuple[int, int], int] = {}
+        month_day_counts: dict[tuple[int, int], int] = {}
         for period_end in fy_period_ends:
             try:
                 # Parse YYYY-MM-DD format
@@ -411,7 +411,7 @@ class FiscalPeriodNormalizer:
         # Return most common pattern
         return max(month_day_counts.items(), key=lambda x: x[1])[0]
 
-    def _detect_from_filing_patterns(self, filing_dates: List[Tuple[str, str]]) -> Optional[Tuple[int, int]]:
+    def _detect_from_filing_patterns(self, filing_dates: list[tuple[str, str]]) -> tuple[int, int] | None:
         """Detect fiscal year end from 10-K filing date patterns."""
         # Filter to 10-K filings only
         annual_filings = [date_str for form_type, date_str in filing_dates if form_type in ("10-K", "10-K/A", "20-F")]
@@ -421,7 +421,7 @@ class FiscalPeriodNormalizer:
 
         # 10-K is typically filed within 60-90 days of fiscal year end
         # Estimate FYE by looking at filing dates
-        month_counts: Dict[int, int] = {}
+        month_counts: dict[int, int] = {}
 
         for date_str in annual_filings:
             try:
@@ -536,7 +536,7 @@ class FiscalPeriodNormalizer:
         q2_value: float,
         q3_value: float,
         validate: bool = True,
-    ) -> Tuple[float, Optional[str]]:
+    ) -> tuple[float, str | None]:
         """
         Compute Q4 value from annual and quarterly values.
 
@@ -594,7 +594,7 @@ class FiscalPeriodNormalizer:
         self._fiscal_year_end_cache[symbol.upper()] = (month, day)
         self.logger.info(f"Set fiscal year end for {symbol}: month={month}, day={day}")
 
-    def clear_cache(self, symbol: Optional[str] = None) -> None:
+    def clear_cache(self, symbol: str | None = None) -> None:
         """Clear fiscal year end cache for a symbol or all symbols."""
         if symbol:
             self._fiscal_year_end_cache.pop(symbol.upper(), None)
@@ -603,7 +603,7 @@ class FiscalPeriodNormalizer:
 
 
 # Singleton instance
-_normalizer_instance: Optional[FiscalPeriodNormalizer] = None
+_normalizer_instance: FiscalPeriodNormalizer | None = None
 
 
 def get_fiscal_period_normalizer() -> FiscalPeriodNormalizer:
@@ -630,8 +630,8 @@ def get_fiscal_period_normalizer() -> FiscalPeriodNormalizer:
 
 # Convenience functions for common operations
 def convert_ytd_to_quarterly(
-    ytd_values: Dict[str, float], fiscal_year: int, annual_value: Optional[float] = None
-) -> Dict[str, float]:
+    ytd_values: dict[str, float], fiscal_year: int, annual_value: float | None = None
+) -> dict[str, float]:
     """
     Convenience function to convert YTD values to quarterly values.
 

@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable, Dict, Optional
+from typing import Any
 
 from investigator.infrastructure.cache.cache_types import CacheType
 
 
-def resolve_cik_for_symbol(*, symbol: str, ticker_mapper: Any, logger: Any) -> Optional[str]:
+def resolve_cik_for_symbol(*, symbol: str, ticker_mapper: Any, logger: Any) -> str | None:
     """Resolve symbol->CIK with safe error handling."""
     try:
         cik = ticker_mapper.resolve_cik(symbol)
@@ -20,17 +21,17 @@ def resolve_cik_for_symbol(*, symbol: str, ticker_mapper: Any, logger: Any) -> O
         return None
 
 
-def build_company_cache_key(*, symbol: str, fiscal_period: str, cik: Optional[str]) -> Dict[str, Any]:
+def build_company_cache_key(*, symbol: str, fiscal_period: str, cik: str | None) -> dict[str, Any]:
     """Build quarter-specific company cache key to avoid fiscal-period overwrites."""
-    cache_key: Dict[str, Any] = {"symbol": symbol, "fiscal_period": fiscal_period}
+    cache_key: dict[str, Any] = {"symbol": symbol, "fiscal_period": fiscal_period}
     if cik:
         cache_key["cik"] = cik
     return cache_key
 
 
 def get_cached_company_data(
-    *, cache: Any, cache_key: Dict[str, Any], symbol: str, logger: Any
-) -> Optional[Dict[str, Any]]:
+    *, cache: Any, cache_key: dict[str, Any], symbol: str, logger: Any
+) -> dict[str, Any] | None:
     """Return cached company payload only when financials are present."""
     if not cache:
         return None
@@ -43,11 +44,11 @@ def get_cached_company_data(
 
 def build_financial_statements_from_processed(
     *,
-    financial_metrics: Dict[str, Any],
-    financial_ratios: Dict[str, Any],
+    financial_metrics: dict[str, Any],
+    financial_ratios: dict[str, Any],
     data_source: str,
-    derive_short_term_debt: Callable[[Dict[str, Any]], Optional[float]],
-) -> Dict[str, Any]:
+    derive_short_term_debt: Callable[[dict[str, Any]], float | None],
+) -> dict[str, Any]:
     """Build compatibility financial_statements payload from processed-table data."""
     return {
         "revenues": financial_metrics.get("revenues", 0),
@@ -93,12 +94,12 @@ def build_financial_statements_from_processed(
 def build_company_data_payload(
     *,
     symbol: str,
-    cik: Optional[str],
-    company_facts: Dict[str, Any],
-    financial_statements: Dict[str, Any],
-    market_data: Dict[str, Any],
-    fiscal_period_label: Optional[str],
-) -> Dict[str, Any]:
+    cik: str | None,
+    company_facts: dict[str, Any],
+    financial_statements: dict[str, Any],
+    market_data: dict[str, Any],
+    fiscal_period_label: str | None,
+) -> dict[str, Any]:
     """Assemble final company_data payload."""
     return {
         "symbol": symbol,
@@ -111,7 +112,7 @@ def build_company_data_payload(
     }
 
 
-def validate_financial_statements(*, financial_statements: Dict[str, Any], symbol: str, cik: Optional[str]) -> None:
+def validate_financial_statements(*, financial_statements: dict[str, Any], symbol: str, cik: str | None) -> None:
     """Raise clear ValueError when no usable financial statements are available."""
     if financial_statements:
         return
@@ -125,11 +126,11 @@ def validate_financial_statements(*, financial_statements: Dict[str, Any], symbo
 def cache_company_data_payload(
     *,
     cache: Any,
-    cache_key: Dict[str, Any],
-    company_data: Dict[str, Any],
-    company_facts: Dict[str, Any],
+    cache_key: dict[str, Any],
+    company_data: dict[str, Any],
+    company_facts: dict[str, Any],
     symbol: str,
-    cik: Optional[str],
+    cik: str | None,
     logger: Any,
 ) -> None:
     """Persist company payload to cache when facts are present."""

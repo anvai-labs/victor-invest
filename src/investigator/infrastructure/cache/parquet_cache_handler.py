@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - Parquet Cache Handler
 Copyright (c) 2025 Vijaykumar Singh
@@ -9,9 +8,9 @@ Parquet cache handler for efficient storage of tabular data with compression
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any
 
 import pandas as pd
 
@@ -39,7 +38,7 @@ class ParquetCacheStorageHandler(CacheStorageHandler):
         self.base_path.mkdir(parents=True, exist_ok=True)
 
         # Determine parquet engine availability
-        self._parquet_engine: Optional[str] = None
+        self._parquet_engine: str | None = None
         for engine in ("pyarrow", "fastparquet"):
             try:
                 __import__(engine)
@@ -63,7 +62,7 @@ class ParquetCacheStorageHandler(CacheStorageHandler):
 
             self.parquet_config = ParquetConfig()
 
-    def _normalize_key(self, key: Union[Tuple, Dict]) -> Dict[str, Any]:
+    def _normalize_key(self, key: tuple | dict) -> dict[str, Any]:
         """Normalize cache key to dictionary format"""
         if isinstance(key, tuple):
             # Handle different tuple formats
@@ -95,7 +94,7 @@ class ParquetCacheStorageHandler(CacheStorageHandler):
                 }
         return key
 
-    def _get_file_path(self, key_dict: Dict[str, Any]) -> Path:
+    def _get_file_path(self, key_dict: dict[str, Any]) -> Path:
         """Generate file path based on cache key (only for TECHNICAL_DATA)"""
         # Stock-specific cache types (TECHNICAL_DATA only)
         symbol = key_dict.get("symbol", "unknown")
@@ -117,7 +116,7 @@ class ParquetCacheStorageHandler(CacheStorageHandler):
         """Get metadata file path for a parquet file"""
         return parquet_path.with_suffix(".meta.json")
 
-    def get(self, key: Union[Tuple, Dict]) -> Optional[Dict[str, Any]]:
+    def get(self, key: tuple | dict) -> dict[str, Any] | None:
         """Retrieve data from parquet cache"""
         if self.priority < 0:
             return None  # Skip lookup for negative priority
@@ -165,7 +164,7 @@ class ParquetCacheStorageHandler(CacheStorageHandler):
             logger.error(f"Error reading from parquet cache: {e}")
             return None
 
-    def set(self, key: Union[Tuple, Dict], value: Dict[str, Any]) -> bool:
+    def set(self, key: tuple | dict, value: dict[str, Any]) -> bool:
         """Store data in parquet cache"""
         try:
             key_dict = self._normalize_key(key)
@@ -198,7 +197,7 @@ class ParquetCacheStorageHandler(CacheStorageHandler):
                         # Try to convert to datetime
                         df[col] = pd.to_datetime(df[col])
                     except Exception:
-                        pass  # Keep as is if conversion fails
+                        logger.debug("set: suppressed error", exc_info=True)
 
             # Save DataFrame to parquet using configuration
             write_kwargs = self.parquet_config.get_write_kwargs()
@@ -223,7 +222,7 @@ class ParquetCacheStorageHandler(CacheStorageHandler):
 
             # Save metadata
             metadata = {
-                "cached_at": datetime.now(timezone.utc).isoformat(),
+                "cached_at": datetime.now(UTC).isoformat(),
                 "cache_key": key_dict,
                 "cache_type": self.cache_type.value,
                 "engine": self._parquet_engine or self.parquet_config.engine,
@@ -254,7 +253,7 @@ class ParquetCacheStorageHandler(CacheStorageHandler):
             logger.error(f"Error writing to parquet cache: {e}")
             return False
 
-    def exists(self, key: Union[Tuple, Dict]) -> bool:
+    def exists(self, key: tuple | dict) -> bool:
         """Check if key exists in parquet cache"""
         try:
             key_dict = self._normalize_key(key)
@@ -277,7 +276,7 @@ class ParquetCacheStorageHandler(CacheStorageHandler):
             logger.error(f"💥 Error checking parquet cache existence: {e}")
             return False
 
-    def delete(self, key: Union[Tuple, Dict]) -> bool:
+    def delete(self, key: tuple | dict) -> bool:
         """Delete data from parquet cache"""
         try:
             key_dict = self._normalize_key(key)
@@ -397,7 +396,7 @@ class ParquetCacheStorageHandler(CacheStorageHandler):
             logger.error(f"Error clearing parquet cache: {e}")
             return False
 
-    def get_cache_info(self, key: Union[Tuple, Dict]) -> Optional[Dict[str, Any]]:
+    def get_cache_info(self, key: tuple | dict) -> dict[str, Any] | None:
         """Get cache metadata without loading the data"""
         try:
             key_dict = self._normalize_key(key)

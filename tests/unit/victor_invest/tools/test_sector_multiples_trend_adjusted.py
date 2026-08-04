@@ -101,7 +101,6 @@ class TestSectorMultiplesTrendAdjusted:
         """Test calculation with actual database data."""
         # This test requires a database connection and is skipped by default
         # Enable for integration testing with a real database
-        pass
 
     def test_create_unadjusted_result(self):
         """Test creation of result for groups without historical data."""

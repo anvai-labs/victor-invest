@@ -132,7 +132,7 @@ class TestFallbackChain:
         """Test getting fallback for GGM."""
         result = chain.get_fallback("ggm")
         assert result is not None
-        fallback, penalty = result
+        fallback, _penalty = result
         assert fallback == "dcf"  # First fallback for GGM
 
     def test_get_fallback_skip_failed(self, chain):
@@ -277,7 +277,7 @@ class TestFallbackChainExecution:
             attempts.append(model_type)
             raise ValueError("Always fail")
 
-        result, fallback_result = chain.execute_with_fallbacks(
+        result, _fallback_result = chain.execute_with_fallbacks(
             model_type="dcf",
             executor_func=executor,
             max_fallbacks=1,  # Only try 1 fallback

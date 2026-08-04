@@ -17,7 +17,7 @@ Usage:
 import copy
 import logging
 from enum import Enum
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, cast
 
 import numpy as np
 
@@ -106,9 +106,9 @@ class OutputDetailLevel(Enum):
 
 
 def format_analysis_output(
-    analysis_results: Dict[str, Any],
+    analysis_results: dict[str, Any],
     detail_level: OutputDetailLevel = OutputDetailLevel.STANDARD,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Format analysis results according to specified detail level.
 
@@ -141,7 +141,7 @@ def format_analysis_output(
         return _format_standard(analysis_results)
 
 
-def _format_minimal(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
+def _format_minimal(analysis_results: dict[str, Any]) -> dict[str, Any]:
     """
     Extract minimal executive summary only.
 
@@ -160,7 +160,7 @@ def _format_minimal(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
     """
     # Use SOLID-based extractor with fallback chains
     extractor = SummaryDataExtractor(analysis_results, enable_audit=True)
-    summary: Dict[str, Any] = extractor.extract_minimal_summary()
+    summary: dict[str, Any] = extractor.extract_minimal_summary()
 
     # Log extraction audit for debugging if issues occur
     audit = extractor.get_audit()
@@ -195,7 +195,7 @@ def _format_minimal(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
     return summary
 
 
-def _format_standard(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
+def _format_standard(analysis_results: dict[str, Any]) -> dict[str, Any]:
     """
     Format for investor decision-making (removes duplicates and metadata).
 
@@ -235,7 +235,7 @@ def _format_standard(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
     _consolidate_duplicates(result)
 
     # Remove empty/null values
-    result = cast(Dict[str, Any], _remove_empty_values(result))
+    result = cast(dict[str, Any], _remove_empty_values(result))
 
     # Add detail level indicator
     result["detail_level"] = "standard"
@@ -243,7 +243,7 @@ def _format_standard(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
-def _format_compact(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
+def _format_compact(analysis_results: dict[str, Any]) -> dict[str, Any]:
     """
     Produce a consolidated, machine-readable schema with minimal duplication.
 
@@ -252,33 +252,33 @@ def _format_compact(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
     - Single source of truth for valuation model outputs
     - Keep only actionable fields (drop heavy nested narrative duplicates)
     """
-    src: Dict[str, Any] = copy.deepcopy(analysis_results or {})
-    agents: Dict[str, Any] = src.get("agents", {}) if isinstance(src.get("agents"), dict) else {}
+    src: dict[str, Any] = copy.deepcopy(analysis_results or {})
+    agents: dict[str, Any] = src.get("agents", {}) if isinstance(src.get("agents"), dict) else {}
 
-    fundamental: Dict[str, Any] = agents.get("fundamental", {}) if isinstance(agents.get("fundamental"), dict) else {}
-    technical: Dict[str, Any] = agents.get("technical", {}) if isinstance(agents.get("technical"), dict) else {}
-    synthesis: Dict[str, Any] = agents.get("synthesis", {}) if isinstance(agents.get("synthesis"), dict) else {}
-    market_context: Dict[str, Any] = (
+    fundamental: dict[str, Any] = agents.get("fundamental", {}) if isinstance(agents.get("fundamental"), dict) else {}
+    technical: dict[str, Any] = agents.get("technical", {}) if isinstance(agents.get("technical"), dict) else {}
+    synthesis: dict[str, Any] = agents.get("synthesis", {}) if isinstance(agents.get("synthesis"), dict) else {}
+    market_context: dict[str, Any] = (
         agents.get("market_context", {}) if isinstance(agents.get("market_context"), dict) else {}
     )
-    sec: Dict[str, Any] = agents.get("sec", {}) if isinstance(agents.get("sec"), dict) else {}
+    sec: dict[str, Any] = agents.get("sec", {}) if isinstance(agents.get("sec"), dict) else {}
 
-    valuation: Dict[str, Any] = (
+    valuation: dict[str, Any] = (
         fundamental.get("valuation", {}) if isinstance(fundamental.get("valuation"), dict) else {}
     )
-    methods: Dict[str, Any] = (
+    methods: dict[str, Any] = (
         valuation.get("valuation_methods", {}) if isinstance(valuation.get("valuation_methods"), dict) else {}
     )
     methods_multi_model = methods.get("multi_model")
     fundamental_multi_model = fundamental.get("multi_model_summary")
     if isinstance(methods_multi_model, dict):
-        multi_model: Dict[str, Any] = methods_multi_model
+        multi_model: dict[str, Any] = methods_multi_model
     elif isinstance(fundamental_multi_model, dict):
         multi_model = fundamental_multi_model
     else:
         multi_model = {}
-    ratios: Dict[str, Any] = fundamental.get("ratios", {}) if isinstance(fundamental.get("ratios"), dict) else {}
-    data_quality: Dict[str, Any] = (
+    ratios: dict[str, Any] = fundamental.get("ratios", {}) if isinstance(fundamental.get("ratios"), dict) else {}
+    data_quality: dict[str, Any] = (
         fundamental.get("data_quality", {}) if isinstance(fundamental.get("data_quality"), dict) else {}
     )
 
@@ -302,7 +302,7 @@ def _format_compact(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
         final_recommendation, expected_return_pct
     )
 
-    output: Dict[str, Any] = {
+    output: dict[str, Any] = {
         "schema_version": "analysis.compact.v1",
         "symbol": src.get("symbol"),
         "mode": src.get("mode"),
@@ -423,10 +423,10 @@ def _format_compact(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
     if decision_policy:
         output["decision_policy"] = decision_policy
 
-    return cast(Dict[str, Any], _remove_empty_values(output))
+    return cast(dict[str, Any], _remove_empty_values(output))
 
 
-def _clean_agent_section(agent_data: Dict[str, Any]) -> None:
+def _clean_agent_section(agent_data: dict[str, Any]) -> None:
     """
     Clean agent section by removing metadata and prompts.
 
@@ -472,7 +472,7 @@ def _clean_agent_section(agent_data: Dict[str, Any]) -> None:
                 _clean_analysis_section(value["response"])
 
 
-def _clean_analysis_section(analysis_data: Dict[str, Any]) -> None:
+def _clean_analysis_section(analysis_data: dict[str, Any]) -> None:
     """
     Clean nested analysis sections.
 
@@ -504,7 +504,7 @@ def _clean_analysis_section(analysis_data: Dict[str, Any]) -> None:
                 _clean_analysis_section(value["response"])
 
 
-def _consolidate_duplicates(result: Dict[str, Any]) -> None:
+def _consolidate_duplicates(result: dict[str, Any]) -> None:
     """
     Remove duplicate data points across sections.
 
@@ -548,8 +548,8 @@ def _consolidate_duplicates(result: Dict[str, Any]) -> None:
             _remove_keys(fundamental, ["multi_model_summary", "llm_fair_value_estimate"])
 
 
-def _extract_agent_statuses(agents: Dict[str, Any]) -> Dict[str, Any]:
-    statuses: Dict[str, Any] = {}
+def _extract_agent_statuses(agents: dict[str, Any]) -> dict[str, Any]:
+    statuses: dict[str, Any] = {}
     for name, payload in (agents or {}).items():
         if isinstance(payload, dict):
             statuses[name] = payload.get("status", "unknown")
@@ -558,9 +558,9 @@ def _extract_agent_statuses(agents: Dict[str, Any]) -> Dict[str, Any]:
     return statuses
 
 
-def _extract_basis_and_horizon(methods: Dict[str, Any]) -> tuple[str, Optional[str]]:
-    basis: Optional[str] = None
-    horizon: Optional[str] = None
+def _extract_basis_and_horizon(methods: dict[str, Any]) -> tuple[str, str | None]:
+    basis: str | None = None
+    horizon: str | None = None
     for model in (methods or {}).values():
         if not isinstance(model, dict):
             continue
@@ -577,8 +577,8 @@ def _extract_basis_and_horizon(methods: Dict[str, Any]) -> tuple[str, Optional[s
     return basis, horizon
 
 
-def _compact_valuation_models(methods: Dict[str, Any]) -> Dict[str, Any]:
-    compact: Dict[str, Any] = {}
+def _compact_valuation_models(methods: dict[str, Any]) -> dict[str, Any]:
+    compact: dict[str, Any] = {}
     for model_name in [
         "dcf_professional",
         "pe",
@@ -600,10 +600,10 @@ def _compact_valuation_models(methods: Dict[str, Any]) -> Dict[str, Any]:
             "assumptions": _pick_assumptions(model.get("assumptions")),
             "diagnostics": _pick_diagnostics(model.get("diagnostics")),
         }
-    return cast(Dict[str, Any], _remove_empty_values(compact))
+    return cast(dict[str, Any], _remove_empty_values(compact))
 
 
-def _pick_assumptions(assumptions: Any) -> Dict[str, Any]:
+def _pick_assumptions(assumptions: Any) -> dict[str, Any]:
     if not isinstance(assumptions, dict):
         return {}
     keep = [
@@ -636,14 +636,14 @@ def _pick_assumptions(assumptions: Any) -> Dict[str, Any]:
     return {k: assumptions.get(k) for k in keep if k in assumptions}
 
 
-def _pick_diagnostics(diagnostics: Any) -> Dict[str, Any]:
+def _pick_diagnostics(diagnostics: Any) -> dict[str, Any]:
     if not isinstance(diagnostics, dict):
         return {}
     keep = ["flags", "data_quality_score", "fit_score", "calibration_score"]
     return {k: diagnostics.get(k) for k in keep if k in diagnostics}
 
 
-def _compact_levels(levels: Any) -> Dict[str, Any]:
+def _compact_levels(levels: Any) -> dict[str, Any]:
     if not isinstance(levels, dict):
         return {}
     keep = [
@@ -669,7 +669,7 @@ def _compact_levels(levels: Any) -> Dict[str, Any]:
     return {k: levels.get(k) for k in keep if k in levels}
 
 
-def _compact_multi_tier_technical(technical: Any) -> Dict[str, Any]:
+def _compact_multi_tier_technical(technical: Any) -> dict[str, Any]:
     """Extract multi-tier technical analysis summary.
 
     Returns:
@@ -704,7 +704,7 @@ def _compact_multi_tier_technical(technical: Any) -> Dict[str, Any]:
     }
 
 
-def _compact_cache_status(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
+def _compact_cache_status(analysis_results: dict[str, Any]) -> dict[str, Any]:
     """Extract cache status information from analysis results.
 
     Returns:
@@ -712,7 +712,7 @@ def _compact_cache_status(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
     """
     from pathlib import Path
 
-    cache_info: Dict[str, Any] = {}
+    cache_info: dict[str, Any] = {}
 
     # Get symbol from results
     symbol = analysis_results.get("symbol", "").upper()
@@ -764,7 +764,7 @@ def _compact_cache_status(analysis_results: Dict[str, Any]) -> Dict[str, Any]:
     return cache_info
 
 
-def _remove_keys(data: Dict[str, Any], keys: List[str]) -> None:
+def _remove_keys(data: dict[str, Any], keys: list[str]) -> None:
     """
     Remove specified keys from dictionary.
 
@@ -804,14 +804,14 @@ def _remove_empty_values(data: Any) -> Any:
         return data
 
 
-def _calculate_expected_return(target_price: Optional[float], current_price: Optional[float]) -> Optional[float]:
+def _calculate_expected_return(target_price: float | None, current_price: float | None) -> float | None:
     """Calculate expected return percentage."""
     if target_price and current_price and current_price > 0:
         return round((target_price - current_price) / current_price * 100, 2)
     return None
 
 
-def _normalize_recommendation_action(action: Optional[str]) -> Optional[str]:
+def _normalize_recommendation_action(action: str | None) -> str | None:
     """Normalize recommendation action labels to canonical compact values."""
     if not action or not isinstance(action, str):
         return None
@@ -826,8 +826,8 @@ def _normalize_recommendation_action(action: Optional[str]) -> Optional[str]:
 
 
 def _recommendation_from_expected_return(
-    expected_return_pct: Optional[float],
-) -> Optional[str]:
+    expected_return_pct: float | None,
+) -> str | None:
     """
     Map valuation-implied expected return (%) to canonical recommendation action.
     """
@@ -844,7 +844,7 @@ def _recommendation_from_expected_return(
     return "strong_sell"
 
 
-def _action_polarity(action: Optional[str]) -> Optional[str]:
+def _action_polarity(action: str | None) -> str | None:
     if action in {"strong_buy", "buy"}:
         return "bullish"
     if action in {"strong_sell", "sell"}:
@@ -854,7 +854,7 @@ def _action_polarity(action: Optional[str]) -> Optional[str]:
     return None
 
 
-def _action_score(action: Optional[str]) -> Optional[int]:
+def _action_score(action: str | None) -> int | None:
     mapping = {
         "strong_buy": 2,
         "buy": 1,
@@ -866,8 +866,8 @@ def _action_score(action: Optional[str]) -> Optional[int]:
 
 
 def _align_recommendation_with_expected_return(
-    action: Optional[str], expected_return_pct: Optional[float]
-) -> tuple[Optional[str], bool]:
+    action: str | None, expected_return_pct: float | None
+) -> tuple[str | None, bool]:
     """
     Keep recommendation coherent with computed expected return.
 
@@ -905,7 +905,7 @@ def _align_recommendation_with_expected_return(
     return normalized, False
 
 
-def _evaluate_decision_policy_from_legacy(analysis_results: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _evaluate_decision_policy_from_legacy(analysis_results: dict[str, Any]) -> dict[str, Any] | None:
     """Evaluate deterministic decision policy for raw legacy analysis payloads."""
     try:
         inputs = from_legacy_analysis_result(analysis_results or {})
@@ -916,7 +916,7 @@ def _evaluate_decision_policy_from_legacy(analysis_results: Dict[str, Any]) -> O
         return None
 
 
-def _evaluate_decision_policy_from_ui_summary(summary: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _evaluate_decision_policy_from_ui_summary(summary: dict[str, Any]) -> dict[str, Any] | None:
     """Evaluate deterministic decision policy for compact/UI-shaped payloads."""
     try:
         inputs = from_ui_cache_summary(summary or {})
@@ -927,7 +927,7 @@ def _evaluate_decision_policy_from_ui_summary(summary: Dict[str, Any]) -> Option
         return None
 
 
-def _decision_output_to_dict(output) -> Dict[str, Any]:
+def _decision_output_to_dict(output) -> dict[str, Any]:
     return {
         "action": output.action,
         "display_action": _display_action(output.action),
@@ -939,13 +939,13 @@ def _decision_output_to_dict(output) -> Dict[str, Any]:
     }
 
 
-def _display_action(action: Optional[str]) -> str:
+def _display_action(action: str | None) -> str:
     if not action:
         return "N/A"
     return str(action).replace("_", " ")
 
 
-def _extract_list(data: Dict[str, Any], key: str, max_items: int = 3) -> List[str]:
+def _extract_list(data: dict[str, Any], key: str, max_items: int = 3) -> list[str]:
     """Extract list from dict, limiting to max_items."""
     items = data.get(key, [])
     if isinstance(items, list):

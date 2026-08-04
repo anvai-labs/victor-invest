@@ -57,7 +57,7 @@ def get_stock_db_url() -> str:
     """
     password = os.environ.get("STOCK_DB_PASSWORD")
     if not password:
-        raise EnvironmentError(
+        raise OSError(
             "STOCK_DB_PASSWORD environment variable not set. "
             "Please source your ~/.investigator/env file or set the variable."
         )
@@ -112,16 +112,16 @@ from investigator.domain.services.market_data.validation_service import (  # noq
 )
 
 __all__ = [
-    "get_stock_db_url",
-    "get_sec_db_url",
-    "SharesService",
-    "SharesHistory",
-    "PriceService",
-    "DataValidationService",
     "DataQualityWarning",
-    "SymbolMetadataService",
+    "DataValidationService",
+    "PriceService",
+    "SharesHistory",
+    "SharesService",
     "SymbolMetadata",
+    "SymbolMetadataService",
     "TechnicalAnalysisService",
     "TechnicalFeatures",
+    "get_sec_db_url",
+    "get_stock_db_url",
     "get_technical_analysis_service",
 ]

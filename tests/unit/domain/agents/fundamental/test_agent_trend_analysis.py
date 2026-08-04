@@ -17,7 +17,7 @@ Date: 2025-01-05
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -29,12 +29,12 @@ class MockQuarterlyData:
 
     fiscal_year: int
     fiscal_period: str
-    financial_data: Dict[str, Any]
-    ratios: Optional[Dict[str, Any]] = None
-    market_data: Optional[Dict[str, Any]] = None
-    data_quality: Optional[Dict[str, Any]] = None
-    filing_date: Optional[str] = None
-    period_end_date: Optional[str] = None
+    financial_data: dict[str, Any]
+    ratios: dict[str, Any] | None = None
+    market_data: dict[str, Any] | None = None
+    data_quality: dict[str, Any] | None = None
+    filing_date: str | None = None
+    period_end_date: str | None = None
     is_ytd_cashflow: bool = False
     is_ytd_income: bool = False
     value_type: str = "quarterly"

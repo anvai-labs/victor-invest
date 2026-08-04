@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 
-def extract_insights_from_text(text_details: str) -> Tuple[List[str], List[str]]:
+def extract_insights_from_text(text_details: str) -> tuple[list[str], list[str]]:
     """Extract insight/risk bullets from freeform synthesis text."""
-    insights: List[str] = []
-    risks: List[str] = []
+    insights: list[str] = []
+    risks: list[str] = []
 
     if not text_details:
         return insights, risks
@@ -90,12 +90,12 @@ def _to_text(content: Any) -> str:
 
 
 def extract_comprehensive_risks(
-    llm_responses: Dict[str, Any],
-    ai_recommendation: Dict[str, Any],
-    additional_risks: List[str] | None = None,
-) -> List[str]:
+    llm_responses: dict[str, Any],
+    ai_recommendation: dict[str, Any],
+    additional_risks: list[str] | None = None,
+) -> list[str]:
     """Extract and prioritize risk factors from synthesis + source responses."""
-    risks: List[str] = []
+    risks: list[str] = []
 
     if isinstance(ai_recommendation, dict):
         ai_risks = ai_recommendation.get("key_risks", [])
@@ -112,7 +112,7 @@ def extract_comprehensive_risks(
             risk_items = re.findall(r"[•\-]\s*(.+)", risk_section.group(1))
             risks.extend(risk_items[:2])
 
-    unique_risks: List[str] = []
+    unique_risks: list[str] = []
     seen = set()
     for risk in risks:
         risk_lower = risk.lower().strip()
@@ -124,12 +124,12 @@ def extract_comprehensive_risks(
 
 
 def extract_comprehensive_insights(
-    llm_responses: Dict[str, Any],
-    ai_recommendation: Dict[str, Any],
-    additional_insights: List[str] | None = None,
-) -> List[str]:
+    llm_responses: dict[str, Any],
+    ai_recommendation: dict[str, Any],
+    additional_insights: list[str] | None = None,
+) -> list[str]:
     """Extract and prioritize insights from synthesis + source responses."""
-    insights: List[str] = []
+    insights: list[str] = []
 
     if additional_insights:
         insights.extend(additional_insights)
@@ -162,7 +162,7 @@ def extract_comprehensive_insights(
             tech_items = re.findall(r"[•\-]\s*(.+)", tech_insights[0])
             insights.extend([f"Technical: {item}" for item in tech_items[:2]])
 
-    unique_insights: List[str] = []
+    unique_insights: list[str] = []
     seen = set()
     for insight in insights:
         insight_lower = insight.lower().strip()

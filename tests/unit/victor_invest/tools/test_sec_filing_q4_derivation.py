@@ -37,9 +37,9 @@ class TestQ4Derivation:
         period_end: str,
         net_income: float,
         total_revenue: float,
-        operating_cash_flow: float = None,
-        capital_expenditures: float = None,
-        free_cash_flow: float = None,
+        operating_cash_flow: float | None = None,
+        capital_expenditures: float | None = None,
+        free_cash_flow: float | None = None,
         shares_outstanding: float = 228000000,
     ) -> dict:
         """Create a mock quarterly entry."""

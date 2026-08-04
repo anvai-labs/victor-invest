@@ -29,7 +29,7 @@ Example:
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, ClassVar
 
 import yaml
 
@@ -45,7 +45,7 @@ class ValuationConfigService:
     """
 
     # Default values matching previously hardcoded values in rl_backtest.py
-    DEFAULT_SECTOR_MULTIPLES = {
+    DEFAULT_SECTOR_MULTIPLES: ClassVar[dict] = {
         "pe": {
             "Technology": 28,
             "Healthcare": 22,
@@ -112,22 +112,22 @@ class ValuationConfigService:
         },
     }
 
-    DEFAULT_CAPM = {
+    DEFAULT_CAPM: ClassVar[dict] = {
         "risk_free_rate": 0.04,
         "market_equity_premium": 0.05,
     }
 
-    DEFAULT_GGM = {
+    DEFAULT_GGM: ClassVar[dict] = {
         "growth_rate": 0.03,
         "cost_of_equity": 0.08,
         "min_payout_ratio": 0.20,
     }
 
-    DEFAULT_GROWTH_ASSUMPTIONS = {
+    DEFAULT_GROWTH_ASSUMPTIONS: ClassVar[dict] = {
         "forward_eps_growth_pct": 0.10,
     }
 
-    DEFAULT_FALLBACKS = {
+    DEFAULT_FALLBACKS: ClassVar[dict] = {
         "dcf_simple_multiplier": 12,
         "ebitda_da_approximation_pct": 0.05,
     }
@@ -135,14 +135,14 @@ class ValuationConfigService:
     _instance = None
     _config = None
 
-    def __new__(cls, config_path: Optional[str] = None):
+    def __new__(cls, config_path: str | None = None):
         """Singleton pattern for config service."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(self, config_path: str | None = None):
         """
         Initialize ValuationConfigService.
 
@@ -156,7 +156,7 @@ class ValuationConfigService:
         self._config = self._load_config()
         self._initialized = True
 
-    def _load_config(self) -> Dict[str, Any]:
+    def _load_config(self) -> dict[str, Any]:
         """Load config from YAML file."""
         if self._config_path:
             config_file = Path(self._config_path)
@@ -254,7 +254,7 @@ class ValuationConfigService:
         )
         return multiples.get(sector, multiples.get("Default", 10))
 
-    def get_all_sector_multiples(self, sector: str) -> Dict[str, float]:
+    def get_all_sector_multiples(self, sector: str) -> dict[str, float]:
         """
         Get all multiples for a sector.
 
@@ -275,7 +275,7 @@ class ValuationConfigService:
     # CAPM Parameters
     # =========================================================================
 
-    def get_capm_params(self) -> Dict[str, float]:
+    def get_capm_params(self) -> dict[str, float]:
         """
         Get CAPM parameters.
 
@@ -311,7 +311,7 @@ class ValuationConfigService:
     # GGM (Gordon Growth Model) Parameters
     # =========================================================================
 
-    def get_ggm_defaults(self) -> Dict[str, float]:
+    def get_ggm_defaults(self) -> dict[str, float]:
         """
         Get Gordon Growth Model default parameters.
 
@@ -336,7 +336,7 @@ class ValuationConfigService:
     # Growth Assumptions
     # =========================================================================
 
-    def get_growth_assumptions(self) -> Dict[str, float]:
+    def get_growth_assumptions(self) -> dict[str, float]:
         """
         Get growth assumptions.
 
@@ -353,7 +353,7 @@ class ValuationConfigService:
     # Fallback Calculations
     # =========================================================================
 
-    def get_fallbacks(self) -> Dict[str, float]:
+    def get_fallbacks(self) -> dict[str, float]:
         """
         Get fallback calculation parameters.
 
@@ -374,7 +374,7 @@ class ValuationConfigService:
     # DCF Configuration
     # =========================================================================
 
-    def get_dcf_sector_params(self, sector: str) -> Dict[str, Any]:
+    def get_dcf_sector_params(self, sector: str) -> dict[str, Any]:
         """
         Get DCF parameters for a sector.
 
@@ -398,7 +398,7 @@ class ValuationConfigService:
             },
         )
 
-    def get_dcf_default_params(self) -> Dict[str, Any]:
+    def get_dcf_default_params(self) -> dict[str, Any]:
         """Get DCF default parameters."""
         return self._get_nested(
             "dcf_valuation.default_parameters",
@@ -414,7 +414,7 @@ class ValuationConfigService:
     # Tier Configuration
     # =========================================================================
 
-    def get_tier_thresholds(self, tier_name: str) -> Optional[Dict[str, Any]]:
+    def get_tier_thresholds(self, tier_name: str) -> dict[str, Any] | None:
         """
         Get threshold configuration for a tier.
 
@@ -426,7 +426,7 @@ class ValuationConfigService:
         """
         return self._get_nested(f"valuation.tier_thresholds.{tier_name}", None)
 
-    def get_tier_base_weights(self, tier_name: str) -> Optional[Dict[str, int]]:
+    def get_tier_base_weights(self, tier_name: str) -> dict[str, int] | None:
         """
         Get base weights for a tier.
 

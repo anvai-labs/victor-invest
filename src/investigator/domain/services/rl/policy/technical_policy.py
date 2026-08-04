@@ -24,7 +24,7 @@ import logging
 import os
 import pickle
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -70,7 +70,7 @@ class TechnicalRLPolicy(RLPolicy):
 
     def __init__(
         self,
-        normalizer: Optional[FeatureNormalizer] = None,
+        normalizer: FeatureNormalizer | None = None,
         prior_variance: float = 1.0,
         noise_variance: float = 0.1,
         exploration_weight: float = 0.5,
@@ -124,7 +124,7 @@ class TechnicalRLPolicy(RLPolicy):
         self.action_rewards = np.zeros(self.n_actions)
 
         # Per-context tracking for learning
-        self._position_history: List[Dict] = []
+        self._position_history: list[dict] = []
 
         self._ready = True
 
@@ -175,7 +175,7 @@ class TechnicalRLPolicy(RLPolicy):
 
         return features
 
-    def predict(self, context: ValuationContext) -> Dict[str, float]:
+    def predict(self, context: ValuationContext) -> dict[str, float]:
         """
         Predict position probabilities.
 
@@ -205,7 +205,7 @@ class TechnicalRLPolicy(RLPolicy):
             "short": float(probs[2]),
         }
 
-    def predict_position(self, context: ValuationContext) -> Tuple[int, float]:
+    def predict_position(self, context: ValuationContext) -> tuple[int, float]:
         """
         Predict optimal position signal with asymmetric thresholds.
 
@@ -319,7 +319,7 @@ class TechnicalRLPolicy(RLPolicy):
         self._update_count += 1
         self._updated_at = datetime.now()
 
-    def get_action_stats(self) -> Dict[str, Dict[str, float]]:
+    def get_action_stats(self) -> dict[str, dict[str, float]]:
         """Get statistics for each action."""
         stats = {}
         for i, action in enumerate(POSITION_ACTIONS):
@@ -405,7 +405,7 @@ class TechnicalRLPolicy(RLPolicy):
             logger.error(f"Failed to load technical policy: {e}")
             return False
 
-    def get_state(self) -> Dict[str, Any]:
+    def get_state(self) -> dict[str, Any]:
         """Get policy state for inspection."""
         return {
             "name": self.name,

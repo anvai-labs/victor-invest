@@ -19,7 +19,6 @@ Date: 2026-01-05
 
 import logging
 import os
-from typing import List, Optional, Set
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
@@ -37,8 +36,8 @@ class SymbolRepository:
 
     def __init__(
         self,
-        stock_engine: Optional[Engine] = None,
-        sec_engine: Optional[Engine] = None,
+        stock_engine: Engine | None = None,
+        sec_engine: Engine | None = None,
     ):
         """
         Initialize with database connections.
@@ -80,7 +79,7 @@ class SymbolRepository:
             pool_recycle=3600,
         )
 
-    def get_russell1000_symbols(self) -> List[str]:
+    def get_russell1000_symbols(self) -> list[str]:
         """
         Get Russell 1000 symbols from stock database.
 
@@ -103,7 +102,7 @@ class SymbolRepository:
             logger.info(f"Found {len(symbols)} Russell 1000 symbols")
             return symbols
 
-    def get_sp500_symbols(self) -> List[str]:
+    def get_sp500_symbols(self) -> list[str]:
         """
         Get S&P 500 symbols from stock database.
 
@@ -126,7 +125,7 @@ class SymbolRepository:
             logger.info(f"Found {len(symbols)} S&P 500 symbols")
             return symbols
 
-    def get_all_symbols(self, us_only: bool = True, order_by: str = "mktcap") -> List[str]:
+    def get_all_symbols(self, us_only: bool = True, order_by: str = "mktcap") -> list[str]:
         """
         Get ALL stocks from symbol table (excludes ETFs/ETNs).
 
@@ -176,7 +175,7 @@ class SymbolRepository:
             logger.info(f"Found {len(symbols)} total stocks (us_only={us_only}, order_by={order_by})")
             return symbols
 
-    def get_top_n_symbols(self, n: int, us_only: bool = True) -> List[str]:
+    def get_top_n_symbols(self, n: int, us_only: bool = True) -> list[str]:
         """
         Get top N stocks by market cap (excludes ETFs/ETNs).
 
@@ -223,7 +222,7 @@ class SymbolRepository:
             logger.info(f"Found {len(symbols)} top symbols by market cap")
             return symbols
 
-    def get_sec_filing_symbols(self, order_by: str = "stockid") -> List[str]:
+    def get_sec_filing_symbols(self, order_by: str = "stockid") -> list[str]:
         """
         Get symbols with is_sec_filing=TRUE (symbols that have SEC filings).
 
@@ -256,7 +255,7 @@ class SymbolRepository:
             logger.info(f"Found {len(symbols)} SEC filing symbols (order_by={order_by})")
             return symbols
 
-    def get_domestic_filers(self) -> Set[str]:
+    def get_domestic_filers(self) -> set[str]:
         """
         Get symbols that file 10-K/10-Q (domestic filers).
 
@@ -278,7 +277,7 @@ class SymbolRepository:
             logger.info(f"Found {len(domestic)} domestic filers with quarterly data")
             return domestic
 
-    def get_symbols_with_sec_data(self, min_market_cap: float = 1_000_000_000) -> List[str]:
+    def get_symbols_with_sec_data(self, min_market_cap: float = 1_000_000_000) -> list[str]:
         """
         Get symbols that exist in BOTH stock and SEC databases.
 
@@ -325,9 +324,9 @@ class SymbolRepository:
 
     def filter_domestic_filers(
         self,
-        symbols: List[str],
+        symbols: list[str],
         skip_filter: bool = False,
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Filter symbols to only include domestic filers.
 
@@ -352,7 +351,7 @@ class SymbolRepository:
 
 
 # Singleton instance for convenience
-_default_repository: Optional[SymbolRepository] = None
+_default_repository: SymbolRepository | None = None
 
 
 def get_symbol_repository() -> SymbolRepository:

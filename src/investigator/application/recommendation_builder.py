@@ -14,7 +14,6 @@ Date: 2025-01-05
 """
 
 import logging
-from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +26,7 @@ class RecommendationBuilder:
     All recommendation building logic is centralized here.
     """
 
-    def __init__(self, logger: Optional[logging.Logger] = None):
+    def __init__(self, logger: logging.Logger | None = None):
         """
         Initialize recommendation builder.
 
@@ -39,9 +38,9 @@ class RecommendationBuilder:
     def determine_final_recommendation(
         self,
         overall_score: float,
-        ai_recommendation: Dict,
+        ai_recommendation: dict,
         data_quality: float,
-    ) -> Dict:
+    ) -> dict:
         """
         Determine final recommendation with risk management.
 
@@ -99,8 +98,8 @@ class RecommendationBuilder:
     def calculate_price_target(
         self,
         symbol: str,
-        llm_responses: Dict,
-        ai_recommendation: Dict,
+        llm_responses: dict,
+        ai_recommendation: dict,
         current_price: float,
     ) -> float:
         """
@@ -161,7 +160,7 @@ class RecommendationBuilder:
 
         return price_target
 
-    def extract_position_size(self, ai_recommendation: Dict) -> str:
+    def extract_position_size(self, ai_recommendation: dict) -> str:
         """
         Extract position size recommendation.
 
@@ -188,7 +187,7 @@ class RecommendationBuilder:
                 return "SMALL"
         return ai_recommendation.get("position_size", "MODERATE")
 
-    def extract_catalysts(self, ai_recommendation: Dict) -> List[str]:
+    def extract_catalysts(self, ai_recommendation: dict) -> list[str]:
         """
         Extract key catalysts from recommendation.
 
@@ -222,11 +221,11 @@ class RecommendationBuilder:
 
 
 # Singleton instance
-_builder_instance: Optional[RecommendationBuilder] = None
+_builder_instance: RecommendationBuilder | None = None
 
 
 def get_recommendation_builder(
-    logger: Optional[logging.Logger] = None,
+    logger: logging.Logger | None = None,
 ) -> RecommendationBuilder:
     """
     Get singleton RecommendationBuilder instance.

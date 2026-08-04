@@ -16,7 +16,7 @@ Date: 2025-01-05
 
 import logging
 import statistics
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .deterministic_payloads import build_deterministic_response
 
@@ -36,7 +36,7 @@ class DeterministicAnalyzer:
     - Profitability: Margin trends, returns on capital, cost structure
     """
 
-    def __init__(self, agent_id: str = "deterministic", logger: Optional[logging.Logger] = None):
+    def __init__(self, agent_id: str = "deterministic", logger: logging.Logger | None = None):
         """
         Initialize deterministic analyzer.
 
@@ -47,7 +47,7 @@ class DeterministicAnalyzer:
         self.agent_id = agent_id
         self.logger = logger or logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-    def _build_deterministic_response(self, label: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _build_deterministic_response(self, label: str, payload: dict[str, Any]) -> dict[str, Any]:
         """
         Return a structure consistent with LLM response format for rule-based analyses.
 
@@ -60,7 +60,7 @@ class DeterministicAnalyzer:
         """
         return build_deterministic_response(self.agent_id, label, payload)
 
-    def _require_financials(self, company_data: Dict) -> Dict:
+    def _require_financials(self, company_data: dict) -> dict:
         """
         Extract financials from company_data, returning empty dict if not present.
 
@@ -72,7 +72,7 @@ class DeterministicAnalyzer:
         """
         return company_data.get("financials") or {}
 
-    async def analyze_financial_health(self, company_data: Dict, ratios: Dict, symbol: str) -> Dict:
+    async def analyze_financial_health(self, company_data: dict, ratios: dict, symbol: str) -> dict:
         """
         Evaluate liquidity, solvency, and working-capital resilience without LLM calls.
 
@@ -126,7 +126,7 @@ class DeterministicAnalyzer:
             else:
                 label, score = "Leveraged", 45.0
 
-            def _fmt_ratio(value: Optional[float]) -> str:
+            def _fmt_ratio(value: float | None) -> str:
                 if value is None:
                     return "n/a"
                 try:
@@ -216,7 +216,7 @@ class DeterministicAnalyzer:
         ]
         overall_health_score = round(sum(score_components) / len(score_components), 1)
 
-        risk_factors: List[Dict[str, str]] = []
+        risk_factors: list[dict[str, str]] = []
         if liquidity[0] == "Weak":
             risk_factors.append({"risk": "Tight liquidity", "commentary": liquidity[1]})
         if solvency[0] == "Leveraged":
@@ -252,7 +252,7 @@ class DeterministicAnalyzer:
 
         return self._build_deterministic_response("financial_health", payload)
 
-    async def analyze_growth(self, company_data: Dict, symbol: str) -> Dict:
+    async def analyze_growth(self, company_data: dict, symbol: str) -> dict:
         """
         Deterministic growth analysis leveraging computed trend data.
 
@@ -267,7 +267,7 @@ class DeterministicAnalyzer:
         revenue_trend = trend.get("revenue") or {}
         margin_trend = trend.get("margins") or {}
 
-        def _summarize_series(series: List[float]) -> Dict[str, Optional[float]]:
+        def _summarize_series(series: list[float]) -> dict[str, float | None]:
             if not series:
                 return {"avg": None, "latest": None, "quantiles": {}}
             window = series[-min(len(series), 6) :]
@@ -294,7 +294,7 @@ class DeterministicAnalyzer:
             "qoq_quantiles": qoq_summary["quantiles"],
         }
 
-        def classify_growth(value: Optional[float]) -> tuple:
+        def classify_growth(value: float | None) -> tuple:
             if value is None:
                 return "Unknown", 60.0
             if value >= 8.0:
@@ -308,7 +308,7 @@ class DeterministicAnalyzer:
         yoy_growth = comparisons.get("avg_yoy_growth")
         qoq_growth = comparisons.get("latest_qoq_growth")
         yoy_label, yoy_score = classify_growth(yoy_growth)
-        qoq_label, qoq_score = classify_growth(qoq_growth)
+        _qoq_label, qoq_score = classify_growth(qoq_growth)
 
         consistency_score = revenue_trend.get("consistency_score")
         if consistency_score is None:
@@ -336,8 +336,8 @@ class DeterministicAnalyzer:
         }
         market_label, market_score = market_map.get(market_share_trend, ("Holding", 70.0))
 
-        growth_drivers: List[str] = []
-        growth_risks: List[str] = []
+        growth_drivers: list[str] = []
+        growth_risks: list[str] = []
         if yoy_growth and yoy_growth >= 5:
             growth_drivers.append("Product demand momentum")
         if margin_direction == "expanding":
@@ -402,7 +402,7 @@ class DeterministicAnalyzer:
 
         return self._build_deterministic_response("growth_analysis", payload)
 
-    async def analyze_profitability(self, company_data: Dict, ratios: Dict, symbol: str) -> Dict:
+    async def analyze_profitability(self, company_data: dict, ratios: dict, symbol: str) -> dict:
         """
         Deterministic profitability assessment using core ratios.
 
@@ -417,7 +417,7 @@ class DeterministicAnalyzer:
         trend = company_data.get("trend_analysis") or {}
         margin_trend = trend.get("margins", {})
 
-        def pct(value: Optional[float]) -> str:
+        def pct(value: float | None) -> str:
             if value is None:
                 return "n/a"
             return f"{value * 100:.1f}%" if value <= 1 else f"{value:.1f}%"
@@ -429,7 +429,7 @@ class DeterministicAnalyzer:
         roa = ratios.get("roa")
         ratios.get("asset_turnover")
 
-        def classify_margin(value: Optional[float]) -> tuple:
+        def classify_margin(value: float | None) -> tuple:
             if value is None:
                 return "Unknown", 60.0
             if value >= 0.25:
@@ -442,13 +442,13 @@ class DeterministicAnalyzer:
 
         gross_label, gross_score = classify_margin(gross_margin)
         op_label, op_score = classify_margin(operating_margin)
-        net_label, net_score = classify_margin(net_margin)
+        _net_label, net_score = classify_margin(net_margin)
 
         gross_history = margin_trend.get("gross_margins") or []
         margin_trend.get("operating_margins") or []
         net_history = margin_trend.get("net_margins") or []
 
-        def classify_returns(value: Optional[float]) -> tuple:
+        def classify_returns(value: float | None) -> tuple:
             if value is None:
                 return "Unknown", 60.0
             if value >= 0.18:
@@ -460,7 +460,7 @@ class DeterministicAnalyzer:
             return "Low", 45.0
 
         roe_label, roe_score = classify_returns(roe)
-        roa_label, roa_score = classify_returns(roa)
+        _roa_label, roa_score = classify_returns(roa)
 
         margin_direction = margin_trend.get("net_margin_trend", "stable")
         direction_comment = {
@@ -504,7 +504,7 @@ class DeterministicAnalyzer:
             cost_label, cost_score = "Heavy", 55.0
             cost_comment = "Operating expenses absorb large share of gross profit."
 
-        profitability_drivers: List[str] = []
+        profitability_drivers: list[str] = []
         if gross_history:
             try:
                 profitability_drivers.append(f"Median gross margin {statistics.median(gross_history):.1f}%")
@@ -573,11 +573,11 @@ class DeterministicAnalyzer:
 
 
 # Singleton instance
-_analyzer_instance: Optional[DeterministicAnalyzer] = None
+_analyzer_instance: DeterministicAnalyzer | None = None
 
 
 def get_deterministic_analyzer(
-    agent_id: str = "deterministic", logger: Optional[logging.Logger] = None
+    agent_id: str = "deterministic", logger: logging.Logger | None = None
 ) -> DeterministicAnalyzer:
     """
     Get singleton DeterministicAnalyzer instance.

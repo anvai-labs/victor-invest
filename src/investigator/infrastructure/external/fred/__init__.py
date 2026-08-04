@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - Infrastructure Layer External FRED
 Copyright (c) 2025 Vijaykumar Singh

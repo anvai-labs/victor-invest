@@ -30,7 +30,7 @@ Usage:
 import logging
 import os
 from datetime import datetime
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from investigator.domain.services.rl.models import ValuationContext
 from investigator.domain.services.rl.policy.fundamental_policy import (
@@ -52,9 +52,9 @@ class DualRLPolicy:
 
     def __init__(
         self,
-        base_weighting_service: Optional[Any] = None,
-        technical_policy: Optional[TechnicalRLPolicy] = None,
-        fundamental_policy: Optional[FundamentalRLPolicy] = None,
+        base_weighting_service: Any | None = None,
+        technical_policy: TechnicalRLPolicy | None = None,
+        fundamental_policy: FundamentalRLPolicy | None = None,
         technical_path: str = "data/rl_models/technical_policy.pkl",
         fundamental_path: str = "data/rl_models/fundamental_policy.pkl",
     ):
@@ -91,7 +91,7 @@ class DualRLPolicy:
             self.fundamental.load(self.fundamental_path)
             logger.info(f"Loaded fundamental policy: {self.fundamental._update_count} updates")
 
-    def predict_position(self, context: ValuationContext) -> Tuple[int, float]:
+    def predict_position(self, context: ValuationContext) -> tuple[int, float]:
         """
         Predict position signal using technical policy.
 
@@ -101,7 +101,7 @@ class DualRLPolicy:
         """
         return self.technical.predict_position(context)
 
-    def predict_weights(self, context: ValuationContext) -> Dict[str, float]:
+    def predict_weights(self, context: ValuationContext) -> dict[str, float]:
         """
         Predict model weights using fundamental policy.
 
@@ -119,7 +119,7 @@ class DualRLPolicy:
         """
         return self.fundamental.predict_holding_period(context)
 
-    def predict_full(self, context: ValuationContext) -> Dict[str, Any]:
+    def predict_full(self, context: ValuationContext) -> dict[str, Any]:
         """
         Get complete prediction from both policies.
 
@@ -150,9 +150,9 @@ class DualRLPolicy:
     def update(
         self,
         context: ValuationContext,
-        prediction: Dict[str, Any],
+        prediction: dict[str, Any],
         position_reward: float,
-        holding_period_rewards: Optional[Dict[str, float]] = None,
+        holding_period_rewards: dict[str, float] | None = None,
     ) -> None:
         """
         Update both policies based on observed rewards.
@@ -205,7 +205,7 @@ class DualRLPolicy:
     def update_weights(
         self,
         context: ValuationContext,
-        weights: Dict[str, float],
+        weights: dict[str, float],
         reward: float,
     ) -> None:
         """Update only the fundamental (weights) policy."""
@@ -239,7 +239,7 @@ class DualRLPolicy:
         fund_ok = self.fundamental.load(self.fundamental_path)
         return tech_ok and fund_ok
 
-    def get_state(self) -> Dict[str, Any]:
+    def get_state(self) -> dict[str, Any]:
         """Get combined state from both policies."""
         return {
             "technical": self.technical.get_state(),
@@ -250,15 +250,15 @@ class DualRLPolicy:
             "updated_at": self._updated_at.isoformat(),
         }
 
-    def get_action_stats(self) -> Dict[str, Any]:
+    def get_action_stats(self) -> dict[str, Any]:
         """Get action statistics from technical policy."""
         return self.technical.get_action_stats()
 
-    def get_model_stats(self) -> Dict[str, Any]:
+    def get_model_stats(self) -> dict[str, Any]:
         """Get model statistics from fundamental policy."""
         return self.fundamental.get_model_stats()
 
-    def get_holding_period_stats(self) -> Dict[str, Any]:
+    def get_holding_period_stats(self) -> dict[str, Any]:
         """Get holding period statistics from fundamental policy."""
         return self.fundamental.get_holding_period_stats()
 
@@ -270,7 +270,7 @@ class DualRLPolicy:
 def load_dual_policy(
     technical_path: str = "data/rl_models/technical_policy.pkl",
     fundamental_path: str = "data/rl_models/fundamental_policy.pkl",
-    base_weighting_service: Optional[Any] = None,
+    base_weighting_service: Any | None = None,
 ) -> DualRLPolicy:
     """
     Load or create a dual RL policy.

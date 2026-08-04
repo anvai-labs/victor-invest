@@ -303,7 +303,7 @@ class TestDataValidator:
             "net_income": 800_000_000,
             # Missing: free_cash_flow, revenue, operating_cash_flow
         }
-        is_applicable, confidence, missing = validator.validate_for_model(data, "dcf")
+        _is_applicable, _confidence, missing = validator.validate_for_model(data, "dcf")
         assert len(missing) > 0
         assert "free_cash_flow" in missing
         # May or may not be applicable depending on threshold

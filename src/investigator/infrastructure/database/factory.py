@@ -24,10 +24,11 @@ Usage:
 import logging
 import sqlite3
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from contextlib import contextmanager
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -43,45 +44,37 @@ class DatabaseConnection(ABC):
     """Abstract database connection interface."""
 
     @abstractmethod
-    def execute(self, sql: str, params: Optional[List] = None) -> Any:
+    def execute(self, sql: str, params: list | None = None) -> Any:
         """Execute SQL query and return cursor/result."""
-        pass
 
     @abstractmethod
-    def fetchone(self) -> Optional[Tuple]:
+    def fetchone(self) -> tuple | None:
         """Fetch one row from last query."""
-        pass
 
     @abstractmethod
-    def fetchall(self) -> List[Tuple]:
+    def fetchall(self) -> list[tuple]:
         """Fetch all rows from last query."""
-        pass
 
     @abstractmethod
-    def fetchmany(self, size: int) -> List[Tuple]:
+    def fetchmany(self, size: int) -> list[tuple]:
         """Fetch N rows from last query."""
-        pass
 
     @abstractmethod
     def commit(self):
         """Commit transaction."""
-        pass
 
     @abstractmethod
     def rollback(self):
         """Rollback transaction."""
-        pass
 
     @abstractmethod
     def close(self):
         """Close connection."""
-        pass
 
     @property
     @abstractmethod
     def rowcount(self) -> int:
         """Number of rows affected by last query."""
-        pass
 
 
 class SQLiteConnection(DatabaseConnection):
@@ -94,7 +87,7 @@ class SQLiteConnection(DatabaseConnection):
         self.cursor = None
         self._rowcount = 0
 
-    def execute(self, sql: str, params: Optional[List] = None) -> "SQLiteConnection":
+    def execute(self, sql: str, params: list | None = None) -> "SQLiteConnection":
         """Execute SQL with SQLite parameter style (?)."""
         # Convert PostgreSQL style (:name) to SQLite style (?)
         converted_sql, converted_params = self._convert_params(sql, params)
@@ -102,7 +95,7 @@ class SQLiteConnection(DatabaseConnection):
         self._rowcount = self.cursor.rowcount
         return self
 
-    def _convert_params(self, sql: str, params: Optional[Union[List, Dict]]) -> Tuple[str, Optional[List]]:
+    def _convert_params(self, sql: str, params: list | dict | None) -> tuple[str, list | None]:
         """Convert PostgreSQL named params to SQLite positional params."""
         if params is None:
             return sql, None
@@ -126,13 +119,13 @@ class SQLiteConnection(DatabaseConnection):
         else:
             return sql, params
 
-    def fetchone(self) -> Optional[Tuple]:
+    def fetchone(self) -> tuple | None:
         return self.cursor.fetchone() if self.cursor else None
 
-    def fetchall(self) -> List[Tuple]:
+    def fetchall(self) -> list[tuple]:
         return self.cursor.fetchall() if self.cursor else []
 
-    def fetchmany(self, size: int) -> List[Tuple]:
+    def fetchmany(self, size: int) -> list[tuple]:
         return self.cursor.fetchmany(size) if self.cursor else []
 
     def commit(self):
@@ -161,7 +154,7 @@ class PostgresConnection(DatabaseConnection):
         self._rowcount = 0
         self._text = text
 
-    def execute(self, sql: str, params: Optional[Union[List, Dict]] = None) -> "PostgresConnection":
+    def execute(self, sql: str, params: list | dict | None = None) -> "PostgresConnection":
         """Execute SQL with PostgreSQL."""
         # Handle both list and dict params
         if isinstance(params, list):
@@ -172,13 +165,13 @@ class PostgresConnection(DatabaseConnection):
         self._rowcount = self.result.rowcount
         return self
 
-    def fetchone(self) -> Optional[Tuple]:
+    def fetchone(self) -> tuple | None:
         return self.result.fetchone() if self.result else None
 
-    def fetchall(self) -> List[Tuple]:
+    def fetchall(self) -> list[tuple]:
         return self.result.fetchall() if self.result else []
 
-    def fetchmany(self, size: int) -> List[Tuple]:
+    def fetchmany(self, size: int) -> list[tuple]:
         return self.result.fetchmany(size) if self.result else []
 
     def commit(self):
@@ -201,7 +194,6 @@ class Database(ABC):
     @abstractmethod
     def connect(self) -> DatabaseConnection:
         """Get a new connection."""
-        pass
 
     @contextmanager
     def session(self) -> Iterator[DatabaseConnection]:
@@ -219,23 +211,19 @@ class Database(ABC):
     @abstractmethod
     def execute_script(self, sql: str):
         """Execute multi-statement SQL script."""
-        pass
 
     @abstractmethod
     def table_exists(self, table_name: str) -> bool:
         """Check if table exists."""
-        pass
 
     @abstractmethod
-    def get_schema_version(self) -> Optional[str]:
+    def get_schema_version(self) -> str | None:
         """Get current schema version."""
-        pass
 
     @property
     @abstractmethod
     def db_type(self) -> DatabaseType:
         """Get database type."""
-        pass
 
 
 class SQLiteDatabase(Database):
@@ -270,7 +258,7 @@ class SQLiteDatabase(Database):
         finally:
             conn.close()
 
-    def get_schema_version(self) -> Optional[str]:
+    def get_schema_version(self) -> str | None:
         if not self.table_exists("schema_version"):
             return None
         conn = self.connect()
@@ -333,7 +321,7 @@ class PostgresDatabase(Database):
         finally:
             conn.close()
 
-    def get_schema_version(self) -> Optional[str]:
+    def get_schema_version(self) -> str | None:
         if not self.table_exists("schema_version"):
             return None
         conn = self.connect()
@@ -349,13 +337,13 @@ class PostgresDatabase(Database):
 
 
 # Global database instance
-_database: Optional[Database] = None
+_database: Database | None = None
 
 
 def get_database(
-    db_type: Optional[DatabaseType] = None,
-    path: Optional[str] = None,
-    url: Optional[str] = None,
+    db_type: DatabaseType | None = None,
+    path: str | None = None,
+    url: str | None = None,
 ) -> Database:
     """
     Get database instance.
@@ -419,7 +407,7 @@ def reset_database():
     _database = None
 
 
-def install_schema(db: Database, schema_dir: Optional[Path] = None) -> bool:
+def install_schema(db: Database, schema_dir: Path | None = None) -> bool:
     """
     Install database schema from SQL files.
 

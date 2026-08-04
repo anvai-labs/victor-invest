@@ -40,11 +40,13 @@ Usage:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import TYPE_CHECKING, Any, List
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from victor.workflows.definition import ComputeNode
@@ -100,8 +102,8 @@ class HandlerBase:
 
     def _get_input(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
+        node: ComputeNode,
+        context: WorkflowContext,
         key: str,
         default: Any = None,
     ) -> Any:
@@ -133,10 +135,10 @@ class ValuationComputeHandler(HandlerBase):
 
     async def __call__(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> "NodeResult":
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> NodeResult:
         from victor.workflows.executor import NodeResult, NodeStatus
 
         start_time = time.time()
@@ -177,8 +179,7 @@ class ValuationComputeHandler(HandlerBase):
             # Get dynamic weights for model blending
             import yaml
 
-            with open("config.yaml", "r") as f:
-                config = yaml.safe_load(f)
+            config = yaml.safe_load(await asyncio.to_thread(Path("config.yaml").read_text))
             valuation_config = config.get("valuation", {})
             weighting_service = DynamicModelWeightingService(valuation_config)
             weights, tier, weight_audit = weighting_service.determine_weights(
@@ -219,7 +220,7 @@ class ValuationComputeHandler(HandlerBase):
                 duration_seconds=time.time() - start_time,
             )
         except Exception as e:
-            logger.error(f"Valuation failed for {symbol}: {e}", exc_info=True)
+            logger.exception(f"Valuation failed for {symbol}")
             return NodeResult(
                 node_id=node.id,
                 status=NodeStatus.FAILED,
@@ -252,10 +253,10 @@ class RLWeightDecisionHandler(HandlerBase):
 
     async def __call__(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> "NodeResult":
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> NodeResult:
         from victor.workflows.executor import NodeResult, NodeStatus
 
         start_time = time.time()
@@ -301,8 +302,7 @@ class RLWeightDecisionHandler(HandlerBase):
                 RLModelWeightingService,
             )
 
-            with open("config.yaml", "r") as f:
-                config = yaml.safe_load(f)
+            config = yaml.safe_load(await asyncio.to_thread(Path("config.yaml").read_text))
             valuation_config = config.get("valuation", {})
             fallback_service = DynamicModelWeightingService(valuation_config)
 
@@ -363,7 +363,7 @@ class RLWeightDecisionHandler(HandlerBase):
                 duration_seconds=time.time() - start_time,
             )
         except Exception as e:
-            logger.error(f"RL weight decision failed: {e}", exc_info=True)
+            logger.exception("RL weight decision failed")
             return NodeResult(
                 node_id=node.id,
                 status=NodeStatus.FAILED,
@@ -392,10 +392,10 @@ class SECDataExtractHandler(HandlerBase):
 
     async def __call__(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> "NodeResult":
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> NodeResult:
         from victor.workflows.executor import NodeResult, NodeStatus
 
         start_time = time.time()
@@ -470,7 +470,7 @@ class SECDataExtractHandler(HandlerBase):
                 duration_seconds=time.time() - start_time,
             )
         except Exception as e:
-            logger.error(f"SEC data extraction failed for {symbol}: {e}", exc_info=True)
+            logger.exception(f"SEC data extraction failed for {symbol}")
             return NodeResult(
                 node_id=node.id,
                 status=NodeStatus.FAILED,
@@ -499,10 +499,10 @@ class SectorValuationHandler(HandlerBase):
 
     async def __call__(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> "NodeResult":
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> NodeResult:
         from victor.workflows.executor import NodeResult, NodeStatus
 
         start_time = time.time()
@@ -594,7 +594,7 @@ class SectorValuationHandler(HandlerBase):
                 duration_seconds=time.time() - start_time,
             )
         except Exception as e:
-            logger.error(f"Sector valuation failed for {symbol}: {e}", exc_info=True)
+            logger.exception(f"Sector valuation failed for {symbol}")
             return NodeResult(
                 node_id=node.id,
                 status=NodeStatus.FAILED,
@@ -623,10 +623,10 @@ class PriceDataFetchHandler(HandlerBase):
 
     async def __call__(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> "NodeResult":
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> NodeResult:
         from victor.workflows.executor import NodeResult, NodeStatus
 
         start_time = time.time()
@@ -694,7 +694,7 @@ class PriceDataFetchHandler(HandlerBase):
                 duration_seconds=time.time() - start_time,
             )
         except Exception as e:
-            logger.error(f"Price data fetch failed for {symbol}: {e}", exc_info=True)
+            logger.exception(f"Price data fetch failed for {symbol}")
             return NodeResult(
                 node_id=node.id,
                 status=NodeStatus.FAILED,
@@ -723,10 +723,10 @@ class TechnicalAnalysisHandler(HandlerBase):
 
     async def __call__(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> "NodeResult":
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> NodeResult:
         from victor.workflows.executor import NodeResult, NodeStatus
 
         start_time = time.time()
@@ -801,7 +801,7 @@ class TechnicalAnalysisHandler(HandlerBase):
                 duration_seconds=time.time() - start_time,
             )
         except Exception as e:
-            logger.error(f"Technical analysis failed for {symbol}: {e}", exc_info=True)
+            logger.exception(f"Technical analysis failed for {symbol}")
             return NodeResult(
                 node_id=node.id,
                 status=NodeStatus.FAILED,
@@ -827,10 +827,10 @@ class MetadataFetchHandler(HandlerBase):
 
     async def __call__(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> "NodeResult":
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> NodeResult:
         from victor.workflows.executor import NodeResult, NodeStatus
 
         start_time = time.time()
@@ -871,7 +871,7 @@ class MetadataFetchHandler(HandlerBase):
                 duration_seconds=time.time() - start_time,
             )
         except Exception as e:
-            logger.error(f"Metadata fetch failed for {symbol}: {e}", exc_info=True)
+            logger.exception(f"Metadata fetch failed for {symbol}")
             return NodeResult(
                 node_id=node.id,
                 status=NodeStatus.FAILED,
@@ -901,10 +901,10 @@ class OutcomeTrackingHandler(HandlerBase):
 
     async def __call__(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> "NodeResult":
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> NodeResult:
         from victor.workflows.executor import NodeResult, NodeStatus
 
         start_time = time.time()
@@ -955,7 +955,7 @@ class OutcomeTrackingHandler(HandlerBase):
                 duration_seconds=time.time() - start_time,
             )
         except Exception as e:
-            logger.error(f"Outcome tracking failed for {symbol}: {e}", exc_info=True)
+            logger.exception(f"Outcome tracking failed for {symbol}")
             return NodeResult(
                 node_id=node.id,
                 status=NodeStatus.FAILED,
@@ -982,10 +982,10 @@ class BlendedValuationHandler(HandlerBase):
 
     async def __call__(
         self,
-        node: "ComputeNode",
-        context: "WorkflowContext",
-        tool_registry: "ToolRegistry",
-    ) -> "NodeResult":
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ) -> NodeResult:
         from victor.workflows.executor import NodeResult, NodeStatus
 
         start_time = time.time()
@@ -1032,7 +1032,7 @@ class BlendedValuationHandler(HandlerBase):
                 duration_seconds=time.time() - start_time,
             )
         except Exception as e:
-            logger.error(f"Blended valuation failed: {e}", exc_info=True)
+            logger.exception("Blended valuation failed")
             return NodeResult(
                 node_id=node.id,
                 status=NodeStatus.FAILED,
@@ -1086,27 +1086,27 @@ def get_handler(name: str) -> Any:
     return HANDLERS.get(name)
 
 
-def list_handlers() -> List[str]:
+def list_handlers() -> list[str]:
     """List all available handler names."""
     return list(HANDLERS.keys())
 
 
 __all__ = [
+    # Registry
+    "HANDLERS",
+    "BlendedValuationHandler",
     # Base class
     "HandlerBase",
     # Handler classes
     "MetadataFetchHandler",
-    "PriceDataFetchHandler",
-    "SECDataExtractHandler",
-    "ValuationComputeHandler",
-    "SectorValuationHandler",
-    "BlendedValuationHandler",
-    "RLWeightDecisionHandler",
     "OutcomeTrackingHandler",
+    "PriceDataFetchHandler",
+    "RLWeightDecisionHandler",
+    "SECDataExtractHandler",
+    "SectorValuationHandler",
     "TechnicalAnalysisHandler",
-    # Registry
-    "HANDLERS",
-    "register_handlers",
+    "ValuationComputeHandler",
     "get_handler",
     "list_handlers",
+    "register_handlers",
 ]

@@ -21,7 +21,6 @@ def macro(ctx):
         investigator macro fed --district atlanta
         investigator macro treasury curve
     """
-    pass
 
 
 @macro.command("summary")
@@ -338,7 +337,7 @@ def treasury(ctx, view, json_output):
     click.echo("TREASURY YIELD CURVE")
     click.echo("=" * 60)
 
-    obs_date = list(yields.values())[0]["date"] if yields else "N/A"
+    obs_date = next(iter(yields.values()))["date"] if yields else "N/A"
     click.echo(f"As of: {obs_date}")
 
     if view == "curve":

@@ -19,7 +19,6 @@ Usage:
 import asyncio
 import logging
 from datetime import date, datetime, timedelta
-from typing import Dict, List, Optional
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
@@ -37,7 +36,7 @@ class PriceHistoryService:
     Connects to the market data database containing OHLCV data.
     """
 
-    def __init__(self, engine: Optional[Engine] = None):
+    def __init__(self, engine: Engine | None = None):
         """
         Initialize PriceHistoryService.
 
@@ -46,7 +45,7 @@ class PriceHistoryService:
                    If not provided, creates one from config.
         """
         self.engine = engine or self._create_engine()
-        self._cache: Dict[str, float] = {}  # Simple cache: "SYMBOL_YYYY-MM-DD" -> price
+        self._cache: dict[str, float] = {}  # Simple cache: "SYMBOL_YYYY-MM-DD" -> price
 
     def _create_engine(self) -> Engine:
         """Create database engine for market data."""
@@ -77,7 +76,7 @@ class PriceHistoryService:
         target_date: date,
         use_adj_close: bool = True,
         search_days: int = 5,
-    ) -> Optional[float]:
+    ) -> float | None:
         """
         Get closing price on a specific date.
 
@@ -121,7 +120,7 @@ class PriceHistoryService:
         target_date: date,
         use_adj_close: bool,
         search_days: int,
-    ) -> Optional[float]:
+    ) -> float | None:
         """Synchronous implementation of price fetch."""
         try:
             # Convert date to datetime for query
@@ -174,10 +173,10 @@ class PriceHistoryService:
 
     async def batch_get_prices(
         self,
-        symbols: List[str],
+        symbols: list[str],
         target_date: date,
         use_adj_close: bool = True,
-    ) -> Dict[str, Optional[float]]:
+    ) -> dict[str, float | None]:
         """
         Batch fetch prices for multiple symbols on the same date.
 
@@ -206,10 +205,10 @@ class PriceHistoryService:
 
     def _batch_get_prices_sync(
         self,
-        symbols: List[str],
+        symbols: list[str],
         target_date: date,
         use_adj_close: bool,
-    ) -> Dict[str, Optional[float]]:
+    ) -> dict[str, float | None]:
         """Synchronous batch price fetch."""
         try:
             price_column = "adjclose" if use_adj_close else "close"
@@ -279,7 +278,7 @@ class PriceHistoryService:
         start_date: date,
         end_date: date,
         use_adj_close: bool = True,
-    ) -> Dict[date, float]:
+    ) -> dict[date, float]:
         """
         Get prices for a date range.
 
@@ -308,7 +307,7 @@ class PriceHistoryService:
         start_date: date,
         end_date: date,
         use_adj_close: bool,
-    ) -> Dict[date, float]:
+    ) -> dict[date, float]:
         """Synchronous price range fetch."""
         try:
             price_column = "adjclose" if use_adj_close else "close"
@@ -346,7 +345,7 @@ class PriceHistoryService:
             logger.error(f"Error fetching price range for {symbol}: {e}")
             return {}
 
-    def get_current_price(self, symbol: str) -> Optional[float]:
+    def get_current_price(self, symbol: str) -> float | None:
         """
         Get the most recent price for a symbol.
 
@@ -385,7 +384,7 @@ class PriceHistoryService:
 
 
 # Singleton instance
-_price_history_service: Optional[PriceHistoryService] = None
+_price_history_service: PriceHistoryService | None = None
 
 
 def get_price_history_service() -> PriceHistoryService:

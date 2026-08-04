@@ -24,7 +24,6 @@ to provide consistent calculations across both CLIs.
 """
 
 import logging
-from typing import Optional
 
 from investigator.domain.services.valuation.common.growth_calculator import (
     GrowthCalculator,
@@ -58,9 +57,9 @@ class GrowthAdjustedMultiples:
     def calculate_adjusted_pe(
         *,
         sector: str,
-        industry: Optional[str],
-        revenue_growth: Optional[float],
-        sector_pe_override: Optional[float] = None,
+        industry: str | None,
+        revenue_growth: float | None,
+        sector_pe_override: float | None = None,
     ) -> float:
         """Calculate growth-adjusted P/E multiple.
 
@@ -108,9 +107,9 @@ class GrowthAdjustedMultiples:
     def calculate_adjusted_ps(
         *,
         sector: str,
-        industry: Optional[str],
-        base_multiple: Optional[float] = None,
-        revenue_growth: Optional[float],
+        industry: str | None,
+        base_multiple: float | None = None,
+        revenue_growth: float | None,
     ) -> float:
         """Calculate growth-adjusted P/S multiple.
 
@@ -156,9 +155,9 @@ class GrowthAdjustedMultiples:
     def calculate_ev_ebitda_with_growth(
         *,
         sector: str,
-        industry: Optional[str],
-        revenue_growth: Optional[float],
-        leverage_adjusted_multiple: Optional[float] = None,
+        industry: str | None,
+        revenue_growth: float | None,
+        leverage_adjusted_multiple: float | None = None,
         max_multiple: float = 30.0,
     ) -> float:
         """Calculate EV/EBITDA multiple with growth adjustment factor.

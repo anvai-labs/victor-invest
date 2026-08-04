@@ -23,7 +23,7 @@ Design Principles (SOLID):
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, ClassVar, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -53,22 +53,22 @@ class ThesisContext:
     symbol: str
     company_name: str
     sector: str
-    industry: Optional[str]
+    industry: str | None
     overall_score: float  # 0-100
     confidence: float  # 0-100
     upside: float  # Decimal (0.15 = 15%)
     current_price: float
     fair_value: float
     # From key insights
-    positive_factors: List[str] = field(default_factory=list)
-    negative_factors: List[str] = field(default_factory=list)
-    critical_metrics: Dict[str, Any] = field(default_factory=dict)
+    positive_factors: list[str] = field(default_factory=list)
+    negative_factors: list[str] = field(default_factory=list)
+    critical_metrics: dict[str, Any] = field(default_factory=dict)
     # From analysis
-    revenue_growth: Optional[float] = None
-    profit_margin: Optional[float] = None
-    dividend_yield: Optional[float] = None
-    pe_ratio: Optional[float] = None
-    debt_to_equity: Optional[float] = None
+    revenue_growth: float | None = None
+    profit_margin: float | None = None
+    dividend_yield: float | None = None
+    pe_ratio: float | None = None
+    debt_to_equity: float | None = None
     # Quality and risk
     data_quality_score: float = 50.0
     model_agreement: float = 0.5
@@ -80,15 +80,15 @@ class InvestmentThesis:
     """Complete investment thesis output."""
 
     core_investment_narrative: str
-    key_value_drivers: List[str]
-    competitive_advantages: List[str]
-    growth_catalysts: List[str]
-    bear_case_considerations: List[str]
+    key_value_drivers: list[str]
+    competitive_advantages: list[str]
+    growth_catalysts: list[str]
+    bear_case_considerations: list[str]
     time_horizon: str
-    key_metrics_to_monitor: List[str]
-    thesis_invalidation_triggers: List[str]
+    key_metrics_to_monitor: list[str]
+    thesis_invalidation_triggers: list[str]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for API compatibility."""
         return {
             "core_investment_narrative": self.core_investment_narrative,
@@ -111,7 +111,7 @@ class NarrativeGenerator(Protocol):
 class ListGenerator(Protocol):
     """Protocol for generating list sections."""
 
-    def generate(self, context: ThesisContext) -> List[str]: ...
+    def generate(self, context: ThesisContext) -> list[str]: ...
 
 
 # ============================================================================
@@ -123,7 +123,7 @@ class CoreNarrativeGenerator:
     """Generates the core investment narrative based on analysis context."""
 
     # Templates by stance
-    TEMPLATES = {
+    TEMPLATES: ClassVar[dict] = {
         InvestmentStance.STRONG_BUY: (
             "{symbol} presents a compelling investment opportunity in the {sector} sector. "
             "Trading at ${current_price:.2f}, the stock offers {upside_pct:.0%} upside to our "
@@ -216,7 +216,7 @@ class CoreNarrativeGenerator:
         else:
             return InvestmentStance.HOLD
 
-    def _format_list(self, items: List[str]) -> str:
+    def _format_list(self, items: list[str]) -> str:
         """Format list items as natural language."""
         if not items:
             return ""
@@ -235,7 +235,7 @@ class ValueDriversGenerator:
     """Generates key value drivers based on financial metrics."""
 
     # Sector-specific value drivers
-    SECTOR_DRIVERS = {
+    SECTOR_DRIVERS: ClassVar[dict] = {
         "Technology": [
             "Innovation pipeline and R&D productivity",
             "Recurring revenue and subscription growth",
@@ -268,14 +268,14 @@ class ValueDriversGenerator:
         ],
     }
 
-    DEFAULT_DRIVERS = [
+    DEFAULT_DRIVERS: ClassVar[list] = [
         "Revenue growth sustainability",
         "Margin expansion opportunity",
         "Competitive positioning",
         "Capital allocation efficiency",
     ]
 
-    def generate(self, context: ThesisContext) -> List[str]:
+    def generate(self, context: ThesisContext) -> list[str]:
         """Generate key value drivers."""
         drivers = []
 
@@ -312,7 +312,7 @@ class CompetitiveAdvantagesGenerator:
     """Generates competitive advantages based on moat analysis."""
 
     # Common competitive advantages by type
-    MOAT_TEMPLATES = {
+    MOAT_TEMPLATES: ClassVar[dict] = {
         "brand": "Strong brand recognition and customer loyalty",
         "network_effects": "Network effects create switching costs and barriers to entry",
         "cost_advantage": "Cost leadership through scale and operational efficiency",
@@ -321,7 +321,7 @@ class CompetitiveAdvantagesGenerator:
         "regulatory": "Regulatory barriers limit competitive threats",
     }
 
-    SECTOR_MOATS = {
+    SECTOR_MOATS: ClassVar[dict] = {
         "Technology": ["intangibles", "network_effects", "switching_costs"],
         "Healthcare": ["intangibles", "regulatory", "brand"],
         "Financials": ["switching_costs", "regulatory", "brand"],
@@ -329,7 +329,7 @@ class CompetitiveAdvantagesGenerator:
         "Industrials": ["cost_advantage", "switching_costs", "intangibles"],
     }
 
-    def generate(self, context: ThesisContext) -> List[str]:
+    def generate(self, context: ThesisContext) -> list[str]:
         """Generate competitive advantages."""
         advantages = []
 
@@ -342,10 +342,9 @@ class CompetitiveAdvantagesGenerator:
 
         # Add from positive factors
         for factor in context.positive_factors:
-            if "moat" in factor.lower() or "advantage" in factor.lower():
-                if factor not in advantages:
-                    advantages.append(factor)
-                    break
+            if ("moat" in factor.lower() or "advantage" in factor.lower()) and factor not in advantages:
+                advantages.append(factor)
+                break
 
         return advantages[:3]
 
@@ -353,7 +352,7 @@ class CompetitiveAdvantagesGenerator:
 class GrowthCatalystsGenerator:
     """Generates growth catalysts based on sector and metrics."""
 
-    SECTOR_CATALYSTS = {
+    SECTOR_CATALYSTS: ClassVar[dict] = {
         "Technology": [
             "AI and machine learning integration driving new revenue streams",
             "Cloud adoption acceleration across enterprise customers",
@@ -386,14 +385,14 @@ class GrowthCatalystsGenerator:
         ],
     }
 
-    DEFAULT_CATALYSTS = [
+    DEFAULT_CATALYSTS: ClassVar[list] = [
         "Market share expansion opportunities",
         "Operational efficiency improvements",
         "Strategic capital deployment",
         "Industry consolidation potential",
     ]
 
-    def generate(self, context: ThesisContext) -> List[str]:
+    def generate(self, context: ThesisContext) -> list[str]:
         """Generate growth catalysts."""
         catalysts = self.SECTOR_CATALYSTS.get(context.sector, self.DEFAULT_CATALYSTS)
 
@@ -407,7 +406,7 @@ class GrowthCatalystsGenerator:
 class BearCaseGenerator:
     """Generates bear case considerations based on risks."""
 
-    SECTOR_RISKS = {
+    SECTOR_RISKS: ClassVar[dict] = {
         "Technology": [
             "Increased competition from well-funded rivals",
             "Technology obsolescence or disruption risk",
@@ -440,20 +439,19 @@ class BearCaseGenerator:
         ],
     }
 
-    DEFAULT_RISKS = [
+    DEFAULT_RISKS: ClassVar[list] = [
         "Macroeconomic uncertainty affecting demand",
         "Competitive pressure on margins",
         "Execution risk in growth initiatives",
         "Valuation premium at risk if growth disappoints",
     ]
 
-    def generate(self, context: ThesisContext) -> List[str]:
+    def generate(self, context: ThesisContext) -> list[str]:
         """Generate bear case considerations."""
         risks = []
 
         # Add from negative factors first
-        for factor in context.negative_factors[:2]:
-            risks.append(factor)
+        risks.extend(context.negative_factors[:2])
 
         # Add sector-specific risks
         sector_risks = self.SECTOR_RISKS.get(context.sector, self.DEFAULT_RISKS)
@@ -473,7 +471,7 @@ class BearCaseGenerator:
 class KeyMetricsGenerator:
     """Generates key metrics to monitor based on sector and analysis."""
 
-    SECTOR_METRICS = {
+    SECTOR_METRICS: ClassVar[dict] = {
         "Technology": [
             "Revenue growth and ARR/MRR trends",
             "Operating margin and R&D efficiency",
@@ -506,14 +504,14 @@ class KeyMetricsGenerator:
         ],
     }
 
-    DEFAULT_METRICS = [
+    DEFAULT_METRICS: ClassVar[list] = [
         "Revenue growth trajectory",
         "Operating margin trends",
         "Free cash flow generation",
         "Return on invested capital",
     ]
 
-    def generate(self, context: ThesisContext) -> List[str]:
+    def generate(self, context: ThesisContext) -> list[str]:
         """Generate key metrics to monitor."""
         metrics = self.SECTOR_METRICS.get(context.sector, self.DEFAULT_METRICS)
 
@@ -527,14 +525,14 @@ class KeyMetricsGenerator:
 class InvalidationTriggersGenerator:
     """Generates thesis invalidation triggers."""
 
-    BASE_TRIGGERS = [
+    BASE_TRIGGERS: ClassVar[list] = [
         "Revenue growth decelerates below {growth_threshold}%",
         "Operating margin contracts more than {margin_threshold} basis points",
         "Debt-to-equity ratio exceeds {leverage_threshold}x",
         "Key management departures without clear succession",
     ]
 
-    def generate(self, context: ThesisContext) -> List[str]:
+    def generate(self, context: ThesisContext) -> list[str]:
         """Generate thesis invalidation triggers."""
         triggers = []
 
@@ -613,14 +611,14 @@ class TemplateBasedThesisGenerator:
 
     def __init__(
         self,
-        narrative_generator: Optional[NarrativeGenerator] = None,
-        value_drivers_generator: Optional[ListGenerator] = None,
-        competitive_advantages_generator: Optional[ListGenerator] = None,
-        growth_catalysts_generator: Optional[ListGenerator] = None,
-        bear_case_generator: Optional[ListGenerator] = None,
-        key_metrics_generator: Optional[ListGenerator] = None,
-        invalidation_triggers_generator: Optional[ListGenerator] = None,
-        time_horizon_determiner: Optional[TimeHorizonDeterminer] = None,
+        narrative_generator: NarrativeGenerator | None = None,
+        value_drivers_generator: ListGenerator | None = None,
+        competitive_advantages_generator: ListGenerator | None = None,
+        growth_catalysts_generator: ListGenerator | None = None,
+        bear_case_generator: ListGenerator | None = None,
+        key_metrics_generator: ListGenerator | None = None,
+        invalidation_triggers_generator: ListGenerator | None = None,
+        time_horizon_determiner: TimeHorizonDeterminer | None = None,
     ):
         self.narrative_generator = narrative_generator or CoreNarrativeGenerator()
         self.value_drivers_generator = value_drivers_generator or ValueDriversGenerator()
@@ -656,10 +654,10 @@ class TemplateBasedThesisGenerator:
     def from_synthesis_data(
         cls,
         symbol: str,
-        key_insights: Dict[str, Any],
-        composite_scores: Dict[str, Any],
-        fundamental_analysis: Optional[Dict[str, Any]] = None,
-        company_profile: Optional[Dict[str, Any]] = None,
+        key_insights: dict[str, Any],
+        composite_scores: dict[str, Any],
+        fundamental_analysis: dict[str, Any] | None = None,
+        company_profile: dict[str, Any] | None = None,
     ) -> InvestmentThesis:
         """
         Factory method to create thesis from existing synthesis data.
@@ -753,11 +751,11 @@ class TemplateBasedThesisGenerator:
 
 def generate_investment_thesis(
     symbol: str,
-    key_insights: Dict[str, Any],
-    composite_scores: Dict[str, Any],
-    fundamental_analysis: Optional[Dict[str, Any]] = None,
-    company_profile: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    key_insights: dict[str, Any],
+    composite_scores: dict[str, Any],
+    fundamental_analysis: dict[str, Any] | None = None,
+    company_profile: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """
     Drop-in replacement for LLM-based investment thesis generation.
 
@@ -786,18 +784,18 @@ def generate_investment_thesis(
 
 
 __all__ = [
-    "TemplateBasedThesisGenerator",
-    "InvestmentThesis",
-    "ThesisContext",
-    "InvestmentStance",
-    "TimeHorizon",
-    "CoreNarrativeGenerator",
-    "ValueDriversGenerator",
-    "CompetitiveAdvantagesGenerator",
-    "GrowthCatalystsGenerator",
     "BearCaseGenerator",
-    "KeyMetricsGenerator",
+    "CompetitiveAdvantagesGenerator",
+    "CoreNarrativeGenerator",
+    "GrowthCatalystsGenerator",
     "InvalidationTriggersGenerator",
+    "InvestmentStance",
+    "InvestmentThesis",
+    "KeyMetricsGenerator",
+    "TemplateBasedThesisGenerator",
+    "ThesisContext",
+    "TimeHorizon",
     "TimeHorizonDeterminer",
+    "ValueDriversGenerator",
     "generate_investment_thesis",
 ]

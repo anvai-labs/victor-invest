@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - Industry Metrics Cache (Hybrid Architecture)
 Copyright (c) 2025 Vijaykumar Singh
@@ -40,9 +39,9 @@ import logging
 import statistics
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -55,25 +54,25 @@ class IndustryMetricsCacheEntry:
 
     symbol: str
     industry: str
-    sector: Optional[str]
+    sector: str | None
     dataset_name: str
     dataset_version: str
     quality: str  # excellent, good, fair, poor
     coverage: float
-    metrics: Dict[str, Any]
-    adjustments: List[Dict[str, Any]]
-    tier_weights: Optional[Dict[str, int]]
-    warnings: List[str]
-    metadata: Dict[str, Any]
+    metrics: dict[str, Any]
+    adjustments: list[dict[str, Any]]
+    tier_weights: dict[str, int] | None
+    warnings: list[str]
+    metadata: dict[str, Any]
     cached_at: str
-    expires_at: Optional[str] = None
+    expires_at: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for storage"""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "IndustryMetricsCacheEntry":
+    def from_dict(cls, data: dict[str, Any]) -> "IndustryMetricsCacheEntry":
         """Create from dictionary"""
         return cls(**data)
 
@@ -83,36 +82,36 @@ class IndustryBenchmarksCacheEntry:
     """Cache entry for industry-level shared benchmarks"""
 
     industry: str
-    sector: Optional[str]
+    sector: str | None
     symbol_count: int  # Number of symbols used to compute benchmarks
-    symbols_included: List[str]  # Symbols used in computation
+    symbols_included: list[str]  # Symbols used in computation
 
     # Peer statistics for numeric metrics
     # Format: {"metric_name": {"median": x, "mean": y, "std": z, "min": a, "max": b, "p25": c, "p75": d}}
-    peer_statistics: Dict[str, Dict[str, float]]
+    peer_statistics: dict[str, dict[str, float]]
 
     # Industry benchmarks (thresholds, typical ranges)
-    benchmarks: Dict[str, Any]
+    benchmarks: dict[str, Any]
 
     # Recommended tier weights for this industry
-    tier_weights: Dict[str, int]
+    tier_weights: dict[str, int]
 
     # Cycle/market position indicators
-    cycle_indicators: Dict[str, Any]
+    cycle_indicators: dict[str, Any]
 
     # Metadata
     dataset_name: str
     dataset_version: str
     cached_at: str
-    expires_at: Optional[str] = None
-    computation_notes: List[str] = field(default_factory=list)
+    expires_at: str | None = None
+    computation_notes: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for storage"""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "IndustryBenchmarksCacheEntry":
+    def from_dict(cls, data: dict[str, Any]) -> "IndustryBenchmarksCacheEntry":
         """Create from dictionary"""
         # Handle missing fields with defaults
         data.setdefault("computation_notes", [])
@@ -124,61 +123,50 @@ class IndustryMetricsStorageBackend(ABC):
 
     # Symbol-level methods
     @abstractmethod
-    def get(self, symbol: str) -> Optional[IndustryMetricsCacheEntry]:
+    def get(self, symbol: str) -> IndustryMetricsCacheEntry | None:
         """Retrieve cached metrics for a symbol"""
-        pass
 
     @abstractmethod
     def set(self, entry: IndustryMetricsCacheEntry) -> bool:
         """Store metrics for a symbol"""
-        pass
 
     @abstractmethod
     def exists(self, symbol: str) -> bool:
         """Check if metrics exist for a symbol"""
-        pass
 
     @abstractmethod
     def delete(self, symbol: str) -> bool:
         """Delete metrics for a symbol"""
-        pass
 
     @abstractmethod
-    def get_by_industry(self, industry: str) -> List[IndustryMetricsCacheEntry]:
+    def get_by_industry(self, industry: str) -> list[IndustryMetricsCacheEntry]:
         """Get all cached metrics for an industry"""
-        pass
 
     @abstractmethod
-    def list_symbols(self) -> List[str]:
+    def list_symbols(self) -> list[str]:
         """List all cached symbols"""
-        pass
 
     # Industry-level methods
     @abstractmethod
-    def get_industry_benchmarks(self, industry: str) -> Optional[IndustryBenchmarksCacheEntry]:
+    def get_industry_benchmarks(self, industry: str) -> IndustryBenchmarksCacheEntry | None:
         """Get cached industry-level benchmarks"""
-        pass
 
     @abstractmethod
     def set_industry_benchmarks(self, entry: IndustryBenchmarksCacheEntry) -> bool:
         """Store industry-level benchmarks"""
-        pass
 
     @abstractmethod
-    def list_industries(self) -> List[str]:
+    def list_industries(self) -> list[str]:
         """List all industries with cached benchmarks"""
-        pass
 
     # Common methods
     @abstractmethod
     def clear_all(self) -> bool:
         """Clear all cached metrics"""
-        pass
 
     @abstractmethod
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get cache statistics"""
-        pass
 
 
 class ParquetIndustryMetricsBackend(IndustryMetricsStorageBackend):
@@ -208,7 +196,7 @@ class ParquetIndustryMetricsBackend(IndustryMetricsStorageBackend):
         self._ensure_indexes()
 
         # Determine parquet engine
-        self._engine: Optional[str] = None
+        self._engine: str | None = None
         for engine in ("pyarrow", "fastparquet"):
             try:
                 __import__(engine)
@@ -297,7 +285,7 @@ class ParquetIndustryMetricsBackend(IndustryMetricsStorageBackend):
         except Exception as e:
             logger.warning(f"Failed to remove from symbol index: {e}")
 
-    def get(self, symbol: str) -> Optional[IndustryMetricsCacheEntry]:
+    def get(self, symbol: str) -> IndustryMetricsCacheEntry | None:
         """Retrieve cached metrics for a symbol"""
         file_path = self._get_symbol_file_path(symbol)
 
@@ -379,7 +367,7 @@ class ParquetIndustryMetricsBackend(IndustryMetricsStorageBackend):
             logger.error(f"Error deleting symbol cache for {symbol}: {e}")
             return False
 
-    def get_by_industry(self, industry: str) -> List[IndustryMetricsCacheEntry]:
+    def get_by_industry(self, industry: str) -> list[IndustryMetricsCacheEntry]:
         """Get all cached metrics for an industry"""
         try:
             index_df = pd.read_parquet(self._symbol_index_path)
@@ -397,7 +385,7 @@ class ParquetIndustryMetricsBackend(IndustryMetricsStorageBackend):
             logger.error(f"Error getting metrics for industry {industry}: {e}")
             return []
 
-    def list_symbols(self) -> List[str]:
+    def list_symbols(self) -> list[str]:
         """List all cached symbols"""
         try:
             index_df = pd.read_parquet(self._symbol_index_path)
@@ -441,7 +429,7 @@ class ParquetIndustryMetricsBackend(IndustryMetricsStorageBackend):
         except Exception as e:
             logger.warning(f"Failed to update industry index: {e}")
 
-    def get_industry_benchmarks(self, industry: str) -> Optional[IndustryBenchmarksCacheEntry]:
+    def get_industry_benchmarks(self, industry: str) -> IndustryBenchmarksCacheEntry | None:
         """Get cached industry-level benchmarks"""
         file_path = self._get_industry_file_path(industry)
 
@@ -506,7 +494,7 @@ class ParquetIndustryMetricsBackend(IndustryMetricsStorageBackend):
             logger.error(f"Error caching industry benchmarks for {entry.industry}: {e}")
             return False
 
-    def list_industries(self) -> List[str]:
+    def list_industries(self) -> list[str]:
         """List all industries with cached benchmarks"""
         try:
             index_df = pd.read_parquet(self._industry_index_path)
@@ -543,7 +531,7 @@ class ParquetIndustryMetricsBackend(IndustryMetricsStorageBackend):
             logger.error(f"Error clearing industry metrics cache: {e}")
             return False
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get cache statistics"""
         try:
             symbol_df = pd.read_parquet(self._symbol_index_path)
@@ -644,7 +632,7 @@ class PostgreSQLIndustryMetricsBackend(IndustryMetricsStorageBackend):
             logger.warning(f"Could not ensure cache tables: {e}")
 
     # Symbol-level methods (abbreviated - same pattern as before)
-    def get(self, symbol: str) -> Optional[IndustryMetricsCacheEntry]:
+    def get(self, symbol: str) -> IndustryMetricsCacheEntry | None:
         from sqlalchemy import text
 
         try:
@@ -741,7 +729,7 @@ class PostgreSQLIndustryMetricsBackend(IndustryMetricsStorageBackend):
         except Exception:
             return False
 
-    def get_by_industry(self, industry: str) -> List[IndustryMetricsCacheEntry]:
+    def get_by_industry(self, industry: str) -> list[IndustryMetricsCacheEntry]:
         from sqlalchemy import text
 
         try:
@@ -763,7 +751,7 @@ class PostgreSQLIndustryMetricsBackend(IndustryMetricsStorageBackend):
         except Exception:
             return []
 
-    def list_symbols(self) -> List[str]:
+    def list_symbols(self) -> list[str]:
         from sqlalchemy import text
 
         try:
@@ -774,7 +762,7 @@ class PostgreSQLIndustryMetricsBackend(IndustryMetricsStorageBackend):
             return []
 
     # Industry-level methods
-    def get_industry_benchmarks(self, industry: str) -> Optional[IndustryBenchmarksCacheEntry]:
+    def get_industry_benchmarks(self, industry: str) -> IndustryBenchmarksCacheEntry | None:
         from sqlalchemy import text
 
         try:
@@ -844,7 +832,7 @@ class PostgreSQLIndustryMetricsBackend(IndustryMetricsStorageBackend):
             logger.error(f"Error caching benchmarks for {entry.industry}: {e}")
             return False
 
-    def list_industries(self) -> List[str]:
+    def list_industries(self) -> list[str]:
         from sqlalchemy import text
 
         try:
@@ -868,7 +856,7 @@ class PostgreSQLIndustryMetricsBackend(IndustryMetricsStorageBackend):
         except Exception:
             return False
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         from sqlalchemy import text
 
         try:
@@ -895,8 +883,8 @@ class IndustryMetricsCache:
 
     def __init__(
         self,
-        backend: Optional[str] = None,
-        parquet_path: Optional[str] = None,
+        backend: str | None = None,
+        parquet_path: str | None = None,
     ):
         """
         Initialize industry metrics cache
@@ -922,7 +910,7 @@ class IndustryMetricsCache:
             self._backend = ParquetIndustryMetricsBackend(Path(self._parquet_path))
             logger.info(f"Initialized Parquet hybrid industry metrics cache at {self._parquet_path}")
 
-    def _load_config(self) -> Dict[str, Any]:
+    def _load_config(self) -> dict[str, Any]:
         """Load configuration from config.yaml"""
         try:
             import yaml
@@ -938,7 +926,7 @@ class IndustryMetricsCache:
 
     # ========== Symbol-Level Methods ==========
 
-    def get(self, symbol: str) -> Optional[IndustryMetricsCacheEntry]:
+    def get(self, symbol: str) -> IndustryMetricsCacheEntry | None:
         """Retrieve cached metrics for a symbol"""
         return self._backend.get(symbol)
 
@@ -946,20 +934,20 @@ class IndustryMetricsCache:
         self,
         symbol: str,
         industry: str,
-        sector: Optional[str],
+        sector: str | None,
         dataset_name: str,
         dataset_version: str,
         quality: str,
         coverage: float,
-        metrics: Dict[str, Any],
-        adjustments: List[Dict[str, Any]],
-        tier_weights: Optional[Dict[str, int]] = None,
-        warnings: Optional[List[str]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        ttl_days: Optional[int] = None,
+        metrics: dict[str, Any],
+        adjustments: list[dict[str, Any]],
+        tier_weights: dict[str, int] | None = None,
+        warnings: list[str] | None = None,
+        metadata: dict[str, Any] | None = None,
+        ttl_days: int | None = None,
     ) -> bool:
         """Store industry metrics for a symbol"""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expires_at = None
         if ttl_days:
             from datetime import timedelta
@@ -993,36 +981,36 @@ class IndustryMetricsCache:
         """Delete metrics for a symbol"""
         return self._backend.delete(symbol)
 
-    def get_by_industry(self, industry: str) -> List[IndustryMetricsCacheEntry]:
+    def get_by_industry(self, industry: str) -> list[IndustryMetricsCacheEntry]:
         """Get all cached metrics for an industry"""
         return self._backend.get_by_industry(industry)
 
-    def list_symbols(self) -> List[str]:
+    def list_symbols(self) -> list[str]:
         """List all cached symbols"""
         return self._backend.list_symbols()
 
     # ========== Industry-Level Methods ==========
 
-    def get_industry_benchmarks(self, industry: str) -> Optional[IndustryBenchmarksCacheEntry]:
+    def get_industry_benchmarks(self, industry: str) -> IndustryBenchmarksCacheEntry | None:
         """Get cached industry-level benchmarks (shared across symbols)"""
         return self._backend.get_industry_benchmarks(industry)
 
     def set_industry_benchmarks(
         self,
         industry: str,
-        sector: Optional[str],
-        symbols_included: List[str],
-        peer_statistics: Dict[str, Dict[str, float]],
-        benchmarks: Dict[str, Any],
-        tier_weights: Dict[str, int],
-        cycle_indicators: Optional[Dict[str, Any]] = None,
+        sector: str | None,
+        symbols_included: list[str],
+        peer_statistics: dict[str, dict[str, float]],
+        benchmarks: dict[str, Any],
+        tier_weights: dict[str, int],
+        cycle_indicators: dict[str, Any] | None = None,
         dataset_name: str = "computed",
         dataset_version: str = "1.0.0",
-        ttl_days: Optional[int] = None,
-        computation_notes: Optional[List[str]] = None,
+        ttl_days: int | None = None,
+        computation_notes: list[str] | None = None,
     ) -> bool:
         """Store industry-level benchmarks (shared across symbols)"""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expires_at = None
         if ttl_days:
             from datetime import timedelta
@@ -1051,7 +1039,7 @@ class IndustryMetricsCache:
         self,
         industry: str,
         ttl_days: int = 7,
-    ) -> Optional[IndustryBenchmarksCacheEntry]:
+    ) -> IndustryBenchmarksCacheEntry | None:
         """
         Compute industry benchmarks from cached symbol data and cache the result.
 
@@ -1082,7 +1070,7 @@ class IndustryMetricsCache:
         tier_weights = symbol_entries[0].tier_weights or {}
 
         # Collect all numeric metrics
-        all_metrics: Dict[str, List[float]] = {}
+        all_metrics: dict[str, list[float]] = {}
         for entry in symbol_entries:
             for metric_name, value in entry.metrics.items():
                 if isinstance(value, (int, float)) and value is not None:
@@ -1091,7 +1079,7 @@ class IndustryMetricsCache:
                     all_metrics[metric_name].append(float(value))
 
         # Compute peer statistics
-        peer_statistics: Dict[str, Dict[str, float]] = {}
+        peer_statistics: dict[str, dict[str, float]] = {}
         for metric_name, values in all_metrics.items():
             if len(values) >= 2:
                 sorted_values = sorted(values)
@@ -1108,7 +1096,7 @@ class IndustryMetricsCache:
                 }
 
         # Compute benchmarks (thresholds based on percentiles)
-        benchmarks: Dict[str, Any] = {}
+        benchmarks: dict[str, Any] = {}
         for metric_name, stats in peer_statistics.items():
             benchmarks[metric_name] = {
                 "typical_low": stats["p25"],
@@ -1119,7 +1107,7 @@ class IndustryMetricsCache:
             }
 
         # Compute cycle indicators (simple heuristics)
-        cycle_indicators: Dict[str, Any] = {
+        cycle_indicators: dict[str, Any] = {
             "sample_size": len(symbol_entries),
             "data_quality": self._assess_data_quality(symbol_entries),
         }
@@ -1156,7 +1144,7 @@ class IndustryMetricsCache:
             return self.get_industry_benchmarks(industry)
         return None
 
-    def _assess_data_quality(self, entries: List[IndustryMetricsCacheEntry]) -> str:
+    def _assess_data_quality(self, entries: list[IndustryMetricsCacheEntry]) -> str:
         """Assess overall data quality from symbol entries"""
         if not entries:
             return "none"
@@ -1173,7 +1161,7 @@ class IndustryMetricsCache:
             return "fair"
         return "poor"
 
-    def list_industries(self) -> List[str]:
+    def list_industries(self) -> list[str]:
         """List all industries with cached benchmarks"""
         return self._backend.list_industries()
 
@@ -1183,7 +1171,7 @@ class IndustryMetricsCache:
         """Clear all cached metrics (symbols and industries)"""
         return self._backend.clear_all()
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get cache statistics"""
         return self._backend.get_stats()
 
@@ -1194,8 +1182,8 @@ class IndustryMetricsCache:
 
     def cache_from_summary(
         self,
-        summary: Dict[str, Any],
-        ttl_days: Optional[int] = None,
+        summary: dict[str, Any],
+        ttl_days: int | None = None,
     ) -> bool:
         """Cache metrics from an industry summary dict"""
         if not summary or summary.get("extraction_failed"):

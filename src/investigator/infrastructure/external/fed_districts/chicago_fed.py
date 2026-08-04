@@ -36,7 +36,7 @@ import logging
 from dataclasses import dataclass
 from datetime import date
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import aiohttp
 
@@ -98,12 +98,12 @@ class CFNAIData:
     date: date
     cfnai: float
     cfnai_ma3: float
-    production_income: Optional[float] = None
-    employment: Optional[float] = None
-    consumption_housing: Optional[float] = None
-    sales_orders_inventories: Optional[float] = None
-    condition: Optional[EconomicCondition] = None
-    recession_probability: Optional[float] = None
+    production_income: float | None = None
+    employment: float | None = None
+    consumption_housing: float | None = None
+    sales_orders_inventories: float | None = None
+    condition: EconomicCondition | None = None
+    recession_probability: float | None = None
 
     def __post_init__(self):
         if self.condition is None:
@@ -169,11 +169,11 @@ class NFCIData:
 
     date: date
     nfci: float
-    anfci: Optional[float] = None
-    risk_subindex: Optional[float] = None
-    credit_subindex: Optional[float] = None
-    leverage_subindex: Optional[float] = None
-    condition: Optional[FinancialCondition] = None
+    anfci: float | None = None
+    risk_subindex: float | None = None
+    credit_subindex: float | None = None
+    leverage_subindex: float | None = None
+    condition: FinancialCondition | None = None
 
     def __post_init__(self):
         if self.condition is None:
@@ -213,7 +213,7 @@ class ChicagoFedClient:
         print(f"NFCI: {nfci.nfci} ({nfci.condition.value})")
     """
 
-    def __init__(self, session: Optional[aiohttp.ClientSession] = None):
+    def __init__(self, session: aiohttp.ClientSession | None = None):
         self._session = session
         self._owns_session = session is None
 
@@ -234,7 +234,7 @@ class ChicagoFedClient:
             await self._session.close()
             self._session = None
 
-    async def get_cfnai(self) -> Optional[CFNAIData]:
+    async def get_cfnai(self) -> CFNAIData | None:
         """Get the latest Chicago Fed National Activity Index.
 
         Returns:
@@ -253,7 +253,7 @@ class ChicagoFedClient:
             logger.warning(f"Failed to fetch CFNAI: {e}")
             return None
 
-    def _parse_cfnai_excel(self, content: bytes) -> Optional[CFNAIData]:
+    def _parse_cfnai_excel(self, content: bytes) -> CFNAIData | None:
         """Parse CFNAI data from Excel file."""
         try:
             import io
@@ -271,7 +271,7 @@ class ChicagoFedClient:
             obs_date = pd.to_datetime(latest[date_col]).date()
 
             # Find columns
-            def find_col(keywords: List[str]) -> Optional[str]:
+            def find_col(keywords: list[str]) -> str | None:
                 for col in df.columns:
                     col_lower = str(col).lower()
                     if all(k in col_lower for k in keywords):
@@ -301,7 +301,7 @@ class ChicagoFedClient:
             logger.debug(f"Could not parse CFNAI Excel: {e}")
             return None
 
-    async def get_nfci(self) -> Optional[NFCIData]:
+    async def get_nfci(self) -> NFCIData | None:
         """Get the latest National Financial Conditions Index.
 
         Returns:
@@ -320,7 +320,7 @@ class ChicagoFedClient:
             logger.warning(f"Failed to fetch NFCI: {e}")
             return None
 
-    def _parse_nfci_excel(self, content: bytes) -> Optional[NFCIData]:
+    def _parse_nfci_excel(self, content: bytes) -> NFCIData | None:
         """Parse NFCI data from Excel file."""
         try:
             import io
@@ -338,7 +338,7 @@ class ChicagoFedClient:
             obs_date = pd.to_datetime(latest[date_col]).date()
 
             # Find columns
-            def find_col(keywords: List[str]) -> Optional[str]:
+            def find_col(keywords: list[str]) -> str | None:
                 for col in df.columns:
                     col_lower = str(col).lower()
                     if all(k in col_lower for k in keywords):
@@ -363,7 +363,7 @@ class ChicagoFedClient:
             logger.debug(f"Could not parse NFCI Excel: {e}")
             return None
 
-    async def get_all_indicators(self) -> Dict[str, Any]:
+    async def get_all_indicators(self) -> dict[str, Any]:
         """Get all Chicago Fed indicators.
 
         Returns:
@@ -384,7 +384,7 @@ class ChicagoFedClient:
 
 
 # Singleton instance
-_client: Optional[ChicagoFedClient] = None
+_client: ChicagoFedClient | None = None
 
 
 def get_chicago_fed_client() -> ChicagoFedClient:

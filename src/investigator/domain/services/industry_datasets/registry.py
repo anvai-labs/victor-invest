@@ -10,7 +10,7 @@ Date: 2025-12-30
 
 import logging
 from threading import Lock
-from typing import Dict, List, Optional, Set
+from typing import Optional, Self
 
 from investigator.domain.services.industry_datasets.base import (
     BaseIndustryDataset,
@@ -41,7 +41,7 @@ class IndustryDatasetRegistry:
     _instance: Optional["IndustryDatasetRegistry"] = None
     _lock: Lock = Lock()
 
-    def __new__(cls) -> "IndustryDatasetRegistry":
+    def __new__(cls) -> Self:
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
@@ -53,9 +53,9 @@ class IndustryDatasetRegistry:
         if self._initialized:
             return
 
-        self._datasets: Dict[str, BaseIndustryDataset] = {}
-        self._industry_index: Dict[str, str] = {}  # industry_name -> dataset_name
-        self._symbol_index: Dict[str, str] = {}  # symbol -> dataset_name
+        self._datasets: dict[str, BaseIndustryDataset] = {}
+        self._industry_index: dict[str, str] = {}  # industry_name -> dataset_name
+        self._symbol_index: dict[str, str] = {}  # symbol -> dataset_name
         self._initialized = True
 
         logger.info("IndustryDatasetRegistry initialized")
@@ -143,11 +143,11 @@ class IndustryDatasetRegistry:
             logger.info(f"Unregistered dataset '{name}'")
             return True
 
-    def get(self, name: str) -> Optional[BaseIndustryDataset]:
+    def get(self, name: str) -> BaseIndustryDataset | None:
         """Get a dataset by its unique name."""
         return self._datasets.get(name)
 
-    def get_for_industry(self, industry: Optional[str]) -> Optional[BaseIndustryDataset]:
+    def get_for_industry(self, industry: str | None) -> BaseIndustryDataset | None:
         """
         Get a dataset that handles the given industry.
 
@@ -175,7 +175,7 @@ class IndustryDatasetRegistry:
 
         return None
 
-    def get_for_symbol(self, symbol: str) -> Optional[BaseIndustryDataset]:
+    def get_for_symbol(self, symbol: str) -> BaseIndustryDataset | None:
         """
         Get a dataset for a specific stock symbol.
 
@@ -194,8 +194,8 @@ class IndustryDatasetRegistry:
         return None
 
     def get_best_match(
-        self, symbol: str, industry: Optional[str] = None, sector: Optional[str] = None
-    ) -> Optional[BaseIndustryDataset]:
+        self, symbol: str, industry: str | None = None, sector: str | None = None
+    ) -> BaseIndustryDataset | None:
         """
         Get the best matching dataset for a stock.
 
@@ -225,25 +225,25 @@ class IndustryDatasetRegistry:
         # Could extend to sector-based matching if needed
         return None
 
-    def list_datasets(self) -> List[str]:
+    def list_datasets(self) -> list[str]:
         """Return list of registered dataset names."""
         return list(self._datasets.keys())
 
-    def list_industries(self) -> List[str]:
+    def list_industries(self) -> list[str]:
         """Return list of all registered industry names."""
         industries = []
         for dataset in self._datasets.values():
             industries.extend(dataset.get_industry_names())
         return industries
 
-    def list_symbols(self) -> Set[str]:
+    def list_symbols(self) -> set[str]:
         """Return set of all known symbols."""
         symbols = set()
         for dataset in self._datasets.values():
             symbols.update(dataset.get_known_symbols())
         return symbols
 
-    def get_statistics(self) -> Dict:
+    def get_statistics(self) -> dict:
         """Return registry statistics."""
         return {
             "total_datasets": len(self._datasets),
@@ -281,16 +281,16 @@ def register_dataset(dataset: BaseIndustryDataset) -> None:
     get_registry().register(dataset)
 
 
-def get_dataset_for_industry(industry: Optional[str]) -> Optional[BaseIndustryDataset]:
+def get_dataset_for_industry(industry: str | None) -> BaseIndustryDataset | None:
     """Get a dataset for the given industry from the global registry."""
     return get_registry().get_for_industry(industry)
 
 
-def get_dataset_for_symbol(symbol: str) -> Optional[BaseIndustryDataset]:
+def get_dataset_for_symbol(symbol: str) -> BaseIndustryDataset | None:
     """Get a dataset for the given symbol from the global registry."""
     return get_registry().get_for_symbol(symbol)
 
 
-def list_registered_industries() -> List[str]:
+def list_registered_industries() -> list[str]:
     """List all registered industries."""
     return get_registry().list_industries()

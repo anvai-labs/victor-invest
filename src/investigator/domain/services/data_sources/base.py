@@ -14,7 +14,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from enum import Enum, auto
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -68,8 +68,8 @@ class DataResult:
     """Standard result wrapper for all data source responses"""
 
     success: bool
-    data: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
+    data: dict[str, Any] | None = None
+    error: str | None = None
     source: str = ""
     timestamp: datetime = field(default_factory=datetime.now)
     quality: DataQuality = DataQuality.MEDIUM
@@ -80,7 +80,7 @@ class DataResult:
     def is_stale(self) -> bool:
         return self.staleness_days > 7 or self.quality == DataQuality.STALE
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "success": self.success,
             "data": self.data,
@@ -104,7 +104,7 @@ class SourceMetadata:
     provider: str
     is_free: bool = True
     requires_api_key: bool = False
-    rate_limit_per_minute: Optional[int] = None
+    rate_limit_per_minute: int | None = None
     lookback_days: int = 365
     symbols_supported: bool = True  # False for macro-only sources
 
@@ -117,26 +117,26 @@ class SourceMetadata:
 class Fetchable(Protocol):
     """Protocol for sources that can fetch data"""
 
-    def fetch(self, symbol: str, as_of_date: Optional[date] = None) -> DataResult: ...
+    def fetch(self, symbol: str, as_of_date: date | None = None) -> DataResult: ...
 
 
 class BatchFetchable(Protocol):
     """Protocol for sources that support batch fetching"""
 
-    def fetch_batch(self, symbols: List[str], as_of_date: Optional[date] = None) -> Dict[str, DataResult]: ...
+    def fetch_batch(self, symbols: list[str], as_of_date: date | None = None) -> dict[str, DataResult]: ...
 
 
 class Refreshable(Protocol):
     """Protocol for sources that support data refresh"""
 
-    def refresh(self, symbol: Optional[str] = None) -> bool: ...
+    def refresh(self, symbol: str | None = None) -> bool: ...
 
 
 class Cacheable(Protocol):
     """Protocol for sources that support caching"""
 
-    def get_cached(self, symbol: str) -> Optional[DataResult]: ...
-    def invalidate_cache(self, symbol: Optional[str] = None) -> None: ...
+    def get_cached(self, symbol: str) -> DataResult | None: ...
+    def invalidate_cache(self, symbol: str | None = None) -> None: ...
 
 
 class HistoricalFetchable(Protocol):
@@ -163,21 +163,19 @@ class DataSource(ABC):
         self.category = category
         self.frequency = frequency
         self._logger = logging.getLogger(f"datasource.{name}")
-        self._cache: Dict[str, DataResult] = {}
-        self._last_refresh: Optional[datetime] = None
+        self._cache: dict[str, DataResult] = {}
+        self._last_refresh: datetime | None = None
 
     @property
     @abstractmethod
     def metadata(self) -> SourceMetadata:
         """Return metadata about this data source"""
-        pass
 
     @abstractmethod
-    def _fetch_impl(self, symbol: str, as_of_date: Optional[date] = None) -> DataResult:
+    def _fetch_impl(self, symbol: str, as_of_date: date | None = None) -> DataResult:
         """Implementation-specific fetch logic"""
-        pass
 
-    def fetch(self, symbol: str, as_of_date: Optional[date] = None) -> DataResult:
+    def fetch(self, symbol: str, as_of_date: date | None = None) -> DataResult:
         """
         Template method for fetching data with standard pre/post processing.
 
@@ -222,7 +220,7 @@ class DataSource(ABC):
                 source=self.name,
             )
 
-    def _get_cache_key(self, symbol: str, as_of_date: Optional[date]) -> str:
+    def _get_cache_key(self, symbol: str, as_of_date: date | None) -> str:
         """Generate cache key"""
         date_str = as_of_date.isoformat() if as_of_date else "latest"
         return f"{symbol}:{date_str}"
@@ -233,7 +231,7 @@ class DataSource(ABC):
             return True  # Macro sources don't need symbol validation
         return bool(symbol) and len(symbol) <= 10
 
-    def invalidate_cache(self, symbol: Optional[str] = None) -> None:
+    def invalidate_cache(self, symbol: str | None = None) -> None:
         """Invalidate cache for symbol or all"""
         if symbol:
             keys_to_remove = [k for k in self._cache if k.startswith(f"{symbol}:")]
@@ -251,7 +249,7 @@ class MacroDataSource(DataSource):
     def __init__(self, name: str, frequency: DataFrequency):
         super().__init__(name, DataCategory.MACRO, frequency)
 
-    def fetch(self, symbol: str = "_MACRO", as_of_date: Optional[date] = None) -> DataResult:
+    def fetch(self, symbol: str = "_MACRO", as_of_date: date | None = None) -> DataResult:
         """Macro sources use _MACRO as default symbol"""
         return super().fetch(symbol or "_MACRO", as_of_date)
 
@@ -267,7 +265,6 @@ class MarketDataSource(DataSource):
     @abstractmethod
     def fetch_historical(self, symbol: str, start_date: date, end_date: date) -> DataResult:
         """Fetch historical data range"""
-        pass
 
 
 class SentimentDataSource(DataSource):
@@ -281,7 +278,6 @@ class SentimentDataSource(DataSource):
     @abstractmethod
     def get_sentiment_score(self, symbol: str) -> float:
         """Return normalized sentiment score (-1 to 1)"""
-        pass
 
 
 # =============================================================================
@@ -300,7 +296,7 @@ class CompositeDataSource(DataSource):
         self,
         name: str,
         category: DataCategory,
-        sources: List[DataSource],
+        sources: list[DataSource],
         strategy: str = "first_success",  # or "merge", "best_quality"
     ):
         super().__init__(name, category, DataFrequency.DAILY)
@@ -317,7 +313,7 @@ class CompositeDataSource(DataSource):
             provider="composite",
         )
 
-    def _fetch_impl(self, symbol: str, as_of_date: Optional[date] = None) -> DataResult:
+    def _fetch_impl(self, symbol: str, as_of_date: date | None = None) -> DataResult:
         """Try sources in order based on strategy"""
         if self.strategy == "first_success":
             return self._first_success_strategy(symbol, as_of_date)
@@ -328,7 +324,7 @@ class CompositeDataSource(DataSource):
         else:
             raise ValueError(f"Unknown strategy: {self.strategy}")
 
-    def _first_success_strategy(self, symbol: str, as_of_date: Optional[date]) -> DataResult:
+    def _first_success_strategy(self, symbol: str, as_of_date: date | None) -> DataResult:
         """Return first successful result"""
         errors = []
         for source in self.sources:
@@ -343,7 +339,7 @@ class CompositeDataSource(DataSource):
             source=self.name,
         )
 
-    def _merge_strategy(self, symbol: str, as_of_date: Optional[date]) -> DataResult:
+    def _merge_strategy(self, symbol: str, as_of_date: date | None) -> DataResult:
         """Merge data from all sources"""
         merged_data = {}
         best_quality = DataQuality.LOW
@@ -365,7 +361,7 @@ class CompositeDataSource(DataSource):
 
         return DataResult(success=False, error="No data from any source", source=self.name)
 
-    def _best_quality_strategy(self, symbol: str, as_of_date: Optional[date]) -> DataResult:
+    def _best_quality_strategy(self, symbol: str, as_of_date: date | None) -> DataResult:
         """Return highest quality result"""
         results = []
         for source in self.sources:
@@ -397,7 +393,7 @@ class ObservableDataSource(DataSource):
 
     def __init__(self, name: str, category: DataCategory, frequency: DataFrequency):
         super().__init__(name, category, frequency)
-        self._observers: List[DataUpdateObserver] = []
+        self._observers: list[DataUpdateObserver] = []
 
     def add_observer(self, observer: DataUpdateObserver) -> None:
         self._observers.append(observer)
@@ -412,7 +408,7 @@ class ObservableDataSource(DataSource):
             except Exception as e:
                 self._logger.error(f"Observer notification failed: {e}")
 
-    def fetch(self, symbol: str, as_of_date: Optional[date] = None) -> DataResult:
+    def fetch(self, symbol: str, as_of_date: date | None = None) -> DataResult:
         result = super().fetch(symbol, as_of_date)
         if result.success and not result.cache_hit:
             self._notify_observers(symbol, result)

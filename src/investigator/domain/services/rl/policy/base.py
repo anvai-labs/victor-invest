@@ -23,7 +23,7 @@ Usage:
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -58,8 +58,8 @@ class RLPolicy(ABC):
         self,
         name: str = "base_policy",
         version: str = "1.0",
-        model_names: Optional[List[str]] = None,
-        normalizer: Optional[FeatureNormalizer] = None,
+        model_names: list[str] | None = None,
+        normalizer: FeatureNormalizer | None = None,
     ):
         """
         Initialize base policy.
@@ -83,7 +83,7 @@ class RLPolicy(ABC):
     def predict(
         self,
         context: ValuationContext,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Predict optimal model weights given context.
 
@@ -94,13 +94,12 @@ class RLPolicy(ABC):
             Dict mapping model names to weights (should sum to 100).
             Example: {"dcf": 40, "pe": 30, "ps": 30}
         """
-        pass
 
     @abstractmethod
     def update(
         self,
         context: ValuationContext,
-        action: Dict[str, float],
+        action: dict[str, float],
         reward: float,
     ) -> None:
         """
@@ -111,7 +110,6 @@ class RLPolicy(ABC):
             action: Model weights that were used.
             reward: Observed reward signal (-1 to 1).
         """
-        pass
 
     @abstractmethod
     def save(self, path: str) -> bool:
@@ -124,7 +122,6 @@ class RLPolicy(ABC):
         Returns:
             True if successful.
         """
-        pass
 
     @abstractmethod
     def load(self, path: str) -> bool:
@@ -137,11 +134,10 @@ class RLPolicy(ABC):
         Returns:
             True if successful.
         """
-        pass
 
     def batch_update(
         self,
-        experiences: List[Experience],
+        experiences: list[Experience],
     ) -> int:
         """
         Update policy with batch of experiences.
@@ -169,7 +165,7 @@ class RLPolicy(ABC):
     def predict_with_confidence(
         self,
         context: ValuationContext,
-    ) -> Tuple[Dict[str, float], float]:
+    ) -> tuple[dict[str, float], float]:
         """
         Predict weights with confidence estimate.
 
@@ -190,7 +186,7 @@ class RLPolicy(ABC):
     def get_exploration_bonus(
         self,
         context: ValuationContext,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Get exploration bonus for each model.
 
@@ -214,7 +210,7 @@ class RLPolicy(ABC):
         """
         return self._ready
 
-    def get_state(self) -> Dict[str, Any]:
+    def get_state(self) -> dict[str, Any]:
         """
         Get policy state for inspection/debugging.
 
@@ -233,8 +229,8 @@ class RLPolicy(ABC):
 
     def normalize_weights(
         self,
-        weights: Dict[str, float],
-    ) -> Dict[str, float]:
+        weights: dict[str, float],
+    ) -> dict[str, float]:
         """
         Normalize weights to sum to 100.
 
@@ -254,9 +250,9 @@ class RLPolicy(ABC):
 
     def apply_applicability_mask(
         self,
-        weights: Dict[str, float],
+        weights: dict[str, float],
         context: ValuationContext,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Zero out weights for inapplicable models.
 
@@ -330,7 +326,7 @@ class UniformPolicy(RLPolicy):
 
     def __init__(
         self,
-        model_names: Optional[List[str]] = None,
+        model_names: list[str] | None = None,
     ):
         super().__init__(
             name="uniform_policy",
@@ -339,7 +335,7 @@ class UniformPolicy(RLPolicy):
         )
         self._ready = True
 
-    def predict(self, context: ValuationContext) -> Dict[str, float]:
+    def predict(self, context: ValuationContext) -> dict[str, float]:
         """Return equal weights for all applicable models."""
         weights = {m: 100 / len(self.model_names) for m in self.model_names}
         return self.apply_applicability_mask(weights, context)
@@ -347,11 +343,10 @@ class UniformPolicy(RLPolicy):
     def update(
         self,
         context: ValuationContext,
-        action: Dict[str, float],
+        action: dict[str, float],
         reward: float,
     ) -> None:
         """No-op for uniform policy (no learning)."""
-        pass
 
     def save(self, path: str) -> bool:
         """Save policy (minimal state for uniform)."""

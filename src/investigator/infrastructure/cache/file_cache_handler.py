@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - File Cache Handler
 Copyright (c) 2025 Vijaykumar Singh
@@ -10,9 +9,9 @@ File/Directory based cache storage handler
 import gzip
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any
 
 from .cache_base import CacheStorageHandler
 from .cache_types import CacheType
@@ -38,7 +37,7 @@ class FileCacheStorageHandler(CacheStorageHandler):
         self.base_path.mkdir(parents=True, exist_ok=True)
         self.config = config
 
-    def _get_file_path(self, key_dict: Dict[str, str]) -> Path:
+    def _get_file_path(self, key_dict: dict[str, str]) -> Path:
         """
         Generate file path using symbol-specific directory structure
 
@@ -101,7 +100,7 @@ class FileCacheStorageHandler(CacheStorageHandler):
         }
         return cache_type_names.get(self.cache_type, self.cache_type.value)
 
-    def _generate_filename(self, key_dict: Dict[str, str], include_symbol: bool = True) -> str:
+    def _generate_filename(self, key_dict: dict[str, str], include_symbol: bool = True) -> str:
         """Generate filename based on cache type and key data with universal gzip compression"""
         symbol = key_dict.get("symbol", "UNKNOWN").upper()
 
@@ -225,7 +224,7 @@ class FileCacheStorageHandler(CacheStorageHandler):
 
         return True  # Default to compression enabled
 
-    def get(self, key: Union[Tuple, Dict]) -> Optional[Dict[str, Any]]:
+    def get(self, key: tuple | dict) -> dict[str, Any] | None:
         """Retrieve data from file cache"""
         if self.priority < 0:
             return None  # Skip lookup for negative priority
@@ -303,7 +302,7 @@ class FileCacheStorageHandler(CacheStorageHandler):
             logger.error(f"Error reading from file cache: {e}")
             return None
 
-    def set(self, key: Union[Tuple, Dict], value: Dict[str, Any]) -> bool:
+    def set(self, key: tuple | dict, value: dict[str, Any]) -> bool:
         """Store data in file cache"""
         try:
             key_dict = self._normalize_key(key)
@@ -330,7 +329,7 @@ class FileCacheStorageHandler(CacheStorageHandler):
                     "response": value.get("response", {}),
                     "model_info": value.get("model_info", {}),
                     "metadata": {
-                        "cached_at": datetime.now(timezone.utc).isoformat(),
+                        "cached_at": datetime.now(UTC).isoformat(),
                         "cache_key": key_dict,
                         "cache_type": self.cache_type.value,
                     },
@@ -352,7 +351,7 @@ class FileCacheStorageHandler(CacheStorageHandler):
                     cache_data = {
                         "data": company_facts_data,  # Store raw SEC structure
                         "metadata": {
-                            "cached_at": datetime.now(timezone.utc).isoformat(),
+                            "cached_at": datetime.now(UTC).isoformat(),
                             "cache_key": key_dict,
                             "cache_type": self.cache_type.value,
                             "symbol": value.get("symbol"),
@@ -364,7 +363,7 @@ class FileCacheStorageHandler(CacheStorageHandler):
                 else:
                     # Add metadata for audit (standard wrapping for other cache types)
                     # Check if value is a dataclass or object with to_dict() method
-                    if hasattr(value, "to_dict") and callable(getattr(value, "to_dict")):
+                    if hasattr(value, "to_dict") and callable(value.to_dict):
                         data_to_cache = value.to_dict()
                     elif hasattr(value, "__dict__") and not isinstance(
                         value, (dict, list, str, int, float, bool, type(None))
@@ -380,7 +379,7 @@ class FileCacheStorageHandler(CacheStorageHandler):
                     cache_data = {
                         "data": data_to_cache,
                         "metadata": {
-                            "cached_at": datetime.now(timezone.utc).isoformat(),
+                            "cached_at": datetime.now(UTC).isoformat(),
                             "cache_key": key_dict,
                             "cache_type": self.cache_type.value,
                         },
@@ -404,7 +403,7 @@ class FileCacheStorageHandler(CacheStorageHandler):
             logger.error(f"Error writing to file cache: {e}")
             return False
 
-    def exists(self, key: Union[Tuple, Dict]) -> bool:
+    def exists(self, key: tuple | dict) -> bool:
         """Check if key exists in file cache"""
         try:
             logger.debug(f"🔍 FILE CACHE EXISTS: Starting exists check for key: {key}")
@@ -432,7 +431,7 @@ class FileCacheStorageHandler(CacheStorageHandler):
                     return True
 
                 # Try with .gz extension if original doesn't exist
-                if not file_path.suffix == ".gz":
+                if file_path.suffix != ".gz":
                     gz_path = file_path.with_suffix(file_path.suffix + ".gz")
                     if gz_path.exists():
                         logger.debug(f"Cache EXISTS (compressed): {gz_path}")
@@ -445,7 +444,7 @@ class FileCacheStorageHandler(CacheStorageHandler):
             logger.error(f"Error checking file cache existence: {e}")
             return False
 
-    def delete(self, key: Union[Tuple, Dict]) -> bool:
+    def delete(self, key: tuple | dict) -> bool:
         """Delete data from file cache"""
         try:
             key_dict = self._normalize_key(key)
@@ -478,7 +477,7 @@ class FileCacheStorageHandler(CacheStorageHandler):
                     deleted = True
 
                 # Also try to delete compressed version
-                if not file_path.suffix == ".gz":
+                if file_path.suffix != ".gz":
                     gz_path = file_path.with_suffix(file_path.suffix + ".gz")
                     if gz_path.exists():
                         gz_path.unlink()

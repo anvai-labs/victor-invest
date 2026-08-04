@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - SEC Data Fetching Strategies
 Copyright (c) 2025 Vijaykumar Singh
@@ -11,7 +10,6 @@ Strategy pattern implementations for different SEC data fetching approaches
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Dict, List
 
 from data.models import FinancialStatementData, QuarterlyData
 from investigator.config import get_config
@@ -26,19 +24,16 @@ class ISECDataFetchStrategy(ABC):
     """Interface for SEC data fetching strategies"""
 
     @abstractmethod
-    def fetch_quarterly_data(self, symbol: str, cik: str, max_periods: int) -> List[QuarterlyData]:
+    def fetch_quarterly_data(self, symbol: str, cik: str, max_periods: int) -> list[QuarterlyData]:
         """Fetch quarterly data using this strategy"""
-        pass
 
     @abstractmethod
     def get_strategy_name(self) -> str:
         """Get the name of this strategy"""
-        pass
 
     @abstractmethod
     def supports_incremental_fetch(self) -> bool:
         """Whether this strategy supports incremental fetching"""
-        pass
 
 
 class CompanyFactsStrategy(ISECDataFetchStrategy):
@@ -50,7 +45,7 @@ class CompanyFactsStrategy(ISECDataFetchStrategy):
         self.cache_manager = get_cache_manager()
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-    def fetch_quarterly_data(self, symbol: str, cik: str, max_periods: int) -> List[QuarterlyData]:
+    def fetch_quarterly_data(self, symbol: str, cik: str, max_periods: int) -> list[QuarterlyData]:
         """Fetch quarterly data from company facts"""
         try:
             # Check cache first - include both symbol and cik for file cache compatibility
@@ -88,7 +83,7 @@ class CompanyFactsStrategy(ISECDataFetchStrategy):
             self.logger.error(f"Error fetching company facts for {symbol}: {e}")
             return []
 
-    def _extract_quarterly_data(self, facts: Dict, symbol: str, cik: str, max_periods: int) -> List[QuarterlyData]:
+    def _extract_quarterly_data(self, facts: dict, symbol: str, cik: str, max_periods: int) -> list[QuarterlyData]:
         """Extract quarterly data from company facts"""
         self.logger.info(f"🔍 EXTRACT_QUARTERLY_DATA CALLED: {symbol}, max_periods: {max_periods}")
         self.logger.info(
@@ -318,7 +313,7 @@ class SubmissionsStrategy(ISECDataFetchStrategy):
         self.cache_manager = get_cache_manager()
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-    def fetch_quarterly_data(self, symbol: str, cik: str, max_periods: int) -> List[QuarterlyData]:
+    def fetch_quarterly_data(self, symbol: str, cik: str, max_periods: int) -> list[QuarterlyData]:
         """Fetch quarterly data from submissions"""
         try:
             # Try to get cached submissions using cache manager interface
@@ -408,7 +403,7 @@ class CachedDataStrategy(ISECDataFetchStrategy):
         self.cache_manager = get_cache_manager()
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-    def fetch_quarterly_data(self, symbol: str, cik: str, max_periods: int) -> List[QuarterlyData]:
+    def fetch_quarterly_data(self, symbol: str, cik: str, max_periods: int) -> list[QuarterlyData]:
         """Fetch quarterly data from cache only"""
         try:
             # Check database for existing quarterly data
@@ -452,7 +447,7 @@ class HybridFetchStrategy(ISECDataFetchStrategy):
         ]
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-    def fetch_quarterly_data(self, symbol: str, cik: str, max_periods: int) -> List[QuarterlyData]:
+    def fetch_quarterly_data(self, symbol: str, cik: str, max_periods: int) -> list[QuarterlyData]:
         """Try multiple strategies to fetch data"""
         all_data = []
 
@@ -478,7 +473,7 @@ class HybridFetchStrategy(ISECDataFetchStrategy):
 
         return unique_data[:max_periods]
 
-    def _deduplicate_data(self, data: List[QuarterlyData]) -> List[QuarterlyData]:
+    def _deduplicate_data(self, data: list[QuarterlyData]) -> list[QuarterlyData]:
         """Remove duplicate quarterly data"""
         seen = set()
         unique = []

@@ -11,7 +11,7 @@ Defines core data structures for:
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from enum import Enum
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 
 class GrowthStage(Enum):
@@ -207,7 +207,7 @@ class ValuationContext:
     position_signal: int = 0  # 1 = Long, -1 = Short, 0 = Skip/No position
 
     # Optimal Holding Period (learned from backtest outcomes)
-    optimal_holding_period: Optional[str] = None  # "1m", "3m", "6m", "12m", "18m", "24m", "36m"
+    optimal_holding_period: str | None = None  # "1m", "3m", "6m", "12m", "18m", "24m", "36m"
     optimal_holding_reward: float = 0.0  # Best reward achieved at optimal period
 
     # Model Applicability Flags
@@ -219,10 +219,10 @@ class ValuationContext:
     evebitda_applicable: bool = True
 
     # Additional context
-    fiscal_period: Optional[str] = None
-    current_price: Optional[float] = None
+    fiscal_period: str | None = None
+    current_price: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
             "symbol": self.symbol,
@@ -299,7 +299,7 @@ class ValuationContext:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ValuationContext":
+    def from_dict(cls, data: dict[str, Any]) -> "ValuationContext":
         """Create from dictionary."""
         # Parse enums
         growth_stage = GrowthStage(data.get("growth_stage", "mature"))
@@ -415,32 +415,32 @@ class RewardSignal:
         optimal_reward: Reward at optimal holding period
     """
 
-    reward_30d: Optional[float] = None
-    reward_90d: Optional[float] = None
-    reward_180d: Optional[float] = None
-    reward_365d: Optional[float] = None
-    reward_548d: Optional[float] = None
-    reward_730d: Optional[float] = None
-    reward_1095d: Optional[float] = None
-    direction_correct_30d: Optional[bool] = None
-    direction_correct_90d: Optional[bool] = None
-    error_pct_30d: Optional[float] = None
-    error_pct_90d: Optional[float] = None
-    error_pct_365d: Optional[float] = None
+    reward_30d: float | None = None
+    reward_90d: float | None = None
+    reward_180d: float | None = None
+    reward_365d: float | None = None
+    reward_548d: float | None = None
+    reward_730d: float | None = None
+    reward_1095d: float | None = None
+    direction_correct_30d: bool | None = None
+    direction_correct_90d: bool | None = None
+    error_pct_30d: float | None = None
+    error_pct_90d: float | None = None
+    error_pct_365d: float | None = None
 
     # Multi-period rewards (new)
-    multi_period_rewards: Dict[str, Optional[float]] = field(default_factory=dict)
-    optimal_period: Optional[str] = None  # "1m", "3m", "6m", "12m", "18m", "24m", "36m"
-    optimal_reward: Optional[float] = None
+    multi_period_rewards: dict[str, float | None] = field(default_factory=dict)
+    optimal_period: str | None = None  # "1m", "3m", "6m", "12m", "18m", "24m", "36m"
+    optimal_reward: float | None = None
 
     @property
-    def primary_reward(self) -> Optional[float]:
+    def primary_reward(self) -> float | None:
         """Primary reward signal (90-day weighted)."""
         if self.reward_90d is not None:
             return self.reward_90d
         return self.reward_30d
 
-    def get_best_holding_period(self) -> Tuple[Optional[str], Optional[float]]:
+    def get_best_holding_period(self) -> tuple[str | None, float | None]:
         """Find the holding period with highest reward."""
         if not self.multi_period_rewards:
             return self.optimal_period, self.optimal_reward
@@ -463,12 +463,12 @@ class PerModelReward:
 
     model_name: str
     fair_value: float
-    actual_price_30d: Optional[float] = None
-    actual_price_90d: Optional[float] = None
-    reward_30d: Optional[float] = None
-    reward_90d: Optional[float] = None
-    error_pct_30d: Optional[float] = None
-    error_pct_90d: Optional[float] = None
+    actual_price_30d: float | None = None
+    actual_price_90d: float | None = None
+    reward_30d: float | None = None
+    reward_90d: float | None = None
+    error_pct_30d: float | None = None
+    error_pct_90d: float | None = None
 
 
 @dataclass
@@ -495,12 +495,12 @@ class Experience:
     symbol: str
     analysis_date: date
     context: ValuationContext
-    weights_used: Dict[str, float]
+    weights_used: dict[str, float]
     tier_classification: str
     blended_fair_value: float
     current_price: float
     reward: RewardSignal
-    per_model_rewards: Optional[Dict[str, PerModelReward]] = None
+    per_model_rewards: dict[str, PerModelReward] | None = None
 
     @property
     def is_complete(self) -> bool:
@@ -529,10 +529,10 @@ class TrainingMetrics:
     validation_reward_mean: float
 
     # Improvement vs baseline
-    baseline_mape: Optional[float] = None
-    rl_mape: Optional[float] = None
-    mape_improvement_pct: Optional[float] = None
-    direction_accuracy: Optional[float] = None
+    baseline_mape: float | None = None
+    rl_mape: float | None = None
+    mape_improvement_pct: float | None = None
+    direction_accuracy: float | None = None
 
     # Training metadata
     epochs_completed: int = 0
@@ -558,14 +558,14 @@ class EvaluationMetrics:
     std_reward: float
 
     # Per-sector breakdown
-    sector_performance: Dict[str, Dict[str, float]] = field(default_factory=dict)
+    sector_performance: dict[str, dict[str, float]] = field(default_factory=dict)
 
     # Per-model contribution
-    model_contribution: Dict[str, float] = field(default_factory=dict)
+    model_contribution: dict[str, float] = field(default_factory=dict)
 
     # Comparison to baseline
-    baseline_mape: Optional[float] = None
-    improvement_pct: Optional[float] = None
+    baseline_mape: float | None = None
+    improvement_pct: float | None = None
 
 
 @dataclass
@@ -626,7 +626,7 @@ class PolicyCheckpoint:
     created_at: datetime
     model_path: str
     normalizer_path: str
-    config_snapshot: Dict[str, Any]
-    training_metrics: Optional[TrainingMetrics] = None
-    evaluation_metrics: Optional[EvaluationMetrics] = None
+    config_snapshot: dict[str, Any]
+    training_metrics: TrainingMetrics | None = None
+    evaluation_metrics: EvaluationMetrics | None = None
     is_active: bool = False

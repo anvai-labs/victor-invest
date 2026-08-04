@@ -21,7 +21,7 @@ Tests the Victor tool wrapping for robust valuation including:
 - Error handling
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -68,7 +68,7 @@ class TestAnalyzeAction:
         }
         mock_result.layer3_peer_comparison = {}
         mock_result.signals = ["Overall confidence: HIGH"]
-        mock_result.calculated_at = datetime.now(timezone.utc).isoformat()
+        mock_result.calculated_at = datetime.now(UTC).isoformat()
 
         with patch("investigator.domain.services.robust_valuation_service.RobustValuationService") as mock_service_cls:
             mock_service = MagicMock()
@@ -307,7 +307,7 @@ class TestReportAction:
             "sector": "Technology",
             "industry": "Consumer Electronics",
             "current_price": 150.0,
-            "calculated_at": datetime.now(timezone.utc).isoformat(),
+            "calculated_at": datetime.now(UTC).isoformat(),
             "summary": {
                 "recommendation": "STRONG BUY",
                 "confidence": "HIGH",
@@ -372,7 +372,7 @@ class TestReportAction:
         mock_report = {
             "symbol": "AAPL",
             "error": "Could not calculate robust valuation",
-            "calculated_at": datetime.now(timezone.utc).isoformat(),
+            "calculated_at": datetime.now(UTC).isoformat(),
         }
 
         with patch("investigator.domain.services.robust_valuation_service.RobustValuationService") as mock_service_cls:
@@ -429,7 +429,7 @@ class TestDefaultParameters:
         mock_result.layer2_fair_multiples = {}
         mock_result.layer3_peer_comparison = {}
         mock_result.signals = ["Overall confidence: MEDIUM"]
-        mock_result.calculated_at = datetime.now(timezone.utc).isoformat()
+        mock_result.calculated_at = datetime.now(UTC).isoformat()
 
         with patch("investigator.domain.services.robust_valuation_service.RobustValuationService") as mock_service_cls:
             mock_service = MagicMock()
@@ -506,7 +506,7 @@ class TestErrorHandling:
         mock_result.layer2_fair_multiples = {}
         mock_result.layer3_peer_comparison = {}
         mock_result.signals = []
-        mock_result.calculated_at = datetime.now(timezone.utc).isoformat()
+        mock_result.calculated_at = datetime.now(UTC).isoformat()
 
         with patch("investigator.domain.services.robust_valuation_service.RobustValuationService") as mock_service_cls:
             mock_service = MagicMock()
@@ -540,7 +540,7 @@ class TestErrorHandling:
         mock_result.layer2_fair_multiples = {}
         mock_result.layer3_peer_comparison = {}
         mock_result.signals = []
-        mock_result.calculated_at = datetime.now(timezone.utc).isoformat()
+        mock_result.calculated_at = datetime.now(UTC).isoformat()
 
         with patch("investigator.domain.services.robust_valuation_service.RobustValuationService") as mock_service_cls:
             mock_service = MagicMock()

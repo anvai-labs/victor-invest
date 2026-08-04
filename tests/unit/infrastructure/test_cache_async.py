@@ -7,6 +7,7 @@ concurrent agent execution even during slow disk/DB operations.
 
 import asyncio
 import time
+from typing import ClassVar
 
 import pytest
 
@@ -36,7 +37,7 @@ def cache_manager(tmp_path):
                 class disk:
                     enabled = True
                     priority = 20
-                    settings = {"base_path": str(tmp_path / f"{cache_type}_cache")}
+                    settings: ClassVar[dict] = {"base_path": str(tmp_path / f"{cache_type}_cache")}
 
                 class rdbms:
                     enabled = False

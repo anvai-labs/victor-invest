@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any, Dict, Optional
+from typing import Any
 
 
-def calculate_fundamental_score(llm_responses: Dict[str, Any]) -> float:
+def calculate_fundamental_score(llm_responses: dict[str, Any]) -> float:
     """Calculate the fundamental score from comprehensive or quarterly responses."""
     fundamental_responses = llm_responses.get("fundamental", {})
     if not fundamental_responses:
@@ -49,7 +49,7 @@ def calculate_fundamental_score(llm_responses: Dict[str, Any]) -> float:
     return sum(scores) / len(scores) if scores else 0.0
 
 
-def calculate_technical_score(llm_responses: Dict[str, Any]) -> float:
+def calculate_technical_score(llm_responses: dict[str, Any]) -> float:
     """Calculate the technical score from structured or legacy responses."""
     technical_response = llm_responses.get("technical")
     if not technical_response:
@@ -118,7 +118,7 @@ def calculate_weighted_score(
     return round(overall_score, 1)
 
 
-def assess_data_quality(llm_responses: Dict[str, Any], latest_data: Dict[str, Any]) -> float:
+def assess_data_quality(llm_responses: dict[str, Any], latest_data: dict[str, Any]) -> float:
     """Assess data quality on a 1-10 scale, preferring comprehensive SEC-provided scores."""
     comprehensive_analysis = llm_responses.get("fundamental", {}).get("comprehensive", {})
     if isinstance(comprehensive_analysis, dict):
@@ -150,9 +150,9 @@ def assess_data_quality(llm_responses: Dict[str, Any], latest_data: Dict[str, An
     return min(quality_score, 10.0)
 
 
-def parse_synthesis_response(response: str, *, logger: Optional[Any] = None) -> Dict[str, Any]:
+def parse_synthesis_response(response: str, *, logger: Any | None = None) -> dict[str, Any]:
     """Parse the structured text synthesis response into a normalized recommendation payload."""
-    result: Dict[str, Any] = {
+    result: dict[str, Any] = {
         "recommendation": "HOLD",
         "confidence": "MEDIUM",
         "investment_thesis": "",

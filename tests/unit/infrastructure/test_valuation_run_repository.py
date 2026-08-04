@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from investigator.infrastructure.database.valuation_run_repository import (
     ValuationModelOutputRecord,
@@ -54,8 +54,8 @@ def test_insert_run_writes_run_and_model_outputs():
         ValuationRunRecord(
             symbol="AAPL",
             analysis_mode="comprehensive",
-            run_started_at=datetime(2026, 5, 20, tzinfo=timezone.utc),
-            run_completed_at=datetime(2026, 5, 20, 1, tzinfo=timezone.utc),
+            run_started_at=datetime(2026, 5, 20, tzinfo=UTC),
+            run_completed_at=datetime(2026, 5, 20, 1, tzinfo=UTC),
             valuation_basis="ttm",
             forward_horizon="1y",
             current_price=100.0,

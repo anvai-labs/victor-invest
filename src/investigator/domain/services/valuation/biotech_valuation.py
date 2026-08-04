@@ -27,7 +27,6 @@ Phase: P2-A (Biotech Pipeline Valuation Model)
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +50,7 @@ class DrugPhase(Enum):
 # Historical phase transition and approval probabilities
 # Source: Industry analysis (BIO, FDA, PhRMA data)
 # These represent probability of eventual FDA approval from each phase
-PHASE_SUCCESS_PROBABILITIES: Dict[str, float] = {
+PHASE_SUCCESS_PROBABILITIES: dict[str, float] = {
     "preclinical": 0.05,  # 5% of preclinical candidates reach approval
     "phase_1": 0.10,  # 10% from Phase 1
     "phase_2": 0.15,  # 15% from Phase 2 (most drugs fail here)
@@ -62,7 +61,7 @@ PHASE_SUCCESS_PROBABILITIES: Dict[str, float] = {
 
 # Phase transition probabilities (for reference)
 # Not used directly but helpful for understanding the model
-PHASE_TRANSITION_RATES: Dict[str, float] = {
+PHASE_TRANSITION_RATES: dict[str, float] = {
     "preclinical_to_phase_1": 0.50,  # 50% advance to Phase 1
     "phase_1_to_phase_2": 0.65,  # 65% of Phase 1 advance
     "phase_2_to_phase_3": 0.30,  # 30% of Phase 2 advance (biggest drop)
@@ -93,7 +92,7 @@ class CashRunwayResult:
     risk: CashRunwayRisk
     risk_description: str
     dilution_warning: bool
-    details: Dict
+    details: dict
 
 
 def calculate_cash_runway(
@@ -362,9 +361,9 @@ THERAPEUTIC_AREA_KEYWORDS = {
 
 
 def classify_therapeutic_area(
-    indication: Optional[str] = None,
-    company_name: Optional[str] = None,
-    pipeline: Optional[List[Dict]] = None,
+    indication: str | None = None,
+    company_name: str | None = None,
+    pipeline: list[dict] | None = None,
 ) -> str:
     """
     Classify therapeutic area from indication, company name, or pipeline.
@@ -413,11 +412,11 @@ class ComparablesBenchmark:
 
 
 def calculate_comparables_benchmark(
-    pipeline: Optional[List[Dict]] = None,
+    pipeline: list[dict] | None = None,
     cash: float = 0,
     shares_outstanding: float = 1,
-    indication: Optional[str] = None,
-    company_name: Optional[str] = None,
+    indication: str | None = None,
+    company_name: str | None = None,
 ) -> ComparablesBenchmark:
     """
     Calculate fair value using industry benchmark comparables.
@@ -452,9 +451,8 @@ def calculate_comparables_benchmark(
         ]
         for drug in pipeline:
             phase = drug.get("phase", "preclinical").lower().replace(" ", "_")
-            if phase in phase_order:
-                if phase_order.index(phase) > phase_order.index(most_advanced_phase):
-                    most_advanced_phase = phase
+            if phase in phase_order and phase_order.index(phase) > phase_order.index(most_advanced_phase):
+                most_advanced_phase = phase
 
     # Get EV range based on phase
     if most_advanced_phase in ["phase_3", "filed_nda", "approved"]:
@@ -505,9 +503,9 @@ class DrugCandidate:
     phase: str  # preclinical, phase_1, phase_2, phase_3, filed_nda, approved
     indication: str
     estimated_peak_sales: float  # Estimated annual peak sales if approved
-    probability_override: Optional[float] = None  # Override default probability
-    launch_year: Optional[int] = None  # Expected launch year
-    notes: Optional[str] = None
+    probability_override: float | None = None  # Override default probability
+    launch_year: int | None = None  # Expected launch year
+    notes: str | None = None
 
 
 @dataclass
@@ -515,15 +513,15 @@ class PipelineValuationResult:
     """Result from pipeline probability-weighted valuation."""
 
     total_pipeline_value: float
-    drug_values: List[Dict]
+    drug_values: list[dict]
     probability_weighted_sales: float
     market_discount_applied: float
     methodology: str
-    warnings: List[str]
+    warnings: list[str]
 
 
 def calculate_pipeline_value(
-    pipeline: List[Dict],
+    pipeline: list[dict],
     market_discount: float = 0.70,
     npv_multiple: float = 3.0,
 ) -> PipelineValuationResult:
@@ -647,10 +645,10 @@ BIOTECH_NAME_KEYWORDS = [
 
 
 def is_biotech_company(
-    industry: Optional[str] = None,
-    company_name: Optional[str] = None,
-    sector: Optional[str] = None,
-) -> Tuple[bool, str]:
+    industry: str | None = None,
+    company_name: str | None = None,
+    sector: str | None = None,
+) -> tuple[bool, str]:
     """
     Determine if a company should use biotech valuation.
 
@@ -686,12 +684,12 @@ def is_biotech_company(
 
 
 def is_pre_revenue_biotech(
-    industry: Optional[str] = None,
-    company_name: Optional[str] = None,
-    sector: Optional[str] = None,
+    industry: str | None = None,
+    company_name: str | None = None,
+    sector: str | None = None,
     revenue: float = 0,
     revenue_threshold: float = 100_000_000,  # $100M threshold
-) -> Tuple[bool, str]:
+) -> tuple[bool, str]:
     """
     Determine if a company is a pre-revenue biotech that needs special valuation.
 
@@ -744,15 +742,15 @@ class BiotechValuationResult:
     pipeline_details: PipelineValuationResult
     methodology: str
     confidence: str
-    warnings: List[str] = field(default_factory=list)
-    details: Dict = field(default_factory=dict)
+    warnings: list[str] = field(default_factory=list)
+    details: dict = field(default_factory=dict)
 
 
 def value_biotech(
     symbol: str,
-    financials: Dict,
+    financials: dict,
     current_price: float,
-    pipeline: Optional[List[Dict]] = None,
+    pipeline: list[dict] | None = None,
     market_discount: float = 0.70,
 ) -> BiotechValuationResult:
     """

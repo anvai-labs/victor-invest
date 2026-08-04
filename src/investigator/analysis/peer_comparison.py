@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Peer Group Comparison Module for InvestiGator
 Calculates financial ratios and performs peer group analysis
@@ -9,7 +8,7 @@ import logging
 import statistics
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -31,45 +30,45 @@ class FinancialRatios:
 
     symbol: str
     # Profitability Ratios
-    eps: Optional[float] = None
-    pe_ratio: Optional[float] = None
-    peg_ratio: Optional[float] = None
-    roe: Optional[float] = None  # Return on Equity
-    roa: Optional[float] = None  # Return on Assets
-    profit_margin: Optional[float] = None
+    eps: float | None = None
+    pe_ratio: float | None = None
+    peg_ratio: float | None = None
+    roe: float | None = None  # Return on Equity
+    roa: float | None = None  # Return on Assets
+    profit_margin: float | None = None
 
     # Leverage Ratios
-    debt_to_equity: Optional[float] = None
-    debt_to_assets: Optional[float] = None
-    interest_coverage: Optional[float] = None
+    debt_to_equity: float | None = None
+    debt_to_assets: float | None = None
+    interest_coverage: float | None = None
 
     # Valuation Ratios
-    price_to_book: Optional[float] = None
-    price_to_sales: Optional[float] = None
-    ev_to_ebitda: Optional[float] = None
+    price_to_book: float | None = None
+    price_to_sales: float | None = None
+    ev_to_ebitda: float | None = None
 
     # Growth Metrics
-    revenue_growth_yoy: Optional[float] = None
-    earnings_growth_yoy: Optional[float] = None
-    revenue_growth_3yr: Optional[float] = None
-    earnings_growth_3yr: Optional[float] = None
+    revenue_growth_yoy: float | None = None
+    earnings_growth_yoy: float | None = None
+    revenue_growth_3yr: float | None = None
+    earnings_growth_3yr: float | None = None
 
     # Market Metrics
-    beta: Optional[float] = None
-    correlation_sp500: Optional[float] = None
-    volatility_30d: Optional[float] = None
-    volatility_90d: Optional[float] = None
+    beta: float | None = None
+    correlation_sp500: float | None = None
+    volatility_30d: float | None = None
+    volatility_90d: float | None = None
 
     # Investment Style
-    growth_score: Optional[float] = None
-    value_score: Optional[float] = None
-    quality_score: Optional[float] = None
+    growth_score: float | None = None
+    value_score: float | None = None
+    quality_score: float | None = None
 
     # Additional Context
-    market_cap: Optional[float] = None
-    enterprise_value: Optional[float] = None
-    shares_outstanding: Optional[float] = None
-    last_updated: Optional[str] = None
+    market_cap: float | None = None
+    enterprise_value: float | None = None
+    shares_outstanding: float | None = None
+    last_updated: str | None = None
 
 
 @dataclass
@@ -77,13 +76,13 @@ class PeerGroupStats:
     """Statistical summary of peer group metrics"""
 
     metric_name: str
-    mean: Optional[float] = None
-    median: Optional[float] = None
-    std_dev: Optional[float] = None
-    min_val: Optional[float] = None
-    max_val: Optional[float] = None
-    percentile_25: Optional[float] = None
-    percentile_75: Optional[float] = None
+    mean: float | None = None
+    median: float | None = None
+    std_dev: float | None = None
+    min_val: float | None = None
+    max_val: float | None = None
+    percentile_25: float | None = None
+    percentile_75: float | None = None
     count: int = 0
 
 
@@ -105,7 +104,7 @@ class PeerGroupComparison:
             logger.error(f"Failed to load peer groups: {e}")
             self.peer_groups = {}
 
-    def get_peer_group(self, symbol: str) -> Dict[str, Any]:
+    def get_peer_group(self, symbol: str) -> dict[str, Any]:
         """Get peer group for a given symbol"""
         symbol = symbol.upper()
 
@@ -140,7 +139,7 @@ class PeerGroupComparison:
 
         return {"sector": None, "industry": None, "peers": []}
 
-    def _generate_peer_group_id(self, peer_info: Dict[str, Any]) -> str:
+    def _generate_peer_group_id(self, peer_info: dict[str, Any]) -> str:
         """Generate a unique peer group ID from peer info"""
         sector = peer_info.get("sector", "UNKNOWN")
         industry = peer_info.get("industry", "UNKNOWN")
@@ -149,7 +148,7 @@ class PeerGroupComparison:
         industry_clean = industry.upper().replace(" ", "_").replace("&", "AND")
         return f"{sector_clean}_{industry_clean}"
 
-    def calculate_financial_ratios(self, symbol: str, force_refresh: bool = False) -> Optional[FinancialRatios]:
+    def calculate_financial_ratios(self, symbol: str, force_refresh: bool = False) -> FinancialRatios | None:
         """Calculate comprehensive financial ratios for a company"""
         # Get peer group info for this symbol
         peer_info = self.get_peer_group(symbol)
@@ -247,7 +246,7 @@ class PeerGroupComparison:
             logger.error(f"Error calculating ratios for {symbol}: {e}")
             return None
 
-    def _get_sec_financial_data(self, symbol: str) -> Dict[str, Any]:
+    def _get_sec_financial_data(self, symbol: str) -> dict[str, Any]:
         """Get financial data from SEC filings"""
         try:
             # For now, return mock data - in production this would query the database
@@ -291,7 +290,7 @@ class PeerGroupComparison:
             logger.error(f"Error getting SEC data for {symbol}: {e}")
             return {}
 
-    def _get_market_data(self, symbol: str) -> Dict[str, Any]:
+    def _get_market_data(self, symbol: str) -> dict[str, Any]:
         """Get market data from Yahoo Finance"""
         try:
             ticker = yf.Ticker(symbol)
@@ -314,7 +313,7 @@ class PeerGroupComparison:
             logger.error(f"Error getting market data for {symbol}: {e}")
             return {}
 
-    def _calculate_volatility(self, price_history: Dict, days: int) -> Optional[float]:
+    def _calculate_volatility(self, price_history: dict, days: int) -> float | None:
         """Calculate historical volatility"""
         try:
             if not price_history:
@@ -336,7 +335,7 @@ class PeerGroupComparison:
             logger.error(f"Error calculating volatility: {e}")
             return None
 
-    def _calculate_sp500_correlation(self, symbol: str) -> Optional[float]:
+    def _calculate_sp500_correlation(self, symbol: str) -> float | None:
         """Calculate correlation with S&P 500"""
         try:
             # Get stock and SPY data
@@ -370,7 +369,7 @@ class PeerGroupComparison:
             logger.error(f"Error calculating S&P 500 correlation for {symbol}: {e}")
             return None
 
-    def _calculate_growth_score(self, ratios: FinancialRatios) -> Optional[float]:
+    def _calculate_growth_score(self, ratios: FinancialRatios) -> float | None:
         """Calculate growth score (0-10)"""
         scores = []
 
@@ -389,7 +388,7 @@ class PeerGroupComparison:
 
         return statistics.mean(scores) if scores else None
 
-    def _calculate_value_score(self, ratios: FinancialRatios) -> Optional[float]:
+    def _calculate_value_score(self, ratios: FinancialRatios) -> float | None:
         """Calculate value score (0-10)"""
         scores = []
 
@@ -410,7 +409,7 @@ class PeerGroupComparison:
 
         return statistics.mean(scores) if scores else None
 
-    def _calculate_quality_score(self, ratios: FinancialRatios) -> Optional[float]:
+    def _calculate_quality_score(self, ratios: FinancialRatios) -> float | None:
         """Calculate quality score (0-10)"""
         scores = []
 
@@ -434,13 +433,13 @@ class PeerGroupComparison:
 
         return statistics.mean(scores) if scores else None
 
-    def _safe_divide(self, numerator: Optional[float], denominator: Optional[float]) -> Optional[float]:
+    def _safe_divide(self, numerator: float | None, denominator: float | None) -> float | None:
         """Safely divide two numbers"""
         if numerator is None or denominator is None or denominator == 0:
             return None
         return numerator / denominator
 
-    def get_peer_comparison(self, symbol: str, force_refresh: bool = False) -> Dict[str, Any]:
+    def get_peer_comparison(self, symbol: str, force_refresh: bool = False) -> dict[str, Any]:
         """Get comprehensive peer comparison analysis"""
         logger.info(f"Getting peer comparison for {symbol}")
 
@@ -495,7 +494,7 @@ class PeerGroupComparison:
             "timestamp": datetime.now().isoformat(),
         }
 
-    def _calculate_peer_statistics(self, peer_ratios: List[FinancialRatios]) -> Dict[str, PeerGroupStats]:
+    def _calculate_peer_statistics(self, peer_ratios: list[FinancialRatios]) -> dict[str, PeerGroupStats]:
         """Calculate statistical summaries for peer group metrics"""
         if not peer_ratios:
             return {}
@@ -541,8 +540,8 @@ class PeerGroupComparison:
         return statistics_dict
 
     def _calculate_relative_position(
-        self, company_ratios: FinancialRatios, peer_ratios: List[FinancialRatios]
-    ) -> Dict[str, Any]:
+        self, company_ratios: FinancialRatios, peer_ratios: list[FinancialRatios]
+    ) -> dict[str, Any]:
         """Calculate company's relative position vs peers"""
         if not peer_ratios:
             return {}

@@ -3,27 +3,28 @@
 from __future__ import annotations
 
 import html
+import math
 import re
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 _RANGE_SEP = r"(?:to|and|-|–|—)"
 _AMOUNT = r"(\d{1,3}(?:,\d{3})*(?:\.\d+)?)"
 _UNIT = r"(billion|million|thousand|bn|mm|m|b)"
 
 
-def _to_float(value: Any) -> Optional[float]:
+def _to_float(value: Any) -> float | None:
     if value is None:
         return None
     try:
         parsed = float(str(value).replace(",", "").strip())
-        if parsed != parsed:  # NaN guard
+        if math.isnan(parsed):
             return None
         return parsed
     except (TypeError, ValueError):
         return None
 
 
-def _amount_to_usd(value: str, unit: Optional[str]) -> Optional[float]:
+def _amount_to_usd(value: str, unit: str | None) -> float | None:
     number = _to_float(value)
     if number is None:
         return None
@@ -63,7 +64,7 @@ def _extract_context_window(text: str, start: int, end: int, width: int = 220) -
     return text[left:right]
 
 
-def _extract_revenue_range(text: str) -> Optional[Dict[str, Any]]:
+def _extract_revenue_range(text: str) -> dict[str, Any] | None:
     patterns = [
         re.compile(
             rf"(?:revenue|net sales|sales)[^\.\n]{{0,180}}?(?:guidance|outlook|forecast|expect(?:s|ed)?)"
@@ -119,7 +120,7 @@ def _extract_revenue_range(text: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def _extract_eps_range(text: str) -> Optional[Dict[str, Any]]:
+def _extract_eps_range(text: str) -> dict[str, Any] | None:
     patterns = [
         re.compile(
             rf"(?:earnings per share|diluted eps|eps)[^\.\n]{{0,160}}?"
@@ -170,7 +171,7 @@ def _extract_eps_range(text: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def _extract_growth_percent(text: str, metric: str) -> Optional[float]:
+def _extract_growth_percent(text: str, metric: str) -> float | None:
     metric_pattern = "revenue|net sales|sales" if metric == "revenue" else "eps|earnings"
     forward_cue = (
         "guidance|outlook|forecast|expect(?:s|ed|ation)?|project(?:s|ed)?|"
@@ -205,8 +206,8 @@ def extract_forward_guidance(
     *,
     text: str,
     form_type: str,
-    filing_date: Optional[str] = None,
-) -> Dict[str, Any]:
+    filing_date: str | None = None,
+) -> dict[str, Any]:
     """
     Extract deterministic forward guidance signals from filing text.
 
@@ -247,7 +248,7 @@ def extract_forward_guidance(
     if eps_growth is not None:
         confidence += 0.10
 
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "source": "sec_filing_regex",
         "source_form": str(form_type or "").upper(),
         "filing_date": filing_date,
@@ -264,12 +265,12 @@ def extract_forward_guidance(
     return payload
 
 
-def select_best_guidance(candidates: list[Dict[str, Any]]) -> Dict[str, Any]:
+def select_best_guidance(candidates: list[dict[str, Any]]) -> dict[str, Any]:
     """Pick the strongest guidance payload from multiple filings."""
     if not candidates:
         return {}
 
-    def _score(item: Dict[str, Any]) -> Tuple[float, int]:
+    def _score(item: dict[str, Any]) -> tuple[float, int]:
         confidence = _to_float(item.get("confidence_score")) or 0.0
         signal_count = int(
             bool(item.get("revenue_guidance"))

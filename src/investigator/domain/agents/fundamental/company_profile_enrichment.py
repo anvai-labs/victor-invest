@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from investigator.domain.services.valuation.models import (
     CompanyArchetype,
@@ -17,7 +17,7 @@ def _calculate_market_cap_with_split_adjustment(
     current_price: float,
     shares_outstanding: float,
     shares_source: str = "tickerdata",
-) -> Optional[float]:
+) -> float | None:
     """
     Calculate market cap with proper split adjustment.
 
@@ -56,11 +56,11 @@ def enrich_company_profile(
     profile: Any,
     symbol: str,
     sector: str,
-    company_data: Dict[str, Any],
-    ratios: Dict[str, Any],
-    financials: Dict[str, Any],
-    market_data: Dict[str, Any],
-    data_quality: Dict[str, Any],
+    company_data: dict[str, Any],
+    ratios: dict[str, Any],
+    financials: dict[str, Any],
+    market_data: dict[str, Any],
+    data_quality: dict[str, Any],
     logger: Any,
 ) -> None:
     """Populate profile attributes and archetype/quality flags from loaded fundamentals."""

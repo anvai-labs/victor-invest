@@ -21,7 +21,7 @@ Usage:
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar
 
 from investigator.domain.services.data_validation import (
     DataValidator,
@@ -49,7 +49,7 @@ class MetricQuality:
     completeness: float  # 0-100
     recency_score: float  # 0-100 (how recent is the data)
     consistency_score: float  # 0-100 (cross-metric consistency)
-    issues: List[str] = field(default_factory=list)
+    issues: list[str] = field(default_factory=list)
 
     @property
     def overall_score(self) -> float:
@@ -63,13 +63,13 @@ class AggregateQuality:
 
     overall_score: float  # 0-100
     level: DataQualityLevel
-    model_applicability: Dict[str, float]  # Per-model confidence multiplier (0.0-1.0)
+    model_applicability: dict[str, float]  # Per-model confidence multiplier (0.0-1.0)
     valuation_confidence: float  # Overall valuation confidence (0.0-1.0)
-    category_scores: Dict[str, MetricQuality] = field(default_factory=dict)
-    issues: List[str] = field(default_factory=list)
-    recommendations: List[str] = field(default_factory=list)
+    category_scores: dict[str, MetricQuality] = field(default_factory=dict)
+    issues: list[str] = field(default_factory=list)
+    recommendations: list[str] = field(default_factory=list)
 
-    def get_applicable_models(self, min_confidence: float = 0.5) -> List[str]:
+    def get_applicable_models(self, min_confidence: float = 0.5) -> list[str]:
         """Get list of models with sufficient data quality."""
         return [model for model, conf in self.model_applicability.items() if conf >= min_confidence]
 
@@ -106,7 +106,7 @@ class DataQualityScorer:
     """
 
     # Metric categories with their constituent fields
-    METRIC_CATEGORIES = {
+    METRIC_CATEGORIES: ClassVar[dict] = {
         "income": [
             "revenue",
             "gross_profit",
@@ -161,7 +161,7 @@ class DataQualityScorer:
     }
 
     # Quality level thresholds
-    QUALITY_THRESHOLDS = {
+    QUALITY_THRESHOLDS: ClassVar[dict] = {
         DataQualityLevel.EXCELLENT: 90,
         DataQualityLevel.GOOD: 75,
         DataQualityLevel.FAIR: 60,
@@ -170,7 +170,7 @@ class DataQualityScorer:
     }
 
     # Model to category weights
-    MODEL_CATEGORY_WEIGHTS = {
+    MODEL_CATEGORY_WEIGHTS: ClassVar[dict] = {
         "dcf": {
             "cash_flow": 0.40,
             "income": 0.25,
@@ -222,7 +222,7 @@ class DataQualityScorer:
         },
     }
 
-    def __init__(self, validator: Optional[DataValidator] = None):
+    def __init__(self, validator: DataValidator | None = None):
         """
         Initialize the scorer.
 
@@ -231,7 +231,7 @@ class DataQualityScorer:
         """
         self.validator = validator or get_data_validator()
 
-    def score_metrics(self, data: Dict[str, Any], metadata: Optional[Dict[str, Any]] = None) -> AggregateQuality:
+    def score_metrics(self, data: dict[str, Any], metadata: dict[str, Any] | None = None) -> AggregateQuality:
         """
         Calculate aggregate data quality scores.
 
@@ -283,7 +283,7 @@ class DataQualityScorer:
             recommendations=recommendations,
         )
 
-    def _score_categories(self, data: Dict[str, Any], metadata: Dict[str, Any]) -> Dict[str, MetricQuality]:
+    def _score_categories(self, data: dict[str, Any], metadata: dict[str, Any]) -> dict[str, MetricQuality]:
         """Score each metric category for completeness and quality."""
         category_scores = {}
 
@@ -317,7 +317,7 @@ class DataQualityScorer:
 
         return category_scores
 
-    def _calculate_recency_score(self, metadata: Dict[str, Any]) -> float:
+    def _calculate_recency_score(self, metadata: dict[str, Any]) -> float:
         """Calculate recency score based on data age."""
         # Default to good recency if no metadata
         if not metadata:
@@ -337,7 +337,7 @@ class DataQualityScorer:
         else:
             return 40.0  # Over a year old
 
-    def _calculate_consistency_score(self, data: Dict[str, Any], category: str) -> float:
+    def _calculate_consistency_score(self, data: dict[str, Any], category: str) -> float:
         """Calculate consistency score for a category."""
         # Use DataValidator's consistency checks
         consistency_issues = self.validator.validate_consistency(data)
@@ -351,7 +351,7 @@ class DataQualityScorer:
         score = 100.0 - (len(category_issues) * 15)
         return max(0.0, score)
 
-    def _calculate_overall_score(self, category_scores: Dict[str, MetricQuality]) -> float:
+    def _calculate_overall_score(self, category_scores: dict[str, MetricQuality]) -> float:
         """Calculate weighted overall quality score."""
         if not category_scores:
             return 0.0
@@ -385,8 +385,8 @@ class DataQualityScorer:
         return DataQualityLevel.INSUFFICIENT
 
     def _calculate_model_applicability(
-        self, data: Dict[str, Any], category_scores: Dict[str, MetricQuality]
-    ) -> Dict[str, float]:
+        self, data: dict[str, Any], category_scores: dict[str, MetricQuality]
+    ) -> dict[str, float]:
         """Calculate per-model applicability confidence."""
         model_applicability = {}
 
@@ -418,7 +418,7 @@ class DataQualityScorer:
     def _calculate_valuation_confidence(
         self,
         overall_score: float,
-        model_applicability: Dict[str, float],
+        model_applicability: dict[str, float],
         level: DataQualityLevel,
     ) -> float:
         """Calculate overall valuation confidence."""
@@ -444,7 +444,7 @@ class DataQualityScorer:
 
         return min(confidence, level_caps.get(level, 1.0))
 
-    def _collect_issues(self, category_scores: Dict[str, MetricQuality]) -> List[str]:
+    def _collect_issues(self, category_scores: dict[str, MetricQuality]) -> list[str]:
         """Collect all issues from category scores."""
         issues = []
         for category, quality in category_scores.items():
@@ -455,9 +455,9 @@ class DataQualityScorer:
     def _generate_recommendations(
         self,
         level: DataQualityLevel,
-        category_scores: Dict[str, MetricQuality],
-        model_applicability: Dict[str, float],
-    ) -> List[str]:
+        category_scores: dict[str, MetricQuality],
+        model_applicability: dict[str, float],
+    ) -> list[str]:
         """Generate recommendations based on quality assessment."""
         recommendations = []
 
@@ -489,7 +489,7 @@ class DataQualityScorer:
 
 
 # Singleton instance
-_scorer: Optional[DataQualityScorer] = None
+_scorer: DataQualityScorer | None = None
 
 
 def get_data_quality_scorer() -> DataQualityScorer:

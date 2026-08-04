@@ -23,7 +23,7 @@ import asyncio
 import logging
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Optional
 
 from investigator.config import get_config
 from investigator.infrastructure.llm.vram_calculator import (
@@ -140,13 +140,13 @@ class DynamicLLMSemaphore:
             self.cache_reduction_factor = 0.6  # Cached tasks use 60% less resources
 
             # Current resource tracking
-            self.active_tasks: Dict[str, Dict] = {}
+            self.active_tasks: dict[str, dict] = {}
             self.used_vram_gb = 0
-            self.queue: List[Dict] = []
+            self.queue: list[dict] = []
 
             # Model reuse tracking (for concurrent requests on same model)
             self.loaded_models: set[str] = set()  # Models currently loaded in VRAM
-            self.active_tasks_per_model: Dict[str, int] = {}  # Task count per model
+            self.active_tasks_per_model: dict[str, int] = {}  # Task count per model
 
             # Statistics
             self._stats = {
@@ -163,9 +163,9 @@ class DynamicLLMSemaphore:
     def _estimate_kv_cache_gb(
         self,
         model: str,
-        prompt_tokens: Optional[int],
-        response_tokens: Optional[int],
-        context_tokens: Optional[int],
+        prompt_tokens: int | None,
+        response_tokens: int | None,
+        context_tokens: int | None,
     ) -> float:
         """
         Estimate KV cache memory in GB for a model
@@ -200,9 +200,9 @@ class DynamicLLMSemaphore:
     def _get_model_vram_requirement(
         self,
         model: str,
-        prompt_tokens: Optional[int] = None,
-        response_tokens: Optional[int] = None,
-        context_tokens: Optional[int] = None,
+        prompt_tokens: int | None = None,
+        response_tokens: int | None = None,
+        context_tokens: int | None = None,
     ) -> float:
         """Get VRAM requirement for a model"""
         # Try exact match first
@@ -237,9 +237,9 @@ class DynamicLLMSemaphore:
         model: str,
         task_type: str,
         is_cached: bool = False,
-        prompt_tokens: Optional[int] = None,
-        response_tokens: Optional[int] = None,
-        context_tokens: Optional[int] = None,
+        prompt_tokens: int | None = None,
+        response_tokens: int | None = None,
+        context_tokens: int | None = None,
     ) -> float:
         """
         Calculate actual VRAM requirement for a task
@@ -299,10 +299,10 @@ class DynamicLLMSemaphore:
         model: str,
         task_type: str = "summary",
         is_cached: bool = False,
-        task_id: str = None,
-        prompt_tokens: Optional[int] = None,
-        response_tokens: Optional[int] = None,
-        context_tokens: Optional[int] = None,
+        task_id: str | None = None,
+        prompt_tokens: int | None = None,
+        response_tokens: int | None = None,
+        context_tokens: int | None = None,
     ) -> str:
         """
         Acquire LLM resources dynamically based on requirements
@@ -472,7 +472,7 @@ class DynamicLLMSemaphore:
             "active_tasks": list(self.active_tasks.keys()),
         }
 
-    def get_optimization_suggestions(self) -> List[str]:
+    def get_optimization_suggestions(self) -> list[str]:
         """Get suggestions for optimizing resource usage"""
         suggestions = []
         stats = self.get_stats()
@@ -495,7 +495,7 @@ class DynamicLLMSemaphore:
 
 
 # Global semaphore instance
-_dynamic_llm_semaphore: Optional[DynamicLLMSemaphore] = None
+_dynamic_llm_semaphore: DynamicLLMSemaphore | None = None
 
 
 def get_dynamic_llm_semaphore() -> DynamicLLMSemaphore:
@@ -556,10 +556,10 @@ class DynamicLLMContext:
         model: str,
         task_type: str = "summary",
         is_cached: bool = False,
-        task_id: str = None,
-        prompt_tokens: Optional[int] = None,
-        response_tokens: Optional[int] = None,
-        context_tokens: Optional[int] = None,
+        task_id: str | None = None,
+        prompt_tokens: int | None = None,
+        response_tokens: int | None = None,
+        context_tokens: int | None = None,
     ):
         self.model = model
         self.task_type = task_type

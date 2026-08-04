@@ -23,7 +23,7 @@ Usage:
 
 import logging
 from datetime import date, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -56,8 +56,8 @@ class ExperienceCollector:
 
     def __init__(
         self,
-        outcome_tracker: Optional[OutcomeTracker] = None,
-        dao: Optional[ValuationOutcomesDAO] = None,
+        outcome_tracker: OutcomeTracker | None = None,
+        dao: ValuationOutcomesDAO | None = None,
     ):
         """
         Initialize experience collector.
@@ -74,10 +74,10 @@ class ExperienceCollector:
         min_days_ago: int = 90,
         max_experiences: int = 10000,
         exclude_used: bool = False,
-        min_reward: Optional[float] = None,
-        sectors: Optional[List[str]] = None,
-        tiers: Optional[List[str]] = None,
-    ) -> List[Experience]:
+        min_reward: float | None = None,
+        sectors: list[str] | None = None,
+        tiers: list[str] | None = None,
+    ) -> list[Experience]:
         """
         Collect experiences from the outcome database.
 
@@ -131,7 +131,7 @@ class ExperienceCollector:
         self,
         min_per_sector: int = 10,
         max_per_sector: int = 500,
-    ) -> Dict[str, List[Experience]]:
+    ) -> dict[str, list[Experience]]:
         """
         Collect experiences grouped by sector.
 
@@ -146,7 +146,7 @@ class ExperienceCollector:
         """
         all_experiences = self.collect_experiences(max_experiences=10000)
 
-        by_sector: Dict[str, List[Experience]] = {}
+        by_sector: dict[str, list[Experience]] = {}
         for exp in all_experiences:
             sector = exp.context.sector
             if sector not in by_sector:
@@ -165,7 +165,7 @@ class ExperienceCollector:
         self,
         days: int = 30,
         max_experiences: int = 1000,
-    ) -> List[Experience]:
+    ) -> list[Experience]:
         """
         Collect recent experiences for online learning.
 
@@ -192,12 +192,12 @@ class ExperienceCollector:
 
     def train_val_test_split(
         self,
-        experiences: List[Experience],
+        experiences: list[Experience],
         train_ratio: float = 0.7,
         val_ratio: float = 0.15,
         shuffle: bool = True,
-        random_seed: Optional[int] = None,
-    ) -> Tuple[List[Experience], List[Experience], List[Experience]]:
+        random_seed: int | None = None,
+    ) -> tuple[list[Experience], list[Experience], list[Experience]]:
         """
         Split experiences into train/validation/test sets.
 
@@ -237,12 +237,12 @@ class ExperienceCollector:
 
     def stratified_split(
         self,
-        experiences: List[Experience],
+        experiences: list[Experience],
         stratify_by: str = "sector",
         train_ratio: float = 0.7,
         val_ratio: float = 0.15,
-        random_seed: Optional[int] = None,
-    ) -> Tuple[List[Experience], List[Experience], List[Experience]]:
+        random_seed: int | None = None,
+    ) -> tuple[list[Experience], list[Experience], list[Experience]]:
         """
         Stratified split maintaining distribution of stratify_by field.
 
@@ -260,7 +260,7 @@ class ExperienceCollector:
             np.random.seed(random_seed)
 
         # Group by stratification key
-        groups: Dict[str, List[Experience]] = {}
+        groups: dict[str, list[Experience]] = {}
         for exp in experiences:
             if stratify_by == "sector":
                 key = exp.context.sector
@@ -298,10 +298,10 @@ class ExperienceCollector:
 
     def sample_balanced(
         self,
-        experiences: List[Experience],
+        experiences: list[Experience],
         n_samples: int,
         balance_by: str = "sector",
-    ) -> List[Experience]:
+    ) -> list[Experience]:
         """
         Sample experiences with balanced representation.
 
@@ -314,7 +314,7 @@ class ExperienceCollector:
             Balanced sample of experiences.
         """
         # Group by balance key
-        groups: Dict[str, List[Experience]] = {}
+        groups: dict[str, list[Experience]] = {}
         for exp in experiences:
             if balance_by == "sector":
                 key = exp.context.sector
@@ -350,8 +350,8 @@ class ExperienceCollector:
 
     def get_statistics(
         self,
-        experiences: List[Experience],
-    ) -> Dict[str, Any]:
+        experiences: list[Experience],
+    ) -> dict[str, Any]:
         """
         Get statistics about the experience set.
 

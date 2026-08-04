@@ -31,7 +31,6 @@ class TestCacheManager:
         """Test CacheManager follows singleton pattern if applicable."""
         # This test verifies the cache manager can be instantiated
         # Actual singleton behavior would be tested in integration tests
-        pass
 
 
 class TestCacheKeyGeneration:
@@ -41,4 +40,3 @@ class TestCacheKeyGeneration:
         """Test cache keys are properly normalized."""
         # Placeholder for cache key normalization tests
         # These would test snake_case conversion, etc.
-        pass
