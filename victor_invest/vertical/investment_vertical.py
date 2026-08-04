@@ -253,7 +253,7 @@ class InvestmentVertical(VerticalBase):
 
         if isinstance(getattr(config, "tools", None), list):
             try:
-                from victor_contracts.tool_runtime import RuntimeToolSet
+                from victor.framework.tools import ToolSet as RuntimeToolSet
             except Exception:
                 config.tools = ToolSet(names=list(config.tools))
             else:

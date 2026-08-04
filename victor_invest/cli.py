@@ -110,7 +110,7 @@ def _display_provider_info(provider: str | None, model: str | None) -> tuple:
 
 
 async def _create_workflow_executor(provider: str | None, model: str | None, timeout: float):
-    from victor_contracts.workflow_executor_runtime import WorkflowExecutor
+    from victor_contracts.workflow_runtime import WorkflowExecutor
 
     from victor_invest.workflows import ensure_handlers_registered
 

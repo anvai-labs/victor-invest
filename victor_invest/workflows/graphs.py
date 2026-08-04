@@ -95,7 +95,7 @@ from dataclasses import replace
 from typing import Any, cast
 from weakref import WeakKeyDictionary
 
-from victor_contracts.graph_runtime import END, StateGraph
+from victor.framework.graph import END, StateGraph
 
 from investigator.application.decision_input_extractor import from_victor_workflow_state
 from investigator.domain.services.investment_decision_policy import InvestmentDecisionPolicy

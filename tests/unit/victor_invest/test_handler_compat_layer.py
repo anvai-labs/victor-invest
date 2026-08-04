@@ -17,7 +17,7 @@ def test_fallback_basehandler_success_path():
     if not _requires_fallback_basehandler():
         pytest.skip("Native Victor BaseHandler is active; fallback-specific test skipped")
 
-    from victor.workflows.executor import ExecutorNodeStatus
+    from victor_contracts.workflows import ExecutorNodeStatus
 
     class _Node:
         id = "node-1"
@@ -47,7 +47,7 @@ def test_fallback_basehandler_failure_path():
     if not _requires_fallback_basehandler():
         pytest.skip("Native Victor BaseHandler is active; fallback-specific test skipped")
 
-    from victor.workflows.executor import ExecutorNodeStatus
+    from victor_contracts.workflows import ExecutorNodeStatus
 
     class _Node:
         id = "node-2"
@@ -72,7 +72,10 @@ def test_fallback_handler_decorator_registers_with_registry_and_executor(monkeyp
         pytest.skip("Native Victor handler_decorator is active; fallback-specific test skipped")
 
     import victor.framework.handler_registry as handler_registry_module
-    import victor.workflows.executor as executor_module
+
+    # Canonical home of register_compute_handler; victor.workflows.executor only
+    # re-exports it and is itself deprecated.
+    import victor.workflows.compute_registry as executor_module
 
     # Skip if running against Victor 0.5.0 which doesn't have register_vertical_handlers
     if not hasattr(handler_registry_module, "register_vertical_handlers"):

@@ -24,140 +24,142 @@ logger = logging.getLogger(__name__)
 # BaseHandler compatibility
 # -----------------------------------------------------------------------------
 
-try:
-    from victor_contracts.handler_runtime import BaseHandler
-except Exception:
+# victor-ai has never shipped a BaseHandler; the deprecated contracts
+# handler_runtime bridge defined this shim inline. It is owned here
+# now that the bridge is gone.
 
-    class BaseHandler:  # type: ignore[no-redef]
-        """Compatibility base class for class-based compute handlers."""
 
-        async def execute(
-            self,
-            node: ComputeNode,
-            context: WorkflowContext,
-            tool_registry: ToolRegistry,
-        ):
-            raise NotImplementedError("BaseHandler.execute() must be implemented")
+class BaseHandler:
+    """Compatibility base class for class-based compute handlers."""
 
-        async def __call__(self, node, context, tool_registry):
-            from victor_contracts.workflow_executor_runtime import ExecutorNodeStatus, NodeResult
+    async def execute(
+        self,
+        node: ComputeNode,
+        context: WorkflowContext,
+        tool_registry: ToolRegistry,
+    ):
+        raise NotImplementedError("BaseHandler.execute() must be implemented")
 
-            start_time = time.time()
-            try:
-                output, tool_calls_used = await self.execute(node, context, tool_registry)
+    async def __call__(self, node, context, tool_registry):
+        from victor_contracts.workflow_runtime import ExecutorNodeStatus, NodeResult
 
-                output_key = getattr(node, "output_key", None) or getattr(node, "id", "output")
-                if hasattr(context, "set"):
-                    context.set(output_key, output)
-                elif isinstance(context, dict):
-                    context[output_key] = output
+        start_time = time.time()
+        try:
+            output, tool_calls_used = await self.execute(node, context, tool_registry)
 
-                return NodeResult(
-                    node_id=node.id,
-                    status=ExecutorNodeStatus.COMPLETED,
-                    output=output,
-                    duration_seconds=time.time() - start_time,
-                    tool_calls_used=int(tool_calls_used or 0),
-                )
-            except Exception as exc:
-                return NodeResult(
-                    node_id=getattr(node, "id", "unknown"),
-                    status=ExecutorNodeStatus.FAILED,
-                    error=str(exc),
-                    duration_seconds=time.time() - start_time,
-                    tool_calls_used=0,
-                )
+            output_key = getattr(node, "output_key", None) or getattr(node, "id", "output")
+            if hasattr(context, "set"):
+                context.set(output_key, output)
+            elif isinstance(context, dict):
+                context[output_key] = output
+
+            return NodeResult(
+                node_id=node.id,
+                status=ExecutorNodeStatus.COMPLETED,
+                output=output,
+                duration_seconds=time.time() - start_time,
+                tool_calls_used=int(tool_calls_used or 0),
+            )
+        except Exception as exc:
+            return NodeResult(
+                node_id=getattr(node, "id", "unknown"),
+                status=ExecutorNodeStatus.FAILED,
+                error=str(exc),
+                duration_seconds=time.time() - start_time,
+                tool_calls_used=0,
+            )
 
 
 # -----------------------------------------------------------------------------
 # handler_decorator compatibility
 # -----------------------------------------------------------------------------
 
-try:
-    from victor_contracts.handler_runtime import handler_decorator
-except Exception:
-    _T = TypeVar("_T")
+# Likewise unimplemented in victor-ai; previously supplied inline by the bridge.
+_T = TypeVar("_T")
 
-    def _register_with_handler_registry(
-        name: str,
-        instance: Any,
-        vertical: str | None,
-        description: str | None,
-    ) -> None:
-        try:
-            # Try new Victor API first (register_vertical_handlers, register_global_handler)
-            from victor_contracts.handler_runtime import (
-                register_global_handler,
-                register_vertical_handlers,
+
+def _register_with_handler_registry(
+    name: str,
+    instance: Any,
+    vertical: str | None,
+    description: str | None,
+) -> None:
+    try:
+        # Try new Victor API first (register_vertical_handlers, register_global_handler)
+        from victor.framework.handler_registry import (
+            register_global_handler,
+            register_vertical_handlers,
+        )
+
+        if vertical:
+            # Register as vertical handler
+            register_vertical_handlers(
+                vertical_name=vertical,
+                handlers={name: instance},
+                category="general",
+                description=description or "",
             )
+        else:
+            # Register as global handler
+            register_global_handler(
+                name=name,
+                handler=instance,
+                category="global",
+            )
+    except Exception:
+        # Fallback to old Victor 0.5.0 API (get_handler_registry())
+        try:
+            from victor.framework.handler_registry import get_handler_registry
 
+            registry = get_handler_registry()
             if vertical:
-                # Register as vertical handler
-                register_vertical_handlers(
+                # Old API: register_vertical(vertical_name, handlers_dict)
+                registry.register_vertical(
                     vertical_name=vertical,
                     handlers={name: instance},
                     category="general",
                     description=description or "",
                 )
             else:
-                # Register as global handler
-                register_global_handler(
+                # Old API: register_global(name, handler)
+                registry.register_global(
                     name=name,
                     handler=instance,
                     category="global",
                 )
-        except Exception:
-            # Fallback to old Victor 0.5.0 API (get_handler_registry())
-            try:
-                from victor_contracts.handler_runtime import get_handler_registry
-
-                registry = get_handler_registry()
-                if vertical:
-                    # Old API: register_vertical(vertical_name, handlers_dict)
-                    registry.register_vertical(
-                        vertical_name=vertical,
-                        handlers={name: instance},
-                        category="general",
-                        description=description or "",
-                    )
-                else:
-                    # Old API: register_global(name, handler)
-                    registry.register_global(
-                        name=name,
-                        handler=instance,
-                        category="global",
-                    )
-            except Exception as exc:
-                logger.debug("Handler registry registration skipped for %s: %s", name, exc)
-
-    def _register_with_executor(name: str, instance: Any) -> None:
-        try:
-            from victor_contracts.workflow_executor_runtime import register_compute_handler
-
-            register_compute_handler(name, instance)
         except Exception as exc:
-            logger.debug("Executor registration skipped for %s: %s", name, exc)
+            logger.debug("Handler registry registration skipped for %s: %s", name, exc)
 
-    def handler_decorator(
-        name: str,
-        *,
-        vertical: str | None = None,
-        description: str | None = None,
-    ) -> Callable[[type[_T]], type[_T]]:
-        """Decorator compatibility shim for class-based handlers."""
 
-        def _decorator(handler_cls: type[_T]) -> type[_T]:
-            try:
-                instance = handler_cls()
-            except Exception as exc:
-                logger.warning("Could not instantiate handler %s for registration: %s", name, exc)
-                return handler_cls
+def _register_with_executor(name: str, instance: Any) -> None:
+    try:
+        from victor_contracts.workflow_runtime import register_compute_handler
 
-            _register_with_handler_registry(name, instance, vertical, description)
-            _register_with_executor(name, instance)
+        register_compute_handler(name, instance)
+    except Exception as exc:
+        logger.debug("Executor registration skipped for %s: %s", name, exc)
+
+
+def handler_decorator(
+    name: str,
+    *,
+    vertical: str | None = None,
+    description: str | None = None,
+) -> Callable[[type[_T]], type[_T]]:
+    """Decorator compatibility shim for class-based handlers."""
+
+    def _decorator(handler_cls: type[_T]) -> type[_T]:
+        try:
+            instance = handler_cls()
+        except Exception as exc:
+            logger.warning("Could not instantiate handler %s for registration: %s", name, exc)
             return handler_cls
 
-        return _decorator
+        _register_with_handler_registry(name, instance, vertical, description)
+        _register_with_executor(name, instance)
+        return handler_cls
+
+    return _decorator
 
 
 __all__ = ["BaseHandler", "handler_decorator"]
