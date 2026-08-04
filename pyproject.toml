@@ -43,12 +43,7 @@ classifiers = [
 
 dependencies = [
     # Victor SDK definition contract
-    # Upper bound is 0.10 deliberately, not 1.0. victor-contracts 0.9.0 deprecated six
-    # bridge modules that this package uses (agent_spec_runtime, graph_runtime,
-    # handler_runtime, subagent_runtime, tool_runtime, workflow_executor_runtime) and
-    # schedules their removal for 0.10.0. A <1.0 range would install that release and
-    # break every workflow at import time. Raise this only together with the migration.
-    "victor-contracts>=0.7.0,<0.10",
+    "victor-contracts>=0.7.0,<1.0",
 
     # Core dependencies
     "requests>=2.32.0,<2.34",

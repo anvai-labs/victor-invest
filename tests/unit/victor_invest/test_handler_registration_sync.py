@@ -3,7 +3,11 @@ from victor_invest import workflows
 
 def test_ensure_handlers_registered_is_idempotent(monkeypatch):
     import victor.framework.handler_registry as handler_registry_module
-    import victor.workflows.executor as executor_module
+
+    # register_compute_handler is patched at its canonical home. victor.workflows.executor
+    # only re-exports it (and is itself deprecated); the code resolves through
+    # victor_contracts.workflow_runtime, which maps to victor.workflows.compute_registry.
+    import victor.workflows.compute_registry as executor_module
 
     import victor_invest.handlers as handlers_module
 
@@ -56,7 +60,11 @@ def test_ensure_handlers_registered_short_circuits_when_marked_done(monkeypatch)
 
 def test_ensure_handlers_registered_last_resort_pushes_registry_entries(monkeypatch):
     import victor.framework.handler_registry as handler_registry_module
-    import victor.workflows.executor as executor_module
+
+    # register_compute_handler is patched at its canonical home. victor.workflows.executor
+    # only re-exports it (and is itself deprecated); the code resolves through
+    # victor_contracts.workflow_runtime, which maps to victor.workflows.compute_registry.
+    import victor.workflows.compute_registry as executor_module
 
     import victor_invest.handlers as handlers_module
 

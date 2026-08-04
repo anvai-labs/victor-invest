@@ -1,21 +1,24 @@
-"""Guards on this package's use of deprecated ``victor_contracts`` bridge modules.
+"""This package must not import deprecated ``victor_contracts`` bridge modules.
 
-victor-contracts 0.9.0 classified six bridge modules as Deprecated and scheduled
-their removal for 0.10.0. Its own CONTRACT_STABILITY.md justifies that by noting
-the modules have "zero consumers in the Victor monorepo" -- a count that does not
-see this package, which uses all six.
+victor-contracts 0.9.0 classified six bridge modules Deprecated, with removal in
+0.10.0. Removing them is a deliberate narrowing of the contract layer: the bridges
+were lazy re-exports of host runtime symbols, which blurred the line between the
+definition layer and the framework. Every other vertical in the Victor tree
+already imports the host directly and uses none of them.
 
-These tests exist so that fact cannot go quiet again:
+The correct posture is therefore to follow, not to pin against it. These tests
+keep the package there:
 
-* the dependency pin must stay below the removal release, so a routine resolve
-  cannot install a victor-contracts that deletes the modules this package imports;
-* the set of deprecated bridges in use is pinned, so migration progress is visible
-  and new usage cannot be added silently.
+* no source file may import any of the six bridges;
+* the victor-contracts pin must stay open across the removal release, so this
+  package cannot quietly re-acquire the coupling by holding an old contracts.
 
-Four of the six replacements live in ``victor.*`` -- the host framework this
-package deliberately keeps optional (see ``test_pyproject_framework_is_optional``).
-Completing the migration therefore needs a decision in both repositories, not a
-local edit. That tension is the reason this debt is tracked rather than fixed here.
+Three bridged symbols -- ``BaseHandler``, ``handler_decorator`` and
+``sync_handlers_with_executor`` -- have no implementation anywhere in victor-ai;
+the bridge defined them inline as shims. The first two are owned locally now, in
+``victor_invest/compat/handlers.py``. ``sync_handlers_with_executor`` was dropped
+outright: it was never importable, because its lazy map pointed at a module that
+does not export it, so the call site was dead code behind a broad ``except``.
 """
 
 from __future__ import annotations
@@ -26,21 +29,15 @@ from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 
-# Deprecated in victor-contracts 0.9.0, removal scheduled for 0.10.0.
 # Source of truth: victor_contracts/_deprecation.py :: DEPRECATED_BRIDGE_REPLACEMENTS
 DEPRECATED_BRIDGES = {
     "agent_spec_runtime": "victor.agent.specs.models",
     "graph_runtime": "victor.framework.graph",
-    "handler_runtime": "victor_contracts.workflow_runtime or victor.framework.handler_registry",
+    "handler_runtime": "victor.framework.handler_registry (+ local shims)",
     "subagent_runtime": "victor.agent.subagents.protocols",
     "tool_runtime": "victor.framework.tools",
     "workflow_executor_runtime": "victor_contracts.workflow_runtime",
 }
-
-REMOVAL_VERSION = "0.10"
-
-# Bridges this package still imports. Shrink as the migration proceeds; never grow.
-BRIDGES_IN_USE = frozenset(DEPRECATED_BRIDGES)
 
 
 def _source_files() -> list[Path]:
@@ -48,42 +45,39 @@ def _source_files() -> list[Path]:
     return [p for root in roots if root.exists() for p in root.rglob("*.py")]
 
 
-def _bridges_used() -> set[str]:
-    used: set[str] = set()
+def _bridge_usage() -> dict[str, list[str]]:
+    usage: dict[str, list[str]] = {}
     for path in _source_files():
         source = path.read_text(encoding="utf-8")
         for bridge in DEPRECATED_BRIDGES:
             if re.search(rf"\bvictor_contracts\.{bridge}\b", source):
-                used.add(bridge)
-    return used
+                usage.setdefault(bridge, []).append(str(path.relative_to(_REPO_ROOT)))
+    return usage
 
 
-def test_contracts_pin_excludes_the_removal_release():
-    """The pin must not admit the release that deletes the modules we import."""
+def test_no_deprecated_contracts_bridges_are_imported():
+    """The migration is complete and must stay complete."""
+    usage = _bridge_usage()
+    detail = "; ".join(
+        f"{bridge} in {', '.join(files)} -> use {DEPRECATED_BRIDGES[bridge]}" for bridge, files in sorted(usage.items())
+    )
+    assert not usage, f"Deprecated victor_contracts bridges are back: {detail}"
+
+
+def test_contracts_pin_is_open_across_the_removal_release():
+    """Nothing here depends on the removed modules, so the pin must not hold them back."""
     data = tomllib.loads((_REPO_ROOT / "pyproject.toml").read_text())
     pins = [d for d in data["project"]["dependencies"] if d.startswith("victor-contracts")]
     assert pins, "victor-contracts must be declared in [project.dependencies]"
-    assert f"<{REMOVAL_VERSION}" in pins[0], (
-        f"victor-contracts is pinned as {pins[0]!r}. That range admits "
-        f"{REMOVAL_VERSION}.0, which removes the deprecated bridges this package "
-        f"still imports ({', '.join(sorted(_bridges_used()))}). Complete the migration "
-        f"before widening the pin."
+    assert "<0.10" not in pins[0], (
+        f"victor-contracts is pinned as {pins[0]!r}. That bound existed only to avoid the "
+        f"0.10.0 bridge removal; the migration is done, so it should no longer be capped there."
     )
 
 
-def test_deprecated_bridge_usage_has_not_grown():
-    """New code must not reach for a bridge that is already scheduled for deletion."""
-    unexpected = _bridges_used() - BRIDGES_IN_USE
-    replacements = {bridge: DEPRECATED_BRIDGES[bridge] for bridge in sorted(unexpected)}
-    assert not unexpected, (
-        f"New use of deprecated victor_contracts bridges: {sorted(unexpected)}. Replacements: {replacements}"
-    )
-
-
-def test_migration_progress_is_recorded():
-    """If a bridge has been migrated away, tighten BRIDGES_IN_USE so it stays gone."""
-    stale = BRIDGES_IN_USE - _bridges_used()
-    assert not stale, (
-        f"These bridges are no longer used: {sorted(stale)}. "
-        f"Remove them from BRIDGES_IN_USE so the migration cannot regress."
-    )
+def test_handler_shims_are_owned_locally():
+    """The symbols victor-ai never implemented must live here, not be re-imported."""
+    shim = (_REPO_ROOT / "victor_invest" / "compat" / "handlers.py").read_text(encoding="utf-8")
+    assert "victor_contracts.handler_runtime" not in shim
+    for symbol in ("BaseHandler", "handler_decorator"):
+        assert symbol in shim, f"{symbol} must be defined locally now that the bridge is gone"
