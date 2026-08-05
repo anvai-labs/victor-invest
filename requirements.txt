@@ -3,7 +3,7 @@
 # Or when published: pip install victor-ai>=0.3.0
 
 # Core dependencies
-requests>=2.31.0
+requests>=2.32.0,<2.35
 pandas>=2.0.0
 numpy>=1.24.0
 scipy>=1.11.0
