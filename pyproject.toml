@@ -313,8 +313,13 @@ select = [
     "RUF012",   # mutable class attribute not marked ClassVar
     "RUF013",   # implicit Optional (`x: int = None`)
     "RUF034",   # useless if-else (identical branches)
-    "S110",     # try-except-pass
-    "S112",     # try-except-continue
+    # flake8-bandit, whole family. Adopted after an audit showed only 10 of its 107
+    # rules had findings in production code; those 10 are listed under `ignore`
+    # below with the reason. Enabling the family rather than naming ~96 individual
+    # rules means a newly-written insecure pattern is caught by default instead of
+    # waiting for someone to notice the rule exists -- which is how a shell-built
+    # subprocess pipeline (S602) survived until it was found by hand.
+    "S",
     # Logging hygiene.
     "G201",   # .error(..., exc_info=True) instead of .exception()
     "LOG015", # logging on the root logger
@@ -352,6 +357,43 @@ select = [
     "UP045",
 ]
 
+
+# flake8-bandit rules with outstanding findings in production code. Each is
+# deferred with a reason rather than silently dropped; the count is what it was
+# when the family was adopted, so growth is visible in review.
+ignore = [
+    # 44 -- SQL built with f-strings. The *values* are parameterised (":symbol");
+    # what is interpolated are identifiers -- column and table names drawn from
+    # fixed dicts -- which parameter binding cannot express. Real exposure would
+    # need an attacker-controlled key reaching one of those lookups, so this wants
+    # a focused per-site review rather than a sweep.
+    "S608",
+    # 8 -- fires on every subprocess call that correctly passes a list instead of a
+    # shell string. It flags the safe form; the unsafe one is S602, which is on.
+    "S603",
+    # 7 -- pickle in the RL policy and parquet caches. Changing the serialisation
+    # format is a stored-data migration, not a lint fix.
+    "S301",
+    # 6 -- credential_sanitizer and mcp_credentials define the *names* of keys to
+    # redact ("PASSWORD", "SECRET", "TOKEN"). Flagging a redaction module for
+    # naming the things it redacts is a false positive.
+    "S105",
+    # 5 -- binding 0.0.0.0 is deliberate for the API server in a container.
+    "S104",
+    # 5 -- the CLI shells out to pip, tail and grep by name on purpose; resolving
+    # absolute paths would break it across platforms.
+    "S607",
+    # 2 -- xml.etree parsing of SEC filings. Hardening means depending on
+    # defusedxml, which is a dependency decision.
+    "S314",
+    # 1 each -- a debug log under /tmp, a urlopen against a constructed Ollama URL,
+    # and random.choice for LLM pool selection. None are security-relevant, but each
+    # deserves a look rather than a blanket noqa.
+    "S108",
+    "S310",
+    "S311",
+]
+
 [tool.ruff.lint.per-file-ignores]
 # CLI entry points run one command and exit, so a blocking file read never
 # starves a busy event loop. The library and workflow paths do observe
@@ -359,6 +401,8 @@ select = [
 "src/investigator/cli/**" = ["ASYNC230"]
 "src/investigator/interfaces/cli/**" = ["ASYNC230"]
 "victor_invest/cli.py" = ["ASYNC230"]
+# assert IS the mechanism in a test; S105/S106 fire on fixture credentials.
+"tests/**" = ["S101", "S105", "S106"]
 
 [tool.ruff.format]
 # Use double quotes (Black default)

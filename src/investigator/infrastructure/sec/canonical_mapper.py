@@ -17,6 +17,8 @@ import json
 import logging
 from pathlib import Path
 
+from investigator.infrastructure.sec.formula_evaluator import evaluate_arithmetic
+
 logger = logging.getLogger(__name__)
 
 
@@ -511,9 +513,9 @@ class CanonicalKeyMapper:
                 logger.debug(f"Cannot evaluate formula '{formula}' - missing required values")
                 return None
 
-            # Evaluate the formula
-            result = eval(formula_eval, {"__builtins__": {}}, {})
-            return float(result)
+            # AST-walked arithmetic. The previous eval() guarded only with
+            # {"__builtins__": {}}, which attribute chains can escape.
+            return evaluate_arithmetic(formula_eval)
 
         except Exception as e:
             logger.debug(f"Formula evaluation failed for '{formula}': {e}")
