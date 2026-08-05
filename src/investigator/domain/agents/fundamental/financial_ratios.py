@@ -7,6 +7,10 @@ from typing import Any
 
 _QUARTER_ORDER = {"Q1": 1, "Q2": 2, "Q3": 3, "Q4": 4}
 
+# Metrics accumulated across the trailing-twelve-month window. Coverage is tracked
+# per metric, because a quarter can report some of these and omit others.
+_TTM_METRIC_NAMES = ("revenues", "net_income", "ebitda", "free_cash_flow", "dividends_paid")
+
 
 def _coerce_float(value: Any) -> float:
     """Convert values to float with a safe 0.0 fallback."""
@@ -34,8 +38,18 @@ def _extract_fiscal_year_period(entry: Any) -> tuple[int, str]:
     return fiscal_year, fiscal_period
 
 
-def _extract_quarter_metric(entry: Any, metric_candidates: list[str]) -> float:
-    """Extract a metric value from a quarter payload across common nesting patterns."""
+def _extract_quarter_metric_with_presence(entry: Any, metric_candidates: list[str]) -> tuple[float, bool]:
+    """Extract a metric from a quarter payload, reporting whether it was present at all.
+
+    Returns ``(value, present)``. ``present`` is True when one of the candidate keys
+    existed in the payload, *even if its value was zero*.
+
+    That distinction is the point of this helper. A metric that is genuinely zero and
+    a metric that is missing entirely both yield 0.0, but they mean opposite things: the
+    first is data, the second is a gap. Callers that sum quarters into a trailing-twelve
+    -month total need to tell them apart, because summing a gap as zero silently
+    understates the total and there is nothing in the result to reveal it.
+    """
     candidate_dicts: list[dict[str, Any]] = []
 
     if isinstance(entry, dict):
@@ -49,15 +63,25 @@ def _extract_quarter_metric(entry: Any, metric_candidates: list[str]) -> float:
         if isinstance(financial_data, dict):
             candidate_dicts.append(financial_data)
 
+    present = False
     for payload in candidate_dicts:
         for metric in metric_candidates:
             if metric not in payload:
                 continue
+            present = True
             value = _coerce_float(payload.get(metric))
+            # Keep looking past an explicit zero: another nesting level or alias may
+            # carry the real figure. Presence is already recorded either way.
             if value != 0:
-                return value
+                return value, True
 
-    return 0.0
+    return 0.0, present
+
+
+def _extract_quarter_metric(entry: Any, metric_candidates: list[str]) -> float:
+    """Extract a metric value from a quarter payload across common nesting patterns."""
+    value, _present = _extract_quarter_metric_with_presence(entry, metric_candidates)
+    return value
 
 
 def calculate_ttm_metrics(
@@ -104,13 +128,24 @@ def calculate_ttm_metrics(
     ttm_free_cash_flow = 0.0
     ttm_dividends_paid = 0.0
 
-    for quarter in last_4_quarters:
-        quarter_revenue = _extract_quarter_metric(quarter, ["revenues", "revenue", "total_revenue"])
-        quarter_net_income = _extract_quarter_metric(quarter, ["net_income", "earnings", "NetIncomeLoss"])
+    # Quarters in which each metric was actually present. A metric absent from a
+    # quarter still contributes 0.0 to the sum below -- the totals are unchanged --
+    # but that is a gap rather than a measurement, so it is counted and reported.
+    quarters_present: dict[str, int] = dict.fromkeys(_TTM_METRIC_NAMES, 0)
 
-        quarter_ebitda = _extract_quarter_metric(quarter, ["ebitda"])
+    for quarter in last_4_quarters:
+        quarter_revenue, revenue_present = _extract_quarter_metric_with_presence(
+            quarter, ["revenues", "revenue", "total_revenue"]
+        )
+        quarter_net_income, net_income_present = _extract_quarter_metric_with_presence(
+            quarter, ["net_income", "earnings", "NetIncomeLoss"]
+        )
+
+        quarter_ebitda, ebitda_present = _extract_quarter_metric_with_presence(quarter, ["ebitda"])
         if quarter_ebitda == 0:
-            quarter_operating_income = _extract_quarter_metric(quarter, ["operating_income"])
+            quarter_operating_income, operating_income_present = _extract_quarter_metric_with_presence(
+                quarter, ["operating_income"]
+            )
             quarter_depr_amort = _extract_quarter_metric(
                 quarter,
                 [
@@ -121,23 +156,50 @@ def calculate_ttm_metrics(
             )
             if quarter_operating_income != 0:
                 quarter_ebitda = quarter_operating_income + quarter_depr_amort
+            # EBITDA is derivable whenever operating income is reported, so that
+            # counts as present even though the "ebitda" key itself was absent.
+            ebitda_present = ebitda_present or operating_income_present
 
-        quarter_fcf = _extract_quarter_metric(quarter, ["free_cash_flow"])
+        quarter_fcf, fcf_present = _extract_quarter_metric_with_presence(quarter, ["free_cash_flow"])
         if quarter_fcf == 0:
-            quarter_ocf = _extract_quarter_metric(quarter, ["operating_cash_flow"])
+            quarter_ocf, ocf_present = _extract_quarter_metric_with_presence(quarter, ["operating_cash_flow"])
             quarter_capex = _extract_quarter_metric(quarter, ["capital_expenditures"])
             if quarter_ocf != 0:
                 quarter_fcf = quarter_ocf - abs(quarter_capex)
+            fcf_present = fcf_present or ocf_present
 
-        quarter_dividends_paid = abs(
-            _extract_quarter_metric(quarter, ["dividends_paid", "dividends", "PaymentsOfDividends"])
+        raw_dividends, dividends_present = _extract_quarter_metric_with_presence(
+            quarter, ["dividends_paid", "dividends", "PaymentsOfDividends"]
         )
+        quarter_dividends_paid = abs(raw_dividends)
 
         ttm_revenue += quarter_revenue
         ttm_net_income += quarter_net_income
         ttm_ebitda += quarter_ebitda
         ttm_free_cash_flow += quarter_fcf
         ttm_dividends_paid += quarter_dividends_paid
+
+        for name, present in (
+            ("revenues", revenue_present),
+            ("net_income", net_income_present),
+            ("ebitda", ebitda_present),
+            ("free_cash_flow", fcf_present),
+            ("dividends_paid", dividends_present),
+        ):
+            if present:
+                quarters_present[name] += 1
+
+    incomplete = {name: count for name, count in quarters_present.items() if count < len(last_4_quarters)}
+    if incomplete:
+        # Without this the caller sees a plausible number with no indication that part
+        # of the window contributed nothing to it.
+        logger.warning(
+            "%s - TTM metrics computed over incomplete data; "
+            "these metrics were missing from some of the %s quarters used: %s",
+            symbol,
+            len(last_4_quarters),
+            ", ".join(f"{name} ({count}/{len(last_4_quarters)})" for name, count in sorted(incomplete.items())),
+        )
 
     ttm_metrics = {
         "revenues": ttm_revenue,
@@ -147,6 +209,9 @@ def calculate_ttm_metrics(
         "dividends_paid": ttm_dividends_paid,
         "quarters_used": float(len(last_4_quarters)),
     }
+    # Per-metric coverage, so a consumer can tell a total built from four quarters
+    # from one built from two. Compare against "quarters_used".
+    ttm_metrics.update({f"{name}_quarters_present": float(count) for name, count in quarters_present.items()})
     logger.info(
         "%s - Computed TTM metrics from latest %s quarters: revenue=$%s, net_income=$%s, ebitda=$%s",
         symbol,

@@ -35,7 +35,9 @@ except ImportError as e:
     import sys
 
     click.echo(f"[red]Error: Victor framework not available: {e}[/red]", err=True)
-    click.echo("[yellow]Install with: pip install 'victor-ai>=0.5.0,<0.6.0'[/yellow]", err=True)
+    # Must match the `runtime` extra in pyproject.toml. It previously advertised
+    # >=0.5.0,<0.6.0, which no longer satisfies this package.
+    click.echo("[yellow]Install with: pip install 'victor-invest[runtime]'[/yellow]", err=True)
     sys.exit(1)
 
 from victor_invest import __version__ as VICTOR_INVEST_VERSION
@@ -108,7 +110,7 @@ def _display_provider_info(provider: str | None, model: str | None) -> tuple:
 
 
 async def _create_workflow_executor(provider: str | None, model: str | None, timeout: float):
-    from victor_contracts.workflow_executor_runtime import WorkflowExecutor
+    from victor_contracts.workflow_runtime import WorkflowExecutor
 
     from victor_invest.workflows import ensure_handlers_registered
 
