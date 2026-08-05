@@ -401,8 +401,17 @@ def logs(ctx, lines, follow, level):
     if follow:
         cmd = ["tail", "-f", str(latest)]
         if level:
-            cmd = f"tail -f {latest} | grep {level}"
-            subprocess.run(cmd, shell=True, check=False)
+            # Piped without a shell. The previous form built "tail -f {latest} | grep {level}"
+            # and ran it with shell=True, which broke on any log path containing a space or
+            # shell metacharacter. (--level is a click.Choice, so it was never injectable.)
+            tail = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+            try:
+                subprocess.run(["grep", level], stdin=tail.stdout, check=False)
+            finally:
+                if tail.stdout is not None:
+                    tail.stdout.close()
+                tail.terminate()
+                tail.wait()
         else:
             subprocess.run(cmd, check=False)
     else:
