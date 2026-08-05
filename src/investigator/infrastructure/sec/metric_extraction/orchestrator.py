@@ -17,6 +17,8 @@ import time
 from datetime import datetime
 from typing import ClassVar
 
+from investigator.infrastructure.sec.formula_evaluator import evaluate_arithmetic
+
 from .result import (
     ExtractionAttempt,
     ExtractionAudit,
@@ -791,17 +793,12 @@ class MetricExtractionOrchestrator:
         for name, value in components.items():
             expr = expr.replace(name, str(value))
 
-        # Only allow safe characters
-        allowed = set("0123456789.+-*/()")
-        if not all(c in allowed or c.isspace() for c in expr):
-            logger.warning(f"Formula contains unsafe characters: {formula}")
-            return None
-
-        try:
-            result = eval(expr)  # Safe because we validated characters
-            return float(result)
-        except Exception:
-            return None
+        # AST-walked arithmetic. The previous eval() was fronted by a character
+        # allowlist, which is only as strong as the allowlist itself.
+        result = evaluate_arithmetic(expr)
+        if result is None:
+            logger.warning(f"Could not evaluate formula: {formula}")
+        return result
 
     def get_stats(self) -> dict:
         """Get extraction statistics."""

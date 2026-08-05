@@ -125,7 +125,7 @@ class ABTestingFramework:
             return self._assignment_cache[symbol]
 
         # Hash symbol for consistent assignment
-        hash_bytes = hashlib.md5(symbol.encode()).digest()
+        hash_bytes = hashlib.md5(symbol.encode(), usedforsecurity=False).digest()
         hash_int = int.from_bytes(hash_bytes[:4], byteorder="big")
         bucket = hash_int % 100
 

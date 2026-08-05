@@ -401,7 +401,9 @@ class InvestmentAgent(ABC):
                 "symbol": symbol,
                 "llm_type": llm_type,
                 "model": model,
-                "prompt_hash": hashlib.md5(prompt.encode()).hexdigest()[:8] if prompt else "no_prompt",
+                "prompt_hash": hashlib.md5(prompt.encode(), usedforsecurity=False).hexdigest()[:8]
+                if prompt
+                else "no_prompt",
             }
 
             # Add period to cache key if provided (ensures different cache per fiscal period)
