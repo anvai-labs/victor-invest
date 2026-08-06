@@ -70,7 +70,7 @@ class TTMCalculator:
         ],
     }
 
-    def detect_data_format(self, data: dict | list) -> str:
+    def detect_data_format(self, data: dict | list | None) -> str:
         """
         Detect the format of input financial data.
 
@@ -160,16 +160,19 @@ class TTMCalculator:
             return {}
 
         if data_format == "ttm":
-            # Already TTM, return as-is
-            return data
+            # Already TTM, return as-is. detect_data_format only reports "ttm" for a
+            # mapping, so the list arm cannot occur here.
+            return data if isinstance(data, dict) else data[0]
 
         if data_format == "sec_fy":
             # SEC FY data - treat as TTM
             return self._fy_to_ttm(data)
 
         if data_format == "quarterly":
-            # Sum 4 quarters
-            return self._quarterly_to_ttm(data, require_full_year)
+            # Sum 4 quarters. detect_data_format only reports "quarterly" for a list
+            # of period mappings, so the dict arm cannot occur here.
+            quarters: list[dict] = data if isinstance(data, list) else [data]
+            return self._quarterly_to_ttm(quarters, require_full_year)
 
         if data_format == "nested_single":
             # Single nested record - return with warning
@@ -193,20 +196,24 @@ class TTMCalculator:
 
         FY data already represents ~12 months, so we just normalize the structure.
         """
-        # Handle list with single FY record
+        # Bind to a separate name: reassigning the parameter does not narrow its
+        # declared `dict | list`, so every `.get()` below is reported against the
+        # list arm even though the isinstance check has already excluded it.
         if isinstance(data, list):
             if not data:
                 return {}
-            data = data[0]
+            record: dict[str, Any] = data[0]
+        else:
+            record = data
 
         # If already nested structure
-        if "income_statement" in data and isinstance(data["income_statement"], dict):
+        if "income_statement" in record and isinstance(record["income_statement"], dict):
             result = {
-                "income_statement": data.get("income_statement", {}).copy(),
-                "cash_flow": data.get("cash_flow", {}).copy(),
-                "balance_sheet": data.get("balance_sheet", {}).copy(),
-                "shares_outstanding": data.get("shares_outstanding"),
-                "fiscal_year": data.get("fiscal_year"),
+                "income_statement": record.get("income_statement", {}).copy(),
+                "cash_flow": record.get("cash_flow", {}).copy(),
+                "balance_sheet": record.get("balance_sheet", {}).copy(),
+                "shares_outstanding": record.get("shares_outstanding"),
+                "fiscal_year": record.get("fiscal_year"),
                 "fiscal_period": "TTM",
                 "data_format": "sec_fy",
                 "quarters_included": 4,  # FY = 4 quarters
@@ -215,32 +222,32 @@ class TTMCalculator:
             # Flat structure from FY record
             result = {
                 "income_statement": {
-                    "total_revenue": data.get("total_revenue"),
-                    "net_income": data.get("net_income"),
-                    "gross_profit": data.get("gross_profit"),
-                    "operating_income": data.get("operating_income"),
-                    "interest_expense": data.get("interest_expense"),
-                    "income_tax_expense": data.get("income_tax_expense"),
-                    "ebitda": data.get("ebitda"),
+                    "total_revenue": record.get("total_revenue"),
+                    "net_income": record.get("net_income"),
+                    "gross_profit": record.get("gross_profit"),
+                    "operating_income": record.get("operating_income"),
+                    "interest_expense": record.get("interest_expense"),
+                    "income_tax_expense": record.get("income_tax_expense"),
+                    "ebitda": record.get("ebitda"),
                 },
                 "cash_flow": {
-                    "operating_cash_flow": data.get("operating_cash_flow"),
-                    "free_cash_flow": data.get("free_cash_flow"),
-                    "capital_expenditures": data.get("capital_expenditures"),
-                    "dividends_paid": data.get("dividends_paid"),
+                    "operating_cash_flow": record.get("operating_cash_flow"),
+                    "free_cash_flow": record.get("free_cash_flow"),
+                    "capital_expenditures": record.get("capital_expenditures"),
+                    "dividends_paid": record.get("dividends_paid"),
                 },
                 "balance_sheet": {
-                    "total_assets": data.get("total_assets"),
-                    "total_liabilities": data.get("total_liabilities"),
-                    "stockholders_equity": data.get("stockholders_equity"),
-                    "cash_and_equivalents": data.get("cash_and_equivalents"),
-                    "long_term_debt": data.get("long_term_debt"),
-                    "short_term_debt": data.get("short_term_debt"),
-                    "current_assets": data.get("current_assets"),
-                    "current_liabilities": data.get("current_liabilities"),
+                    "total_assets": record.get("total_assets"),
+                    "total_liabilities": record.get("total_liabilities"),
+                    "stockholders_equity": record.get("stockholders_equity"),
+                    "cash_and_equivalents": record.get("cash_and_equivalents"),
+                    "long_term_debt": record.get("long_term_debt"),
+                    "short_term_debt": record.get("short_term_debt"),
+                    "current_assets": record.get("current_assets"),
+                    "current_liabilities": record.get("current_liabilities"),
                 },
-                "shares_outstanding": data.get("shares_outstanding"),
-                "fiscal_year": data.get("fiscal_year"),
+                "shares_outstanding": record.get("shares_outstanding"),
+                "fiscal_year": record.get("fiscal_year"),
                 "fiscal_period": "TTM",
                 "data_format": "sec_fy",
                 "quarters_included": 4,
@@ -321,41 +328,45 @@ class TTMCalculator:
 
         Assumes flat data represents TTM values already.
         """
+        # Same reason as _fy_to_ttm: reassigning the parameter leaves its declared
+        # `dict | list` intact, so the list arm is reported against every .get().
         if isinstance(data, list):
             if not data:
                 return {}
-            data = data[0]
+            record: dict[str, Any] = data[0]
+        else:
+            record = data
 
         return {
             "income_statement": {
-                "total_revenue": data.get("total_revenue") or data.get("revenue"),
-                "net_income": data.get("net_income"),
-                "gross_profit": data.get("gross_profit"),
-                "operating_income": data.get("operating_income"),
-                "interest_expense": data.get("interest_expense"),
-                "income_tax_expense": data.get("income_tax_expense"),
-                "ebitda": data.get("ebitda"),
+                "total_revenue": record.get("total_revenue") or record.get("revenue"),
+                "net_income": record.get("net_income"),
+                "gross_profit": record.get("gross_profit"),
+                "operating_income": record.get("operating_income"),
+                "interest_expense": record.get("interest_expense"),
+                "income_tax_expense": record.get("income_tax_expense"),
+                "ebitda": record.get("ebitda"),
             },
             "cash_flow": {
-                "operating_cash_flow": data.get("operating_cash_flow"),
-                "free_cash_flow": data.get("free_cash_flow"),
-                "capital_expenditures": data.get("capital_expenditures") or data.get("capex"),
-                "dividends_paid": data.get("dividends_paid") or data.get("dividends"),
+                "operating_cash_flow": record.get("operating_cash_flow"),
+                "free_cash_flow": record.get("free_cash_flow"),
+                "capital_expenditures": record.get("capital_expenditures") or record.get("capex"),
+                "dividends_paid": record.get("dividends_paid") or record.get("dividends"),
             },
             "balance_sheet": {
-                "total_assets": data.get("total_assets"),
-                "total_liabilities": data.get("total_liabilities"),
-                "stockholders_equity": data.get("stockholders_equity") or data.get("equity"),
-                "cash_and_equivalents": data.get("cash_and_equivalents") or data.get("cash"),
-                "long_term_debt": data.get("long_term_debt"),
-                "short_term_debt": data.get("short_term_debt"),
-                "current_assets": data.get("current_assets"),
-                "current_liabilities": data.get("current_liabilities"),
+                "total_assets": record.get("total_assets"),
+                "total_liabilities": record.get("total_liabilities"),
+                "stockholders_equity": record.get("stockholders_equity") or record.get("equity"),
+                "cash_and_equivalents": record.get("cash_and_equivalents") or record.get("cash"),
+                "long_term_debt": record.get("long_term_debt"),
+                "short_term_debt": record.get("short_term_debt"),
+                "current_assets": record.get("current_assets"),
+                "current_liabilities": record.get("current_liabilities"),
             },
-            "shares_outstanding": data.get("shares_outstanding") or data.get("shares"),
+            "shares_outstanding": record.get("shares_outstanding") or record.get("shares"),
             "fiscal_period": "TTM",
             "data_format": "flat",
-            "quarters_included": 4,  # Assume flat data represents TTM
+            "quarters_included": 4,  # Assume flat record represents TTM
         }
 
     def get_metric(
@@ -365,12 +376,12 @@ class TTMCalculator:
         default: float | None = None,
     ) -> float | None:
         """
-        Extract a specific metric from TTM data.
+        Extract a specific metric from TTM record.
 
         Searches in order: income_statement, cash_flow, balance_sheet, top-level.
 
         Args:
-            ttm_data: TTM data dict
+            ttm_data: TTM record dict
             metric_name: Metric to extract
             default: Default value if not found
 
@@ -381,10 +392,12 @@ class TTMCalculator:
         for section in ["income_statement", "cash_flow", "balance_sheet"]:
             if section in ttm_data and isinstance(ttm_data[section], dict):
                 if metric_name in ttm_data[section]:
-                    return ttm_data[section][metric_name]
+                    value = ttm_data[section][metric_name]
+                    return float(value) if value is not None else None
 
         # Check top-level
         if metric_name in ttm_data:
-            return ttm_data[metric_name]
+            value = ttm_data[metric_name]
+            return float(value) if value is not None else None
 
         return default
