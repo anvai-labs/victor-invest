@@ -252,6 +252,23 @@ class ContextualBanditPolicy(RLPolicy):
         self._ready = True
         logger.info(f"Initialized bandit with {n_features} features, {self.n_actions} actions")
 
+    def _require_parameters(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Return ``(mu, Lambda, Sigma)``, refusing to proceed before initialisation.
+
+        The posterior arrays stay ``None`` until ``_initialize_parameters`` runs on
+        the first observation, and the callers below index them directly. That
+        invariant lived only in the ``_initialized`` flag, so indexing before setup
+        raised ``'NoneType' object is not subscriptable`` several frames away from
+        the cause. Failing here names the actual problem.
+        """
+        if self._mu is None or self._Lambda is None or self._Sigma is None:
+            raise RuntimeError(
+                "Contextual bandit parameters are not initialised. Construct with "
+                "n_features, or call update() once so they can be sized from the "
+                "first observation, before predicting."
+            )
+        return self._mu, self._Lambda, self._Sigma
+
     def predict(self, context: ValuationContext) -> dict[str, float]:
         """
         Predict model weights using Thompson Sampling.
@@ -268,15 +285,18 @@ class ContextualBanditPolicy(RLPolicy):
         if not self._initialized:
             self._initialize_parameters(len(features))
 
+        # Narrow once; the arrays are mutable, so later in-place updates still apply.
+        mu, _lambda, sigma = self._require_parameters()
+
         # Thompson Sampling: sample theta from posterior for each action
         sampled_rewards = np.zeros(self.n_actions)
         for a in range(self.n_actions):
             # Sample theta_a ~ N(mu_a, Sigma_a)
             try:
-                theta_sample = np.random.multivariate_normal(self._mu[a], self._Sigma[a] * self.exploration_weight)
+                theta_sample = np.random.multivariate_normal(mu[a], sigma[a] * self.exploration_weight)
             except np.linalg.LinAlgError:
                 # Fallback if covariance is singular
-                theta_sample = self._mu[a] + np.random.randn(self.n_features) * 0.1
+                theta_sample = mu[a] + np.random.randn(self.n_features) * 0.1
 
             # Expected reward = x^T theta
             sampled_rewards[a] = np.dot(features, theta_sample)
@@ -305,14 +325,16 @@ class ContextualBanditPolicy(RLPolicy):
         if not self._initialized:
             self._initialize_parameters(len(features))
 
+        mu, _lambda, sigma = self._require_parameters()
+
         # Compute expected reward and uncertainty for each action
         expected_rewards = np.zeros(self.n_actions)
         uncertainties = np.zeros(self.n_actions)
 
         for a in range(self.n_actions):
-            expected_rewards[a] = np.dot(features, self._mu[a])
+            expected_rewards[a] = np.dot(features, mu[a])
             # Uncertainty: sqrt(x^T Sigma x)
-            uncertainties[a] = np.sqrt(np.dot(features, np.dot(self._Sigma[a], features)))
+            uncertainties[a] = np.sqrt(np.dot(features, np.dot(sigma[a], features)))
 
         best_action = np.argmax(expected_rewards)
         tier = TIER_CLASSIFICATIONS[best_action]
@@ -344,6 +366,8 @@ class ContextualBanditPolicy(RLPolicy):
         if not self._initialized:
             self._initialize_parameters(len(features))
 
+        mu, _lambda, sigma = self._require_parameters()
+
         # Identify which action was taken based on weights
         action_idx = self._identify_action(action)
 
@@ -354,23 +378,23 @@ class ContextualBanditPolicy(RLPolicy):
 
         # Update precision matrix
         outer_prod = np.outer(features, features)
-        self._Lambda[action_idx] += noise_precision * outer_prod
+        _lambda[action_idx] += noise_precision * outer_prod
 
         # Update covariance (inverse of precision)
         try:
-            self._Sigma[action_idx] = linalg.inv(self._Lambda[action_idx])
+            sigma[action_idx] = linalg.inv(_lambda[action_idx])
         except linalg.LinAlgError:
             # Add small regularization if singular
-            self._Lambda[action_idx] += np.eye(self.n_features) * 1e-6
-            self._Sigma[action_idx] = linalg.inv(self._Lambda[action_idx])
+            _lambda[action_idx] += np.eye(self.n_features) * 1e-6
+            sigma[action_idx] = linalg.inv(_lambda[action_idx])
 
         # Update mean
         old_precision_mean = np.dot(
-            self._Lambda[action_idx] - noise_precision * outer_prod,
-            self._mu[action_idx],
+            _lambda[action_idx] - noise_precision * outer_prod,
+            mu[action_idx],
         )
-        self._mu[action_idx] = np.dot(
-            self._Sigma[action_idx],
+        mu[action_idx] = np.dot(
+            sigma[action_idx],
             old_precision_mean + noise_precision * features * reward,
         )
 
@@ -417,10 +441,12 @@ class ContextualBanditPolicy(RLPolicy):
 
         features = self._extract_features(context)
 
+        _mu_unused, _lambda, sigma = self._require_parameters()
+
         # Compute uncertainty for each action
         bonuses = {}
         for a, tier in enumerate(TIER_CLASSIFICATIONS):
-            uncertainty = np.sqrt(np.dot(features, np.dot(self._Sigma[a], features)))
+            uncertainty = np.sqrt(np.dot(features, np.dot(sigma[a], features)))
             # Map uncertainty to model bonuses based on tier weights
             template = TIER_WEIGHT_TEMPLATES[tier]
             for model in self.model_names:
