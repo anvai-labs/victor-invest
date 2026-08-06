@@ -223,6 +223,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
         current_price: float | None = None,
         cost_of_equity: float | None = None,
         terminal_growth_rate: float | None = None,
+        as_of_date: Any = None,
         **kwargs,
     ) -> ToolResult:
         """Execute valuation model(s) for a symbol.
@@ -259,7 +260,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
 
             # Fetch data if not provided
             if quarterly_metrics is None or multi_year_data is None:
-                data_result = await self._fetch_valuation_data(symbol)
+                data_result = await self._fetch_valuation_data(symbol, as_of_date=as_of_date)
                 if not data_result["success"]:
                     return ToolResult.create_failure(
                         f"Failed to fetch data for valuation: {data_result.get('error')}",
@@ -324,7 +325,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                 metadata={"symbol": symbol, "model": model},
             )
 
-    async def _fetch_valuation_data(self, symbol: str) -> dict[str, Any]:
+    async def _fetch_valuation_data(self, symbol: str, as_of_date: Any = None) -> dict[str, Any]:
         """Fetch required data for valuation.
 
         Attempts multiple sources:
@@ -377,6 +378,7 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
                         symbol=symbol,
                         action="get_quarterly_financials",
                         num_periods=12,
+                        as_of_date=as_of_date,
                     )
 
                     if quarterly_result.success and quarterly_result.output:

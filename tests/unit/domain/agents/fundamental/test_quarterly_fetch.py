@@ -1,5 +1,6 @@
 """Unit tests for quarterly fetch helper functions."""
 
+from datetime import date
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -403,3 +404,75 @@ def test_resolve_quarter_data_falls_back_to_bulk_strategy():
     assert qdata.financial_data["revenues"] == 300.0
     assert qdata.ratios == {"calc": 1}
     assert returned_strategy is strategy
+
+
+def _stub_db_manager(captured):
+    """A db_manager that records the SQL and bound parameters, returning no rows."""
+
+    class _Session:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def execute(self, query, params):
+            captured["sql"] = str(query)
+            captured["params"] = params
+            return SimpleNamespace(fetchall=lambda: [])
+
+    return SimpleNamespace(get_session=lambda: _Session())
+
+
+def test_query_recent_processed_periods_filters_on_as_of_date():
+    """Point-in-time: a historical valuation must not see filings made after the date.
+
+    Without this predicate every historical fair value is computed from today's
+    fundamentals, which is lookahead bias -- the model is scored on information it
+    could not have had.
+    """
+    captured: dict = {}
+    query_recent_processed_periods(
+        symbol="AAPL",
+        num_quarters=4,
+        db_manager=_stub_db_manager(captured),
+        fiscal_period_service=MagicMock(),
+        logger=MagicMock(),
+        as_of_date="2023-03-31",
+    )
+
+    assert "filed_date <= :as_of_date" in captured["sql"], (
+        f"as_of_date was supplied but the query does not constrain filed_date:\n{captured['sql']}"
+    )
+    assert captured["params"]["as_of_date"] == "2023-03-31"
+
+
+def test_query_recent_processed_periods_unconstrained_without_as_of_date():
+    """Live analysis wants the latest filings, so the predicate must not be added."""
+    captured: dict = {}
+    query_recent_processed_periods(
+        symbol="AAPL",
+        num_quarters=4,
+        db_manager=_stub_db_manager(captured),
+        fiscal_period_service=MagicMock(),
+        logger=MagicMock(),
+    )
+
+    assert "as_of_date" not in captured["sql"]
+    assert "as_of_date" not in captured["params"]
+
+
+def test_query_recent_processed_periods_accepts_a_date_object():
+    """Callers hold real dates; requiring pre-formatted strings invites drift."""
+    captured: dict = {}
+    query_recent_processed_periods(
+        symbol="AAPL",
+        num_quarters=4,
+        db_manager=_stub_db_manager(captured),
+        fiscal_period_service=MagicMock(),
+        logger=MagicMock(),
+        as_of_date=date(2023, 3, 31),
+    )
+
+    assert "filed_date <= :as_of_date" in captured["sql"]
+    assert str(captured["params"]["as_of_date"]) == "2023-03-31"
