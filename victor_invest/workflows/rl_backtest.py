@@ -271,10 +271,15 @@ async def run_historical_valuation(state_input) -> dict:
 
             if price and price > 0:
                 # Run valuation with historical price
+                # as_of_date is what makes this a historical valuation rather than a
+                # present-day one applied to a past price. Without it the fundamentals
+                # come from today's filings and the model is scored on information it
+                # could not have had.
                 result = await valuation_tool.execute(
                     symbol=state.symbol,
                     model="all",
                     current_price=price,
+                    as_of_date=hist_data["analysis_date"],
                 )
                 if result.success:
                     valuation_results[months_back] = {
