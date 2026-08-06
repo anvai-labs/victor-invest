@@ -36,6 +36,18 @@ from sqlalchemy.orm import sessionmaker
 
 logger = logging.getLogger(__name__)
 
+
+def _as_float(value: Any) -> float:
+    """Narrow an untyped pandas scalar to float.
+
+    ``df.loc[...]`` is typed as a broad union of every scalar pandas can hold, which
+    ``float()`` will not accept directly and which makes every downstream comparison
+    ambiguous. Narrowing once at the boundary keeps the arithmetic below well typed
+    without scattering casts or ignores through it.
+    """
+    return float(value)
+
+
 # Split detection thresholds
 FORWARD_SPLIT_THRESHOLD = 1.8  # Shares increased by 1.8x+ indicates forward split
 REVERSE_SPLIT_THRESHOLD = 0.55  # Shares decreased by 55%+ indicates reverse split
@@ -285,8 +297,10 @@ class SharesService:
 
         # Reverse iterate: from most recent to oldest
         for i in range(len(df) - 1, 0, -1):
-            current_shares = df.loc[i, "raw_shares"]  # More recent
-            prev_shares = df.loc[i - 1, "raw_shares"]  # Older
+            # float() at the boundary: df.loc returns an untyped pandas scalar, and
+            # leaving it unnarrowed makes every comparison below ambiguous.
+            current_shares = _as_float(df.loc[i, "raw_shares"])  # More recent
+            prev_shares = _as_float(df.loc[i - 1, "raw_shares"])  # Older
 
             if current_shares > 0 and prev_shares > 0:
                 ratio = current_shares / prev_shares  # How much did shares increase?
@@ -350,10 +364,12 @@ class SharesService:
             return None
 
         # Find the row closest to as_of_date
-        df["date_diff"] = abs((df["as_of_date"] - as_of_date).dt.days)
+        # Compare like with like: subtracting a date from a datetime Series is not
+        # expressible in the pandas stubs, and relies on implicit coercion at runtime.
+        df["date_diff"] = (df["as_of_date"] - pd.Timestamp(as_of_date)).abs().dt.days
         closest_row = df.loc[df["date_diff"].idxmin()]
 
-        return closest_row["adjusted_shares"]
+        return _as_float(closest_row["adjusted_shares"])
 
     def detect_splits(
         self,
@@ -383,8 +399,8 @@ class SharesService:
         splits = []
 
         for i in range(len(df) - 1, 0, -1):
-            current_shares = df.loc[i, "raw_shares"]
-            prev_shares = df.loc[i - 1, "raw_shares"]
+            current_shares = _as_float(df.loc[i, "raw_shares"])
+            prev_shares = _as_float(df.loc[i - 1, "raw_shares"])
 
             if current_shares > 0 and prev_shares > 0:
                 ratio = current_shares / prev_shares

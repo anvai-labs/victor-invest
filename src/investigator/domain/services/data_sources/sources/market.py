@@ -22,6 +22,16 @@ from ..registry import register_source
 logger = logging.getLogger(__name__)
 
 
+def _num(value: Any) -> float:
+    """Narrow an untyped payload value to float.
+
+    Rows come back from the data layer as dicts of Any, so arithmetic and
+    comparisons on their values match no operand type. Narrowing at the point of
+    use keeps the expressions below well typed without casts throughout.
+    """
+    return float(value)
+
+
 @register_source("price_history", DataCategory.MARKET_DATA)
 class PriceHistorySource(MarketDataSource):
     """
@@ -101,11 +111,11 @@ class PriceHistorySource(MarketDataSource):
             # Calculate returns
             returns = {}
             if len(prices) >= 2 and prices[0]["close"] and prices[1]["close"]:
-                returns["1d"] = (prices[0]["close"] - prices[1]["close"]) / prices[1]["close"] * 100
+                returns["1d"] = (_num(prices[0]["close"]) - _num(prices[1]["close"])) / _num(prices[1]["close"]) * 100
             if len(prices) >= 6 and prices[0]["close"] and prices[5]["close"]:
-                returns["5d"] = (prices[0]["close"] - prices[5]["close"]) / prices[5]["close"] * 100
+                returns["5d"] = (_num(prices[0]["close"]) - _num(prices[5]["close"])) / _num(prices[5]["close"]) * 100
             if len(prices) >= 22 and prices[0]["close"] and prices[21]["close"]:
-                returns["1m"] = (prices[0]["close"] - prices[21]["close"]) / prices[21]["close"] * 100
+                returns["1m"] = (_num(prices[0]["close"]) - _num(prices[21]["close"])) / _num(prices[21]["close"]) * 100
 
             return DataResult(
                 success=True,
@@ -426,21 +436,23 @@ class ShortInterestSource(DataSource):
 
             # Analyze squeeze potential
             squeeze_risk = "low"
-            if latest.get("days_to_cover") and latest["days_to_cover"] > 10:
+            if latest.get("days_to_cover") and _num(latest["days_to_cover"]) > 10:
                 squeeze_risk = "high"
-            elif latest.get("days_to_cover") and latest["days_to_cover"] > 5:
+            elif latest.get("days_to_cover") and _num(latest["days_to_cover"]) > 5:
                 squeeze_risk = "moderate"
 
-            if latest.get("short_pct_float") and latest["short_pct_float"] > 20:
+            if latest.get("short_pct_float") and _num(latest["short_pct_float"]) > 20:
                 squeeze_risk = "high"
-            elif latest.get("short_pct_float") and latest["short_pct_float"] > 10:
+            elif latest.get("short_pct_float") and _num(latest["short_pct_float"]) > 10:
                 if squeeze_risk != "high":
                     squeeze_risk = "moderate"
 
             # Calculate trend
             trend = "stable"
             if len(history) >= 2 and history[0].get("short_interest") and history[1].get("short_interest"):
-                change = (history[0]["short_interest"] - history[1]["short_interest"]) / history[1]["short_interest"]
+                change = (_num(history[0]["short_interest"]) - _num(history[1]["short_interest"])) / _num(
+                    history[1]["short_interest"]
+                )
                 if change > 0.1:
                     trend = "increasing"
                 elif change < -0.1:
