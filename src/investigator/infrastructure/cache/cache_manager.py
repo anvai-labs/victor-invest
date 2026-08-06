@@ -53,7 +53,10 @@ class CacheManager:
 
         # Performance tracking
         self._stats_lock = Lock()
-        self._operation_stats = defaultdict(
+        # The per-type stats dict is genuinely heterogeneous -- counters, timings and a
+        # nested defaultdict -- so mypy joins the value type to `object` without this
+        # annotation, and every `stats["hits"] += 1` below becomes an operator error.
+        self._operation_stats: defaultdict[str, dict[str, Any]] = defaultdict(
             lambda: {
                 "hits": 0,
                 "misses": 0,
@@ -1057,17 +1060,17 @@ class CacheManager:
                 operations = list(self._recent_operations[cache_type.value])[-limit:]
                 return {cache_type.value: operations}
             else:
-                result = {}
+                result: dict[str, Any] = {}
                 for ct, ops in self._recent_operations.items():
                     result[ct] = list(ops)[-limit:]
                 return result
 
     def get_stats(self) -> dict[str, Any]:
         """Get comprehensive cache statistics"""
-        stats = {"cache_types": {}, "total_handlers": 0, "handler_summary": {}}
+        stats: dict[str, Any] = {"cache_types": {}, "total_handlers": 0, "handler_summary": {}}
 
         for cache_type, handlers in self.handlers.items():
-            cache_type_stats = {"handler_count": len(handlers), "handlers": []}
+            cache_type_stats: dict[str, Any] = {"handler_count": len(handlers), "handlers": []}
 
             for handler in handlers:
                 handler_stats = {
@@ -1400,7 +1403,7 @@ class CacheManager:
             return key.copy()
         elif isinstance(key, tuple):
             # Convert tuple to dict with positional keys
-            result = {}
+            result: dict[str, Any] = {}
             if len(key) >= 1:
                 result["symbol"] = key[0]
             if len(key) >= 2:
@@ -1583,7 +1586,7 @@ class CacheManager:
         symbol = symbol.upper()
         operation_start = time.time()
 
-        result = {
+        result: dict[str, Any] = {
             "symbol": symbol,
             "new_filing_date": new_filing_date,
             "entries_checked": 0,

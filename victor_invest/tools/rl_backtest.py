@@ -26,8 +26,8 @@ Multi-period data stored in per_model_rewards JSONB:
         "entry_date": "2025-01-02",
         "prices": {"1m": 270.37, "3m": 271.86, "6m": 280.50, "12m": 290.00, ...},
         "exit_dates": {"1m": "2025-02-01", "3m": "2025-04-02", ...},
-        "long_rewards": {"1m": 0.577, "3m": 0.214, ...},
-        "short_rewards": {"1m": -0.577, "3m": -0.214, ...}
+        "direction": "LONG",
+        "rewards": {"1m": 0.577, "3m": 0.214, ...}
     }
 }
 """
@@ -339,7 +339,9 @@ class RLBacktestTool(BaseTool):
             # Calculate multi-period data
             metadata = await self._get_metadata(symbol)
             beta = metadata.get("beta", 1.0)
-            multi_period_data = await self._get_multi_period_data(symbol, analysis_date, current_price, beta)
+            multi_period_data = await self._get_multi_period_data(
+                symbol, analysis_date, current_price, beta, predicted_fv=fair_value or None
+            )
 
             # If context_features not provided, use DataSourceManager
             if not context_features and self._data_source_manager:
@@ -458,12 +460,25 @@ class RLBacktestTool(BaseTool):
         analysis_date: date,
         current_price: float,
         beta: float,
+        predicted_fv: float | None = None,
     ) -> dict[str, Any]:
-        """Get multi-period prices, exit dates, and rewards."""
+        """Get multi-period prices, exit dates, and the reward for the predicted direction.
+
+        Args:
+            predicted_fv: The model's blended fair value at ``analysis_date``. Direction
+                and conviction come from this. It was previously synthesised as
+                ``current_price * 1.10`` / ``* 0.90``, which made the reward a function
+                of realised return alone, independent of what the model predicted, and
+                emitted a mirrored LONG/SHORT pair per observation. Passing None means
+                no prediction was made, so no reward is scored.
+        """
         prices: dict[str, Any] = {}
         exit_dates: dict[str, Any] = {}
-        long_rewards: dict[str, Any] = {}
-        short_rewards: dict[str, Any] = {}
+        rewards: dict[str, Any] = {}
+
+        direction: str | None = None
+        if predicted_fv is not None and current_price > 0:
+            direction = "LONG" if predicted_fv > current_price else "SHORT"
 
         for period, days in HOLDING_PERIODS.items():
             target_date = analysis_date + timedelta(days=days)
@@ -475,42 +490,32 @@ class RLBacktestTool(BaseTool):
                 prices[period] = round(future_price, 2)
                 exit_dates[period] = target_date.isoformat()
 
-                # Calculate rewards using shared calculator
-                # RewardCalculator.calculate() derives LONG/SHORT from predicted_fv vs price:
-                # - predicted_fv > price_at_prediction => LONG
-                # - predicted_fv < price_at_prediction => SHORT
-                # We simulate this by setting fake fair values to force the desired direction
-                if current_price > 0 and self._reward_calculator is not None:
-                    # For LONG: set predicted_fv higher than entry price
-                    long_result = self._reward_calculator.calculate(
-                        predicted_fv=current_price * 1.10,  # 10% above = LONG signal
+                # Score the direction the model actually predicted.
+                # RewardCalculator.calculate() takes direction from predicted_fv vs price,
+                # so passing the real blended fair value ties the label to the model's
+                # own conviction instead of to realised return alone.
+                if predicted_fv is not None and current_price > 0 and self._reward_calculator is not None:
+                    result = self._reward_calculator.calculate(
+                        predicted_fv=predicted_fv,
                         price_at_prediction=current_price,
                         actual_price=future_price,
                         days=days,
                         beta=beta,
                     )
-                    # For SHORT: set predicted_fv lower than entry price
-                    short_result = self._reward_calculator.calculate(
-                        predicted_fv=current_price * 0.90,  # 10% below = SHORT signal
-                        price_at_prediction=current_price,
-                        actual_price=future_price,
-                        days=days,
-                        beta=beta,
-                    )
-                    long_rewards[period] = round(long_result.reward, 4)
-                    short_rewards[period] = round(short_result.reward, 4)
+                    rewards[period] = round(result.reward, 4)
+                else:
+                    rewards[period] = None
             else:
                 prices[period] = None
                 exit_dates[period] = None
-                long_rewards[period] = None
-                short_rewards[period] = None
+                rewards[period] = None
 
         return {
             "entry_date": analysis_date.isoformat(),
             "prices": prices,
             "exit_dates": exit_dates,
-            "long_rewards": long_rewards,
-            "short_rewards": short_rewards,
+            "direction": direction,
+            "rewards": rewards,
         }
 
     async def _get_metadata(self, symbol: str) -> dict[str, Any]:
