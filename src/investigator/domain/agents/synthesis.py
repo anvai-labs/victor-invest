@@ -1288,7 +1288,9 @@ class SynthesisAgent(InvestmentAgent):
                 'data_quality': 'excellent' | 'good' | 'limited' | 'insufficient'
             }
         """
-        metrics = {
+        # Nested dicts alongside a string and an int, so mypy joins the value type to
+        # `object` and rejects metrics["revenue"]["cagr"] = ... further down.
+        metrics: dict[str, Any] = {
             "revenue": {},
             "earnings": {},
             "data_quality": "insufficient",
@@ -1675,7 +1677,9 @@ class SynthesisAgent(InvestmentAgent):
                 }
             }
         """
-        trend_analysis = {
+        # Strings alongside a nested dict, so the joined value type rejects the
+        # trend_analysis["quarterly_insights"][...] assignments below.
+        trend_analysis: dict[str, Any] = {
             "revenue_trend": "insufficient_data",
             "margin_trend": "insufficient_data",
             "cash_flow_trend": "insufficient_data",
