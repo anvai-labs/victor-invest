@@ -161,7 +161,9 @@ class RLBacktestTool(BaseTool):
         lookback_months: list[int] | None = None,
         analysis_date: date | None = None,
         current_price: float = 0.0,
-        fair_value: float = 0.0,
+        # None is meaningful here: it says no prediction was made, which is not
+        # the same as a predicted value of zero.
+        fair_value: float | None = None,
         fair_values: dict[str, float] | None = None,
         weights: dict[str, float] | None = None,
         tier_classification: str = "",
@@ -203,13 +205,17 @@ class RLBacktestTool(BaseTool):
                     symbol=symbol,
                     analysis_date=analysis_date or date.today(),
                     current_price=current_price,
+                    # A reward is only meaningful against the prediction it scores.
+                    # execute() has accepted fair_value all along but never passed
+                    # it on, so every reward from this action came back None.
+                    predicted_fv=fair_value or None,
                 )
             elif action == "record_prediction":
                 return await self._record_prediction(
                     symbol=symbol,
                     analysis_date=analysis_date or date.today(),
                     current_price=current_price,
-                    fair_value=fair_value,
+                    fair_value=fair_value or 0.0,
                     fair_values=fair_values or {},
                     weights=weights or {},
                     tier_classification=tier_classification,
@@ -295,12 +301,21 @@ class RLBacktestTool(BaseTool):
         symbol: str,
         analysis_date: date,
         current_price: float,
+        predicted_fv: float | None = None,
     ) -> ToolResult:
-        """Calculate multi-period rewards for a prediction."""
+        """Calculate multi-period rewards for a prediction.
+
+        Args:
+            predicted_fv: The model's blended fair value at ``analysis_date``,
+                point-in-time. None means no prediction was made, so nothing is
+                scored -- see _get_multi_period_data.
+        """
         metadata = await self._get_metadata(symbol)
         beta = metadata.get("beta", 1.0)
 
-        multi_period_data = await self._get_multi_period_data(symbol, analysis_date, current_price, beta)
+        multi_period_data = await self._get_multi_period_data(
+            symbol, analysis_date, current_price, beta, predicted_fv=predicted_fv
+        )
 
         return ToolResult.create_success(
             output={
@@ -308,6 +323,7 @@ class RLBacktestTool(BaseTool):
                 "analysis_date": analysis_date.isoformat(),
                 "current_price": current_price,
                 "beta": beta,
+                "predicted_fair_value": predicted_fv,
                 "multi_period": multi_period_data,
             },
             metadata={

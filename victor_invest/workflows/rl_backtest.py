@@ -190,6 +190,53 @@ async def _get_valuation_tool() -> ValuationTool:
     return _valuation_tool
 
 
+def extract_valuation_fields(
+    valuation: Any,
+) -> tuple[float | None, dict[str, float], dict[str, float], str]:
+    """Translate ValuationTool output into the fields the reward path needs.
+
+    ``ValuationTool.execute(model="all")`` returns ``consensus_fair_value`` plus a
+    ``models`` map of ``{name: {"fair_value_per_share": ..., "weight": ...}}``.
+    The reward and recording steps want a blended fair value and flat per-model
+    fair-value/weight dicts.
+
+    Those steps previously read ``blended_fair_value``, ``fair_values`` and
+    ``weights`` straight off the tool output -- keys it has never emitted. Every
+    lookup fell through to its default, so the blended fair value was always 0,
+    and ``_record_prediction`` turns ``0 or None`` into None. The point-in-time
+    valuation was computed at full cost and then silently discarded, leaving every
+    persisted reward None. Centralising the translation here keeps the tool's
+    output contract as the single source of truth.
+
+    Returns:
+        ``(blended_fair_value, fair_values, weights, tier_classification)``.
+        The fair value is None -- not 0 -- when no usable valuation is present, so
+        that "no prediction" stays distinguishable from "predicted zero".
+    """
+    if not isinstance(valuation, dict):
+        return None, {}, {}, ""
+
+    consensus = valuation.get("consensus_fair_value")
+    blended = float(consensus) if isinstance(consensus, (int, float)) and consensus > 0 else None
+
+    fair_values: dict[str, float] = {}
+    weights: dict[str, float] = {}
+    models = valuation.get("models")
+    if isinstance(models, dict):
+        for name, model in models.items():
+            if not isinstance(model, dict):
+                continue
+            fair_value = model.get("fair_value_per_share")
+            if isinstance(fair_value, (int, float)) and fair_value > 0:
+                fair_values[name] = float(fair_value)
+            weight = model.get("weight")
+            if isinstance(weight, (int, float)) and weight > 0:
+                weights[name] = float(weight)
+
+    tier = valuation.get("tier_classification") or ""
+    return blended, fair_values, weights, str(tier)
+
+
 # =============================================================================
 # Node Functions
 # =============================================================================
@@ -337,16 +384,28 @@ async def calculate_rewards(state_input) -> dict:
             price = val_result.get("price")
 
             if price and price > 0:
+                # Score against the point-in-time fair value this workflow already
+                # computed in run_historical_valuation. Without it the reward has
+                # no prediction to be a reward *for*, and comes back None.
+                blended_fair_value, _, _, _ = extract_valuation_fields(val_result.get("valuation"))
+                if blended_fair_value is None:
+                    logger.warning(
+                        f"{state.symbol} {months_back}m: no usable fair value from the historical "
+                        "valuation; rewards for this observation will not be scored"
+                    )
+
                 result = await rl_tool.execute(
                     action="calculate_rewards",
                     symbol=state.symbol,
                     analysis_date=analysis_date,
                     current_price=price,
+                    fair_value=blended_fair_value,
                 )
                 if result.success:
                     reward_data[months_back] = {
                         "analysis_date": val_result["analysis_date"],
                         "price": price,
+                        "fair_value": blended_fair_value,
                         "multi_period": result.output.get("multi_period", {}),
                     }
                 else:
@@ -400,17 +459,8 @@ async def record_predictions(state_input) -> dict:
             val_result = state.valuation_results.get(months_back, {})
             valuation = val_result.get("valuation", {})
 
-            # Extract fair values and weights from valuation
-            fair_values = {}
-            weights = {}
-            if isinstance(valuation, dict):
-                fair_values = valuation.get("fair_values", {})
-                weights = valuation.get("weights", {})
-                blended_fair_value = valuation.get("blended_fair_value", 0)
-                tier = valuation.get("tier_classification", "")
-            else:
-                blended_fair_value = 0
-                tier = ""
+            # Read the keys ValuationTool actually emits. See extract_valuation_fields.
+            blended_fair_value, fair_values, weights, tier = extract_valuation_fields(valuation)
 
             analysis_date = date.fromisoformat(reward_info["analysis_date"])
             price = reward_info.get("price", 0)
