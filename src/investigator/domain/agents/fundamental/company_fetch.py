@@ -113,7 +113,8 @@ def fetch_latest_company_data_from_processed_table(
             format(revenue, ",.0f"),
         )
 
-        filed_date = row.get("filed_date").isoformat() if row.get("filed_date") else None
+        raw_filed_date = row.get("filed_date")
+        filed_date = raw_filed_date.isoformat() if raw_filed_date else None
         financial_metrics: dict[str, Any] = {
             "revenues": safe_float("total_revenue"),
             "net_income": safe_float("net_income"),

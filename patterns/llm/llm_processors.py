@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - LLM Processor Pattern Implementations
 Copyright (c) 2025 Vijaykumar Singh
@@ -14,7 +13,7 @@ import threading
 import time
 from concurrent.futures import Future
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from investigator.application.processors import get_llm_response_processor
 from utils.api_client import OllamaAPIClient
@@ -63,7 +62,7 @@ class LLMCacheHandler(ILLMHandler):
             except Exception as e:
                 self.logger.debug(f"Failed to log to symbol logger for {symbol}: {e}")
 
-    def _generate_cache_key_dict(self, request: LLMRequest) -> Dict[str, str]:
+    def _generate_cache_key_dict(self, request: LLMRequest) -> dict[str, str]:
         """Generate dictionary-based cache key consistent with file cache handler"""
         if not request.metadata:
             return {}
@@ -124,7 +123,7 @@ class LLMCacheHandler(ILLMHandler):
             # Generic fallback
             return {"symbol": symbol, "llm_type": task_type}
 
-    def handle(self, request: LLMRequest) -> Optional[LLMResponse]:
+    def handle(self, request: LLMRequest) -> LLMResponse | None:
         """Check cache first, pass to next handler if miss"""
         if not self.cache_manager:
             return self._handle_next(request)
@@ -301,7 +300,7 @@ class LLMValidationHandler(ILLMHandler):
         super().__init__()
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-    def handle(self, request: LLMRequest) -> Optional[LLMResponse]:
+    def handle(self, request: LLMRequest) -> LLMResponse | None:
         """Validate request before processing"""
         try:
             # Validate required fields
@@ -345,7 +344,7 @@ class LLMValidationHandler(ILLMHandler):
                 content="",
                 model=request.model or "unknown",
                 processing_time_ms=0,
-                error=f"Validation failed: {str(e)}",
+                error=f"Validation failed: {e!s}",
                 request_id=request.request_id,
                 timestamp=datetime.utcnow(),
             )
@@ -377,7 +376,7 @@ class LLMExecutionHandler(ILLMHandler):
             except Exception as e:
                 self.logger.debug(f"Failed to log to symbol logger for {symbol}: {e}")
 
-    def get_model_capabilities(self, model_name: str) -> Dict[str, Any]:
+    def get_model_capabilities(self, model_name: str) -> dict[str, Any]:
         """Get and cache model capabilities from Ollama API"""
         if model_name in self.model_capabilities_cache:
             return self.model_capabilities_cache[model_name]
@@ -421,10 +420,11 @@ class LLMExecutionHandler(ILLMHandler):
             self.model_capabilities_cache[model_name] = fallback
             return fallback
 
-    def calculate_dynamic_context_size(self, request: LLMRequest) -> Dict[str, int]:
+    def calculate_dynamic_context_size(self, request: LLMRequest) -> dict[str, int]:
         """Calculate appropriate context size based on model capabilities and prompt length"""
-        # First try our known model configurations
-        task_type = request.metadata.get("task_type", "general")
+        # First try our known model configurations. metadata is optional on
+        # LLMRequest and defaults to None, so it cannot be indexed directly.
+        task_type = (request.metadata or {}).get("task_type", "general")
         if hasattr(task_type, "value"):
             task_type = task_type.value
 
@@ -492,7 +492,7 @@ class LLMExecutionHandler(ILLMHandler):
 
         return context_params
 
-    def handle(self, request: LLMRequest) -> Optional[LLMResponse]:
+    def handle(self, request: LLMRequest) -> LLMResponse | None:
         """Execute LLM request via API"""
         start_time = time.time()
 
@@ -610,7 +610,7 @@ class LLMExecutionHandler(ILLMHandler):
                     self._log_to_both(symbol, json_keys_msg)
             except Exception:
                 # Not JSON or parsing failed - that's fine
-                pass
+                logger.debug("handle: suppressed error", exc_info=True)
 
             self.logger.debug(
                 f"🔍 OLLAMA API DEBUG - Full response keys: {list(response_data.keys()) if response_data else 'None'}"
@@ -684,7 +684,7 @@ class QueuedLLMProcessor(ILLMProcessor, ILLMSubject):
         self.request_queue = queue.PriorityQueue()
         self.processing_threads = []
         self.stop_event = threading.Event()
-        self.observers: List[ILLMObserver] = []
+        self.observers: list[ILLMObserver] = []
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         # Create handler chain
@@ -736,7 +736,7 @@ class QueuedLLMProcessor(ILLMProcessor, ILLMSubject):
         future = self._add_request_to_queue(request)
         return future.result()
 
-    def process_batch(self, requests: List[LLMRequest]) -> List[LLMResponse]:
+    def process_batch(self, requests: list[LLMRequest]) -> list[LLMResponse]:
         """Process multiple requests"""
         futures = [self._add_request_to_queue(req) for req in requests]
         return [future.result() for future in futures]
@@ -767,7 +767,7 @@ class QueuedLLMProcessor(ILLMProcessor, ILLMSubject):
         while not self.stop_event.is_set():
             try:
                 # Get request with timeout
-                priority, timestamp, request, future = self.request_queue.get(timeout=1.0)
+                _priority, _timestamp, request, future = self.request_queue.get(timeout=1.0)
 
                 # Notify observers
                 self.notify_started(request)
@@ -864,7 +864,7 @@ class StandardLLMAnalysisTemplate(ILLMAnalysisTemplate):
         self.strategy = strategy
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-    def validate_input(self, symbol: str, data: Dict[str, Any], task_type: LLMTaskType) -> bool:
+    def validate_input(self, symbol: str, data: dict[str, Any], task_type: LLMTaskType) -> bool:
         """Validate input parameters"""
         if not symbol or len(symbol) > 10:
             return False
@@ -872,12 +872,9 @@ class StandardLLMAnalysisTemplate(ILLMAnalysisTemplate):
         if not data:
             return False
 
-        if not isinstance(task_type, LLMTaskType):
-            return False
+        return isinstance(task_type, LLMTaskType)
 
-        return True
-
-    def prepare_analysis_request(self, symbol: str, data: Dict[str, Any], task_type: LLMTaskType) -> LLMRequest:
+    def prepare_analysis_request(self, symbol: str, data: dict[str, Any], task_type: LLMTaskType) -> LLMRequest:
         """Prepare analysis request using strategy"""
         return self.strategy.prepare_request(task_type, {**data, "symbol": symbol})
 
@@ -885,11 +882,11 @@ class StandardLLMAnalysisTemplate(ILLMAnalysisTemplate):
         """Execute analysis using processor"""
         return self.processor.process_request(request)
 
-    def process_analysis_results(self, response: LLMResponse, task_type: LLMTaskType) -> Dict[str, Any]:
+    def process_analysis_results(self, response: LLMResponse, task_type: LLMTaskType) -> dict[str, Any]:
         """Process results using strategy"""
         return self.strategy.process_response(response, task_type)
 
-    def create_error_result(self, error_message: str) -> Dict[str, Any]:
+    def create_error_result(self, error_message: str) -> dict[str, Any]:
         """Create standardized error result"""
         return {
             "error": error_message,

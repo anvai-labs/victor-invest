@@ -157,11 +157,15 @@ class DataSourceRegistry:
     def get_by_category(self, category: DataCategory) -> list[DataSource]:
         """Get all sources in a category"""
         names = self._category_index.get(category, set())
-        return [self.get(name) for name in names if self.get(name)]
+        return [source for name in names if (source := self.get(name)) is not None]
 
     def get_enabled(self) -> list[DataSource]:
         """Get all enabled sources"""
-        return [self.get(name) for name, config in self._configs.items() if config.enabled and self.get(name)]
+        return [
+            source
+            for name, config in self._configs.items()
+            if config.enabled and (source := self.get(name)) is not None
+        ]
 
     def get_by_priority(self, category: DataCategory | None = None) -> list[DataSource]:
         """Get sources sorted by priority"""
@@ -170,7 +174,7 @@ class DataSourceRegistry:
             if not config.enabled:
                 continue
             source = self.get(name)
-            if source and (category is None or source.category == category):
+            if source is not None and (category is None or source.category == category):
                 sources.append((config.priority, source))
 
         sources.sort(key=lambda x: x[0])
@@ -180,7 +184,7 @@ class DataSourceRegistry:
         self, name: str, source_names: list[str], strategy: str = "first_success"
     ) -> CompositeDataSource:
         """Create a composite source from multiple sources"""
-        sources = [self.get(n) for n in source_names if self.get(n)]
+        sources = [source for n in source_names if (source := self.get(n)) is not None]
         if not sources:
             raise ValueError(f"No valid sources found: {source_names}")
 
@@ -287,7 +291,7 @@ def get_source_group(group_name: str) -> list[DataSource]:
     """Get all sources in a predefined group"""
     registry = get_registry()
     source_names = SOURCE_GROUPS.get(group_name, [])
-    return [registry.get(name) for name in source_names if registry.get(name)]
+    return [source for name in source_names if (source := registry.get(name)) is not None]
 
 
 # =============================================================================
