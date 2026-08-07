@@ -319,7 +319,14 @@ class RLModelWeightingService:
                 tier = f"dual_rl_{'long' if position == 1 else 'short' if position == -1 else 'skip'}"
                 return weights, tier, audit
 
-            # Fall back to single policy
+            # Fall back to single policy. The sole caller only routes here when a
+            # policy is ready, but checking keeps the method correct on its own
+            # terms: without it a missing policy raises AttributeError, which the
+            # handler below swallows and reports as "RL prediction failed" -- the
+            # right outcome reached by the wrong route, and unreadable in logs.
+            if self.policy is None:
+                return self._predict_with_fallback(symbol, financials, ratios, data_quality, market_context)
+
             weights = self.policy.predict(context)
 
             # Create simple audit trail

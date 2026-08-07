@@ -23,6 +23,7 @@ from sqlalchemy import (
     create_engine,
     text,
 )
+from sqlalchemy.engine import Engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -92,8 +93,12 @@ class DatabaseManager:
 
     def __init__(self, config=None):
         self.config = config or get_config()
-        self.engine = None
-        self.SessionLocal = None
+        # Declared, not defaulted to None: _initialize_engine() either assigns both
+        # or re-raises, so a DatabaseManager that exists always has a live engine.
+        # Defaulting to None only hid that invariant from the type checker and left
+        # every call site looking like it needed a guard it never had.
+        self.engine: Engine
+        self.SessionLocal: sessionmaker
         self._initialize_engine()
 
     def _initialize_engine(self):
