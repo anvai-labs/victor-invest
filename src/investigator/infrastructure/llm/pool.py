@@ -205,6 +205,17 @@ class ResourceAwareOllamaPool:
             await self._session.close()
             self._session = None
 
+    def _require_session(self) -> aiohttp.ClientSession:
+        """Return the session established by ``_ensure_session()``.
+
+        Callers await ``_ensure_session()`` first, so this never raises in practice;
+        mypy cannot narrow ``_session`` across that await, and asserting the
+        guarantee here is clearer than repeating a check at each use.
+        """
+        if self._session is None:
+            raise RuntimeError("HTTP session is not initialised; await _ensure_session() first.")
+        return self._session
+
     async def _ensure_session(self):
         if not self._session:
             self._session = aiohttp.ClientSession(timeout=self.timeout)
@@ -249,7 +260,7 @@ class ResourceAwareOllamaPool:
         """Query server for current resource usage via /api/ps"""
         await self._ensure_session()
         try:
-            async with self._session.get(f"{server_url}/api/ps") as response:
+            async with self._require_session().get(f"{server_url}/api/ps") as response:
                 if response.status == 200:
                     return await response.json()
                 logger.warning(

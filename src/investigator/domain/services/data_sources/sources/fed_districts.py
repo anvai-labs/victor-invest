@@ -270,7 +270,9 @@ class AllFedDistrictsSource(MacroDataSource):
 
         for source in self._district_sources:
             result = source.fetch(symbol, as_of_date)
-            if result.success:
+            # `data` is Optional and success alone does not guarantee it: a source
+            # reporting success with no payload reached .get() and raised here.
+            if result.success and result.data:
                 district = result.data.get("district", source.DISTRICT_NAME)
                 by_district[district.lower()] = result.data.get("indicators", {})
 
