@@ -183,7 +183,7 @@ Parameters:
                 return await self._get_company_facts(symbol)
             elif action == "get_quarterly_financials":
                 num_periods = kwargs.get("num_periods", 12)
-                return await self._get_quarterly_financials(symbol, num_periods)
+                return await self._get_quarterly_financials(symbol, num_periods, kwargs.get("as_of_date"))
             elif action == "search_filings":
                 return await self._search_filings(symbol, form_type, limit)
             elif action == "extract_metrics":
@@ -312,7 +312,7 @@ Parameters:
 
         return derive_q4_from_fy(quarters_data, symbol)
 
-    async def _get_quarterly_financials(self, symbol: str, num_periods: int = 12) -> ToolResult:
+    async def _get_quarterly_financials(self, symbol: str, num_periods: int = 12, as_of_date: Any = None) -> ToolResult:
         """Get quarterly financial data using the legacy pipeline.
 
         This method uses the same data pipeline as the legacy CLI to ensure
@@ -348,6 +348,7 @@ Parameters:
                     db_manager=db_manager,
                     fiscal_period_service=fiscal_period_service,
                     logger=logger,
+                    as_of_date=as_of_date,
                 ),
             )
 

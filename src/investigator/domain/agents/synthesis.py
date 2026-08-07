@@ -490,8 +490,13 @@ class SynthesisAgent(InvestmentAgent):
         error: str | None = None,
     ) -> dict[str, Any]:
         """Build deterministic scenario payload used for fallback and deterministic mode."""
-        current_price = synthesis_input.fundamental_analysis.get("valuation", {}).get("current_price", 100)
-        fair_value = synthesis_input.fundamental_analysis.get("valuation", {}).get("fair_value", current_price)
+        # fundamental_analysis defaults to None, and this is the fallback path -- the one
+        # reached precisely when upstream analysis is missing. Other call sites guard it
+        # (lines 821, 1098); these did not, so a fallback with no fundamentals raised
+        # AttributeError instead of producing the deterministic scenario it exists to build.
+        fundamental = synthesis_input.fundamental_analysis or {}
+        current_price = fundamental.get("valuation", {}).get("current_price", 100)
+        fair_value = fundamental.get("valuation", {}).get("fair_value", current_price)
 
         upside_to_fair = ((fair_value - current_price) / current_price) if current_price > 0 else 0.0
         bull_return = 0.25
@@ -997,7 +1002,7 @@ class SynthesisAgent(InvestmentAgent):
             "risk_level": self._map_risk_score_to_level(risk_assessment.get("overall_risk", 50)),
             "technical_trend": self._extract_technical_trend(synthesis_input.technical_analysis),
             "market_sentiment": self._assess_market_sentiment(synthesis_input, market_context),
-            "sector": synthesis_input.context.get("sector", "default"),
+            "sector": (synthesis_input.context or {}).get("sector", "default"),
             "quality_factors": self._extract_quality_factors(synthesis_input.fundamental_analysis),
             "market_regime": (
                 market_context.get("market_sentiment", {}).get("market_regime") if market_context else "neutral"
@@ -1288,7 +1293,9 @@ class SynthesisAgent(InvestmentAgent):
                 'data_quality': 'excellent' | 'good' | 'limited' | 'insufficient'
             }
         """
-        metrics = {
+        # Nested dicts alongside a string and an int, so mypy joins the value type to
+        # `object` and rejects metrics["revenue"]["cagr"] = ... further down.
+        metrics: dict[str, Any] = {
             "revenue": {},
             "earnings": {},
             "data_quality": "insufficient",
@@ -1675,7 +1682,9 @@ class SynthesisAgent(InvestmentAgent):
                 }
             }
         """
-        trend_analysis = {
+        # Strings alongside a nested dict, so the joined value type rejects the
+        # trend_analysis["quarterly_insights"][...] assignments below.
+        trend_analysis: dict[str, Any] = {
             "revenue_trend": "insufficient_data",
             "margin_trend": "insufficient_data",
             "cash_flow_trend": "insufficient_data",
@@ -2381,6 +2390,10 @@ class SynthesisAgent(InvestmentAgent):
         # Apply smart valuation adjustments
         smart_targets = self._calculate_smart_price_targets(synthesis_input, composite_scores, risk_assessment)
 
+        # Both fields are Optional and this f-string dereferences them five times.
+        fundamental = synthesis_input.fundamental_analysis or {}
+        technical = synthesis_input.technical_analysis or {}
+
         prompt = f"""
         Generate investment scenarios for {synthesis_input.symbol}:
         
@@ -2389,12 +2402,12 @@ class SynthesisAgent(InvestmentAgent):
         - Risk Score: {risk_assessment.get("overall_risk", 50)}/100
 
         Smart Valuation Analysis:
-        - Base Fair Value: ${synthesis_input.fundamental_analysis.get("fair_value", 0):.2f}
-        - Multi-Model Blended: ${synthesis_input.fundamental_analysis.get("multi_model_summary", {}).get("blended_fair_value", 0):.2f}
-        - Model Agreement Score: {synthesis_input.fundamental_analysis.get("multi_model_summary", {}).get("model_agreement_score", 0):.2f}
-        - Technical Target: ${synthesis_input.technical_analysis.get("signals", {}).get("target_price", 0):.2f}
+        - Base Fair Value: ${fundamental.get("fair_value", 0):.2f}
+        - Multi-Model Blended: ${fundamental.get("multi_model_summary", {}).get("blended_fair_value", 0):.2f}
+        - Model Agreement Score: {fundamental.get("multi_model_summary", {}).get("model_agreement_score", 0):.2f}
+        - Technical Target: ${technical.get("signals", {}).get("target_price", 0):.2f}
         - Smart Adjusted Target: ${smart_targets.get("adjusted_target", 0):.2f}
-        - Current Price: ${synthesis_input.fundamental_analysis.get("valuation", {}).get("current_price", 0):.2f}
+        - Current Price: ${fundamental.get("valuation", {}).get("current_price", 0):.2f}
         - Valuation Bias: {smart_targets.get("valuation_summary", {}).get("valuation_bias", "neutral")}
         - Quality Tier: {smart_targets.get("valuation_summary", {}).get("quality_tier", "average")}
         

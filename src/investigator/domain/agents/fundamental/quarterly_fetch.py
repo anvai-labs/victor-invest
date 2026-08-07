@@ -28,9 +28,19 @@ def query_recent_processed_periods(
     db_manager: Any,
     fiscal_period_service: Any,
     logger: Any,
+    as_of_date: Any = None,
 ) -> list[dict[str, Any]]:
-    """Load recent FY/Q periods for a symbol from `sec_companyfacts_processed`."""
-    query = text("""
+    """Load recent FY/Q periods for a symbol from `sec_companyfacts_processed`.
+
+    Args:
+        as_of_date: When given, restricts results to filings made on or before this
+            date. Historical evaluation must pass it: without the predicate every
+            past valuation is computed from *today's* fundamentals, which scores the
+            model on information it could not have had. Live analysis leaves it None
+            so the newest filings are used.
+    """
+    as_of_predicate = "\n            AND filed_date <= :as_of_date" if as_of_date is not None else ""
+    query = text(f"""
         SELECT
             symbol, fiscal_year, fiscal_period, adsh,
             filed_date as filed,
@@ -64,7 +74,7 @@ def query_recent_processed_periods(
             property_plant_equipment_net,
             weighted_average_diluted_shares_outstanding as shares_outstanding
         FROM sec_companyfacts_processed
-        WHERE symbol = :symbol
+        WHERE symbol = :symbol{as_of_predicate}
         ORDER BY
             fiscal_year DESC,
             CASE fiscal_period
@@ -78,8 +88,11 @@ def query_recent_processed_periods(
     """)
 
     sql_limit = num_quarters + 3
+    params: dict[str, Any] = {"symbol": symbol, "sql_limit": sql_limit}
+    if as_of_date is not None:
+        params["as_of_date"] = as_of_date
     with db_manager.get_session() as session:
-        result = session.execute(query, {"symbol": symbol, "sql_limit": sql_limit})
+        result = session.execute(query, params)
         rows = result.fetchall()
 
     if not rows:

@@ -733,7 +733,9 @@ def calculate_growth_adjusted_valuation(
     shares = market_data.get("shares_outstanding", 0)
     current_price = market_data.get("current_price", 0)
 
-    details = {}
+    # Heterogeneous by design -- booleans, floats and explanatory strings. Without the
+    # annotation mypy infers the value type from the first assignment and rejects the rest.
+    details: dict[str, Any] = {}
 
     # 0. Detect EPS anomaly (trailing EPS significantly lower than forward)
     eps_anomaly = False

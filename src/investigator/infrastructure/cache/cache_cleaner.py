@@ -14,6 +14,7 @@ import json
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 from .cache_types import CacheType
 
@@ -35,7 +36,10 @@ class CacheCleanupService:
         self.cleanup_interval = cleanup_interval_seconds
         self.running = False
         self._cleanup_task = None
-        self.stats = {
+        # Counters alongside a nullable timestamp, so mypy joins the value type to
+        # `int | None` and reports the counter increments below as None arithmetic.
+        # Only last_run is ever None; the counters are always int.
+        self.stats: dict[str, Any] = {
             "total_runs": 0,
             "total_files_scanned": 0,
             "total_files_removed": 0,
