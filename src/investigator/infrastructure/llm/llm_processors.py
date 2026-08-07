@@ -422,8 +422,9 @@ class LLMExecutionHandler(ILLMHandler):
 
     def calculate_dynamic_context_size(self, request: LLMRequest) -> dict[str, int]:
         """Calculate appropriate context size based on model capabilities and prompt length"""
-        # First try our known model configurations
-        task_type = request.metadata.get("task_type", "general")
+        # First try our known model configurations. metadata is optional on
+        # LLMRequest and defaults to None, so it cannot be indexed directly.
+        task_type = (request.metadata or {}).get("task_type", "general")
         if hasattr(task_type, "value"):
             task_type = task_type.value
 
