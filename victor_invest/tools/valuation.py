@@ -342,8 +342,14 @@ Returns fair value estimates, model assumptions, and upside/downside vs current 
             quarterly_metrics: list[Any] = []
             multi_year_data: list[Any] = []
 
-            # Try database manager first
-            if self._db_manager:
+            # Try database manager first -- but only for live valuations.
+            # get_quarterly_metrics/get_multi_year_data take no as-of date, so they
+            # return today's fundamentals. Serving a point-in-time request from them
+            # would silently reintroduce the lookahead bias this parameter exists to
+            # remove, and would do it invisibly: the caller passed a date and got an
+            # answer. When a date is requested, go straight to the SEC query below,
+            # which filters on filed_date.
+            if self._db_manager and as_of_date is None:
                 db_manager = self._db_manager
                 loop = asyncio.get_event_loop()
                 try:
