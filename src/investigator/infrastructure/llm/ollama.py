@@ -166,10 +166,23 @@ class OllamaClient:
             await self._session.close()
             self._session = None
 
+    def _require_session(self) -> aiohttp.ClientSession:
+        """Return the HTTP session, refusing to proceed before ``connect()``.
+
+        ``_session`` stays None until ``connect()`` runs. Callers below used it
+        directly; where that sat outside a try/except it raised
+        ``'NoneType' object has no attribute 'post'`` pointing at aiohttp, and where
+        it sat inside one the request was reported as a service failure rather than
+        as a client that was never connected.
+        """
+        if self._session is None:
+            raise RuntimeError("Ollama client is not connected. Await connect() before issuing requests.")
+        return self._session
+
     async def health_check(self) -> bool:
         """Check if Ollama service is healthy"""
         try:
-            async with self._session.get(f"{self.base_url}/api/tags") as response:
+            async with self._require_session().get(f"{self.base_url}/api/tags") as response:
                 return response.status == 200
         except Exception as e:
             self.logger.error(f"Ollama health check failed: {e}")
@@ -178,7 +191,7 @@ class OllamaClient:
     async def list_models(self) -> list[dict]:
         """List available models"""
         try:
-            async with self._session.get(f"{self.base_url}/api/tags") as response:
+            async with self._require_session().get(f"{self.base_url}/api/tags") as response:
                 if response.status == 200:
                     data = await response.json()
                     models = data.get("models", [])
@@ -204,7 +217,7 @@ class OllamaClient:
         endpoint = f"{self.base_url}/api/pull"
 
         try:
-            async with self._session.post(endpoint, json=payload) as response:
+            async with self._require_session().post(endpoint, json=payload) as response:
                 # Fix: Check HTTP status before parsing JSON
                 if response.status != 200:
                     error_text = await response.text()
@@ -455,7 +468,7 @@ class OllamaClient:
 
         endpoint = f"{self.base_url}/api/generate"
 
-        async with self._session.post(endpoint, json=payload) as response:
+        async with self._require_session().post(endpoint, json=payload) as response:
             # Fix: Check HTTP status before parsing JSON
             if response.status != 200:
                 error_text = await response.text()
@@ -582,7 +595,7 @@ class OllamaClient:
         payload = {"model": model, "prompt": prompt}
 
         try:
-            async with self._session.post(f"{self.base_url}/api/embeddings", json=payload) as response:
+            async with self._require_session().post(f"{self.base_url}/api/embeddings", json=payload) as response:
                 result = await response.json()
                 return result.get("embedding", [])
         except Exception as e:
@@ -626,7 +639,7 @@ class OllamaClient:
             payload["format"] = format
 
         try:
-            async with self._session.post(f"{self.base_url}/api/chat", json=payload) as response:
+            async with self._require_session().post(f"{self.base_url}/api/chat", json=payload) as response:
                 if stream:
                     return self._stream_chat_response(response)
                 else:
@@ -675,7 +688,7 @@ class OllamaClient:
         payload = {"name": model}
 
         try:
-            async with self._session.post(f"{self.base_url}/api/unload", json=payload) as response:
+            async with self._require_session().post(f"{self.base_url}/api/unload", json=payload) as response:
                 if response.status == 200:
                     self.loaded_models.discard(model)
                     return True
@@ -689,7 +702,7 @@ class OllamaClient:
         payload = {"name": model}
 
         try:
-            async with self._session.post(f"{self.base_url}/api/show", json=payload) as response:
+            async with self._require_session().post(f"{self.base_url}/api/show", json=payload) as response:
                 if response.status == 200:
                     return await response.json()
                 return {}
@@ -702,7 +715,7 @@ class OllamaClient:
         payload = {"source": source, "destination": destination}
 
         try:
-            async with self._session.post(f"{self.base_url}/api/copy", json=payload) as response:
+            async with self._require_session().post(f"{self.base_url}/api/copy", json=payload) as response:
                 return response.status == 200
         except Exception as e:
             self.logger.error(f"Failed to copy model {source} to {destination}: {e}")
