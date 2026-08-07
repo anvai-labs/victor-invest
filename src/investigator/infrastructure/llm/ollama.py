@@ -726,7 +726,7 @@ class OllamaClient:
         payload = {"name": model}
 
         try:
-            async with self._session.delete(f"{self.base_url}/api/delete", json=payload) as response:
+            async with self._require_session().delete(f"{self.base_url}/api/delete", json=payload) as response:
                 if response.status == 200:
                     self.loaded_models.discard(model)
                     self.model_info.pop(model, None)
