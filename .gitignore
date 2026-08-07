@@ -42,6 +42,10 @@ data/*.txt
 data/*.json
 
 # Artifacts (new structure)
+# Generated analysis output. Only subpaths were ignored before, so files directly
+# under artifacts/ were untracked-but-not-ignored and got committed by `git add -A`.
+artifacts/
+!artifacts/.gitkeep
 artifacts/results/*.json
 artifacts/metrics/*.json
 artifacts/logs/*.log
