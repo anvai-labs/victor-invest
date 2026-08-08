@@ -30,7 +30,7 @@ except ImportError:
 
 from data.models import TechnicalAnalysisData
 from investigator.config import get_config
-from patterns.llm.llm_facade import create_llm_facade
+from investigator.infrastructure.llm.llm_facade import create_llm_facade
 from utils.ascii_art import ASCIIArt
 from utils.cache import CacheType
 from utils.cache.cache_manager import CacheManager
