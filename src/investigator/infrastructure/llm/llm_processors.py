@@ -16,7 +16,7 @@ from datetime import datetime
 from typing import Any
 
 from investigator.application.processors import get_llm_response_processor
-from utils.api_client import OllamaAPIClient
+from investigator.infrastructure.http import OllamaAPIClient
 
 from .llm_interfaces import (
     ILLMAnalysisTemplate,

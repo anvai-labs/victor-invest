@@ -388,7 +388,7 @@ class ComprehensiveLLMStrategy(ILLMStrategy):
     def _prepare_risk_request(self, symbol: str, data: dict[str, Any], model: str, request_id: str) -> LLMRequest:
         """Prepare risk assessment request using J2 template"""
         # Import prompt manager locally to avoid circular imports
-        from utils.prompt_manager import get_prompt_manager
+        from investigator.application.prompts import get_prompt_manager
 
         # Get current price if available
         current_price = None

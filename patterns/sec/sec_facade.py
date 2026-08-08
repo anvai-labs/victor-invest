@@ -532,7 +532,7 @@ Format as JSON.
             self.config.ollama.models.get("quarterly_analysis", "deepseek-r1:32b")
 
             # Submit to LLM facade with proper metadata for cache key generation
-            from patterns.llm.llm_interfaces import LLMTaskType
+            from investigator.infrastructure.llm.llm_interfaces import LLMTaskType
 
             task_data = {
                 "symbol": symbol,
@@ -634,7 +634,7 @@ Provide analysis in the following exact JSON format:
             self.config.ollama.models.get("fundamental_analysis", "deepseek-r1:32b")
 
             # Use queue-based processing for comprehensive analysis
-            from patterns.llm.llm_interfaces import LLMTaskType
+            from investigator.infrastructure.llm.llm_interfaces import LLMTaskType
 
             comprehensive_task_data = {
                 "symbol": symbol,
