@@ -96,8 +96,8 @@ from investigator.infrastructure.database.db import (  # TODO: Move to investiga
     DatabaseManager,
     get_llm_responses_dao,
 )
-from investigator.infrastructure.ui import ASCIIArt
 from investigator.infrastructure.llm.llm_facade import create_llm_facade
+from investigator.infrastructure.ui import ASCIIArt
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
