@@ -642,12 +642,14 @@ Respond ONLY with the JSON object, no other text."""
                 return cast(dict[Any, Any], json.loads(json_str))
 
         else:
-            # Legacy path for Ollama or when provider not specified
+            # Fallback path when no provider was specified. Still victor's
+            # provider registry underneath -- only the caller's intent differs.
             from investigator.config import get_config
-            from investigator.infrastructure.llm import OllamaClient
+            from investigator.infrastructure.llm import VictorProviderClient
+            from victor_invest.framework_bootstrap import resolve_provider_from_env
 
             config = get_config()
-            client = OllamaClient(config)
+            client = VictorProviderClient(provider_name=resolve_provider_from_env())
 
             # Extract key technical data
             trend = technical.get("trend", {})

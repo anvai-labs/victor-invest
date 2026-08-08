@@ -138,22 +138,24 @@ class TestOrchestratorResilience:
 
     @pytest.mark.asyncio
     async def test_start_stop_cancels_background_tasks(self, monkeypatch):
-        class DummyPool:
+        class DummyProviderClient:
+            """Stands in for VictorProviderClient.
+
+            The orchestrator no longer builds a local Ollama pool; endpoint
+            selection and failover belong to victor's provider, so startup only
+            needs to know the provider answers.
+            """
+
+            provider_name = "dummy"
+
             async def __aenter__(self):
                 return self
 
             async def __aexit__(self, exc_type, exc, tb):
                 return False
 
-            async def initialize_servers(self):
-                return None
-
-            async def get_pool_status(self):
-                return {
-                    "available_servers": 1,
-                    "total_servers": 1,
-                    "total_capacity_gb": 1,
-                }
+            async def health_check(self):
+                return True
 
         class DummyCache:
             async def start_cleanup_service(self, interval_seconds=3600):
@@ -162,7 +164,7 @@ class TestOrchestratorResilience:
             async def stop_cleanup_service(self):
                 return None
 
-        monkeypatch.setattr(orchestrator_module, "create_resource_aware_pool", lambda cfg: DummyPool())
+        monkeypatch.setattr(orchestrator_module, "VictorProviderClient", lambda **kwargs: DummyProviderClient())
         monkeypatch.setattr(AgentOrchestrator, "_initialize_agents", lambda self: {})
 
         orch = AgentOrchestrator(
