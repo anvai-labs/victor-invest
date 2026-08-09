@@ -49,7 +49,7 @@ from investigator.application import (  # noqa: E402
 from investigator.domain.agents.sec import SECAnalysisAgent  # noqa: E402
 from investigator.infrastructure.cache import CacheManager  # noqa: E402
 from investigator.infrastructure.events import EventBus  # noqa: E402
-from investigator.infrastructure.llm import OllamaClient  # noqa: E402
+from investigator.infrastructure.llm import VictorProviderClient  # noqa: E402
 from investigator.infrastructure.monitoring import MetricsCollector  # noqa: E402
 
 # from api.main import create_app  # Will fix this separately
@@ -125,7 +125,7 @@ def setup_logging(log_level: str = "INFO", log_file: Optional[str] = None):
     # Promote high-volume internal modules to WARNING in production-style runs
     if profile != "debug" and numeric_level >= logging.INFO:
         noisy_loggers = [
-            "investigator.infrastructure.llm.pool",
+            "investigator.infrastructure.llm.provider_adapter",
             "investigator.infrastructure.llm.semaphore",
             "investigator.infrastructure.cache.cache_manager",
             "investigator.infrastructure.cache.cache_cleaner",
@@ -1088,7 +1088,6 @@ def serve(ctx, host, port, workers, reload):
 @click.pass_context
 def status(ctx):
     """Check system status and health"""
-    config = ctx.obj["config"]
 
     if _should_forward_to_victor(ctx):
         click.echo("Routing to Victor status. Set INVESTIGATOR_LEGACY=1 to use legacy orchestrator.")
@@ -1101,7 +1100,7 @@ def status(ctx):
 
         cache_manager = get_cache_manager()
         metrics_collector = MetricsCollector()
-        ollama_client = OllamaClient(config["ollama"]["base_url"])
+        ollama_client = VictorProviderClient()
 
         click.echo("InvestiGator System Status")
         click.echo("=" * 40)
@@ -1371,14 +1370,13 @@ def beta_refresh(
 @click.pass_context
 def pull(ctx, model):
     """Pull an Ollama model"""
-    config = ctx.obj["config"]
     if _should_forward_to_victor(ctx):
         click.echo("Routing to Victor model pull. Set INVESTIGATOR_LEGACY=1 to use legacy orchestrator.")
         _forward_to_victor_cli(["pull", model])
         return
 
     async def pull_model():
-        ollama_client = OllamaClient(config["ollama"]["base_url"])
+        ollama_client = VictorProviderClient()
 
         async with ollama_client:
             click.echo(f"Pulling model: {model}")

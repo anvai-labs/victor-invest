@@ -695,18 +695,13 @@ class RunSynthesisHandler(BaseHandler):
     def _get_llm_client(self) -> Any:
         """Lazy load LLM client."""
         if self._llm_client is None:
-            from investigator.infrastructure.llm import OllamaClient
+            from investigator.infrastructure.llm import VictorProviderClient
+            from victor_invest.framework_bootstrap import resolve_provider_from_env
 
-            # Get config for Ollama base URL
-            try:
-                from investigator.config import get_config
-
-                config = get_config()
-                base_url = getattr(config.ollama, "base_url", None) or "http://localhost:11434"
-            except Exception:
-                base_url = "http://localhost:11434"
-
-            self._llm_client = OllamaClient(base_url=base_url)
+            # Endpoint resolution belongs to victor's provider now -- it reads
+            # OLLAMA_ENDPOINTS and falls back to localhost itself, so there is no
+            # base_url to thread through from config here.
+            self._llm_client = VictorProviderClient(provider_name=resolve_provider_from_env())
         return self._llm_client
 
     def _build_synthesis_prompt(
