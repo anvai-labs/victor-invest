@@ -59,6 +59,7 @@ jobs:
   test:
     name: Unit Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: quality
     strategy:
       matrix:
@@ -129,6 +130,7 @@ jobs:
   victor-compat:
     name: Victor Compatibility
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: quality
     strategy:
       fail-fast: false
@@ -169,6 +171,7 @@ jobs:
   performance-benchmark:
     name: Workflow Performance Gate
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: quality
 
     steps:

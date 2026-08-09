@@ -43,6 +43,33 @@ logger = logging.getLogger(__name__)
 # Keys victor may use for a reasoning model's hidden chain of thought.
 _REASONING_KEYS = ("reasoning_content", "reasoning", "thinking")
 
+# Providers that load weights into this machine's memory. Only these are worth
+# gating: an Anthropic or OpenAI call consumes no local VRAM, so making it wait on
+# a local memory budget would block on a resource it never touches.
+_LOCAL_PROVIDERS = frozenset(
+    {
+        "ollama",
+        "llamacpp",
+        "llama-cpp",
+        "llama.cpp",
+        "lmstudio",
+        "mlx",
+        "mlx-lm",
+        "applesilicon",
+        "vllm",
+    }
+)
+
+
+class _NullAdmission:
+    """No-op stand-in for DynamicLLMContext on providers that use no local VRAM."""
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(self, *exc: object) -> bool:
+        return False
+
 
 def _infer_task_type(prompt: str) -> str:
     """Classify the prompt so the semaphore can size the allocation.
@@ -181,15 +208,21 @@ class VictorProviderClient:
 
         provider = self._get_provider(model)
 
-        # Admission control: gate on estimated VRAM before the request goes out.
-        # The context manager releases on the way out, including on exception --
-        # a leaked allocation would eventually deadlock the pool.
-        async with DynamicLLMContext(
-            model=model,
-            task_type=_infer_task_type(prompt),
-            prompt_tokens=len(prompt) // 4,
-            response_tokens=max_tokens or self.max_tokens,
-        ):
+        # Admission control: gate on estimated VRAM before the request goes out,
+        # but only where the weights actually live on this machine. The context
+        # manager releases on the way out, including on exception -- a leaked
+        # allocation would eventually stall every later request.
+        if self.provider_name.lower() in _LOCAL_PROVIDERS:
+            admission: Any = DynamicLLMContext(
+                model=model,
+                task_type=_infer_task_type(prompt),
+                prompt_tokens=len(prompt) // 4,
+                response_tokens=max_tokens or self.max_tokens,
+            )
+        else:
+            admission = _NullAdmission()
+
+        async with admission:
             response = await provider.chat(
                 messages=messages,
                 model=model,

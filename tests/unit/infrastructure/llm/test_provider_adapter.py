@@ -38,7 +38,11 @@ class _Response:
         self.model = "test-model"
 
 
-def _client(response: _Response, recorder: dict | None = None) -> VictorProviderClient:
+def _client(
+    response: _Response,
+    recorder: dict | None = None,
+    provider_name: str = "ollama",
+) -> VictorProviderClient:
     provider = MagicMock()
 
     async def _chat(**kwargs):
@@ -47,9 +51,34 @@ def _client(response: _Response, recorder: dict | None = None) -> VictorProvider
         return response
 
     provider.chat = _chat
-    client = VictorProviderClient(provider_name="ollama")
+    client = VictorProviderClient(provider_name=provider_name)
     client._provider = provider
     return client
+
+
+@pytest.fixture(autouse=True)
+def _no_real_admission_control(monkeypatch):
+    """Keep these tests off the host's actual memory.
+
+    The real ``DynamicLLMContext`` consults detected VRAM. Letting unit tests
+    depend on that makes them pass or hang according to the machine they run on --
+    which is precisely how the hang below reached CI.
+    """
+
+    class _NoopContext:
+        def __init__(self, model, **kwargs):
+            self.model = model
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+    monkeypatch.setattr(
+        "investigator.infrastructure.llm.provider_adapter.DynamicLLMContext",
+        _NoopContext,
+    )
 
 
 @pytest.mark.asyncio
@@ -189,3 +218,37 @@ async def test_usable_as_an_async_context_manager():
 
     async with client as c:
         assert c is client
+
+
+@pytest.mark.asyncio
+async def test_cloud_providers_are_not_gated_on_local_vram(monkeypatch):
+    """Admission control exists to protect local memory, so it must be local-only.
+
+    An Anthropic or OpenAI call consumes no VRAM on this machine. Making it wait
+    for a local memory budget would block on a resource it never uses.
+    """
+    gated: list[str] = []
+
+    class _RecordingContext:
+        def __init__(self, model, **kwargs):
+            self.model = model
+
+        async def __aenter__(self):
+            gated.append(self.model)
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+    monkeypatch.setattr(
+        "investigator.infrastructure.llm.provider_adapter.DynamicLLMContext",
+        _RecordingContext,
+    )
+
+    cloud = _client(_Response(content="ok"), provider_name="anthropic")
+    await cloud.generate(model="claude-sonnet-5", prompt="p")
+    assert gated == [], "a cloud call was gated on local VRAM it does not consume"
+
+    local = _client(_Response(content="ok"), provider_name="ollama")
+    await local.generate(model="qwen3", prompt="p")
+    assert gated == ["qwen3"], "a local call skipped VRAM admission control"
