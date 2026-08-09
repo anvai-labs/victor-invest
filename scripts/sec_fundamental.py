@@ -23,7 +23,7 @@ try:
         get_quarterly_metrics_dao,
         get_sec_responses_dao,
     )
-    from patterns.llm.llm_facade import create_llm_facade  # noqa: F401
+    from investigator.infrastructure.llm.llm_facade import create_llm_facade  # noqa: F401
     from patterns.sec.sec_facade import FundamentalAnalysisFacadeV2
     from utils.ascii_art import ASCIIArt
     from utils.cache.cache_manager import CacheManager  # noqa: F401

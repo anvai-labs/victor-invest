@@ -21,6 +21,7 @@ See victor_invest/workflows/graphs.py for the new architecture.
 
 import asyncio
 import logging
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -39,7 +40,7 @@ from investigator.domain.agents.technical import TechnicalAnalysisAgent
 from investigator.infrastructure.cache.cache_manager import CacheManager
 from investigator.infrastructure.database.market_data import get_market_data_fetcher
 from investigator.infrastructure.events import EventBus
-from investigator.infrastructure.llm.pool import create_resource_aware_pool
+from investigator.infrastructure.llm.provider_adapter import VictorProviderClient
 from investigator.infrastructure.monitoring import MetricsCollector
 
 
@@ -118,10 +119,10 @@ class AgentOrchestrator:
         self.event_bus = EventBus()
         self._logger = logging.getLogger(__name__)
 
-        # Store config for pool creation
+        # Store config for provider creation
         self._config = get_config()
         self.ollama_pool = None
-        self.ollama_client = None  # Will be set to pool in start()
+        self.ollama_client = None  # Will be set to the provider client in start()
         self.symbol_classification_cache: dict[str, bool] = {}
         try:
             self.market_data_fetcher = get_market_data_fetcher(self._config)
@@ -248,6 +249,16 @@ class AgentOrchestrator:
 
         return G
 
+    def _resolve_provider_name(self) -> str:
+        """Pick the LLM provider, honouring VICTOR_PROVIDER.
+
+        Mirrors victor_invest.framework_bootstrap.resolve_provider_from_env without
+        importing it: this module lives in investigator/, and reaching into the
+        vertical from here would invert the dependency direction.
+        """
+        env_provider = os.getenv("VICTOR_PROVIDER", "").strip().lower()
+        return env_provider or "ollama"
+
     async def start(self):
         """
         Start the orchestrator and worker tasks
@@ -257,28 +268,22 @@ class AgentOrchestrator:
         self.running = True
 
         try:
-            # Create resource-aware Ollama pool
-            self.ollama_pool = create_resource_aware_pool(self._config)
+            # Completions go through victor's provider registry, which owns
+            # endpoint selection, failover and retries. The local pool that used to
+            # do that here was removed; VRAM admission control still runs inside
+            # the client on every call.
+            self.ollama_pool = VictorProviderClient(provider_name=self._resolve_provider_name())
             await self.ollama_pool.__aenter__()
-            await self.ollama_pool.initialize_servers()
 
-            # Validate pool initialization
-            pool_status = await self.ollama_pool.get_pool_status()
-
-            if pool_status.get("available_servers", 0) == 0:
+            if not await self.ollama_pool.health_check():
                 raise RuntimeError(
-                    "No Ollama servers available. "
-                    f"Total servers: {pool_status.get('total_servers', 0)}, "
-                    f"Available: {pool_status.get('available_servers', 0)}"
+                    f"LLM provider {self.ollama_pool.provider_name!r} is not reachable. "
+                    "Check that the endpoint is running and configured."
                 )
 
             self.ollama_client = self.ollama_pool  # Agents use this
 
-            # Log pool status
-            self.logger.info(
-                f"Ollama pool initialized: {pool_status['available_servers']}/{pool_status['total_servers']} servers available, "
-                f"{pool_status['total_capacity_gb']}GB total capacity"
-            )
+            self.logger.info("LLM provider ready: %s", self.ollama_pool.provider_name)
 
             # Initialize agents now that pool is validated
             self.agents = self._initialize_agents()

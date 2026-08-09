@@ -43,7 +43,7 @@ def setup_logging(log_level: str = "INFO", log_file: str | None = None):
     # Promote high-volume modules to WARNING in prod
     if profile != "debug" and numeric_level >= logging.INFO:
         noisy_loggers = [
-            "investigator.infrastructure.llm.pool",
+            "investigator.infrastructure.llm.provider_adapter",
             "investigator.infrastructure.llm.semaphore",
             "investigator.infrastructure.cache.cache_manager",
             "investigator.infrastructure.cache.cache_cleaner",

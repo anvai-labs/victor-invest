@@ -21,6 +21,7 @@ Concurrency is therefore limited by the actual GPU headroom, not an arbitrary ta
 
 import asyncio
 import logging
+import time
 from datetime import datetime
 from enum import Enum
 from typing import Optional
@@ -31,6 +32,10 @@ from investigator.infrastructure.llm.vram_calculator import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Generous enough that a genuine queue behind a long generation still succeeds,
+# short enough that a capacity shortfall surfaces as an error rather than a hang.
+DEFAULT_ACQUIRE_TIMEOUT_SECONDS = 600.0
 
 
 class ModelSize(Enum):
@@ -294,6 +299,20 @@ class DynamicLLMSemaphore:
         """Check if we can accommodate a new task"""
         return (self.used_vram_gb + required_vram) <= self.available_vram_gb
 
+    def _may_start(self, required_vram: float) -> bool:
+        """Whether a task may start now, including the oversized case.
+
+        A task whose own estimate exceeds total capacity can never satisfy
+        ``_can_accommodate_task``, however long it waits. Blocking it forever is
+        the worst available outcome -- the machine looks hung with no error. Let
+        it run once nothing else holds an allocation: it is still serialised
+        against other work, and if it genuinely does not fit, the provider fails
+        with a real message instead.
+        """
+        if self._can_accommodate_task(required_vram):
+            return True
+        return required_vram > self.available_vram_gb and not self.active_tasks
+
     async def acquire(
         self,
         model: str,
@@ -303,6 +322,7 @@ class DynamicLLMSemaphore:
         prompt_tokens: int | None = None,
         response_tokens: int | None = None,
         context_tokens: int | None = None,
+        timeout: float | None = DEFAULT_ACQUIRE_TIMEOUT_SECONDS,
     ) -> str:
         """
         Acquire LLM resources dynamically based on requirements
@@ -312,9 +332,16 @@ class DynamicLLMSemaphore:
             task_type: Type of task (technical, fundamental, sec, synthesis, etc.)
             is_cached: Whether this task will use cached data
             task_id: Optional task identifier
+            timeout: Seconds to wait for capacity before giving up. None waits
+                forever, which is almost never what a caller wants -- an
+                unbounded wait here previously turned a capacity shortfall into
+                a silent hang.
 
         Returns:
             Resource allocation ID
+
+        Raises:
+            TimeoutError: if capacity did not become available within *timeout*.
         """
         required_vram = self._calculate_task_vram(
             model,
@@ -336,9 +363,19 @@ class DynamicLLMSemaphore:
             "start_time": datetime.now(),
         }
 
+        if required_vram > self.available_vram_gb:
+            logger.warning(
+                "⚠️ %s needs an estimated %.1fGB but only %.1fGB is available; "
+                "it will run alone once the machine is idle rather than waiting for "
+                "capacity that cannot appear.",
+                model,
+                required_vram,
+                self.available_vram_gb,
+            )
+
         # Check if we can run immediately
         async with self._lock:
-            if self._can_accommodate_task(required_vram):
+            if self._may_start(required_vram):
                 # Can run immediately
                 self.active_tasks[allocation_id] = task_info
                 self.used_vram_gb += required_vram
@@ -374,12 +411,23 @@ class DynamicLLMSemaphore:
                     f"Required: {required_vram:.1f}GB | Available: {self.available_vram_gb - self.used_vram_gb:.1f}GB"
                 )
 
-        # Wait for resources to become available
+        # Wait for resources to become available, but not forever.
+        deadline = None if timeout is None else time.monotonic() + timeout
         while True:
+            if deadline is not None and time.monotonic() >= deadline:
+                async with self._lock:
+                    if task_info in self.queue:
+                        self.queue.remove(task_info)
+                raise TimeoutError(
+                    f"Timed out after {timeout:.1f}s waiting for {required_vram:.1f}GB "
+                    f"for {model}; {self.used_vram_gb:.1f}/{self.available_vram_gb:.1f}GB in use "
+                    f"by {len(self.active_tasks)} task(s)."
+                )
+
             await asyncio.sleep(0.1)  # Check every 100ms
 
             async with self._lock:
-                if self._can_accommodate_task(required_vram):
+                if self._may_start(required_vram):
                     # Remove from queue
                     if task_info in self.queue:
                         self.queue.remove(task_info)

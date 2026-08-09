@@ -1420,17 +1420,17 @@ def test_system(verbose: bool):
 def pull(model: str):
     """Pull an Ollama model."""
     try:
-        from investigator.infrastructure.llm import OllamaClient
+        from investigator.infrastructure.llm import VictorProviderClient
     except ImportError as exc:
-        console.print(f"[red]Error:[/red] Ollama client unavailable: {exc}")
+        console.print(f"[red]Error:[/red] LLM provider unavailable: {exc}")
         raise SystemExit(1)
 
-    base_url = _get_ollama_base_url()
-
     async def pull_model():
-        ollama_client = OllamaClient(base_url)
+        # Pulling is Ollama-specific model management, but victor's Ollama
+        # provider exposes it, so there is no reason to keep a second client.
+        client = VictorProviderClient(provider_name="ollama")
 
-        async with ollama_client:
+        async with client:
             console.print(f"Pulling model: [cyan]{model}[/cyan]")
 
             with Progress(
@@ -1439,7 +1439,7 @@ def pull(model: str):
                 console=console,
             ) as progress:
                 task = progress.add_task("Downloading...", total=None)
-                async for status in ollama_client.pull_model(model, stream=True):
+                async for status in await client.pull_model(model):
                     if status.get("status") == "success":
                         break
                 progress.update(task, description="Download complete")

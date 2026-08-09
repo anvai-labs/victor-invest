@@ -96,10 +96,8 @@ from investigator.infrastructure.database.db import (  # TODO: Move to investiga
     DatabaseManager,
     get_llm_responses_dao,
 )
+from investigator.infrastructure.llm.llm_facade import create_llm_facade
 from investigator.infrastructure.ui import ASCIIArt
-from patterns.llm.llm_facade import (  # TODO: Move to investigator.infrastructure.llm
-    create_llm_facade,
-)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -967,7 +965,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
                 start_time = time.time()
                 # Use queue-based processing for synthesis
-                from patterns.llm.llm_interfaces import LLMTaskType
+                from investigator.infrastructure.llm.llm_interfaces import LLMTaskType
 
                 synthesis_task_data = {
                     "symbol": symbol,
