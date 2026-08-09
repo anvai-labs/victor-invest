@@ -202,7 +202,22 @@ class VictorProviderClient:
 
         call_kwargs: dict[str, Any] = dict(extra_kwargs)
         if format == "json":
-            call_kwargs["response_format"] = {"type": "json_object"}
+            # Deliberately no response_format kwarg. Verified against a live
+            # endpoint: sandhi rejects both {"type": "json_object"} and a full
+            # json_schema with HTTP 400 ("JSON schema conversion failed"), and the
+            # Ollama-native format="json" is silently dropped by the OpenAI-shaped
+            # payload. Asking in the prompt is the only thing that works here.
+            #
+            # This is not a downgrade: models answer with a ```json fence, and
+            # llm_response_processor.extract_json_from_text already unwraps that --
+            # the layer was built expecting fenced output.
+            messages.insert(
+                0,
+                Message(
+                    role="system",
+                    content="Respond with a single JSON object and nothing else.",
+                ),
+            )
         elif format:
             self.logger.debug("Ignoring unsupported format %r", format)
 
