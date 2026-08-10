@@ -49,4 +49,4 @@ mkdocstrings>=0.23.0
 
 # Debugging
 debugpy>=1.7.0
-watchdog>=3.0.0
+watchdog>=6.0.0
