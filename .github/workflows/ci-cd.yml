@@ -20,6 +20,7 @@ jobs:
   quality:
     name: Code Quality
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
 
@@ -54,6 +55,12 @@ jobs:
 
       - name: Run Ruff linter
         run: ruff check src/ victor_invest/ tests/
+
+      # A ratchet, not a zero-error gate: the repo carries ~1,150 pre-existing
+      # errors, and CI has never checked types at all. This blocks new ones and
+      # reports cleanups so the baseline can be tightened.
+      - name: Run mypy ratchet
+        run: python scripts/mypy_ratchet.py --check
 
   # Unit Tests
   test:

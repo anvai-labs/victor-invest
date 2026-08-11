@@ -128,8 +128,9 @@ Tools never raise exceptions to callers — they return `ToolResult.create_failu
 ## Implementation Conventions
 
 - Python 3.11+, 120-char line length
-- **Pre-commit hook** uses ruff format + ruff check + mypy (authoritative for commits)
+- **Pre-commit hook** uses ruff format + ruff check + a mypy **ratchet** (authoritative for commits)
 - **Makefile** uses black + isort + flake8 (legacy targets, may diverge from hook)
+- **CI** additionally runs `isort --check-only` on `src/ victor_invest/ tests/`, which ruff does not mirror
 - Type hints on public APIs, async-first where appropriate
 - Cache keys must include `fiscal_period` for correct cache behavior
 - Prefer small, composable handlers/tools over monolithic logic
@@ -200,8 +201,23 @@ with engine.connect() as conn:
 git commit --no-verify          # bypass when necessary
 ```
 
-- **pre-commit**: ruff format, ruff check, mypy on staged Python files in `src/` and `victor_invest/`
+- **pre-commit**: ruff format + ruff check on **all** staged Python files; mypy ratchet on staged files under `src/` and `victor_invest/`
 - **commit-msg**: rejects `Co-Authored-By` trailers AND any Claude/Anthropic/AI attribution references
+
+### mypy ratchet
+
+Types are ratcheted, not gated. The repo carries a large pre-existing error count,
+so a zero-error gate failed every commit and forced `--no-verify` — which also
+skipped the ruff checks. `.mypy-baseline.json` records per-file counts; a file may
+not get worse.
+
+```bash
+python scripts/mypy_ratchet.py --check              # whole tree (CI runs this)
+python scripts/mypy_ratchet.py --check a.py b.py    # only these files (the hook)
+python scripts/mypy_ratchet.py --update             # lock in improvements
+```
+
+Run `--update` after cleaning a file up, and say why in the commit if the count rises.
 
 ## CLI Entry Points
 

@@ -73,18 +73,24 @@ if ! ruff check $STAGED_FILES; then
 fi
 echo -e "${GREEN}Ruff lint passed.${NC}"
 
-# Run mypy type check
-echo -e "${YELLOW}Running mypy type check...${NC}"
-# Only run mypy on files in src/ and victor_invest/
+# Run mypy as a ratchet rather than an absolute gate.
+#
+# This used to be `mypy <staged files>` with a zero-error requirement. The repo
+# carries ~1,150 pre-existing errors and --follow-imports pulls in the whole
+# closure, so it failed on every commit no matter what changed -- and the only
+# way through was `git commit --no-verify`, which skips the ruff checks above
+# too. A gate nobody can satisfy is a gate nobody runs.
+#
+# The ratchet compares per-file error counts against .mypy-baseline.json and
+# fails only when a staged file gets worse.
+echo -e "${YELLOW}Running mypy ratchet...${NC}"
 MYPY_FILES=$(echo "$STAGED_FILES" | grep -E '^(src/|victor_invest/)' || true)
 if [ -n "$MYPY_FILES" ]; then
-    # Use --explicit-package-bases to avoid "source file found twice" errors
-    # when using src/ layout
-    if ! mypy --explicit-package-bases --follow-imports=silent $MYPY_FILES; then
-        echo -e "${RED}Mypy type check failed.${NC}"
+    if ! python3 "$(git rev-parse --show-toplevel)/scripts/mypy_ratchet.py" --check $MYPY_FILES; then
+        echo -e "${RED}Mypy ratchet failed: staged files added type errors.${NC}"
         exit 1
     fi
-    echo -e "${GREEN}Mypy type check passed.${NC}"
+    echo -e "${GREEN}Mypy ratchet passed.${NC}"
 else
     echo "No files in src/ or victor_invest/, skipping mypy."
 fi
