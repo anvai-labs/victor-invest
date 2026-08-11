@@ -13,8 +13,8 @@ from pathlib import Path
 
 from investigator.config import get_config
 from investigator.infrastructure.cache.cache_manager import get_cache_manager
+from investigator.infrastructure.cache.cache_stats import CacheStatsMonitor
 from investigator.infrastructure.cache.cache_types import CacheType
-from utils.cache_stats import CacheStatsMonitor
 
 
 def analyze_sec_cache_patterns():

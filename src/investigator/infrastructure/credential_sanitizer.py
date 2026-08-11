@@ -26,6 +26,7 @@ Usage:
 
 import logging
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -348,7 +349,10 @@ class CredentialSanitizer:
 
     def __init__(
         self,
-        alert_callback: callable | None = None,
+        # `callable` here is the builtin, not typing.Callable, and
+        # `builtin_function_or_method | None` raises TypeError while the class body
+        # is executing -- so this module could not be imported at all.
+        alert_callback: Callable[..., Any] | None = None,
         strict_mode: bool = False,
     ):
         """Initialize sanitizer.

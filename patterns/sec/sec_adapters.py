@@ -12,7 +12,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List
 
-from data.models import FinancialStatementData, QuarterlyData
+from investigator.domain.models.financial_statements import FinancialStatementData, QuarterlyData
 from investigator.config import get_config
 
 logger = logging.getLogger(__name__)

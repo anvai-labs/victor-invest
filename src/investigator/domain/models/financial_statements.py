@@ -9,8 +9,8 @@ Unified models to eliminate duplication across the codebase
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Any, List
-from datetime import datetime, date
+from datetime import date, datetime
+from typing import Any, Dict, List, Optional
 
 
 @dataclass

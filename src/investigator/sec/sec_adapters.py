@@ -11,8 +11,8 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any
 
-from data.models import FinancialStatementData, QuarterlyData
 from investigator.config import get_config
+from investigator.domain.models.financial_statements import FinancialStatementData, QuarterlyData
 
 logger = logging.getLogger(__name__)
 

@@ -12,7 +12,7 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from data.models import QuarterlyData
+from investigator.domain.models.financial_statements import QuarterlyData
 from investigator.config import get_config
 
 logger = logging.getLogger(__name__)
