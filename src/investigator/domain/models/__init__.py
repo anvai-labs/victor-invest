@@ -13,6 +13,14 @@ from investigator.domain.models.analysis import (
     Priority,
     TaskStatus,
 )
+from investigator.domain.models.financial_statements import (
+    CompanyInfo,
+    Filing,
+    FinancialStatementData,
+    FundamentalMetrics,
+    QuarterlyData,
+    TechnicalAnalysisData,
+)
 from investigator.domain.models.recommendation import InvestmentRecommendation
 
 __all__ = [
@@ -24,4 +32,11 @@ __all__ = [
     "AgentResult",
     "AgentMetrics",
     "InvestmentRecommendation",
+    # Financial statement models, previously in the unpackaged data/ tree.
+    "CompanyInfo",
+    "Filing",
+    "FinancialStatementData",
+    "FundamentalMetrics",
+    "QuarterlyData",
+    "TechnicalAnalysisData",
 ]

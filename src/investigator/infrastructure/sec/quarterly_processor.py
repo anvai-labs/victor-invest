@@ -9,9 +9,9 @@ Handles extraction and processing of quarterly financial data from SEC EDGAR API
 
 import logging
 
-from data.models import FinancialStatementData, QuarterlyData
 from investigator.application.processors import SubmissionProcessor
 from investigator.config import get_config
+from investigator.domain.models.financial_statements import FinancialStatementData, QuarterlyData
 from investigator.infrastructure.cache import get_cache_manager
 from investigator.infrastructure.cache.cache_types import CacheType
 from investigator.infrastructure.database.db import safe_json_dumps

@@ -28,7 +28,7 @@ except ImportError:
     TALIB_AVAILABLE = False
     logging.warning("talib not available - using pandas for technical indicators")
 
-from data.models import TechnicalAnalysisData
+from investigator.domain.models.financial_statements import TechnicalAnalysisData
 from investigator.config import get_config
 from investigator.infrastructure.llm.llm_facade import create_llm_facade
 from utils.ascii_art import ASCIIArt
