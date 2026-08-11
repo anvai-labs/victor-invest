@@ -134,19 +134,48 @@ async def test_system_prompt_becomes_a_system_message():
 
 
 @pytest.mark.asyncio
-async def test_json_format_is_translated_not_passed_through():
-    """`format="json"` is Ollama-native; kwargs land in an OpenAI-shaped payload.
+async def test_json_format_asks_in_the_prompt_and_sends_no_response_format():
+    """No structured-output kwarg survives this path; asking is what works.
 
-    Passing it through verbatim would inject a meaningless `format` key rather
-    than actually requesting JSON.
+    Verified against a live Ollama endpoint through victor/sandhi:
+
+      response_format={"type": "json_object"}  -> HTTP 400, schema conversion failed
+      response_format={"type": "json_schema"}  -> HTTP 400, same
+      format="json" (Ollama-native)            -> silently dropped
+
+    An earlier version of this test asserted the ``json_object`` mapping. It
+    passed against a stubbed provider and would have 400'd every one of the 21
+    agent call sites that pass ``format="json"``. The stub agreed with the
+    assumption; the endpoint did not.
     """
     recorder: dict = {}
     client = _client(_Response(content="{}"), recorder)
 
     await client.generate(model="m", prompt="p", format="json")
 
+    assert "response_format" not in recorder, (
+        "response_format is rejected with HTTP 400 on this path; sending it breaks every JSON call"
+    )
     assert "format" not in recorder, "Ollama-native `format` leaked into the OpenAI payload"
-    assert recorder.get("response_format") == {"type": "json_object"}
+
+    system_messages = [m.content for m in recorder["messages"] if m.role == "system"]
+    assert any("JSON object" in c for c in system_messages), (
+        "nothing asked the model for JSON, so the request is JSON in name only"
+    )
+
+
+@pytest.mark.asyncio
+async def test_json_format_keeps_the_callers_own_system_prompt():
+    """The JSON instruction must not displace the caller's system prompt."""
+    recorder: dict = {}
+    client = _client(_Response(content="{}"), recorder)
+
+    await client.generate(model="m", prompt="p", system="You are a market analyst.", format="json")
+
+    system_messages = [m.content for m in recorder["messages"] if m.role == "system"]
+    assert any("market analyst" in c for c in system_messages), "the caller's system prompt was dropped"
+    assert any("JSON object" in c for c in system_messages)
+    assert [m.role for m in recorder["messages"]][-1] == "user"
 
 
 @pytest.mark.asyncio
