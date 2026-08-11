@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Data Access Object for Peer Metrics
 Handles database operations for peer group metrics and comparisons
@@ -7,7 +6,7 @@ Handles database operations for peer group metrics and comparisons
 import json
 import logging
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy import text
 
@@ -28,10 +27,10 @@ class PeerMetricsDAO:
         peer_group_id: str,
         symbol: str,
         metric_type: str,
-        metrics_data: Dict[str, Any],
-        sector: str = None,
-        industry: str = None,
-        peer_symbols: List[str] = None,
+        metrics_data: dict[str, Any],
+        sector: str | None = None,
+        industry: str | None = None,
+        peer_symbols: list[str] | None = None,
     ) -> bool:
         """Save peer metrics to database"""
         conn = None
@@ -92,7 +91,7 @@ class PeerMetricsDAO:
             if conn:
                 conn.close()
 
-    def get_peer_metrics(self, peer_group_id: str, symbol: str, metric_type: str) -> Optional[Dict[str, Any]]:
+    def get_peer_metrics(self, peer_group_id: str, symbol: str, metric_type: str) -> dict[str, Any] | None:
         """Get peer metrics from database"""
         conn = None
         try:
@@ -143,7 +142,7 @@ class PeerMetricsDAO:
             if conn:
                 conn.close()
 
-    def get_peer_group_metrics(self, peer_group_id: str, metric_type: str = None) -> List[Dict[str, Any]]:
+    def get_peer_group_metrics(self, peer_group_id: str, metric_type: str | None = None) -> list[dict[str, Any]]:
         """Get all metrics for a peer group"""
         conn = None
         try:
@@ -202,7 +201,7 @@ class PeerMetricsDAO:
             if conn:
                 conn.close()
 
-    def get_symbol_metrics(self, symbol: str) -> List[Dict[str, Any]]:
+    def get_symbol_metrics(self, symbol: str) -> list[dict[str, Any]]:
         """Get all metrics for a specific symbol across all peer groups"""
         conn = None
         try:
@@ -245,7 +244,9 @@ class PeerMetricsDAO:
             if conn:
                 conn.close()
 
-    def delete_peer_metrics(self, peer_group_id: str = None, symbol: str = None, metric_type: str = None) -> int:
+    def delete_peer_metrics(
+        self, peer_group_id: str | None = None, symbol: str | None = None, metric_type: str | None = None
+    ) -> int:
         """Delete peer metrics based on criteria"""
         conn = None
         try:
@@ -287,7 +288,7 @@ class PeerMetricsDAO:
             if conn:
                 conn.close()
 
-    def get_latest_calculation_date(self, peer_group_id: str = None, symbol: str = None) -> Optional[date]:
+    def get_latest_calculation_date(self, peer_group_id: str | None = None, symbol: str | None = None) -> date | None:
         """Get the latest calculation date for given criteria"""
         conn = None
         try:

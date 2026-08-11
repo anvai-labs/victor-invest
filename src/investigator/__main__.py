@@ -5,16 +5,12 @@ Enables running InvestiGator as a module:
     python -m investigator [command] [options]
 """
 
-import sys
-from pathlib import Path
-
-# Add root to path for cli_orchestrator import
-root_dir = Path(__file__).parent.parent.parent
-if str(root_dir) not in sys.path:
-    sys.path.insert(0, str(root_dir))
-
-# Import and run CLI from root cli_orchestrator.py
-from cli_orchestrator import cli  # noqa: E402
+# Previously this inserted the repo root into sys.path and imported a top-level
+# `cli_orchestrator` module. That works from a clone and fails from an install:
+# the wheel ships `investigator*` and `victor_invest*` only, so `python -m
+# investigator` raised ModuleNotFoundError for anyone who pip-installed. The
+# packaged CLI is the same click group.
+from investigator.cli.orchestrator import cli
 
 if __name__ == "__main__":
     cli()

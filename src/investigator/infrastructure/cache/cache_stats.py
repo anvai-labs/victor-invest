@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - Cache Statistics and Monitoring Utility
 Copyright (c) 2025 Vijaykumar Singh
@@ -11,7 +10,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from investigator.infrastructure.cache.cache_manager import get_cache_manager
 from investigator.infrastructure.cache.cache_types import CacheType
@@ -25,7 +24,7 @@ class CacheStatsMonitor:
         self.config = config
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-    def get_comprehensive_stats(self) -> Dict[str, Any]:
+    def get_comprehensive_stats(self) -> dict[str, Any]:
         """Get comprehensive cache statistics"""
         return {
             "timestamp": datetime.now().isoformat(),
@@ -77,7 +76,7 @@ class CacheStatsMonitor:
 
         print("\n" + "=" * 80)
 
-    def get_cache_efficiency_score(self) -> Dict[str, float]:
+    def get_cache_efficiency_score(self) -> dict[str, float]:
         """Calculate cache efficiency scores for each cache type"""
         performance = self.cache_manager.get_performance_stats()
         efficiency_scores = {}
@@ -97,7 +96,7 @@ class CacheStatsMonitor:
 
         return efficiency_scores
 
-    def get_recent_operations_summary(self, cache_type: Optional[CacheType] = None, limit: int = 10) -> Dict[str, Any]:
+    def get_recent_operations_summary(self, cache_type: CacheType | None = None, limit: int = 10) -> dict[str, Any]:
         """Get summary of recent cache operations"""
         recent_ops = self.cache_manager.get_recent_operations(cache_type, limit)
 
@@ -123,7 +122,7 @@ class CacheStatsMonitor:
 
         return summary
 
-    def _get_cache_config_summary(self) -> Dict[str, Any]:
+    def _get_cache_config_summary(self) -> dict[str, Any]:
         """Get summary of cache configuration"""
         if not self.config or not hasattr(self.config, "cache_control"):
             return {"status": "no_config"}
@@ -138,7 +137,7 @@ class CacheStatsMonitor:
             "enabled_cache_types": [ct.value for ct in CacheType if cache_control.is_cache_type_enabled(ct.value)],
         }
 
-    def export_stats_to_json(self, file_path: str = None) -> str:
+    def export_stats_to_json(self, file_path: str | None = None) -> str:
         """Export cache statistics to JSON file"""
         if not file_path:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -187,7 +186,7 @@ def print_cache_stats(detailed: bool = False):
     monitor.print_cache_report(detailed=detailed)
 
 
-def export_cache_stats(file_path: str = None) -> str:
+def export_cache_stats(file_path: str | None = None) -> str:
     """Convenience function to export cache statistics"""
     monitor = CacheStatsMonitor()
     return monitor.export_stats_to_json(file_path)

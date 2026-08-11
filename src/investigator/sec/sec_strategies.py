@@ -11,8 +11,8 @@ import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
 
-from data.models import FinancialStatementData, QuarterlyData
 from investigator.config import get_config
+from investigator.domain.models.financial_statements import FinancialStatementData, QuarterlyData
 from investigator.infrastructure.cache import get_cache_manager
 from investigator.infrastructure.cache.cache_types import CacheType
 from investigator.infrastructure.http import SECAPIClient

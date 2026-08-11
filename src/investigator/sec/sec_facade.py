@@ -12,19 +12,19 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from data.models import FinancialStatementData, QuarterlyData
 from investigator.config import get_config
+from investigator.domain.models.financial_statements import FinancialStatementData, QuarterlyData
 from investigator.infrastructure.cache import get_cache_manager
 from investigator.infrastructure.cache.cache_types import CacheType
 from investigator.infrastructure.database.ticker_mapper import TickerCIKMapper
 from investigator.infrastructure.http import SECAPIClient
-from patterns.sec.sec_adapters import (
+from investigator.sec.sec_adapters import (
     CompanyFactsToDetailedAdapter,
     FilingContentAdapter,
     InternalToLLMAdapter,
     SECToInternalAdapter,
 )
-from patterns.sec.sec_strategies import (
+from investigator.sec.sec_strategies import (
     CachedDataStrategy,
     CompanyFactsStrategy,
     HybridFetchStrategy,

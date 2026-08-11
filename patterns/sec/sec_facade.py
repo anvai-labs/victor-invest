@@ -13,7 +13,7 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from data.models import FinancialStatementData, QuarterlyData
+from investigator.domain.models.financial_statements import FinancialStatementData, QuarterlyData
 from investigator.config import get_config
 from investigator.infrastructure.cache import get_cache_manager
 from investigator.infrastructure.cache.cache_types import CacheType
