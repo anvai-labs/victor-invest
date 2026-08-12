@@ -1,6 +1,6 @@
 {
   "_comment": "Per-file mypy error counts. A file may not exceed its entry; the total may only fall. Regenerate with: python scripts/mypy_ratchet.py --update",
-  "total": 1135,
+  "total": 1131,
   "files": {
     "src/investigator/_path_setup.py": 1,
     "src/investigator/analysis/peer_comparison.py": 6,
@@ -207,7 +207,6 @@
     "src/investigator/sec/sec_adapters.py": 1,
     "src/investigator/sec/sec_facade.py": 7,
     "src/investigator/sec/sec_strategies.py": 1,
-    "victor_invest/api/app.py": 4,
     "victor_invest/tools/sec_filing.py": 1,
     "victor_invest/tools/sec_filing_text.py": 2,
     "victor_invest/tools/sector_multiples.py": 11,
