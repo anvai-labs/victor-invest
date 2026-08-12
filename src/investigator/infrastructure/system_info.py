@@ -8,7 +8,7 @@ import logging
 import platform
 import re
 import subprocess
-from typing import Any, Dict
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +42,7 @@ class SystemInfo:
             result = subprocess.run(
                 ["system_profiler", "SPDisplaysDataType", "-json"],
                 capture_output=True,
+                check=False,
                 text=True,
                 timeout=10,
             )
@@ -63,6 +64,7 @@ class SystemInfo:
             result = subprocess.run(
                 ["sysctl", "-n", "hw.memsize"],
                 capture_output=True,
+                check=False,
                 text=True,
                 timeout=5,
             )
@@ -76,6 +78,7 @@ class SystemInfo:
                 result = subprocess.run(
                     ["sysctl", "-n", "machdep.cpu.brand_string"],
                     capture_output=True,
+                    check=False,
                     text=True,
                     timeout=5,
                 )
@@ -95,6 +98,7 @@ class SystemInfo:
             result = subprocess.run(
                 ["system_profiler", "SPHardwareDataType", "-json"],
                 capture_output=True,
+                check=False,
                 text=True,
                 timeout=10,
             )
@@ -137,6 +141,7 @@ class SystemInfo:
                     "--format=csv,noheader,nounits",
                 ],
                 capture_output=True,
+                check=False,
                 text=True,
                 timeout=10,
             )
@@ -151,6 +156,7 @@ class SystemInfo:
             result = subprocess.run(
                 ["rocm-smi", "--showmeminfo", "vram"],
                 capture_output=True,
+                check=False,
                 text=True,
                 timeout=10,
             )
@@ -168,7 +174,7 @@ class SystemInfo:
                             return memory_gb
 
             # Try lspci for integrated GPUs
-            result = subprocess.run(["lspci", "-v"], capture_output=True, text=True, timeout=10)
+            result = subprocess.run(["lspci", "-v"], capture_output=True, check=False, text=True, timeout=10)
 
             if result.returncode == 0:
                 # Look for GPU info in lspci output
@@ -191,6 +197,7 @@ class SystemInfo:
             result = subprocess.run(
                 ["wmic", "path", "win32_VideoController", "get", "AdapterRAM"],
                 capture_output=True,
+                check=False,
                 text=True,
                 timeout=10,
             )
@@ -216,7 +223,7 @@ class SystemInfo:
         return 8.0
 
     @staticmethod
-    def get_system_summary() -> Dict[str, Any]:
+    def get_system_summary() -> dict[str, Any]:
         """Get comprehensive system information"""
         system = platform.system()
         gpu_memory = SystemInfo.get_gpu_memory_gb()
@@ -236,6 +243,7 @@ class SystemInfo:
                 result = subprocess.run(
                     ["sysctl", "-n", "machdep.cpu.brand_string"],
                     capture_output=True,
+                    check=False,
                     text=True,
                     timeout=5,
                 )
@@ -247,6 +255,7 @@ class SystemInfo:
                 result = subprocess.run(
                     ["sysctl", "-n", "hw.memsize"],
                     capture_output=True,
+                    check=False,
                     text=True,
                     timeout=5,
                 )
@@ -254,7 +263,8 @@ class SystemInfo:
                     memory_bytes = int(result.stdout.strip())
                     summary["system_memory_gb"] = memory_bytes / (1024**3)
         except Exception:
-            pass
+            # Host probing is best-effort; the caller falls back to defaults.
+            logger.debug("System memory probe failed", exc_info=True)
 
         return summary
 

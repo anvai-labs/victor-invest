@@ -78,8 +78,11 @@ class DynamicLLMSemaphore:
 
     def __init__(self):
         if not hasattr(self, "_initialized"):
-            # Auto-detect VRAM configuration
-            from utils.system_info import SystemInfo
+            # Auto-detect VRAM configuration. Imported from the package, not the
+            # repo-only utils/ tree: this runs in the constructor, which every
+            # local LLM call reaches through DynamicLLMContext, so an unpackaged
+            # import here broke every completion in an installed wheel.
+            from investigator.infrastructure.system_info import SystemInfo
 
             system_info = SystemInfo.get_system_summary()
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Industry Classifier - Maps companies to industries using SIC codes and profiles
 
@@ -13,7 +12,6 @@ Date: 2025-11-10
 
 import logging
 from pathlib import Path
-from typing import Dict, Optional, Tuple
 
 from sqlalchemy import text
 
@@ -176,7 +174,7 @@ SYMBOL_OVERRIDES = {
 }
 
 
-def _load_russell1000_overrides() -> Dict[str, Tuple[str, str]]:
+def _load_russell1000_overrides() -> dict[str, tuple[str, str]]:
     """
     Load Russell 1000 sector/industry classifications from generated file.
 
@@ -201,7 +199,8 @@ def _load_russell1000_overrides() -> Dict[str, Tuple[str, str]]:
             spec.loader.exec_module(module)
 
             if hasattr(module, "RUSSELL1000_OVERRIDES"):
-                overrides = module.RUSSELL1000_OVERRIDES
+                # Loaded from a data module, so its type is Any until asserted.
+                overrides: dict[str, tuple[str, str]] = module.RUSSELL1000_OVERRIDES
                 logger.debug(f"Loaded {len(overrides)} Russell 1000 classifications")
                 return overrides
 
@@ -245,7 +244,7 @@ class IndustryClassifier:
                 logger.warning(f"Could not load database engine: {e}. Industry classification will use SIC codes only.")
                 self.db_engine = None
 
-    def _query_database_industry(self, symbol: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    def _query_database_industry(self, symbol: str) -> tuple[str | None, str | None, str | None]:
         """
         Query sec_companyfacts_metadata for sector/industry/sic_code
 
@@ -277,10 +276,10 @@ class IndustryClassifier:
     def classify(
         self,
         symbol: str,
-        sic_code: Optional[str] = None,
-        profile_sector: Optional[str] = None,
-        profile_industry: Optional[str] = None,
-    ) -> Tuple[Optional[str], Optional[str]]:
+        sic_code: str | None = None,
+        profile_sector: str | None = None,
+        profile_industry: str | None = None,
+    ) -> tuple[str | None, str | None]:
         """
         Classify company into (sector, industry)
 
@@ -359,7 +358,7 @@ class IndustryClassifier:
         logger.info(f"Unable to classify {symbol} - no SIC code or profile data")
         return (None, None)
 
-    def _normalize_industry_name(self, profile_industry: str, sector: str) -> Optional[str]:
+    def _normalize_industry_name(self, profile_industry: str, sector: str) -> str | None:
         """
         Normalize industry name from company profile to match our taxonomy
 
@@ -436,7 +435,7 @@ class IndustryClassifier:
         # No match found
         return None
 
-    def get_supported_industries(self, sector: Optional[str] = None) -> Dict[str, list]:
+    def get_supported_industries(self, sector: str | None = None) -> dict[str, list]:
         """
         Get list of supported industries, optionally filtered by sector
 
@@ -446,9 +445,10 @@ class IndustryClassifier:
         Returns:
             Dict mapping sector to list of industries
         """
-        industries_by_sector = {}
+        # Accumulated as sets to dedupe, converted to sorted lists on return.
+        industries_by_sector: dict[str, set[str]] = {}
 
-        for sic, (sec, ind) in self.sic_map.items():
+        for sec, ind in self.sic_map.values():
             if sector and sec != sector:
                 continue
 
@@ -457,7 +457,7 @@ class IndustryClassifier:
             industries_by_sector[sec].add(ind)
 
         # Convert sets to sorted lists
-        return {sec: sorted(list(inds)) for sec, inds in industries_by_sector.items()}
+        return {sec: sorted(inds) for sec, inds in industries_by_sector.items()}
 
 
 # Singleton instance
@@ -476,10 +476,10 @@ def get_industry_classifier() -> IndustryClassifier:
 
 def classify_company(
     symbol: str,
-    sic_code: Optional[str] = None,
-    profile_sector: Optional[str] = None,
-    profile_industry: Optional[str] = None,
-) -> Tuple[Optional[str], Optional[str]]:
+    sic_code: str | None = None,
+    profile_sector: str | None = None,
+    profile_industry: str | None = None,
+) -> tuple[str | None, str | None]:
     """
     Convenience function to classify a company
 

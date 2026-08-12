@@ -368,7 +368,7 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
 
                     # 3. Fall back to ticker-CIK lookup
                     if not cik or cik == "0000000000":
-                        from utils.ticker_cik_mapper import TickerCIKMapper
+                        from investigator.infrastructure.database.ticker_mapper import TickerCIKMapper
 
                         mapper = TickerCIKMapper()
                         lookup_cik = mapper.get_cik(symbol)
@@ -406,7 +406,7 @@ class RdbmsCacheStorageHandler(CacheStorageHandler):
                 # # CRITICAL: If CIK is missing, fetch it from ticker mapper
                 # # All SEC data is CIK-based, so we must have a valid CIK
                 # if not cik or cik.strip() == "":
-                #     from utils.ticker_cik_mapper import TickerCIKMapper
+                #     from investigator.infrastructure.database.ticker_mapper import TickerCIKMapper
                 #
                 #     mapper = TickerCIKMapper()
                 #     cik = mapper.get_cik(symbol)

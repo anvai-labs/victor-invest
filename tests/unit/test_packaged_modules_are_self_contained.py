@@ -33,9 +33,17 @@ PACKAGED_ROOTS = [REPO_ROOT / "src" / "investigator", REPO_ROOT / "victor_invest
 UNPACKAGED_TREES = {"utils", "data", "patterns", "scripts", "core", "admin", "api", "cli_orchestrator"}
 
 # Deferred (function-local or try//except-guarded) imports of unpackaged trees.
-# These degrade features in an install rather than breaking import. Ratchet only:
-# the number may fall, never rise.
-KNOWN_DEFERRED_BUDGET = 45
+# Ratchet only: the number may fall, never rise.
+#
+# "Deferred" understates the risk. An unguarded function-local import is a hard
+# failure that merely happens later -- `semaphore.__init__` imported
+# `utils.system_info` with no try/except, and since every local LLM call reaches
+# that constructor through DynamicLLMContext, an installed wheel failed every
+# completion. Verified against a built wheel before and after the fix.
+#
+# Lowering this number is worth real effort; each remaining entry is either a
+# silently disabled feature or a deferred crash.
+KNOWN_DEFERRED_BUDGET = 24
 
 
 def _module_level_imports(tree: ast.Module) -> list[tuple[int, str]]:

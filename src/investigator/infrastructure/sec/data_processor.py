@@ -30,10 +30,12 @@ except Exception:  # pragma: no cover - optional dependency
 
 from sqlalchemy import text
 
-# Import FiscalPeriodService for centralized fiscal period handling
 from investigator.domain.services.fiscal_period_service import get_fiscal_period_service
 
-# Keep canonical_key_mapper and industry_classifier in utils as they're shared across the system
+# Import FiscalPeriodService for centralized fiscal period handling
+# Packaged, not the repo-only utils/ tree: behind a try/except there, an installed
+# wheel silently disabled company classification and said so in a log line nobody read.
+from investigator.domain.services.industry_classifier import classify_company
 from investigator.infrastructure.sec.canonical_mapper import get_canonical_mapper
 
 # Import MetricExtractionOrchestrator for SOLID-based metric extraction
@@ -74,14 +76,6 @@ def calculate_frame_from_period_end(period_end_date: str) -> str:
     except (ValueError, TypeError) as e:
         logger.warning(f"Failed to calculate frame from period_end_date '{period_end_date}': {e}")
         return ""
-
-
-# Try to import from utils, with fallback
-try:
-    from utils.industry_classifier import classify_company
-except ImportError:
-    classify_company = None
-    logger.warning("utils.industry_classifier not available - company classification limited")
 
 
 class SECDataProcessor:
