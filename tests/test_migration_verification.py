@@ -12,8 +12,13 @@ import inspect
 import sys
 from dataclasses import is_dataclass
 
-from victor.framework.workflows.base_handler import BaseHandler
-
+# victor.framework.workflows.base_handler no longer exists -- victor-ai has never
+# shipped a BaseHandler, and the deprecated contracts bridge that used to supply
+# one has been retired. victor_invest.compat.handlers defines the class the
+# handlers actually inherit from, so that is what this should assert against.
+# Until now the stale import made the whole module uncollectable, which meant
+# nothing here had run in a long time.
+from victor_invest.compat.handlers import BaseHandler
 from victor_invest.handlers import (
     AnalyzePeersHandler,
     FetchMacroDataHandler,

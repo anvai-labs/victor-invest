@@ -23,6 +23,11 @@ from investigator.domain.agents.fundamental import FundamentalAnalysisAgent
 from investigator.domain.agents.sec import SECAnalysisAgent
 from investigator.domain.models import AgentTask, AnalysisType, TaskStatus
 
+# Every test here reaches the stock/SEC databases. Marked so they skip with a
+# reason when no database is reachable, instead of erroring on credential
+# lookup and sitting permanently red -- see tests/db_availability.py.
+pytestmark = pytest.mark.db
+
 
 class TestZSPipeline:
     """Integration tests for ZS SEC→Fundamental pipeline"""
