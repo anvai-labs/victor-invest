@@ -1,4 +1,31 @@
+import importlib.util
+import sys
 from pathlib import Path
+from types import ModuleType
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
+
+def _load_repo_script(name: str) -> ModuleType:
+    """Import a module from this repo's scripts/ by path, not by module name.
+
+    ``scripts/`` has no ``__init__.py``, so it is a namespace package -- and any
+    real ``scripts`` package elsewhere on sys.path wins the name. On this
+    developer's machine ``import scripts`` resolves to a different repository
+    entirely, so these tests failed with a bogus ModuleNotFoundError. Loading by
+    path removes the ambiguity: the file under test is the one in this repo,
+    wherever the test happens to run.
+    """
+    path = REPO_ROOT / "scripts" / f"{name}.py"
+    module_name = f"_repo_scripts_{name}"
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    assert spec and spec.loader, f"could not load {path}"
+    module = importlib.util.module_from_spec(spec)
+    # Registered before exec: @dataclass resolves sys.modules[cls.__module__] while
+    # the class body runs, and raises AttributeError on None if it is missing.
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 def test_makefile_exposes_repo_wide_coverage_targets():
@@ -51,7 +78,12 @@ def test_user_docs_describe_coverage_reports_and_current_baseline():
 
 
 def test_module_coverage_reporter_groups_source_roots():
-    from scripts.report_module_coverage import CoverageBucket, format_rows, module_name_for_path
+    mod = _load_repo_script("report_module_coverage")
+    CoverageBucket, format_rows, module_name_for_path = (
+        mod.CoverageBucket,
+        mod.format_rows,
+        mod.module_name_for_path,
+    )
 
     assert module_name_for_path("src/investigator/application/result_formatter.py") == "investigator.application"
     assert module_name_for_path("src/investigator/infrastructure/database/repository.py") == (
@@ -67,7 +99,8 @@ def test_module_coverage_reporter_groups_source_roots():
 
 
 def test_critical_coverage_gate_tracks_fair_value_and_macro_modules():
-    from scripts.assert_critical_coverage import CRITICAL_MODULES, THRESHOLD
+    mod = _load_repo_script("assert_critical_coverage")
+    CRITICAL_MODULES, THRESHOLD = mod.CRITICAL_MODULES, mod.THRESHOLD
 
     assert THRESHOLD == 67.0
     assert "src/investigator/domain/agents/symbol_update.py" in CRITICAL_MODULES
@@ -77,7 +110,8 @@ def test_critical_coverage_gate_tracks_fair_value_and_macro_modules():
 
 
 def test_rl_coverage_gate_tracks_core_and_training_modules():
-    from scripts.assert_rl_coverage import RL_MODULES, THRESHOLD
+    mod = _load_repo_script("assert_rl_coverage")
+    RL_MODULES, THRESHOLD = mod.RL_MODULES, mod.THRESHOLD
 
     assert THRESHOLD == 67.0
     assert "src/investigator/domain/services/rl/reward_calculator.py" in RL_MODULES
