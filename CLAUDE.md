@@ -217,7 +217,13 @@ python scripts/mypy_ratchet.py --check a.py b.py    # only these files (the hook
 python scripts/mypy_ratchet.py --update             # lock in improvements
 ```
 
-Run `--update` after cleaning a file up, and say why in the commit if the count rises.
+**CI is authoritative.** mypy's results depend on which packages and stubs are
+importable, so a dev machine with extra packages installed disagrees with CI on
+some files — it differed on 21 of 211 when the baseline was first created. A local
+run is a signal, not a verdict.
+
+Do **not** commit a locally generated `--update`; it encodes your environment and
+breaks CI for everyone. Take the counts CI prints in its failure output instead.
 
 ## CLI Entry Points
 

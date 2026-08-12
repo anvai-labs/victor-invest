@@ -15,10 +15,20 @@ one file hide behind a cleanup in another. Counts rather than exact messages,
 because line numbers churn on every edit and a baseline nobody can regenerate
 cheaply becomes a baseline nobody maintains.
 
+The baseline is CI's numbers, and CI is authoritative. mypy's results depend on
+which third-party packages and stubs are importable, so a developer machine with
+extra packages installed will disagree with CI on some files -- when this baseline
+was first generated locally it differed on 21 of 211 files in both directions.
+A local run is therefore a useful signal, not a verdict; a green local ratchet and
+a red CI ratchet means trust CI.
+
+For the same reason, do not commit a locally generated `--update`: it will encode
+your environment and break CI for everyone. Take the counts CI prints instead.
+
 Usage:
     python scripts/mypy_ratchet.py --check              # whole tree
     python scripts/mypy_ratchet.py --check a.py b.py    # only these files
-    python scripts/mypy_ratchet.py --update             # regenerate the baseline
+    python scripts/mypy_ratchet.py --update             # regenerate (run in CI's env)
 """
 
 from __future__ import annotations
