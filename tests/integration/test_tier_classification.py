@@ -28,6 +28,11 @@ from investigator.domain.services.dynamic_model_weighting import (
     DynamicModelWeightingService,
 )
 
+# Every test here reaches the stock/SEC databases. Marked so they skip with a
+# reason when no database is reachable, instead of erroring on credential
+# lookup and sitting permanently red -- see tests/db_availability.py.
+pytestmark = pytest.mark.db
+
 
 @pytest.fixture
 def config():

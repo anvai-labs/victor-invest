@@ -15,6 +15,33 @@ for candidate in (SRC, ROOT):
         sys.path.insert(0, candidate_str)
 
 
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Skip `db`-marked tests when no database is reachable.
+
+    They used to error instead, so 20 of them were permanently red on any machine
+    outside the database's network. A failure list that never changes is a failure
+    list nobody reads -- and four failures carried that way turned out to be a real
+    defect hiding in the noise. A skip states "not checked here"; an error claims
+    "broken", which is false when the host simply is not on this network.
+
+    The marker is honoured, not inferred: nothing is skipped unless it opted in.
+    """
+    from tests.db_availability import database_unavailable_reason
+
+    reason = None
+    checked = False
+
+    for item in items:
+        if "db" not in item.keywords:
+            continue
+        if not checked:
+            # Probed lazily so runs with no db-marked tests pay nothing.
+            reason = database_unavailable_reason()
+            checked = True
+        if reason:
+            item.add_marker(pytest.mark.skip(reason=f"database unavailable: {reason}"))
+
+
 @pytest.fixture
 def cache_root(tmp_path: Path) -> Path:
     return tmp_path
