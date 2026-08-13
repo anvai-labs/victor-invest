@@ -22,7 +22,9 @@ from typing import TYPE_CHECKING, Optional
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from utils.valuation.company_profile import CompanyProfile
+    # utils/valuation/company_profile.py does not exist, so this annotation
+    # resolved to nothing. The real class is in the valuation models package.
+    from investigator.domain.services.valuation.models.company_profile import CompanyProfile
 
 
 class GordonGrowthModel:
@@ -208,7 +210,7 @@ class GordonGrowthModel:
 
         # Import quarterly calculator
         try:
-            from utils.quarterly_calculator import get_rolling_ttm_periods
+            from investigator.domain.services.quarterly_processor import get_rolling_ttm_periods
         except ImportError:
             logger.warning("utils.quarterly_calculator not available - DPS calculation limited")
             return 0
@@ -308,7 +310,7 @@ class GordonGrowthModel:
         # Try quarterly-based dividend growth analysis first
         if self.quarterly_metrics and len(self.quarterly_metrics) >= 6:
             try:
-                from utils.quarterly_calculator import (
+                from investigator.domain.services.quarterly_processor import (
                     analyze_quarterly_patterns,
                     get_rolling_ttm_periods,
                 )

@@ -18,7 +18,7 @@ from investigator.infrastructure.cache.cache_types import CacheType
 # sec_api -> utils.submission_processor -> application -> domain.agents.sec -> sec
 # These are imported inside methods or at first use
 if TYPE_CHECKING:
-    from utils.submission_processor import Filing
+    from investigator.application.processors.submission_processor import Filing
 
 logger = logging.getLogger(__name__)
 
@@ -56,19 +56,19 @@ class SECApiClient:
         # Lazy imports to avoid circular dependency
         # Use try-except to handle cases where utils module is not in path
         try:
-            from utils.api_client import SECAPIClient as LegacySECAPIClient
+            from investigator.infrastructure.http.api_client import SECAPIClient as LegacySECAPIClient
         except ImportError:
             LegacySECAPIClient = None
             logger.warning("utils.api_client not available - SEC API client functionality limited")
 
         try:
-            from utils.submission_processor import get_submission_processor
+            from investigator.application.processors.submission_processor import get_submission_processor
         except ImportError:
             get_submission_processor = None
             logger.warning("utils.submission_processor not available")
 
         try:
-            from utils.ticker_cik_mapper import TickerCIKMapper
+            from investigator.infrastructure.database.ticker_mapper import TickerCIKMapper
         except ImportError:
             TickerCIKMapper = None
             logger.warning("utils.ticker_cik_mapper not available")
@@ -234,7 +234,7 @@ class SECApiClient:
     @staticmethod
     def _filter_filings(filings: list["Filing"], form_type: str) -> list["Filing"]:
         try:
-            from utils.submission_processor import Filing
+            from investigator.application.processors.submission_processor import Filing
         except ImportError:
             Filing = None
 
@@ -259,7 +259,7 @@ class SECApiClient:
     @staticmethod
     def _dict_to_filing(data: dict[str, Any]) -> "Filing":
         try:
-            from utils.submission_processor import Filing
+            from investigator.application.processors.submission_processor import Filing
         except ImportError:
             Filing = None
 

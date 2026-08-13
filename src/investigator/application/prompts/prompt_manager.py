@@ -13,10 +13,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from utils.prompt_manager_enhanced import EnhancedPromptManager
+from typing import Any
 
 try:
     from jinja2 import Environment, FileSystemLoader, Template
@@ -680,7 +677,6 @@ Respond with valid JSON only."""
 
 # Global instance for easy access
 _prompt_manager = None
-_enhanced_prompt_manager = None
 
 
 def get_prompt_manager() -> PromptManager:
@@ -689,14 +685,3 @@ def get_prompt_manager() -> PromptManager:
     if _prompt_manager is None:
         _prompt_manager = PromptManager()
     return _prompt_manager
-
-
-def get_enhanced_prompt_manager(config=None) -> EnhancedPromptManager:
-    """Get enhanced prompt manager with context optimization"""
-    global _enhanced_prompt_manager
-    if _enhanced_prompt_manager is None:
-        from utils.prompt_manager_enhanced import EnhancedPromptManager
-
-        base_manager = get_prompt_manager()
-        _enhanced_prompt_manager = EnhancedPromptManager(base_manager, config)
-    return _enhanced_prompt_manager

@@ -6,14 +6,9 @@ Licensed under the Apache License 2.0
 Prompt management for LLM interactions
 """
 
-from .prompt_manager import (
-    PromptManager,
-    get_enhanced_prompt_manager,
-    get_prompt_manager,
-)
+from .prompt_manager import PromptManager, get_prompt_manager
 
 __all__ = [
     "PromptManager",
-    "get_enhanced_prompt_manager",
     "get_prompt_manager",
 ]

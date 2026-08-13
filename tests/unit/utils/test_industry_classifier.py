@@ -1,6 +1,6 @@
 import logging
 
-from utils.industry_classifier import IndustryClassifier
+from investigator.domain.services.industry_classifier import IndustryClassifier
 
 
 def _classifier_without_sources():
@@ -16,7 +16,7 @@ def _classifier_without_sources():
 def test_classify_unclassified_logs_info_not_warning(caplog):
     classifier = _classifier_without_sources()
 
-    with caplog.at_level(logging.INFO, logger="utils.industry_classifier"):
+    with caplog.at_level(logging.INFO, logger="investigator.domain.services.industry_classifier"):
         sector, industry = classifier.classify("TEST")
 
     assert sector is None

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 IMPORT SHIM: This module has been migrated to clean architecture
 
@@ -14,14 +13,9 @@ application layer as orchestration logic, following clean architecture principle
 """
 
 # Re-export from canonical location
-from investigator.application.prompts import (
-    PromptManager,
-    get_enhanced_prompt_manager,
-    get_prompt_manager,
-)
+from investigator.application.prompts import PromptManager, get_prompt_manager
 
 __all__ = [
     "PromptManager",
     "get_prompt_manager",
-    "get_enhanced_prompt_manager",
 ]
