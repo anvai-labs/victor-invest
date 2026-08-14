@@ -109,7 +109,7 @@ class DCFValuation:
 
         if cache_key not in self._ttm_cache:
             try:
-                from utils.quarterly_calculator import get_rolling_ttm_periods
+                from investigator.domain.services.quarterly_processor import get_rolling_ttm_periods
             except ImportError:
                 logger.warning("utils.quarterly_calculator not available - TTM calculation limited")
                 # Return empty list if utils not available
