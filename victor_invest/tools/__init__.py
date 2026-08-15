@@ -81,6 +81,7 @@ except ModuleNotFoundError as exc:  # the host supplies this base class
         raise  # a fault inside victor-ai keeps its own traceback
     raise MissingVictorHostError("victor_invest.tools", "victor.tools.base") from exc
 
+from victor_invest.tools.analyst_report import AnalystReportTool
 from victor_invest.tools.base import BaseTool, ToolResult
 from victor_invest.tools.cache import CacheTool
 from victor_invest.tools.credit_risk import CreditRiskTool
@@ -91,6 +92,7 @@ from victor_invest.tools.institutional_holdings import InstitutionalHoldingsTool
 from victor_invest.tools.macro_data import MacroDataTool
 from victor_invest.tools.market_data import MarketDataTool
 from victor_invest.tools.market_regime import MarketRegimeTool
+from victor_invest.tools.options_screen import OptionsScreenTool
 from victor_invest.tools.rl_backtest import RLBacktestTool
 from victor_invest.tools.robust_valuation import RobustValuationTool
 from victor_invest.tools.sec_filing import SECFilingTool
@@ -125,6 +127,8 @@ TOOL_CLASSES = [
     FairMultipleCalculatorTool,
     RobustValuationTool,
     WebSearchTool,
+    OptionsScreenTool,
+    AnalystReportTool,
 ]
 
 # Tool registry mapping names to classes
@@ -244,6 +248,7 @@ __all__ = [
     # Registry
     "TOOL_REGISTRY",
     # Base classes
+    "AnalystReportTool",
     "BaseTool",
     "CacheTool",
     "CreditRiskTool",
@@ -254,6 +259,7 @@ __all__ = [
     "MacroDataTool",
     "MarketDataTool",
     "MarketRegimeTool",
+    "OptionsScreenTool",
     "RLBacktestTool",
     "RobustValuationTool",
     "SECFilingTextTool",
