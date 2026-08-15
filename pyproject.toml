@@ -48,7 +48,7 @@ dependencies = [
     # Core dependencies
     "requests>=2.32.0,<2.35",
     "pandas>=2.0.0,<4",
-    "numpy>=1.24.0,<2.3",
+    "numpy>=1.24.0,<2.5",
     "scipy>=1.11.0,<2",
     "networkx>=3.0,<4",
     "sqlalchemy>=2.0.0,<3",
