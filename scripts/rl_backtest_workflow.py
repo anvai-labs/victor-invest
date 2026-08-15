@@ -30,13 +30,11 @@ import logging
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import List
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from sqlalchemy import create_engine, text
 
 # Victor-Invest workflow imports
 from victor_invest.workflows import (
@@ -74,47 +72,27 @@ for noisy in ["investigator", "victor_invest", "sqlalchemy", "urllib3", "httpx"]
 logger.info(f"Logging to: {log_filename}")
 
 
-def get_db_engine():
-    """Get database engine."""
-    return create_engine("postgresql://investigator:${SEC_DB_PASSWORD}@${SEC_DB_HOST}/sec_database")
+def get_all_eligible_symbols() -> list[str]:
+    """Get all eligible symbols via the canonical UniverseService (live snapshot).
+
+    Note: this is the survivorship-biased current-snapshot universe. For a
+    survivorship-free backtest, pass an ``as_of_date`` + ``index`` to
+    ``UniverseService.get_universe`` once point-in-time membership is loaded
+    (see docs/design/2026-06-14-pit-survivorship-free-universe.md).
+    """
+    from investigator.domain.services.market_data.universe_service import UniverseService
+
+    service = UniverseService()
+    # Russell 1000 ⊇ S&P 500; the broad large/mid-cap listing is the eligible set.
+    return service.get_universe(index="russell1000", mode="live").symbols
 
 
-def get_all_eligible_symbols() -> List[str]:
-    """Get all eligible symbols from database."""
-    engine = get_db_engine()
-    with engine.connect() as conn:
-        result = conn.execute(
-            text(
-                """
-            SELECT DISTINCT symbol
-            FROM stock_symbols
-            WHERE is_active = true
-              AND (is_sp500 = true OR is_russell1000 = true)
-            ORDER BY symbol
-        """
-            )
-        )
-        return [row[0] for row in result.fetchall()]
+def get_top_n_symbols(n: int) -> list[str]:
+    """Get top N symbols by market cap via the canonical UniverseService (live)."""
+    from investigator.domain.services.market_data.universe_service import UniverseService
 
-
-def get_top_n_symbols(n: int) -> List[str]:
-    """Get top N symbols by market cap."""
-    engine = get_db_engine()
-    with engine.connect() as conn:
-        result = conn.execute(
-            text(
-                """
-            SELECT symbol
-            FROM stock_symbols
-            WHERE is_active = true
-              AND market_cap IS NOT NULL
-            ORDER BY market_cap DESC
-            LIMIT :n
-        """
-            ),
-            {"n": n},
-        )
-        return [row[0] for row in result.fetchall()]
+    service = UniverseService()
+    return service.get_universe(top_n=n, mode="live").symbols
 
 
 async def run_backtest_for_symbol(
@@ -145,11 +123,11 @@ async def run_backtest_for_symbol(
 
 
 async def run_batch_backtest(
-    symbols: List[str],
+    symbols: list[str],
     max_lookback_months: int,
     interval: str,
     parallel_limit: int,
-) -> List[RLBacktestWorkflowState]:
+) -> list[RLBacktestWorkflowState]:
     """Run backtest for multiple symbols with parallelism control."""
     logger.info(f"Starting batch backtest for {len(symbols)} symbols")
     logger.info(f"Max lookback: {max_lookback_months} months, Interval: {interval}")
