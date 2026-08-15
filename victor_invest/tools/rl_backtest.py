@@ -53,6 +53,12 @@ HOLDING_PERIODS = {
     "36m": 1095,
 }
 
+# Cheapest price a delisted position can be marked at. Bankruptcies with zero
+# recovery would otherwise price at exactly 0.0, which RewardCalculator rejects as
+# unusable data and scores as a neutral 0.0 -- mislabelling a total loss as an
+# average outcome. Real bankrupt equities do trade at fractions of a cent.
+TERMINAL_EXIT_PRICE_FLOOR = 0.01
+
 
 class RLBacktestTool(BaseTool):
     """Tool for RL backtesting using shared services.
@@ -103,6 +109,9 @@ class RLBacktestTool(BaseTool):
         self._outcome_tracker: Any | None = None
         self._reward_calculator: Any | None = None
         self._data_source_manager: Any | None = None
+        # Optional: absent when the delisting_events table has not been populated,
+        # in which case terminal exits simply never apply.
+        self._delisting_service: Any | None = None
         self._db: Any | None = None
 
     async def initialize(self) -> None:
@@ -146,6 +155,17 @@ class RLBacktestTool(BaseTool):
             self._outcome_tracker = OutcomeTracker()
             self._reward_calculator = get_reward_calculator()
             self._data_source_manager = DataSourceManager()
+
+            try:
+                from investigator.domain.services.market_data.delisting_service import DelistingService
+
+                self._delisting_service = DelistingService()
+            except Exception as exc:
+                # Delisting data is an enhancement, not a prerequisite: without it
+                # the backtest still runs, it just drops post-delisting horizons
+                # instead of scoring them.
+                logger.warning("Delisting service unavailable, terminal exits disabled: %s", exc)
+                self._delisting_service = None
 
             self._initialized = True
             logger.info("RLBacktestTool initialized with shared services and DataSourceManager")
@@ -491,25 +511,53 @@ class RLBacktestTool(BaseTool):
         prices: dict[str, Any] = {}
         exit_dates: dict[str, Any] = {}
         rewards: dict[str, Any] = {}
+        terminal_exits: dict[str, bool] = {}
 
         direction: str | None = None
         if predicted_fv is not None and current_price > 0:
             direction = "LONG" if predicted_fv > current_price else "SHORT"
+
+        # Looked up once rather than per horizon. A name that delists mid-horizon has
+        # no market price afterwards, and dropping those observations would keep only
+        # the survivors -- survivorship bias reintroduced as "no price, no label",
+        # discarding the most informative outcome a policy can learn from.
+        delisting = self._delisting_service.get_delisting(symbol) if self._delisting_service else None
 
         for period, days in HOLDING_PERIODS.items():
             target_date = analysis_date + timedelta(days=days)
             if self._price_service is None:
                 continue
             future_price = self._price_service.get_price(symbol, target_date)
+            exit_date = target_date
+            is_terminal = False
+
+            if (not future_price or future_price <= 0) and delisting is not None and self._delisting_service:
+                # terminal_exit_price returns None when the delisting falls after this
+                # horizon, so earlier periods correctly stay unpriced.
+                terminal_price = self._delisting_service.terminal_exit_price(delisting, target_date)
+                if terminal_price is not None:
+                    # A zero-recovery bankruptcy prices the exit at exactly 0.0, which is
+                    # economically right but breaks the label: RewardCalculator treats
+                    # actual_price <= 0 as unusable data and returns reward 0.0. A total
+                    # loss would then be recorded as *neutral* -- worse than dropping it,
+                    # because it looks like a real observation. Flooring at a cent keeps
+                    # the outcome scoreable and lands at roughly -100%, which is the truth.
+                    future_price = max(terminal_price, TERMINAL_EXIT_PRICE_FLOOR)
+                    exit_date = delisting.delist_date
+                    is_terminal = True
+
+            terminal_exits[period] = is_terminal
 
             if future_price and future_price > 0:
                 prices[period] = round(future_price, 2)
-                exit_dates[period] = target_date.isoformat()
+                exit_dates[period] = exit_date.isoformat()
 
                 # Score the direction the model actually predicted.
                 # RewardCalculator.calculate() takes direction from predicted_fv vs price,
                 # so passing the real blended fair value ties the label to the model's
-                # own conviction instead of to realised return alone.
+                # own conviction instead of to realised return alone. A terminal exit
+                # supplies a price, never a conviction -- so it does not make an
+                # unscored observation scoreable.
                 if predicted_fv is not None and current_price > 0 and self._reward_calculator is not None:
                     result = self._reward_calculator.calculate(
                         predicted_fv=predicted_fv,
@@ -532,6 +580,10 @@ class RLBacktestTool(BaseTool):
             "exit_dates": exit_dates,
             "direction": direction,
             "rewards": rewards,
+            # Persisted so a label can be traced to how the position ended: a market
+            # exit at the horizon, or a delisting that closed it early.
+            "delisted": delisting is not None,
+            "terminal_exits": terminal_exits,
         }
 
     async def _get_metadata(self, symbol: str) -> dict[str, Any]:
