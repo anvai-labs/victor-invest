@@ -31,7 +31,6 @@ price target: prefer the blended fair value; fall back to the synthesis
 
 from __future__ import annotations
 
-
 FUNDAMENTAL_WEIGHT = 0.60
 TECHNICAL_WEIGHT = 0.40
 

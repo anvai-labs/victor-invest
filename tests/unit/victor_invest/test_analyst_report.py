@@ -2,8 +2,7 @@
 
 import asyncio
 
-from victor_invest.reporting import build_analyst_report, render_markdown
-from victor_invest.reporting import scoring
+from victor_invest.reporting import build_analyst_report, render_markdown, scoring
 from victor_invest.reporting.financial_health import compute_quality_flags
 from victor_invest.tools.analyst_report import AnalystReportTool
 

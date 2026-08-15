@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-
 from victor_invest.reporting.schema import AnalystReport
 
 

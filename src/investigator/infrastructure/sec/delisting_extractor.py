@@ -13,9 +13,9 @@ wires it to the existing SEC client and a price lookup.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from datetime import date
 from typing import Any
-from collections.abc import Callable
 
 from investigator.domain.services.market_data.delisting_service import DelistingRecord
 

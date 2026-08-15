@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import subprocess
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 from victor_invest.reporting.schema import Provenance
 
