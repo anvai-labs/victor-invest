@@ -1,6 +1,5 @@
 import asyncio
-import sys
-from types import ModuleType, SimpleNamespace
+from types import SimpleNamespace
 
 import pytest
 
@@ -208,14 +207,6 @@ def test_run_all_models_executes_success_and_failure_paths(monkeypatch):
         def get_sector_multiples(sector, industry):
             return {"pe": 20.0, "ps": 5.0, "pb": 4.0, "ev_ebitda": 12.0}
 
-    class FakeBookValueService:
-        def calculate_book_value(self, quarterly_data):
-            return 10.0
-
-    class FakeMarketDataService:
-        async def get_market_data(self, symbol):
-            return {"market_cap": 1000.0, "total_debt": 200.0, "cash_and_equivalents": 100.0}
-
     monkeypatch.setattr("investigator.domain.services.valuation.DCFValuation", FakeDCF)
     monkeypatch.setattr("investigator.domain.services.valuation.models.GordonGrowthModel", FakeGGM, raising=False)
     monkeypatch.setattr("investigator.domain.services.valuation.models.PERatioModel", FakePE, raising=False)
@@ -224,28 +215,22 @@ def test_run_all_models_executes_success_and_failure_paths(monkeypatch):
     monkeypatch.setattr("investigator.domain.services.valuation.models.EVEBITDAModel", FakeEV)
     monkeypatch.setattr("investigator.domain.services.valuation.common.TTMMetrics", FakeTTM)
     monkeypatch.setattr("investigator.domain.services.valuation.common.SectorMultiples", FakeSectorMultiples)
-    shared_module = ModuleType("investigator.domain.services.valuation.shared")
-    book_value_module = ModuleType("investigator.domain.services.valuation.shared.book_value_service")
-    market_data_module = ModuleType("investigator.domain.services.valuation.shared.market_data_service")
-    book_value_module.BookValueService = FakeBookValueService
-    market_data_module.MarketDataService = FakeMarketDataService
-    monkeypatch.setitem(sys.modules, "investigator.domain.services.valuation.shared", shared_module)
-    monkeypatch.setitem(
-        sys.modules,
-        "investigator.domain.services.valuation.shared.book_value_service",
-        book_value_module,
-    )
-    monkeypatch.setitem(
-        sys.modules,
-        "investigator.domain.services.valuation.shared.market_data_service",
-        market_data_module,
-    )
-
     result = asyncio.run(executor._run_all_models())
 
     assert result["dcf"]["output"]["fair_value_per_share"] == 130.0
     assert result["ggm"]["output"]["fair_value_per_share"] == 90.0
     assert result["pe"]["output"]["fair_value_per_share"] == 110.0
     assert "ps" not in result
+    # PB and EV/EBITDA report unavailable rather than a fair value.
+    #
+    # This test used to synthesise investigator.domain.services.valuation.shared
+    # and its two submodules into sys.modules with ModuleType(), supplying fake
+    # BookValueService and MarketDataService classes -- modules that do not exist
+    # anywhere in the repo. So it asserted a fair value of 140.0 from a code path
+    # that could never run outside the test, while production caught the
+    # ModuleNotFoundError and logged it at debug level. A test that manufactures
+    # the dependency whose absence is the bug cannot detect the bug.
     assert result["pb"]["success"] is False
-    assert result["ev_ebitda"]["output"]["fair_value_per_share"] == 140.0
+    assert "no book-value-per-share source" in result["pb"]["error"]
+    assert result["ev_ebitda"]["success"] is False
+    assert "no market-data source" in result["ev_ebitda"]["error"]
