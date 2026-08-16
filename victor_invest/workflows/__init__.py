@@ -63,9 +63,9 @@ Handlers are defined in victor_invest.handlers and registered with Victor's
 workflow handler registry. YAML workflows reference handlers by path.
 
 Note on Execution Models:
-- run_agentic_workflow(): Uses WorkflowExecutor with orchestrator for agent nodes
-- run_workflow_with_handlers(): Uses WorkflowExecutor for compute handlers
-- run_compiled_workflow(): Uses UnifiedWorkflowCompiler (LangGraph) for transforms
+- run_agentic_workflow(): Uses WorkflowExecutor with an orchestrator, for agent nodes
+- run_workflow_with_handlers(): Compute handlers, via run_compiled_workflow below
+- run_compiled_workflow(): victor's canonical compiled path
 """
 
 import logging
@@ -129,8 +129,8 @@ class InvestmentWorkflowProvider(BaseYAMLWorkflowProvider):
 
     Execution Models:
         - run_agentic_workflow(): Full orchestrator support for agent nodes
-        - run_workflow_with_handlers(): WorkflowExecutor for compute handlers
-        - run_compiled_workflow(): UnifiedWorkflowCompiler for LangGraph transforms
+        - run_workflow_with_handlers(): Compute handlers, delegating to the compiled path
+        - run_compiled_workflow(): victor's canonical compiled path (inherited)
     """
 
     def _get_escape_hatches_module(self) -> str:
@@ -274,21 +274,27 @@ class InvestmentWorkflowProvider(BaseYAMLWorkflowProvider):
     ) -> "WorkflowResult":
         """Execute a YAML workflow using registered compute handlers.
 
-        This method executes workflows using WorkflowExecutor with the handlers
-        registered via register_compute_handler(). This is the recommended method
-        for running investment workflows that use the context-stuffing pattern.
+        Delegates to victor's ``run_compiled_workflow`` and adapts the result to
+        the ``WorkflowResult`` shape callers already read.
 
-        Note: This method uses WorkflowExecutor (handler-based execution) rather
-        than UnifiedWorkflowCompiler (LangGraph-based execution). The handlers
-        in victor_invest.handlers are designed for WorkflowExecutor.
+        This used to build its own executor: a ``_MinimalOrchestrator`` placeholder,
+        a hand-populated ToolRegistry, and a direct ``WorkflowExecutor(...)``
+        construction. victor has since renamed that class to
+        ``CompiledWorkflowExecutor`` and dropped the ``tool_registry`` parameter, so
+        the call raised TypeError on every invocation. ``run_analysis`` catches every
+        Exception and degrades to StateGraph, which meant the documented primary
+        engine was dead and only said so at WARNING level.
 
-        For workflows with full agent node support (LLM reasoning), use
-        run_agentic_workflow() instead.
+        Reimplementing the framework's own executor is what made that possible: a
+        private copy of someone else's constructor is a copy that goes stale
+        silently. The compiled path runs the same compute handlers -- verified by
+        node_history showing every node execute -- and is maintained upstream.
 
         Args:
             workflow_name: Name of the YAML workflow (e.g., "comprehensive")
             context: Initial context data (e.g., {"symbol": "AAPL"})
-            timeout: Optional overall timeout in seconds (default: 300)
+            timeout: Accepted for backward compatibility. The compiled path takes
+                its timeout from the workflow definition, so this is not forwarded.
 
         Returns:
             WorkflowResult with execution outcome and outputs
@@ -304,51 +310,36 @@ class InvestmentWorkflowProvider(BaseYAMLWorkflowProvider):
             )
             if result.success:
                 synthesis = result.context.get("synthesis")
-                print(f"Recommendation: {synthesis.get('recommendation')}")
         """
-        from victor.tools.registry import ToolRegistry
-        from victor_contracts.workflow_runtime import WorkflowExecutor
+        from victor_contracts.workflow_runtime import WorkflowResult
 
         # Ensure handlers are registered
         ensure_handlers_registered()
 
-        workflow = self.get_workflow(workflow_name)
-        if not workflow:
+        # Preserved from the old contract: callers rely on an unknown name raising
+        # ValueError rather than surfacing as a failed result.
+        if not self.get_workflow(workflow_name):
             raise ValueError(f"Unknown workflow: {workflow_name}")
 
-        # Create minimal mock orchestrator for compute-only workflows
-        # Agent nodes would fail, but compute handlers work fine
-        class _MinimalOrchestrator:
-            pass
+        if timeout is not None:
+            logger.debug(
+                "timeout=%s is not forwarded to the compiled path; the workflow definition owns it",
+                timeout,
+            )
 
-        orchestrator = _MinimalOrchestrator()
+        graph_result = await self.run_compiled_workflow(workflow_name, context=context or {})
 
-        # Create tool registry (handlers may need it)
-        tool_registry = ToolRegistry()
-
-        # Register investment tools for compute node tool access
-        try:
-            from victor_invest.tools import register_investment_tools
-
-            stats = register_investment_tools(tool_registry)
-            if stats.get("errors"):
-                logger.warning("Some investment tools failed to register: %s", stats["errors"])
-        except Exception as exc:
-            logger.warning("Investment tool registration failed: %s", exc)
-
-        # Create executor with handler support
-        executor = WorkflowExecutor(
-            orchestrator,
-            tool_registry=tool_registry,
-            max_parallel=4,
-            default_timeout=timeout or 300.0,
-        )
-
-        # Execute workflow with initial context
-        return await executor.execute(
-            workflow,
-            initial_context=context or {},
-            timeout=timeout,
+        state = graph_result.state if isinstance(graph_result.state, dict) else {}
+        error = graph_result.error
+        return WorkflowResult(
+            workflow_name=workflow_name,
+            success=bool(graph_result.success),
+            context=state,
+            total_duration=float(getattr(graph_result, "duration", 0.0) or 0.0),
+            # The compiled path does not report a tool-call count; 0 is the honest
+            # value rather than a fabricated one.
+            total_tool_calls=0,
+            error=str(error) if error else None,
         )
 
     # Inherited from BaseYAMLWorkflowProvider:
