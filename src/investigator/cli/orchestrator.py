@@ -1381,7 +1381,7 @@ def test_system(ctx, verbose):
             [
                 "python3",
                 "-c",
-                "from investigator.infrastructure.database.db import get_engine; get_engine(); print('OK')",
+                "from investigator.infrastructure.database.db import get_database_engine; get_database_engine(); print('OK')",
             ],
         ),
         (
@@ -1605,12 +1605,12 @@ def setup_database(ctx):
     """Initialize database schema"""
     from sqlalchemy import text
 
-    from investigator.infrastructure.database.db import get_engine
+    from investigator.infrastructure.database.db import get_database_engine
 
     click.echo("Setting up database...")
 
     try:
-        engine = get_engine()
+        engine = get_database_engine()
 
         # Run schema file if exists
         schema_file = Path("schema/consolidated_schema.sql")
@@ -1744,9 +1744,9 @@ def system_stats(ctx):
     # Database status
     click.echo("\nDatabase:")
     try:
-        from investigator.infrastructure.database.db import get_engine
+        from investigator.infrastructure.database.db import get_database_engine
 
-        engine = get_engine()
+        engine = get_database_engine()
         click.echo("  Status: ✅ Connected")
         click.echo(f"  URL: {engine.url}")
     except Exception:

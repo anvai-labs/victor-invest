@@ -216,9 +216,9 @@ def status(ctx, detailed):
     try:
         from sqlalchemy import text
 
-        from investigator.infrastructure.database.db import get_engine
+        from investigator.infrastructure.database.db import get_database_engine
 
-        engine = get_engine()
+        engine = get_database_engine()
 
         with engine.connect() as conn:
             # Count decisions

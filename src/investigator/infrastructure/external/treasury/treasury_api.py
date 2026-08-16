@@ -436,10 +436,10 @@ class TreasuryApiClient:
         try:
             # Try to get from local FRED cache if available
             from investigator.infrastructure.external.fred.macro_indicators import (
-                get_macro_indicator_service,
+                get_macro_indicator_fetcher,
             )
 
-            service = get_macro_indicator_service()
+            service = get_macro_indicator_fetcher()
             yields = {"date": target_date}
 
             for maturity, series_id in fred_series.items():

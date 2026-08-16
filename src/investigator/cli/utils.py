@@ -196,9 +196,9 @@ def require_database():
         @functools.wraps(f)
         def wrapper(*args, **kwargs):
             try:
-                from investigator.infrastructure.database.db import get_engine
+                from investigator.infrastructure.database.db import get_database_engine
 
-                engine = get_engine()
+                engine = get_database_engine()
                 # Quick test connection
                 with engine.connect():
                     pass

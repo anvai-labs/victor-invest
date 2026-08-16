@@ -197,9 +197,9 @@ def setup(ctx, skip_deps, skip_db):
         try:
             from sqlalchemy import text
 
-            from investigator.infrastructure.database.db import get_engine
+            from investigator.infrastructure.database.db import get_database_engine
 
-            engine = get_engine()
+            engine = get_database_engine()
 
             schema_file = Path("schema/consolidated_schema.sql")
             if schema_file.exists():

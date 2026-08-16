@@ -16,7 +16,6 @@ CRITICAL_MODULES = [
     "src/investigator/domain/agents/symbol_update.py",
     "src/investigator/domain/services/investment_decision_policy.py",
     "src/investigator/domain/services/robust_valuation_service.py",
-    "src/investigator/domain/services/unified_valuation_executor.py",
     "src/investigator/infrastructure/database/valuation_run_repository.py",
     "src/investigator/infrastructure/external/fred/macro_indicators.py",
 ]
