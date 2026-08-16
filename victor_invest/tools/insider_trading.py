@@ -99,13 +99,13 @@ values, and cluster detection flags.
     async def initialize(self) -> None:
         """Initialize insider trading services."""
         try:
-            from dao.insider_trading_dao import get_insider_trading_dao
             from investigator.domain.services.data_sources.manager import (
                 DataSourceManager,
             )
             from investigator.domain.services.sentiment import (
                 get_insider_activity_service,
             )
+            from investigator.infrastructure.database.insider_trading_dao import get_insider_trading_dao
 
             self._sentiment_service = get_insider_activity_service()
             self._dao = get_insider_trading_dao()

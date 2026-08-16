@@ -9,7 +9,7 @@ import smtplib
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Dict, List
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class EmailNotifier:
         self.sender_email = sender_email
         self.sender_password = sender_password
 
-    def format_alert_email(self, alerts: List[Dict], format: str = "html") -> Dict:
+    def format_alert_email(self, alerts: list[dict], format: str = "html") -> dict:
         """
         Format alerts into email content
 
@@ -72,7 +72,7 @@ class EmailNotifier:
 
         return {"subject": subject, "body": body}
 
-    def _group_alerts_by_severity(self, alerts: List[Dict]) -> Dict[str, List[Dict]]:
+    def _group_alerts_by_severity(self, alerts: list[dict]) -> dict[str, list[dict]]:
         """
         Group alerts by severity level
 
@@ -82,7 +82,7 @@ class EmailNotifier:
         Returns:
             Dictionary with severity levels as keys
         """
-        grouped = {"high": [], "medium": [], "low": []}
+        grouped: dict[str, list[dict[str, Any]]] = {"high": [], "medium": [], "low": []}
 
         for alert in alerts:
             severity = alert.get("severity", "medium")
@@ -91,7 +91,7 @@ class EmailNotifier:
 
         return grouped
 
-    def _format_html_body(self, grouped: Dict[str, List[Dict]], all_alerts: List[Dict]) -> str:
+    def _format_html_body(self, grouped: dict[str, list[dict]], all_alerts: list[dict]) -> str:
         """
         Format email body as HTML
 
@@ -148,7 +148,7 @@ class EmailNotifier:
 
         return html
 
-    def _format_alert_html(self, alert: Dict, severity: str) -> str:
+    def _format_alert_html(self, alert: dict, severity: str) -> str:
         """
         Format a single alert as HTML
 
@@ -172,7 +172,7 @@ class EmailNotifier:
         </div>
         """
 
-    def _format_text_body(self, grouped: Dict[str, List[Dict]], all_alerts: List[Dict]) -> str:
+    def _format_text_body(self, grouped: dict[str, list[dict]], all_alerts: list[dict]) -> str:
         """
         Format email body as plain text
 
@@ -218,7 +218,7 @@ class EmailNotifier:
 
         return "\n".join(lines)
 
-    def _format_alert_text(self, alert: Dict) -> str:
+    def _format_alert_text(self, alert: dict) -> str:
         """
         Format a single alert as plain text
 
@@ -239,7 +239,7 @@ class EmailNotifier:
 Time: {timestamp.strftime("%Y-%m-%d %H:%M")}
 """
 
-    def send_alert_email(self, recipient: str, alerts: List[Dict], format: str = "html") -> bool:
+    def send_alert_email(self, recipient: str, alerts: list[dict], format: str = "html") -> bool:
         """
         Send alert email to a recipient
 
@@ -280,7 +280,7 @@ Time: {timestamp.strftime("%Y-%m-%d %H:%M")}
             logger.error(f"Error sending alert email to {recipient}: {e}")
             return False
 
-    def send_batch_alerts(self, recipients: List[str], alerts: List[Dict], format: str = "html") -> Dict[str, bool]:
+    def send_batch_alerts(self, recipients: list[str], alerts: list[dict], format: str = "html") -> dict[str, bool]:
         """
         Send alerts to multiple recipients
 

@@ -18,7 +18,7 @@ Provides database operations for SEC Form 4 insider trading filings
 stored in the form4_filings table.
 
 Usage:
-    from dao.insider_trading_dao import InsiderTradingDAO
+    from investigator.infrastructure.database.insider_trading_dao import InsiderTradingDAO
 
     dao = InsiderTradingDAO()
 
@@ -35,7 +35,7 @@ Usage:
 import json
 import logging
 from datetime import date, datetime, timedelta
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from src.investigator.infrastructure.external.sec.insider_transactions import (
@@ -55,7 +55,7 @@ class InsiderTradingDAO:
     stored in PostgreSQL.
     """
 
-    def __init__(self, db_config: Optional[Dict] = None, engine: Optional[Engine] = None):
+    def __init__(self, db_config: dict | None = None, engine: Engine | None = None):
         """Initialize DAO with database configuration.
 
         Args:
@@ -173,7 +173,7 @@ class InsiderTradingDAO:
             logger.error(f"Error saving Form 4 filing: {e}")
             return False
 
-    def save_filings_batch(self, filings: List["Form4Filing"]) -> int:
+    def save_filings_batch(self, filings: list["Form4Filing"]) -> int:
         """Save multiple filings in batch.
 
         Args:
@@ -188,7 +188,7 @@ class InsiderTradingDAO:
                 saved += 1
         return saved
 
-    def get_recent_activity(self, symbol: str, days: int = 30, significant_only: bool = False) -> List[Dict[str, Any]]:
+    def get_recent_activity(self, symbol: str, days: int = 30, significant_only: bool = False) -> list[dict[str, Any]]:
         """Get recent insider activity for a symbol.
 
         Args:
@@ -260,7 +260,7 @@ class InsiderTradingDAO:
             logger.error(f"Error getting recent activity for {symbol}: {e}")
             return []
 
-    def get_insider_sentiment(self, symbol: str, days: int = 90) -> Dict[str, Any]:
+    def get_insider_sentiment(self, symbol: str, days: int = 90) -> dict[str, Any]:
         """Calculate insider sentiment for a symbol.
 
         Sentiment is based on the ratio of buys to sells and total value.
@@ -356,7 +356,7 @@ class InsiderTradingDAO:
             logger.error(f"Error calculating sentiment for {symbol}: {e}")
             return self._empty_sentiment(symbol, days)
 
-    def _empty_sentiment(self, symbol: str, days: int) -> Dict[str, Any]:
+    def _empty_sentiment(self, symbol: str, days: int) -> dict[str, Any]:
         """Return empty sentiment structure."""
         return {
             "symbol": symbol,
@@ -374,7 +374,7 @@ class InsiderTradingDAO:
             "analysis_date": str(date.today()),
         }
 
-    def get_key_insider_transactions(self, symbol: str, days: int = 90) -> List[Dict[str, Any]]:
+    def get_key_insider_transactions(self, symbol: str, days: int = 90) -> list[dict[str, Any]]:
         """Get transactions from key insiders only.
 
         Key insiders: CEO, CFO, Directors, 10% owners
@@ -439,7 +439,7 @@ class InsiderTradingDAO:
             logger.error(f"Error getting key insider transactions for {symbol}: {e}")
             return []
 
-    def get_cik(self, symbol: str) -> Optional[str]:
+    def get_cik(self, symbol: str) -> str | None:
         """Get CIK for a symbol.
 
         Args:
@@ -470,7 +470,7 @@ class InsiderTradingDAO:
 
 
 # Singleton instance
-_insider_dao: Optional[InsiderTradingDAO] = None
+_insider_dao: InsiderTradingDAO | None = None
 
 
 def get_insider_trading_dao() -> InsiderTradingDAO:

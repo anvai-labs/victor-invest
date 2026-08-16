@@ -1120,7 +1120,7 @@ class SECCompanyFactsExtractor:
                 if project_root_str not in sys.path:
                     sys.path.insert(0, project_root_str)
 
-                from utils.xbrl_tag_aliases import XBRLTagAliasMapper
+                from investigator.infrastructure.sec.xbrl_tag_aliases import XBRLTagAliasMapper
             except ImportError:
                 # Fallback: if running from different context, skip tag mapper
                 XBRLTagAliasMapper = None

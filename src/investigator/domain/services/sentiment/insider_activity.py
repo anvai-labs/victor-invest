@@ -239,7 +239,7 @@ class InsiderActivityService:
     def _get_dao(self):
         """Lazy-load DAO to avoid circular imports."""
         if self._dao is None:
-            from dao.insider_trading_dao import get_insider_trading_dao
+            from investigator.infrastructure.database.insider_trading_dao import get_insider_trading_dao
 
             self._dao = get_insider_trading_dao()
         return self._dao

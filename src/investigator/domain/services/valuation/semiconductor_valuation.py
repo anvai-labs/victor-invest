@@ -262,7 +262,7 @@ def extract_semiconductor_metrics_from_xbrl(
     Returns:
         SemiconductorMetrics with extracted values
     """
-    from utils.xbrl_tag_aliases import XBRLTagAliasMapper
+    from investigator.infrastructure.sec.xbrl_tag_aliases import XBRLTagAliasMapper
 
     mapper = XBRLTagAliasMapper()
     metrics = SemiconductorMetrics()

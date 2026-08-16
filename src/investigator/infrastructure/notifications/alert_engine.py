@@ -8,7 +8,6 @@ significant changes in investment recommendations.
 import json
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +25,7 @@ class AlertEngine:
         self.db_manager = db_manager
         self.alert_rules = self._initialize_alert_rules()
 
-    def _initialize_alert_rules(self) -> Dict:
+    def _initialize_alert_rules(self) -> dict:
         """
         Initialize alert rule configuration
 
@@ -59,9 +58,9 @@ class AlertEngine:
 
     def evaluate_alerts(
         self,
-        current_recommendation: Dict,
-        previous_recommendation: Optional[Dict] = None,
-    ) -> List[Dict]:
+        current_recommendation: dict,
+        previous_recommendation: dict | None = None,
+    ) -> list[dict]:
         """
         Evaluate all alert rules for a recommendation
 
@@ -106,7 +105,7 @@ class AlertEngine:
 
         return alerts
 
-    def _evaluate_score_change(self, current: Dict, previous: Dict) -> Optional[Dict]:
+    def _evaluate_score_change(self, current: dict, previous: dict) -> dict | None:
         """
         Evaluate score change alert
 
@@ -156,9 +155,9 @@ class AlertEngine:
         """
         threshold = self.alert_rules["score_change"]["threshold"]
         change = abs(new_score - old_score)
-        return change >= threshold
+        return bool(change >= threshold)
 
-    def _evaluate_recommendation_change_alert(self, current: Dict, previous: Dict) -> Optional[Dict]:
+    def _evaluate_recommendation_change_alert(self, current: dict, previous: dict) -> dict | None:
         """
         Evaluate recommendation change alert
 
@@ -180,7 +179,7 @@ class AlertEngine:
 
         return self._evaluate_recommendation_change(previous_rec, current_rec)
 
-    def _evaluate_recommendation_change(self, old_rec: str, new_rec: str) -> Optional[Dict]:
+    def _evaluate_recommendation_change(self, old_rec: str, new_rec: str) -> dict | None:
         """
         Evaluate recommendation change
 
@@ -217,7 +216,7 @@ class AlertEngine:
             "timestamp": datetime.now(),
         }
 
-    def _evaluate_technical_breakdown(self, recommendation: Dict) -> Optional[Dict]:
+    def _evaluate_technical_breakdown(self, recommendation: dict) -> dict | None:
         """
         Evaluate technical breakdown alert
 
@@ -273,7 +272,7 @@ class AlertEngine:
 
         return None
 
-    def _evaluate_earnings_surprise(self, recommendation: Dict) -> Optional[Dict]:
+    def _evaluate_earnings_surprise(self, recommendation: dict) -> dict | None:
         """
         Evaluate earnings surprise alert
 
@@ -321,7 +320,7 @@ class AlertEngine:
 
         return None
 
-    def _evaluate_8k_filing(self, filing_data: Dict) -> Optional[Dict]:
+    def _evaluate_8k_filing(self, filing_data: dict) -> dict | None:
         """
         Evaluate 8-K filing alert
 
@@ -382,7 +381,7 @@ class AlertEngine:
         # Default severity
         return "medium"
 
-    def save_alert(self, alert: Dict) -> bool:
+    def save_alert(self, alert: dict) -> bool:
         """
         Save alert to database
 
@@ -427,7 +426,7 @@ class AlertEngine:
             logger.error(f"Error saving alert: {e}")
             return False
 
-    def get_active_alerts(self, symbol: str, days: int = 7) -> List[Dict]:
+    def get_active_alerts(self, symbol: str, days: int = 7) -> list[dict]:
         """
         Get active alerts for a symbol
 
