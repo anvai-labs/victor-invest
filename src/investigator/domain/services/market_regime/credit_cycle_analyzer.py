@@ -165,10 +165,10 @@ class CreditCycleAnalyzer:
         if self._fred_client is None:
             try:
                 from investigator.infrastructure.external.fred.macro_indicators import (
-                    get_macro_indicators_service,
+                    get_macro_indicator_fetcher,
                 )
 
-                self._fred_client = get_macro_indicators_service()
+                self._fred_client = get_macro_indicator_fetcher()
             except ImportError:
                 logger.warning("FRED client not available")
         return self._fred_client

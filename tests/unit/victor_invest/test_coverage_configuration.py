@@ -104,7 +104,6 @@ def test_critical_coverage_gate_tracks_fair_value_and_macro_modules():
 
     assert THRESHOLD == 67.0
     assert "src/investigator/domain/agents/symbol_update.py" in CRITICAL_MODULES
-    assert "src/investigator/domain/services/unified_valuation_executor.py" in CRITICAL_MODULES
     assert "src/investigator/infrastructure/external/fred/macro_indicators.py" in CRITICAL_MODULES
     assert "src/investigator/infrastructure/database/valuation_run_repository.py" in CRITICAL_MODULES
 

@@ -14,7 +14,11 @@ import sys
 # Import consolidated utilities
 
 try:
-    from investigator.domain.models.financial_statements import FinancialStatementData, FundamentalMetrics, QuarterlyData  # noqa: F401
+    from investigator.domain.models.financial_statements import (
+        FinancialStatementData,
+        FundamentalMetrics,
+        QuarterlyData,
+    )  # noqa: F401
     from investigator.config import get_config
     from investigator.infrastructure.database.db import get_sec_companyfacts_dao  # noqa: F401
     from investigator.infrastructure.database.db import (  # noqa: F401

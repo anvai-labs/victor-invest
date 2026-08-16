@@ -24,6 +24,5 @@ __all__ = [  # noqa: F405
     # Adapters
     "SECToInternalAdapter",
     "InternalToLLMAdapter",
-    "FilingContentAdapter",
     "CompanyFactsToDetailedAdapter",
 ]

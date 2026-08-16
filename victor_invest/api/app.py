@@ -2150,19 +2150,6 @@ def _build_chart_payload(symbol: str, days: int, ui_view: dict[str, Any] | None 
     import numpy as np
     import pandas as pd
 
-    try:
-        import pandas_ta as pta
-
-        indicator_engine = "pandas_ta"
-    except Exception as exc:
-        pta = None
-        indicator_engine = "native"
-        logger.warning(
-            "pandas_ta unavailable, using native indicator fallback for %s: %s",
-            symbol,
-            exc,
-        )
-
     from investigator.config import get_config
     from investigator.infrastructure.database.market_data import get_market_data_fetcher
 
@@ -2209,40 +2196,29 @@ def _build_chart_payload(symbol: str, days: int, ui_view: dict[str, Any] | None 
     data["EMA_200"] = _ema(data["Close"], 200)
     data["RSI_14"] = _rsi(data["Close"], 14)
 
-    if pta is not None:
-        macd = pta.macd(data["Close"], fast=12, slow=26, signal=9)
-        if macd is not None and not macd.empty:
-            data = data.join(macd, how="left")
-        else:
-            data["MACD_12_26_9"] = None
-            data["MACDs_12_26_9"] = None
-            data["MACDh_12_26_9"] = None
+    # One indicator engine, deliberately.
+    #
+    # There used to be a pandas_ta branch here with this as its fallback. pandas_ta
+    # was never declared as a dependency, so it was present locally and absent in
+    # CI -- and the two engines disagree: pandas_ta's bbands uses the sample stdev
+    # (ddof=1) against ddof=0 here, its MACD warms up differently, and its OBV
+    # carries a different offset. Chart values therefore depended on what happened
+    # to be installed. This path is the one CI has always exercised.
+    ema_fast = _ema(data["Close"], 12)
+    ema_slow = _ema(data["Close"], 26)
+    data["MACD_12_26_9"] = ema_fast - ema_slow
+    data["MACDs_12_26_9"] = data["MACD_12_26_9"].ewm(span=9, adjust=False, min_periods=9).mean()
+    data["MACDh_12_26_9"] = data["MACD_12_26_9"] - data["MACDs_12_26_9"]
 
-        bbands = pta.bbands(data["Close"], length=20, std=2.0)
-        if bbands is not None and not bbands.empty:
-            data = data.join(bbands, how="left")
-
-        data["OBV"] = pta.obv(data["Close"], data["Volume"])
-
-        bb_upper_col = next((col for col in data.columns if str(col).startswith("BBU_")), None)
-        bb_middle_col = next((col for col in data.columns if str(col).startswith("BBM_")), None)
-        bb_lower_col = next((col for col in data.columns if str(col).startswith("BBL_")), None)
-    else:
-        ema_fast = _ema(data["Close"], 12)
-        ema_slow = _ema(data["Close"], 26)
-        data["MACD_12_26_9"] = ema_fast - ema_slow
-        data["MACDs_12_26_9"] = data["MACD_12_26_9"].ewm(span=9, adjust=False, min_periods=9).mean()
-        data["MACDh_12_26_9"] = data["MACD_12_26_9"] - data["MACDs_12_26_9"]
-
-        bb_mid = _sma(data["Close"], 20)
-        bb_std = data["Close"].rolling(window=20, min_periods=20).std(ddof=0)
-        data["BBU_20_2.0"] = bb_mid + (2.0 * bb_std)
-        data["BBM_20_2.0"] = bb_mid
-        data["BBL_20_2.0"] = bb_mid - (2.0 * bb_std)
-        data["OBV"] = _obv(data["Close"], data["Volume"])
-        bb_upper_col = "BBU_20_2.0"
-        bb_middle_col = "BBM_20_2.0"
-        bb_lower_col = "BBL_20_2.0"
+    bb_mid = _sma(data["Close"], 20)
+    bb_std = data["Close"].rolling(window=20, min_periods=20).std(ddof=0)
+    data["BBU_20_2.0"] = bb_mid + (2.0 * bb_std)
+    data["BBM_20_2.0"] = bb_mid
+    data["BBL_20_2.0"] = bb_mid - (2.0 * bb_std)
+    data["OBV"] = _obv(data["Close"], data["Volume"])
+    bb_upper_col = "BBU_20_2.0"
+    bb_middle_col = "BBM_20_2.0"
+    bb_lower_col = "BBL_20_2.0"
 
     dates = [idx.strftime("%Y-%m-%d") if hasattr(idx, "strftime") else str(idx) for idx in data.index]
 
@@ -2272,7 +2248,6 @@ def _build_chart_payload(symbol: str, days: int, ui_view: dict[str, Any] | None 
         "symbol": symbol,
         "days": days,
         "rows": len(data),
-        "indicator_engine": indicator_engine,
         "dates": dates,
         "ohlcv": {
             "open": _series_to_float_list(data["Open"]),

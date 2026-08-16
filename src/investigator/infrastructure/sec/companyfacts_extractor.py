@@ -920,17 +920,17 @@ class SECCompanyFactsExtractor:
         metric_tag: str,
         fiscal_year: int | None = None,
         fiscal_period: str | None = None,
-        max_bulk_age_days: int = 180,
     ) -> tuple[float | None, int | None, str | None]:
         """
-        STANDARDIZED HYBRID EXTRACTION: Get a single metric value using dual strategy.
+        Get a single metric value from the CompanyFacts JSON API.
 
         This is the REUSABLE function that both multi-quarter and single-quarter
         extraction should use for consistent data retrieval.
 
-        Strategy:
-        1. Try DERA bulk tables FIRST (authoritative, fast)
-        2. If bulk data is stale (>max_bulk_age_days), fallback to JSON API
+        The name says "hybrid" because this used to try DERA bulk tables first and
+        fall back to the JSON API. The bulk tier depended on a DAO that has been
+        unimportable since 2026-01-05, so it has been removed and only the JSON API
+        path remains -- which is what has been running regardless.
 
         Args:
             symbol: Stock ticker
@@ -938,7 +938,6 @@ class SECCompanyFactsExtractor:
             metric_tag: XBRL tag name (e.g., 'Revenues', 'Assets')
             fiscal_year: Specific fiscal year to extract (None = latest)
             fiscal_period: Specific fiscal period to extract (None = latest)
-            max_bulk_age_days: Max age for bulk data (default: 180 days)
 
         Returns:
             Tuple of (value, fiscal_year, fiscal_period)
@@ -965,74 +964,16 @@ class SECCompanyFactsExtractor:
             )
         """
         try:
-            # TIER 1: Try bulk tables FIRST (if fresh enough)
-            from investigator.infrastructure.sec.data_strategy import (
-                get_fiscal_period_strategy,
-            )
-
-            strategy = get_fiscal_period_strategy()
-            bulk_age = strategy._check_bulk_data_age(cik)
-
-            # Determine if bulk data is fresh enough to trust
-            use_bulk = bulk_age is not None and bulk_age <= max_bulk_age_days
-
-            if use_bulk:
-                # Try to get from bulk tables
-                try:
-                    from dao.sec_bulk_dao import get_sec_bulk_dao
-
-                    bulk_dao = get_sec_bulk_dao()
-
-                    if fiscal_year and fiscal_period:
-                        # Get specific quarter from bulk
-                        metrics = bulk_dao.fetch_financial_metrics(symbol, fiscal_year, fiscal_period)
-                    else:
-                        # Get latest quarter from bulk
-                        latest_fy, latest_fp, _ = strategy._get_from_bulk_tables(cik)
-                        if latest_fy and latest_fp:
-                            metrics = bulk_dao.fetch_financial_metrics(symbol, latest_fy, latest_fp)
-                        else:
-                            metrics = None
-
-                    if metrics:
-                        # Map XBRL tag to database field
-                        # This is simplified - real implementation needs tag mapper
-                        tag_to_field = {
-                            "Revenues": "total_revenue",
-                            "Assets": "total_assets",
-                            "Liabilities": "total_liabilities",
-                            "StockholdersEquity": "stockholders_equity",
-                            "NetIncomeLoss": "net_income",
-                            # Add more mappings as needed
-                        }
-
-                        field_name = tag_to_field.get(metric_tag)
-                        if field_name and field_name in metrics:
-                            value = metrics.get(field_name)
-                            fy = metrics.get("fiscal_year")
-                            fp = metrics.get("fiscal_period")
-
-                            if value is not None:
-                                logger.debug(
-                                    f"✓ Bulk table HIT for {symbol} {metric_tag}: "
-                                    f"{value} (FY:{fy} FP:{fp}, age:{bulk_age:.0f} days)"
-                                )
-                                return (value, fy, fp)
-
-                    logger.debug(
-                        f"Bulk table MISS for {symbol} {metric_tag} "
-                        f"(age:{bulk_age:.0f} days, threshold:{max_bulk_age_days}). "
-                        f"Will try JSON API..."
-                    )
-
-                except Exception as e:
-                    logger.debug(f"Bulk table query failed for {symbol}: {e}. Falling back to JSON API.")
+            # The bulk-table fast path that used to sit here has been removed.
+            # It imported dao.sec_bulk_dao, whose own imports of
+            # utils.financial_calculators and utils.sec_data_normalizer were
+            # deleted in 150095e (2026-01-05), and it called a get_sec_bulk_dao
+            # factory that was never written. The import therefore raised, a
+            # broad handler logged it at debug level, and the JSON API path
+            # below is what has actually run for the seven months since.
 
             # TIER 2: Fallback to JSON API (CompanyFacts)
-            logger.debug(
-                f"Using JSON API for {symbol} {metric_tag} "
-                f"(bulk_age:{bulk_age if bulk_age else 'N/A'}, stale_threshold:{max_bulk_age_days})"
-            )
+            logger.debug(f"Using JSON API for {symbol} {metric_tag}")
 
             facts_data = self.get_company_facts(symbol)
             if not facts_data or "facts" not in facts_data:

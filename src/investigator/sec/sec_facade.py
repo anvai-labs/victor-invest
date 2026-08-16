@@ -17,10 +17,8 @@ from investigator.domain.models.financial_statements import FinancialStatementDa
 from investigator.infrastructure.cache import get_cache_manager
 from investigator.infrastructure.cache.cache_types import CacheType
 from investigator.infrastructure.database.ticker_mapper import TickerCIKMapper
-from investigator.infrastructure.http import SECAPIClient
 from investigator.sec.sec_adapters import (
     CompanyFactsToDetailedAdapter,
-    FilingContentAdapter,
     InternalToLLMAdapter,
     SECToInternalAdapter,
 )
@@ -59,7 +57,6 @@ class SECDataFacade:
         # Initialize adapters
         self.sec_adapter = SECToInternalAdapter(config)
         self.llm_adapter = InternalToLLMAdapter(config)
-        self.filing_adapter = FilingContentAdapter(config)
         self.detailed_adapter = CompanyFactsToDetailedAdapter(config)
 
         # Default strategy
@@ -159,28 +156,6 @@ class SECDataFacade:
         except Exception as e:
             self.logger.error(f"Error getting latest {form_type} for {symbol}: {e}")
             return None
-
-    def get_filing_content(self, filing_url: str, max_length: int = 100000) -> str:
-        """Get and clean filing content"""
-        try:
-            api_client = SECAPIClient(self.config.sec.user_agent, self.config)
-
-            # Fetch filing content
-            response = api_client.session.get(filing_url, timeout=60)
-            response.raise_for_status()
-
-            # Clean and adapt content
-            cleaned_content = self.filing_adapter.adapt(response.text)
-
-            # Truncate if needed
-            if len(cleaned_content) > max_length:
-                cleaned_content = cleaned_content[:max_length]
-
-            return cleaned_content
-
-        except Exception as e:
-            self.logger.error(f"Error getting filing content: {e}")
-            return ""
 
     def format_for_llm(self, quarterly_data: list[QuarterlyData]) -> str:
         """Format quarterly data for LLM consumption"""
