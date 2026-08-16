@@ -207,10 +207,11 @@ class UnifiedValuationExecutor:
             Dict mapping model names to their results
         """
         from investigator.domain.services.valuation import DCFValuation
+
+        # EVEBITDAModel and PBRatioModel are deliberately absent: both models are
+        # unavailable (see below), so importing them would only suggest otherwise.
         from investigator.domain.services.valuation.models import (
-            EVEBITDAModel,
             GordonGrowthModel,
-            PBRatioModel,
             PERatioModel,
             PSRatioModel,
         )
@@ -269,7 +270,8 @@ class UnifiedValuationExecutor:
             shares_outstanding=None,  # Will be fetched if needed
         )
         ttm_revenue = TTMMetrics.calculate_ttm_revenue(quarterly_data=self.quarterly_metrics)
-        ttm_ebitda = TTMMetrics.calculate_ttm_ebitda(quarterly_data=self.quarterly_metrics)
+        # TTM EBITDA fed EV/EBITDA only, which is unavailable; computing it here
+        # would be work with nowhere to go.
 
         # Get sector multiples
         from investigator.domain.services.valuation.common import SectorMultiples
@@ -319,66 +321,31 @@ class UnifiedValuationExecutor:
             logger.debug(f"{self.symbol}: PS failed: {e}")
             results["ps"] = {"success": False, "error": str(e)}
 
-        # Run PB
-        try:
-            # Get book value from TTM metrics
-            from investigator.domain.services.valuation.shared.book_value_service import (
-                BookValueService,
-            )
+        # PB is unavailable, and now says so.
+        #
+        # This block imported investigator.domain.services.valuation.shared.book_value_service,
+        # a module that exists nowhere in the repo. The import raised, a broad
+        # handler caught it, and the model reported failure at debug level on every
+        # call -- so PB has never once produced a valuation.
+        #
+        # Reviving it needs a book-value-per-share source. ratio_calculator can
+        # compute a PB ratio, but only when handed BVPS; deriving that from
+        # quarterly data is the missing piece, and a domain decision rather than a
+        # wiring one. Until then the model reports unavailable rather than
+        # pretending to have tried.
+        results["pb"] = {
+            "success": False,
+            "error": "PB unavailable: no book-value-per-share source is wired",
+        }
 
-            book_value_service = BookValueService()
-            book_value = book_value_service.calculate_book_value(quarterly_data=self.quarterly_metrics)
-
-            if book_value and book_value > 0:
-                pb_model = PBRatioModel(
-                    company_profile=None,
-                    book_value_per_share=book_value,
-                    sector_median_pb=sector_multiples.get("pb", 3.0),
-                )
-                pb_result = pb_model.calculate()
-                if pb_result and not isinstance(pb_result, str):
-                    results["pb"] = {
-                        "success": True,
-                        "output": {
-                            "model": "pb",
-                            "fair_value_per_share": pb_result.fair_value,
-                        },
-                    }
-        except Exception as e:
-            logger.debug(f"{self.symbol}: PB failed: {e}")
-            results["pb"] = {"success": False, "error": str(e)}
-
-        # Run EV/EBITDA
-        try:
-            if ttm_ebitda and ttm_ebitda > 0:
-                # Get market cap and enterprise value
-                from investigator.domain.services.valuation.shared.market_data_service import (
-                    MarketDataService,
-                )
-
-                market_data_service = MarketDataService()
-                market_data = await market_data_service.get_market_data(self.symbol)
-
-                if market_data:
-                    enterprise_value = self._calculate_enterprise_value(market_data)
-                    ev_model = EVEBITDAModel(
-                        company_profile=None,
-                        ttm_ebitda=ttm_ebitda,
-                        enterprise_value=enterprise_value,
-                        sector_median_ev_ebitda=sector_multiples.get("ev_ebitda", 12.0),
-                    )
-                    ev_result = ev_model.calculate()
-                    if ev_result and not isinstance(ev_result, str):
-                        results["ev_ebitda"] = {
-                            "success": True,
-                            "output": {
-                                "model": "ev_ebitda",
-                                "fair_value_per_share": ev_result.fair_value,
-                            },
-                        }
-        except Exception as e:
-            logger.debug(f"{self.symbol}: EV/EBITDA failed: {e}")
-            results["ev_ebitda"] = {"success": False, "error": str(e)}
+        # EV/EBITDA is unavailable for the same reason: the
+        # valuation.shared.market_data_service module it imported does not exist,
+        # so this model has never run either. Reviving it needs a market-data source
+        # supplying the inputs for enterprise value.
+        results["ev_ebitda"] = {
+            "success": False,
+            "error": "EV/EBITDA unavailable: no market-data source is wired",
+        }
 
         return results
 
