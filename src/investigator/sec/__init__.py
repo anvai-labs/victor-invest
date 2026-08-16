@@ -19,7 +19,6 @@ __all__ = [
     # Strategies
     "CompanyFactsStrategy",
     "CompanyFactsToDetailedAdapter",
-    "FilingContentAdapter",
     "FundamentalAnalysisFacadeV2",
     "HybridFetchStrategy",
     "InternalToLLMAdapter",

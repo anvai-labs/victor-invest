@@ -266,10 +266,10 @@ class NYFedDataClient:
         """
         try:
             from investigator.infrastructure.external.fred.macro_indicators import (
-                get_macro_indicator_service,
+                get_macro_indicator_fetcher,
             )
 
-            service = get_macro_indicator_service()
+            service = get_macro_indicator_fetcher()
 
             # Get recession probability from FRED
             loop = asyncio.get_event_loop()
@@ -361,10 +361,10 @@ class NYFedDataClient:
         """
         try:
             from investigator.infrastructure.external.fred.macro_indicators import (
-                get_macro_indicator_service,
+                get_macro_indicator_fetcher,
             )
 
-            service = get_macro_indicator_service()
+            service = get_macro_indicator_fetcher()
             loop = asyncio.get_event_loop()
 
             # Get current value
@@ -413,10 +413,10 @@ class NYFedDataClient:
         """
         try:
             from investigator.infrastructure.external.fred.macro_indicators import (
-                get_macro_indicator_service,
+                get_macro_indicator_fetcher,
             )
 
-            service = get_macro_indicator_service()
+            service = get_macro_indicator_fetcher()
             loop = asyncio.get_event_loop()
 
             history = await loop.run_in_executor(

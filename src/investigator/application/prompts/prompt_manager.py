@@ -137,25 +137,16 @@ class PromptManager:
             fiscal_year = kwargs["fiscal_year"]
             fiscal_period = kwargs["fiscal_period"]
 
-            # Standardize period if not already in YYYY-QX format
+            # Standardize period if not already in YYYY-QX format.
+            #
+            # This used to try `from sec_fundamental import standardize_period`
+            # first. No such module or function exists anywhere in the repo, and
+            # the sys.path.append meant to enable it resolved to
+            # .../application rather than the repo root, so the import could never
+            # have succeeded. The fallback below was therefore always the path
+            # taken -- and its three branches all produced the same string.
             if not period_key.startswith(str(fiscal_year)):
-                # Import locally to avoid circular imports
-                import os
-                import sys
-
-                sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-                try:
-                    from sec_fundamental import standardize_period
-
-                    kwargs["period_key"] = standardize_period(fiscal_year, fiscal_period)
-                except ImportError:
-                    # Fallback if import fails
-                    if fiscal_period == "FY":
-                        kwargs["period_key"] = f"{fiscal_year}-FY"
-                    elif fiscal_period.startswith("Q"):
-                        kwargs["period_key"] = f"{fiscal_year}-{fiscal_period}"
-                    else:
-                        kwargs["period_key"] = f"{fiscal_year}-{fiscal_period}"
+                kwargs["period_key"] = f"{fiscal_year}-{fiscal_period}"
 
         return self._render_template("sec_fundamental_analysis.j2", **kwargs)
 
