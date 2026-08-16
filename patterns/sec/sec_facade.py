@@ -241,7 +241,7 @@ class FundamentalAnalysisFacadeV2:
 
         # Use existing aggregator and LLM facade with cache management
         from investigator.infrastructure.llm.llm_facade import create_llm_facade
-        from utils.financial_data_aggregator import FinancialDataAggregator
+        from investigator.domain.services.financial_data_aggregator import FinancialDataAggregator
 
         self.data_aggregator = FinancialDataAggregator(config)
         # Pass cache_manager to enable caching in LLM facade

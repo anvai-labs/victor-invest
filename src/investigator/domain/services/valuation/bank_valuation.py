@@ -201,7 +201,7 @@ def extract_bank_metrics_from_xbrl(symbol: str, xbrl_data: dict, database_url: s
         >>> metrics = extract_bank_metrics_from_xbrl('JPM', xbrl_data)
         >>> print(f"NIM: {metrics.net_interest_margin:.2%}")
     """
-    from utils.xbrl_tag_aliases import XBRLTagAliasMapper
+    from investigator.infrastructure.sec.xbrl_tag_aliases import XBRLTagAliasMapper
 
     mapper = XBRLTagAliasMapper()
     metrics = BankMetrics()

@@ -6,7 +6,7 @@ Smart price target calculations with both upward and downward revisions
 import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -36,12 +36,12 @@ class ValuationMetrics:
     current_price: float
     fair_value: float
     technical_target: float
-    pe_ratio: Optional[float] = None
-    pb_ratio: Optional[float] = None
-    ps_ratio: Optional[float] = None
-    ev_ebitda: Optional[float] = None
-    quality_score: Optional[float] = None
-    dividend_yield: Optional[float] = None
+    pe_ratio: float | None = None
+    pb_ratio: float | None = None
+    ps_ratio: float | None = None
+    ev_ebitda: float | None = None
+    quality_score: float | None = None
+    dividend_yield: float | None = None
 
     @property
     def discount_to_fair_value(self) -> float:
@@ -133,8 +133,8 @@ class SmartValuationAdjuster:
         }
 
     def calculate_adjusted_target(
-        self, metrics: ValuationMetrics, analysis_context: Dict[str, Any]
-    ) -> Tuple[float, Dict[str, Any]]:
+        self, metrics: ValuationMetrics, analysis_context: dict[str, Any]
+    ) -> tuple[float, dict[str, Any]]:
         """
         Calculate intelligently adjusted price target
 
@@ -282,7 +282,7 @@ class SmartValuationAdjuster:
         self,
         adjusted_target: float,
         metrics: ValuationMetrics,
-        adjustment_details: Dict,
+        adjustment_details: dict,
     ) -> float:
         """Apply protection against extreme valuations"""
         current_price = metrics.current_price
@@ -343,8 +343,8 @@ class SmartValuationAdjuster:
         self,
         metrics: ValuationMetrics,
         adjusted_target: float,
-        adjustment_details: Dict,
-    ) -> Dict[str, Any]:
+        adjustment_details: dict,
+    ) -> dict[str, Any]:
         """Generate comprehensive valuation summary"""
         current_to_target = (
             (adjusted_target - metrics.current_price) / metrics.current_price if metrics.current_price > 0 else 0

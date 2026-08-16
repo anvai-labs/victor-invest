@@ -155,7 +155,7 @@ def extract_backlog_metrics_from_xbrl(
     Returns:
         BacklogMetrics with extracted values
     """
-    from utils.xbrl_tag_aliases import XBRLTagAliasMapper
+    from investigator.infrastructure.sec.xbrl_tag_aliases import XBRLTagAliasMapper
 
     mapper = XBRLTagAliasMapper()
     metrics = BacklogMetrics(annual_revenue=annual_revenue)

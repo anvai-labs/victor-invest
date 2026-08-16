@@ -2004,7 +2004,7 @@ class DynamicModelWeightingService:
         # Try XBRL extraction first (preferred source)
         if xbrl_data:
             try:
-                from utils.xbrl_tag_aliases import XBRLTagAliasMapper
+                from investigator.infrastructure.sec.xbrl_tag_aliases import XBRLTagAliasMapper
 
                 mapper = XBRLTagAliasMapper()
                 ev_pct = mapper.extract_value_with_fallbacks(xbrl_data, "ev_sales_mix_pct")
