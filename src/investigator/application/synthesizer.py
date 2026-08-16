@@ -178,8 +178,8 @@ class InvestmentSynthesizer:
         self.main_logger = self.config.get_main_logger("synthesizer")
 
         # Initialize alert system (Tier 3 Enhancement #14)
-        from utils.alert_engine import AlertEngine
-        from utils.email_notifier import EmailNotifier
+        from investigator.infrastructure.notifications.alert_engine import AlertEngine
+        from investigator.infrastructure.notifications.email_notifier import EmailNotifier
 
         self.alert_engine = AlertEngine(db_manager=self.db_manager)
 

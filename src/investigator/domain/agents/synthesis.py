@@ -952,7 +952,7 @@ class SynthesisAgent(InvestmentAgent):
         risk_assessment: dict,
     ) -> dict:
         """Calculate smart price targets with both upward and downward adjustments"""
-        from utils.valuation.valuation_adjustments import (
+        from investigator.domain.services.valuation.valuation_adjustments import (
             SmartValuationAdjuster,
             ValuationMetrics,
         )

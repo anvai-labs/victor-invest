@@ -245,7 +245,7 @@ def extract_insurance_metrics_from_xbrl(symbol: str, xbrl_data: dict, database_u
             - reinsurance_recoverables
             - insurance_investment_income
     """
-    from utils.xbrl_tag_aliases import XBRLTagAliasMapper
+    from investigator.infrastructure.sec.xbrl_tag_aliases import XBRLTagAliasMapper
 
     mapper = XBRLTagAliasMapper()
     metrics = {}

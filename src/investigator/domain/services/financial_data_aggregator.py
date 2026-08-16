@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - Financial Data Aggregator Module
 Copyright (c) 2025 Vijaykumar Singh
@@ -10,10 +9,10 @@ Handles aggregation and analysis of quarterly financial data for fundamental ana
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from investigator.domain.models.financial_statements import QuarterlyData
 from investigator.config import get_config
+from investigator.domain.models.financial_statements import QuarterlyData
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +32,7 @@ class FinancialDataAggregator:
         self.config = config or get_config()
         self.main_logger = self.config.get_main_logger("financial_aggregator")
 
-    def aggregate_quarterly_data(self, quarterly_data: List[QuarterlyData]) -> Dict[str, Any]:
+    def aggregate_quarterly_data(self, quarterly_data: list[QuarterlyData]) -> dict[str, Any]:
         """
         Aggregate quarterly data into a comprehensive financial analysis.
 
@@ -90,10 +89,11 @@ class FinancialDataAggregator:
             self.main_logger.error(f"Error aggregating quarterly data: {e}")
             return self._create_empty_aggregation()
 
-    def _aggregate_income_statement(self, quarterly_data: List[QuarterlyData]) -> Dict[str, Any]:
+    def _aggregate_income_statement(self, quarterly_data: list[QuarterlyData]) -> dict[str, Any]:
         """Aggregate income statement data across quarters"""
         try:
-            income_data = {
+            # Heterogeneous by design: per-metric lists plus a nested metrics dict.
+            income_data: dict[str, Any] = {
                 "revenue": [],
                 "cost_of_revenue": [],
                 "gross_profit": [],
@@ -155,10 +155,11 @@ class FinancialDataAggregator:
             self.main_logger.error(f"Error aggregating income statement: {e}")
             return {}
 
-    def _aggregate_balance_sheet(self, quarterly_data: List[QuarterlyData]) -> Dict[str, Any]:
+    def _aggregate_balance_sheet(self, quarterly_data: list[QuarterlyData]) -> dict[str, Any]:
         """Aggregate balance sheet data across quarters"""
         try:
-            balance_data = {
+            # Heterogeneous by design: per-metric lists plus a nested metrics dict.
+            balance_data: dict[str, Any] = {
                 "total_assets": [],
                 "current_assets": [],
                 "total_liabilities": [],
@@ -210,10 +211,11 @@ class FinancialDataAggregator:
             self.main_logger.error(f"Error aggregating balance sheet: {e}")
             return {}
 
-    def _aggregate_cash_flow(self, quarterly_data: List[QuarterlyData]) -> Dict[str, Any]:
+    def _aggregate_cash_flow(self, quarterly_data: list[QuarterlyData]) -> dict[str, Any]:
         """Aggregate cash flow data across quarters"""
         try:
-            cash_flow_data = {
+            # Heterogeneous by design: per-metric lists plus a nested metrics dict.
+            cash_flow_data: dict[str, Any] = {
                 "operating_cash_flow": [],
                 "investing_cash_flow": [],
                 "financing_cash_flow": [],
@@ -258,7 +260,7 @@ class FinancialDataAggregator:
             self.main_logger.error(f"Error aggregating cash flow: {e}")
             return {}
 
-    def _get_financial_data_dict(self, financial_data) -> Dict[str, Any]:
+    def _get_financial_data_dict(self, financial_data) -> dict[str, Any]:
         """Convert FinancialStatementData object to dictionary format for aggregation"""
         try:
             # If financial_data is already a dict, return it
@@ -267,7 +269,7 @@ class FinancialDataAggregator:
 
             # If it's a FinancialStatementData object, extract the comprehensive data
             if hasattr(financial_data, "comprehensive_data") and financial_data.comprehensive_data:
-                return financial_data.comprehensive_data
+                return dict(financial_data.comprehensive_data)
 
             # Fallback: try to build from individual fields
             result = {}
@@ -291,7 +293,7 @@ class FinancialDataAggregator:
             self.main_logger.error(f"Error converting financial data to dict: {e}")
             return {}
 
-    def _extract_concept_value(self, category_data: Dict, concept_name: str) -> Optional[float]:
+    def _extract_concept_value(self, category_data: dict, concept_name: str) -> float | None:
         """Extract numeric value for a concept from category data"""
         try:
             concepts = category_data.get("concepts", {})
@@ -306,10 +308,10 @@ class FinancialDataAggregator:
         except (ValueError, TypeError, KeyError):
             return None
 
-    def _calculate_ratios(self, quarterly_data: List[QuarterlyData]) -> Dict[str, Any]:
+    def _calculate_ratios(self, quarterly_data: list[QuarterlyData]) -> dict[str, Any]:
         """Calculate financial ratios across quarters"""
         try:
-            ratios = {
+            ratios: dict[str, Any] = {
                 "profitability": {},
                 "liquidity": {},
                 "efficiency": {},
@@ -368,10 +370,10 @@ class FinancialDataAggregator:
             self.main_logger.error(f"Error calculating ratios: {e}")
             return {}
 
-    def _analyze_trends(self, quarterly_data: List[QuarterlyData]) -> Dict[str, Any]:
+    def _analyze_trends(self, quarterly_data: list[QuarterlyData]) -> dict[str, Any]:
         """Analyze trends across quarters"""
         try:
-            trends = {
+            trends: dict[str, Any] = {
                 "revenue_growth": [],
                 "profit_growth": [],
                 "margin_trends": [],
@@ -419,10 +421,10 @@ class FinancialDataAggregator:
             self.main_logger.error(f"Error analyzing trends: {e}")
             return {}
 
-    def _assess_data_quality(self, quarterly_data: List[QuarterlyData]) -> Dict[str, Any]:
+    def _assess_data_quality(self, quarterly_data: list[QuarterlyData]) -> dict[str, Any]:
         """Assess the quality and completeness of financial data using domain knowledge"""
         try:
-            quality = {
+            quality: dict[str, Any] = {
                 "completeness_score": 0,
                 "core_metrics_score": 0,
                 "critical_missing": [],
@@ -478,7 +480,7 @@ class FinancialDataAggregator:
             period_scores = []
 
             for qd in quarterly_data:
-                period_analysis = {
+                period_analysis: dict[str, Any] = {
                     "period": qd.period_key,
                     "form_type": qd.form_type,
                     "tier_scores": {},
@@ -496,8 +498,8 @@ class FinancialDataAggregator:
                     all_metrics.update(qd.financial_data.cash_flow_statement)
 
                 # Evaluate each tier
-                weighted_score = 0
-                total_weight = 0
+                weighted_score = 0.0
+                total_weight = 0.0
 
                 for tier, metrics in critical_metrics.items():
                     tier_found = 0
@@ -554,7 +556,7 @@ class FinancialDataAggregator:
             self.main_logger.error(f"Error assessing data quality: {e}")
             return {"completeness_score": 0, "error": str(e)}
 
-    def _generate_quality_recommendations(self, quality: Dict[str, Any]) -> None:
+    def _generate_quality_recommendations(self, quality: dict[str, Any]) -> None:
         """Generate intelligent recommendations based on data quality analysis"""
 
         core_score = quality["core_metrics_score"]
@@ -603,7 +605,7 @@ class FinancialDataAggregator:
                 "🎯 Data quality may limit analysis depth - consider additional data sources"
             )
 
-    def _calculate_income_metrics(self, income_data: Dict) -> Dict[str, Any]:
+    def _calculate_income_metrics(self, income_data: dict) -> dict[str, Any]:
         """Calculate income statement metrics"""
         metrics = {}
 
@@ -634,7 +636,7 @@ class FinancialDataAggregator:
 
         return metrics
 
-    def _calculate_balance_metrics(self, balance_data: Dict) -> Dict[str, Any]:
+    def _calculate_balance_metrics(self, balance_data: dict) -> dict[str, Any]:
         """Calculate balance sheet metrics"""
         metrics = {}
 
@@ -653,7 +655,7 @@ class FinancialDataAggregator:
 
         return metrics
 
-    def _calculate_cash_flow_metrics(self, cash_flow_data: Dict) -> Dict[str, Any]:
+    def _calculate_cash_flow_metrics(self, cash_flow_data: dict) -> dict[str, Any]:
         """Calculate cash flow metrics"""
         metrics = {}
 
@@ -668,7 +670,7 @@ class FinancialDataAggregator:
 
         return metrics
 
-    def _create_empty_aggregation(self) -> Dict[str, Any]:
+    def _create_empty_aggregation(self) -> dict[str, Any]:
         """Create empty aggregation structure"""
         return {
             "symbol": "",
