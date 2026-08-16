@@ -48,6 +48,11 @@ OPTIONAL_THIRD_PARTY = {
     "plotly",
     "yfinance",
     "lxml_html_clean",
+    # Chart indicators. app.py has a real "native" engine behind this and reports
+    # which one it used, so shipping without pandas_ta is a working configuration.
+    # Note it is also undeclared, so which engine you get depends on whether the
+    # package happens to be present -- installed here, absent in CI.
+    "pandas_ta",
     "victor",  # the host runtime; verticals must degrade without it
     "victor_contracts",
 }
