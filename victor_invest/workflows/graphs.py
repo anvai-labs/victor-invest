@@ -1308,7 +1308,7 @@ async def run_analysis(
     """Run analysis with framework-first YAML execution.
 
     Primary path:
-    - YAML workflow execution through Victor's WorkflowExecutor + handlers.
+    - YAML workflow execution through Victor's compiled workflow path + handlers.
 
     Fallback path:
     - StateGraph execution when YAML path fails unexpectedly.
