@@ -48,5 +48,5 @@ mkdocs-material>=9.7.7
 mkdocstrings>=0.23.0
 
 # Debugging
-debugpy>=1.7.0
+debugpy>=1.8.21
 watchdog>=6.0.0
