@@ -63,7 +63,7 @@ dependencies = [
 
     # Yahoo Finance API
     "yfinance>=0.2.0,<2",
-    "peewee>=3.14,<4",  # yfinance dependency; keep semgrep-compatible in shared env
+    "peewee>=3.14,<5",  # yfinance dependency; keep semgrep-compatible in shared env
 
     # XML parsing
     "lxml>=4.9.0,<7",
