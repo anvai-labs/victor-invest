@@ -28,7 +28,7 @@ def test_synthesizer_import_isolated_from_optional_peer_and_reporting_deps():
     module = _reimport_with_blocked_prefixes(
         "investigator.application.synthesizer",
         blocked_prefixes=(
-            "patterns.analysis.peer_comparison",
+            "investigator.domain.services.analysis.peer_comparison",
             "investigator.infrastructure.reporting",
             "reportlab",
             "yfinance",

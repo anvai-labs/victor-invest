@@ -43,7 +43,10 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BASELINE_PATH = REPO_ROOT / ".mypy-baseline.json"
 MYPY_TARGETS = ["src/investigator", "victor_invest"]
-MYPY_FLAGS = ["--explicit-package-bases", "--follow-imports=silent"]
+# --explicit-package-bases is deliberately absent: it cannot be combined with
+# namespace_packages = false, which is what stops the same file resolving as
+# both investigator.X and src.investigator.X.
+MYPY_FLAGS = ["--follow-imports=silent"]
 
 # "path/to/file.py:123: error: message  [code]" -- notes are not errors.
 _ERROR_LINE = re.compile(r"^(?P<path>[^:]+\.py):\d+:(?:\d+:)? error: ")

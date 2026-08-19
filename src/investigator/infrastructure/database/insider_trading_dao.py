@@ -38,7 +38,9 @@ from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from src.investigator.infrastructure.external.sec.insider_transactions import (
+    # The package is investigator.*, not src.investigator.* -- the src-prefixed
+    # form never resolved, so this annotation pointed at nothing.
+    from investigator.infrastructure.external.sec.insider_transactions import (
         Form4Filing,
     )
 

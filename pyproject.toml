@@ -416,6 +416,16 @@ skip-magic-trailing-comma = false
 
 [tool.mypy]
 python_version = "3.11"
+# Without mypy_path, mypy cannot resolve `investigator` at all -- an editable
+# install uses PEP 660 import hooks it does not follow -- so every first-party
+# import reported import-not-found. The blanket ignore_missing_imports below used
+# to hide that, which meant unresolved modules silently became Any.
+mypy_path = "src"
+# src/ has no __init__.py, so with namespace packages enabled the same file is
+# reachable as both investigator.X and src.investigator.X. Turning them off makes
+# __init__.py authoritative for module names. Requires dropping
+# --explicit-package-bases, which mypy rejects in combination.
+namespace_packages = false
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
@@ -427,14 +437,30 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true
-ignore_missing_imports = true
 
+# Third-party packages that ship no stubs and no py.typed marker. Listing them
+# individually keeps "we cannot type this" a recorded decision; a blanket setting
+# hides missing first-party modules along with them.
 [[tool.mypy.overrides]]
 module = [
-    "yfinance.*",
-    "qdrant_client.*",
-    "diskcache.*",
-    "plotly.*",
+    "diskcache", "diskcache.*",
+    "json_repair", "json_repair.*",
+    "matplotlib", "matplotlib.*",
+    "mplfinance", "mplfinance.*",
+    "networkx", "networkx.*",
+    "plotly", "plotly.*",
+    "psutil", "psutil.*",
+    "psycopg2", "psycopg2.*",
+    "qdrant_client", "qdrant_client.*",
+    "reportlab", "reportlab.*",
+    "scipy", "scipy.*",
+    "talib", "talib.*",
+    "yfinance", "yfinance.*",
+    # Repo-local, deliberately unpackaged: CLI subcommands wrap these scripts.
+    "scripts.*",
+    # The host runtime and its contracts ship no py.typed marker.
+    "victor.*",
+    "victor_contracts.*",
 ]
 ignore_missing_imports = true
 
