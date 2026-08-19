@@ -824,7 +824,7 @@ class InvestmentSynthesizer:
             symbol_logger.info("Fetching peer comparison data")
             peer_comparison = {}
             try:
-                from patterns.analysis.peer_comparison import (
+                from investigator.domain.services.analysis.peer_comparison import (
                     get_peer_comparison_analyzer,
                 )
 
