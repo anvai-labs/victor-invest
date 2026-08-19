@@ -12,7 +12,7 @@ coverage>=7.13.5
 isort>=5.12.0
 flake8>=6.1.0
 mypy>=1.5.0
-pylint>=4.0.6
+pylint>=4.0.7
 
 # Documentation
 sphinx>=9.0.4
