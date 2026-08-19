@@ -43,7 +43,7 @@ UNPACKAGED_TREES = {"utils", "data", "patterns", "scripts", "core", "admin", "ap
 #
 # Lowering this number is worth real effort; each remaining entry is either a
 # silently disabled feature or a deferred crash.
-KNOWN_DEFERRED_BUDGET = 14
+KNOWN_DEFERRED_BUDGET = 5
 
 
 def _module_level_imports(tree: ast.Module) -> list[tuple[int, str]]:

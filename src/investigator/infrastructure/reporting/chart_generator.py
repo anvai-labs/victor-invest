@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - Chart Generation Module
 Copyright (c) 2025 Vijaykumar Singh
@@ -10,10 +9,13 @@ Handles technical and fundamental analysis chart creation
 
 import logging
 from pathlib import Path
-from typing import Dict, List
+from typing import Any
 
 import numpy as np
 import pandas as pd
+
+# Defined before the guarded imports below, which log through it.
+logger = logging.getLogger(__name__)
 
 try:
     import matplotlib
@@ -22,14 +24,15 @@ try:
     try:
         matplotlib.use("Agg")
     except Exception:
-        pass
+        # A backend may already be fixed by the host; charts still render.
+        logging.getLogger(__name__).debug("Could not force the Agg backend", exc_info=True)
     import matplotlib.dates as mdates
     import matplotlib.pyplot as plt
 
     MATPLOTLIB_AVAILABLE = True
 except Exception:
     MATPLOTLIB_AVAILABLE = False
-    logging.warning("matplotlib unavailable or failed to initialize - chart generation disabled")
+    logger.warning("matplotlib unavailable or failed to initialize - chart generation disabled")
 
 # Try to import talib for technical indicators
 try:
@@ -38,9 +41,7 @@ try:
     TALIB_AVAILABLE = True
 except ImportError:
     TALIB_AVAILABLE = False
-    logging.warning("TA-Lib not available - some technical indicators may be limited")
-
-logger = logging.getLogger(__name__)
+    logger.warning("TA-Lib not available - some technical indicators may be limited")
 
 
 class ChartGenerator:
@@ -64,7 +65,7 @@ class ChartGenerator:
             except Exception:
                 logger.warning("Seaborn style not available, using default")
 
-    def generate_technical_chart(self, symbol: str, price_data: pd.DataFrame, sr_levels: dict = None) -> str:
+    def generate_technical_chart(self, symbol: str, price_data: pd.DataFrame, sr_levels: dict | None = None) -> str:
         """
         Generate comprehensive technical analysis chart with Fibonacci levels
 
@@ -85,7 +86,7 @@ class ChartGenerator:
             price_data = self._normalize_column_names(price_data)
 
             # Create figure with subplots
-            fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(14, 10), gridspec_kw={"height_ratios": [3, 1, 1]})
+            _fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(14, 10), gridspec_kw={"height_ratios": [3, 1, 1]})
 
             # Main price chart with candlesticks/line
             ax1.plot(
@@ -225,15 +226,13 @@ class ChartGenerator:
         for col in df.columns:
             lower_col = col.lower()
             # Handle common variations
-            if lower_col in ["close", "high", "low", "open", "volume"]:
-                column_mapping[col] = lower_col
-            elif lower_col.startswith("sma_"):
-                column_mapping[col] = lower_col
-            elif lower_col.startswith("ema_"):
-                column_mapping[col] = lower_col
-            elif lower_col.startswith("bb_"):
-                column_mapping[col] = lower_col
-            elif lower_col in ["macd", "macd_signal", "macd_histogram"]:
+            if (
+                lower_col in ["close", "high", "low", "open", "volume"]
+                or lower_col.startswith("sma_")
+                or lower_col.startswith("ema_")
+                or lower_col.startswith("bb_")
+                or lower_col in ["macd", "macd_signal", "macd_histogram"]
+            ):
                 column_mapping[col] = lower_col
             elif lower_col == "obv":
                 column_mapping[col] = "obv"
@@ -245,7 +244,7 @@ class ChartGenerator:
 
         return normalized_df
 
-    def _add_support_resistance_levels(self, ax, price_data: pd.DataFrame, sr_levels: dict = None):
+    def _add_support_resistance_levels(self, ax, price_data: pd.DataFrame, sr_levels: dict | None = None):
         """Add support and resistance levels to chart using detected levels or fallback calculation"""
         try:
             # Use detected levels if available
@@ -375,7 +374,7 @@ class ChartGenerator:
         except Exception as e:
             logger.warning(f"Could not add Fibonacci levels: {e}")
 
-    def generate_3d_fundamental_plot(self, recommendations: List[Dict]) -> str:
+    def generate_3d_fundamental_plot(self, recommendations: list[dict]) -> str:
         """Generate 3D plot showing income/cashflow/balance sheet dimensions"""
         try:
             fig = plt.figure(figsize=(12, 9))
@@ -485,10 +484,10 @@ class ChartGenerator:
             logger.error(f"Error generating 3D fundamental plot: {e}")
             return ""
 
-    def generate_2d_technical_fundamental_plot(self, recommendations: List[Dict]) -> str:
+    def generate_2d_technical_fundamental_plot(self, recommendations: list[dict]) -> str:
         """Generate 2D plot showing fundamental vs technical scores with data quality as size"""
         try:
-            fig, ax = plt.subplots(figsize=(10, 8))
+            _fig, ax = plt.subplots(figsize=(10, 8))
 
             # Extract data for plotting
             symbols = []
@@ -602,10 +601,10 @@ class ChartGenerator:
             logger.error(f"Error generating 2D plot: {e}")
             return ""
 
-    def generate_growth_value_plot(self, recommendations: List[Dict]) -> str:
+    def generate_growth_value_plot(self, recommendations: list[dict]) -> str:
         """Generate 2D plot showing growth vs value positioning"""
         try:
-            fig, ax = plt.subplots(1, 1, figsize=(10, 8))
+            _fig, ax = plt.subplots(1, 1, figsize=(10, 8))
 
             # Extract data
             symbols = []
@@ -669,7 +668,7 @@ class ChartGenerator:
                 va="center",
                 fontsize=12,
                 alpha=0.7,
-                bbox=dict(boxstyle="round,pad=0.3", facecolor="lightblue"),
+                bbox={"boxstyle": "round,pad=0.3", "facecolor": "lightblue"},
             )
             ax.text(
                 7.5,
@@ -679,7 +678,7 @@ class ChartGenerator:
                 va="center",
                 fontsize=12,
                 alpha=0.7,
-                bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgreen"),
+                bbox={"boxstyle": "round,pad=0.3", "facecolor": "lightgreen"},
             )
             ax.text(
                 2.5,
@@ -689,7 +688,7 @@ class ChartGenerator:
                 va="center",
                 fontsize=12,
                 alpha=0.7,
-                bbox=dict(boxstyle="round,pad=0.3", facecolor="lightyellow"),
+                bbox={"boxstyle": "round,pad=0.3", "facecolor": "lightyellow"},
             )
             ax.text(
                 7.5,
@@ -699,7 +698,7 @@ class ChartGenerator:
                 va="center",
                 fontsize=12,
                 alpha=0.7,
-                bbox=dict(boxstyle="round,pad=0.3", facecolor="lightcoral"),
+                bbox={"boxstyle": "round,pad=0.3", "facecolor": "lightcoral"},
             )
 
             # Set labels and title
@@ -726,14 +725,14 @@ class ChartGenerator:
             logger.error(f"Error generating growth/value plot: {e}")
             return ""
 
-    def _extract_income_score(self, rec: Dict) -> float:
+    def _extract_income_score(self, rec: dict) -> float:
         """Extract income statement score from recommendation"""
         # If explicitly provided, use it
         if "income_score" in rec:
-            return rec["income_score"]
+            return float(rec["income_score"])
 
         # Try to extract from full analysis
-        fundamental_score = rec.get("fundamental_score", 5.0)
+        fundamental_score = float(rec.get("fundamental_score", 5.0))
 
         # Look for income-related keywords in analysis
         full_analysis = rec.get("full_analysis", {})
@@ -753,14 +752,14 @@ class ChartGenerator:
         else:
             return max(fundamental_score - 0.5, 1.0)
 
-    def _extract_cashflow_score(self, rec: Dict) -> float:
+    def _extract_cashflow_score(self, rec: dict) -> float:
         """Extract cash flow score from recommendation"""
         # If explicitly provided, use it
         if "cashflow_score" in rec:
-            return rec["cashflow_score"]
+            return float(rec["cashflow_score"])
 
         # Try to extract from full analysis
-        fundamental_score = rec.get("fundamental_score", 5.0)
+        fundamental_score = float(rec.get("fundamental_score", 5.0))
 
         # Look for cash flow keywords
         full_analysis = rec.get("full_analysis", {})
@@ -780,14 +779,14 @@ class ChartGenerator:
         else:
             return max(fundamental_score - 0.5, 1.0)
 
-    def _extract_balance_score(self, rec: Dict) -> float:
+    def _extract_balance_score(self, rec: dict) -> float:
         """Extract balance sheet score from recommendation"""
         # If explicitly provided, use it
         if "balance_score" in rec:
-            return rec["balance_score"]
+            return float(rec["balance_score"])
 
         # Try to extract from full analysis
-        fundamental_score = rec.get("fundamental_score", 5.0)
+        fundamental_score = float(rec.get("fundamental_score", 5.0))
 
         # Look for balance sheet keywords
         full_analysis = rec.get("full_analysis", {})
@@ -814,7 +813,7 @@ class ChartGenerator:
         else:
             return max(fundamental_score - 0.5, 1.0)
 
-    def generate_comprehensive_3d_plot(self, chart_data: List[Dict]) -> str:
+    def generate_comprehensive_3d_plot(self, chart_data: list[dict]) -> str:
         """Generate comprehensive 3D plot for peer group positioning"""
         if not MATPLOTLIB_AVAILABLE:
             logger.warning("Cannot generate 3D plot - matplotlib not available")
@@ -920,7 +919,7 @@ class ChartGenerator:
             logger.error(f"Error generating comprehensive 3D plot: {e}")
             return ""
 
-    def generate_sector_comparison_plot(self, chart_data: List[Dict]) -> str:
+    def generate_sector_comparison_plot(self, chart_data: list[dict]) -> str:
         """Generate sector comparison chart"""
         if not MATPLOTLIB_AVAILABLE:
             logger.warning("Cannot generate sector comparison plot - matplotlib not available")
@@ -931,10 +930,10 @@ class ChartGenerator:
                 logger.warning("No chart data provided for sector comparison plot")
                 return ""
 
-            fig, ax = plt.subplots(figsize=(12, 8))
+            _fig, ax = plt.subplots(figsize=(12, 8))
 
             # Group data by sector
-            sector_data = {}
+            sector_data: dict[str, list[Any]] = {}
             for data in chart_data:
                 sector = data.get("sector", "unknown").title()
                 if sector not in sector_data:
@@ -1013,7 +1012,7 @@ class ChartGenerator:
             logger.error(f"Error generating sector comparison plot: {e}")
             return ""
 
-    def generate_quarterly_revenue_trend(self, symbol: str, quarterly_trends: Dict) -> str:
+    def generate_quarterly_revenue_trend(self, symbol: str, quarterly_trends: dict) -> str:
         """
         Generate quarterly revenue trend chart with Q-o-Q comparison
         Grouped by fiscal quarter for better year-over-year comparison
@@ -1092,17 +1091,18 @@ class ChartGenerator:
                 return self._generate_chronological_revenue_chart(symbol, revenue_data)
 
             # Get unique years and assign colors
-            all_years = sorted(set(item["year"] for q in sorted_quarters for item in quarterly_data[q]))
-            year_colors = {
-                all_years[-1]: "#2E86AB" if len(all_years) >= 1 else "#2E86AB",  # Current year - blue
-                all_years[-2]: "#F77F00" if len(all_years) >= 2 else "#F77F00",  # Previous year - orange
-                all_years[-3]: "#06A77D" if len(all_years) >= 3 else "#06A77D",  # 2 years ago - green
-            }
+            all_years = sorted({item["year"] for q in sorted_quarters for item in quarterly_data[q]})
+            # Each ternary here used to read `"#X" if len(all_years) >= n else "#X"`
+            # -- identical branches, so the guard did nothing, while the *key*
+            # `all_years[-2]` still raised IndexError whenever fewer years were
+            # present. Build the mapping from what actually exists instead.
+            palette = ["#2E86AB", "#F77F00", "#06A77D"]  # current, previous, two years ago
+            year_colors = {year: palette[i] for i, year in enumerate(reversed(all_years[-3:]))}
             # Default color for older years
             for year in all_years[:-3]:
                 year_colors[year] = "#A0A0A0"  # Gray
 
-            fig, ax = plt.subplots(figsize=(14, 7))
+            _fig, ax = plt.subplots(figsize=(14, 7))
 
             # Calculate bar positions
             num_quarters = len(sorted_quarters)
@@ -1166,12 +1166,12 @@ class ChartGenerator:
                                     fontsize=7,
                                     color=growth_color,
                                     fontweight="bold",
-                                    bbox=dict(
-                                        boxstyle="round,pad=0.3",
-                                        facecolor="white",
-                                        alpha=0.7,
-                                        edgecolor=growth_color,
-                                    ),
+                                    bbox={
+                                        "boxstyle": "round,pad=0.3",
+                                        "facecolor": "white",
+                                        "alpha": 0.7,
+                                        "edgecolor": growth_color,
+                                    },
                                 )
 
             # Formatting
@@ -1201,10 +1201,10 @@ class ChartGenerator:
             logger.error(f"Error generating revenue trend chart: {e}")
             return ""
 
-    def _generate_chronological_revenue_chart(self, symbol: str, revenue_data: List[Dict]) -> str:
+    def _generate_chronological_revenue_chart(self, symbol: str, revenue_data: list[dict]) -> str:
         """Fallback: Generate chronological revenue chart if quarter grouping fails"""
         try:
-            fig, ax = plt.subplots(figsize=(12, 6))
+            _fig, ax = plt.subplots(figsize=(12, 6))
 
             periods = [item["period"] for item in revenue_data]
             values = [item["value"] for item in revenue_data]
@@ -1232,7 +1232,7 @@ class ChartGenerator:
                         ha="center",
                         va="bottom",
                         fontsize=10,
-                        bbox=dict(boxstyle="round", facecolor=color, alpha=0.2),
+                        bbox={"boxstyle": "round", "facecolor": color, "alpha": 0.2},
                     )
                 else:
                     ax.text(
@@ -1263,7 +1263,7 @@ class ChartGenerator:
             logger.error(f"Error generating chronological revenue chart: {e}")
             return ""
 
-    def generate_quarterly_profitability_chart(self, symbol: str, quarterly_trends: Dict) -> str:
+    def generate_quarterly_profitability_chart(self, symbol: str, quarterly_trends: dict) -> str:
         """
         Generate quarterly profitability chart showing net income and margins
 
@@ -1289,7 +1289,7 @@ class ChartGenerator:
             if not net_income_data:
                 return ""
 
-            fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={"height_ratios": [1, 1]})
+            _fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={"height_ratios": [1, 1]})
 
             # Top chart: Net Income
             periods = [item["period"] for item in net_income_data]
@@ -1378,7 +1378,7 @@ class ChartGenerator:
             logger.error(f"Error generating profitability chart: {e}")
             return ""
 
-    def generate_quarterly_cashflow_chart(self, symbol: str, quarterly_trends: Dict) -> str:
+    def generate_quarterly_cashflow_chart(self, symbol: str, quarterly_trends: dict) -> str:
         """
         Generate quarterly operating cash flow chart
 
@@ -1402,7 +1402,7 @@ class ChartGenerator:
             if not ocf_data:
                 return ""
 
-            fig, ax = plt.subplots(figsize=(12, 6))
+            _fig, ax = plt.subplots(figsize=(12, 6))
 
             periods = [item["period"] for item in ocf_data]
             values = [item["value"] for item in ocf_data]
@@ -1426,7 +1426,7 @@ class ChartGenerator:
                         ha="center",
                         va="bottom" if height >= 0 else "top",
                         fontsize=10,
-                        bbox=dict(boxstyle="round", facecolor=color_text, alpha=0.2),
+                        bbox={"boxstyle": "round", "facecolor": color_text, "alpha": 0.2},
                     )
                 else:
                     ax.text(
@@ -1465,7 +1465,7 @@ class ChartGenerator:
             logger.error(f"Error generating cash flow chart: {e}")
             return ""
 
-    def generate_score_history_chart(self, symbol: str, score_history: List[Dict], score_trend: Dict) -> str:
+    def generate_score_history_chart(self, symbol: str, score_history: list[dict], score_trend: dict) -> str:
         """
         Generate investment score history chart showing trend over time
 
@@ -1588,7 +1588,7 @@ class ChartGenerator:
             logger.error(f"Error generating score history chart: {e}")
             return ""
 
-    def generate_valuation_comparison_chart(self, symbol: str, peer_valuation: Dict) -> str:
+    def generate_valuation_comparison_chart(self, symbol: str, peer_valuation: dict) -> str:
         """
         Generate valuation comparison vs peers
 
@@ -1604,7 +1604,7 @@ class ChartGenerator:
                 logger.warning(f"No peer valuation data available for {symbol}")
                 return ""
 
-            fig, ax = plt.subplots(figsize=(10, 6))
+            _fig, ax = plt.subplots(figsize=(10, 6))
 
             rel_val = peer_valuation["relative_valuation"]
             metrics = ["P/E", "P/B", "P/S", "PEG"]
@@ -1650,7 +1650,7 @@ class ChartGenerator:
             logger.error(f"Error generating valuation comparison chart: {e}")
             return ""
 
-    def generate_multi_year_trends_chart(self, symbol: str, multi_year_trends: Dict) -> str:
+    def generate_multi_year_trends_chart(self, symbol: str, multi_year_trends: dict) -> str:
         """
         Generate multi-year historical trends chart showing revenue and earnings with CAGR
 
@@ -1688,7 +1688,7 @@ class ChartGenerator:
                 return ""
 
             # Create dual-axis chart
-            fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 10), sharex=True)
+            _fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 10), sharex=True)
 
             # Extract data
             years = [int(item.get("fiscal_year", 0)) for item in yearly_data]
@@ -1739,7 +1739,7 @@ class ChartGenerator:
                     textcoords="offset points",
                     ha="center",
                     fontsize=9,
-                    bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.7),
+                    bbox={"boxstyle": "round,pad=0.3", "facecolor": "white", "alpha": 0.7},
                 )
 
             ax1.set_ylabel("Revenue ($ Millions)", fontsize=12, fontweight="bold")
@@ -1777,7 +1777,7 @@ class ChartGenerator:
                     ha="center",
                     va="bottom" if earn >= 0 else "top",
                     fontsize=9,
-                    bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.7),
+                    bbox={"boxstyle": "round,pad=0.3", "facecolor": "white", "alpha": 0.7},
                 )
 
             ax2.set_xlabel("Fiscal Year", fontsize=12, fontweight="bold")
@@ -1817,7 +1817,7 @@ class ChartGenerator:
             logger.error(traceback.format_exc())
             return ""
 
-    def generate_risk_scores_radar_chart(self, symbol: str, risk_scores: Dict) -> str:
+    def generate_risk_scores_radar_chart(self, symbol: str, risk_scores: dict) -> str:
         """
         Generate radar/spider chart showing multi-dimensional risk scores
 
@@ -1864,7 +1864,7 @@ class ChartGenerator:
             angles += angles[:1]
 
             # Create figure
-            fig, ax = plt.subplots(figsize=(10, 10), subplot_kw=dict(projection="polar"))
+            _fig, ax = plt.subplots(figsize=(10, 10), subplot_kw={"projection": "polar"})
 
             # Draw the plot
             ax.plot(angles, values, "o-", linewidth=2.5, color="#2E86AB", markersize=8)
@@ -1929,7 +1929,7 @@ class ChartGenerator:
             logger.error(traceback.format_exc())
             return ""
 
-    def generate_competitive_positioning_matrix(self, competitive_positioning: Dict) -> str:
+    def generate_competitive_positioning_matrix(self, competitive_positioning: dict) -> str:
         """
         Generate 2D scatter plot showing competitive positioning
 
@@ -1967,7 +1967,7 @@ class ChartGenerator:
             target_symbol = target["symbol"]
 
             # Create figure
-            fig, ax = plt.subplots(figsize=(12, 10))
+            _fig, ax = plt.subplots(figsize=(12, 10))
 
             # Plot peers as blue dots
             ax.scatter(
@@ -2003,12 +2003,12 @@ class ChartGenerator:
                 fontsize=12,
                 fontweight="bold",
                 color="#D32F2F",
-                bbox=dict(
-                    boxstyle="round,pad=0.5",
-                    facecolor="white",
-                    edgecolor="#D32F2F",
-                    alpha=0.8,
-                ),
+                bbox={
+                    "boxstyle": "round,pad=0.5",
+                    "facecolor": "white",
+                    "edgecolor": "#D32F2F",
+                    "alpha": 0.8,
+                },
             )
 
             # Label a few notable peers (avoid overcrowding)
@@ -2025,7 +2025,7 @@ class ChartGenerator:
                             textcoords="offset points",
                             fontsize=8,
                             alpha=0.7,
-                            bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.6),
+                            bbox={"boxstyle": "round,pad=0.3", "facecolor": "white", "alpha": 0.6},
                         )
                         labeled_count += 1
 
@@ -2137,7 +2137,7 @@ class ChartGenerator:
             logger.error(traceback.format_exc())
             return ""
 
-    def generate_volume_profile_chart(self, symbol: str, volume_profile: Dict) -> str:
+    def generate_volume_profile_chart(self, symbol: str, volume_profile: dict) -> str:
         """
         Generate volume profile chart showing volume distribution at price levels
 
@@ -2170,7 +2170,7 @@ class ChartGenerator:
             [bin["volume_pct"] for bin in profile_bins]
 
             # Create horizontal bar chart
-            fig, ax = plt.subplots(figsize=(12, 10))
+            _fig, ax = plt.subplots(figsize=(12, 10))
 
             # Plot volume bars (horizontal)
             colors = []
@@ -2259,13 +2259,13 @@ class ChartGenerator:
                 xytext=(max_vol * 0.8, poc_price + (max(prices) - min(prices)) * 0.05),
                 fontsize=9,
                 color="red",
-                bbox=dict(
-                    boxstyle="round,pad=0.5",
-                    facecolor="white",
-                    edgecolor="red",
-                    alpha=0.8,
-                ),
-                arrowprops=dict(arrowstyle="->", color="red", lw=1.5),
+                bbox={
+                    "boxstyle": "round,pad=0.5",
+                    "facecolor": "white",
+                    "edgecolor": "red",
+                    "alpha": 0.8,
+                },
+                arrowprops={"arrowstyle": "->", "color": "red", "lw": 1.5},
             )
 
             # Price position relative to POC
@@ -2288,7 +2288,7 @@ class ChartGenerator:
                 transform=ax.transAxes,
                 fontsize=11,
                 verticalalignment="top",
-                bbox=dict(boxstyle="round", facecolor=color, alpha=0.2),
+                bbox={"boxstyle": "round", "facecolor": color, "alpha": 0.2},
             )
 
             plt.tight_layout()

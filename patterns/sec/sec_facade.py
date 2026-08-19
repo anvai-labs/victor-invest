@@ -670,7 +670,7 @@ Provide analysis in the following exact JSON format:
         try:
             from investigator.infrastructure.cache import get_cache_manager
             from investigator.infrastructure.cache.cache_types import CacheType
-            from utils.quarterly_metrics import QuarterlyMetricsCalculator
+            from investigator.domain.services.valuation_shared.quarterly_metrics import QuarterlyMetricsCalculator
 
             cache_manager = get_cache_manager()
             calculator = QuarterlyMetricsCalculator()

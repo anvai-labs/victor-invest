@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 InvestiGator - Synthesis Helper Functions
 Copyright (c) 2025 Vijaykumar Singh
@@ -10,13 +9,13 @@ Enhanced to include full content without truncation
 
 import json
 import logging
-from typing import Any, Dict
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 def format_fundamental_data_for_synthesis(
-    fundamental_responses: Dict[str, Dict],
+    fundamental_responses: dict[str, dict],
 ) -> str:
     """Format fundamental analysis responses for synthesis prompt - includes full content"""
     try:
@@ -131,7 +130,7 @@ def format_fundamental_data_for_synthesis(
                     section = f"\n{'=' * 60}\n{period_key} ({form_type}) - Period: {period}\n{'=' * 60}\n"
                     section += "FULL TEXT ANALYSIS:\n"
                     section += content + "\n"  # Full content, no truncation
-                    logger.debug(f"Using text fallback for {period_key}: {str(e)}")
+                    logger.debug(f"Using text fallback for {period_key}: {e!s}")
                     formatted_sections.append(section)
 
         return "\n".join(formatted_sections)
@@ -141,7 +140,7 @@ def format_fundamental_data_for_synthesis(
         return "Error formatting fundamental analysis data."
 
 
-def format_technical_data_for_synthesis(technical_response: Dict[str, Any]) -> str:
+def format_technical_data_for_synthesis(technical_response: dict[str, Any]) -> str:
     """Format technical analysis response for synthesis prompt - includes full content"""
     try:
         if not technical_response:
@@ -253,8 +252,8 @@ def format_technical_data_for_synthesis(technical_response: Dict[str, Any]) -> s
             # Fallback to text - include full content
             section = f"\n{'=' * 60}\nTECHNICAL ANALYSIS SUMMARY\n{'=' * 60}\n"
             section += "FULL TEXT TECHNICAL ANALYSIS:\n"
-            section += content  # Full content, no truncation
-            logger.debug(f"Using text fallback for technical data: {str(e)}")
+            section += str(content)  # Full content, no truncation
+            logger.debug(f"Using text fallback for technical data: {e!s}")
             return section
 
     except Exception as e:

@@ -1425,7 +1425,7 @@ class SynthesisAgent(InvestmentAgent):
             # Import ChartGenerator
             from pathlib import Path
 
-            from utils.chart_generator import ChartGenerator
+            from investigator.infrastructure.reporting.chart_generator import ChartGenerator
 
             # Check if fundamental analysis data is available
             if not synthesis_input.fundamental_analysis:

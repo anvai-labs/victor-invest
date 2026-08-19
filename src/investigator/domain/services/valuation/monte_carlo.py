@@ -8,7 +8,6 @@ Foundation for portfolio risk analysis and scenario planning.
 import logging
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, Optional
 
 import numpy as np
 
@@ -56,7 +55,7 @@ class MonteCarloResult:
 class MonteCarloSimulator:
     """Monte Carlo simulation engine for price forecasting"""
 
-    def __init__(self, random_seed: Optional[int] = None):
+    def __init__(self, random_seed: int | None = None):
         """
         Initialize Monte Carlo simulator
 
@@ -299,7 +298,7 @@ class MonteCarloSimulator:
         drift_annual: float = 0.0,
         time_horizon_days: int = 252,
         simulations: int = 10000,
-    ) -> Dict[str, Dict]:
+    ) -> dict[str, dict]:
         """
         Generate standard investment scenarios
 

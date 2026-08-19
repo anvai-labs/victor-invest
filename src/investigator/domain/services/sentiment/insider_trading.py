@@ -7,7 +7,6 @@ and calculate insider sentiment scores.
 
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +24,7 @@ class InsiderTradingAnalyzer:
         self.db_manager = db_manager
         self.sec_base_url = "https://www.sec.gov"
 
-    def analyze_insider_activity(self, symbol: str, days: int = 180) -> Dict:
+    def analyze_insider_activity(self, symbol: str, days: int = 180) -> dict:
         """
         Analyze insider trading activity for a symbol
 
@@ -51,7 +50,7 @@ class InsiderTradingAnalyzer:
             logger.error(f"Error analyzing insider trading for {symbol}: {e}")
             return {}
 
-    def _calculate_mock_insider_sentiment(self, symbol: str) -> Dict:
+    def _calculate_mock_insider_sentiment(self, symbol: str) -> dict:
         """
         Calculate insider sentiment (mock implementation for now)
 
@@ -79,7 +78,7 @@ class InsiderTradingAnalyzer:
             "note": "Insider trading analysis requires SEC EDGAR API integration - coming soon",
         }
 
-    def fetch_form4_filings(self, symbol: str, days: int = 180) -> List[Dict]:
+    def fetch_form4_filings(self, symbol: str, days: int = 180) -> list[dict]:
         """
         Fetch recent Form 4 filings for symbol
 
@@ -107,7 +106,7 @@ class InsiderTradingAnalyzer:
             logger.error(f"Error fetching Form 4 filings: {e}")
             return []
 
-    def _get_cik(self, symbol: str) -> Optional[str]:
+    def _get_cik(self, symbol: str) -> str | None:
         """
         Get CIK for symbol from database
 
@@ -135,7 +134,7 @@ class InsiderTradingAnalyzer:
 
         return None
 
-    def calculate_insider_sentiment(self, transactions: List[Dict]) -> Dict:
+    def calculate_insider_sentiment(self, transactions: list[dict]) -> dict:
         """
         Calculate insider sentiment score based on buy/sell patterns
 
@@ -197,7 +196,7 @@ class InsiderTradingAnalyzer:
             "period_days": 180,
         }
 
-    def _detect_unusual_patterns(self, transactions: List[Dict]) -> List[str]:
+    def _detect_unusual_patterns(self, transactions: list[dict]) -> list[str]:
         """
         Detect unusual insider trading patterns
 

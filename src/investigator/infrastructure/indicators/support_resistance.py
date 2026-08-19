@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Support and Resistance Level Detection
 
@@ -6,7 +5,6 @@ Detects key price levels using local extrema analysis and clustering.
 """
 
 import logging
-from typing import Dict, List
 
 import numpy as np
 import pandas as pd
@@ -19,7 +17,7 @@ def detect_support_resistance_levels(
     window: int = 20,
     num_levels: int = 5,
     tolerance: float = 0.02,
-) -> Dict:
+) -> dict:
     """
     Detect support and resistance levels from price data
 
@@ -117,7 +115,7 @@ def detect_support_resistance_levels(
         return _empty_result(price_data)
 
 
-def _cluster_levels(levels: np.ndarray, tolerance: float = 0.02) -> List[float]:
+def _cluster_levels(levels: np.ndarray, tolerance: float = 0.02) -> list[float]:
     """
     Cluster nearby price levels into single representative levels
 
@@ -150,7 +148,7 @@ def _cluster_levels(levels: np.ndarray, tolerance: float = 0.02) -> List[float]:
     return clustered
 
 
-def _empty_result(price_data: pd.DataFrame) -> Dict:
+def _empty_result(price_data: pd.DataFrame) -> dict:
     """Return empty result structure with current price"""
     try:
         current_price = float(price_data["close"].iloc[-1])
@@ -168,7 +166,7 @@ def _empty_result(price_data: pd.DataFrame) -> Dict:
     }
 
 
-def format_support_resistance_text(sr_levels: Dict) -> str:
+def format_support_resistance_text(sr_levels: dict) -> str:
     """
     Format support/resistance levels as human-readable text
 

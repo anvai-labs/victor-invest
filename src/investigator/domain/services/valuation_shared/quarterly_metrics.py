@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Quarterly Metrics Calculation Module
 Centralized calculation of all quarterly financial metrics and ratios
@@ -7,7 +6,7 @@ Centralized calculation of all quarterly financial metrics and ratios
 import logging
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -24,7 +23,7 @@ class QuarterlyMetricsCalculator:
     def __init__(self):
         self.logger = logger
 
-    def calculate_all_metrics(self, quarterly_data: List[Dict], symbol: str) -> pd.DataFrame:
+    def calculate_all_metrics(self, quarterly_data: list[dict], symbol: str) -> pd.DataFrame:
         """
         Calculate ALL quarterly financial metrics on the full dataset
         Returns enhanced DataFrame with all calculated ratios and metrics
@@ -223,7 +222,7 @@ class QuarterlyMetricsCalculator:
         else:
             df["Financial_Strength_Score"] = 0
 
-    def _assess_data_quality(self, df: pd.DataFrame) -> List[float]:
+    def _assess_data_quality(self, df: pd.DataFrame) -> list[float]:
         """Assess data quality for each quarter"""
         quality_scores = []
 

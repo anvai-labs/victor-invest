@@ -123,7 +123,7 @@ class _StubChartGenerator:
 # Attempt to load the real chart generator only when explicitly enabled.
 if os.environ.get("INVESTIGATOR_ENABLE_CHARTS", "0") == "1":
     try:
-        from utils.chart_generator import ChartGenerator as _RealChartGenerator
+        from investigator.infrastructure.reporting.chart_generator import ChartGenerator as _RealChartGenerator
 
         ChartGenerator = _RealChartGenerator
     except Exception as chart_import_error:
@@ -501,7 +501,7 @@ class InvestmentSynthesizer:
             insider_trading = None
             try:
                 symbol_logger.info("Analyzing insider trading activity")
-                from utils.insider_trading import InsiderTradingAnalyzer
+                from investigator.domain.services.sentiment.insider_trading import InsiderTradingAnalyzer
 
                 insider_analyzer = InsiderTradingAnalyzer(db_manager=self.db_manager)
                 insider_trading = insider_analyzer.analyze_insider_activity(symbol, days=180)
@@ -524,7 +524,7 @@ class InvestmentSynthesizer:
             news_sentiment = None
             try:
                 symbol_logger.info("Analyzing news sentiment")
-                from utils.news_sentiment import NewsSentimentAnalyzer
+                from investigator.domain.services.sentiment.news_sentiment import NewsSentimentAnalyzer
 
                 # Initialize with Ollama client for LLM-powered sentiment
                 news_analyzer = NewsSentimentAnalyzer(db_manager=self.db_manager, ollama_client=self.ollama)
@@ -618,7 +618,7 @@ class InvestmentSynthesizer:
             monte_carlo_results = None
             try:
                 symbol_logger.info("Running Monte Carlo simulation for probabilistic price forecasting")
-                from utils.monte_carlo import MonteCarloSimulator
+                from investigator.domain.services.valuation.monte_carlo import MonteCarloSimulator
 
                 # Get current price and volatility from latest data
                 current_price_mc = latest_data.get("current_price", 0)
@@ -673,7 +673,7 @@ class InvestmentSynthesizer:
                 symbol_logger.info("Detecting chart patterns in price data")
                 import pandas as pd
 
-                from utils.pattern_recognition import PatternRecognizer
+                from investigator.infrastructure.indicators.pattern_recognition import PatternRecognizer
 
                 # Get historical price data (need OHLCV data for pattern recognition)
                 technical_data = latest_data.get("technical", {})
@@ -812,7 +812,7 @@ class InvestmentSynthesizer:
             prompt_manager = get_prompt_manager()
 
             # Prepare data for synthesis prompt
-            from utils.synthesis_helpers import (
+            from investigator.application.synthesis_helpers import (
                 format_fundamental_data_for_synthesis,
                 format_technical_data_for_synthesis,
             )
@@ -2091,7 +2091,7 @@ Your responses must be precise, quantitative, and suitable for institutional inv
 
                         # Detect support/resistance levels from full price history
                         try:
-                            from utils.support_resistance import (
+                            from investigator.infrastructure.indicators.support_resistance import (
                                 detect_support_resistance_levels,
                             )
 
