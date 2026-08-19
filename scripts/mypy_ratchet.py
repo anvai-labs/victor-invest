@@ -121,7 +121,8 @@ def load_baseline() -> dict[str, int]:
     return {str(k): int(v) for k, v in files.items()}
 
 
-def save_baseline(counts: dict[str, int]) -> None:
+def _baseline_json(counts: dict[str, int]) -> str:
+    """Render the baseline file contents for a given set of counts."""
     payload = {
         "_comment": (
             "Per-file mypy error counts. A file may not exceed its entry; the total may "
@@ -130,7 +131,11 @@ def save_baseline(counts: dict[str, int]) -> None:
         "total": sum(counts.values()),
         "files": dict(sorted(counts.items())),
     }
-    BASELINE_PATH.write_text(json.dumps(payload, indent=2) + "\n")
+    return json.dumps(payload, indent=2)
+
+
+def save_baseline(counts: dict[str, int]) -> None:
+    BASELINE_PATH.write_text(_baseline_json(counts) + "\n")
 
 
 def main() -> int:
@@ -181,6 +186,13 @@ def main() -> int:
             "'python scripts/mypy_ratchet.py --update' and say why in the commit.",
             file=sys.stderr,
         )
+        # Emitted because this environment is authoritative and the developer's is
+        # not: mypy sees different errors depending on which third-party packages
+        # and stubs are installed. Reconciling by hand from the delta lines is
+        # error-prone -- this is the file, ready to paste.
+        print("\n--- BEGIN .mypy-baseline.json (this environment) ---", file=sys.stderr)
+        print(_baseline_json(current), file=sys.stderr)
+        print("--- END .mypy-baseline.json ---", file=sys.stderr)
         return 1
 
     if not improvements:
