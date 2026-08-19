@@ -55,6 +55,11 @@ OPTIONAL_THIRD_PARTY = {
     "plotly",
     "yfinance",
     "lxml_html_clean",
+    # TA-Lib is a C extension needing a system library, so it is routinely
+    # absent. chart_generator sets TALIB_AVAILABLE = False and carries on with
+    # fewer indicators. Installed here, absent in CI -- which is how the guard
+    # noticed once chart_generator moved into src/ and came into scope.
+    "talib",
     "victor",  # the host runtime; verticals must degrade without it
     "victor_contracts",
 }

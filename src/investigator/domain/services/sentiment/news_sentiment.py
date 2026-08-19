@@ -9,7 +9,6 @@ import json
 import logging
 from collections import Counter
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
 
 import requests
 
@@ -19,7 +18,7 @@ logger = logging.getLogger(__name__)
 class NewsSentimentAnalyzer:
     """Analyze news sentiment for stocks"""
 
-    def __init__(self, db_manager=None, ollama_client=None, newsapi_key: Optional[str] = None):
+    def __init__(self, db_manager=None, ollama_client=None, newsapi_key: str | None = None):
         """
         Initialize news sentiment analyzer
 
@@ -33,7 +32,7 @@ class NewsSentimentAnalyzer:
         self.newsapi_key = newsapi_key or "placeholder"  # Will be configured later
         self.newsapi_base_url = "https://newsapi.org/v2"
 
-    def analyze_news_sentiment(self, symbol: str, days: int = 7) -> Dict:
+    def analyze_news_sentiment(self, symbol: str, days: int = 7) -> dict:
         """
         Analyze news sentiment for a symbol
 
@@ -94,9 +93,9 @@ class NewsSentimentAnalyzer:
 
         except Exception as e:
             logger.error(f"Error analyzing news sentiment for {symbol}: {e}")
-            return self._get_default_sentiment(symbol, days, f"Error: {str(e)}")
+            return self._get_default_sentiment(symbol, days, f"Error: {e!s}")
 
-    def _fetch_news_articles(self, symbol: str, days: int = 7) -> List[Dict]:
+    def _fetch_news_articles(self, symbol: str, days: int = 7) -> list[dict]:
         """
         Fetch news articles from NewsAPI
 
@@ -133,7 +132,7 @@ class NewsSentimentAnalyzer:
             data = response.json()
 
             if data.get("status") == "ok":
-                articles = data.get("articles", [])
+                articles: list[dict] = list(data.get("articles", []))
                 logger.info(f"Fetched {len(articles)} articles for {symbol}")
                 return articles
             else:
@@ -144,7 +143,7 @@ class NewsSentimentAnalyzer:
             logger.error(f"Error fetching news articles: {e}")
             return []
 
-    def _filter_articles(self, articles: List[Dict]) -> List[Dict]:
+    def _filter_articles(self, articles: list[dict]) -> list[dict]:
         """
         Filter irrelevant or duplicate articles
 
@@ -177,7 +176,7 @@ class NewsSentimentAnalyzer:
 
         return filtered
 
-    def _analyze_article_sentiment(self, article: Dict) -> Optional[Dict]:
+    def _analyze_article_sentiment(self, article: dict) -> dict | None:
         """
         Analyze sentiment of a single article using LLM
 
@@ -214,7 +213,7 @@ Focus on implications for stock price. Be objective and balanced.
             # Parse JSON response
             try:
                 result = json.loads(response_text)
-                return result
+                return dict(result) if isinstance(result, dict) else None
             except json.JSONDecodeError:
                 logger.warning("Could not parse LLM sentiment response as JSON")
                 return self._basic_sentiment_analysis(article)
@@ -223,7 +222,7 @@ Focus on implications for stock price. Be objective and balanced.
             logger.error(f"Error in LLM sentiment analysis: {e}")
             return self._basic_sentiment_analysis(article)
 
-    def _basic_sentiment_analysis(self, article: Dict) -> Dict:
+    def _basic_sentiment_analysis(self, article: dict) -> dict:
         """
         Basic keyword-based sentiment analysis (fallback)
 
@@ -297,7 +296,7 @@ Focus on implications for stock price. Be objective and balanced.
             "reasoning": f"Keyword analysis: {pos_count} positive, {neg_count} negative",
         }
 
-    def _calculate_aggregate_sentiment(self, article_sentiments: List[Dict]) -> Dict:
+    def _calculate_aggregate_sentiment(self, article_sentiments: list[dict]) -> dict:
         """
         Calculate aggregate sentiment from multiple articles
 
@@ -322,8 +321,8 @@ Focus on implications for stock price. Be objective and balanced.
         label_counts = Counter(labels)
 
         # Calculate weighted average with recency bias
-        total_weight = 0
-        weighted_sum = 0
+        total_weight = 0.0
+        weighted_sum = 0.0
 
         for i, sentiment in enumerate(article_sentiments):
             # More recent articles (earlier in list) get higher weight
@@ -344,7 +343,7 @@ Focus on implications for stock price. Be objective and balanced.
             "article_count": len(article_sentiments),
         }
 
-    def _calculate_sentiment_trend(self, article_sentiments: List[Dict]) -> Dict:
+    def _calculate_sentiment_trend(self, article_sentiments: list[dict]) -> dict:
         """
         Calculate sentiment trend over time
 
@@ -386,7 +385,7 @@ Focus on implications for stock price. Be objective and balanced.
             "older_avg": round(older_avg, 1),
         }
 
-    def _detect_sentiment_price_divergence(self, sentiment_data: Dict, price_data: Dict) -> Optional[Dict]:
+    def _detect_sentiment_price_divergence(self, sentiment_data: dict, price_data: dict) -> dict | None:
         """
         Detect divergences between sentiment and price movement
 
@@ -439,7 +438,7 @@ Focus on implications for stock price. Be objective and balanced.
         else:
             return "Very Negative"
 
-    def _get_default_sentiment(self, symbol: str, days: int, reason: str) -> Dict:
+    def _get_default_sentiment(self, symbol: str, days: int, reason: str) -> dict:
         """
         Get default sentiment when data is unavailable
 
