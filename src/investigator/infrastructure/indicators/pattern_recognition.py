@@ -9,7 +9,6 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -42,7 +41,7 @@ class PatternResult:
     start_date: datetime
     end_date: datetime
     direction: str  # 'bullish', 'bearish', 'neutral'
-    key_points: Dict  # Important points in the pattern
+    key_points: dict  # Important points in the pattern
     price_target: float
     stop_loss: float
     description: str
@@ -71,7 +70,7 @@ class PatternRecognizer:
 
         logger.info(f"Initialized PatternRecognizer (min_length={min_pattern_length})")
 
-    def detect_patterns(self, price_data: pd.DataFrame) -> List[PatternResult]:
+    def detect_patterns(self, price_data: pd.DataFrame) -> list[PatternResult]:
         """
         Detect all patterns in price data
 
@@ -83,7 +82,7 @@ class PatternRecognizer:
         """
         logger.info(f"Detecting patterns in {len(price_data)} bars")
 
-        patterns = []
+        patterns: list[PatternResult] = []
 
         # Ensure we have enough data
         if len(price_data) < self.min_pattern_length:
@@ -91,7 +90,7 @@ class PatternRecognizer:
             return patterns
 
         # Find peaks and troughs
-        prices = price_data["close"].values
+        prices = np.asarray(price_data["close"])
         peaks, troughs = find_peaks_and_troughs(prices, prominence=self.peak_prominence)
 
         # Check for double top
@@ -140,7 +139,7 @@ class PatternRecognizer:
 
     def _detect_double_top(
         self, price_data: pd.DataFrame, peaks: np.ndarray, troughs: np.ndarray
-    ) -> List[PatternResult]:
+    ) -> list[PatternResult]:
         """
         Detect double top patterns
 
@@ -150,8 +149,8 @@ class PatternRecognizer:
         - Second peak followed by decline
         - Bearish reversal signal
         """
-        patterns = []
-        prices = price_data["close"].values
+        patterns: list[PatternResult] = []
+        prices = np.asarray(price_data["close"])
 
         # Need at least 2 peaks
         if len(peaks) < 2:
@@ -234,7 +233,7 @@ class PatternRecognizer:
 
     def _detect_double_bottom(
         self, price_data: pd.DataFrame, peaks: np.ndarray, troughs: np.ndarray
-    ) -> List[PatternResult]:
+    ) -> list[PatternResult]:
         """
         Detect double bottom patterns
 
@@ -244,8 +243,8 @@ class PatternRecognizer:
         - Second trough followed by rise
         - Bullish reversal signal
         """
-        patterns = []
-        prices = price_data["close"].values
+        patterns: list[PatternResult] = []
+        prices = np.asarray(price_data["close"])
 
         # Need at least 2 troughs
         if len(troughs) < 2:
@@ -328,7 +327,7 @@ class PatternRecognizer:
 
     def _detect_head_and_shoulders(
         self, price_data: pd.DataFrame, peaks: np.ndarray, troughs: np.ndarray
-    ) -> List[PatternResult]:
+    ) -> list[PatternResult]:
         """
         Detect head and shoulders patterns
 
@@ -339,8 +338,8 @@ class PatternRecognizer:
         - Neckline connects troughs between peaks
         - Bearish reversal signal
         """
-        patterns = []
-        prices = price_data["close"].values
+        patterns: list[PatternResult] = []
+        prices = np.asarray(price_data["close"])
 
         # Need at least 3 peaks
         if len(peaks) < 3:
@@ -435,7 +434,7 @@ class PatternRecognizer:
 
     def _detect_inverse_head_and_shoulders(
         self, price_data: pd.DataFrame, peaks: np.ndarray, troughs: np.ndarray
-    ) -> List[PatternResult]:
+    ) -> list[PatternResult]:
         """
         Detect inverse head and shoulders patterns
 
@@ -446,8 +445,8 @@ class PatternRecognizer:
         - Neckline connects peaks between troughs
         - Bullish reversal signal
         """
-        patterns = []
-        prices = price_data["close"].values
+        patterns: list[PatternResult] = []
+        prices = np.asarray(price_data["close"])
 
         # Need at least 3 troughs
         if len(troughs) < 3:
@@ -542,7 +541,7 @@ class PatternRecognizer:
 
     def _detect_ascending_triangle(
         self, price_data: pd.DataFrame, peaks: np.ndarray, troughs: np.ndarray
-    ) -> List[PatternResult]:
+    ) -> list[PatternResult]:
         """
         Detect ascending triangle patterns
 
@@ -552,8 +551,8 @@ class PatternRecognizer:
         - Bullish breakout pattern
         - Usually breaks upward
         """
-        patterns = []
-        prices = price_data["close"].values
+        patterns: list[PatternResult] = []
+        prices = np.asarray(price_data["close"])
 
         # Need at least 3 peaks and 3 troughs
         if len(peaks) < 3 or len(troughs) < 3:
@@ -632,7 +631,7 @@ class PatternRecognizer:
 
     def _detect_descending_triangle(
         self, price_data: pd.DataFrame, peaks: np.ndarray, troughs: np.ndarray
-    ) -> List[PatternResult]:
+    ) -> list[PatternResult]:
         """
         Detect descending triangle patterns
 
@@ -642,8 +641,8 @@ class PatternRecognizer:
         - Bearish breakdown pattern
         - Usually breaks downward
         """
-        patterns = []
-        prices = price_data["close"].values
+        patterns: list[PatternResult] = []
+        prices = np.asarray(price_data["close"])
 
         # Need at least 3 peaks and 3 troughs
         if len(peaks) < 3 or len(troughs) < 3:
@@ -721,7 +720,7 @@ class PatternRecognizer:
 
     def _detect_symmetrical_triangle(
         self, price_data: pd.DataFrame, peaks: np.ndarray, troughs: np.ndarray
-    ) -> List[PatternResult]:
+    ) -> list[PatternResult]:
         """
         Detect symmetrical triangle patterns
 
@@ -731,8 +730,8 @@ class PatternRecognizer:
         - Converging trendlines
         - Neutral pattern - can break either direction
         """
-        patterns = []
-        prices = price_data["close"].values
+        patterns: list[PatternResult] = []
+        prices = np.asarray(price_data["close"])
 
         # Need at least 3 peaks and 3 troughs
         if len(peaks) < 3 or len(troughs) < 3:
@@ -831,7 +830,7 @@ class PatternRecognizer:
 
     def _detect_bullish_flag(
         self, price_data: pd.DataFrame, peaks: np.ndarray, troughs: np.ndarray
-    ) -> List[PatternResult]:
+    ) -> list[PatternResult]:
         """
         Detect bullish flag patterns
 
@@ -841,8 +840,8 @@ class PatternRecognizer:
         - Continuation breakout upward
         - Bullish continuation pattern
         """
-        patterns = []
-        prices = price_data["close"].values
+        patterns: list[PatternResult] = []
+        prices = np.asarray(price_data["close"])
 
         # Need sufficient data
         if len(prices) < 30:
@@ -943,7 +942,7 @@ class PatternRecognizer:
 
     def _detect_bearish_flag(
         self, price_data: pd.DataFrame, peaks: np.ndarray, troughs: np.ndarray
-    ) -> List[PatternResult]:
+    ) -> list[PatternResult]:
         """
         Detect bearish flag patterns
 
@@ -953,8 +952,8 @@ class PatternRecognizer:
         - Continuation breakdown downward
         - Bearish continuation pattern
         """
-        patterns = []
-        prices = price_data["close"].values
+        patterns: list[PatternResult] = []
+        prices = np.asarray(price_data["close"])
 
         # Need sufficient data
         if len(prices) < 30:
@@ -1055,7 +1054,7 @@ class PatternRecognizer:
 
     def _detect_consolidation(
         self, price_data: pd.DataFrame, peaks: np.ndarray, troughs: np.ndarray
-    ) -> List[PatternResult]:
+    ) -> list[PatternResult]:
         """
         Detect consolidation/range-bound patterns
 
@@ -1065,8 +1064,8 @@ class PatternRecognizer:
         - Low volatility and trending
         - Neutral pattern awaiting breakout
         """
-        patterns = []
-        prices = price_data["close"].values
+        patterns: list[PatternResult] = []
+        prices = np.asarray(price_data["close"])
 
         # Need sufficient data
         if len(prices) < 30:
@@ -1159,7 +1158,7 @@ class PatternRecognizer:
 
 def find_peaks_and_troughs(
     prices: np.ndarray, prominence: float = 1.0, distance: int = 5
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Find peaks (local maxima) and troughs (local minima) in price data
 

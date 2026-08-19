@@ -671,9 +671,9 @@ Provide analysis in the following exact JSON format:
     def _calculate_and_cache_quarterly_metrics(self, quarterly_data: list, symbol: str) -> None:
         """Calculate comprehensive quarterly metrics and cache them to RDBMS"""
         try:
+            from investigator.domain.services.valuation_shared.quarterly_metrics import QuarterlyMetricsCalculator
             from investigator.infrastructure.cache import get_cache_manager
             from investigator.infrastructure.cache.cache_types import CacheType
-            from utils.quarterly_metrics import QuarterlyMetricsCalculator
 
             cache_manager = get_cache_manager()
             calculator = QuarterlyMetricsCalculator()
