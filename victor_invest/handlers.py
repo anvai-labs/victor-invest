@@ -194,8 +194,8 @@ class FetchMacroDataHandler(BaseHandler):
 class FetchManagementDiscussionHandler(BaseHandler):
     """Fetch SEC management discussion and commentary for LLM synthesis.
 
-    Extracts MD&A, guidance, and recent developments from SEC filings
-    to provide real-time management insights for investment analysis.
+    Extracts source-attributed quarterly and annual MD&A plus recent 8-K
+    developments to provide current management insights for investment analysis.
     """
 
     async def execute(
@@ -217,12 +217,15 @@ class FetchManagementDiscussionHandler(BaseHandler):
         from victor_invest.tools.sec_filing_text import SECFilingTextTool
 
         sec_text_tool = SECFilingTextTool()
-        result = await sec_text_tool.execute(
-            {},  # _exec_ctx
-            symbol=symbol,
-            action="get_management_discussion",
-            max_chars=15000,
-        )
+        try:
+            result = await sec_text_tool.execute(
+                {},  # _exec_ctx
+                symbol=symbol,
+                action="get_management_discussion",
+                max_chars=15000,
+            )
+        finally:
+            sec_text_tool.close()
 
         return {
             "status": "success" if result.success else "error",
@@ -1072,12 +1075,15 @@ Provide your response as a JSON object with this exact structure:
                 from victor_invest.tools.sec_filing_text import SECFilingTextTool
 
                 sec_text_tool = SECFilingTextTool()
-                mda_result = await sec_text_tool.execute(
-                    {},  # _exec_ctx
-                    symbol=symbol,
-                    action="get_management_discussion",
-                    max_chars=12000,
-                )
+                try:
+                    mda_result = await sec_text_tool.execute(
+                        {},  # _exec_ctx
+                        symbol=symbol,
+                        action="get_management_discussion",
+                        max_chars=12000,
+                    )
+                finally:
+                    sec_text_tool.close()
                 if mda_result.success:
                     management_discussion = {
                         "status": "success",
