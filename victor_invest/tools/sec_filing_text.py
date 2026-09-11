@@ -135,6 +135,17 @@ _CANONICAL_SECTION_SPECS = (
 )
 
 
+def canonical_sections_for_form(form_type: str) -> tuple[tuple[str, str], ...]:
+    """Return stable ``(identifier, section_name)`` pairs for a filing form."""
+    normalized_form = (form_type or "").strip().upper()
+    form_family = next((family for family in ("10-K", "10-Q") if normalized_form.startswith(family)), None)
+    if form_family is None:
+        return ()
+    return tuple(
+        (spec.identifier, spec.section_name) for spec in _CANONICAL_SECTION_SPECS if spec.form_family == form_family
+    )
+
+
 class SECFilingTextTool(BaseTool):
     """Tool for extracting textual content from SEC filings.
 

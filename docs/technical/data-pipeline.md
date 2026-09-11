@@ -30,6 +30,9 @@ Victor consumes two distinct SEC datasets:
 
 The narrative producer lives in `ibkrtrading`; Victor reads its
 `sec_filing_document` table and never performs a browser or SEC-network fallback.
+An operator-only deterministic batch records versioned canonical-section successes
+and explicit failures in `victor_sec_derived_section`; interactive analysis does
+not write on its request path.
 See [SEC Narrative Documents](../operations/sec-narrative-documents.md) for the
 operator contract, readiness queries, and point-in-time rules.
 

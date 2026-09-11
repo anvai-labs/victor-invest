@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Made normal CI validate the latest published runtime while retaining a dedicated compatibility lane against Victor `develop`.
 - Reactivated deterministic and golden workflow execution tests against the canonical Victor 0.9 APIs.
 - Made 10-K and 10-Q narrative extraction item/part-aware and exposed canonical market-risk sections.
+- Added append-only, parser-versioned persistence for canonical SEC section successes and failures through a bounded operator materializer.
 
 ## [0.5.0] - 2026-02-15
 

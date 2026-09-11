@@ -149,7 +149,7 @@ SELECT accession_no, content_sha256, document_kind, issuer_cik, issuer_ticker,
        form_type, is_amendment, filed_at, accepted_at, available_at,
        report_period_end, document_url, content_type, byte_length,
        content_bytes, retrieved_at, last_verified_at
-FROM sec_filing_document
+FROM public.sec_filing_document
 WHERE issuer_ticker = :symbol
   AND form_type IN (:base_form, :amended_form)
   AND document_kind = :document_kind
