@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Raised the supported host floor to `victor-ai` 0.9.2 and the contract floor to `victor-contracts` 0.9.1.
 - Made normal CI validate the latest published runtime while retaining a dedicated compatibility lane against Victor `develop`.
 - Reactivated deterministic and golden workflow execution tests against the canonical Victor 0.9 APIs.
+- Made 10-K and 10-Q narrative extraction item/part-aware and exposed canonical market-risk sections.
 
 ## [0.5.0] - 2026-02-15
 

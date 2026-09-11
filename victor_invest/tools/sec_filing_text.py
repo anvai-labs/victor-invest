@@ -43,7 +43,7 @@ from victor_invest.tools.base import BaseTool, ToolResult
 
 logger = logging.getLogger(__name__)
 
-SEC_TEXT_PARSER_VERSION = "sec-text-v2"
+SEC_TEXT_PARSER_VERSION = "sec-text-v3"
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,6 +67,74 @@ class _MappedText:
     ends: array
 
 
+@dataclass(frozen=True, slots=True)
+class _CanonicalSectionSpec:
+    """A form/part/item-aware SEC narrative section definition."""
+
+    identifier: str
+    form_family: str
+    section_name: str
+    item: str
+    title_pattern: str
+    part: str | None = None
+
+
+_CANONICAL_SECTION_SPECS = (
+    _CanonicalSectionSpec(
+        "10k_item_1_business",
+        "10-K",
+        "business_overview",
+        "1",
+        r"^business(?:\s+overview)?\b",
+    ),
+    _CanonicalSectionSpec(
+        "10k_item_1a_risk_factors",
+        "10-K",
+        "risk_factors",
+        "1A",
+        r"^risk\s+factors\b",
+    ),
+    _CanonicalSectionSpec(
+        "10k_item_7_mda",
+        "10-K",
+        "mda",
+        "7",
+        r"^management[’']s\s+discussion\s+and\s+analysis\b",
+    ),
+    _CanonicalSectionSpec(
+        "10k_item_7a_market_risk",
+        "10-K",
+        "market_risk",
+        "7A",
+        r"^(?:quantitative\s+and\s+qualitative\s+disclosures\s+about\s+)?market\s+risk\b",
+    ),
+    _CanonicalSectionSpec(
+        "10q_part_i_item_2_mda",
+        "10-Q",
+        "mda",
+        "2",
+        r"^management[’']s\s+discussion\s+and\s+analysis\b",
+        part="I",
+    ),
+    _CanonicalSectionSpec(
+        "10q_part_i_item_3_market_risk",
+        "10-Q",
+        "market_risk",
+        "3",
+        r"^(?:quantitative\s+and\s+qualitative\s+disclosures\s+about\s+)?market\s+risk\b",
+        part="I",
+    ),
+    _CanonicalSectionSpec(
+        "10q_part_ii_item_1a_risk_factors",
+        "10-Q",
+        "risk_factors",
+        "1A",
+        r"^risk\s+factors\b",
+        part="II",
+    ),
+)
+
+
 class SECFilingTextTool(BaseTool):
     """Tool for extracting textual content from SEC filings.
 
@@ -78,6 +146,7 @@ class SECFilingTextTool(BaseTool):
     - get_guidance: Extract management guidance and outlook
     - get_developments: Extract recent developments from 8-K filings
     - get_risk_factors: Extract risk factors from filings
+    - get_market_risk: Extract quantitative and qualitative market-risk disclosures
     - get_business_overview: Extract business description and overview
     - get_management_discussion: Get combined management commentary sections
 
@@ -94,6 +163,7 @@ Actions:
 - get_guidance: Extract management guidance, outlook, and forward-looking statements
 - get_developments: Extract recent developments from 8-K filings
 - get_risk_factors: Extract risk factors and cautionary statements
+- get_market_risk: Extract canonical 10-K Item 7A or 10-Q Part I Item 3
 - get_business_overview: Extract business description and operations overview
 - get_management_discussion: Get source-attributed 10-Q/10-K MD&A and 8-K developments
 
@@ -206,6 +276,8 @@ Parameters:
                 return await self._get_developments(symbol, num_filings, max_chars, query_as_of)
             elif action == "get_risk_factors":
                 return await self._get_risk_factors(symbol, form_type, period, max_chars, query_as_of)
+            elif action == "get_market_risk":
+                return await self._get_market_risk(symbol, form_type, period, max_chars, query_as_of)
             elif action == "get_business_overview":
                 return await self._get_business_overview(symbol, form_type, period, max_chars, query_as_of)
             elif action == "get_management_discussion":
@@ -213,7 +285,8 @@ Parameters:
             else:
                 return ToolResult.create_failure(
                     f"Unknown action: {action}. Valid actions: "
-                    "get_mda, get_guidance, get_developments, get_risk_factors, get_business_overview, get_management_discussion"
+                    "get_mda, get_guidance, get_developments, get_risk_factors, get_market_risk, "
+                    "get_business_overview, get_management_discussion"
                 )
 
         except Exception as e:
@@ -371,6 +444,73 @@ Parameters:
         if (form_type or "").upper().startswith("10-K"):
             return [r"(?mi)^\s*item\s*1\.?\s+business(?:\s+overview)?"]
         return []
+
+    @staticmethod
+    def _canonical_section_spec(form_type: str, section_name: str) -> _CanonicalSectionSpec | None:
+        normalized_form = (form_type or "").strip().upper()
+        form_family = next((family for family in ("10-K", "10-Q") if normalized_form.startswith(family)), None)
+        if form_family is None:
+            return None
+        return next(
+            (
+                spec
+                for spec in _CANONICAL_SECTION_SPECS
+                if spec.form_family == form_family and spec.section_name == section_name
+            ),
+            None,
+        )
+
+    def _extract_canonical_section_with_provenance(
+        self,
+        content: bytes | str,
+        form_type: str,
+        section_name: str,
+        max_chars: int,
+    ) -> tuple[str, ExtractedSection] | None:
+        """Extract an explicitly defined SEC item within its canonical form part."""
+        spec = self._canonical_section_spec(form_type, section_name)
+        if spec is None:
+            return None
+
+        normalized = self._normalize_with_offsets(content)
+        part_heading = re.compile(r"(?mi)^\s*part\s+(?P<part>i{1,2})\b[^\n]*$")
+        item_heading = re.compile(r"(?mi)^\s*item\s+(?P<item>\d+[a-z]?(?:\.\d+)?)\s*[.：:\-—]?\s*(?P<title>[^\n]*)$")
+        parts = list(part_heading.finditer(normalized.text))
+        items = list(item_heading.finditer(normalized.text))
+        candidates: list[tuple[int, int, int]] = []
+
+        for item_index, item_match in enumerate(items):
+            item_number = item_match.group("item").rstrip(".").upper()
+            if item_number != spec.item:
+                continue
+            if not re.search(spec.title_pattern, item_match.group("title").strip(), re.IGNORECASE):
+                continue
+
+            enclosing_part: str | None = None
+            next_part_start = len(normalized.text)
+            for part_index, part_match in enumerate(parts):
+                following_part_start = (
+                    parts[part_index + 1].start() if part_index + 1 < len(parts) else len(normalized.text)
+                )
+                if part_match.start() <= item_match.start() < following_part_start:
+                    enclosing_part = part_match.group("part").upper()
+                    next_part_start = following_part_start
+                    break
+            if spec.part is not None and enclosing_part != spec.part:
+                continue
+
+            next_item_start = items[item_index + 1].start() if item_index + 1 < len(items) else len(normalized.text)
+            end_pos = min(next_item_start, next_part_start)
+            start_pos, end_pos = self._trim_mapped_range(normalized.text, item_match.start(), end_pos)
+            if len(normalized.text[start_pos:end_pos]) < 80:
+                continue
+            candidates.append((end_pos - start_pos, start_pos, end_pos))
+
+        if not candidates:
+            return None
+
+        _, start_pos, end_pos = max(candidates, key=lambda candidate: (candidate[0], candidate[1]))
+        return spec.identifier, self._mapped_section(normalized, start_pos, end_pos, max_chars)
 
     def _extract_exhibit_99_1(self, text: str, max_chars: int) -> str | None:
         """Extract an earnings-release exhibit from complete submission text."""
@@ -573,16 +713,13 @@ Parameters:
             return ToolResult.create_failure(f"Could not retrieve {form_type} filing text for {symbol}")
         document: StoredSecDocument = filing_data["document"]
 
-        section = self._extract_section_with_provenance(
-            document.content_bytes,
-            self._mda_patterns_for_form(form_type),
-            max_chars,
-        )
+        extracted = self._extract_canonical_section_with_provenance(document.content_bytes, form_type, "mda", max_chars)
 
-        if not section:
+        if not extracted:
             return ToolResult.create_failure(f"Could not extract MD&A section from {form_type} filing for {symbol}")
+        canonical_section, section = extracted
 
-        source = self._source_with_evidence(document, "mda", section)
+        source = self._source_with_evidence(document, "mda", section, canonical_section=canonical_section)
         return ToolResult.create_success(
             output={
                 "symbol": symbol,
@@ -792,14 +929,13 @@ Parameters:
             return ToolResult.create_failure(f"Could not retrieve {form_type} filing text for {symbol}")
         document: StoredSecDocument = filing_data["document"]
 
-        section = self._extract_section_with_provenance(
-            document.content_bytes,
-            self._risk_patterns_for_form(form_type),
-            max_chars,
+        extracted = self._extract_canonical_section_with_provenance(
+            document.content_bytes, form_type, "risk_factors", max_chars
         )
 
-        if not section:
+        if not extracted:
             return ToolResult.create_failure(f"Could not extract risk factors from {form_type} filing for {symbol}")
+        canonical_section, section = extracted
 
         return ToolResult.create_success(
             output={
@@ -808,7 +944,45 @@ Parameters:
                 "section": "risk_factors",
                 "text": section.text,
                 "char_count": len(section.text),
-                **self._source_with_evidence(document, "risk_factors", section),
+                **self._source_with_evidence(document, "risk_factors", section, canonical_section=canonical_section),
+                "fetched_at": datetime.now(UTC).isoformat(),
+            },
+            metadata={
+                "source": "postgres_sec_filing_document",
+                "form_type": document.form_type,
+                "period": period,
+                "parser_version": SEC_TEXT_PARSER_VERSION,
+            },
+        )
+
+    async def _get_market_risk(
+        self,
+        symbol: str,
+        form_type: str,
+        period: str,
+        max_chars: int,
+        as_of: datetime | None = None,
+    ) -> ToolResult:
+        """Extract canonical market-risk disclosures."""
+        filing_data = await self._get_filing_data(symbol, form_type, period, as_of)
+        if not filing_data:
+            return ToolResult.create_failure(f"Could not retrieve {form_type} filing text for {symbol}")
+        document: StoredSecDocument = filing_data["document"]
+        extracted = self._extract_canonical_section_with_provenance(
+            document.content_bytes, form_type, "market_risk", max_chars
+        )
+        if not extracted:
+            return ToolResult.create_failure(f"Could not extract market risk from {form_type} filing for {symbol}")
+        canonical_section, section = extracted
+
+        return ToolResult.create_success(
+            output={
+                "symbol": symbol,
+                "form_type": document.form_type,
+                "section": "market_risk",
+                "text": section.text,
+                "char_count": len(section.text),
+                **self._source_with_evidence(document, "market_risk", section, canonical_section=canonical_section),
                 "fetched_at": datetime.now(UTC).isoformat(),
             },
             metadata={
@@ -833,16 +1007,15 @@ Parameters:
             return ToolResult.create_failure(f"Could not retrieve {form_type} filing text for {symbol}")
         document: StoredSecDocument = filing_data["document"]
 
-        section = self._extract_section_with_provenance(
-            document.content_bytes,
-            self._business_patterns_for_form(form_type),
-            max_chars,
+        extracted = self._extract_canonical_section_with_provenance(
+            document.content_bytes, form_type, "business_overview", max_chars
         )
 
-        if not section:
+        if not extracted:
             return ToolResult.create_failure(
                 f"Could not extract business overview from {form_type} filing for {symbol}"
             )
+        canonical_section, section = extracted
 
         return ToolResult.create_success(
             output={
@@ -851,7 +1024,9 @@ Parameters:
                 "section": "business_overview",
                 "text": section.text,
                 "char_count": len(section.text),
-                **self._source_with_evidence(document, "business_overview", section),
+                **self._source_with_evidence(
+                    document, "business_overview", section, canonical_section=canonical_section
+                ),
                 "fetched_at": datetime.now(UTC).isoformat(),
             },
             metadata={
@@ -952,6 +1127,7 @@ Parameters:
             "source_start_byte",
             "source_end_byte",
             "truncated",
+            "canonical_section",
         )
         return {"section": section, **{field: output.get(field) for field in source_fields}}
 
@@ -971,12 +1147,17 @@ Parameters:
         document: StoredSecDocument,
         section_name: str,
         section: ExtractedSection,
+        *,
+        canonical_section: str | None = None,
     ) -> dict[str, Any]:
-        return {
+        source = {
             **document.provenance(),
             "parser_version": SEC_TEXT_PARSER_VERSION,
             **cls._evidence(section_name, section),
         }
+        if canonical_section is not None:
+            source["canonical_section"] = canonical_section
+        return source
 
     def get_schema(self) -> dict[str, Any]:
         """Get JSON schema for SEC Filing Text Tool parameters."""
@@ -994,6 +1175,7 @@ Parameters:
                         "get_guidance",
                         "get_developments",
                         "get_risk_factors",
+                        "get_market_risk",
                         "get_business_overview",
                         "get_management_discussion",
                     ],
