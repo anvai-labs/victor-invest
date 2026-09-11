@@ -103,10 +103,12 @@ class _FakeDocumentStore:
         self.quarterly = _stored_document(
             "10-Q",
             """
+                <h1>PART I — FINANCIAL INFORMATION</h1>
                 <h1>Item 2. Management's Discussion and Analysis of Financial Condition and Results of Operations</h1>
                 <p>Quarterly revenue increased because unit demand and pricing improved materially.</p>
                 <p>Management expects capital expenditures to remain within the approved annual plan.</p>
                 <h1>Item 3. Quantitative and Qualitative Disclosures About Market Risk</h1>
+                <p>Foreign exchange and interest-rate sensitivity remained within policy limits.</p>
             """,
             "0000320193-26-000001",
         )
@@ -157,11 +159,32 @@ async def test_mda_result_retains_filing_provenance() -> None:
     assert result.output["document_kind"] == "primary"
     assert len(result.output["content_sha256"]) == 64
     assert result.output["available_at"] == "2026-05-01T12:00:00+00:00"
+    assert result.output["canonical_section"] == "10q_part_i_item_2_mda"
     assert "Quarterly revenue increased" in result.output["text"]
     source = tool._document_store.quarterly.content_bytes[
         result.output["source_start_byte"] : result.output["source_end_byte"]
     ]
     assert b"Quarterly revenue increased" in source
+
+
+@pytest.mark.asyncio
+async def test_market_risk_result_exposes_canonical_section() -> None:
+    tool = SECFilingTextTool()
+    tool._initialized = True
+    tool._document_store = _FakeDocumentStore()
+
+    result = await tool.execute(
+        symbol="AAPL",
+        action="get_market_risk",
+        form_type="10-Q",
+        period="latest",
+        max_chars=5_000,
+    )
+
+    assert result.success
+    assert result.output["section"] == "market_risk"
+    assert result.output["canonical_section"] == "10q_part_i_item_3_market_risk"
+    assert "Foreign exchange" in result.output["text"]
 
 
 @pytest.mark.asyncio

@@ -79,6 +79,29 @@ contain the accession, source digest, availability/retrieval timestamps, parser
 version, normalized-text digest, and exclusive source-byte offsets. The offsets can
 be applied directly to `content_bytes` to recover the cited raw evidence.
 
+## Canonical narrative sections
+
+The `sec_filing_text` tool recognizes these form-aware boundaries. Base-form
+requests also consider amended filings; a 10-K/A or 10-Q/A uses the same canonical
+definition and retains `is_amendment` in its provenance.
+
+| Action | Form | `canonical_section` | Boundary |
+|---|---|---|---|
+| `get_business_overview` | 10-K | `10k_item_1_business` | Item 1 through the next item |
+| `get_risk_factors` | 10-K | `10k_item_1a_risk_factors` | Item 1A through the next item |
+| `get_mda` | 10-K | `10k_item_7_mda` | Item 7 through Item 7A |
+| `get_market_risk` | 10-K | `10k_item_7a_market_risk` | Item 7A through the next item |
+| `get_mda` | 10-Q | `10q_part_i_item_2_mda` | Part I, Item 2 through the next item |
+| `get_market_risk` | 10-Q | `10q_part_i_item_3_market_risk` | Part I, Item 3 through the next item or part |
+| `get_risk_factors` | 10-Q | `10q_part_ii_item_1a_risk_factors` | Part II, Item 1A through the next item |
+
+Part scoping prevents a quarterly Item 2 or Item 1A in the wrong part from being
+accepted. Repeated table-of-contents headings are evaluated as candidates and the
+substantive body section wins. If the requested item, title, or part is absent, the
+tool returns a failure instead of substituting nearby filing text. Inline XBRL tags
+and HTML entities are normalized while evidence offsets continue to reference the
+exact immutable source bytes.
+
 ## Point-in-time behavior
 
 The optional tool parameter `as_of` must be an ISO 8601 date-time with a timezone.
