@@ -106,6 +106,14 @@ ORDER BY idx_scan DESC;
 
 ---
 
+## SEC Narrative Evidence
+
+Management commentary requires the shared immutable document table produced by
+`ibkrtrading`. Configure a read-only PostgreSQL role and verify freshness before a
+standard or comprehensive run. See
+[SEC Narrative Documents](sec-narrative-documents.md) for setup, producer commands,
+integrity behavior, and incident checks.
+
 ## 🔄 Cache Management
 
 ### UI Cache Sweep

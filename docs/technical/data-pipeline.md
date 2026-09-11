@@ -1,6 +1,6 @@
 # Data Pipeline
 
-**SEC filings → Company facts → Market data → Valuation**
+**SEC filings → Durable facts/documents → Deterministic analysis → Valuation**
 
 ---
 
@@ -22,6 +22,16 @@
 ---
 
 ## 📊 Data Extraction
+
+Victor consumes two distinct SEC datasets:
+
+- normalized XBRL company facts for quantitative analysis; and
+- immutable 10-K/10-Q/8-K document bytes for management commentary.
+
+The narrative producer lives in `ibkrtrading`; Victor reads its
+`sec_filing_document` table and never performs a browser or SEC-network fallback.
+See [SEC Narrative Documents](../operations/sec-narrative-documents.md) for the
+operator contract, readiness queries, and point-in-time rules.
 
 ### Source: SEC Company Facts API
 
