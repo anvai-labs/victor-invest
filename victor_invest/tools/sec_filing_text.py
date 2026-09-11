@@ -15,27 +15,56 @@
 """SEC Filing Text Extraction Tool for Management Commentary.
 
 This tool extracts Management's Discussion and Analysis (MD&A) and other
-relevant textual content from SEC filings (10-K, 10-Q, 8-K) to provide
-current, source-attributed management commentary for LLM synthesis.
+relevant textual content from durable SEC filings (10-K, 10-Q, 8-K) to provide
+point-in-time, source-attributed management commentary for synthesis.
 
 Key Features:
 - Extract MD&A section from 10-K/10-Q filings
 - Extract recent developments from 8-K filings
 - Extract management guidance and forward-looking statements
 - Extract risk factors and business overview sections
+- Verify immutable source bytes and expose exact evidence offsets
 """
 
 from __future__ import annotations
 
+import hashlib
 import html
+import io
 import logging
 import re
+from array import array
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
+from victor_invest.sec_document_store import PostgresSecDocumentStore, StoredSecDocument
 from victor_invest.tools.base import BaseTool, ToolResult
 
 logger = logging.getLogger(__name__)
+
+SEC_TEXT_PARSER_VERSION = "sec-text-v2"
+
+
+@dataclass(frozen=True, slots=True)
+class ExtractedSection:
+    """Normalized text tied to an exclusive byte range in immutable evidence."""
+
+    text: str
+    source_start_byte: int
+    source_end_byte: int
+    truncated: bool
+
+    @property
+    def normalized_text_sha256(self) -> str:
+        return hashlib.sha256(self.text.encode("utf-8", errors="surrogateescape")).hexdigest()
+
+
+@dataclass(frozen=True, slots=True)
+class _MappedText:
+    text: str
+    starts: array
+    ends: array
 
 
 class SECFilingTextTool(BaseTool):
@@ -75,6 +104,7 @@ Parameters:
 - period: Filing period ("latest" or specific quarter like "2024-Q3")
 - num_filings: Number of recent filings to search for developments (default: 5)
 - max_chars: Maximum characters to return per section (default: 15000)
+- as_of: Optional timezone-aware point-in-time cutoff (default: now)
 """
 
     def __init__(self, config: Any | None = None):
@@ -84,7 +114,7 @@ Parameters:
             config: Optional investigator config object.
         """
         super().__init__(config)
-        self._sec_client: Any | None = None
+        self._document_store: PostgresSecDocumentStore | Any | None = None
 
         # Section patterns for extraction
         self._guidance_patterns = [
@@ -104,8 +134,6 @@ Parameters:
     async def initialize(self) -> None:
         """Initialize SEC infrastructure components."""
         try:
-            from investigator.infrastructure.sec.sec_api import SECApiClient
-
             config: Any = getattr(self, "config", None)
             if config is None:
                 from investigator.config import get_config
@@ -113,7 +141,7 @@ Parameters:
                 config = get_config()
                 self.config = config
 
-            self._sec_client = SECApiClient(config=config)
+            self._document_store = PostgresSecDocumentStore(config=config)
             self._initialized = True
             logger.info("SECFilingTextTool initialized successfully")
 
@@ -122,10 +150,10 @@ Parameters:
             raise
 
     def close(self) -> None:
-        """Close the underlying SEC sessions when a direct-use tool is finished."""
-        if self._sec_client is not None and hasattr(self._sec_client, "close"):
-            self._sec_client.close()
-        self._sec_client = None
+        """Close pooled PostgreSQL connections when a direct-use tool is finished."""
+        if self._document_store is not None and hasattr(self._document_store, "close"):
+            self._document_store.close()
+        self._document_store = None
         self._initialized = False
 
     async def execute(
@@ -137,6 +165,7 @@ Parameters:
         period: str = "latest",
         num_filings: int = 5,
         max_chars: int = 15000,
+        as_of: str | datetime | None = None,
         **kwargs,
     ) -> ToolResult:
         """Execute SEC filing text extraction.
@@ -148,6 +177,7 @@ Parameters:
             period: Filing period ("latest" or specific period)
             num_filings: Number of recent filings to search
             max_chars: Maximum characters to return per section
+            as_of: Optional timezone-aware point-in-time cutoff
             **kwargs: Additional action-specific parameters
 
         Returns:
@@ -164,21 +194,22 @@ Parameters:
                 return ToolResult.create_failure("max_chars must be between 1000 and 50000")
             if not 1 <= num_filings <= 20:
                 return ToolResult.create_failure("num_filings must be between 1 and 20")
+            query_as_of = self._parse_as_of(as_of)
 
             action = action.lower().strip()
 
             if action == "get_mda":
-                return await self._get_mda(symbol, form_type, period, max_chars)
+                return await self._get_mda(symbol, form_type, period, max_chars, query_as_of)
             elif action == "get_guidance":
-                return await self._get_guidance(symbol, form_type, period, max_chars)
+                return await self._get_guidance(symbol, form_type, period, max_chars, query_as_of)
             elif action == "get_developments":
-                return await self._get_developments(symbol, num_filings, max_chars)
+                return await self._get_developments(symbol, num_filings, max_chars, query_as_of)
             elif action == "get_risk_factors":
-                return await self._get_risk_factors(symbol, form_type, period, max_chars)
+                return await self._get_risk_factors(symbol, form_type, period, max_chars, query_as_of)
             elif action == "get_business_overview":
-                return await self._get_business_overview(symbol, form_type, period, max_chars)
+                return await self._get_business_overview(symbol, form_type, period, max_chars, query_as_of)
             elif action == "get_management_discussion":
-                return await self._get_management_discussion(symbol, max_chars)
+                return await self._get_management_discussion(symbol, max_chars, query_as_of)
             else:
                 return ToolResult.create_failure(
                     f"Unknown action: {action}. Valid actions: "
@@ -192,19 +223,116 @@ Parameters:
                 metadata={"symbol": symbol, "action": action},
             )
 
+    @staticmethod
+    def _parse_as_of(value: str | datetime | None) -> datetime:
+        if value is None:
+            return datetime.now(UTC)
+        parsed = value if isinstance(value, datetime) else datetime.fromisoformat(value)
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            raise ValueError("as_of must include a timezone")
+        return parsed.astimezone(UTC)
+
     def _normalize_text(self, text: str) -> str:
         """Normalize filing text while preserving structural line boundaries."""
-        decoded = html.unescape(text or "")
-        structured = re.sub(r"(?i)<\s*br\s*/?\s*>", "\n", decoded)
-        structured = re.sub(
-            r"(?i)</\s*(?:p|div|tr|td|th|li|h[1-6]|section|article|table)\s*>",
-            "\n",
-            structured,
+        return self._normalize_with_offsets(text).text
+
+    @staticmethod
+    def _normalize_with_offsets(content: bytes | str, base_byte_offset: int = 0) -> _MappedText:
+        """Normalize SEC HTML while retaining the source span for every character."""
+        raw = content if isinstance(content, bytes) else content.encode("utf-8", errors="surrogateescape")
+        decoded = raw.decode("utf-8", errors="surrogateescape")
+        char_bytes = array("Q", [base_byte_offset])
+        for character in decoded:
+            char_bytes.append(char_bytes[-1] + len(character.encode("utf-8", errors="surrogateescape")))
+
+        structural = re.compile(
+            r"^<\s*(?:br\s*/?\s*>|/\s*(?:p|div|tr|td|th|li|h[1-6]|section|article|table)\s*>)",
+            re.IGNORECASE,
         )
-        no_tags = re.sub(r"<[^>]+>", " ", structured)
-        no_xbrl_artifacts = re.sub(r"\{[^}\n]+\}", " ", no_tags)
-        lines = [re.sub(r"[\t \f\v]+", " ", line).strip() for line in no_xbrl_artifacts.splitlines()]
-        return "\n".join(line for line in lines if line).strip()
+        output = io.StringIO()
+        starts = array("Q")
+        ends = array("Q")
+        output_length = 0
+        line_has_content = False
+        between_lines = False
+        line_break_start = base_byte_offset
+        line_break_end = base_byte_offset
+        whitespace_start: int | None = None
+        whitespace_end = base_byte_offset
+
+        def emit(character: str, start: int, end: int) -> None:
+            nonlocal output_length
+            output.write(character)
+            output_length += 1
+            starts.append(start)
+            ends.append(end)
+
+        def consume_newline(start: int, end: int) -> None:
+            nonlocal between_lines, line_break_start, line_break_end, line_has_content, whitespace_start
+            whitespace_start = None
+            if line_has_content:
+                between_lines = True
+                line_break_start = start
+                line_break_end = end
+                line_has_content = False
+            elif between_lines:
+                line_break_end = end
+
+        def consume_whitespace(start: int, end: int) -> None:
+            nonlocal whitespace_start, whitespace_end
+            if whitespace_start is None:
+                whitespace_start = start
+            whitespace_end = end
+
+        def consume_character(character: str, start: int, end: int) -> None:
+            nonlocal between_lines, line_has_content, whitespace_start
+            if character in "\r\n":
+                consume_newline(start, end)
+                return
+            if character.isspace():
+                consume_whitespace(start, end)
+                return
+            if between_lines and output_length:
+                emit("\n", line_break_start, max(line_break_end, start))
+                between_lines = False
+            elif whitespace_start is not None and line_has_content:
+                emit(" ", whitespace_start, whitespace_end)
+            whitespace_start = None
+            emit(character, start, end)
+            line_has_content = True
+
+        index = 0
+        while index < len(decoded):
+            if decoded[index] == "<":
+                tag_end = decoded.find(">", index + 1)
+                if tag_end >= 0:
+                    if structural.match(decoded[index : tag_end + 1]):
+                        consume_newline(char_bytes[index], char_bytes[tag_end + 1])
+                    else:
+                        consume_whitespace(char_bytes[index], char_bytes[tag_end + 1])
+                    index = tag_end + 1
+                    continue
+            if decoded[index] == "{":
+                artifact_end = decoded.find("}", index + 1)
+                newline = decoded.find("\n", index + 1)
+                if artifact_end >= 0 and (newline < 0 or artifact_end < newline):
+                    consume_whitespace(char_bytes[index], char_bytes[artifact_end + 1])
+                    index = artifact_end + 1
+                    continue
+            if decoded[index] == "&":
+                entity_end = decoded.find(";", index + 1, min(len(decoded), index + 33))
+                if entity_end >= 0:
+                    entity = decoded[index : entity_end + 1]
+                    unescaped = html.unescape(entity)
+                    if unescaped != entity:
+                        for character in unescaped:
+                            consume_character(character, char_bytes[index], char_bytes[entity_end + 1])
+                        index = entity_end + 1
+                        continue
+
+            consume_character(decoded[index], char_bytes[index], char_bytes[index + 1])
+            index += 1
+        return _MappedText(text=output.getvalue(), starts=starts, ends=ends)
 
     @staticmethod
     def _truncate_text(text: str, max_chars: int) -> str:
@@ -246,19 +374,39 @@ Parameters:
 
     def _extract_exhibit_99_1(self, text: str, max_chars: int) -> str | None:
         """Extract an earnings-release exhibit from complete submission text."""
-        exhibits: list[str] = []
-        for document in re.findall(r"<DOCUMENT>(.*?)</DOCUMENT>", text, re.IGNORECASE | re.DOTALL):
+        section = self._extract_exhibit_99_1_with_provenance(text, max_chars)
+        return section.text if section else None
+
+    def _extract_exhibit_99_1_with_provenance(self, content: bytes | str, max_chars: int) -> ExtractedSection | None:
+        """Select one substantive Exhibit 99.1 and retain its exact byte span."""
+        raw = content if isinstance(content, bytes) else content.encode("utf-8", errors="surrogateescape")
+        decoded = raw.decode("utf-8", errors="surrogateescape")
+        char_bytes = array("Q", [0])
+        for character in decoded:
+            char_bytes.append(char_bytes[-1] + len(character.encode("utf-8", errors="surrogateescape")))
+
+        exhibits: list[_MappedText] = []
+        for document_match in re.finditer(r"<DOCUMENT>(.*?)</DOCUMENT>", decoded, re.IGNORECASE | re.DOTALL):
+            document = document_match.group(1)
             if not re.search(r"<TYPE>\s*EX-99(?:\.1)?(?:\s|<|$)", document, re.IGNORECASE):
                 continue
             text_match = re.search(r"<TEXT>(.*?)</TEXT>", document, re.IGNORECASE | re.DOTALL)
-            normalized = self._normalize_text(text_match.group(1) if text_match else document)
-            if len(normalized) >= 80:
+            if text_match:
+                start_char = document_match.start(1) + text_match.start(1)
+                end_char = document_match.start(1) + text_match.end(1)
+            else:
+                start_char = document_match.start(1)
+                end_char = document_match.end(1)
+            start_byte = char_bytes[start_char]
+            end_byte = char_bytes[end_char]
+            normalized = self._normalize_with_offsets(raw[start_byte:end_byte], base_byte_offset=start_byte)
+            if len(normalized.text) >= 80:
                 exhibits.append(normalized)
 
         if not exhibits:
             return None
-        combined = "\n\n".join(exhibits)
-        return self._truncate_text(combined, max_chars)
+        best = max(exhibits, key=lambda exhibit: len(exhibit.text))
+        return self._mapped_section(best, 0, len(best.text), max_chars)
 
     def _extract_section_by_patterns(self, text: str, patterns: list[str], max_chars: int) -> str | None:
         """Extract a section from filing text using regex patterns.
@@ -271,29 +419,66 @@ Parameters:
         Returns:
             Extracted section text or None
         """
-        normalized = self._normalize_text(text)
+        section = self._extract_section_with_provenance(text, patterns, max_chars)
+        return section.text if section else None
+
+    def _extract_section_with_provenance(
+        self,
+        content: bytes | str,
+        patterns: list[str],
+        max_chars: int,
+    ) -> ExtractedSection | None:
+        """Extract one contiguous section and retain exclusive source-byte offsets."""
+        normalized = self._normalize_with_offsets(content)
         item_heading = re.compile(
             r"(?mi)^\s*(?:part\s+(?:i|ii)\s+)?item\s+\d+[a-z]?(?:\.\d+)?\s*[.：:\-]?",
         )
-        candidates: list[tuple[int, int, str]] = []
+        candidates: list[tuple[int, int, int]] = []
 
         for pattern in patterns:
-            for match in re.finditer(pattern, normalized, re.IGNORECASE | re.MULTILINE):
-                next_section = item_heading.search(normalized, match.end())
-                end_pos = next_section.start() if next_section else len(normalized)
-                section_text = normalized[match.start() : end_pos].strip()
+            for match in re.finditer(pattern, normalized.text, re.IGNORECASE | re.MULTILINE):
+                next_section = item_heading.search(normalized.text, match.end())
+                end_pos = next_section.start() if next_section else len(normalized.text)
+                start_pos, end_pos = self._trim_mapped_range(normalized.text, match.start(), end_pos)
+                section_text = normalized.text[start_pos:end_pos]
                 if len(section_text) < 80:
                     continue
                 # A filing table of contents commonly repeats the same heading.
                 # Prefer the candidate with substantive body content rather than
                 # accepting the first plausible match.
-                candidates.append((len(section_text), match.start(), section_text))
+                candidates.append((len(section_text), start_pos, end_pos))
 
         if not candidates:
             return None
 
-        _, _, section_text = max(candidates, key=lambda candidate: (candidate[0], candidate[1]))
-        return self._truncate_text(section_text, max_chars)
+        _, start_pos, end_pos = max(candidates, key=lambda candidate: (candidate[0], candidate[1]))
+        return self._mapped_section(normalized, start_pos, end_pos, max_chars)
+
+    @staticmethod
+    def _trim_mapped_range(text: str, start: int, end: int) -> tuple[int, int]:
+        while start < end and text[start].isspace():
+            start += 1
+        while end > start and text[end - 1].isspace():
+            end -= 1
+        return start, end
+
+    @classmethod
+    def _mapped_section(cls, mapped: _MappedText, start: int, end: int, max_chars: int) -> ExtractedSection:
+        start, end = cls._trim_mapped_range(mapped.text, start, end)
+        original = mapped.text[start:end]
+        result = cls._truncate_text(original, max_chars)
+        truncated = result != original
+        retained_chars = len(result)
+        if truncated and result.endswith("... [truncated]"):
+            retained_chars -= len("... [truncated]")
+        retained_chars = max(1, retained_chars)
+        mapped_end = min(end, start + retained_chars)
+        return ExtractedSection(
+            text=result,
+            source_start_byte=mapped.starts[start],
+            source_end_byte=mapped.ends[mapped_end - 1],
+            truncated=truncated,
+        )
 
     def _extract_guidance_sentences(self, text: str, max_sentences: int = 50) -> list[str]:
         """Extract sentences containing guidance/forward-looking statements.
@@ -329,8 +514,14 @@ Parameters:
 
         return guidance_sentences
 
-    async def _get_filing_data(self, symbol: str, form_type: str, period: str) -> dict[str, Any] | None:
-        """Get filing text and provenance from SEC.
+    async def _get_filing_data(
+        self,
+        symbol: str,
+        form_type: str,
+        period: str,
+        as_of: datetime | None = None,
+    ) -> dict[str, Any] | None:
+        """Get verified filing text and provenance from the shared store.
 
         Args:
             symbol: Stock ticker
@@ -340,113 +531,168 @@ Parameters:
         Returns:
             Filing metadata with text, or None
         """
-        if self._sec_client is None:
+        if self._document_store is None:
             return None
 
         try:
-            filing_data = await self._sec_client.get_filing_by_symbol(symbol=symbol, form_type=form_type, period=period)
-            return filing_data if filing_data.get("text") else None
+            document = await self._document_store.get_latest_document(
+                symbol,
+                form_type,
+                period,
+                as_of or datetime.now(UTC),
+            )
+            if document is None:
+                return None
+            filing_data = document.provenance()
+            filing_data["text"] = document.verified_text()
+            filing_data["document"] = document
+            return filing_data
         except Exception as e:
-            logger.error(f"Error fetching filing text: {e}")
+            logger.error(f"Error reading verified filing text: {e}")
             return None
 
-    async def _get_filing_text(self, symbol: str, form_type: str, period: str) -> str | None:
+    async def _get_filing_text(
+        self, symbol: str, form_type: str, period: str, as_of: datetime | None = None
+    ) -> str | None:
         """Compatibility helper returning only filing text."""
-        filing_data = await self._get_filing_data(symbol, form_type, period)
+        filing_data = await self._get_filing_data(symbol, form_type, period, as_of)
         text = filing_data.get("text") if filing_data else None
         return text if isinstance(text, str) else None
 
-    async def _get_mda(self, symbol: str, form_type: str, period: str, max_chars: int) -> ToolResult:
+    async def _get_mda(
+        self,
+        symbol: str,
+        form_type: str,
+        period: str,
+        max_chars: int,
+        as_of: datetime | None = None,
+    ) -> ToolResult:
         """Extract Management's Discussion and Analysis section."""
-        filing_data = await self._get_filing_data(symbol, form_type, period)
+        filing_data = await self._get_filing_data(symbol, form_type, period, as_of)
         if not filing_data:
             return ToolResult.create_failure(f"Could not retrieve {form_type} filing text for {symbol}")
-        text = filing_data["text"]
+        document: StoredSecDocument = filing_data["document"]
 
-        mda_text = self._extract_section_by_patterns(text, self._mda_patterns_for_form(form_type), max_chars)
+        section = self._extract_section_with_provenance(
+            document.content_bytes,
+            self._mda_patterns_for_form(form_type),
+            max_chars,
+        )
 
-        if not mda_text:
+        if not section:
             return ToolResult.create_failure(f"Could not extract MD&A section from {form_type} filing for {symbol}")
 
+        source = self._source_with_evidence(document, "mda", section)
         return ToolResult.create_success(
             output={
                 "symbol": symbol,
-                "form_type": form_type,
+                "form_type": document.form_type,
                 "section": "mda",
-                "text": mda_text,
-                "char_count": len(mda_text),
-                "accession_number": filing_data.get("accession_number"),
-                "filing_date": filing_data.get("filing_date"),
-                "period_end": filing_data.get("period_end"),
-                "form_url": filing_data.get("form_url"),
+                "text": section.text,
+                "char_count": len(section.text),
+                **source,
                 "fetched_at": datetime.now(UTC).isoformat(),
             },
             metadata={
-                "source": "sec_edgar_mda",
-                "form_type": form_type,
+                "source": "postgres_sec_filing_document",
+                "form_type": document.form_type,
                 "period": period,
+                "parser_version": SEC_TEXT_PARSER_VERSION,
             },
         )
 
-    async def _get_guidance(self, symbol: str, form_type: str, period: str, max_chars: int) -> ToolResult:
+    async def _get_guidance(
+        self,
+        symbol: str,
+        form_type: str,
+        period: str,
+        max_chars: int,
+        as_of: datetime | None = None,
+    ) -> ToolResult:
         """Extract management guidance and outlook."""
-        text = await self._get_filing_text(symbol, form_type, period)
-        if not text:
+        filing_data = await self._get_filing_data(symbol, form_type, period, as_of)
+        if not filing_data:
             return ToolResult.create_failure(f"Could not retrieve {form_type} filing text for {symbol}")
+        document: StoredSecDocument = filing_data["document"]
+        text = filing_data["text"]
 
         # First try to find a dedicated guidance section
-        guidance_section = self._extract_section_by_patterns(text, self._guidance_patterns, max_chars)
+        guidance_section = self._extract_section_with_provenance(
+            document.content_bytes, self._guidance_patterns, max_chars
+        )
 
         if guidance_section:
             return ToolResult.create_success(
                 output={
                     "symbol": symbol,
-                    "form_type": form_type,
+                    "form_type": document.form_type,
                     "section": "guidance",
-                    "text": guidance_section,
-                    "char_count": len(guidance_section),
+                    "text": guidance_section.text,
+                    "char_count": len(guidance_section.text),
+                    **self._source_with_evidence(document, "guidance", guidance_section),
                     "fetched_at": datetime.now(UTC).isoformat(),
                 },
                 metadata={
-                    "source": "sec_edgar_guidance",
-                    "form_type": form_type,
+                    "source": "postgres_sec_filing_document",
+                    "form_type": document.form_type,
                     "period": period,
+                    "parser_version": SEC_TEXT_PARSER_VERSION,
                 },
             )
 
         # Fallback: extract guidance sentences from the full text
         guidance_sentences = self._extract_guidance_sentences(text, max_sentences=100)
         if guidance_sentences:
-            guidance_text = " ".join(guidance_sentences)[:max_chars]
+            complete_guidance = " ".join(guidance_sentences)
+            guidance_text = self._truncate_text(complete_guidance, max_chars)
             return ToolResult.create_success(
                 output={
                     "symbol": symbol,
-                    "form_type": form_type,
+                    "form_type": document.form_type,
                     "section": "guidance",
                     "text": guidance_text,
                     "char_count": len(guidance_text),
                     "extraction_method": "sentence_level",
+                    **document.provenance(),
+                    "parser_version": SEC_TEXT_PARSER_VERSION,
+                    "normalized_text_sha256": hashlib.sha256(
+                        guidance_text.encode("utf-8", errors="surrogateescape")
+                    ).hexdigest(),
+                    "source_start_byte": 0,
+                    "source_end_byte": document.byte_length,
+                    "truncated": len(complete_guidance) > max_chars,
                     "fetched_at": datetime.now(UTC).isoformat(),
                 },
                 metadata={
-                    "source": "sec_edgar_guidance",
-                    "form_type": form_type,
+                    "source": "postgres_sec_filing_document",
+                    "form_type": document.form_type,
                     "period": period,
+                    "parser_version": SEC_TEXT_PARSER_VERSION,
                 },
             )
 
         return ToolResult.create_failure(f"Could not extract guidance from {form_type} filing for {symbol}")
 
-    async def _get_developments(self, symbol: str, num_filings: int, max_chars: int) -> ToolResult:
+    async def _get_developments(
+        self,
+        symbol: str,
+        num_filings: int,
+        max_chars: int,
+        as_of: datetime | None = None,
+    ) -> ToolResult:
         """Extract recent developments from 8-K filings."""
-        if self._sec_client is None:
-            return ToolResult.create_failure("SEC client not initialized")
+        if self._document_store is None:
+            return ToolResult.create_failure("SEC document store not initialized")
 
         try:
-            # Search for recent 8-K filings
-            filings = await self._sec_client.search_filings(symbol=symbol, form_type="8-K", limit=num_filings)
+            documents = await self._document_store.list_recent_documents(
+                symbol,
+                "8-K",
+                as_of or datetime.now(UTC),
+                limit=num_filings,
+            )
 
-            if not filings:
+            if not documents:
                 return ToolResult.create_failure(
                     f"No recent 8-K filings found for {symbol}",
                     metadata={"symbol": symbol, "form_type": "8-K"},
@@ -456,58 +702,53 @@ Parameters:
             sources: list[dict[str, Any]] = []
             total_chars = 0
 
-            for filing in filings[:num_filings]:
+            for document in documents:
                 if total_chars >= max_chars:
                     break
 
-                filing_date = filing.get("filing_date", "")
-                accession_number = filing.get("accession_number", "")
+                filing_date = document.filed_at.isoformat()
                 heading = f"## Filing Date: {filing_date}\n"
                 separator_size = 1 if developments else 0
                 content_budget = max_chars - total_chars - len(heading) - separator_size
                 if content_budget < 80:
                     break
 
-                # Try to get the full filing text
                 try:
-                    cik = filing.get("cik", "")
-                    if not cik:
-                        continue
+                    document.verified_text()
+                    dev_section = self._extract_section_with_provenance(
+                        document.content_bytes,
+                        self._developments_patterns,
+                        content_budget,
+                    )
+                    remaining = content_budget - len(dev_section.text if dev_section else "")
+                    exhibit_section = (
+                        self._extract_exhibit_99_1_with_provenance(document.content_bytes, remaining)
+                        if remaining >= 80
+                        else None
+                    )
 
-                    text = await self._sec_client.get_filing(accession_number, cik)
-                    if not text:
-                        continue
-
-                    # Extract developments section
-                    dev_text = self._extract_section_by_patterns(text, self._developments_patterns, content_budget)
-                    remaining = content_budget - len(dev_text or "")
-                    exhibit_text = self._extract_exhibit_99_1(text, remaining) if remaining >= 80 else None
-
-                    filing_parts = [part for part in (dev_text, exhibit_text) if part]
+                    filing_parts = [section.text for section in (dev_section, exhibit_section) if section]
                     if filing_parts:
                         filing_text = self._truncate_text("\n\n".join(filing_parts), content_budget)
                         entry = f"{heading}{filing_text}"
                         developments.append(entry)
                         total_chars += len(entry) + separator_size
-                        sources.append(
+                        source = document.provenance()
+                        evidence = [
+                            self._evidence("item_2_02", dev_section) if dev_section else None,
+                            self._evidence("exhibit_99_1", exhibit_section) if exhibit_section else None,
+                        ]
+                        source.update(
                             {
-                                "cik": cik,
-                                "accession_number": accession_number,
-                                "filing_date": filing_date,
-                                "form_url": filing.get("form_url"),
-                                "sections": [
-                                    section
-                                    for section, present in (
-                                        ("item_2_02", bool(dev_text)),
-                                        ("exhibit_99_1", bool(exhibit_text)),
-                                    )
-                                    if present
-                                ],
+                                "parser_version": SEC_TEXT_PARSER_VERSION,
+                                "sections": [item["section"] for item in evidence if item],
+                                "evidence": [item for item in evidence if item],
                             }
                         )
+                        sources.append(source)
 
                 except Exception as e:
-                    logger.warning(f"Error processing 8-K filing {accession_number}: {e}")
+                    logger.warning(f"Error processing 8-K filing {document.accession_no}: {e}")
                     continue
 
             if not developments:
@@ -526,49 +767,79 @@ Parameters:
                     "sources": sources,
                     "fetched_at": datetime.now(UTC).isoformat(),
                 },
-                metadata={"source": "sec_edgar_8k", "num_filings": num_filings},
+                metadata={
+                    "source": "postgres_sec_filing_document",
+                    "num_filings": num_filings,
+                    "parser_version": SEC_TEXT_PARSER_VERSION,
+                },
             )
 
         except Exception as e:
             logger.error(f"Error getting developments for {symbol}: {e}")
             return ToolResult.create_failure(f"Failed to get developments: {e!s}")
 
-    async def _get_risk_factors(self, symbol: str, form_type: str, period: str, max_chars: int) -> ToolResult:
+    async def _get_risk_factors(
+        self,
+        symbol: str,
+        form_type: str,
+        period: str,
+        max_chars: int,
+        as_of: datetime | None = None,
+    ) -> ToolResult:
         """Extract risk factors section."""
-        text = await self._get_filing_text(symbol, form_type, period)
-        if not text:
+        filing_data = await self._get_filing_data(symbol, form_type, period, as_of)
+        if not filing_data:
             return ToolResult.create_failure(f"Could not retrieve {form_type} filing text for {symbol}")
+        document: StoredSecDocument = filing_data["document"]
 
-        risk_text = self._extract_section_by_patterns(text, self._risk_patterns_for_form(form_type), max_chars)
+        section = self._extract_section_with_provenance(
+            document.content_bytes,
+            self._risk_patterns_for_form(form_type),
+            max_chars,
+        )
 
-        if not risk_text:
+        if not section:
             return ToolResult.create_failure(f"Could not extract risk factors from {form_type} filing for {symbol}")
 
         return ToolResult.create_success(
             output={
                 "symbol": symbol,
-                "form_type": form_type,
+                "form_type": document.form_type,
                 "section": "risk_factors",
-                "text": risk_text,
-                "char_count": len(risk_text),
+                "text": section.text,
+                "char_count": len(section.text),
+                **self._source_with_evidence(document, "risk_factors", section),
                 "fetched_at": datetime.now(UTC).isoformat(),
             },
             metadata={
-                "source": "sec_edgar_risk_factors",
-                "form_type": form_type,
+                "source": "postgres_sec_filing_document",
+                "form_type": document.form_type,
                 "period": period,
+                "parser_version": SEC_TEXT_PARSER_VERSION,
             },
         )
 
-    async def _get_business_overview(self, symbol: str, form_type: str, period: str, max_chars: int) -> ToolResult:
+    async def _get_business_overview(
+        self,
+        symbol: str,
+        form_type: str,
+        period: str,
+        max_chars: int,
+        as_of: datetime | None = None,
+    ) -> ToolResult:
         """Extract business overview section."""
-        text = await self._get_filing_text(symbol, form_type, period)
-        if not text:
+        filing_data = await self._get_filing_data(symbol, form_type, period, as_of)
+        if not filing_data:
             return ToolResult.create_failure(f"Could not retrieve {form_type} filing text for {symbol}")
+        document: StoredSecDocument = filing_data["document"]
 
-        business_text = self._extract_section_by_patterns(text, self._business_patterns_for_form(form_type), max_chars)
+        section = self._extract_section_with_provenance(
+            document.content_bytes,
+            self._business_patterns_for_form(form_type),
+            max_chars,
+        )
 
-        if not business_text:
+        if not section:
             return ToolResult.create_failure(
                 f"Could not extract business overview from {form_type} filing for {symbol}"
             )
@@ -576,20 +847,24 @@ Parameters:
         return ToolResult.create_success(
             output={
                 "symbol": symbol,
-                "form_type": form_type,
+                "form_type": document.form_type,
                 "section": "business_overview",
-                "text": business_text,
-                "char_count": len(business_text),
+                "text": section.text,
+                "char_count": len(section.text),
+                **self._source_with_evidence(document, "business_overview", section),
                 "fetched_at": datetime.now(UTC).isoformat(),
             },
             metadata={
-                "source": "sec_edgar_business_overview",
-                "form_type": form_type,
+                "source": "postgres_sec_filing_document",
+                "form_type": document.form_type,
                 "period": period,
+                "parser_version": SEC_TEXT_PARSER_VERSION,
             },
         )
 
-    async def _get_management_discussion(self, symbol: str, max_chars: int) -> ToolResult:
+    async def _get_management_discussion(
+        self, symbol: str, max_chars: int, as_of: datetime | None = None
+    ) -> ToolResult:
         """Get comprehensive management commentary from multiple sources.
 
         Prioritizes quarterly MD&A, then annual MD&A and recent 8-K developments.
@@ -600,7 +875,7 @@ Parameters:
 
         # Current quarterly commentary is the highest-value input.
         try:
-            mda_result = await self._get_mda(symbol, "10-Q", "latest", max(1000, char_budget // 2))
+            mda_result = await self._get_mda(symbol, "10-Q", "latest", max(1000, char_budget // 2), as_of)
             if mda_result.success:
                 sections["mda_10q"] = mda_result.output.get("text", "")
                 char_budget -= len(sections["mda_10q"])
@@ -610,7 +885,7 @@ Parameters:
 
         if char_budget > 2000:
             try:
-                mda_result = await self._get_mda(symbol, "10-K", "latest", min(char_budget, 5000))
+                mda_result = await self._get_mda(symbol, "10-K", "latest", min(char_budget, 5000), as_of)
                 if mda_result.success:
                     sections["mda_10k"] = mda_result.output.get("text", "")
                     char_budget -= len(sections["mda_10k"])
@@ -621,7 +896,7 @@ Parameters:
         # Get recent developments from 8-K
         if char_budget > 2000:
             try:
-                dev_result = await self._get_developments(symbol, 3, min(char_budget, 5000))
+                dev_result = await self._get_developments(symbol, 3, min(char_budget, 5000), as_of)
                 if dev_result.success:
                     sections["developments_8k"] = dev_result.output.get("text", "")
                     sources.extend(dev_result.output.get("sources", []))
@@ -660,12 +935,47 @@ Parameters:
 
     @staticmethod
     def _management_source(section: str, output: dict[str, Any]) -> dict[str, Any]:
+        source_fields = (
+            "accession_number",
+            "content_sha256",
+            "document_kind",
+            "cik",
+            "filing_date",
+            "accepted_at",
+            "available_at",
+            "period_end",
+            "form_url",
+            "byte_length",
+            "retrieved_at",
+            "parser_version",
+            "normalized_text_sha256",
+            "source_start_byte",
+            "source_end_byte",
+            "truncated",
+        )
+        return {"section": section, **{field: output.get(field) for field in source_fields}}
+
+    @staticmethod
+    def _evidence(section_name: str, section: ExtractedSection) -> dict[str, Any]:
         return {
-            "section": section,
-            "accession_number": output.get("accession_number"),
-            "filing_date": output.get("filing_date"),
-            "period_end": output.get("period_end"),
-            "form_url": output.get("form_url"),
+            "section": section_name,
+            "source_start_byte": section.source_start_byte,
+            "source_end_byte": section.source_end_byte,
+            "truncated": section.truncated,
+            "normalized_text_sha256": section.normalized_text_sha256,
+        }
+
+    @classmethod
+    def _source_with_evidence(
+        cls,
+        document: StoredSecDocument,
+        section_name: str,
+        section: ExtractedSection,
+    ) -> dict[str, Any]:
+        return {
+            **document.provenance(),
+            "parser_version": SEC_TEXT_PARSER_VERSION,
+            **cls._evidence(section_name, section),
         }
 
     def get_schema(self) -> dict[str, Any]:
@@ -714,6 +1024,11 @@ Parameters:
                     "default": 15000,
                     "minimum": 1000,
                     "maximum": 50000,
+                },
+                "as_of": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Point-in-time cutoff; must include a timezone (default: now)",
                 },
             },
             "required": ["symbol"],
