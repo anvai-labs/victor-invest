@@ -1,6 +1,6 @@
 # Victor AI Framework (optional - for agent/workflow capabilities)
-# Install from local wheel: pip install ../codingagent/dist/victor_ai-0.3.0-py3-none-any.whl
-# Or when published: pip install victor-ai>=0.3.0
+# The runtime extra in pyproject.toml requires the supported Victor host release.
+# For standalone legacy installs: pip install "victor-ai>=0.9.2,<1.0"
 
 # Core dependencies
 requests>=2.32.0,<2.35
