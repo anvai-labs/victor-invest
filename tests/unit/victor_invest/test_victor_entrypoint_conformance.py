@@ -44,6 +44,7 @@ def test_pyproject_pins_supported_victor_version_range():
     import tomllib
 
     from packaging.requirements import Requirement
+    from packaging.version import Version
 
     data = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
     declared = list(data["project"]["dependencies"])
@@ -56,10 +57,20 @@ def test_pyproject_pins_supported_victor_version_range():
         if req.name in {"victor-contracts", "victor-ai"}
     }
 
-    for name in ("victor-contracts", "victor-ai"):
+    minimum_versions = {
+        "victor-contracts": Version("0.9.1"),
+        "victor-ai": Version("0.9.2"),
+    }
+    for name, minimum in minimum_versions.items():
         assert name in pins, f"{name} must be declared in pyproject.toml"
-        spec = str(pins[name])
-        assert ">=0.7.0" in spec, f"{name} must keep a >=0.7.0 floor, got {spec!r}"
+        specifier = pins[name]
+        assert minimum in specifier, (
+            f"{name} must support the latest validated release {minimum}, got {str(specifier)!r}"
+        )
+        assert Version(f"{minimum.major}.{minimum.minor - 1}.999") not in specifier, (
+            f"{name} must not resolve to an older minor than {minimum}, got {str(specifier)!r}"
+        )
+        spec = str(specifier)
         assert "<" in spec, f"{name} must carry an upper bound so a major release cannot land silently, got {spec!r}"
 
 

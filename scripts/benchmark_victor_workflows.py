@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Benchmark Victor workflow modes against latency budgets."""
 
 from __future__ import annotations
@@ -9,7 +8,6 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List
 
 # Ensure local package imports work when executed as a script from repo root.
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -19,7 +17,7 @@ if str(REPO_ROOT) not in sys.path:
 from victor_invest.latency_budgets import evaluate_latency  # noqa: E402
 
 
-def _run_analysis_mode_cli(symbol: str, mode: str, force_refresh: bool) -> Dict[str, object]:
+def _run_analysis_mode_cli(symbol: str, mode: str, force_refresh: bool) -> dict[str, object]:
     cmd = [
         sys.executable,
         "-m",
@@ -33,7 +31,7 @@ def _run_analysis_mode_cli(symbol: str, mode: str, force_refresh: bool) -> Dict[
         cmd.append("--force-refresh")
 
     started_at = time.perf_counter()
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
     elapsed_seconds = time.perf_counter() - started_at
     return {
         "elapsed_seconds": elapsed_seconds,
@@ -43,7 +41,7 @@ def _run_analysis_mode_cli(symbol: str, mode: str, force_refresh: bool) -> Dict[
 
 
 def _stub_handler(output):
-    from victor.workflows.executor import ExecutorNodeStatus, NodeResult
+    from victor_contracts.workflows import ExecutorNodeStatus, NodeResult
 
     async def _handler(node, context, tool_registry):
         output_key = node.output_key or node.id
@@ -59,7 +57,7 @@ def _stub_handler(output):
     return _handler
 
 
-def _build_stub_handlers_for_mode(mode: str) -> Dict[str, object]:
+def _build_stub_handlers_for_mode(mode: str) -> dict[str, object]:
     mode_lower = mode.lower().strip()
 
     if mode_lower == "quick":
@@ -115,13 +113,10 @@ def _build_stub_handlers_for_mode(mode: str) -> Dict[str, object]:
     raise ValueError(f"Unsupported mode for stub benchmarking: {mode}")
 
 
-def _run_analysis_mode_stub(symbol: str, mode: str) -> Dict[str, object]:
+def _run_analysis_mode_stub(symbol: str, mode: str) -> dict[str, object]:
     try:
-        from victor.workflows.executor import (
-            WorkflowExecutor,
-            get_compute_handler,
-            register_compute_handler,
-        )
+        from victor.workflows.compute_registry import get_compute_handler, register_compute_handler
+        from victor.workflows.unified_executor import WorkflowExecutor
 
         from victor_invest.workflows import (
             InvestmentWorkflowProvider,
@@ -175,7 +170,7 @@ def _run_analysis_mode_stub(symbol: str, mode: str) -> Dict[str, object]:
                 register_compute_handler(name, handler)
 
 
-def _run_analysis_mode(symbol: str, mode: str, force_refresh: bool, runner: str) -> Dict[str, object]:
+def _run_analysis_mode(symbol: str, mode: str, force_refresh: bool, runner: str) -> dict[str, object]:
     if runner == "cli":
         return _run_analysis_mode_cli(symbol, mode, force_refresh)
     if runner == "stub":
@@ -189,7 +184,7 @@ def _benchmark_mode(
     force_refresh: bool,
     runner: str,
     budget_profile: str,
-) -> Dict[str, object]:
+) -> dict[str, object]:
     run_result = _run_analysis_mode(symbol=symbol, mode=mode, force_refresh=force_refresh, runner=runner)
     evaluation = evaluate_latency(mode, run_result["elapsed_seconds"], profile=budget_profile)
 
@@ -207,7 +202,7 @@ def _benchmark_mode(
     }
 
 
-def _parse_args(argv: List[str]) -> argparse.Namespace:
+def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--symbol", default="AAPL", help="Symbol to benchmark (default: AAPL)")
     parser.add_argument(
@@ -245,7 +240,7 @@ def _parse_args(argv: List[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def main(argv: List[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv or sys.argv[1:])
     budget_profile = args.budget_profile or ("ci_stub" if args.runner == "stub" else "production")
 

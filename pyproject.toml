@@ -43,7 +43,7 @@ classifiers = [
 
 dependencies = [
     # Victor SDK definition contract
-    "victor-contracts>=0.7.0,<1.0",
+    "victor-contracts>=0.9.1,<1.0",
 
     # Core dependencies
     "requests>=2.32.0,<2.35",
@@ -139,7 +139,7 @@ dependencies = [
 
 [project.optional-dependencies]
 runtime = [
-    "victor-ai>=0.7.0,<1.0",
+    "victor-ai>=0.9.2,<1.0",
 ]
 dev = [
     "pytest>=7.4.0",

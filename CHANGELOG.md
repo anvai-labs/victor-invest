@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Raised the supported host floor to `victor-ai` 0.9.2 and the contract floor to `victor-contracts` 0.9.1.
+- Made normal CI validate the latest published runtime while retaining a dedicated compatibility lane against Victor `develop`.
+- Reactivated deterministic and golden workflow execution tests against the canonical Victor 0.9 APIs.
+
 ## [0.5.0] - 2026-02-15
 
 ### Added

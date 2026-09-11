@@ -10,10 +10,6 @@ on:
 
 env:
   PYTHON_VERSION: '3.11'
-  # Install victor-ai from source (develop branch) until framework.extensions
-  # is available in a released PyPI version.
-  VICTOR_AI_SOURCE: 'git+https://github.com/anvai-labs/victor.git@develop'
-  VICTOR_CONTRACTS_SOURCE: 'git+https://github.com/anvai-labs/victor.git@develop#subdirectory=victor-contracts'
 
 jobs:
   # Code Quality Checks
@@ -40,9 +36,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install "${{ env.VICTOR_CONTRACTS_SOURCE }}"
-          pip install "${{ env.VICTOR_AI_SOURCE }}"
-          pip install -e ".[dev]"
+          pip install -e ".[dev,runtime]"
 
       - name: Run isort import checker
         run: isort --check-only src/ victor_invest/ tests/
@@ -98,9 +92,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install "${{ env.VICTOR_CONTRACTS_SOURCE }}"
-          pip install "${{ env.VICTOR_AI_SOURCE }}"
-          pip install -e ".[dev]"
+          pip install -e ".[dev,runtime]"
 
       - name: Run unit tests with coverage
         env:
@@ -133,7 +125,7 @@ jobs:
       matrix:
         python-version: ['3.11']
         victor-source:
-          - name: 'develop (latest)'
+          - name: 'develop (next)'
             install: 'git+https://github.com/anvai-labs/victor.git@develop'
             contracts_install: 'git+https://github.com/anvai-labs/victor.git@develop#subdirectory=victor-contracts'
 
@@ -181,9 +173,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install "${{ env.VICTOR_CONTRACTS_SOURCE }}"
-          pip install "${{ env.VICTOR_AI_SOURCE }}"
-          pip install -e ".[dev]"
+          pip install -e ".[dev,runtime]"
 
       - name: Run workflow benchmark gate
         run: |
