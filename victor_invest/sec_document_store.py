@@ -22,7 +22,7 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
-from typing import Any
+from typing import Any, cast
 from urllib.parse import urlsplit
 
 from sqlalchemy import URL, Engine, create_engine, text
@@ -259,7 +259,7 @@ class PostgresSecDocumentStore:
     def _read(self, params: dict[str, Any]) -> list[StoredSecDocument]:
         with self._engine.connect() as connection:
             rows = connection.execute(text(_SELECT_DOCUMENTS), params).mappings().all()
-        return [StoredSecDocument.from_mapping(row) for row in rows]
+        return [StoredSecDocument.from_mapping(cast(Mapping[str, Any], row)) for row in rows]
 
     async def get_latest_document(
         self,
