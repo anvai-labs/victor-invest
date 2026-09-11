@@ -9,8 +9,10 @@ ibkrtrading collector -> sec_filing_document -> Victor verification/extraction -
 ```
 
 `ibkrtrading` owns the SEC identity, rate limit, retries, bounded downloads, and
-durable writes. Victor is a read-only consumer. It verifies the stored byte length,
-SHA-256 digest, form/document role, and canonical SEC archive URL before parsing.
+durable source writes. Victor's interactive analysis path is a read-only consumer.
+It verifies the stored byte length, SHA-256 digest, form/document role, and
+canonical SEC archive URL before parsing. A separate deterministic operator job
+may write parser-versioned outcomes to Victor's derived table.
 
 ## Configure the consumer
 
@@ -102,6 +104,57 @@ tool returns a failure instead of substituting nearby filing text. Inline XBRL t
 and HTML entities are normalized while evidence offsets continue to reference the
 exact immutable source bytes.
 
+## Materialize derivation outcomes
+
+Apply Victor's migration to the same PostgreSQL database after the producer's
+`sec_filing_document` migrations:
+
+```bash
+psql --set ON_ERROR_STOP=1 --file schema/migrations/015_add_sec_derived_sections.sql
+```
+
+Run migrations as the schema owner. For routine materialization, create a separate
+least-privilege login; do not reuse the owner or the interactive reader:
+
+```sql
+GRANT USAGE ON SCHEMA public TO victor_sec_materializer;
+GRANT SELECT ON TABLE public.sec_filing_document TO victor_sec_materializer;
+GRANT SELECT, INSERT ON TABLE public.victor_sec_derived_section TO victor_sec_materializer;
+```
+
+Put its SQLAlchemy PostgreSQL URL in the protected runtime environment. It is
+intentionally a different variable from the interactive reader:
+
+```bash
+export SEC_DERIVATION_DATABASE_URL='postgresql+psycopg2://victor_sec_materializer:<password>@<host>:5432/<database>'
+python scripts/materialize_sec_sections.py --limit 25 --dry-run
+python scripts/materialize_sec_sections.py --limit 25
+```
+
+Use a timezone-aware `--as-of` to materialize a historical evidence cutoff. The
+job is bounded, processes oldest eligible source versions first, and prints only
+counts. Re-run it until `documents` is zero. It never emits filing text or database
+credentials.
+
+Each immutable key includes accession, document role, source digest, canonical
+section, and parser version. A successful row stores normalized text plus exact
+source-byte offsets and digests. Missing, invalid-source, and parser-error rows
+store an explicit failure code and reason. `confidence = 1.000` means the exact
+form/part/item/title structural rule matched; it is not a probability that the
+filing or an investment conclusion is true. A different result under the same key
+is treated as a conflict rather than overwritten. A future parser version creates
+new rows and preserves the old evidence.
+
+Inspect outcomes without selecting narrative text:
+
+```sql
+SELECT parser_version, status, canonical_section, count(*) AS outcomes,
+       max(derived_at) AS latest_derivation
+FROM public.victor_sec_derived_section
+GROUP BY parser_version, status, canonical_section
+ORDER BY parser_version, canonical_section, status;
+```
+
 ## Point-in-time behavior
 
 The optional tool parameter `as_of` must be an ISO 8601 date-time with a timezone.
@@ -122,6 +175,10 @@ digest for an older accession, from leaking into an earlier backtest.
 | No 8-K developments | `document_kind = 'complete_submission'` rows | Sync 8-K source documents and confirm the filing contains Item 2.02 or Exhibit 99.1. |
 | Historical result unexpectedly empty | `available_at`, `retrieved_at`, and requested `as_of` | Correct the cutoff or document why the evidence was unavailable then. |
 | PostgreSQL permission denied | Grants for the reader role | Restore `USAGE` and table-level `SELECT`; do not grant write privileges. |
+| Materializer permission denied | Grants for `victor_sec_materializer` | Restore only source/derived `SELECT` and derived `INSERT`; never grant source writes. |
+| Repeated `missing` outcome | Canonical section, form, and parser version | Review the stored source fixture; fix the parser under a new version rather than editing the row. |
+| Immutable derivation conflict | Existing and newly computed outcome digests | Stop and investigate nondeterminism or an unversioned parser change; never update the row in place. |
 
-Do not log the database URL, return `content_bytes` through the API, weaken the
-digest check, or add a direct SEC/browser fallback to the Victor process.
+Do not log either database URL, return `content_bytes` through the API, weaken the
+digest check, grant the materializer `UPDATE`/`DELETE` or source-table writes, or
+add a direct SEC/browser fallback to the Victor process.
