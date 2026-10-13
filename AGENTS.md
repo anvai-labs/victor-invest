@@ -5,7 +5,7 @@
 - API server code: `src/investigator/api/`; shared utilities in `src/investigator/shared/`. Tests mirror `src/` under `tests/`. Docs and architecture notes are in `docs/`. Config, data caches, and artifacts live in `config/`, `data/`, and `artifacts/`.
 
 ## Build, Test, and Development Commands
-- Python 3.11+; create a venv, then `make install` (runtime deps) or `make dev-install` (adds lint/test/viz/jupyter).
+- Python 3.12+; create a venv, then `make install` (runtime deps) or `make dev-install` (adds lint/test/viz/jupyter).
 - Core checks: `make format` (black + isort, autofix), `make lint` (flake8), `make type-check` (mypy), `make test` (pytest). One-shot CI surface: `make ci`. Coverage: `make test-cov`.
 - Run analysis: `make analyze SYMBOL=AAPL` or `python3 cli_orchestrator.py analyze <SYMBOL> -m standard`; batch via `make batch SYMBOLS="AAPL MSFT"`. Health and cache: `python3 cli_orchestrator.py status`, `make cache-inspect SYMBOL=AAPL`, `make cache-clean SYMBOL=AAPL`.
 - API dev server: `make run-dev` (uvicorn on :8000). Clean artifacts/caches with `make clean` or `make clean-all` before packaging.

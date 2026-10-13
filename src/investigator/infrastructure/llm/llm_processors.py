@@ -501,7 +501,7 @@ class LLMExecutionHandler(ILLMHandler):
             context_params = self.calculate_dynamic_context_size(request)
 
             # Prepare API request
-            api_request = {
+            api_request: dict[str, Any] = {
                 "model": request.model,
                 "prompt": request.prompt,
                 "stream": False,

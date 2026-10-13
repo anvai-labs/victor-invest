@@ -11,7 +11,7 @@
 ```bash
 # 1. System requirements
 # - Ubuntu 22.04+ / macOS 12+
-# - Python 3.11+
+# - Python 3.12+
 # - PostgreSQL 14+
 # - 16GB RAM minimum
 

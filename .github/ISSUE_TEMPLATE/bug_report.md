@@ -28,7 +28,7 @@ assignees: ''
 ## Environment
 
 - **OS**: [e.g., macOS 14.0, Ubuntu 22.04, Windows 11]
-- **Python Version**: [e.g., 3.11.5]
+- **Python Version**: [e.g., 3.12.8]
 - **InvestiGator Version**: [e.g., 1.0.0]
 - **Database**: [e.g., PostgreSQL 15, SQLite]
 

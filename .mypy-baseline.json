@@ -1,6 +1,6 @@
 {
   "_comment": "Per-file mypy error counts. A file may not exceed its entry; the total may only fall. Regenerate with: python scripts/mypy_ratchet.py --update",
-  "total": 1227,
+  "total": 1220,
   "files": {
     "src/investigator/_path_setup.py": 1,
     "src/investigator/application/component_score_extractor.py": 3,
@@ -193,7 +193,7 @@
     "src/investigator/infrastructure/indicators/technical_indicators.py": 1,
     "src/investigator/infrastructure/llm/llm_facade.py": 1,
     "src/investigator/infrastructure/llm/llm_model_config.py": 2,
-    "src/investigator/infrastructure/llm/llm_processors.py": 17,
+    "src/investigator/infrastructure/llm/llm_processors.py": 10,
     "src/investigator/infrastructure/llm/llm_strategies.py": 2,
     "src/investigator/infrastructure/llm/provider_adapter.py": 1,
     "src/investigator/infrastructure/llm/semaphore.py": 7,

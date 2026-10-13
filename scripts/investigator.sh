@@ -1919,7 +1919,7 @@ with open('temp_refresh_config.json', 'w') as f:
         
         # Install system dependencies
         log_info "📦 Installing system dependencies..."
-        brew install postgresql@14 python@3.11 git cmake pkg-config libomp 2>/dev/null || log_warn "Some packages may already be installed"
+        brew install postgresql@14 python@3.12 git cmake pkg-config libomp 2>/dev/null || log_warn "Some packages may already be installed"
         
         # Install Python build dependencies for vector database
         log_info "📦 Installing build dependencies for vector database..."

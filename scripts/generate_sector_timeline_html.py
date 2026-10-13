@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.11
+#!/usr/bin/env python3
 """Generate interactive HTML/SVG timeline reports for sector multiples.
 
 Creates interactive charts showing:
