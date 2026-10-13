@@ -127,7 +127,7 @@ Tools never raise exceptions to callers — they return `ToolResult.create_failu
 
 ## Implementation Conventions
 
-- Python 3.11+, 120-char line length
+- Python 3.12+, 120-char line length
 - **Pre-commit hook** uses ruff format + ruff check + a mypy **ratchet** (authoritative for commits)
 - **Makefile** uses black + isort + flake8 (legacy targets, may diverge from hook)
 - **CI** additionally runs `isort --check-only` on `src/ victor_invest/ tests/`, which ruff does not mirror

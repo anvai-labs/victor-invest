@@ -22,7 +22,7 @@ Thank you for your interest in contributing to InvestiGator! This document provi
 
 ### Prerequisites
 
-- Python 3.11 or higher
+- Python 3.12 or higher
 - Git
 - PostgreSQL 14+ (optional, can use SQLite for development)
 
