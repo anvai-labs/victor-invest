@@ -63,6 +63,7 @@ uvicorn victor_invest.api.app:app --reload
 ### API & Operations
 - [API Reference](api/api-reference.md) - REST endpoints
 - [Operations Runbook](operations/runbook.md) - Deployment guide
+- [SEC Narrative Documents](operations/sec-narrative-documents.md) - Collector/consumer setup and verification
 - [Cache Sweep](operations/web-ui-cache-sweep.md) - Cache operations
 
 ---
@@ -92,4 +93,4 @@ uvicorn victor_invest.api.app:app --reload
 
 ---
 
-**Last Updated**: 2026-03-15
+**Last Updated**: 2026-09-10

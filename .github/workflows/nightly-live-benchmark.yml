@@ -11,7 +11,7 @@ on:
         default: "AAPL"
 
 env:
-  PYTHON_VERSION: "3.11"
+  PYTHON_VERSION: "3.12"
   VICTOR_AI_SOURCE: 'git+https://github.com/anvai-labs/victor.git@develop'
   VICTOR_CONTRACTS_SOURCE: 'git+https://github.com/anvai-labs/victor.git@develop#subdirectory=victor-contracts'
 

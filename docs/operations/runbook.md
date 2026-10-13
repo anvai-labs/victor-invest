@@ -11,7 +11,7 @@
 ```bash
 # 1. System requirements
 # - Ubuntu 22.04+ / macOS 12+
-# - Python 3.11+
+# - Python 3.12+
 # - PostgreSQL 14+
 # - 16GB RAM minimum
 
@@ -105,6 +105,14 @@ ORDER BY idx_scan DESC;
 ```
 
 ---
+
+## SEC Narrative Evidence
+
+Management commentary requires the shared immutable document table produced by
+`ibkrtrading`. Configure a read-only PostgreSQL role and verify freshness before a
+standard or comprehensive run. See
+[SEC Narrative Documents](sec-narrative-documents.md) for setup, producer commands,
+integrity behavior, and incident checks.
 
 ## 🔄 Cache Management
 

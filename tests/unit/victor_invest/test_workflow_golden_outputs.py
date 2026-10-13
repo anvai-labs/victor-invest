@@ -2,14 +2,9 @@ import asyncio
 import json
 from pathlib import Path
 
-import pytest
-from victor.framework.extensions import (
-    ExecutorNodeStatus,
-    NodeResult,
-    WorkflowExecutor,
-    get_compute_handler,
-    register_compute_handler,
-)
+from victor.workflows.compute_registry import get_compute_handler, register_compute_handler
+from victor.workflows.unified_executor import WorkflowExecutor
+from victor_contracts.workflows import ExecutorNodeStatus, NodeResult
 
 from victor_invest.workflows import (
     InvestmentWorkflowProvider,
@@ -81,7 +76,6 @@ def _run_standard_workflow(symbol: str, synthesis_output: dict):
                 register_compute_handler(name, handler)
 
 
-@pytest.mark.skip(reason="WorkflowExecutor API changed - needs rewrite for new API")
 def test_standard_workflow_golden_output_aapl():
     result = _run_standard_workflow(
         "AAPL",
@@ -98,7 +92,6 @@ def test_standard_workflow_golden_output_aapl():
     assert _extract_golden_payload(result, "AAPL") == expected
 
 
-@pytest.mark.skip(reason="WorkflowExecutor API changed - needs rewrite for new API")
 def test_standard_workflow_golden_output_msft():
     result = _run_standard_workflow(
         "MSFT",

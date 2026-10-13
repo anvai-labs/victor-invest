@@ -9,7 +9,7 @@ toc::[]
 == Quick Start
 
 .Prereqs
-* Python 3.11+, macOS 12+ (Apple Silicon recommended)
+* Python 3.12+, macOS 12+ (Apple Silicon recommended)
 * PostgreSQL (for market data) and Ollama running locally (`brew install ollama`)
 
 .Setup

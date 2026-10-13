@@ -24,8 +24,8 @@ echo "Staged Python files:"
 echo "$STAGED_FILES"
 echo ""
 
-# Find Python 3.11+ (project minimum). Prefer python3.11, fall back to python3.
-PYTHON="$(command -v python3.11 2>/dev/null || echo python3)"
+# Find Python 3.12+ (project minimum). Prefer python3.12, fall back to python3.
+PYTHON="$(command -v python3.12 2>/dev/null || echo python3)"
 PIP="$PYTHON -m pip"
 
 # Verify critical project dependencies are installed; auto-install if missing

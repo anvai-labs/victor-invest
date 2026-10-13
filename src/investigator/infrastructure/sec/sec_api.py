@@ -147,6 +147,7 @@ class SECApiClient:
             return {
                 "cik": cik,
                 "symbol": symbol,
+                "accession_number": selected_filing.accession_number,
                 "filing_type": selected_filing.base_form_type,
                 "filing_date": selected_filing.filing_date,
                 "period_end": period_end,
@@ -180,6 +181,7 @@ class SECApiClient:
         for filing in filings[:limit]:
             results.append(
                 {
+                    "cik": cik,
                     "form_type": filing.base_form_type,
                     "filing_date": filing.filing_date,
                     "period_key": getattr(filing, "period_key", ""),

@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Breaking
+
+- **Python 3.12 is now the minimum** (`requires-python = ">=3.12"`). The victor stack this package
+  builds on needs it: `victor-ai` 0.10 and later, and the `victor-contracts` source on victor
+  `develop`, both require Python 3.12. Installs from PyPI on Python 3.11 resolved until now; those
+  users must move to 3.12. CI, the Docker image, tooling targets, scripts and docs move together.
+
+### Fixed
+
+- SQLAlchemy is pinned below 2.1 (in `pyproject.toml` and `requirements.txt`). SQLAlchemy 2.1
+  resolves bare `postgresql://` URLs to the psycopg (v3) driver, while this project ships psycopg2;
+  every such engine failed with `No module named 'psycopg'`. The pin lifts once engine URLs name
+  their driver explicitly (#178).
+
+### Changed
+
+- Raised the supported host floor to `victor-ai` 0.9.2 and the contract floor to `victor-contracts` 0.9.1.
+- Made normal CI validate the latest published runtime while retaining a dedicated compatibility lane against Victor `develop`.
+- Reactivated deterministic and golden workflow execution tests against the canonical Victor 0.9 APIs.
+- Made 10-K and 10-Q narrative extraction item/part-aware and exposed canonical market-risk sections.
+- Added append-only, parser-versioned persistence for canonical SEC section successes and failures through a bounded operator materializer.
+
 ## [0.5.0] - 2026-02-15
 
 ### Added

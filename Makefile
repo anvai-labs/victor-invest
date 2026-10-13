@@ -2,9 +2,9 @@
 
 .DEFAULT_GOAL := help
 
-# Python >=3.11 required. Prefer the workspace venv used by local automation,
-# then python3.11 if available, else fall back to python3.
-PYTHON := $(shell if [ -x ../.venv/bin/python ]; then echo ../.venv/bin/python; elif command -v python3.11 >/dev/null 2>&1; then command -v python3.11; else echo python3; fi)
+# Python >=3.12 required. Prefer the workspace venv used by local automation,
+# then python3.12 if available, else fall back to python3.
+PYTHON := $(shell if [ -x ../.venv/bin/python ]; then echo ../.venv/bin/python; elif command -v python3.12 >/dev/null 2>&1; then command -v python3.12; else echo python3; fi)
 PIP := $(PYTHON) -m pip
 PYTEST := $(PYTHON) -m pytest
 COVERAGE_MIN ?= 66.67
