@@ -7,7 +7,7 @@ name = "victor-invest"
 version = "0.7.0"
 description = "AI-powered investment analysis platform combining SEC fundamentals, technical indicators, and multi-model valuation synthesis"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = {text = "Apache-2.0"}
 authors = [
     {name = "Vijaykumar Singh", email = "vijay@anvaiops.com"}
@@ -34,7 +34,6 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Office/Business :: Financial :: Investment",
@@ -220,7 +219,7 @@ exclude = [
 
 [tool.black]
 line-length = 120
-target-version = ['py311', 'py312']
+target-version = ['py312']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -254,7 +253,7 @@ skip = [".venv", "build", "dist", "data", "artifacts"]
 line-length = 120
 
 # Target Python versions
-target-version = "py311"
+target-version = "py312"
 
 # Exclude directories matching Black's extend-exclude
 extend-exclude = [
@@ -415,7 +414,7 @@ indent-style = "space"
 skip-magic-trailing-comma = false
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 # Without mypy_path, mypy cannot resolve `investigator` at all -- an editable
 # install uses PEP 660 import hooks it does not follow -- so every first-party
 # import reported import-not-found. The blanket ignore_missing_imports below used
