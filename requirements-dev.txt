@@ -23,7 +23,7 @@ sphinx-autodoc-typehints>=3.6.1
 ipython>=9.17.1
 ipdb>=0.13.13
 jupyter>=1.0.0
-notebook>=7.6.2
+notebook>=7.6.3
 jupyterlab>=4.6.3
 
 # Profiling and monitoring
